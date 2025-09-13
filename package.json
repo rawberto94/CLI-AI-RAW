@@ -1,0 +1,51 @@
+{
+  "name": "contract-intelligence",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/clients/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "predev": "docker compose -f infra/docker-compose.yml up -d || true",
+    "dev": "turbo run dev --parallel",
+    "dev:local": "concurrently -k -n api,web,workers -c green,cyan,magenta 'cd apps/api && DEMO_API_KEY=demo-board-2025 pnpm dev' 'cd apps/web && pnpm dev' 'cd apps/workers && pnpm dev'",
+    "kill-ports": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true; lsof -ti :3002 | xargs kill -9 2>/dev/null || true",
+    "setup:infra": "docker compose -f infra/docker-compose.yml up -d",
+    "db:push": "pnpm --filter clients-db db:push",
+    "launch": "node ./scripts/launch.mjs",
+    "launch:api": "node ./scripts/launch.mjs api --no-infra --no-db",
+    "launch:web": "node ./scripts/launch.mjs web --no-infra --no-db --open",
+    "launch:both": "node ./scripts/launch.mjs both",
+    "db:seed": "pnpm --filter infra seed",
+    "test": "turbo run test",
+    "test:e2e": "pnpm --filter api test:e2e",
+    "launch:health": "node ./scripts/launch.mjs health --open",
+    "smoke": "node ./scripts/smoke-test.mjs ${API_URL:-http://localhost:3001}",
+    "batch:upload": "node ./scripts/batch-upload.mjs",
+    "launch:stop": "node ./scripts/launch.mjs stop",
+    "lint": "turbo run lint --no-cache"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "concurrently": "^8.2.2",
+    "dotenv-cli": "^10.0.0",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.5",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-unused-imports": "^4.2.0",
+    "prettier": "^2.8.8",
+    "rimraf": "^5.0.5",
+    "tsup": "^8.0.1",
+    "turbo": "latest"
+  },
+  "packageManager": "pnpm@8.6.1",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "pgvector": "^0.1.8"
+  }
+}

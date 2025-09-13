@@ -1,0 +1,30 @@
+# Node/PNPM
+node_modules/
+.pnpm-store/
+
+# Build caches and outputs
+.next/
+dist/
+.turbo/
+.vite/
+*.tsbuildinfo
+
+# Env files (secrets)
+.env
+.env.*
+apps/*/.env
+packages/*/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+*.log
+
+# Misc
+.DS_Store
+.idea/
+.vscode/
+*.swp

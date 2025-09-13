@@ -1,0 +1,17 @@
+{
+  "name": "clients-rag",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsup index.ts --format cjs --target node18 --dts --out-dir dist"
+  },
+  "dependencies": {
+    "@prisma/client": "*",
+    "openai": "^4.10.0",
+    "pgvector": "^0.1.8",
+    "clients-db": "workspace:*"
+  }
+}

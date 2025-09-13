@@ -1,0 +1,11 @@
+Master Services Agreement between Acme Corp and Globex Ltd
+
+Scope: Consulting services for software implementation.
+
+Fees: Senior Consultant USD 800 per day; Analyst € 60 per hour.
+
+Payment Terms: Net 30 days.
+
+Liability: liability cap limited to fees paid.
+
+Termination: 12 month term with 30 days notice.

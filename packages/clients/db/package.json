@@ -1,0 +1,20 @@
+{
+  "name": "clients-db",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "prisma generate && tsc",
+    "db:migrate": "pnpm exec dotenv -e ../../../apps/api/.env -- prisma migrate dev",
+    "db:deploy": "pnpm exec dotenv -e ../../../apps/api/.env -- prisma migrate deploy",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.3.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.3.1",
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.4"
+  }
+}

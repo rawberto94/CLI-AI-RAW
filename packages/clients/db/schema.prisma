@@ -1,0 +1,144 @@
+// This is a placeholder for the Prisma schema.
+// TODO: Define the Prisma schema for the database.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["nativeTypes"]
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contracts Contract[]
+}
+
+model Contract {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  status      String   @default("UPLOADED")
+  storagePath String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  artifacts   Artifact[]
+  runs        Run[]
+  embeddings  Embedding[] @relation("ContractEmbeddings")
+
+  @@index([tenantId])
+}
+
+enum ArtifactType {
+  INGESTION
+  OVERVIEW
+  CLAUSES
+  RATES
+  COMPLIANCE
+  BENCHMARK
+  RISK
+  REPORT
+}
+
+model Artifact {
+  id           String       @id @default(cuid())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  contractId   String
+  contract     Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId     String
+  type         ArtifactType
+  data         Json
+  schemaVersion String?     @default("v1")
+  hash         String? 
+  location     String?
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([contractId, type])
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Run {
+  id         String    @id @default(cuid())
+  runId      String    @unique
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId   String
+  status     RunStatus @default(PENDING)
+  startedAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  completedAt DateTime?
+  summary    String?
+
+  @@index([runId])
+  @@index([contractId])
+  @@index([tenantId])
+}
+
+// Lightweight embedding storage for demo RAG (JSON vector; pgvector not required)
+model Embedding {
+  id         String    @id @default(cuid())
+  contractId String
+  contract   Contract  @relation(name: "ContractEmbeddings", fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId   String
+  chunkIndex Int
+  text       String
+    //   embedding  Json?
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@unique([contractId, chunkIndex])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  users       User[]
+  permissions PermissionsOnRoles[]
+}
+
+model Permission {
+  id      String @id @default(cuid())
+  action  String // e.g., 'create', 'read', 'update', 'delete'
+  subject String // e.g., 'Contract', 'User'
+  roles   PermissionsOnRoles[]
+
+  @@unique([action, subject])
+}
+
+model PermissionsOnRoles {
+  role         Role       @relation(fields: [roleId], references: [id])
+  roleId       String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  permissionId String
+  assignedAt   DateTime   @default(now())
+
+  @@id([roleId, permissionId])
+}

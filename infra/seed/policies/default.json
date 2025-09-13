@@ -1,0 +1,18 @@
+{
+  "id": "default",
+  "name": "Default Policy Pack",
+  "requiredClauses": [
+    "Confidentiality",
+    "Termination",
+    "Governing Law",
+    "Payment Terms"
+  ],
+  "governingLaw": {
+    "allowed": ["England and Wales", "New York", "Delaware", "Italy"]
+  },
+  "ratePolicy": {
+    "capPercentile": 75,
+    "allowance": 0.1,
+    "exemptRoles": []
+  }
+}

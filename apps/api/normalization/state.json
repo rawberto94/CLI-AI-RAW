@@ -1,0 +1,135 @@
+{
+  "roleAliases": [
+    {
+      "id": "ra-1757079353805-dhdifi",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-05T13:35:53.805Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757322991006-bit4w1",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-08T09:16:31.006Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757323349993-h1yu64",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-08T09:22:29.993Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757324504866-l3z07d",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-08T09:41:44.866Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757324511436-wyhe4g",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-08T09:41:51.436Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757327125964-eoeegd",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-08T10:25:25.964Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757327133041-kjw74e",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-08T10:25:33.041Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757414513670-licqnn",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-09T10:41:53.670Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757594655579-60c7a3",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-11T12:44:15.579Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757596271793-doclmg",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-11T13:11:11.793Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757596393485-tgr1xc",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-11T13:13:13.485Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757596650434-oqo1bg",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-11T13:17:30.434Z",
+      "autoMapped": true
+    },
+    {
+      "id": "ra-1757600245621-jcm8by",
+      "rawRole": "Sr SW Eng",
+      "capabilityHint": [],
+      "roleId": "r-engineer-software-swe",
+      "confidence": 0.99,
+      "approvedBy": "tester",
+      "createdAt": "2025-09-11T14:17:25.621Z",
+      "autoMapped": true
+    }
+  ],
+  "supplierAliases": []
+}

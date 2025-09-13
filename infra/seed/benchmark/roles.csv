@@ -1,0 +1,4 @@
+role,region,currency,p50,p75,p90,n,version,date
+Software Engineer,US,USD,120000,150000,180000,1000,2025.1,2025-01-01
+Project Manager,UK,GBP,80000,100000,120000,500,2025.1,2025-01-01
+Data Scientist,EU,EUR,90000,110000,130000,750,2025.1,2025-01-01

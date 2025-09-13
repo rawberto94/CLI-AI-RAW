@@ -1,0 +1,23 @@
+{
+  "name": "agents",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^0.34.4"
+  },
+  "dependencies": {
+    "zod": "^3.22.2",
+    "langchain": "^0.2.19",
+    "@langchain/openai": "^0.2.8",
+    "@langchain/core": "^0.2.36",
+  "jsonschema": "^1.4.1",
+  "schemas": "workspace:*",
+  "utils": "workspace:*"
+  }
+}

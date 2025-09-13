@@ -1,0 +1,14 @@
+This is a test contract document.
+
+AGREEMENT between ACME Corporation and XYZ Services Ltd.
+
+This contract governs the provision of services from XYZ Services Ltd to ACME Corporation.
+
+The term of this agreement shall be for one year, with rates as follows:
+- Base service fee: $10,000 per month
+- Premium support: $2,000 per month  
+- Implementation fee: $5,000 one-time
+
+Both parties agree to maintain confidentiality and comply with applicable regulations.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement.
