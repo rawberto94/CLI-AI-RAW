@@ -1,25 +1,57 @@
 # Contract Intelligence
 
-This is a full-stack monorepo for the Contract Intelligence system.
+A full-stack monorepo for intelligent contract analysis with multi-tenancy and RAG capabilities.
 
-## Getting Started
+## 🚀 Quick Start
 
-1.  Install dependencies: `pnpm install`
-2.  One-command launch (recommended): `pnpm launch`
-	- This will: start Docker infra, push DB schema, free ports 3001/3002, and start API+Web with health checks.
-3.  Alternatively, start manually: `pnpm dev` (or `pnpm dev:local`)
+### Universal Launcher (Recommended)
 
-This will start the Fastify API, Next.js web app, and BullMQ workers.
+The project includes a unified launcher that automatically detects your environment and sets up everything:
 
-### Health checks
+```bash
+# One-time setup (any environment)
+pnpm launch:setup
 
-- API: http://localhost:3001/healthz
-- Web: http://localhost:3002/api/healthz
+# Start full development environment
+pnpm launch
+```
 
-### Troubleshooting
+**Supports all environments**:
+- 🏠 **Local**: Docker Compose infrastructure
+- ☁️ **GitHub Codespaces**: Pre-configured cloud development
+- 🐳 **Dev Container**: Containerized development
 
-- If ports are stuck: `pnpm kill-ports`
-- If Docker isn't installed/running, the launcher skips infra; ensure Postgres/Redis/MinIO are available or update `apps/api/.env` to use remote services.
+### Manual Setup
+
+1. Install dependencies: `pnpm install`
+2. Start infrastructure: `pnpm setup:infra`
+3. Setup database: `pnpm db:push`
+4. Start services: `pnpm dev:local`
+
+## 📖 Documentation
+
+- **[📋 Launcher Guide](./LAUNCHER.md)** - Comprehensive launcher documentation
+- **[🏗️ API Documentation](./docs/api.md)** - API endpoints and schemas
+- **[📊 Production Guide](./docs/production-readiness.md)** - Deployment and monitoring
+
+## 🎯 Service URLs
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **API** | http://localhost:3001 | REST API ([docs](http://localhost:3001/docs)) |
+| **Web** | http://localhost:3002 | Next.js interface |
+| **Health** | /healthz | Health endpoints |
+
+## 🎮 Quick Commands
+
+| Command | Action |
+|---------|--------|
+| `pnpm launch` | Start everything |
+| `pnpm launch:api` | API only |
+| `pnpm launch:web` | Web only |
+| `pnpm launch:health` | Health checks |
+| `pnpm launch:stop` | Stop all services |
+| `pnpm launch:env` | Show configuration |
 
 ## Multi-tenancy & RAG
 
