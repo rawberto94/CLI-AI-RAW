@@ -11,6 +11,7 @@
     "predev": "docker compose -f infra/docker-compose.yml up -d || true",
     "dev": "turbo run dev --parallel",
     "dev:local": "concurrently -k -n api,web,workers -c green,cyan,magenta 'cd apps/api && DEMO_API_KEY=demo-board-2025 pnpm dev' 'cd apps/web && pnpm dev' 'cd apps/workers && pnpm dev'",
+    "dev:codespaces": "concurrently -k -n api,web,workers -c green,cyan,magenta 'cd apps/api && DATABASE_URL=postgresql://postgres:postgres@postgres:5432/contract_intelligence REDIS_URL=redis://redis:6379 DEMO_API_KEY=demo-board-2025 pnpm dev' 'cd apps/web && NEXT_PUBLIC_API_URL=http://localhost:3001 pnpm dev' 'cd apps/workers && DATABASE_URL=postgresql://postgres:postgres@postgres:5432/contract_intelligence REDIS_URL=redis://redis:6379 pnpm dev'",
     "kill-ports": "lsof -ti :3001 | xargs kill -9 2>/dev/null || true; lsof -ti :3002 | xargs kill -9 2>/dev/null || true",
     "setup:infra": "docker compose -f infra/docker-compose.yml up -d",
     "db:push": "pnpm --filter clients-db db:push",
