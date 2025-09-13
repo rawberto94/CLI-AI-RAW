@@ -27,7 +27,6 @@ import { agentRoutes } from './routes/agents';
 import authRoutes from './routes/auth';
 import { permissionGuard } from './permission';
 import { searchIndex } from './search';
-import { registerPerformanceOptimizations, shutdownPerformanceOptimizations } from '../services/performance-integration';
 import { 
   validateInput, 
   securityHeaders, 
@@ -1276,30 +1275,6 @@ const start = async () => {
     } catch (err) {
       fastify.log.warn({ err }, 'Cache warming failed (continuing)');
     }
-
-    // Register performance optimizations
-    try {
-      registerPerformanceOptimizations(fastify);
-      fastify.log.info('Performance optimizations registered');
-    } catch (err) {
-      fastify.log.warn({ err }, 'Performance optimizations failed to register (continuing)');
-    }
-
-    // Setup graceful shutdown
-    const gracefulShutdown = async () => {
-      fastify.log.info('Shutting down gracefully...');
-      try {
-        await shutdownPerformanceOptimizations();
-        await fastify.close();
-        process.exit(0);
-      } catch (err) {
-        fastify.log.error(err, 'Error during shutdown');
-        process.exit(1);
-      }
-    };
-
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -1332,7 +1307,7 @@ fastify.setErrorHandler((error, request, reply) => {
 });
 
 // Add request logging
-fastify.addHook('onRequest', async (request) => {
+fastify.addHook('onRequest', async (request, reply) => {
   request.log.info({
     method: request.method,
     url: request.url,
@@ -1354,6 +1329,7 @@ start();
 
 // --- PLACEHOLDER ARTIFACTS HELPER ---
 function savePlaceholderArtifacts(docId: string) {
+  const now = Date.now();
   const base = (worker: string) => ({ metadata: { docId, fileType: 'pdf', totalPages: 1, ocrRate: 0, provenance: [{ worker, timestamp: new Date().toISOString(), durationMs: 1 }] } });
   try { saveArtifacts(docId, { overview: { ...base('overview'), summary: 'Processing…', parties: [] } as any }); } catch {}
   try { saveArtifacts(docId, { clauses: { ...base('clauses'), clauses: [] } as any }); } catch {}

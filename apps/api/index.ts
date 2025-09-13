@@ -3,12 +3,12 @@ import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
 import cors from '@fastify/cors';
 import { z } from 'zod';
-import { convertCurrency, normalizeToDaily } from '../../packages/utils/src';
-import { mapRoleDetail } from '../../packages/utils/src';
+import { convertCurrency, normalizeToDaily } from 'utils';
+import { mapRoleDetail } from 'utils';
 import fastifyCompress from '@fastify/compress';
 import { healthRoutes } from './health';
-import { logger } from '../../packages/utils/src/logging';
-import { initTelemetry } from '../../packages/utils/src/tracing';
+import { logger } from 'utils/logging';
+import { initTelemetry } from 'utils/tracing';
 
 initTelemetry('api');
 
@@ -35,9 +35,6 @@ import {
   rateLimitConfig,
   validateFileType
 } from './security';
-
-// Performance Optimizations Import
-import { registerPerformanceOptimizations, shutdownPerformanceOptimizations } from './services/performance-integration';
 
 // --- RAG METRICS (in-memory, minimal) ---
 const ragMetrics = {
@@ -1167,30 +1164,6 @@ const start = async () => {
     } catch (err) {
       fastify.log.warn({ err }, 'Cache warming failed (continuing)');
     }
-
-    // Register performance optimizations
-    try {
-      registerPerformanceOptimizations(fastify);
-      fastify.log.info('Performance optimizations registered');
-    } catch (err) {
-      fastify.log.warn({ err }, 'Performance optimizations failed to register (continuing)');
-    }
-
-    // Setup graceful shutdown
-    const gracefulShutdown = async () => {
-      fastify.log.info('Shutting down gracefully...');
-      try {
-        await shutdownPerformanceOptimizations();
-        await fastify.close();
-        process.exit(0);
-      } catch (err) {
-        fastify.log.error(err, 'Error during shutdown');
-        process.exit(1);
-      }
-    };
-
-    process.on('SIGTERM', gracefulShutdown);
-    process.on('SIGINT', gracefulShutdown);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
@@ -1223,7 +1196,7 @@ fastify.setErrorHandler((error, request, reply) => {
 });
 
 // Add request logging
-fastify.addHook('onRequest', async (request) => {
+fastify.addHook('onRequest', async (request, reply) => {
   request.log.info({
     method: request.method,
     url: request.url,
@@ -1245,6 +1218,7 @@ start();
 
 // --- PLACEHOLDER ARTIFACTS HELPER ---
 function savePlaceholderArtifacts(docId: string) {
+  const now = Date.now();
   const base = (worker: string) => ({ metadata: { docId, fileType: 'pdf', totalPages: 1, ocrRate: 0, provenance: [{ worker, timestamp: new Date().toISOString(), durationMs: 1 }] } });
   try { saveArtifacts(docId, { overview: { ...base('overview'), summary: 'Processing…', parties: [] } as any }); } catch {}
   try { saveArtifacts(docId, { clauses: { ...base('clauses'), clauses: [] } as any }); } catch {}
