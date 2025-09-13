@@ -1,5 +1,6 @@
 # Node/PNPM
 node_modules/
+node_modules*/
 .pnpm-store/
 
 # Build caches and outputs
@@ -12,6 +13,7 @@ dist/
 # Env files (secrets)
 .env
 .env.*
+.env.local
 apps/*/.env
 packages/*/.env
 
@@ -23,8 +25,53 @@ pnpm-debug.log*
 logs/
 *.log
 
-# Misc
+# Testing
+test-results/
+playwright-report/
+coverage/
+
+# Temporary files
+tmp/
+*.tmp
+*.temp
+
+# OS/Editor files
 .DS_Store
 .idea/
 .vscode/
 *.swp
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# JDK directories (you have openJdk-24.jdk)
+*.jdk/
+
+# Lock files in subdirectories (keep root lock file only)
+apps/*/pnpm-lock.yaml
+packages/*/pnpm-lock.yaml
