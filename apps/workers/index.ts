@@ -53,7 +53,7 @@ import { runSearch } from './search.worker';
   }
 })();
 
-const redisUrl = process.env.REDIS_URL || '';
+const redisUrl = process.env['REDIS_URL'] || '';
 
 if (!redisUrl) {
   console.warn('[workers] REDIS_URL not set. Skipping worker startup.');
@@ -109,7 +109,7 @@ for (const name in workerProcessors) {
           { name: 'clauses', data: { docId }, queueName: 'clauses' },
           { name: 'rates', data: { docId }, queueName: 'rates' },
           { name: 'benchmark', data: { docId }, queueName: 'benchmark' },
-          { name: 'compliance', data: { docId, policyPackId: process.env.DEFAULT_POLICY_PACK_ID || 'default' }, queueName: 'compliance' },
+          { name: 'compliance', data: { docId, policyPackId: process.env['DEFAULT_POLICY_PACK_ID'] || 'default' }, queueName: 'compliance' },
           { name: 'search', data: { docId }, queueName: 'search' },
         ],
       }).catch(err => console.error(`[workers] Failed to create flow for ${docId}`, err));
@@ -118,7 +118,7 @@ for (const name in workerProcessors) {
     if (queueName === 'risk' && jobResult?.docId) {
         const { docId } = jobResult;
         console.log(`[workers] Risk analysis complete for ${docId}, queueing report.`);
-        queues.report.add('generate-report', { docId }).catch(err => console.error(`[workers] Failed to queue report for ${docId}`, err));
+        queues['report']?.add('generate-report', { docId }).catch(err => console.error(`[workers] Failed to queue report for ${docId}`, err));
     }
   });
   qEvents.on('failed', ({ jobId, failedReason }) => {

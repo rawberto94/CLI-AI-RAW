@@ -1,9 +1,10 @@
 {
-  "extends": "../../../tsconfig.json",
+  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "lib": ["ES2020"],
     "types": ["node"]
   },
-  "include": ["**/*.ts"]
+  "include": ["*.ts", "src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "**/*.test.ts", "**/*.spec.ts"]
 }

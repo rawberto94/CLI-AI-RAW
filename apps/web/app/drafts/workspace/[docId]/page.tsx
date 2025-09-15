@@ -16,7 +16,7 @@ type HighlightItem = { id: string; author: Party; color: string; note?: string; 
 type TemplateItem = { id: string; name: string; clientId?: string; lob?: string; tags?: string[]; version?: number; updatedAt?: string; changeNote?: string; parentId?: string; tenantId?: string };
 type PolicyPack = { id: string; name?: string };
 
-export default function WorkspacePage({ params }: { params: { docId: string } }) {
+function WorkspacePageClient({ params }: { params: { docId: string } }) {
   const { docId } = params;
   const searchParams = useSearchParams();
 
@@ -101,7 +101,7 @@ export default function WorkspacePage({ params }: { params: { docId: string } })
   const [selOpen, setSelOpen] = useState<boolean>(false);
   const [selApprover, setSelApprover] = useState<string>('');
   // Color is derived: procurement = yellow, client/supplier = light blue
-  const [selColor, setSelColor] = useState<string>('#fef08a'); // default
+  // Removed unused selColor state (color derived at usage time)
   const [selNote, setSelNote] = useState<string>('');
   // Optional proposed replacement text for selected range
   const [selProposedText, setSelProposedText] = useState<string>('');
@@ -547,46 +547,7 @@ export default function WorkspacePage({ params }: { params: { docId: string } })
   }, [trackChanges, savedContent, content]);
 
   // Render read-only highlighted content preview
-  const highlightedPreview = useMemo(() => {
-    if (!showHighlights || highlights.length === 0) return null;
-    // Build segments from ranges
-    type Seg = { from: number; to: number; color?: string };
-    const segs: Seg[] = [];
-    for (const h of highlights) {
-      const r = h.range;
-      if (!r) continue;
-      const a = Math.max(0, Math.min(content.length, r.start));
-      const b = Math.max(0, Math.min(content.length, r.end));
-      if (b <= a) continue;
-      segs.push({ from: a, to: b, color: h.color });
-    }
-    if (segs.length === 0) return null;
-    segs.sort((x, y) => x.from - y.from || x.to - y.to);
-    const merged: Seg[] = [];
-    for (const s of segs) {
-      const last = merged[merged.length - 1];
-      if (last && s.from <= last.to) {
-        last.to = Math.max(last.to, s.to);
-        // keep first color
-      } else {
-        merged.push({ ...s });
-      }
-    }
-    const out: React.ReactNode[] = [];
-    let cursor = 0;
-    for (let i = 0; i < merged.length; i++) {
-      const s = merged[i];
-      if (cursor < s.from) out.push(<span key={`p-${i}-pre`}>{content.slice(cursor, s.from)}</span>);
-      out.push(
-        <span key={`h-${i}`} style={{ background: s.color || '#fef08a' }} className="rounded-sm">
-          {content.slice(s.from, s.to)}
-        </span>
-      );
-      cursor = s.to;
-    }
-  if (cursor < content.length) out.push(<span key={`tail`}>{content.slice(cursor)}</span>);
-    return <div className="border rounded p-3 text-sm font-mono whitespace-pre-wrap">{out}</div>;
-  }, [showHighlights, highlights, content]);
+  // Removed unused highlightedPreview memo (not rendered)
 
   // Inline overlay: background color under text and gutter markers with tooltips
   const [hoverMarker, setHoverMarker] = useState<null | { id: string; type: 'highlight' | 'comment'; text?: string; top: number; status?: 'open'|'approved'; approvedBy?: string; approvedAt?: string }>(null);
@@ -674,7 +635,7 @@ export default function WorkspacePage({ params }: { params: { docId: string } })
   // Snapshot modal state
   const [snapOpen, setSnapOpen] = useState<boolean>(false);
   const [snapshots, setSnapshots] = useState<Array<{ id: string; createdAt: string; author: string; label?: string; version: number }>>([]);
-  const [snapBusy, setSnapBusy] = useState<boolean>(false);
+  // Removed unused snapBusy state
   const [snapDiff, setSnapDiff] = useState<null | { snapshotId: string; fromVersion: number; toVersion: number; summary: { adds: number; dels: number; equals: number } }>(null);
   const loadSnapshots = useCallback(async () => {
     try {
@@ -687,10 +648,9 @@ export default function WorkspacePage({ params }: { params: { docId: string } })
   }, [docId]);
   const createSnap = useCallback(async () => {
     try {
-      setSnapBusy(true);
       const r = await fetch(`${API_BASE_URL}/api/contracts/${docId}/negotiate/snapshots`, { method: 'POST', headers: tenantHeaders({ 'content-type': 'application/json' }), body: JSON.stringify({ by: role }) });
       if (r.ok) { await loadSnapshots(); }
-    } finally { setSnapBusy(false); }
+    } catch {}
   }, [docId, role, loadSnapshots]);
   const viewSnapDiff = useCallback(async (sid: string) => {
     try {
@@ -1316,4 +1276,10 @@ export default function WorkspacePage({ params }: { params: { docId: string } })
       )}
     </div>
   );
+}
+
+// Server component wrapper for Next.js 15 async params
+export default async function WorkspacePage({ params }: { params: Promise<{ docId: string }> }) {
+  const awaitedParams = await params;
+  return <WorkspacePageClient params={awaitedParams} />;
 }

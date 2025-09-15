@@ -104,3 +104,70 @@ Notes:
 - Requires `OPENAI_API_KEY`.
 - Apply schema: `pnpm db:push`.
 - This is minimal; consider pgvector or a managed vector DB for production.
+
+## 🛠️ Operations & Production
+
+### Health & Readiness
+- Liveness: `GET /healthz` returns `{ status: 'ok' }`.
+- Readiness: `GET /api/ready` performs best-effort DB (Prisma) and queue (BullMQ) pings; returns 503 if a core dependency is down.
+- Detailed health: `GET /api/health` includes memory, contract stats, placeholders for infra dependencies.
+
+### Metrics & Monitoring
+- System metrics: `GET /metrics/system` (JSON aggregate of request, upload, analysis, error metrics).
+- Endpoint stats: `GET /metrics/endpoints` aggregated per method+path.
+- Slow requests: `GET /metrics/slow` (threshold > 1000ms, adjustable in code).
+- Prometheus-style basics: `GET /metrics/prom` minimal exposition for RAG counters.
+- Request ID header: All requests receive `x-request-id` for correlation.
+
+### OpenAPI
+- Spec: `GET /openapi.json` (initial minimal spec; extend `apps/api/src/openapi.ts`).
+- Add new endpoints: augment `paths` object; later integrate generator or `zod-to-openapi` for automation.
+
+### Error Handling
+- Centralized via plugin `apps/api/src/plugins/error-handler.ts`.
+- Custom `AppError` (status, message, operational flag, metadata) ensures consistent 4xx/5xx formatting.
+- Non-production exposes no internal stack in responses.
+
+### Graceful Shutdown
+- Signals `SIGINT` / `SIGTERM` trigger: stop Fastify, close discovered BullMQ queues, exit cleanly (15s timeout).
+- Implementation: `apps/api/src/shutdown.ts` registered after server start.
+
+### Tracing (Opt-In)
+- Enable by setting `TRACING_ENABLED=true` before starting API.
+- Minimal OTEL init: `packages/utils/src/tracing-init.ts` (auto-instrumentations, resource tags).
+- Extend with exporters (e.g., OTLP HTTP) by adding dependencies and configuring exporter in `tracing-init.ts`.
+
+### Docker Build
+- Production Dockerfile: `apps/api/Dockerfile` (multi-stage, Node 22 Alpine, selective workspace build).
+- Build command (from repo root):
+	```bash
+	docker build -f apps/api/Dockerfile -t contract-intelligence-api:latest .
+	docker run -p 3001:3001 --env-file apps/api/.env contract-intelligence-api:latest
+	```
+
+### CI
+- Workflow: `.github/workflows/ci.yml` executes lint → type-check → tests → build → audit.
+- Add required status checks in your Git provider to gate merges on `lint`, `typecheck`, `test`, and `build` jobs.
+
+### Environment Hardening (Recommended Next)
+- Add secret scanning (e.g., Gitleaks) stage in CI.
+- Integrate SBOM generation (e.g., `cyclonedx` for Node) for dependency audit trail.
+- Add structured logs (JSON) shipping to OpenSearch / Loki.
+- Implement rate-limit tuning using env (`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW`).
+
+### Operational Scripts
+- Smoke tests: `node scripts/smoke-test.mjs` basic ingestion flow.
+- Batch upload: `node scripts/batch-upload.mjs` multi-file ingestion.
+- Launch helpers: `pnpm launch:*` orchestrate dev environment.
+
+### Observability Extension Ideas
+- Add histogram for response durations (Prometheus client) and unify with existing JSON metrics.
+- Export OpenTelemetry traces to collector (Jaeger / Tempo) once `TRACING_ENABLED` flows are validated.
+
+### Security Notes
+- Input sanitation middleware (SQL & XSS) mounted early.
+- Optional tenant enforcement via `TENANT_ENFORCE=true`.
+- Add WAF / reverse proxy (NGINX or Cloud provider) for TLS, request size policing, IP filtering.
+
+---
+This section will evolve; contributions welcome.

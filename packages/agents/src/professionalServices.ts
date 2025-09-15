@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { ChatOpenAI } from '@langchain/openai';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
@@ -6,10 +5,10 @@ import {
   DocumentTypeEnum,
   ProfessionalServicesOverviewV1Schema as PSOverview,
   KeyClauseMatrixV1Schema as ClauseMatrix,
+  IntelligenceBundleV1Schema as Bundle,
 } from 'schemas';
 import { convertCurrency, normalizeToDaily } from 'utils';
 import { mapRoleDetail } from 'utils';
-import { InteractiveAnalysisV1Schema as Interactive, IntelligenceBundleV1Schema as Bundle } from 'schemas';
 
 const detectDocTypePrompt = `Classify the contract document type into one of: MSA, SOW, Secondment, LOI, LOE, Addendum, Unknown.
 Return strict JSON: { docType: "..." }`;
@@ -25,7 +24,7 @@ export class ProfessionalServicesAnalyzer {
   llm: ChatOpenAI | any;
 
   constructor(opts?: { apiKey?: string; model?: string }) {
-    const key = opts?.apiKey || process.env.OPENAI_API_KEY;
+    const key = opts?.apiKey || process.env['OPENAI_API_KEY'];
     if (!key) {
       // simple deterministic fallback
       this.llm = {
@@ -47,14 +46,14 @@ export class ProfessionalServicesAnalyzer {
           }
           if (/Identify presence of key clauses/i.test(JSON.stringify(input))) {
             const names = ['Liability Cap','Termination','Confidentiality','IP Ownership','Indemnity','Non-solicitation','Change Control','Service Levels','Acceptance','Payment Terms','Expenses','Governing Law'];
-            const clauses = names.map(n => ({ name: n, present: new RegExp(n.split(' ')[0], 'i').test(t) }));
+            const clauses = names.map(n => ({ name: n, present: new RegExp(n.split(' ')[0]!, 'i').test(t) }));
             return { content: JSON.stringify({ clauses }) };
           }
           return { content: '{}' };
         }
       };
     } else {
-      this.llm = new ChatOpenAI({ apiKey: key, modelName: opts?.model || process.env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.2 });
+      this.llm = new ChatOpenAI({ apiKey: key, modelName: opts?.model || process.env['OPENAI_MODEL'] || 'gpt-4o-mini', temperature: 0.2 });
     }
   }
 
@@ -102,16 +101,16 @@ export class ProfessionalServicesAnalyzer {
       const uom = /hour|hr|h/.test(uomRaw) ? 'Hour' : /month|mo/.test(uomRaw) ? 'Month' : /year|yr|annum/.test(uomRaw) ? 'Year' : 'Day';
       const sym = amtMatch[1] || (line.includes('€') ? 'EUR' : line.includes('£') ? 'GBP' : line.includes('$') ? 'USD' : 'USD');
       const currency = sym.toUpperCase();
-      const mapped = mapRoleDetail(pdfRole);
+      const mapped = mapRoleDetail(pdfRole || '');
       const daily = normalizeToDaily(rawAmount, uom);
       const usd = convertCurrency(daily, currency, 'USD');
-      rows.push({ pdfRole, role: mapped.role, seniority: mapped.seniority, mappingConfidence: mapped.confidence, currency, uom, amount: rawAmount, dailyUsd: Math.round(usd) });
+      rows.push({ pdfRole: pdfRole || '', role: mapped.role, seniority: mapped.seniority, mappingConfidence: mapped.confidence, currency, uom, amount: rawAmount, dailyUsd: Math.round(usd) });
       if (rows.length >= 64) break;
     }
     return rows;
   }
 
-  private buildInsights(text: string, clauseMatrix: any, rates: any[]) {
+  private buildInsights(_text: string, clauseMatrix: any, rates: any[]) {
     const insights: any[] = [];
     const missing = (name: string) => !clauseMatrix?.clauses?.some((c: any) => c.name === name && c.present);
     if (missing('Liability Cap')) insights.push({ id: 'risk-liability-cap', type: 'risk', severity: 'high', title: 'Missing Liability Cap', description: 'The contract may lack a clear liability cap.', suggestions: ['Add a liability cap aligned to risk/tcv.'] });

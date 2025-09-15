@@ -8,21 +8,13 @@ import {
   Search, 
   Filter, 
   FileText, 
-  Calendar, 
   DollarSign,
-  Clock,
   Building2,
   Target,
   Activity
 } from 'lucide-react';
 import { BackButton } from '@/components/ui/back-button';
 
-type RiskFactor = {
-  id: string;
-  name: string;
-  weight: number;
-  category: 'financial' | 'operational' | 'legal' | 'compliance' | 'strategic';
-};
 
 type ContractRisk = {
   id: string;
@@ -46,15 +38,7 @@ type ContractRisk = {
   expiryDate: string;
 };
 
-const mockRiskFactors: RiskFactor[] = [
-  { id: '1', name: 'Termination Notice Period', weight: 0.15, category: 'operational' },
-  { id: '2', name: 'Liability Cap Adequacy', weight: 0.20, category: 'financial' },
-  { id: '3', name: 'Data Protection Compliance', weight: 0.18, category: 'compliance' },
-  { id: '4', name: 'Single Source Dependency', weight: 0.12, category: 'strategic' },
-  { id: '5', name: 'Payment Terms Risk', weight: 0.10, category: 'financial' },
-  { id: '6', name: 'IP Ownership Clarity', weight: 0.15, category: 'legal' },
-  { id: '7', name: 'SLA Enforceability', weight: 0.10, category: 'operational' }
-];
+// Removed unused mockRiskFactors
 
 const mockContractRisks: ContractRisk[] = [
   {

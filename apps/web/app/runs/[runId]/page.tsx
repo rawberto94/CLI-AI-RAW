@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from 'react';
 
-export default function RunDetail({ params }: { params: { runId: string } }) {
+function RunDetailClient({ params }: { params: { runId: string } }) {
   const { runId } = params;
   const [steps, setSteps] = useState<any[]>([]);
   const [summary, setSummary] = useState<string | null>(null);
@@ -43,4 +43,10 @@ export default function RunDetail({ params }: { params: { runId: string } }) {
       {done && <div className="text-sm text-gray-600">Completed</div>}
     </div>
   );
+}
+
+// Server component wrapper for Next.js 15 async params
+export default async function RunDetail({ params }: { params: Promise<{ runId: string }> }) {
+  const awaitedParams = await params;
+  return <RunDetailClient params={awaitedParams} />;
 }

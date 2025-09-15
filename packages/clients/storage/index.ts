@@ -3,7 +3,7 @@ import { Readable } from 'stream';
 
 export function getS3() {
 	const { S3_ENDPOINT, S3_REGION = 'us-east-1', S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY } = process.env as any;
-	const disabled = String(process.env.S3_DISABLED || process.env.SKIP_S3_UPLOAD || '').toLowerCase() === 'true';
+	const disabled = String(process.env['S3_DISABLED'] || process.env['SKIP_S3_UPLOAD'] || '').toLowerCase() === 'true';
 	if (disabled || !S3_ENDPOINT || !S3_ACCESS_KEY_ID || !S3_SECRET_ACCESS_KEY) {
 		// Minimal mock for local tests or when explicitly disabled
 		return {
@@ -13,8 +13,8 @@ export function getS3() {
 			getSignedUrl: (_op: string, _params: any) => 'http://localhost/s3/stub',
 		} as unknown as AWS.S3;
 	}
-	const timeout = Number(process.env.S3_TIMEOUT_MS || 5000);
-	const connectTimeout = Number(process.env.S3_CONNECT_TIMEOUT_MS || 1000);
+	const timeout = Number(process.env['S3_TIMEOUT_MS'] || 5000);
+	const connectTimeout = Number(process.env['S3_CONNECT_TIMEOUT_MS'] || 1000);
 	const s3 = new (AWS as any).S3({
 		endpoint: S3_ENDPOINT,
 		region: S3_REGION,
@@ -42,7 +42,7 @@ export function getSignedUrl(params: { Bucket: string; Key: string; Expires?: nu
 
 export async function getFileStream(keyOrPath?: string) {
 	if (!keyOrPath) throw new Error('storage key/path required');
-	const Bucket = process.env.S3_BUCKET || 'contracts';
+	const Bucket = process.env['S3_BUCKET'] || 'contracts';
 	const Key = keyOrPath;
 	const s3 = getS3();
 	const obj = (s3 as any).getObject({ Bucket, Key });
@@ -52,7 +52,7 @@ export async function getFileStream(keyOrPath?: string) {
 }
 
 export async function getObjectBuffer(keyOrPath: string): Promise<Buffer> {
-	const Bucket = process.env.S3_BUCKET || 'contracts';
+	const Bucket = process.env['S3_BUCKET'] || 'contracts';
 	const Key = keyOrPath;
 	const s3 = getS3() as any;
 	if (s3 && typeof s3.getObject === 'function') {

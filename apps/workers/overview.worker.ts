@@ -72,18 +72,18 @@ export async function runOverview(job: { data: { docId: string } }) {
 		parties = guesses;
 	}
 
-	const apiKey = process.env.OPENAI_API_KEY;
-	const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+	const apiKey = process.env['OPENAI_API_KEY'];
+	const model = process.env['OPENAI_MODEL'] || 'gpt-4o-mini';
 	if (apiKey && OpenAIClient) {
 		try {
 			// If RAG is enabled, retrieve a small set of relevant chunks to ground the summary
 			let ragContext = '';
 			try {
-				if ((process.env.RAG_ENABLED || '').toLowerCase() === 'true' && ingestionText) {
+				if ((process.env['RAG_ENABLED'] || '').toLowerCase() === 'true' && ingestionText) {
 					let rag: any;
 					try { rag = require('clients-rag'); } catch { rag = require('../../packages/clients/rag'); }
-					const topK = Number(process.env.RAG_TOP_K || 6);
-					const scored = await rag.retrieve(docId, 'parties and summary of contract', topK, { apiKey: process.env.OPENAI_API_KEY, model: process.env.RAG_EMBED_MODEL });
+					const topK = Number(process.env['RAG_TOP_K'] || 6);
+					const scored = await rag.retrieve(docId, 'parties and summary of contract', topK, { apiKey: process.env['OPENAI_API_KEY'], model: process.env['RAG_EMBED_MODEL'] });
 					ragContext = (scored || []).map((s: any) => s.text).join('\n---\n');
 				}
 			} catch {}

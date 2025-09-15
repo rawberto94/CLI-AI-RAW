@@ -1,14 +1,10 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "@prisma/client": [
-        "../../node_modules/.pnpm/@prisma+client@5.3.1_prisma@5.3.1/node_modules/@prisma/client"
-      ],
-      "utils/*": ["../../packages/utils/dist/*"],
-      "utils": ["../../packages/utils/dist"]
+      "@repo/db": ["../../packages/clients/db"]
     }
   },
   "include": ["**/*.ts"],

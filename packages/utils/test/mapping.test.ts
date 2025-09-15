@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapRoleDetail } from '../mapping'
+import { mapRoleDetail } from '../src/mapping'
 
 describe('mapRoleDetail', () => {
   it('maps Senior Consultant variants', () => {

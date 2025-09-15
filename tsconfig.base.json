@@ -1,0 +1,45 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["es2020", "dom"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "utils": ["./packages/utils/src"],
+      "utils/*": ["./packages/utils/src/*"],
+      "schemas": ["./packages/schemas/src"],
+      "schemas/*": ["./packages/schemas/src/*"],
+      "clients-db": ["./packages/clients/db/src"],
+      "clients-db/*": ["./packages/clients/db/src/*"],
+      "clients-openai": ["./packages/clients/openai/src"],
+      "clients-openai/*": ["./packages/clients/openai/src/*"],
+      "clients-queue": ["./packages/clients/queue/src"],
+      "clients-queue/*": ["./packages/clients/queue/src/*"],
+      "clients-rag": ["./packages/clients/rag/src"],
+      "clients-rag/*": ["./packages/clients/rag/src/*"],
+      "clients-storage": ["./packages/clients/storage/src"],
+      "clients-storage/*": ["./packages/clients/storage/src/*"],
+      "agents": ["./packages/agents/src"],
+      "agents/*": ["./packages/agents/src/*"],
+      "@/*": ["./apps/web/*"]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next",
+    "out",
+    "apps/web",
+    "apps/sharepoint-app_disabled",
+    "infra/seed",
+    "src/components/ui"
+  ]
+}

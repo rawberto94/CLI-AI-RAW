@@ -5,17 +5,13 @@ import {
   Search, 
   Filter, 
   Star, 
-  AlertTriangle, 
-  CheckCircle2, 
   DollarSign, 
   FileText, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Calendar,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  CheckCircle2,
+  MapPin
 } from 'lucide-react';
 import { BackButton } from '@/components/ui/back-button';
 

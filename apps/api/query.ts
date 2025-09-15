@@ -1,4 +1,4 @@
-import { getAllBundles, getSection, listContracts, getAllRates } from './store';
+import { getAllBundles, getSection, getAllRates } from './store';
 // Optional LLM client (OpenAI). Guarded by env and availability.
 let OpenAI: any;
 try {
@@ -31,11 +31,11 @@ export type QueryResult = {
   debug?: any;
 };
 
-const pct = (arr: number[], p: number) => {
+const pct = (arr: number[], p: number): number => {
   if (!arr.length) return 0;
   const s = [...arr].sort((a,b)=>a-b);
   const idx = Math.floor((p/100)*(s.length-1));
-  return s[idx];
+  return s[idx] ?? 0;
 };
 
 function textIncludes(s: string|undefined, needle: RegExp) {
@@ -87,10 +87,10 @@ type QueryPlan = {
 
 async function interpretWithLLM(question: string, scope: 'portfolio'|'contract', contractId?: string): Promise<QueryPlan | null> {
   try {
-    const allow = String(process.env.ANALYSIS_USE_LLM_NLI ?? process.env.ANALYSIS_USE_LLM ?? 'true') === 'true';
-    const key = process.env.OPENAI_API_KEY;
+    const allow = String(process.env['ANALYSIS_USE_LLM_NLI'] ?? process.env['ANALYSIS_USE_LLM'] ?? 'true') === 'true';
+    const key = process.env['OPENAI_API_KEY'];
     if (!allow || !OpenAI || !key) return null;
-    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const model = process.env['OPENAI_MODEL'] || 'gpt-4o-mini';
     const client = new OpenAI({ apiKey: key });
     const system = [
       'Translate user questions about contracts into a strict JSON "query plan" to run over artifacts: overview, clauses, rates, compliance, benchmark, risk.',
@@ -120,7 +120,7 @@ async function interpretWithLLM(question: string, scope: 'portfolio'|'contract',
     const text = resp.choices?.[0]?.message?.content || '';
     const plan = JSON.parse(text) as QueryPlan;
     plan.scope = scope;
-    if (scope === 'contract') plan.contractId = contractId;
+    if (scope === 'contract' && contractId) plan.contractId = contractId;
     return plan;
   } catch {
     return null;
@@ -130,9 +130,9 @@ async function interpretWithLLM(question: string, scope: 'portfolio'|'contract',
 function normalizeDailyUSD(raw: any): number {
   if (!raw) return 0;
   const fx: Record<string, number> = {
-    USD: Number(process.env.FX_USD || 1),
-    EUR: Number(process.env.FX_EUR || 1.1),
-    GBP: Number(process.env.FX_GBP || 1.27),
+    USD: Number(process.env['FX_USD'] || 1),
+    EUR: Number(process.env['FX_EUR'] || 1.1),
+    GBP: Number(process.env['FX_GBP'] || 1.27),
   };
   const uom = String(raw.uom || raw.unit || 'Day').toLowerCase();
   const currency = String((raw.currency || 'USD')).toUpperCase();
@@ -140,11 +140,11 @@ function normalizeDailyUSD(raw: any): number {
   const dailyUsdFromAmount = (() => {
     if (!(amount > 0)) return 0;
     const fxRate = fx[currency] ?? 1;
-    if (uom.startsWith('hour')) return Math.round(amount * fxRate * Number(process.env.HOURS_PER_DAY || 8));
+    if (uom.startsWith('hour')) return Math.round(amount * fxRate * Number(process.env['HOURS_PER_DAY'] || 8));
     if (uom.startsWith('day')) return Math.round(amount * fxRate);
-    if (uom.startsWith('week')) return Math.round((amount * fxRate) / Number(process.env.DAYS_PER_WEEK || 5));
-    if (uom.startsWith('month')) return Math.round((amount * fxRate) / Number(process.env.DAYS_PER_MONTH || 20));
-    if (uom.startsWith('year') || uom.startsWith('ann')) return Math.round((amount * fxRate) / Number(process.env.DAYS_PER_YEAR || 260));
+    if (uom.startsWith('week')) return Math.round((amount * fxRate) / Number(process.env['DAYS_PER_WEEK'] || 5));
+    if (uom.startsWith('month')) return Math.round((amount * fxRate) / Number(process.env['DAYS_PER_MONTH'] || 20));
+    if (uom.startsWith('year') || uom.startsWith('ann')) return Math.round((amount * fxRate) / Number(process.env['DAYS_PER_YEAR'] || 260));
     return Math.round(amount * fxRate);
   })();
   const dailyField = Number(raw.dailyUsd || 0);
@@ -154,19 +154,6 @@ function normalizeDailyUSD(raw: any): number {
     return Math.round(dailyField * (currency === 'USD' ? 1 : fxRate));
   }
   return dailyUsdFromAmount;
-}
-
-function collectRatesFromBundles() {
-  const bundles = getAllBundles();
-  const out: Array<{ docId: string; role?: string; dailyUsd: number; raw?: any }> = [];
-  for (const { docId, bundle } of bundles) {
-    const rates: any[] = Array.isArray((bundle as any)?.rates?.rates) ? (bundle as any).rates.rates : [];
-    for (const r of rates) {
-      const dailyUsd = normalizeDailyUSD(r);
-      if (dailyUsd > 0) out.push({ docId, role: r?.role, dailyUsd, raw: r });
-    }
-  }
-  return out;
 }
 
 // Repository-wide (extracted + manual + overrides)
@@ -186,12 +173,6 @@ function supplierOf(docId: string) {
   return (parties[1] || parties[0] || 'Unknown').replace(/\(.*?\)/g, '').trim();
 }
 
-function clientOf(docId: string) {
-  const ov: any = getSection(docId, 'overview');
-  const parties: string[] = Array.isArray(ov?.parties) ? ov.parties : [];
-  return (parties[0] || parties[1] || 'Unknown').replace(/\(.*?\)/g, '').trim();
-}
-
 const COUNTRY_REGION: Record<string, 'EMEA'|'AMER'|'APAC'|'OTHER'> = {
   // Europe, Middle East, Africa
   'uk':'EMEA','gb':'EMEA','ie':'EMEA','fr':'EMEA','de':'EMEA','es':'EMEA','pt':'EMEA','it':'EMEA','nl':'EMEA','be':'EMEA','lu':'EMEA','ch':'EMEA','se':'EMEA','no':'EMEA','dk':'EMEA','fi':'EMEA','pl':'EMEA','cz':'EMEA','hu':'EMEA','at':'EMEA','gr':'EMEA','ro':'EMEA','bg':'EMEA','ua':'EMEA','ru':'EMEA','tr':'EMEA','il':'EMEA','ae':'EMEA','sa':'EMEA','za':'EMEA','ng':'EMEA','ke':'EMEA',
@@ -205,7 +186,9 @@ function countryToRegion(country?: string): 'EMEA'|'AMER'|'APAC'|'OTHER' {
   if (!country) return 'OTHER';
   const c = country.toLowerCase().trim();
   // Try 2-letter code
-  if (COUNTRY_REGION[c as keyof typeof COUNTRY_REGION]) return COUNTRY_REGION[c as keyof typeof COUNTRY_REGION];
+  const regionByCode = COUNTRY_REGION[c as keyof typeof COUNTRY_REGION];
+  if (regionByCode) return regionByCode;
+  
   // Try matching common names
   const mapByName: Record<string,string> = {
     'united kingdom':'uk','great britain':'uk','britain':'uk','england':'uk',
@@ -214,7 +197,10 @@ function countryToRegion(country?: string): 'EMEA'|'AMER'|'APAC'|'OTHER' {
     'china':'cn','japan':'jp','korea':'kr','south korea':'kr','singapore':'sg','hong kong':'hk','taiwan':'tw','india':'in','australia':'au','new zealand':'nz','thailand':'th','vietnam':'vn','indonesia':'id','malaysia':'my','philippines':'ph'
   };
   const key = mapByName[c] || mapByName[c.replace(/\./g,'')];
-  if (key && COUNTRY_REGION[key as keyof typeof COUNTRY_REGION]) return COUNTRY_REGION[key as keyof typeof COUNTRY_REGION];
+  if (key) {
+    const regionByKey = COUNTRY_REGION[key as keyof typeof COUNTRY_REGION];
+    if (regionByKey) return regionByKey;
+  }
   return 'OTHER';
 }
 
@@ -240,7 +226,7 @@ function execPlanPortfolio(plan: QueryPlan, showPlan = false): QueryResult {
   const ratesRepo = collectRatesFromRepository();
 
   // Filter helpers
-  const matches = (docId: string, bundle: any): boolean => {
+  const matches = (_docId: string, bundle: any): boolean => {
     const w = plan.where || {};
     const ov: any = (bundle as any).overview;
     const cl: any = (bundle as any).clauses;
@@ -299,7 +285,7 @@ function execPlanPortfolio(plan: QueryPlan, showPlan = false): QueryResult {
       const term = compArr.find(it => String(it?.policyId).toUpperCase() === 'TERMINATION_NOTICE');
       if (term?.details) {
         const mm = String(term.details).match(/(\d{1,4})\s*(day|days)/i);
-        if (mm) days = parseInt(mm[1], 10);
+        if (mm && mm[1]) days = parseInt(mm[1], 10);
       }
       if (typeof days !== 'number') {
         const clauses: any[] = Array.isArray(cl?.clauses) ? cl.clauses : [];
@@ -346,6 +332,8 @@ function execPlanPortfolio(plan: QueryPlan, showPlan = false): QueryResult {
   const bundlesFiltered = bundles.filter(({ docId, bundle }) => matches(docId, bundle));
   if (plan.compute && plan.compute.length) {
     const compute = plan.compute[0];
+    if (!compute) return { ok: true, kind: 'metrics', metrics: [], sources: [] };
+    
     const label = compute.label || `${compute.op}${compute.on ? `(${compute.on})` : ''}`;
     // Build working set of rate values for matched docs
     const docSet = new Set(bundlesFiltered.map(b => b.docId));
@@ -393,7 +381,10 @@ function execPlanPortfolio(plan: QueryPlan, showPlan = false): QueryResult {
   else if (compute.op === 'max') value = Math.max(...vals);
   else if (compute.op === 'min') value = Math.min(...vals);
     const prov: Provenance[] = rateSlice.slice(0,3).map(r => ({ type:'artifact', docId: r.docId, section:'rates', path: `/api/contracts/${r.docId}/artifacts/rates.json` }));
-    metrics.push({ label, value, unit: compute.on==='dailyUsd' ? 'USD/day' : undefined, provenance: prov });
+    const unitValue = compute.on === 'dailyUsd' ? 'USD/day' : undefined;
+    const metricItem: any = { label, value, provenance: prov };
+    if (unitValue) metricItem.unit = unitValue;
+    metrics.push(metricItem);
     sources.push(...prov);
   return { ok: true, kind:'metrics', metrics, sources, ...(showPlan ? { debug: { plan } } : {}) } as any;
   }
@@ -425,6 +416,8 @@ function execPlanContract(docId: string, plan: QueryPlan, showPlan = false): Que
 
   if (plan.compute && plan.compute.length) {
     const compute = plan.compute[0];
+    if (!compute) return { ok: true, kind: 'metrics', metrics: [], sources: [] };
+    
     const label = compute.label || `${compute.op}${compute.on ? `(${compute.on})` : ''}`;
   const rates: any[] = Array.isArray(bundle?.rates?.rates) ? bundle.rates.rates : [];
   // Normalize to USD/day for consistency
@@ -440,7 +433,12 @@ function execPlanContract(docId: string, plan: QueryPlan, showPlan = false): Que
   else if (compute.op === 'min') v = vals.length ? Math.min(...vals) : 0;
     const prov: Provenance[] = [ { type:'artifact', docId, section:'rates', path:`/api/contracts/${docId}/artifacts/rates.json` } ];
     sources.push(...prov);
-  return { ok: true, kind:'metrics', metrics: [ { label, value: v, unit: compute.on==='dailyUsd'? 'USD/day' : undefined, provenance: prov } ], sources, ...(showPlan ? { debug: { plan } } : {}) } as any;
+    
+    const unitValue = compute.on === 'dailyUsd' ? 'USD/day' : undefined;
+    const metricItem: any = { label, value: v, provenance: prov };
+    if (unitValue) metricItem.unit = unitValue;
+    
+  return { ok: true, kind:'metrics', metrics: [metricItem], sources, ...(showPlan ? { debug: { plan } } : {}) } as any;
   }
 
   // Findings based on filters
@@ -452,7 +450,7 @@ function execPlanContract(docId: string, plan: QueryPlan, showPlan = false): Que
     let days: number | undefined;
     if (term?.details) {
       const mm = String(term.details).match(/(\d{1,4})\s*(day|days)/i);
-      if (mm) days = parseInt(mm[1], 10);
+      if (mm && mm[1]) days = parseInt(mm[1], 10);
     }
     if (typeof days !== 'number') {
       const list: any[] = Array.isArray(bundle?.clauses?.clauses) ? bundle.clauses.clauses : [];
@@ -498,7 +496,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
   // Intent: SOWs where notice period > N days
   const mNotice = ql.match(/notice\s*(?:period|window)\s*(?:>|greater than|over)\s*(\d{1,4})\s*day/);
   const wantsSOW = /\b(sow|statement of work)\b/.test(ql);
-  if (mNotice) {
+  if (mNotice && mNotice[1]) {
     const threshold = parseInt(mNotice[1], 10);
     const rows: Array<any & { provenance: Provenance[] }> = [];
     for (const { docId, bundle } of bundles) {
@@ -513,7 +511,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
       let days: number | undefined;
       if (term?.details) {
         const mm = String(term.details).match(/(\d{1,4})\s*(day|days)/i);
-        if (mm) days = parseInt(mm[1], 10);
+        if (mm && mm[1]) days = parseInt(mm[1], 10);
       }
       if (typeof days === 'number' && days > threshold) {
         const prov: Provenance[] = [
@@ -539,7 +537,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
 
   // Intent: Supplier blended vs market P75
   const mSupplier = q.match(/what(?:'| i)?s\s+([A-Za-z0-9 &.'-]{2,60})\s+(?:blended|average)\s+(?:daily|day)\s+rate/i);
-  if (mSupplier) {
+  if (mSupplier && mSupplier[1]) {
     const supplierName = mSupplier[1].trim();
     const supplierDocs = new Set<string>();
     for (const { docId, bundle } of bundles) {
@@ -600,7 +598,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
   // Intent: Contracts expiring in N days (default 90)
   const mExpire = ql.match(/expiring\s+in\s+(\d{1,4})\s*days/);
   if (mExpire || /expiring\s+soon/.test(ql)) {
-    const windowDays = mExpire ? parseInt(mExpire[1], 10) : 90;
+    const windowDays = (mExpire && mExpire[1]) ? parseInt(mExpire[1], 10) : 90;
     const rows: Array<any & { provenance: Provenance[] }> = [];
     const now = Date.now();
     for (const { docId, bundle } of bundles) {
@@ -612,7 +610,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
       const diffDays = Math.round((t - now) / (1000*60*60*24));
       if (diffDays >= 0 && diffDays <= windowDays) {
         const prov: Provenance[] = [ { type:'artifact' as const, docId, section:'overview', path: `/api/contracts/${docId}/artifacts/overview.json` } ];
-        rows.push({ docId, endDate: end, daysinset-inline-start: diffDays, provenance: prov });
+        rows.push({ docId, endDate: end, daysLeft: diffDays, provenance: prov });
       }
     }
   return { ok:true, kind:'table', columns: [ { key:'docId', label:'Contract' }, { key:'endDate', label:'End' }, { key:'daysLeft', label:'Days Left' } ], rows, sources: rows.flatMap(r=>r.provenance) };
@@ -626,7 +624,6 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
     return String(r?.raw?.lineOfService || r?.raw?.los || 'Unknown');
   };
   const computeGroupedTable = (op: 'avg'|'p50'|'p75'|'p90', label: string, by: 'role'|'supplier'|'country'|'lineOfService') => {
-    const bundles = getAllBundles();
     const rates: Array<{ docId: string; role?: string; dailyUsd: number; raw?: any }> = collectRatesFromRepository();
     const groups = new Map<string, number[]>();
     for (const r of rates) {
@@ -653,7 +650,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
 
   // Parse patterns
   const byRolePxx = q.match(/\b(p50|p75|p90)\b.*by\s+role/i);
-  if (byRolePxx) {
+  if (byRolePxx && byRolePxx[1]) {
     const op = byRolePxx[1].toLowerCase() as 'p50'|'p75'|'p90';
     const label = `${op.toUpperCase()} USD/day`;
     return computeGroupedTable(op, label, 'role');
@@ -663,7 +660,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
     return computeGroupedTable('avg', 'Average USD/day', 'role');
   }
   const bySupplierPxx = q.match(/\b(p50|p75|p90)\b.*by\s+supplier/i);
-  if (bySupplierPxx) {
+  if (bySupplierPxx && bySupplierPxx[1]) {
     const op = bySupplierPxx[1].toLowerCase() as 'p50'|'p75'|'p90';
     const label = `${op.toUpperCase()} USD/day`;
     return computeGroupedTable(op, label, 'supplier');
@@ -673,7 +670,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
     return computeGroupedTable('avg', 'Average USD/day', 'supplier');
   }
   const byCountryPxx = q.match(/\b(p50|p75|p90)\b.*by\s+country/i);
-  if (byCountryPxx) {
+  if (byCountryPxx && byCountryPxx[1]) {
     const op = byCountryPxx[1].toLowerCase() as 'p50'|'p75'|'p90';
     const label = `${op.toUpperCase()} USD/day`;
     return computeGroupedTable(op, label, 'country');
@@ -683,7 +680,7 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
     return computeGroupedTable('avg', 'Average USD/day', 'country');
   }
   const byLoSPxx = q.match(/\b(p50|p75|p90)\b.*by\s+(line\s+of\s+service|los)/i);
-  if (byLoSPxx) {
+  if (byLoSPxx && byLoSPxx[1]) {
     const op = byLoSPxx[1].toLowerCase() as 'p50'|'p75'|'p90';
     const label = `${op.toUpperCase()} USD/day`;
     return computeGroupedTable(op, label, 'lineOfService');
@@ -695,17 +692,17 @@ export async function handlePortfolioQuery(q: string, opts?: { showPlan?: boolea
 
   // Synonyms: top/cheapest/median by <group>
   const topBy = q.match(/\b(top|highest|max(?:imum)?)\b.*by\s+(role|supplier|country|line\s+of\s+service|los)/i);
-  if (topBy) {
+  if (topBy && topBy[2]) {
     const grp = topBy[2].toLowerCase().includes('line') || topBy[2].toLowerCase()==='los' ? 'lineOfService' : (topBy[2].toLowerCase() as 'role'|'supplier'|'country');
     return computeGroupedTable('p90', 'P90 USD/day', grp as any);
   }
   const cheapestBy = q.match(/\b(cheapest|lowest|min(?:imum)?)\b.*by\s+(role|supplier|country|line\s+of\s+service|los)/i);
-  if (cheapestBy) {
+  if (cheapestBy && cheapestBy[2]) {
     const grp = cheapestBy[2].toLowerCase().includes('line') || cheapestBy[2].toLowerCase()==='los' ? 'lineOfService' : (cheapestBy[2].toLowerCase() as 'role'|'supplier'|'country');
     return computeGroupedTable('p50', 'P50 USD/day', grp as any);
   }
   const medianBy = q.match(/\b(median|p50)\b.*by\s+(role|supplier|country|line\s+of\s+service|los)/i);
-  if (medianBy) {
+  if (medianBy && medianBy[2]) {
     const grp = medianBy[2].toLowerCase().includes('line') || medianBy[2].toLowerCase()==='los' ? 'lineOfService' : (medianBy[2].toLowerCase() as 'role'|'supplier'|'country');
     return computeGroupedTable('p50', 'P50 USD/day', grp as any);
   }
@@ -762,7 +759,7 @@ export async function handleContractQuery(docId: string, q: string, opts?: { sho
     const term = compArr.find(it => String(it?.policyId).toUpperCase() === 'TERMINATION_NOTICE');
     if (term?.details) {
       const mm = String(term.details).match(/(\d{1,4})\s*(day|days)/i);
-      const days = mm ? parseInt(mm[1], 10) : undefined;
+      const days = (mm && mm[1]) ? parseInt(mm[1], 10) : undefined;
       if (typeof days === 'number') {
         const prov: Provenance[] = [ { type:'artifact', docId, section:'compliance', path: `/api/contracts/${docId}/artifacts/compliance.json`, policyId:'TERMINATION_NOTICE' } ];
         sources.push(...prov);

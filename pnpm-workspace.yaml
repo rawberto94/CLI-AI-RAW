@@ -1,5 +1,14 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
-  - 'packages/clients/*'
-  - 'infra'
+  - apps/*
+  - '!apps/sharepoint-app'
+  - packages/*
+  - packages/clients/*
+  - infra
+
+onlyBuiltDependencies:
+  - es5-ext
+  - fsevents
+  - keytar
+  - node-sass
+  - puppeteer
+  - tesseract.js

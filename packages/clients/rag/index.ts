@@ -36,10 +36,10 @@ export function chunkText(text: string, size = 1200, overlap = 150): Chunk[] {
 }
 
 export async function embedChunks(docId: string, tenantId: string, chunks: Chunk[], opts?: { model?: string; apiKey?: string }) {
-  const apiKey = opts?.apiKey || process.env.OPENAI_API_KEY;
-  const model = opts?.model || process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
+  const apiKey = opts?.apiKey || process.env['OPENAI_API_KEY'];
+  const model = opts?.model || process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small';
   if (!apiKey || !OpenAIClientCtor) return chunks; // silently skip in demo
-  const client = new OpenAIClientCtor(apiKey);
+  // const client = new OpenAIClientCtor(apiKey); // unused variable
   // The OpenAI client in this repo exposes chat only; call embeddings via openai SDK directly if available
   let openai: any = null;
   try {
@@ -47,20 +47,22 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
   } catch {}
   if (!openai) return chunks; // can't embed without SDK
   // Impose a hard cap on total chunks to embed in one go
-  const MAX_CHUNKS = Number(process.env.RAG_MAX_CHUNKS || 256);
+  const MAX_CHUNKS = Number(process.env['RAG_MAX_CHUNKS'] || 256);
   const toEmbed = chunks.slice(0, MAX_CHUNKS);
   // Batch to smaller groups to limit payload/response size
-  const BATCH = Number(process.env.RAG_EMBED_BATCH || 32);
+  const BATCH = Number(process.env['RAG_EMBED_BATCH'] || 32);
   for (let start = 0; start < toEmbed.length; start += BATCH) {
     const batch = toEmbed.slice(start, start + BATCH);
     const texts = batch.map(c => c.text);
     const res = await openai.embeddings.create({ model, input: texts });
     const vectors = res.data.map((d: any) => d.embedding as number[]);
-    for (let i = 0; i < batch.length; i++) batch[i].embedding = vectors[i];
+    for (let i = 0; i < batch.length; i++) {
+      if (batch[i]) batch[i].embedding = vectors[i];
+    }
   }
   // persist
   try {
-    const { Prisma } = require('@prisma/client');
+    // const { Prisma } = require('@prisma/client'); // unused variable
     const { pgvector } = require('pgvector/utils');
     for (const c of toEmbed) {
       await db.embedding.create({ data: { contractId: docId, tenantId, chunkIndex: c.index, text: c.text, embedding: pgvector.toSql(c.embedding) } });
@@ -72,8 +74,8 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
 }
 
 export async function retrieve(docId: string, tenantId: string, query: string, k = 6, opts?: { model?: string; apiKey?: string }) {
-  const apiKey = opts?.apiKey || process.env.OPENAI_API_KEY;
-  const model = opts?.model || process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
+  const apiKey = opts?.apiKey || process.env['OPENAI_API_KEY'];
+  const model = opts?.model || process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small';
   let openai: any = null;
   try { openai = new (require('openai').OpenAI)({ apiKey }); } catch {}
   if (!openai) return [] as Array<{ text: string; score: number; chunkIndex: number }>;

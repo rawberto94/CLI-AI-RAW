@@ -1,0 +1,39 @@
+name: Strict Core Type Check
+
+# Phase 1 of progressive strict rollout. See STRICT_ROLLOUT.md for details.
+
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/strict-core.yml'
+      - 'package.json'
+      - 'apps/web/tsconfig.strict-core.json'
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/strict-core.yml'
+      - 'package.json'
+      - 'apps/web/tsconfig.strict-core.json'
+
+jobs:
+  typecheck-web-strict-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.16.1
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Core strict type check
+        run: pnpm type-check:web:strict:core

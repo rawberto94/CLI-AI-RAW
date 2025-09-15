@@ -142,3 +142,18 @@ model PermissionsOnRoles {
 
   @@id([roleId, permissionId])
 }
+
+model ContractTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  clauses   Json
+  structure Json
+  metadata  Json
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+}

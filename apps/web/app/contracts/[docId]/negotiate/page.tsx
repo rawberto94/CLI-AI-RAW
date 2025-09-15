@@ -10,7 +10,7 @@ type Comment = { id: string; author: Party; channel: 'client' | 'supplier' | 'sh
 type Highlight = { id: string; author: Party; color: string; note?: string; range: Range; createdAt: string };
 type NegotiationState = { docId: string; content: string; version: number; baselineLocked: boolean; sharedWithSupplier: boolean; comments: Comment[]; highlights: Highlight[]; suggestions: Suggestion[] };
 
-export default function NegotiatePage({ params }: { params: { docId: string } }) {
+function NegotiatePageClient({ params }: { params: { docId: string } }) {
   const { docId } = params;
   const [state, setState] = useState<NegotiationState | null>(null);
   const [content, setContent] = useState('');
@@ -301,4 +301,10 @@ function TasksPanel({ docId, onGoToHighlight }: { docId: string; onGoToHighlight
       )}
     </div>
   );
+}
+
+// Server component wrapper for Next.js 15 async params
+export default async function NegotiatePage({ params }: { params: Promise<{ docId: string }> }) {
+  const awaitedParams = await params;
+  return <NegotiatePageClient params={awaitedParams} />;
 }

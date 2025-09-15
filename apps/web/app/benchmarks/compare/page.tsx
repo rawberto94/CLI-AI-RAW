@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Percent, CheckCircle2, ArrowDownRight, ArrowUpRight, Users, Building2, Filter, Download, SlidersHorizontal, ListChecks, ChevronDown, ChevronUp, FileText, X } from "lucide-react";
 import { API_BASE_URL } from "@/lib/config";
@@ -89,7 +89,7 @@ export default function CompareRatesPage() {
     return { clients: Array.from(clients).sort(), suppliers: Array.from(suppliers).sort(), types: Array.from(types).sort(), statuses: Array.from(statuses).sort() };
   }, [contracts]);
 
-  const contractMap = useMemo(() => new Map(contracts.map((c) => [c.id, c])), [contracts]);
+  // (unused) const contractMap = useMemo(() => new Map(contracts.map((c) => [c.id, c])), [contracts]);
   const ratesByDoc = useMemo(() => {
     const m = new Map<string, Rate[]>();
     for (const r of rates) {

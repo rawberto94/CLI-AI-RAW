@@ -21,8 +21,12 @@ test.describe('RAG tenant scoping', () => {
     });
     expect(upload.ok()).toBeTruthy();
     const upJson: any = await upload.json();
-    const docId: string | undefined = upJson?.items?.[0]?.docId;
-    expect(docId).toBeTruthy();
+    const docIdRaw: unknown = upJson?.items?.[0]?.docId;
+    expect(typeof docIdRaw === 'string' && docIdRaw.length > 0).toBeTruthy();
+    if (typeof docIdRaw !== 'string' || !docIdRaw) {
+      throw new Error('docId missing from upload response');
+    }
+    const docId: string = docIdRaw;
 
     // 2) Wait for embeddings to appear (poll chunks endpoint up to ~10s)
     const deadline = Date.now() + 10_000;
@@ -37,7 +41,7 @@ test.describe('RAG tenant scoping', () => {
         const n = Array.isArray(chJson?.items) ? chJson.items.length : 0;
         if (n > 0) { ready = true; break; }
       }
-      await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => globalThis.setTimeout(r, 500));
     }
     expect(ready).toBeTruthy();
 

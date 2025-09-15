@@ -15,7 +15,7 @@ export class WorkerManager {
       port: parseInt(process.env.REDIS_PORT || '6379'),
     } as any;
 
-    const types = ['ingestion', 'overview', 'clauses', 'rates', 'compliance', 'benchmark', 'risk', 'report'];
+    const types = ['ingestion', 'financial', 'template', 'overview', 'clauses', 'rates', 'compliance', 'benchmark', 'risk', 'report'];
 
     for (const type of types) {
       const worker = new Worker(

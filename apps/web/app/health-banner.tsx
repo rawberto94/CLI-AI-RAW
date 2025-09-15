@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { tenantHeaders, ensureTenantId } from "@/lib/tenant"
-import { logger } from "utils/logging"
+import { logger } from "utils"
 
 export function HealthBanner() {
   const [api, setApi] = useState<'ok'|'down'|'?'>('?')

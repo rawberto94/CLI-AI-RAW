@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, DropzoneOptions, FileRejection } from 'react-dropzone';
 import { Upload, File, X, CheckCircle, AlertCircle, Loader2, Clock, ExternalLink } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/config';
 import { tenantHeaders } from '@/lib/tenant';
@@ -49,7 +49,7 @@ export function BatchUploadZone({
   const [globalProgress, setGlobalProgress] = useState(0);
   const router = useRouter();
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     // Handle rejected files
     if (rejectedFiles.length > 0) {
       const errors = rejectedFiles.map(f => f.errors.map((e: any) => e.message).join(', '));
@@ -67,18 +67,20 @@ export function BatchUploadZone({
     setFiles(prev => [...prev, ...newFiles]);
   }, [files.length, maxFiles, onError]);
 
-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+  const dropzoneOptions: DropzoneOptions = {
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt'],
+      'text/plain': ['.txt']
     },
-    maxSize: 100 * 1024 * 1024, // 100MB
+    maxSize: 100 * 1024 * 1024,
     maxFiles,
     disabled: disabled || isUploading,
-  });
+    multiple: true
+  };
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone(dropzoneOptions);
 
   const uploadBatch = async () => {
     if (files.length === 0) return;
@@ -127,7 +129,7 @@ export function BatchUploadZone({
           }
 
           const data = await response.json();
-          console.log(`Upload successful for ${file.name}:`, data);
+          // Upload successful for ${file.name}
           
           results.push({ name: file.name, docId: data.id || data.docId });
           
@@ -383,7 +385,7 @@ export function BatchUploadZone({
             Successfully uploaded {uploadResults.length} contract{uploadResults.length !== 1 ? 's' : ''}
           </h3>
           <div className="space-y-2">
-            {uploadResults.map((result, i) => (
+            {uploadResults.map((result) => (
               <div key={result.docId} className="flex items-center justify-between text-sm">
                 <span className="text-green-600">{result.name}</span>
                 <a

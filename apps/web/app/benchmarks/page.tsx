@@ -5,7 +5,6 @@ import {
   Percent, 
   Upload, 
   Database, 
-  CheckCircle2, 
   AlertTriangle, 
   MapPin, 
   Globe2, 
@@ -499,7 +498,7 @@ export default function BenchmarksPage() {
   }, [filters, quickSearch]);
 
   // Sorting state for repository and explorer tables
-  const [repoSort, setRepoSort] = useState<{ key: 'docId'|'role'|'sourceLine'|'supplier'|'dailyUsd'|'currency'|'uom'|'country'|'lineOfService'; dir: 'asc'|'desc' } | null>(null);
+  const [repoSort] = useState<{ key: 'docId'|'role'|'sourceLine'|'supplier'|'dailyUsd'|'currency'|'uom'|'country'|'lineOfService'; dir: 'asc'|'desc' } | null>(null); // setter unused
   const [groupSort, setGroupSort] = useState<{ key: 'group'|'count'|'avg'|'median'|'min'|'max'; dir: 'asc'|'desc' }>({ key: 'group', dir: 'asc' });
 
   // Helper to infer supplier label for a doc

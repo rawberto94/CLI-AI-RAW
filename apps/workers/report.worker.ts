@@ -135,7 +135,7 @@ export async function runReport(job: { data: { docId: string } }) {
     pdfBuffer = Buffer.from(html, 'utf8');
   }
 
-  const bucket = process.env.S3_BUCKET || 'contracts';
+  const bucket = process.env['S3_BUCKET'] || 'contracts';
   const key = `reports/${docId}/report-${Date.now()}.pdf`;
   try {
     await uploadToS3({ Bucket: bucket, Key: key, Body: pdfBuffer, ContentType: 'application/pdf' });

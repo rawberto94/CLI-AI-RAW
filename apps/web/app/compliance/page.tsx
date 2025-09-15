@@ -2,17 +2,13 @@
 import React, { useState } from 'react';
 import { 
   ShieldAlert, 
-  CheckCircle2, 
   XCircle, 
   AlertTriangle, 
   Search, 
   Filter, 
   FileText, 
-  Calendar, 
-  Tag,
-  TrendingUp,
-  Users,
-  Building
+  CheckCircle2,
+  TrendingUp
 } from 'lucide-react';
 import { BackButton } from '@/components/ui/back-button';
 

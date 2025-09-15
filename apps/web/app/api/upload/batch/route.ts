@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/config"
 
+// Explicitly mark this route as dynamic (file uploads always dynamic)
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 export const maxDuration = 300
 
 export async function POST(req: Request) {
@@ -32,10 +35,10 @@ export async function POST(req: Request) {
       try {
         const cookie = req.headers.get('cookie') || ''
         const m = /(?:^|;\s*)x-tenant-id=([^;]+)/i.exec(cookie)
-        if (m) tenant = decodeURIComponent(m[1])
+        if (m && m[1]) tenant = decodeURIComponent(m[1])
       } catch {}
     }
-    if (!tenant && process.env.NODE_ENV !== 'production') tenant = 'demo'
+    if (!tenant && process.env['NODE_ENV'] !== 'production') tenant = 'demo'
 
     const results = []
     

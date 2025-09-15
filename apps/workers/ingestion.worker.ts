@@ -33,16 +33,7 @@ try {
   getObjectBuffer = s.getObjectBuffer;
 }
 
-let getQueue: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const q = require('clients-queue');
-  getQueue = q.getQueue;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const q = require('../../packages/clients/queue');
-  getQueue = q.getQueue;
-}
+// Legacy queue setup removed - unused
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdf = require('pdf-parse');
@@ -124,7 +115,7 @@ export async function runIngestion(job: { data: IngestionJob }) {
 
     // When RAG is enabled, chunk + embed and persist vectors
     try {
-      const enabled = (process.env.RAG_ENABLED || '').toLowerCase() === 'true';
+      const enabled = (process.env['RAG_ENABLED'] || '').toLowerCase() === 'true';
       if (enabled && content && content.length > 0) {
         let rag: any;
         try {
@@ -132,11 +123,11 @@ export async function runIngestion(job: { data: IngestionJob }) {
         } catch {
           rag = require('../../packages/clients/rag');
         }
-        const size = Number(process.env.RAG_CHUNK_SIZE || 1200);
-        const overlap = Number(process.env.RAG_CHUNK_OVERLAP || 150);
+        const size = Number(process.env['RAG_CHUNK_SIZE'] || 1200);
+        const overlap = Number(process.env['RAG_CHUNK_OVERLAP'] || 150);
         const chunks = rag.chunkText(content, size, overlap);
         if (chunks.length) {
-          await rag.embedChunks(docId, contract.tenantId, chunks, { model: process.env.RAG_EMBED_MODEL, apiKey: process.env.OPENAI_API_KEY });
+          await rag.embedChunks(docId, contract.tenantId, chunks, { model: process.env['RAG_EMBED_MODEL'], apiKey: process.env['OPENAI_API_KEY'] });
         }
       }
     } catch (e) {

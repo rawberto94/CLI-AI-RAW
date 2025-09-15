@@ -7,12 +7,9 @@ import {
   Building2,
   FileEdit,
   Layers,
-  Table2,
   Percent,
   ShieldAlert,
   AlertTriangle,
-  ScrollText,
-  BarChart3,
   Upload,
   Bell,
   FileText,
@@ -30,14 +27,10 @@ const items = [
   { href: "/contracts", label: "Contracts", Icon: FolderOpen },
   { href: "/suppliers", label: "Suppliers", Icon: Building2 },
   { href: "/drafts", label: "Draft Editor", Icon: FileEdit },
-  { href: "/clauses", label: "Clauses & Playbooks", Icon: Layers },
-  { href: "/financials", label: "Financials", Icon: Table2 },
   { href: "/benchmarks", label: "Benchmarks", Icon: Percent },
   { href: "/benchmarks/compare", label: "Compare", Icon: Percent },
   { href: "/compliance", label: "Compliance", Icon: ShieldAlert },
   { href: "/risk", label: "Risk", Icon: AlertTriangle },
-  { href: "/reports", label: "Reports", Icon: ScrollText },
-  { href: "/analytics", label: "Analytics & Spend", Icon: BarChart3 },
   { href: "/upload", label: "Upload", Icon: Upload },
   { href: "/runs", label: "Runs", Icon: Layers },
 ]
@@ -96,7 +89,7 @@ export function Sidebar() {
           </Link>
         </div>
         <div className="p-3 border-t text-xs text-slate-500 dark:border-slate-800">
-          gpt-4.1-mini • PS-2025.3 • Dataset v2025.08
+          Contract Intelligence Platform v1.0
         </div>
       </div>
     </aside>

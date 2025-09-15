@@ -31,8 +31,8 @@ export async function runBenchmark(job: { data: { docId: string } }) {
     const sorted = [...arr].sort((a,b)=>a-b);
     const pct = (p: number) => sorted[Math.floor((p/100)*(sorted.length-1))];
     benchmarks = [
-      { role: 'All Roles (P50)', rate: Math.round(pct(50)), percentile: 50 },
-      { role: 'All Roles (P75)', rate: Math.round(pct(75)), percentile: 75 },
+      { role: 'All Roles (P50)', rate: Math.round(pct(50) || 0), percentile: 50 },
+      { role: 'All Roles (P75)', rate: Math.round(pct(75) || 0), percentile: 75 },
     ];
   } else {
     benchmarks = [{ role: 'All Roles (P50)', rate: 1000, percentile: 50 }];

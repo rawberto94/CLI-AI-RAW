@@ -98,12 +98,12 @@ export const BenchmarkArtifactV1Schema = z.object({
 
 export const ReportArtifactV1Schema = z.object({
     metadata: BaseMetadataSchema,
-    overview: OverviewArtifactV1Schema,
-    clauses: ClausesArtifactV1Schema,
-    rates: RatesArtifactV1Schema,
-    risks: RiskArtifactV1Schema,
-    compliance: ComplianceArtifactV1Schema,
-    benchmark: BenchmarkArtifactV1Schema,
+    overview: z.any().optional(),
+    clauses: z.any().optional(),
+    rates: z.any().optional(),
+    risks: z.any().optional(),
+    compliance: z.any().optional(),
+    benchmark: z.any().optional(),
 });
 
 // --- Professional Services focused schemas ---

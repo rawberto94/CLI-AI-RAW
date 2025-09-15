@@ -1,15 +1,20 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
     "composite": true,
     "declaration": true,
-    "baseUrl": ".",
-    "paths": {
-      "schemas": ["../schemas/dist"],
-      "utils": ["../utils/dist"]
-    }
+    "declarationMap": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "verbatimModuleSyntax": false
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "test"],
+  "references": [
+    { "path": "../utils" },
+    { "path": "../schemas" }
+  ]
 }

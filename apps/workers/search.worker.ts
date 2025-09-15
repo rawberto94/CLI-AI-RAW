@@ -1,5 +1,23 @@
 import db from 'clients-db';
-import { addToIndex } from '../api/search';
+
+// Local type and function to avoid cross-package dependencies
+type SearchDocument = {
+  docId: string;
+  content: string;
+};
+
+const documents: SearchDocument[] = [];
+
+function addToIndex(doc: SearchDocument) {
+  // Avoid duplicates
+  if (documents.some(d => d.docId === doc.docId)) {
+    // Update existing document
+    const index = documents.findIndex(d => d.docId === doc.docId);
+    documents[index] = doc;
+    return;
+  }
+  documents.push(doc);
+}
 
 export type SearchJob = {
   docId: string;

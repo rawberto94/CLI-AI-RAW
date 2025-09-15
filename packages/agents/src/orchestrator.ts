@@ -15,7 +15,7 @@ export class ContractOrchestrator {
   llm: ChatOpenAI;
 
   constructor(opts?: { apiKey?: string; model?: string }) {
-    const key = opts?.apiKey || process.env.OPENAI_API_KEY;
+    const key = opts?.apiKey || process.env['OPENAI_API_KEY'];
     if (!key) {
       // Lightweight fallback that mimics a chat model runnable
       // Produces deterministic JSON based on simple heuristics
@@ -25,7 +25,7 @@ export class ContractOrchestrator {
           const t: string = String(userMsg?.content || input?.text || '');
           if (/Identify presence of key clauses/i.test(JSON.stringify(input))) {
             const names = ['Liability Cap','Termination','Confidentiality','IP Ownership','Indemnity'];
-            const clauses = names.map(n => ({ name: n, present: new RegExp(n.split(' ')[0], 'i').test(t), snippet: undefined }));
+            const clauses = names.map(n => ({ name: n, present: new RegExp(n.split(' ')[0] || n, 'i').test(t), snippet: undefined }));
             return { content: JSON.stringify({ clauses }) };
           }
           if (/Extract any role-based rate cards/i.test(JSON.stringify(input))) {
@@ -45,7 +45,7 @@ export class ContractOrchestrator {
       } as any;
       this.llm = fallback;
     } else {
-      this.llm = new ChatOpenAI({ apiKey: key, modelName: opts?.model || process.env.OPENAI_MODEL || 'gpt-4o-mini', temperature: 0.2 });
+      this.llm = new ChatOpenAI({ apiKey: key, modelName: opts?.model || process.env['OPENAI_MODEL'] || 'gpt-4o-mini', temperature: 0.2 });
     }
   }
 
@@ -110,7 +110,7 @@ export class ContractOrchestrator {
     ]);
   }
 
-  async process(docId: string, text: string, opts?: { onStep?: OnStep }): Promise<AgentResult> {
+  async process(_docId: string, text: string, opts?: { onStep?: OnStep }): Promise<AgentResult> {
     const steps: AgentStep[] = [
       { name: 'overview', status: 'pending' },
       { name: 'clauses', status: 'pending' },
@@ -118,45 +118,45 @@ export class ContractOrchestrator {
     ];
 
     // Overview
-    steps[0].status = 'running';
-    if (opts?.onStep) await opts.onStep({ ...steps[0] });
+    steps[0]!.status = 'running';
+    if (opts?.onStep) await opts.onStep(steps[0]!);
     try {
       const overview = await this.makeOverviewChain().invoke({ text });
-      steps[0].status = 'completed';
-      steps[0].data = overview;
-      if (opts?.onStep) await opts.onStep({ ...steps[0] });
+      steps[0]!.status = 'completed';
+      steps[0]!.data = overview;
+      if (opts?.onStep) await opts.onStep(steps[0]!);
     } catch (e: any) {
-      steps[0].status = 'error';
-      steps[0].error = e?.message || 'overview failed';
-      if (opts?.onStep) await opts.onStep({ ...steps[0] });
+      steps[0]!.status = 'error';
+      steps[0]!.error = e?.message || 'overview failed';
+      if (opts?.onStep) await opts.onStep(steps[0]!);
     }
 
     // Clauses
-    steps[1].status = 'running';
-    if (opts?.onStep) await opts.onStep({ ...steps[1] });
+    steps[1]!.status = 'running';
+    if (opts?.onStep) await opts.onStep(steps[1]!);
     try {
       const clauses = await this.makeClausesChain().invoke({ text });
-      steps[1].status = 'completed';
-      steps[1].data = clauses;
-      if (opts?.onStep) await opts.onStep({ ...steps[1] });
+      steps[1]!.status = 'completed';
+      steps[1]!.data = clauses;
+      if (opts?.onStep) await opts.onStep(steps[1]!);
     } catch (e: any) {
-      steps[1].status = 'error';
-      steps[1].error = e?.message || 'clauses failed';
-      if (opts?.onStep) await opts.onStep({ ...steps[1] });
+      steps[1]!.status = 'error';
+      steps[1]!.error = e?.message || 'clauses failed';
+      if (opts?.onStep) await opts.onStep(steps[1]!);
     }
 
     // Rates
-    steps[2].status = 'running';
-    if (opts?.onStep) await opts.onStep({ ...steps[2] });
+    steps[2]!.status = 'running';
+    if (opts?.onStep) await opts.onStep(steps[2]!);
     try {
       const rates = await this.makeRatesChain().invoke({ text });
-      steps[2].status = 'completed';
-      steps[2].data = rates;
-      if (opts?.onStep) await opts.onStep({ ...steps[2] });
+      steps[2]!.status = 'completed';
+      steps[2]!.data = rates;
+      if (opts?.onStep) await opts.onStep(steps[2]!);
     } catch (e: any) {
-      steps[2].status = 'error';
-      steps[2].error = e?.message || 'rates failed';
-      if (opts?.onStep) await opts.onStep({ ...steps[2] });
+      steps[2]!.status = 'error';
+      steps[2]!.error = e?.message || 'rates failed';
+      if (opts?.onStep) await opts.onStep(steps[2]!);
     }
 
     const summary = steps[0]?.data?.summary || 'Agentic processing pipeline executed';

@@ -15,7 +15,6 @@ export function convertCurrency(amount: number, from: string, to: string): numbe
     const f = (from || 'USD').toUpperCase();
     const t = (to || 'USD').toUpperCase();
     if (f === t) return amount;
-    const fromUsd = FX[f] || 1; // if unknown, assume USD
     const toUsd = FX[t] || 1;
     // Convert via USD
     const inUsd = f === 'USD' ? amount : amount * (FX[f] ? FX[f] : 1);

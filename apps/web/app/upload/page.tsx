@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { BackButton } from "@/components/ui/back-button"
 import { BatchUploadZone } from "@/components/batch-upload-zone"
 import { API_BASE_URL } from "../../lib/config"
-import { tenantHeaders, getTenantId, ensureTenantId } from "../../lib/tenant"
+import { tenantHeaders, getTenantId } from "../../lib/tenant"
 
 export default function UploadPage() {
   const [tenantId, setTenantId] = useState<string | undefined>();

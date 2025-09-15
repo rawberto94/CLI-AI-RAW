@@ -24,6 +24,9 @@ interface HealthStatus {
 }
 
 export async function healthRoutes(fastify: FastifyInstance) {
+  function requireOptional(mod: string): any | null {
+    try { return require(mod); } catch { return null; }
+  }
   // Detailed health check endpoint
   fastify.get('/api/health', async (request, reply) => {
     const startTime = Date.now();
@@ -97,16 +100,51 @@ export async function healthRoutes(fastify: FastifyInstance) {
 
   // Readiness check endpoint
   fastify.get('/api/ready', async (request, reply) => {
-    // Check if the application is ready to serve traffic
-    const isReady = true; // Implement actual readiness checks
-    
-    reply
-      .code(isReady ? 200 : 503)
-      .send({ 
-        ready: isReady, 
-        timestamp: new Date().toISOString(),
-        message: isReady ? 'Service ready' : 'Service not ready',
-      });
+    let ready = true;
+    const details: Record<string, any> = {};
+
+    // DB check (if prisma client attached in context somehow)
+    try {
+      const anyFastify: any = fastify as any;
+      const db = anyFastify?.db || requireOptional('clients-db');
+      if (db && db.$queryRaw) {
+        const t0 = Date.now();
+        await db.$queryRaw`SELECT 1`;
+        details.database = { status: 'up', latencyMs: Date.now() - t0 };
+      } else {
+        details.database = { status: 'unknown' };
+      }
+    } catch (e) {
+      ready = false;
+      details.database = { status: 'down', error: (e as any)?.message };
+    }
+
+    // Queue check (if BullMQ queues are registered via getQueue pattern)
+    try {
+      const getQueue = requireOptional('clients-queue')?.getQueue;
+      if (getQueue) {
+        const q = getQueue('ingestion');
+        if (q && typeof q.getJobCounts === 'function') {
+          const t0 = Date.now();
+          await q.getJobCounts();
+          details.queue = { status: 'up', latencyMs: Date.now() - t0 };
+        } else {
+          details.queue = { status: 'unknown' };
+        }
+      } else {
+        details.queue = { status: 'missing' };
+      }
+    } catch (e) {
+      ready = false;
+      details.queue = { status: 'down', error: (e as any)?.message };
+    }
+
+    reply.code(ready ? 200 : 503).send({
+      ready,
+      timestamp: new Date().toISOString(),
+      details,
+      message: ready ? 'Service ready' : 'Service not ready'
+    });
   });
 
   // Liveness check endpoint

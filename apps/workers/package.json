@@ -22,6 +22,7 @@
     "clients-openai": "workspace:*",
     "clients-rag": "workspace:*",
     "clients-storage": "workspace:*",
+    "openai": "^4.67.1",
     "pdf-parse": "^1.1.1",
     "pdfjs-dist": "2.16.105",
     "playwright": "^1.38.1",

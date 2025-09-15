@@ -10,7 +10,7 @@ type Contract = { id: string; name: string; status: string; clientId?: string; s
 type RunStage = { ready: boolean; error?: string; artifactUrl?: string };
 type RunStatus = { state: "queued" | "running" | "completed" | "failed"; stages: Record<"ingestion" | "overview" | "clauses" | "rates" | "compliance" | "benchmark" | "risk" | "report", RunStage> };
 
-export default function ContractPage({ params }: { params: { docId: string } }) {
+function ContractPageClient({ params }: { params: { docId: string } }) {
   const { docId } = params;
 
   const [artifacts, setArtifacts] = useState<Record<string, any>>({});
@@ -464,4 +464,10 @@ export default function ContractPage({ params }: { params: { docId: string } }) 
       </details>
     </div>
   );
+}
+
+// Server component wrapper for Next.js 15 async params
+export default async function ContractPage({ params }: { params: Promise<{ docId: string }> }) {
+  const awaitedParams = await params;
+  return <ContractPageClient params={awaitedParams} />;
 }

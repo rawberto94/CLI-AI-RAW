@@ -1,7 +1,7 @@
 import { Queue } from 'bullmq';
 
 export function getQueue(name: string) {
-	const redisUrl = process.env.REDIS_URL;
+	const redisUrl = process.env['REDIS_URL'];
 	if (!redisUrl) {
 		// Return a stub with add() that resolves for local dev without Redis
 		return {

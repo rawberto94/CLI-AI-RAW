@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
-import { getJob, patchJobResult, RoleRow } from "@/lib/jobs"
+import { getJob, patchJobResult } from "@/lib/jobs"
+import type { RoleRow } from "@/lib/jobs"
 
 export const runtime = "nodejs"
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params
     const id = params.id
     const job = getJob(id)
     if (!job) return NextResponse.json({ error: "Not found" }, { status: 404 })

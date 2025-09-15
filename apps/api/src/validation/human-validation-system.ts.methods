@@ -1,0 +1,26 @@
+
+    async getPendingValidations(documentId: string, tenantId: string): Promise<ValidationRequest[]> {
+        // Mock implementation
+        return [];
+    }
+
+    async getCompletedValidations(documentId: string, tenantId: string): Promise<ValidationResult[]> {
+        // Mock implementation
+        return [];
+    }
+
+    async getValidationMetrics(documentId: string, tenantId: string): Promise<ValidationMetrics> {
+        // Mock implementation
+        return {
+            documentId,
+            overallAccuracy: 0,
+            workerAccuracyBreakdown: [],
+            commonErrors: [],
+            reviewTimeMetrics: [],
+            confidenceCalibration: {
+                bins: [],
+                accuracyPerBin: [],
+            },
+            improvementSuggestions: [],
+        };
+    }

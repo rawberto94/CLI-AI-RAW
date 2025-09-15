@@ -7,7 +7,8 @@ import { convertCurrency, normalizeToDaily } from 'utils';
 import { mapRoleDetail } from 'utils';
 import fastifyCompress from '@fastify/compress';
 import { healthRoutes } from './health';
-import { logger } from 'utils';
+import pino from 'pino';
+const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
 // Telemetry temporarily disabled (tracing module removed)
 // import { initTelemetry } from 'utils/tracing';
 // initTelemetry('api');
@@ -104,7 +105,6 @@ try {
 
 // In-memory store for demo run tracking
 import { createRun, getRun, markStage, getSection, addContract, getContract, listContracts, saveArtifacts, updateContract, getAllRates, addManualRate, bulkAddManualRates, listManualRates, deleteManualRate, updateManualRate, getNegotiation, initNegotiation, updateNegotiationContent, addComment as addNegComment, addHighlight as addNegHighlight, addSuggestion as addNegSuggestion, resolveSuggestion as resolveNegSuggestion, approveSuggestion as approveNegSuggestion, listNegotiationTasks, getNegotiationAudit, shareNegotiation, lockBaseline, listPendingRates, addPendingRate, bulkAddPendingRates, updatePendingRate, approvePendingRate, rejectPendingRate, validatePendingRateShape, approveAllValidPending, bulkRejectPending, normalization, addTemplate, getTemplate, listTemplates, updateTemplate, updateNegotiationMeta, approveHighlight as approveNegHighlight, addAppEvent, listAppEvents, findDocByContentHash, rememberDocContentHash, addTask, updateTask, listTemplateHistory, createTemplateVersion, getAllBundles, bulkArchiveContracts, bulkDeleteContracts, getSection as getArtifactSection, updateCommentStatus, bulkUnarchiveContracts, listSnapshots, createSnapshot, diffSnapshot, listTenants, addTenant, getTenant, updateTenant, deleteTenant } from './store';
-import { hash } from 'utils';
 import { matchRole, matchSupplier, addRoleAlias, addSupplierAlias, reloadNormalizationDicts, importNormalization } from './normalization/matcher';
 import { handlePortfolioQuery, handleContractQuery } from './query';
 // import fs from 'fs';
@@ -126,64 +126,93 @@ async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
   const riskQueue = getQueue('risk');
   const reportQueue = getQueue('report');
 
-  // Stage 1: Ingestion (text extraction)
-  const ingestionJob = await ingestionQueue.add('process-document', { 
-    docId, 
-    tenantId 
-  }, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 2000 },
-    priority: 10
-  });
+  const SIMPLE = process.env.PIPELINE_SIMPLE === '1' || process.env.PIPELINE_SIMPLE === 'true';
 
-  // Stage 2: Parallel analysis after ingestion
-  await Promise.all([
-    overviewQueue.add('analyze-overview', { docId, tenantId }, { 
-      parent: { id: ingestionJob.id, queue: 'ingestion' },
-      attempts: 3,
-      priority: 8
-    }),
-    clausesQueue.add('extract-clauses', { docId, tenantId }, {
-      parent: { id: ingestionJob.id, queue: 'ingestion' },
-      attempts: 3,
-      priority: 8
-    }),
-    ratesQueue.add('extract-rates', { docId, tenantId }, {
-      parent: { id: ingestionJob.id, queue: 'ingestion' },
-      attempts: 3,
-      priority: 7
-    })
-  ]);
+  // Helper to enqueue without dependencies (simplified path)
+  const enqueueSimple = async () => {
+    await ingestionQueue.add('process-document', { docId, tenantId });
+    await overviewQueue.add('analyze-overview', { docId, tenantId });
+    await clausesQueue.add('extract-clauses', { docId, tenantId });
+    await ratesQueue.add('extract-rates', { docId, tenantId });
+    await riskQueue.add('assess-risk', { docId, tenantId });
+    await complianceQueue.add('check-compliance', { docId, tenantId, policyPackId: 'default' });
+    await benchmarkQueue.add('calculate-benchmark', { docId, tenantId });
+    await reportQueue.add('generate-report', { docId, tenantId });
+    logger.info({ docId }, 'Simplified pipeline enqueued');
+    return { ingestionJobId: 'simple', stages: 8, simple: true };
+  };
 
-  // Stage 3: Risk and compliance analysis (depends on previous analyses)
-  await Promise.all([
-    riskQueue.add('assess-risk', { docId, tenantId }, {
-      delay: 10000, // Give analysis jobs time to complete
+  if (SIMPLE) {
+    return enqueueSimple();
+  }
+
+  try {
+    // Stage 1: Ingestion (text extraction)
+    const ingestionJob = await ingestionQueue.add('process-document', { 
+      docId, 
+      tenantId 
+    }, {
       attempts: 3,
-      priority: 6
-    }),
-    complianceQueue.add('check-compliance', { docId, tenantId, policyPackId: 'default' }, {
-      delay: 8000,
+      backoff: { type: 'exponential', delay: 2000 },
+      priority: 10
+    });
+
+    // Stage 2: Parallel analysis after ingestion
+    await Promise.all([
+      overviewQueue.add('analyze-overview', { docId, tenantId }, { 
+        parent: { id: ingestionJob.id, queue: (ingestionQueue as any).name || 'ingestion' },
+        attempts: 3,
+        priority: 8
+      }),
+      clausesQueue.add('extract-clauses', { docId, tenantId }, {
+        parent: { id: ingestionJob.id, queue: (ingestionQueue as any).name || 'ingestion' },
+        attempts: 3,
+        priority: 8
+      }),
+      ratesQueue.add('extract-rates', { docId, tenantId }, {
+        parent: { id: ingestionJob.id, queue: (ingestionQueue as any).name || 'ingestion' },
+        attempts: 3,
+        priority: 7
+      })
+    ]);
+
+    // Stage 3: Risk and compliance analysis (depends on previous analyses)
+    await Promise.all([
+      riskQueue.add('assess-risk', { docId, tenantId }, {
+        delay: 10000, // Give analysis jobs time to complete
+        attempts: 3,
+        priority: 6
+      }),
+      complianceQueue.add('check-compliance', { docId, tenantId, policyPackId: 'default' }, {
+        delay: 8000,
+        attempts: 3,
+        priority: 6
+      })
+    ]);
+
+    // Stage 4: Benchmark and final report
+    await benchmarkQueue.add('calculate-benchmark', { docId, tenantId }, {
+      delay: 15000,
       attempts: 3,
-      priority: 6
-    })
-  ]);
+      priority: 5
+    });
 
-  // Stage 4: Benchmark and final report
-  await benchmarkQueue.add('calculate-benchmark', { docId, tenantId }, {
-    delay: 15000,
-    attempts: 3,
-    priority: 5
-  });
+    await reportQueue.add('generate-report', { docId, tenantId }, {
+      delay: 20000,
+      attempts: 2,
+      priority: 4
+    });
 
-  await reportQueue.add('generate-report', { docId, tenantId }, {
-    delay: 20000,
-    attempts: 2,
-    priority: 4
-  });
-
-  logger.info(`Enqueued complete analysis pipeline for document ${docId}`);
-  return { ingestionJobId: ingestionJob.id, stages: 8 };
+    logger.info(`Enqueued complete analysis pipeline for document ${docId}`);
+    return { ingestionJobId: ingestionJob.id, stages: 8 };
+  } catch (err: any) {
+    const msg = String(err?.message || err);
+    logger.warn({ docId, err: msg }, 'Pipeline enqueue failed; using simplified pipeline');
+    try { return await enqueueSimple(); } catch (innerErr) {
+      logger.error({ docId, err: innerErr }, 'Simplified pipeline enqueue failed');
+      throw err; // propagate original error
+    }
+  }
 }
 
 // --- FASTIFY SERVER SETUP ---
@@ -807,33 +836,29 @@ fastify.post('/uploads', async (request, reply) => {
       
     // Enqueue comprehensive analysis pipeline
       try {
-  if (getQueue) {
+        const PIPELINE_SIMPLE = process.env.PIPELINE_SIMPLE === '1' || process.env.PIPELINE_SIMPLE === 'true';
+        
+        if (getQueue && !PIPELINE_SIMPLE) {
           await enqueueAnalysisPipeline(id, tenantId);
           monitoring.startAnalysis(id); // Track analysis start
           request.log.info({ docId: id, tenantId }, 'Enqueued analysis pipeline');
         } else {
-          // Fallback to in-process if no queue available
-          request.log.warn({ docId: id }, 'Queue unavailable, using fallback processing');
-          
-          // Extract text using proper PDF parsing if needed
-          let text = fileText ?? '[no-bytes]';
-          if (!fileText && uploadToS3) {
-            // If we uploaded to S3, we need to extract text from there
-            // For now, use placeholder
-            text = '[stored-in-s3]';
-          }
-          
-      try { saveArtifacts(id, { ingestion: { text } as any }); markStage(id, 'ingestion', true); } catch {}
-          try { savePlaceholderArtifacts(id); } catch {}
-          monitoring.startAnalysis(id); // Track analysis start
-          schedule(() => runAnalysisPipeline(id!, tenantId, text));
-  }
-  const sizeNum = contentLength ? parseInt(String(contentLength), 10) : undefined;
-  monitoring.trackUpload(true, Number.isFinite(sizeNum || NaN) ? sizeNum : undefined); // Track successful upload with size
-      } catch (e) {
-  monitoring.trackUpload(false);
-        request.log.error({ err: e, docId: id }, 'Failed to enqueue analysis pipeline');
-        return reply.code(500).send({ error: 'Failed to start document processing' });
+          // In-process fallback (no queue client OR simplified mode)
+          const reason = !getQueue ? 'Queue unavailable' : 'PIPELINE_SIMPLE=1';
+          request.log.info({ docId: id, reason }, 'Starting in-process analysis pipeline');
+          const text = fileText ?? '[no-text]';
+          try { saveArtifacts(id, { ingestion: { text } as any }); } catch {}
+          markStage(id, 'ingestion', true);
+          schedule(() => runAnalysisPipeline(id, tenantId, text));
+          request.log.info({ docId: id }, 'In-process pipeline scheduled');
+        }
+        
+        const sizeNum = contentLength ? parseInt(String(contentLength), 10) : undefined;
+        monitoring.trackUpload(true, Number.isFinite(sizeNum || NaN) ? sizeNum : undefined); // Track successful upload with size
+      } catch (e: any) {
+        monitoring.trackUpload(false);
+        request.log.error({ err: e, docId: id, message: e?.message }, 'Failed to enqueue analysis pipeline');
+        return reply.code(500).send({ error: 'Failed to start document processing', details: e?.message });
       }
     }
     if (!docId) return reply.code(400).send({ error: 'no file found' });
@@ -1321,7 +1346,7 @@ fastify.addHook('onResponse', async (request, reply) => {
     method: request.method,
     url: request.url,
     statusCode: reply.statusCode,
-    responseTime: reply.getResponseTime(),
+  // responseTime metric removed (plugin not typed)
   });
 });
 

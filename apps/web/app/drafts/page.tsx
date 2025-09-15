@@ -7,7 +7,6 @@ import useSWR from 'swr';
 import { BackButton } from '@/components/ui/back-button';
 import { 
   FileEdit, 
-  Save, 
   Download, 
   GitCompare, 
   Library, 
@@ -16,7 +15,6 @@ import {
   CheckCheck,
   X,
   Highlighter,
-  RotateCcw,
   Settings
 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/config';
@@ -49,7 +47,7 @@ export default function DraftsPage() {
   const router = useRouter();
   const [selectedDraft, setSelectedDraft] = useState<Draft | null>(null);
   const [activeTab, setActiveTab] = useState<'findings' | 'library' | 'variables'>('findings');
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing] = useState(false);
 
   // Load real contracts from backend
   const { data, error, isLoading } = useSWR<ApiContract[]>(`${API_BASE_URL}/api/contracts`, fetcher, {
