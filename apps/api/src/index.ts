@@ -806,13 +806,57 @@ fastify.post('/uploads', async (request, reply) => {
       // Read stream once; optionally upload to storage using a tee
       let storagePath = '';
       let fileText: string | null = null;
+      const s3Enabled = process.env.S3_BUCKET && process.env.AWS_ACCESS_KEY_ID;
       try {
-        if (uploadToS3) {
+        if (s3Enabled && uploadToS3) {
           storagePath = `uploads/${tenantId}/${id}/${filename}`;
-          await uploadToS3(storagePath, part.file);
+          // Read file content first for S3 upload
+          const chunks: Buffer[] = [];
+          for await (const chunk of part.file) {
+            chunks.push(chunk);
+          }
+          const fileBuffer = Buffer.concat(chunks);
+          await uploadToS3({
+            Bucket: process.env.S3_BUCKET!,
+            Key: storagePath,
+            Body: fileBuffer,
+            ContentType: mimetype
+          });
         } else {
-          fileText = await extractFileContent(part.file, mimetype);
+          // Read file as buffer first, then extract text
+          const chunks: Buffer[] = [];
+          for await (const chunk of part.file) {
+            chunks.push(chunk);
+          }
+          const fileBuffer = Buffer.concat(chunks);
+          
+          // Extract text from buffer instead of stream
+          if (mimetype === 'application/pdf') {
+            try {
+              request.log.info({ docId: id, bufferSize: fileBuffer.length }, 'Attempting PDF parse');
+              const pdf = require('pdf-parse');
+              const pdfData = await pdf(fileBuffer);
+              fileText = String(pdfData?.text || '');
+              request.log.info({ docId: id, textLength: fileText.length }, 'PDF parse successful');
+            } catch (e) {
+              request.log.warn({ err: e, docId: id }, 'PDF parse failed, using UTF-8');
+              fileText = fileBuffer.toString('utf8');
+            }
+          } else {
+            fileText = fileBuffer.toString('utf8');
+          }
+          
           storagePath = `memory://${id}`;
+          // Store the file content for worker access
+          try {
+            const storageModule = require('clients-storage');
+            const { setMemoryFile } = storageModule;
+            setMemoryFile(id, Buffer.from(fileText, 'utf-8'));
+            request.log.info({ docId: id, contentLength: fileText.length }, 'Stored file in memory');
+          } catch (memError) {
+            request.log.error({ err: memError, docId: id }, 'Failed to store in memory');
+            throw memError;
+          }
         }
       } catch (e) {
         request.log.error({ err: e, docId: id }, 'Failed to store file');
@@ -894,13 +938,28 @@ fastify.post('/uploads/batch', async (request, reply) => {
       // Store file to storage first; if no storage, read once
       let storagePath = '';
       let fileText: string | null = null;
+      const s3Enabled = process.env.S3_BUCKET && process.env.AWS_ACCESS_KEY_ID;
       try {
-        if (uploadToS3) {
+        if (s3Enabled && uploadToS3) {
           storagePath = `uploads/${tenantId}/${id}/${filename}`;
-          await uploadToS3(storagePath, part.file);
+          // Read file content first for S3 upload
+          const chunks: Buffer[] = [];
+          for await (const chunk of part.file) {
+            chunks.push(chunk);
+          }
+          const fileBuffer = Buffer.concat(chunks);
+          await uploadToS3({
+            Bucket: process.env.S3_BUCKET!,
+            Key: storagePath,
+            Body: fileBuffer,
+            ContentType: part.mimetype || 'application/octet-stream'
+          });
         } else {
           fileText = await streamToString(part.file);
           storagePath = `memory://${id}`;
+          // Store the file content for worker access
+          const { setMemoryFile } = await import('../../packages/clients/storage');
+          setMemoryFile(id, Buffer.from(fileText, 'utf-8'));
         }
         
         request.log.info({ docId: id, storagePath }, 'File stored successfully');

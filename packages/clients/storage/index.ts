@@ -1,6 +1,22 @@
 import AWS from 'aws-sdk';
 import { Readable } from 'stream';
 
+// In-memory storage for files when S3 is disabled
+const memoryStore = new Map<string, Buffer>();
+
+export function setMemoryFile(key: string, content: Buffer | string): void {
+	const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+	memoryStore.set(key, buffer);
+}
+
+export function getMemoryFile(key: string): Buffer | null {
+	return memoryStore.get(key) || null;
+}
+
+export function clearMemoryFile(key: string): boolean {
+	return memoryStore.delete(key);
+}
+
 export function getS3() {
 	const { S3_ENDPOINT, S3_REGION = 'us-east-1', S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY } = process.env as any;
 	const disabled = String(process.env['S3_DISABLED'] || process.env['SKIP_S3_UPLOAD'] || '').toLowerCase() === 'true';
@@ -42,6 +58,18 @@ export function getSignedUrl(params: { Bucket: string; Key: string; Expires?: nu
 
 export async function getFileStream(keyOrPath?: string) {
 	if (!keyOrPath) throw new Error('storage key/path required');
+	
+	// Handle memory:// paths for when S3 is disabled
+	if (keyOrPath.startsWith('memory://')) {
+		const memoryKey = keyOrPath.replace('memory://', '');
+		const buffer = getMemoryFile(memoryKey);
+		if (buffer) {
+			return Readable.from(buffer);
+		}
+		console.warn(`[storage] Memory file not found: ${keyOrPath}`);
+		return Readable.from('');
+	}
+	
 	const Bucket = process.env['S3_BUCKET'] || 'contracts';
 	const Key = keyOrPath;
 	const s3 = getS3();
@@ -52,6 +80,17 @@ export async function getFileStream(keyOrPath?: string) {
 }
 
 export async function getObjectBuffer(keyOrPath: string): Promise<Buffer> {
+	// Handle memory:// paths for when S3 is disabled
+	if (keyOrPath.startsWith('memory://')) {
+		const memoryKey = keyOrPath.replace('memory://', '');
+		const buffer = getMemoryFile(memoryKey);
+		if (buffer) {
+			return buffer;
+		}
+		console.warn(`[storage] Memory file not found: ${keyOrPath}`);
+		return Buffer.alloc(0);
+	}
+	
 	const Bucket = process.env['S3_BUCKET'] || 'contracts';
 	const Key = keyOrPath;
 	const s3 = getS3() as any;

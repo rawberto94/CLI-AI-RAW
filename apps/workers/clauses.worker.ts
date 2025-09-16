@@ -101,10 +101,16 @@ try {
   }
 }
 
-export async function runClauses(job: { data: { docId: string } }) {
-    const { docId } = job.data;
+export async function runClauses(job: { data: { docId: string; tenantId?: string } }) {
+    const { docId, tenantId } = job.data;
     console.log(`[worker:clauses] Starting advanced clause extraction for ${docId}`);
     const startTime = Date.now();
+    
+    // Get contract to ensure we have tenantId
+    const contract = await db.contract.findUnique({ where: { id: docId } });
+    if (!contract) throw new Error(`Contract ${docId} not found`);
+    
+    const contractTenantId = tenantId || contract.tenantId;
     
     // Read ingestion text
     const ingestion = await db.artifact.findFirst({ 
@@ -259,6 +265,7 @@ Return the result as a JSON array of objects with fields: clauseId, text, catego
             contractId: docId,
             type: 'CLAUSES',
             data: artifact as any,
+            tenantId: contractTenantId,
         },
     });
 

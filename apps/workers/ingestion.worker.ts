@@ -72,13 +72,25 @@ export async function runIngestion(job: { data: IngestionJob }) {
 
     if (looksPdf) {
       try {
+        console.log(`[worker:ingestion] DEBUG: Attempting PDF parse for ${docId}, buffer size: ${buf.length}`);
         const pdfData = await pdf(buf);
         totalPages = Number(pdfData?.numpages) || 1;
         content = String(pdfData?.text || '');
+        console.log(`[worker:ingestion] DEBUG: PDF parse successful. Pages: ${totalPages}, content length: ${content.length}`);
+        console.log(`[worker:ingestion] DEBUG: Content preview: ${content.substring(0, 200)}`);
       } catch (e) {
+        console.log(`[worker:ingestion] DEBUG: PDF parse failed: ${(e as any)?.message || e}`);
         // Fallback: attempt UTF-8 decode if pdf-parse fails
-        try { content = buf.toString('utf8'); fileType = 'txt'; totalPages = 1; }
-        catch { content = ''; }
+        try { 
+          content = buf.toString('utf8'); 
+          fileType = 'txt'; 
+          totalPages = 1; 
+          console.log(`[worker:ingestion] DEBUG: UTF-8 fallback successful, content length: ${content.length}`);
+        }
+        catch { 
+          content = ''; 
+          console.log(`[worker:ingestion] DEBUG: UTF-8 fallback also failed`);
+        }
       }
     } else {
       try { content = buf.toString('utf8'); }
@@ -105,6 +117,7 @@ export async function runIngestion(job: { data: IngestionJob }) {
         contractId: docId,
         type: 'INGESTION',
         data: artifact as any,
+        tenantId: contract.tenantId,
       },
     });
     

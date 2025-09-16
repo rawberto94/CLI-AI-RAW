@@ -33,10 +33,16 @@ try {
 	}
 }
 
-export async function runOverview(job: { data: { docId: string } }) {
-    const { docId } = job.data;
+export async function runOverview(job: { data: { docId: string; tenantId?: string } }) {
+    const { docId, tenantId } = job.data;
     console.log(`[worker:overview] Starting overview for ${docId}`);
     const startTime = Date.now();
+
+    // Get contract to ensure we have tenantId
+    const contract = await db.contract.findUnique({ where: { id: docId } });
+    if (!contract) throw new Error(`Contract ${docId} not found`);
+    
+    const contractTenantId = tenantId || contract.tenantId;
 
 	// Try to read prior artifacts (e.g., ingestion content)
     const ingestionArtifact = await db.artifact.findFirst({
@@ -48,8 +54,11 @@ export async function runOverview(job: { data: { docId: string } }) {
         throw new Error(`Ingestion artifact for ${docId} not found`);
     }
 	const ingestionText = (ingestionArtifact.data as any)?.content;
+	console.log(`[worker:overview] DEBUG: Ingestion text length: ${ingestionText?.length || 0}`);
+	console.log(`[worker:overview] DEBUG: Ingestion text preview: ${ingestionText?.substring(0, 200) || 'No text'}`);
 	// Heuristic fallbacks from ingested text (avoid demo placeholders)
 	const text = typeof ingestionText === 'string' ? ingestionText : '';
+	console.log(`[worker:overview] DEBUG: Final text length: ${text.length}`);
 	let summary = (text.slice(0, 800) || '').trim() || 'No content extracted';
 	// Try common patterns to infer parties
 	// 1) "Between X and Y"
@@ -140,6 +149,7 @@ export async function runOverview(job: { data: { docId: string } }) {
             contractId: docId,
             type: 'OVERVIEW',
             data: artifact as any,
+            tenantId: contractTenantId,
         },
     });
 

@@ -19,10 +19,16 @@ try {
   db = mod.default || mod;
 }
 
-export async function runBenchmark(job: { data: { docId: string } }) {
-  const { docId } = job.data;
+export async function runBenchmark(job: { data: { docId: string; tenantId?: string } }) {
+  const { docId, tenantId } = job.data;
   console.log(`[worker:benchmark] Starting benchmark analysis for ${docId}`);
   const startTime = Date.now();
+  
+  // Get contract to ensure we have tenantId
+  const contract = await db.contract.findUnique({ where: { id: docId } });
+  if (!contract) throw new Error(`Contract ${docId} not found`);
+  
+  const contractTenantId = tenantId || contract.tenantId;
   // Use existing rates to compute simple percentiles
   const rates = await db.artifact.findFirst({ where: { contractId: docId, type: 'RATES' }, orderBy: { createdAt: 'desc' } });
   const arr = Array.isArray((rates?.data as any)?.rates) ? ((rates!.data as any).rates as any[]).map(r => Number(r.dailyUsd)).filter((n: any) => Number.isFinite(n)) : [];
@@ -48,6 +54,7 @@ export async function runBenchmark(job: { data: { docId: string } }) {
       contractId: docId,
       type: 'BENCHMARK',
       data: artifact as any,
+      tenantId: contractTenantId,
     },
   });
 

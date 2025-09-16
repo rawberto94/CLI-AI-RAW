@@ -114,10 +114,16 @@ try {
   }
 }
 
-export async function runRisk(job: { data: { docId: string } }) {
-  const { docId } = job.data;
+export async function runRisk(job: { data: { docId: string; tenantId?: string } }) {
+  const { docId, tenantId } = job.data;
   console.log(`[worker:risk] Starting advanced risk analysis for ${docId}`);
   const startTime = Date.now();
+  
+  // Get contract to ensure we have tenantId
+  const contract = await db.contract.findUnique({ where: { id: docId } });
+  if (!contract) throw new Error(`Contract ${docId} not found`);
+  
+  const contractTenantId = tenantId || contract.tenantId;
   
   // Read ingestion text and previous artifacts for context
   const ingestion = await db.artifact.findFirst({ 
@@ -310,6 +316,7 @@ Return the result as a JSON array of risk objects. Focus on the most significant
       contractId: docId,
       type: 'RISK',
       data: artifact as any,
+      tenantId: contractTenantId,
     },
   });
 
