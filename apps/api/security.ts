@@ -16,7 +16,7 @@ export const fileUploadSchema = z.object({
 
 // Contract ID validation
 export const contractIdSchema = z.string().regex(
-  /^doc-\d{13}-[a-f0-9]{6}$/,
+  /^doc-\d{13}-[a-zA-Z0-9]{6}$/,
   'Invalid contract ID format'
 );
 
