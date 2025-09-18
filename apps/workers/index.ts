@@ -14,6 +14,9 @@ import { runRisk } from './risk.worker';
 import { runBenchmark } from './benchmark.worker';
 import { runReport } from './report.worker';
 import { runSearch } from './search.worker';
+import { runTemplate } from './template.worker';
+import { runFinancial } from './financial.worker';
+import { runEnhancedOverview } from './enhanced-overview.worker';
 
 // Best-effort: if key env vars are missing, try known monorepo .env locations
 (() => {
@@ -66,7 +69,10 @@ const flowProducer = new FlowProducer({ connection });
 // A map of queue names to their processor functions
 const workerProcessors: Record<string, (data: any) => Promise<any>> = {
   ingestion: runIngestion,
+  template: runTemplate,
+  financial: runFinancial,
   overview: runOverview,
+  'enhanced-overview': (job: any) => enhancedOverviewWorker.process(job),
   clauses: runClauses,
   rates: runRates,
   benchmark: runBenchmark,
@@ -105,6 +111,8 @@ for (const name in workerProcessors) {
         queueName: 'risk', // This job runs after its children complete
         data: { docId },
         children: [
+          { name: 'template', data: { docId }, queueName: 'template' },
+          { name: 'financial', data: { docId }, queueName: 'financial' },
           { name: 'overview', data: { docId }, queueName: 'overview' },
           { name: 'clauses', data: { docId }, queueName: 'clauses' },
           { name: 'rates', data: { docId }, queueName: 'rates' },

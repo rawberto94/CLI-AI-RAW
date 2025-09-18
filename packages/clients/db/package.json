@@ -7,14 +7,23 @@
     "build": "prisma generate && tsc",
     "db:migrate": "pnpm exec dotenv -e ../../../apps/api/.env -- prisma migrate dev",
     "db:deploy": "pnpm exec dotenv -e ../../../apps/api/.env -- prisma migrate deploy",
-    "test": "vitest run"
+    "db:push": "pnpm exec dotenv -e ../../../apps/api/.env -- prisma db push",
+    "db:seed": "pnpm exec dotenv -e ../../../apps/api/.env -- tsx seeds/initial-data.ts",
+    "db:reset": "pnpm db:push --force-reset && pnpm db:seed",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist"
   },
   "dependencies": {
-    "@prisma/client": "^5.3.1"
+    "@prisma/client": "^5.22.0"
   },
   "devDependencies": {
-    "prisma": "^5.3.1",
-    "typescript": "^5.2.2",
-    "vitest": "^0.34.4"
+    "prisma": "^5.22.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.7.0",
+    "bcrypt": "^5.1.1",
+    "@types/bcrypt": "^5.0.2"
   }
 }

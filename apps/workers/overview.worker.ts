@@ -1,54 +1,70 @@
-// Prefer workspace import, fallback to relative if needed
-let OverviewArtifactV1Schema: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  OverviewArtifactV1Schema = require('schemas').OverviewArtifactV1Schema;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  OverviewArtifactV1Schema = require('../../packages/schemas/src').OverviewArtifactV1Schema;
-}
+/**
+ * Enhanced Overview Worker with LLM and RAG Integration
+ * Provides comprehensive contract overview with strategic insights and search indexation
+ */
 
-let db: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('clients-db');
-  db = mod.default || mod;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('../../packages/clients/db');
-  db = mod.default || mod;
-}
+// Import shared utilities
+import { 
+  getSharedLLMClient, 
+  EXPERT_PERSONAS, 
+  createProvenance,
+  isLLMAvailable 
+} from './shared/llm-utils';
+import { 
+  getSharedDatabaseClient 
+} from './shared/database-utils';
+import { 
+  ContentProcessor, 
+  RAGIntegration,
+  SearchIndexManager 
+} from './shared/rag-utils';
+import { 
+  BestPracticesGenerator 
+} from './shared/best-practices-utils';
 
-let OpenAIClient: any;
-try {
-	// Prefer workspace package if available
-	// eslint-disable-next-line @typescript-eslint/no-var-requires
-	OpenAIClient = require('clients-openai').OpenAIClient;
-} catch {
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		OpenAIClient = require('../../packages/clients/openai').OpenAIClient;
-	} catch {
-		OpenAIClient = null;
-	}
-}
+// Import schemas
+import pkg from 'schemas';
+const { OverviewArtifactV1Schema } = pkg;
 
-export async function runOverview(job: { data: { docId: string; tenantId?: string } }) {
+// Initialize shared clients
+const llmClient = getSharedLLMClient();
+const dbClient = getSharedDatabaseClient();
+
+export async function runOverview(job: { data: { docId: string; tenantId?: string } }): Promise<{ docId: string }> {
     const { docId, tenantId } = job.data;
-    console.log(`[worker:overview] Starting overview for ${docId}`);
+    console.log(`📊 [worker:overview] Starting enhanced overview generation for ${docId}`);
     const startTime = Date.now();
 
-    // Get contract to ensure we have tenantId
-    const contract = await db.contract.findUnique({ where: { id: docId } });
-    if (!contract) throw new Error(`Contract ${docId} not found`);
+    try {
+        // Get contract information
+        const contractResult = await dbClient.findContract(docId, true);
+        if (!contractResult.success || !contractResult.data) {
+            throw new Error(`Contract ${docId} not found`);
+        }
+        
+        const contract = contractResult.data;
+        const contractTenantId = tenantId || contract.tenantId;
+        const artifacts = contract.artifacts || [];
+    let contract: any;
+    if (repositoryManager) {
+      contract = await repositoryManager.contracts.findById(docId);
+    } else {
+      contract = await db.contract.findUnique({ where: { id: docId } });
+    }
     
+    if (!contract) throw new Error(`Contract ${docId} not found`);
     const contractTenantId = tenantId || contract.tenantId;
 
 	// Try to read prior artifacts (e.g., ingestion content)
-    const ingestionArtifact = await db.artifact.findFirst({
-        where: { contractId: docId, type: 'INGESTION' },
-        orderBy: { createdAt: 'desc' },
-    });
+    let ingestionArtifact: any;
+    if (repositoryManager) {
+      ingestionArtifact = await repositoryManager.artifacts.findByContractAndType(docId, 'INGESTION');
+    } else {
+      ingestionArtifact = await db.artifact.findFirst({
+          where: { contractId: docId, type: 'INGESTION' },
+          orderBy: { createdAt: 'desc' },
+      });
+    }
 
     if (!ingestionArtifact) {
         throw new Error(`Ingestion artifact for ${docId} not found`);
@@ -83,7 +99,7 @@ export async function runOverview(job: { data: { docId: string; tenantId?: strin
 
 	const apiKey = process.env['OPENAI_API_KEY'];
 	const model = process.env['OPENAI_MODEL'] || 'gpt-4o-mini';
-	if (apiKey && OpenAIClient) {
+	if (apiKey && OpenAI) {
 		try {
 			// If RAG is enabled, retrieve a small set of relevant chunks to ground the summary
 			let ragContext = '';
@@ -96,7 +112,7 @@ export async function runOverview(job: { data: { docId: string; tenantId?: strin
 					ragContext = (scored || []).map((s: any) => s.text).join('\n---\n');
 				}
 			} catch {}
-			const client = new OpenAIClient(apiKey);
+			const client = new OpenAI({ apiKey });
 			const schema = {
 				type: 'object',
 				required: ['summary', 'parties'],
@@ -144,14 +160,29 @@ export async function runOverview(job: { data: { docId: string; tenantId?: strin
 		parties,
 	});
 	
-    await db.artifact.create({
-        data: {
-            contractId: docId,
-            type: 'OVERVIEW',
-            data: artifact as any,
-            tenantId: contractTenantId,
-        },
-    });
+    // Store artifact using new repository layer if available
+    if (repositoryManager) {
+      await repositoryManager.artifacts.createOrUpdate(
+        docId,
+        contractTenantId,
+        'OVERVIEW',
+        artifact,
+        {
+          processingTime: Date.now() - startTime,
+          confidence: 0.8
+        }
+      );
+    } else {
+      // Fallback to old client
+      await db.artifact.create({
+          data: {
+              contractId: docId,
+              type: 'OVERVIEW',
+              data: artifact as any,
+              tenantId: contractTenantId,
+          },
+      });
+    }
 
     console.log(`[worker:overview] Finished overview for ${docId}`);
 	return { docId };

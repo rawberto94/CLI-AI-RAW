@@ -1,12 +1,33 @@
-// Prefer workspace import, fallback to relative if needed
-let ComplianceArtifactV1Schema: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  ComplianceArtifactV1Schema = require('schemas').ComplianceArtifactV1Schema;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  ComplianceArtifactV1Schema = require('../../packages/schemas/src').ComplianceArtifactV1Schema;
-}
+/**
+ * Enhanced Compliance Worker with LLM and RAG Integration
+ * Provides comprehensive compliance assessment with expert recommendations
+ */
+
+// Import shared utilities
+import { 
+  getSharedLLMClient, 
+  EXPERT_PERSONAS, 
+  createProvenance,
+  isLLMAvailable 
+} from './shared/llm-utils';
+import { 
+  getSharedDatabaseClient 
+} from './shared/database-utils';
+import { 
+  RAGIntegration 
+} from './shared/rag-utils';
+import { 
+  BestPracticesGenerator,
+  BestPracticesCategory 
+} from './shared/best-practices-utils';
+
+// Import schemas
+import pkg from 'schemas';
+const { ComplianceArtifactV1Schema } = pkg;
+
+// Initialize shared clients
+const llmClient = getSharedLLMClient();
+const dbClient = getSharedDatabaseClient();
 
 /**
  * Enhanced Compliance Worker with LLM-Powered Best Practices
@@ -79,180 +100,80 @@ export interface ComplianceDocumentation {
   stakeholderCommunication: string;
 }
 
-let db: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('clients-db');
-  db = mod.default || mod;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('../../packages/clients/db');
-  db = mod.default || mod;
-}
-
-let OpenAIClient: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  OpenAIClient = require('clients-openai').OpenAIClient;
-} catch {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    OpenAIClient = require('../../packages/clients/openai').OpenAIClient;
-  } catch {
-    OpenAIClient = null;
-  }
-}
+// Legacy imports removed - using shared utilities
 
 export type ComplianceJob = {
 	docId: string;
 	policyPackId: string;
 };
 
-export async function runCompliance(job: { data: ComplianceJob }) {
+export async function runCompliance(job: { data: ComplianceJob }): Promise<{ docId: string }> {
     const { docId, policyPackId } = job.data;
-    console.log(`[worker:compliance] Starting advanced compliance check for ${docId} with policy ${policyPackId}`);
+    console.log(`🔍 [worker:compliance] Starting enhanced compliance analysis for ${docId} with policy ${policyPackId}`);
     const startTime = Date.now();
 
-    // Read ingestion text and previous artifacts for context
-    const ingestion = await db.artifact.findFirst({ 
-      where: { contractId: docId, type: 'INGESTION' }, 
-      orderBy: { createdAt: 'desc' } 
-    });
-    const text = String((ingestion?.data as any)?.content || '');
-    
-    let compliance: any[] = [];
-    let client: any = null;
-    
-    const apiKey = process.env['OPENAI_API_KEY'];
-    const model = process.env['OPENAI_MODEL'] || 'gpt-4o-mini';
-    
-    if (apiKey && OpenAIClient && text.trim().length > 0) {
-      try {
-        client = new OpenAIClient(apiKey);
-        
-        const compliancePrompt = `
-You are a legal compliance expert specializing in contract policy compliance review. Analyze the provided contract against standard corporate policy requirements.
-
-Review for the following common compliance policies and provide the assessment:
-
-**Core Policies:**
-1. CONF-001: Confidentiality/NDA clauses must be present
-2. TERM-001: Clear termination clauses with notice periods
-3. IP-001: Intellectual property ownership must be defined
-4. LIAB-001: Limitation of liability clauses required
-5. DATA-001: Data protection and privacy clauses (GDPR compliance)
-6. FORCE-001: Force majeure provisions required
-7. DISPUTE-001: Dispute resolution mechanism defined
-8. PAYMENT-001: Payment terms clearly specified
-9. PERF-001: Performance standards and SLAs defined
-10. INDEMNITY-001: Indemnification clauses present
-
-For each policy, provide:
-- policyId: The policy identifier (e.g., "CONF-001")
-- status: "compliant", "non-compliant", or "partial"
-- details: Brief explanation of findings
-- recommendation: (optional) What should be done to achieve compliance
-
-Return the result as a JSON array of compliance objects. Focus on the most critical policies.
-`;
-
-        const response = await client.createChatCompletion({
-          model,
-          messages: [
-            {
-              role: 'system',
-              content: compliancePrompt
-            },
-            {
-              role: 'user',
-              content: `CONTRACT TEXT (first 12000 characters):\n${text.slice(0, 12000)}`
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 2000
-        });
-
-        const responseText = response.choices?.[0]?.message?.content || '';
-        
-        try {
-          // Try to parse JSON from the response
-          const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsedCompliance = JSON.parse(jsonMatch[0]);
-            if (Array.isArray(parsedCompliance)) {
-              compliance = parsedCompliance.map((comp: any) => ({
-                policyId: comp.policyId || 'UNKNOWN',
-                status: comp.status || 'partial',
-                details: comp.details || 'Policy assessed'
-              }));
-            }
-          }
-        } catch (parseError) {
-          console.warn(`[worker:compliance] Failed to parse LLM response as JSON for ${docId}:`, parseError);
+    try {
+        // Get contract information using shared database client
+        const contractResult = await dbClient.findContract(docId, false);
+        if (!contractResult.success || !contractResult.data) {
+            throw new Error(`Contract ${docId} not found`);
         }
         
-        console.log(`[worker:compliance] LLM analyzed ${compliance.length} compliance policies for ${docId}`);
-        
-      } catch (error) {
-        console.warn(`[worker:compliance] LLM compliance analysis failed for ${docId}:`, error);
-      }
-    }
-    
-    // Fallback to heuristic compliance check if LLM fails
-    if (compliance.length === 0) {
-      console.log(`[worker:compliance] Falling back to heuristic compliance analysis for ${docId}`);
-      const t = text.toLowerCase();
-      
-      // Confidentiality check
-      const hasConfidentiality = /confidential|non.?disclosure|nda|proprietary/.test(t);
-      compliance.push({
-        policyId: 'CONF-001',
-        status: hasConfidentiality ? 'compliant' : 'non-compliant',
-        details: hasConfidentiality ? 'Confidentiality clause present' : 'No confidentiality clause found'
-      });
-      
-      // Termination check
-      const hasTermination = /terminat|notice\s+period|end\s+of\s+contract/.test(t);
-      compliance.push({
-        policyId: 'TERM-001',
-        status: hasTermination ? 'compliant' : 'non-compliant',
-        details: hasTermination ? 'Termination clause present' : 'No termination clause found'
-      });
-      
-      // Liability check
-      const hasLiability = /limitation\s+of\s+liability|liability\s+cap|exclusion\s+of\s+liability/.test(t);
-      compliance.push({
-        policyId: 'LIAB-001',
-        status: hasLiability ? 'compliant' : 'non-compliant',
-        details: hasLiability ? 'Limitation of liability clause present' : 'No liability limitation found'
-      });
-      
-      // IP check
-      const hasIP = /intellectual\s+property|copyright|trademark|patent|proprietary\s+rights/.test(t);
-      compliance.push({
-        policyId: 'IP-001',
-        status: hasIP ? 'compliant' : 'partial',
-        details: hasIP ? 'IP clauses present' : 'IP clauses may be unclear'
-      });
-      
-      // Data protection check
-      const hasDataProtection = /gdpr|data\s+protection|privacy|personal\s+data/.test(t);
-      compliance.push({
-        policyId: 'DATA-001',
-        status: hasDataProtection ? 'compliant' : 'non-compliant',
-        details: hasDataProtection ? 'Data protection clauses present' : 'No data protection clauses found'
-      });
-    }
+        const contract = contractResult.data;
+        const contractTenantId = contract.tenantId;
 
-    // Generate LLM-powered best practices for compliance
-    let bestPractices: ComplianceBestPractices | null = null;
-    if (client && compliance.length > 0) {
-      try {
-        bestPractices = await generateComplianceBestPractices(client, compliance, text);
-      } catch (error) {
-        console.warn(`[worker:compliance] Best practices generation failed for ${docId}:`, error);
-      }
-    }
+        // Read ingestion text using shared database client
+        const ingestionResult = await dbClient.findArtifacts(docId, 'INGESTION', 1);
+        const text = ingestionResult.success && ingestionResult.data?.[0] 
+            ? String((ingestionResult.data[0].data as any)?.content || '') 
+            : '';
+        
+        let compliance: any[] = [];
+        let confidenceScore = 0;
+        
+        if (isLLMAvailable() && text.trim().length > 0) {
+            try {
+                console.log('🧠 Analyzing compliance with GPT-4 expert system...');
+                
+                const complianceAnalysis = await performAdvancedComplianceAnalysis(text, policyPackId);
+                compliance = complianceAnalysis.compliance;
+                confidenceScore = complianceAnalysis.confidenceScore;
+                
+                console.log(`✅ GPT-4 analyzed ${compliance.length} compliance policies with ${confidenceScore}% confidence`);
+                
+            } catch (error) {
+                console.warn(`⚠️ LLM compliance analysis failed for ${docId}:`, error);
+            }
+        }
+    
+        // Enhanced fallback compliance analysis if LLM fails
+        if (compliance.length === 0) {
+            console.log(`🔄 Falling back to enhanced heuristic compliance analysis for ${docId}`);
+            const fallbackResult = performFallbackComplianceAnalysis(text);
+            compliance = fallbackResult.compliance;
+            confidenceScore = fallbackResult.confidenceScore;
+        }
+
+        // Generate comprehensive compliance best practices using shared utilities
+        let bestPractices: any = null;
+        if (compliance.length > 0) {
+            try {
+                console.log('📋 Generating expert compliance best practices...');
+                bestPractices = BestPracticesGenerator.generateForCategory(
+                    BestPracticesCategory.COMPLIANCE,
+                    { 
+                        complianceChecks: compliance,
+                        overallScore: calculateOverallComplianceScore(compliance),
+                        policyPackId 
+                    }
+                );
+            } catch (error) {
+                console.warn(`⚠️ Best practices generation failed for ${docId}:`, error);
+            }
+        }
+
+    // Calculate overall compliance score
+    const overallScore = calculateOverallComplianceScore(compliance);
 
 	const artifact = ComplianceArtifactV1Schema.parse({
 		metadata: {
@@ -260,10 +181,17 @@ Return the result as a JSON array of compliance objects. Focus on the most criti
 			fileType: 'pdf',
 			totalPages: 1,
 			ocrRate: 0,
-			provenance: [{ worker: 'compliance', timestamp: new Date().toISOString(), durationMs: Date.now() - startTime }],
+			provenance: [{ 
+        worker: 'compliance', 
+        timestamp: new Date().toISOString(), 
+        durationMs: Date.now() - startTime,
+        model: model,
+        confidenceScore: confidenceScore
+      }],
 		},
 		compliance,
-        // Add best practices to the artifact (if schema supports it)
+        overallScore,
+        confidenceScore,
         bestPractices: bestPractices
 	});
 
@@ -275,8 +203,212 @@ Return the result as a JSON array of compliance objects. Focus on the most criti
         },
     });
 
-    console.log(`[worker:compliance] Finished advanced compliance check for ${docId} (${compliance.length} policies assessed)`);
-	return { docId };
+    console.log(`🎯 Finished comprehensive compliance analysis for ${docId} (${compliance.length} policies, ${overallScore}% overall score)`);
+	return { docId, complianceScore: overallScore, policiesAnalyzed: compliance.length };
+}
+
+/**
+ * Perform advanced compliance analysis using GPT-4
+ */
+async function performAdvancedComplianceAnalysis(
+  client: any,
+  contractText: string,
+  model: string
+): Promise<{ compliance: any[], confidenceScore: number }> {
+  const compliancePrompt = `
+You are a Chief Compliance Officer with 25+ years of experience in regulatory compliance, contract law, and risk management across multiple industries including technology, healthcare, finance, and manufacturing.
+
+Analyze the provided contract for comprehensive compliance across these critical areas:
+
+**REGULATORY COMPLIANCE:**
+1. GDPR/Data Protection (GDPR-001)
+2. SOX/Financial Controls (SOX-001) 
+3. HIPAA/Healthcare Data (HIPAA-001)
+4. PCI DSS/Payment Security (PCI-001)
+5. SOC 2/Security Controls (SOC2-001)
+6. ISO 27001/Information Security (ISO27001-001)
+7. Industry-specific regulations (AUTO-001, PHARMA-001, etc.)
+
+**CORPORATE GOVERNANCE:**
+8. Confidentiality/NDA Requirements (CONF-001)
+9. Termination & Notice Provisions (TERM-001)
+10. Intellectual Property Protection (IP-001)
+11. Limitation of Liability (LIAB-001)
+12. Force Majeure Provisions (FORCE-001)
+13. Dispute Resolution Mechanisms (DISPUTE-001)
+14. Payment Terms & Conditions (PAYMENT-001)
+15. Performance Standards & SLAs (PERF-001)
+16. Indemnification Clauses (INDEMNITY-001)
+
+**RISK MANAGEMENT:**
+17. Insurance Requirements (INS-001)
+18. Audit Rights & Compliance Monitoring (AUDIT-001)
+19. Business Continuity Provisions (BCP-001)
+20. Vendor/Third-Party Risk Management (VENDOR-001)
+
+For each applicable policy, provide:
+- policyId: The policy identifier
+- policyName: Human-readable policy name
+- status: "compliant", "non-compliant", "partial", or "not-applicable"
+- complianceScore: 0-100 score for this specific policy
+- details: Detailed explanation of findings and evidence
+- riskLevel: "low", "medium", "high", "critical"
+- recommendation: Specific actions to achieve or maintain compliance
+- regulatoryImpact: Potential regulatory consequences
+- businessImpact: Business risk if non-compliant
+
+Also provide:
+- overallConfidence: 0-100 confidence score in your analysis
+- industryContext: Identified industry/sector for context-specific compliance
+- criticalFindings: Top 3 most critical compliance issues
+
+Return as JSON:
+{
+  "compliance": [array of compliance objects],
+  "overallConfidence": number,
+  "industryContext": "string",
+  "criticalFindings": ["finding1", "finding2", "finding3"]
+}
+
+Focus on accuracy and provide specific evidence from the contract text.
+`;
+
+  const response = await client.chat.completions.create({
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: compliancePrompt
+      },
+      {
+        role: 'user',
+        content: `CONTRACT TEXT FOR COMPLIANCE ANALYSIS:\n\n${contractText.slice(0, 15000)}`
+      }
+    ],
+    temperature: 0.1,
+    max_tokens: 4000
+  });
+
+  const responseText = response.choices?.[0]?.message?.content || '';
+  
+  try {
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const analysis = JSON.parse(jsonMatch[0]);
+      return {
+        compliance: analysis.compliance || [],
+        confidenceScore: analysis.overallConfidence || 75
+      };
+    }
+  } catch (parseError) {
+    console.warn('Failed to parse GPT-4 compliance analysis:', parseError);
+  }
+
+  return { compliance: [], confidenceScore: 0 };
+}
+
+/**
+ * Enhanced fallback compliance analysis with better heuristics
+ */
+function performFallbackComplianceAnalysis(text: string): { compliance: any[], confidenceScore: number } {
+  const t = text.toLowerCase();
+  const compliance: any[] = [];
+  
+  // Enhanced pattern matching with confidence scoring
+  const policies = [
+    {
+      id: 'CONF-001',
+      name: 'Confidentiality Requirements',
+      patterns: [/confidential|non.?disclosure|nda|proprietary|trade\s+secret/g],
+      weight: 0.9
+    },
+    {
+      id: 'TERM-001', 
+      name: 'Termination Provisions',
+      patterns: [/terminat|notice\s+period|end\s+of\s+contract|expir/g],
+      weight: 0.8
+    },
+    {
+      id: 'LIAB-001',
+      name: 'Limitation of Liability', 
+      patterns: [/limitation\s+of\s+liability|liability\s+cap|exclusion\s+of\s+liability|damages/g],
+      weight: 0.9
+    },
+    {
+      id: 'IP-001',
+      name: 'Intellectual Property',
+      patterns: [/intellectual\s+property|copyright|trademark|patent|proprietary\s+rights/g],
+      weight: 0.8
+    },
+    {
+      id: 'GDPR-001',
+      name: 'Data Protection',
+      patterns: [/gdpr|data\s+protection|privacy|personal\s+data|data\s+subject/g],
+      weight: 0.9
+    },
+    {
+      id: 'DISPUTE-001',
+      name: 'Dispute Resolution',
+      patterns: [/dispute|arbitration|mediation|litigation|governing\s+law/g],
+      weight: 0.7
+    },
+    {
+      id: 'PAYMENT-001',
+      name: 'Payment Terms',
+      patterns: [/payment|invoice|billing|fee|cost|price/g],
+      weight: 0.6
+    },
+    {
+      id: 'FORCE-001',
+      name: 'Force Majeure',
+      patterns: [/force\s+majeure|act\s+of\s+god|unforeseeable|beyond.*control/g],
+      weight: 0.7
+    }
+  ];
+
+  policies.forEach(policy => {
+    const matches = policy.patterns.reduce((total, pattern) => {
+      const found = t.match(pattern) || [];
+      return total + found.length;
+    }, 0);
+    
+    const hasEvidence = matches > 0;
+    const score = hasEvidence ? Math.min(85 + matches * 5, 100) : 0;
+    const status = score > 70 ? 'compliant' : score > 30 ? 'partial' : 'non-compliant';
+    
+    compliance.push({
+      policyId: policy.id,
+      policyName: policy.name,
+      status,
+      complianceScore: score,
+      details: hasEvidence 
+        ? `Found ${matches} relevant clause(s) addressing ${policy.name.toLowerCase()}`
+        : `No evidence found for ${policy.name.toLowerCase()}`,
+      riskLevel: score > 70 ? 'low' : score > 30 ? 'medium' : 'high',
+      recommendation: hasEvidence 
+        ? 'Review clauses for completeness and enforceability'
+        : `Add comprehensive ${policy.name.toLowerCase()} clauses`
+    });
+  });
+
+  const avgScore = compliance.reduce((sum, c) => sum + c.complianceScore, 0) / compliance.length;
+  const confidenceScore = Math.min(60 + (avgScore * 0.3), 85); // Fallback has lower confidence
+
+  return { compliance, confidenceScore };
+}
+
+/**
+ * Calculate overall compliance score from individual policy scores
+ */
+function calculateOverallComplianceScore(compliance: any[]): number {
+  if (compliance.length === 0) return 0;
+  
+  const totalScore = compliance.reduce((sum, policy) => {
+    const score = policy.complianceScore || (policy.status === 'compliant' ? 85 : policy.status === 'partial' ? 50 : 20);
+    return sum + score;
+  }, 0);
+  
+  return Math.round(totalScore / compliance.length);
 }
 
 /**
@@ -382,7 +514,7 @@ Provide 3-5 specific, actionable recommendations in each category based on the a
 `;
 
   try {
-    const response = await client.createChatCompletion({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -429,4 +561,120 @@ Provide 3-5 specific, actionable recommendations in each category based on the a
     monitoringRecommendations: [],
     documentationImprovements: []
   };
+}
+/**
+ * Perform advanced compliance analysis using shared LLM utilities
+ */
+async function performAdvancedComplianceAnalysis(
+  contractText: string,
+  policyPackId: string
+): Promise<{ compliance: any[], confidenceScore: number }> {
+  try {
+    const userPrompt = `
+POLICY PACK ID: ${policyPackId}
+
+CONTRACT TEXT FOR COMPLIANCE ANALYSIS:
+${contractText.slice(0, 15000)}
+
+Analyze this contract for compliance with regulatory requirements and industry standards.
+Focus on identifying compliance gaps, requirements, and recommendations.
+
+Return analysis in JSON format:
+{
+  "compliance": [
+    {
+      "policyId": "string",
+      "status": "compliant|non-compliant|unknown",
+      "details": "string",
+      "recommendation": "string"
+    }
+  ],
+  "overallConfidence": 0-100
+}
+`;
+
+    const response = await llmClient.generateExpertAnalysis(
+      'COMPLIANCE_OFFICER',
+      'regulatory compliance assessment',
+      userPrompt,
+      { responseFormat: 'json' }
+    );
+
+    return {
+      compliance: response.data.compliance || [],
+      confidenceScore: response.confidence || 75
+    };
+    
+  } catch (error) {
+    console.warn('LLM compliance analysis failed:', error);
+    return { compliance: [], confidenceScore: 0 };
+  }
+}
+
+/**
+ * Enhanced fallback compliance analysis
+ */
+function performFallbackComplianceAnalysis(text: string): { compliance: any[], confidenceScore: number } {
+  const t = text.toLowerCase();
+  const compliance: any[] = [];
+  
+  // Basic compliance patterns
+  const compliancePatterns = [
+    {
+      policyId: 'GDPR-001',
+      pattern: /gdpr|data\s+protection|privacy\s+policy/g,
+      status: 'unknown',
+      details: 'GDPR compliance indicators found'
+    },
+    {
+      policyId: 'SOX-001',
+      pattern: /sarbanes.oxley|sox|financial\s+controls/g,
+      status: 'unknown',
+      details: 'SOX compliance indicators found'
+    },
+    {
+      policyId: 'HIPAA-001',
+      pattern: /hipaa|health\s+information|medical\s+records/g,
+      status: 'unknown',
+      details: 'HIPAA compliance indicators found'
+    }
+  ];
+
+  compliancePatterns.forEach(pattern => {
+    const matches = t.match(pattern.pattern);
+    if (matches && matches.length > 0) {
+      compliance.push({
+        policyId: pattern.policyId,
+        status: pattern.status,
+        details: pattern.details,
+        recommendation: 'Review compliance requirements in detail'
+      });
+    }
+  });
+
+  if (compliance.length === 0) {
+    compliance.push({
+      policyId: 'GEN-001',
+      status: 'unknown',
+      details: 'General compliance review required',
+      recommendation: 'Conduct comprehensive compliance assessment'
+    });
+  }
+
+  return { 
+    compliance, 
+    confidenceScore: Math.min(50 + (compliance.length * 10), 75) 
+  };
+}
+
+/**
+ * Calculate overall compliance score
+ */
+function calculateOverallComplianceScore(compliance: any[]): number {
+  if (compliance.length === 0) return 0;
+  
+  const compliantCount = compliance.filter(c => c.status === 'compliant').length;
+  const totalCount = compliance.length;
+  
+  return Math.round((compliantCount / totalCount) * 100);
 }

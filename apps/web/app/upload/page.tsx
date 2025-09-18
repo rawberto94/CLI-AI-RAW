@@ -22,24 +22,30 @@ export default function UploadPage() {
     setTenantId(getTenantId());
   }, []);
 
-  const checkHealth = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/healthz`);
-      setApiHealthy(res.ok);
-    } catch {
-      setApiHealthy(false);
-    }
+  const checkHealth = () => {
+    const fetchHealth = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/healthz`);
+        setApiHealthy(res.ok);
+      } catch {
+        setApiHealthy(false);
+      }
+    };
+    fetchHealth();
   };
 
-  const loadPacks = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/policies/packs`, { headers: tenantHeaders() });
-      if (res.ok) {
-        const data = await res.json();
-        setPacks(Array.isArray(data.packs) ? data.packs : []);
-        if (data.packs && data.packs.length > 0 && !policyPack) setPolicyPack(data.packs[0].id);
-      }
-    } catch {}
+  const loadPacks = () => {
+    const fetchPacks = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/policies/packs`, { headers: tenantHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setPacks(Array.isArray(data.packs) ? data.packs : []);
+          if (data.packs && data.packs.length > 0 && !policyPack) setPolicyPack(data.packs[0].id);
+        }
+      } catch {}
+    };
+    fetchPacks();
   };
 
   useEffect(() => {

@@ -332,7 +332,7 @@ export default function ContractsPage() {
 
   const openViewer = async (docId: string) => {
     try {
-  const r = await fetch(`${API_BASE_URL}/contracts/${docId}/file`, { headers: tenantHeaders() });
+  const r = await fetch(`${API_BASE_URL}/api/contracts/${docId}/file`, { headers: tenantHeaders() });
       if (!r.ok) return;
       const data = await r.json();
       setViewer({ open: true, url: data.url, type: data.contentType, name: data.name });

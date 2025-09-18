@@ -54,30 +54,28 @@ const jobs: Map<string, Job> = globalThis.__WEB_JOBS_STORE__ ?? (globalThis.__WE
 const uploadDir = path.join(process.cwd(), "tmp", "uploads")
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true })
 
-export function createJob(file: File): Promise<Job> {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const id = randomUUID()
-      const arrayBuf = await file.arrayBuffer()
-  const buffer = new Uint8Array(arrayBuf)
-      const ext = path.extname(file.name) || ".bin"
-      const filepath = path.join(uploadDir, `${id}${ext}`)
-  fs.writeFileSync(filepath, buffer)
+export async function createJob(file: File): Promise<Job> {
+  try {
+    const id = randomUUID()
+    const arrayBuf = await file.arrayBuffer()
+    const buffer = new Uint8Array(arrayBuf)
+    const ext = path.extname(file.name) || ".bin"
+    const filepath = path.join(uploadDir, `${id}${ext}`)
+    fs.writeFileSync(filepath, buffer)
 
-      const job: Job = {
-        id,
-        filename: file.name,
-        filepath,
-        status: "queued",
-        progress: 0,
-      }
-      jobs.set(id, job)
-      processJob(job).catch(() => {})
-      resolve(job)
-    } catch (e: any) {
-      reject(e)
+    const job: Job = {
+      id,
+      filename: file.name,
+      filepath,
+      status: "queued",
+      progress: 0,
     }
-  })
+    jobs.set(id, job)
+    processJob(job).catch(() => {})
+    return job
+  } catch (e: any) {
+    throw e
+  }
 }
 
 export function getJob(id: string): Job | undefined {

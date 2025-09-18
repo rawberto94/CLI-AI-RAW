@@ -40,6 +40,11 @@ import {
   rateLimitConfig,
   validateFileType
 } from './security';
+import { fileValidationService } from './src/services/file-validation.service';
+import { progressTrackingService, ProcessingStage } from './src/services/progress-tracking.service';
+import { uploadErrorHandlerService } from './src/services/upload-error-handler.service';
+import { webSocketProgressService } from './src/services/websocket-progress.service';
+import { sseProgressService } from './src/services/sse-progress.service';
 import { AppError } from './src/errors';
 import { registerErrorHandling } from './src/plugins/error-handler';
 import { securityHeaders } from './src/security/securityHeaders';
@@ -66,12 +71,25 @@ try {
 
 // --- CLIENT INITIALIZATION ---
 // Gracefully import workspace clients, allowing the server to run even if a client is missing.
-let db: any;
+// Import enhanced database layer
+let getDatabaseManager: any;
+let getRepositoryManager: any;
+let repositoryManager: any;
+let db: any; // Keep for backward compatibility
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const dbModule = require('clients-db');
-  db = dbModule.default || dbModule;
-  logger.info('Database client loaded successfully.');
+  getDatabaseManager = dbModule.getDatabaseManager;
+  getRepositoryManager = dbModule.getRepositoryManager;
+  db = dbModule.default || dbModule; // Fallback to old client
+  
+  // Initialize repository manager
+  try {
+    const databaseManager = getDatabaseManager();
+    repositoryManager = getRepositoryManager(databaseManager);
+    logger.info('Enhanced database layer loaded successfully.');
+  } catch (repoError) {
+    logger.warn('Repository manager initialization failed, using fallback client');
+  }
 } catch (e) {
   logger.warn('Database client not found. API will run with limited functionality.');
 }
@@ -153,6 +171,8 @@ async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
   }
 
   const ingestionQueue = getQueue('ingestion');
+  const templateQueue = getQueue('template');
+  const financialQueue = getQueue('financial');
   const overviewQueue = getQueue('overview');
   const clausesQueue = getQueue('clauses');
   const ratesQueue = getQueue('rates');
@@ -171,8 +191,18 @@ async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
     priority: 10
   });
 
-  // Stage 2: Parallel analysis after ingestion
+  // Stage 2: Enhanced parallel analysis after ingestion
   await Promise.all([
+    templateQueue.add('analyze-template', { docId, tenantId }, { 
+      parent: { id: ingestionJob.id, queue: 'ingestion' },
+      attempts: 3,
+      priority: 9
+    }),
+    financialQueue.add('analyze-financial', { docId, tenantId }, { 
+      parent: { id: ingestionJob.id, queue: 'ingestion' },
+      attempts: 3,
+      priority: 9
+    }),
     overviewQueue.add('analyze-overview', { docId, tenantId }, { 
       parent: { id: ingestionJob.id, queue: 'ingestion' },
       attempts: 3,
@@ -217,8 +247,8 @@ async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
     priority: 4
   });
 
-  logger.info(`Enqueued complete analysis pipeline for document ${docId}`);
-  return { ingestionJobId: ingestionJob.id, stages: 8 };
+  logger.info(`Enqueued enhanced analysis pipeline for document ${docId} with template and financial analysis`);
+  return { ingestionJobId: ingestionJob.id, stages: 10 };
 }
 
 // --- FASTIFY SERVER SETUP ---
@@ -242,6 +272,16 @@ const fastify = Fastify({
 
 fastify.register(fastifyExpress).then(() => {
   fastify.register(expressPlugin);
+});
+
+// Initialize WebSocket server after Fastify is ready
+fastify.ready().then(() => {
+  if (fastify.server) {
+    webSocketProgressService.initialize(fastify.server);
+    logger.info('WebSocket progress service initialized');
+  }
+}).catch(err => {
+  logger.error({ err }, 'Failed to initialize WebSocket service');
 });
 
 // Register enhanced security middleware
@@ -378,6 +418,716 @@ fastify.get('/metrics/prom', async (_request, reply) => {
   reply.header('content-type', 'text/plain; version=0.0.4');
   return lines.join('\n') + '\n';
 });
+// Progress tracking endpoints
+fastify.get('/contracts/:docId/progress', async (request, reply) => {
+  try {
+    const { docId } = request.params as { docId: string };
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const progress = progressTrackingService.getProgress(docId);
+    
+    if (!progress) {
+      return reply.code(404).send({ 
+        error: 'Progress not found',
+        message: 'No progress tracking found for this contract. It may have completed or expired.'
+      });
+    }
+    
+    // Verify tenant access
+    if (progress.tenantId !== tenantId) {
+      return reply.code(403).send({ 
+        error: 'Access denied',
+        message: 'You do not have access to this contract progress.'
+      });
+    }
+    
+    return reply.code(200).send({
+      contractId: progress.contractId,
+      stage: progress.stage,
+      progress: progress.progress,
+      message: progress.message,
+      estimatedTimeRemaining: progress.estimatedTimeRemaining,
+      completedStages: progress.completedStages,
+      errors: progress.errors,
+      startedAt: progress.startedAt,
+      updatedAt: progress.updatedAt
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'progress-tracking-error');
+    return reply.code(500).send({ error: 'Failed to get progress' });
+  }
+});
+
+// Get progress for all contracts in a tenant
+fastify.get('/contracts/progress', async (request, reply) => {
+  try {
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const allProgress = progressTrackingService.getTenantProgress(tenantId);
+    
+    return reply.code(200).send({
+      tenantId,
+      contracts: allProgress.map(progress => ({
+        contractId: progress.contractId,
+        stage: progress.stage,
+        progress: progress.progress,
+        message: progress.message,
+        estimatedTimeRemaining: progress.estimatedTimeRemaining,
+        startedAt: progress.startedAt,
+        updatedAt: progress.updatedAt,
+        hasErrors: (progress.errors?.length || 0) > 0
+      }))
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'tenant-progress-error');
+    return reply.code(500).send({ error: 'Failed to get tenant progress' });
+  }
+});
+
+// Server-Sent Events endpoint for real-time progress updates
+fastify.get('/contracts/progress/stream', async (request, reply) => {
+  await sseProgressService.handleConnection(request, reply);
+});
+
+// WebSocket endpoint will be handled during server setup
+// Real-time progress statistics
+fastify.get('/metrics/progress', async (request, reply) => {
+  try {
+    const sseStats = sseProgressService.getStats();
+    const wsStats = webSocketProgressService.getStats();
+    
+    return reply.code(200).send({
+      realTimeConnections: {
+        sse: sseStats,
+        websocket: wsStats,
+        total: sseStats.totalConnections + wsStats.totalConnections
+      },
+      activeProgress: {
+        totalContracts: progressTrackingService.getTenantProgress('demo').length, // This would be improved with proper tenant handling
+        byStage: {} // Could be enhanced to show progress by stage
+      }
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'progress-metrics-error');
+    return reply.code(500).send({ error: 'Failed to get progress metrics' });
+  }
+});
+
+// Internal API endpoints for workers to update progress
+fastify.post('/internal/progress/update', async (request, reply) => {
+  try {
+    const { contractId, tenantId, stage, progress, message, metadata } = request.body as any;
+    
+    if (!contractId || !tenantId || !stage || progress === undefined) {
+      return reply.code(400).send({ 
+        error: 'Missing required fields: contractId, tenantId, stage, progress' 
+      });
+    }
+    
+    const result = progressTrackingService.updateProgress(
+      contractId,
+      stage,
+      progress,
+      message,
+      metadata
+    );
+    
+    if (!result) {
+      return reply.code(404).send({ 
+        error: 'Progress tracking not found for contract' 
+      });
+    }
+    
+    return reply.code(200).send({ success: true });
+    
+  } catch (e) {
+    request.log.error(e, 'progress-update-error');
+    return reply.code(500).send({ error: 'Failed to update progress' });
+  }
+});
+
+fastify.post('/internal/progress/complete', async (request, reply) => {
+  try {
+    const { contractId, tenantId, stage, message } = request.body as any;
+    
+    if (!contractId || !tenantId || !stage) {
+      return reply.code(400).send({ 
+        error: 'Missing required fields: contractId, tenantId, stage' 
+      });
+    }
+    
+    const result = progressTrackingService.completeStage(contractId, stage, message);
+    
+    if (!result) {
+      return reply.code(404).send({ 
+        error: 'Progress tracking not found for contract' 
+      });
+    }
+    
+    return reply.code(200).send({ success: true });
+    
+  } catch (e) {
+    request.log.error(e, 'progress-complete-error');
+    return reply.code(500).send({ error: 'Failed to complete stage' });
+  }
+});
+
+fastify.post('/internal/progress/error', async (request, reply) => {
+  try {
+    const { contractId, tenantId, stage, error, recoverable, retryCount } = request.body as any;
+    
+    if (!contractId || !tenantId || !stage || !error) {
+      return reply.code(400).send({ 
+        error: 'Missing required fields: contractId, tenantId, stage, error' 
+      });
+    }
+    
+    const result = progressTrackingService.addError(
+      contractId,
+      stage,
+      error,
+      recoverable !== false, // Default to true
+      retryCount || 0
+    );
+    
+    if (!result) {
+      return reply.code(404).send({ 
+        error: 'Progress tracking not found for contract' 
+      });
+    }
+    
+    return reply.code(200).send({ success: true });
+    
+  } catch (e) {
+    request.log.error(e, 'progress-error-report-error');
+    return reply.code(500).send({ error: 'Failed to report error' });
+  }
+});
+
+// Circuit breaker management endpoints
+fastify.get('/internal/circuit-breakers', async (request, reply) => {
+  try {
+    const { circuitBreakerManager } = await import('./src/services/circuit-breaker.service');
+    const stats = circuitBreakerManager.getAllStats();
+    const health = circuitBreakerManager.getHealthStatus();
+    
+    return reply.code(200).send({
+      stats,
+      health,
+      timestamp: new Date()
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'circuit-breaker-stats-error');
+    return reply.code(500).send({ error: 'Failed to get circuit breaker stats' });
+  }
+});
+
+fastify.post('/internal/circuit-breakers/:name/force-open', async (request, reply) => {
+  try {
+    const { name } = request.params as { name: string };
+    const { circuitBreakerManager } = await import('./src/services/circuit-breaker.service');
+    
+    const breaker = circuitBreakerManager.getBreaker(name);
+    breaker.forceOpen();
+    
+    return reply.code(200).send({ 
+      success: true, 
+      message: `Circuit breaker ${name} forced open` 
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'circuit-breaker-force-open-error');
+    return reply.code(500).send({ error: 'Failed to force open circuit breaker' });
+  }
+});
+
+fastify.post('/internal/circuit-breakers/:name/force-close', async (request, reply) => {
+  try {
+    const { name } = request.params as { name: string };
+    const { circuitBreakerManager } = await import('./src/services/circuit-breaker.service');
+    
+    const breaker = circuitBreakerManager.getBreaker(name);
+    breaker.forceClose();
+    
+    return reply.code(200).send({ 
+      success: true, 
+      message: `Circuit breaker ${name} forced closed` 
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'circuit-breaker-force-close-error');
+    return reply.code(500).send({ error: 'Failed to force close circuit breaker' });
+  }
+});
+
+// Cross-Contract Intelligence API endpoints
+fastify.get('/api/contracts/:contractId/relationships', async (request, reply) => {
+  try {
+    const { contractId } = request.params as { contractId: string };
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const { crossContractIntelligenceService } = await import('./src/services/cross-contract-intelligence.service');
+    
+    // Get existing contracts for relationship analysis
+    const contracts = listContracts(tenantId);
+    
+    // Analyze relationships
+    const relationships = await crossContractIntelligenceService.analyzeContractRelationships(
+      contractId, 
+      tenantId, 
+      contracts
+    );
+    
+    return reply.code(200).send({
+      contractId,
+      relationships,
+      totalRelationships: relationships.length,
+      relationshipTypes: [...new Set(relationships.map(r => r.relationshipType))]
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'contract-relationships-error');
+    return reply.code(500).send({ error: 'Failed to analyze contract relationships' });
+  }
+});
+
+fastify.get('/api/portfolio/patterns', async (request, reply) => {
+  try {
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const { crossContractIntelligenceService } = await import('./src/services/cross-contract-intelligence.service');
+    
+    // Get contracts for pattern analysis
+    const contracts = listContracts(tenantId);
+    
+    // Identify patterns
+    const patterns = await crossContractIntelligenceService.identifyContractPatterns(tenantId, contracts);
+    
+    // Group patterns by type
+    const patternsByType = patterns.reduce((acc, pattern) => {
+      if (!acc[pattern.patternType]) {
+        acc[pattern.patternType] = [];
+      }
+      acc[pattern.patternType].push(pattern);
+      return acc;
+    }, {} as Record<string, any[]>);
+    
+    return reply.code(200).send({
+      tenantId,
+      totalPatterns: patterns.length,
+      patternsByType,
+      patterns: patterns.slice(0, 20) // Limit to first 20 for performance
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'portfolio-patterns-error');
+    return reply.code(500).send({ error: 'Failed to identify portfolio patterns' });
+  }
+});
+
+fastify.get('/api/portfolio/insights', async (request, reply) => {
+  try {
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const { crossContractIntelligenceService } = await import('./src/services/cross-contract-intelligence.service');
+    
+    // Get contracts for insight generation
+    const contracts = listContracts(tenantId);
+    
+    // Generate insights
+    const insights = await crossContractIntelligenceService.generatePortfolioInsights(tenantId, contracts);
+    
+    // Sort by impact and confidence
+    const sortedInsights = insights.sort((a, b) => {
+      const impactWeight = { high: 3, medium: 2, low: 1 };
+      const aScore = impactWeight[a.impact] * a.confidence;
+      const bScore = impactWeight[b.impact] * b.confidence;
+      return bScore - aScore;
+    });
+    
+    // Calculate potential savings and risk reduction
+    const totalSavings = insights.reduce((sum, insight) => sum + (insight.potentialSavings || 0), 0);
+    const totalRiskReduction = insights.reduce((sum, insight) => sum + (insight.riskReduction || 0), 0);
+    
+    return reply.code(200).send({
+      tenantId,
+      totalInsights: insights.length,
+      insights: sortedInsights,
+      summary: {
+        potentialSavings: totalSavings,
+        riskReduction: totalRiskReduction,
+        highImpactInsights: insights.filter(i => i.impact === 'high').length,
+        mediumImpactInsights: insights.filter(i => i.impact === 'medium').length,
+        lowImpactInsights: insights.filter(i => i.impact === 'low').length
+      }
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'portfolio-insights-error');
+    return reply.code(500).send({ error: 'Failed to generate portfolio insights' });
+  }
+});
+
+fastify.get('/api/contracts/:contractId/similar', async (request, reply) => {
+  try {
+    const { contractId } = request.params as { contractId: string };
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    const query = request.query as any;
+    const limit = parseInt(query.limit || '10', 10);
+    const minSimilarity = parseFloat(query.minSimilarity || '0.3');
+    
+    const { crossContractIntelligenceService } = await import('./src/services/cross-contract-intelligence.service');
+    
+    // Get all contracts
+    const contracts = listContracts(tenantId);
+    const targetContract = contracts.find(c => c.id === contractId);
+    
+    if (!targetContract) {
+      return reply.code(404).send({ error: 'Contract not found' });
+    }
+    
+    // Find similar contracts through relationship analysis
+    const relationships = await crossContractIntelligenceService.analyzeContractRelationships(
+      contractId, 
+      tenantId, 
+      contracts
+    );
+    
+    // Filter and sort by similarity strength
+    const similarContracts = relationships
+      .filter(r => r.strength >= minSimilarity)
+      .sort((a, b) => b.strength - a.strength)
+      .slice(0, limit)
+      .map(r => {
+        const contract = contracts.find(c => c.id === r.targetContractId);
+        return {
+          contractId: r.targetContractId,
+          contract: contract ? {
+            id: contract.id,
+            name: contract.name,
+            status: contract.status,
+            createdAt: contract.createdAt
+          } : null,
+          similarity: r.strength,
+          relationshipType: r.relationshipType,
+          description: r.description,
+          identifiedBy: r.identifiedBy
+        };
+      });
+    
+    return reply.code(200).send({
+      contractId,
+      similarContracts,
+      totalFound: similarContracts.length,
+      searchCriteria: {
+        minSimilarity,
+        limit
+      }
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'similar-contracts-error');
+    return reply.code(500).send({ error: 'Failed to find similar contracts' });
+  }
+});
+
+fastify.get('/api/portfolio/analytics', async (request, reply) => {
+  try {
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const { crossContractIntelligenceService } = await import('./src/services/cross-contract-intelligence.service');
+    
+    // Get all data
+    const contracts = listContracts(tenantId);
+    const patterns = crossContractIntelligenceService.getTenantPatterns(tenantId);
+    const insights = crossContractIntelligenceService.getTenantInsights(tenantId);
+    
+    // Calculate analytics
+    const totalValue = contracts.reduce((sum, c) => sum + (c.totalValue || 0), 0);
+    const averageValue = totalValue / Math.max(contracts.length, 1);
+    
+    const contractsByStatus = contracts.reduce((acc, c) => {
+      acc[c.status] = (acc[c.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const patternsByType = patterns.reduce((acc, p) => {
+      acc[p.patternType] = (acc[p.patternType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const insightsByCategory = insights.reduce((acc, i) => {
+      acc[i.category] = (acc[i.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return reply.code(200).send({
+      tenantId,
+      portfolio: {
+        totalContracts: contracts.length,
+        totalValue,
+        averageValue,
+        contractsByStatus
+      },
+      intelligence: {
+        totalPatterns: patterns.length,
+        patternsByType,
+        totalInsights: insights.length,
+        insightsByCategory
+      },
+      recommendations: {
+        topInsights: insights
+          .sort((a, b) => b.confidence - a.confidence)
+          .slice(0, 5)
+          .map(i => ({
+            category: i.category,
+            title: i.title,
+            impact: i.impact,
+            confidence: i.confidence
+          }))
+      }
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'portfolio-analytics-error');
+    return reply.code(500).send({ error: 'Failed to generate portfolio analytics' });
+  }
+});
+
+fastify.post('/api/portfolio/refresh-intelligence', async (request, reply) => {
+  try {
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    
+    const { crossContractIntelligenceService } = await import('./src/services/cross-contract-intelligence.service');
+    
+    // Clear existing data
+    crossContractIntelligenceService.clearTenantData(tenantId);
+    
+    // Get contracts
+    const contracts = listContracts(tenantId);
+    
+    // Regenerate all intelligence
+    const patterns = await crossContractIntelligenceService.identifyContractPatterns(tenantId, contracts);
+    const insights = await crossContractIntelligenceService.generatePortfolioInsights(tenantId, contracts);
+    
+    // Analyze relationships for all contracts
+    const relationshipPromises = contracts.map(contract => 
+      crossContractIntelligenceService.analyzeContractRelationships(contract.id, tenantId, contracts)
+    );
+    
+    const allRelationships = await Promise.all(relationshipPromises);
+    const totalRelationships = allRelationships.reduce((sum, rels) => sum + rels.length, 0);
+    
+    return reply.code(200).send({
+      success: true,
+      tenantId,
+      refreshed: {
+        patterns: patterns.length,
+        insights: insights.length,
+        relationships: totalRelationships,
+        contracts: contracts.length
+      },
+      message: 'Cross-contract intelligence refreshed successfully'
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'refresh-intelligence-error');
+    return reply.code(500).send({ error: 'Failed to refresh cross-contract intelligence' });
+  }
+});
+
+// Database Performance Management API endpoints
+fastify.get('/api/admin/database/performance', async (request, reply) => {
+  try {
+    const { databasePerformanceService } = await import('./src/services/database-performance.service');
+    const { connectionPoolService } = await import('./src/services/connection-pool.service');
+    
+    const performanceMetrics = databasePerformanceService.getPerformanceMetrics();
+    const connectionStats = connectionPoolService.getStats();
+    const queryAnalysis = databasePerformanceService.analyzeQueryPerformance();
+    
+    return reply.code(200).send({
+      performance: performanceMetrics,
+      connectionPool: connectionStats,
+      queryAnalysis: {
+        slowQueries: queryAnalysis.slowQueries.length,
+        recommendations: queryAnalysis.recommendations,
+        cacheEfficiency: queryAnalysis.cacheEfficiency
+      },
+      timestamp: new Date()
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'database-performance-error');
+    return reply.code(500).send({ error: 'Failed to get database performance metrics' });
+  }
+});
+
+fastify.get('/api/admin/database/connections', async (request, reply) => {
+  try {
+    const { connectionPoolService } = await import('./src/services/connection-pool.service');
+    
+    const stats = connectionPoolService.getStats();
+    const connections = connectionPoolService.getConnectionDetails();
+    const healthCheck = await connectionPoolService.healthCheck();
+    
+    return reply.code(200).send({
+      stats,
+      connections: connections.slice(0, 20), // Limit to first 20 for performance
+      health: healthCheck,
+      timestamp: new Date()
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'database-connections-error');
+    return reply.code(500).send({ error: 'Failed to get connection pool information' });
+  }
+});
+
+fastify.post('/api/admin/database/optimize', async (request, reply) => {
+  try {
+    const { databasePerformanceService } = await import('./src/services/database-performance.service');
+    
+    // Create optimized indexes
+    const indexResults = await databasePerformanceService.createOptimizedIndexes();
+    
+    // Create/refresh materialized views
+    const viewResults = await databasePerformanceService.createMaterializedViews();
+    
+    return reply.code(200).send({
+      success: true,
+      optimization: {
+        indexes: {
+          created: indexResults.created.length,
+          skipped: indexResults.skipped.length,
+          errors: indexResults.errors.length,
+          details: indexResults
+        },
+        materializedViews: {
+          created: viewResults.created.length,
+          refreshed: viewResults.refreshed.length,
+          errors: viewResults.errors.length,
+          details: viewResults
+        }
+      },
+      message: 'Database optimization completed',
+      timestamp: new Date()
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'database-optimize-error');
+    return reply.code(500).send({ error: 'Failed to optimize database' });
+  }
+});
+
+fastify.get('/api/admin/database/slow-queries', async (request, reply) => {
+  try {
+    const { databasePerformanceService } = await import('./src/services/database-performance.service');
+    
+    const analysis = databasePerformanceService.analyzeQueryPerformance();
+    
+    return reply.code(200).send({
+      slowQueries: analysis.slowQueries.map(query => ({
+        queryType: query.queryType,
+        executionTime: query.executionTime,
+        rowsAffected: query.rowsAffected,
+        indexesUsed: query.indexesUsed,
+        timestamp: query.timestamp
+      })),
+      recommendations: analysis.recommendations,
+      cacheEfficiency: analysis.cacheEfficiency,
+      summary: {
+        totalSlowQueries: analysis.slowQueries.length,
+        averageSlowQueryTime: analysis.slowQueries.length > 0 
+          ? analysis.slowQueries.reduce((sum, q) => sum + q.executionTime, 0) / analysis.slowQueries.length 
+          : 0
+      }
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'slow-queries-error');
+    return reply.code(500).send({ error: 'Failed to analyze slow queries' });
+  }
+});
+
+fastify.post('/api/admin/database/batch-insert', async (request, reply) => {
+  try {
+    const { table, records, options } = request.body as {
+      table: string;
+      records: any[];
+      options?: { batchSize?: number; onConflict?: 'ignore' | 'update' };
+    };
+    
+    if (!table || !records || !Array.isArray(records)) {
+      return reply.code(400).send({ 
+        error: 'Missing required fields: table, records (array)' 
+      });
+    }
+    
+    const { databasePerformanceService } = await import('./src/services/database-performance.service');
+    
+    const result = await databasePerformanceService.batchInsert(table, records, options);
+    
+    return reply.code(200).send({
+      success: true,
+      table,
+      totalRecords: records.length,
+      result,
+      batchSize: options?.batchSize || 1000,
+      timestamp: new Date()
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'batch-insert-error');
+    return reply.code(500).send({ error: 'Failed to perform batch insert' });
+  }
+});
+
+fastify.get('/api/admin/database/health', async (request, reply) => {
+  try {
+    const { connectionPoolService } = await import('./src/services/connection-pool.service');
+    const { databasePerformanceService } = await import('./src/services/database-performance.service');
+    
+    const connectionHealth = await connectionPoolService.healthCheck();
+    const performanceMetrics = databasePerformanceService.getPerformanceMetrics();
+    
+    const overallHealth = connectionHealth.healthy && 
+                         performanceMetrics.queryMetrics.cacheHitRate > 30 &&
+                         performanceMetrics.queryMetrics.averageExecutionTime < 2000;
+    
+    return reply.code(200).send({
+      healthy: overallHealth,
+      components: {
+        connectionPool: {
+          healthy: connectionHealth.healthy,
+          stats: connectionHealth.stats,
+          issues: connectionHealth.issues
+        },
+        queryPerformance: {
+          healthy: performanceMetrics.queryMetrics.averageExecutionTime < 2000,
+          averageExecutionTime: performanceMetrics.queryMetrics.averageExecutionTime,
+          cacheHitRate: performanceMetrics.queryMetrics.cacheHitRate,
+          slowQueryCount: performanceMetrics.queryMetrics.slowQueryCount
+        }
+      },
+      recommendations: [
+        ...connectionHealth.issues,
+        ...(performanceMetrics.queryMetrics.cacheHitRate < 50 ? ['Consider optimizing query cache settings'] : []),
+        ...(performanceMetrics.queryMetrics.slowQueryCount > 10 ? ['Review and optimize slow queries'] : [])
+      ],
+      timestamp: new Date()
+    });
+    
+  } catch (e) {
+    request.log.error(e, 'database-health-error');
+    return reply.code(500).send({ error: 'Failed to check database health' });
+  }
+});
+
 // Simple RAG search endpoint
 fastify.get('/api/rag/search', async (request, reply) => {
   try {
@@ -411,56 +1161,267 @@ fastify.get('/api/rag/search', async (request, reply) => {
 
 // --- SIGNED URL UPLOAD FLOW ---
 fastify.post('/uploads/init-signed', async (request, reply) => {
+  const correlationId = (request as any).id;
+  
   try {
     if (!getSignedUrl) return reply.code(501).send({ error: 'Signed URL not supported' });
+    
     const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
-    const schema = z.object({ filename: z.string().min(1).max(255), contentType: z.string().min(3).max(200).optional() });
+    const schema = z.object({ 
+      filename: z.string().min(1).max(255), 
+      contentType: z.string().min(3).max(200).optional(),
+      size: z.number().optional()
+    });
+    
     const parsed = schema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.issues });
-    const { filename, contentType } = parsed.data;
-    if (!validateFileType(contentType || 'application/octet-stream', filename)) {
-      return reply.code(400).send({ error: 'Invalid file type' });
+    if (!parsed.success) {
+      return reply.code(400).send({ 
+        error: 'Invalid payload', 
+        details: parsed.error.issues,
+        correlationId 
+      });
     }
+    
+    const { filename, contentType, size } = parsed.data;
+    
+    // Enhanced file validation
+    const validationResult = await fileValidationService.validateFile({
+      filename,
+      contentType: contentType || 'application/octet-stream',
+      size: size || 0
+    });
+    
+    if (!validationResult.isValid) {
+      return reply.code(400).send({ 
+        error: 'File validation failed',
+        details: validationResult.errors,
+        warnings: validationResult.warnings,
+        correlationId
+      });
+    }
+    
     const docId = newDocId();
+    
+    // Initialize progress tracking
+    progressTrackingService.initializeProgress(docId, tenantId);
+    progressTrackingService.updateProgress(
+      docId, 
+      ProcessingStage.UPLOAD_VALIDATION, 
+      100, 
+      'File validation completed successfully'
+    );
+    
     const storagePath = `uploads/${tenantId}/${docId}/${filename}`;
-    const url = getSignedUrl({ Bucket: env.S3_BUCKET || 'contracts', Key: storagePath, Expires: 600, ContentType: contentType });
-    return reply.code(200).send({ docId, uploadUrl: url, storagePath });
+    const url = getSignedUrl({ 
+      Bucket: env.S3_BUCKET || 'contracts', 
+      Key: storagePath, 
+      Expires: 600, 
+      ContentType: contentType 
+    });
+    
+    logger.info({ 
+      docId, 
+      tenantId, 
+      filename, 
+      contentType, 
+      correlationId 
+    }, 'Signed upload initialized');
+    
+    return reply.code(200).send({ 
+      docId, 
+      uploadUrl: url, 
+      storagePath,
+      correlationId,
+      validation: {
+        warnings: validationResult.warnings,
+        metadata: validationResult.metadata
+      }
+    });
+    
   } catch (e) {
-    request.log.error(e, 'init-signed-error');
-    return reply.code(500).send({ error: 'Failed to init signed upload' });
+    const recoveryResult = await uploadErrorHandlerService.handleError(
+      e as Error,
+      { operation: 'init-signed', tenantId: (request as any).tenantId },
+      correlationId
+    );
+    
+    request.log.error({ 
+      error: e, 
+      correlationId,
+      recovery: recoveryResult 
+    }, 'init-signed-error');
+    
+    return reply.code(500).send({ 
+      error: uploadErrorHandlerService.createUserMessage(
+        e as any, 
+        recoveryResult
+      ),
+      correlationId,
+      retryAfter: recoveryResult.retryAfter
+    });
   }
 });
 
 fastify.post('/uploads/finalize', async (request, reply) => {
+  const correlationId = (request as any).id;
+  
   try {
     const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
-    const schema = z.object({ docId: z.string().min(1), filename: z.string().min(1), storagePath: z.string().min(1) });
+    const schema = z.object({ 
+      docId: z.string().min(1), 
+      filename: z.string().min(1), 
+      storagePath: z.string().min(1),
+      checksum: z.string().optional()
+    });
+    
     const parsed = schema.safeParse(request.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'Invalid payload', details: parsed.error.issues });
-    const { docId, filename, storagePath } = parsed.data;
-
-    addContract({ id: docId, name: filename, status: 'UPLOADED', createdAt: new Date(), updatedAt: new Date(), tenantId, storagePath });
+    if (!parsed.success) {
+      return reply.code(400).send({ 
+        error: 'Invalid payload', 
+        details: parsed.error.issues,
+        correlationId 
+      });
+    }
+    
+    const { docId, filename, storagePath, checksum } = parsed.data;
+    
+    // Update progress
+    progressTrackingService.updateProgress(
+      docId, 
+      ProcessingStage.FILE_EXTRACTION, 
+      10, 
+      'Finalizing upload and preparing for processing...'
+    );
+    
+    // Store contract in database
+    addContract({ 
+      id: docId, 
+      name: filename, 
+      status: 'UPLOADED', 
+      createdAt: new Date(), 
+      updatedAt: new Date(), 
+      tenantId, 
+      storagePath,
+      checksum 
+    });
+    
+    // Clear cache
     contractCache.clear('contract_list');
     contractCache.delete('contract_detail', `${tenantId}_${docId}`);
+    
+    // Complete upload validation stage
+    progressTrackingService.completeStage(
+      docId, 
+      ProcessingStage.UPLOAD_VALIDATION, 
+      'Upload completed successfully'
+    );
 
     try {
       if (getQueue) {
-        await enqueueAnalysisPipeline(docId, tenantId);
+        // Start the enhanced analysis pipeline
+        const pipelineResult = await enqueueAnalysisPipeline(docId, tenantId);
         monitoring.startAnalysis(docId);
+        
+        // Update progress to file extraction stage
+        progressTrackingService.updateProgress(
+          docId, 
+          ProcessingStage.FILE_EXTRACTION, 
+          20, 
+          'Analysis pipeline started - extracting content...'
+        );
+        
+        logger.info({ 
+          docId, 
+          tenantId, 
+          filename, 
+          pipelineResult,
+          correlationId 
+        }, 'Upload finalized and analysis started');
+        
       } else {
-        // Without a queue we cannot read remote content; create placeholders
-        try { savePlaceholderArtifacts(docId); } catch {}
+        // Without a queue, create placeholders and mark as completed
+        try { 
+          savePlaceholderArtifacts(docId); 
+          progressTrackingService.completeStage(
+            docId, 
+            ProcessingStage.COMPLETED, 
+            'Processing completed with placeholder data'
+          );
+        } catch (placeholderError) {
+          progressTrackingService.addError(
+            docId,
+            ProcessingStage.ARTIFACT_GENERATION,
+            'Failed to create placeholder artifacts',
+            false
+          );
+        }
       }
+      
       monitoring.trackUpload(true);
-      return reply.code(201).send({ docId });
+      
+      return reply.code(201).send({ 
+        docId,
+        correlationId,
+        message: 'Upload completed successfully. Processing has begun.',
+        estimatedProcessingTime: progressTrackingService.getProgress(docId)?.estimatedTimeRemaining
+      });
+      
     } catch (e) {
       monitoring.trackUpload(false);
-      request.log.error({ err: e, docId }, 'finalize-enqueue-error');
-      return reply.code(500).send({ error: 'Failed to start processing' });
+      
+      // Add error to progress tracking
+      progressTrackingService.addError(
+        docId,
+        ProcessingStage.FILE_EXTRACTION,
+        'Failed to start processing pipeline',
+        true
+      );
+      
+      const recoveryResult = await uploadErrorHandlerService.handleError(
+        e as Error,
+        { operation: 'finalize-processing', docId, tenantId },
+        correlationId
+      );
+      
+      request.log.error({ 
+        err: e, 
+        docId, 
+        correlationId,
+        recovery: recoveryResult 
+      }, 'finalize-enqueue-error');
+      
+      return reply.code(500).send({ 
+        error: uploadErrorHandlerService.createUserMessage(
+          e as any, 
+          recoveryResult
+        ),
+        docId,
+        correlationId,
+        retryAfter: recoveryResult.retryAfter
+      });
     }
+    
   } catch (e) {
-    request.log.error(e, 'finalize-error');
-    return reply.code(500).send({ error: 'Finalize failed' });
+    const recoveryResult = await uploadErrorHandlerService.handleError(
+      e as Error,
+      { operation: 'finalize', tenantId: (request as any).tenantId },
+      correlationId
+    );
+    
+    request.log.error({ 
+      error: e, 
+      correlationId,
+      recovery: recoveryResult 
+    }, 'finalize-error');
+    
+    return reply.code(500).send({ 
+      error: uploadErrorHandlerService.createUserMessage(
+        e as any, 
+        recoveryResult
+      ),
+      correlationId,
+      retryAfter: recoveryResult.retryAfter
+    });
   }
 });
 
@@ -1049,6 +2010,59 @@ fastify.register(async (fastify) => {
     return reply.code(200).send({ id: contract.id, status: contract.status, completedStages, totalStages, percent, stages });
   });
 
+  // Serve the original contract file with proper content-type
+  fastify.get('/contracts/:id/file', async (request, reply) => {
+    const { id } = request.params as any;
+    const tenantId = (request as any).tenantId;
+    const contract = getContract(id, tenantId);
+    if (!contract) {
+      return reply.code(404).send({ error: 'Contract not found' });
+    }
+    
+    if (!contract.storagePath) {
+      return reply.code(404).send({ error: 'Contract file not found' });
+    }
+
+    try {
+      // For S3 storage, redirect to signed URL
+      if (getSignedUrl) {
+        const url = getSignedUrl({ 
+          Bucket: env.S3_BUCKET || 'contracts', 
+          Key: contract.storagePath, 
+          Expires: 600 
+        });
+        return reply.redirect(302, url);
+      }
+      
+      // For local storage, serve directly
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      // Construct local file path
+      const localPath = path.join(process.cwd(), 'tmp', 'uploads', path.basename(contract.storagePath));
+      
+      if (!fs.existsSync(localPath)) {
+        return reply.code(404).send({ error: 'Contract file not found' });
+      }
+      
+      // Determine content type from file extension
+      const ext = path.extname(contract.name || contract.storagePath).toLowerCase();
+      let contentType = 'application/octet-stream';
+      if (ext === '.pdf') contentType = 'application/pdf';
+      else if (ext === '.txt') contentType = 'text/plain';
+      else if (ext === '.doc') contentType = 'application/msword';
+      else if (ext === '.docx') contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      
+      return reply
+        .type(contentType)
+        .send(fs.createReadStream(localPath));
+        
+    } catch (error) {
+      request.log.error(error, 'file-serve-error');
+      return reply.code(500).send({ error: 'Failed to serve file' });
+    }
+  });
+
   fastify.get('/contracts/:id/artifacts/:section.json', async (request, reply) => {
     const { id, section } = request.params as any;
     const tenantId = (request as any).tenantId;
@@ -1072,6 +2086,53 @@ fastify.register(async (fastify) => {
       return reply.code(404).send({ error: 'Artifact not found' });
     }
     return reply.code(200).send(artifact);
+  });
+
+  // Serve generated PDF report
+  fastify.get('/contracts/:id/report.pdf', async (request, reply) => {
+    const { id } = request.params as any;
+    const tenantId = (request as any).tenantId;
+    const contract = getContract(id, tenantId);
+    if (!contract) {
+      return reply.code(404).send({ error: 'Contract not found' });
+    }
+    
+    const reportArtifact = getSection(id, 'report');
+    if (!reportArtifact?.storagePath) {
+      return reply.code(404).send({ error: 'Report not available' });
+    }
+
+    try {
+      // For S3 storage, redirect to signed URL
+      if (getSignedUrl) {
+        const url = getSignedUrl({ 
+          Bucket: env.S3_BUCKET || 'contracts', 
+          Key: reportArtifact.storagePath, 
+          Expires: 600,
+          ContentType: 'application/pdf'
+        });
+        return reply.redirect(302, url);
+      }
+      
+      // For local storage, serve directly
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      // Construct local file path
+      const localPath = path.join(process.cwd(), 'tmp', 'uploads', path.basename(reportArtifact.storagePath));
+      
+      if (!fs.existsSync(localPath)) {
+        return reply.code(404).send({ error: 'Report file not found' });
+      }
+      
+      return reply
+        .type('application/pdf')
+        .send(fs.createReadStream(localPath));
+        
+    } catch (error) {
+      request.log.error(error, 'report-serve-error');
+      return reply.code(500).send({ error: 'Failed to serve report' });
+    }
   });
 
   // Presence of artifacts per section
@@ -1159,12 +2220,944 @@ const start = async () => {
       fastify.log.warn({ err: (e as any)?.message }, 'Vector index ensure failed (continuing)');
     }
 
+    // Database performance and monitoring endpoints
+    fastify.get('/internal/database/performance', async (request, reply) => {
+      try {
+        const { databasePerformanceService } = await import('./src/services/database-performance.service');
+        const metrics = databasePerformanceService.getPerformanceMetrics();
+        
+        reply.send({
+          success: true,
+          metrics,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get database performance metrics');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve database performance metrics'
+        });
+      }
+    });
+
+    // Database performance dashboard
+    fastify.get('/internal/database/dashboard', async (request, reply) => {
+      try {
+        const { databasePerformanceService } = await import('./src/services/database-performance.service');
+        const dashboard = await databasePerformanceService.getPerformanceDashboard();
+        
+        reply.send({
+          success: true,
+          dashboard,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get database performance dashboard');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve database performance dashboard'
+        });
+      }
+    });
+
+    // Query pattern analysis
+    fastify.get('/internal/database/analysis', async (request, reply) => {
+      try {
+        const { databasePerformanceService } = await import('./src/services/database-performance.service');
+        const analysis = await databasePerformanceService.analyzeQueryPatterns();
+        
+        reply.send({
+          success: true,
+          analysis,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to analyze query patterns');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to analyze query patterns'
+        });
+      }
+    });
+
+    // Database optimization operations
+    fastify.post('/internal/database/optimize', async (request, reply) => {
+      try {
+        const { databasePerformanceService } = await import('./src/services/database-performance.service');
+        const { action } = request.body as { action: 'indexes' | 'views' | 'analyze' };
+        
+        let result;
+        switch (action) {
+          case 'indexes':
+            result = await databasePerformanceService.createOptimizedIndexes();
+            break;
+          case 'views':
+            result = await databasePerformanceService.createMaterializedViews();
+            break;
+          case 'analyze':
+            result = await databasePerformanceService.analyzeQueryPatterns();
+            break;
+          default:
+            return reply.status(400).send({
+              success: false,
+              error: 'Invalid action. Must be one of: indexes, views, analyze'
+            });
+        }
+        
+        reply.send({
+          success: true,
+          action,
+          result,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to execute database optimization');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to execute database optimization'
+        });
+      }
+    });
+
+    // Database resilience and recovery endpoints
+    fastify.get('/internal/database/resilience/health', async (request, reply) => {
+      try {
+        const { databaseResilienceService } = await import('./src/services/database-resilience.service');
+        const health = await databaseResilienceService.healthCheck();
+        
+        reply.send({
+          success: true,
+          health,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get database resilience health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve database resilience health'
+        });
+      }
+    });
+
+    // Database failover endpoint
+    fastify.post('/internal/database/resilience/failover', async (request, reply) => {
+      try {
+        const { databaseResilienceService } = await import('./src/services/database-resilience.service');
+        const { target } = request.body as { target: string };
+        
+        if (!target) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Target database is required'
+          });
+        }
+        
+        await databaseResilienceService.forceFailover(target);
+        
+        reply.send({
+          success: true,
+          action: 'failover',
+          target,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to execute database failover');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to execute database failover'
+        });
+      }
+    });
+
+    // Automatic recovery endpoints
+    fastify.get('/internal/recovery/health', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const health = await automaticRecoveryService.healthCheck();
+        
+        reply.send({
+          success: true,
+          health,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recovery service health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recovery service health'
+        });
+      }
+    });
+
+    // Trigger recovery endpoint
+    fastify.post('/internal/recovery/trigger', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const { trigger, context } = request.body as { trigger: string; context?: Record<string, any> };
+        
+        if (!trigger) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Trigger is required'
+          });
+        }
+        
+        const executionId = await automaticRecoveryService.triggerRecovery(trigger, context);
+        
+        reply.send({
+          success: true,
+          trigger,
+          executionId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to trigger recovery');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to trigger recovery'
+        });
+      }
+    });
+
+    // Recovery scenarios endpoint
+    fastify.get('/internal/recovery/scenarios', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const scenarios = automaticRecoveryService.getScenarios();
+        
+        reply.send({
+          success: true,
+          scenarios,
+          count: scenarios.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recovery scenarios');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recovery scenarios'
+        });
+      }
+    });
+
+    // Recovery execution history endpoint
+    fastify.get('/internal/recovery/history', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const history = automaticRecoveryService.getExecutionHistory();
+        
+        reply.send({
+          success: true,
+          history,
+          count: history.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recovery history');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recovery history'
+        });
+      }
+    });
+
+    // Storage capacity management endpoints
+    fastify.get('/internal/storage/metrics', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const currentMetrics = storageCapacityService.getCurrentMetrics();
+        
+        reply.send({
+          success: true,
+          metrics: currentMetrics,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get storage metrics');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve storage metrics'
+        });
+      }
+    });
+
+    // Storage capacity forecast endpoint
+    fastify.get('/internal/storage/forecast', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const { days } = request.query as { days?: string };
+        const forecastDays = days ? parseInt(days) : 30;
+        
+        const forecast = storageCapacityService.getCapacityForecast(forecastDays);
+        
+        reply.send({
+          success: true,
+          forecast,
+          forecastDays,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get storage forecast');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve storage forecast'
+        });
+      }
+    });
+
+    // Storage alerts endpoint
+    fastify.get('/internal/storage/alerts', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const { active } = request.query as { active?: string };
+        
+        const alerts = active === 'true' 
+          ? storageCapacityService.getActiveAlerts()
+          : storageCapacityService.getAllAlerts();
+        
+        reply.send({
+          success: true,
+          alerts,
+          count: alerts.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get storage alerts');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve storage alerts'
+        });
+      }
+    });
+
+    // Acknowledge storage alert endpoint
+    fastify.post('/internal/storage/alerts/:alertId/acknowledge', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const { alertId } = request.params as { alertId: string };
+        
+        const acknowledged = storageCapacityService.acknowledgeAlert(alertId);
+        
+        reply.send({
+          success: acknowledged,
+          alertId,
+          acknowledged,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to acknowledge storage alert');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to acknowledge storage alert'
+        });
+      }
+    });
+
+    // Archive operations endpoint
+    fastify.get('/internal/storage/archive/operations', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const { active } = request.query as { active?: string };
+        
+        const operations = active === 'true'
+          ? storageCapacityService.getActiveOperations()
+          : storageCapacityService.getOperationHistory();
+        
+        reply.send({
+          success: true,
+          operations,
+          count: operations.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get archive operations');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve archive operations'
+        });
+      }
+    });
+
+    // Trigger archive operation endpoint
+    fastify.post('/internal/storage/archive/trigger', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const { policyId } = request.body as { policyId: string };
+        
+        if (!policyId) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Policy ID is required'
+          });
+        }
+        
+        const operationId = await storageCapacityService.triggerArchiveOperation(policyId);
+        
+        reply.send({
+          success: true,
+          operationId,
+          policyId,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to trigger archive operation');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to trigger archive operation'
+        });
+      }
+    });
+
+    // Retention policies endpoint
+    fastify.get('/internal/storage/policies', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const policies = storageCapacityService.getRetentionPolicies();
+        
+        reply.send({
+          success: true,
+          policies,
+          count: policies.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get retention policies');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve retention policies'
+        });
+      }
+    });
+
+    // Storage health check endpoint
+    fastify.get('/internal/storage/health', async (request, reply) => {
+      try {
+        const { storageCapacityService } = await import('./src/services/storage-capacity.service');
+        const health = await storageCapacityService.healthCheck();
+        
+        reply.send({
+          success: true,
+          health,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get storage health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve storage health'
+        });
+      }
+    });
+
+    // Error classification and handling endpoints
+    fastify.get('/internal/errors/metrics', async (request, reply) => {
+      try {
+        const { errorClassificationService } = await import('./src/services/error-classification.service');
+        const { timeRange } = request.query as { timeRange?: string };
+        const range = timeRange ? parseInt(timeRange) : 3600000; // Default 1 hour
+        
+        const metrics = errorClassificationService.getErrorMetrics(range);
+        
+        reply.send({
+          success: true,
+          metrics,
+          timeRange: range,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get error metrics');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve error metrics'
+        });
+      }
+    });
+
+    // Recent errors endpoint
+    fastify.get('/internal/errors/recent', async (request, reply) => {
+      try {
+        const { errorClassificationService } = await import('./src/services/error-classification.service');
+        const { limit } = request.query as { limit?: string };
+        const errorLimit = limit ? parseInt(limit) : 100;
+        
+        const recentErrors = errorClassificationService.getRecentErrors(errorLimit);
+        
+        reply.send({
+          success: true,
+          errors: recentErrors,
+          count: recentErrors.length,
+          limit: errorLimit,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recent errors');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recent errors'
+        });
+      }
+    });
+
+    // Error patterns endpoint
+    fastify.get('/internal/errors/patterns', async (request, reply) => {
+      try {
+        const { errorClassificationService } = await import('./src/services/error-classification.service');
+        const patterns = errorClassificationService.getErrorPatterns();
+        
+        reply.send({
+          success: true,
+          patterns,
+          count: patterns.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get error patterns');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve error patterns'
+        });
+      }
+    });
+
+    // Error handler statistics endpoint
+    fastify.get('/internal/errors/statistics', async (request, reply) => {
+      try {
+        const { errorHandlerService } = await import('./src/services/error-handler.service');
+        const statistics = errorHandlerService.getErrorStatistics();
+        
+        reply.send({
+          success: true,
+          statistics,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get error statistics');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve error statistics'
+        });
+      }
+    });
+
+    // Error handling health check endpoint
+    fastify.get('/internal/errors/health', async (request, reply) => {
+      try {
+        const { errorClassificationService } = await import('./src/services/error-classification.service');
+        const { errorHandlerService } = await import('./src/services/error-handler.service');
+        
+        const [classificationHealth, handlerHealth] = await Promise.all([
+          errorClassificationService.healthCheck(),
+          errorHandlerService.healthCheck()
+        ]);
+        
+        const overallHealth = {
+          healthy: classificationHealth.healthy && handlerHealth.healthy,
+          classification: classificationHealth,
+          handler: handlerHealth,
+          issues: [...classificationHealth.issues, ...handlerHealth.issues]
+        };
+        
+        reply.send({
+          success: true,
+          health: overallHealth,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get error handling health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve error handling health'
+        });
+      }
+    });
+
+    // Comprehensive search endpoints
+    fastify.post('/api/search', async (request, reply) => {
+      try {
+        const { comprehensiveSearchService } = await import('./src/services/comprehensive-search.service');
+        const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+        
+        const searchQuery = {
+          ...request.body as any,
+          tenantId
+        };
+        
+        const results = await comprehensiveSearchService.search(searchQuery);
+        
+        reply.send({
+          success: true,
+          ...results,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Search failed');
+        reply.status(500).send({
+          success: false,
+          error: 'Search failed',
+          results: [],
+          totalCount: 0,
+          searchTime: 0
+        });
+      }
+    });
+
+    // Search analytics endpoint
+    fastify.get('/api/search/analytics', async (request, reply) => {
+      try {
+        const { comprehensiveSearchService } = await import('./src/services/comprehensive-search.service');
+        const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+        
+        const analytics = await comprehensiveSearchService.getSearchAnalytics(tenantId);
+        
+        reply.send({
+          success: true,
+          analytics,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get search analytics');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve search analytics'
+        });
+      }
+    });
+
+    // Real-time indexing endpoints
+    fastify.post('/internal/indexing/queue', async (request, reply) => {
+      try {
+        const { realTimeIndexingService } = await import('./src/services/real-time-indexing.service');
+        const { contractId, tenantId, priority = 'medium', eventType = 'manual' } = request.body as any;
+        
+        if (!contractId || !tenantId) {
+          return reply.status(400).send({
+            success: false,
+            error: 'contractId and tenantId are required'
+          });
+        }
+        
+        const jobId = await realTimeIndexingService.queueIndexing({
+          type: eventType,
+          contractId,
+          tenantId,
+          priority,
+          timestamp: new Date()
+        });
+        
+        reply.send({
+          success: true,
+          jobId,
+          message: 'Contract queued for indexing',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to queue indexing');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to queue contract for indexing'
+        });
+      }
+    });
+
+    // Indexing status endpoint
+    fastify.get('/internal/indexing/status/:jobId', async (request, reply) => {
+      try {
+        const { realTimeIndexingService } = await import('./src/services/real-time-indexing.service');
+        const { jobId } = request.params as { jobId: string };
+        
+        const job = realTimeIndexingService.getJobStatus(jobId);
+        
+        if (!job) {
+          return reply.status(404).send({
+            success: false,
+            error: 'Job not found'
+          });
+        }
+        
+        reply.send({
+          success: true,
+          job: {
+            id: job.id,
+            contractId: job.contractId,
+            status: job.status,
+            priority: job.priority,
+            retryCount: job.retryCount,
+            scheduledAt: job.scheduledAt,
+            startedAt: job.startedAt,
+            completedAt: job.completedAt,
+            error: job.error
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get job status');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve job status'
+        });
+      }
+    });
+
+    // Indexing statistics endpoint
+    fastify.get('/internal/indexing/stats', async (request, reply) => {
+      try {
+        const { realTimeIndexingService } = await import('./src/services/real-time-indexing.service');
+        const stats = realTimeIndexingService.getStats();
+        
+        reply.send({
+          success: true,
+          stats,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get indexing stats');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve indexing statistics'
+        });
+      }
+    });
+
+    // Search health check endpoint
+    fastify.get('/internal/search/health', async (request, reply) => {
+      try {
+        const { comprehensiveSearchService } = await import('./src/services/comprehensive-search.service');
+        const { realTimeIndexingService } = await import('./src/services/real-time-indexing.service');
+        
+        const [searchHealth, indexingHealth] = await Promise.all([
+          comprehensiveSearchService.healthCheck(),
+          realTimeIndexingService.healthCheck()
+        ]);
+        
+        const overallHealthy = searchHealth.healthy && indexingHealth.healthy;
+        const allIssues = [...searchHealth.issues, ...indexingHealth.issues];
+        
+        reply.send({
+          success: true,
+          healthy: overallHealthy,
+          components: {
+            search: searchHealth,
+            indexing: indexingHealth
+          },
+          issues: allIssues,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get search health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve search health status'
+        });
+      }
+    });
+
+    // Database resilience endpoints
+    fastify.get('/internal/database/resilience/health', async (request, reply) => {
+      try {
+        const { databaseResilienceService } = await import('./src/services/database-resilience.service');
+        const health = await databaseResilienceService.healthCheck();
+        
+        reply.send({
+          success: true,
+          ...health,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get database resilience health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve database resilience health'
+        });
+      }
+    });
+
+    fastify.get('/internal/database/resilience/errors', async (request, reply) => {
+      try {
+        const { databaseResilienceService } = await import('./src/services/database-resilience.service');
+        const errors = databaseResilienceService.getErrorHistory();
+        
+        reply.send({
+          success: true,
+          errors: errors.slice(-100), // Last 100 errors
+          totalErrors: errors.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get database errors');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve database error history'
+        });
+      }
+    });
+
+    fastify.get('/internal/database/resilience/failovers', async (request, reply) => {
+      try {
+        const { databaseResilienceService } = await import('./src/services/database-resilience.service');
+        const failovers = databaseResilienceService.getFailoverHistory();
+        
+        reply.send({
+          success: true,
+          failovers: failovers.slice(-50), // Last 50 failovers
+          totalFailovers: failovers.length,
+          currentDatabase: databaseResilienceService.getCurrentDatabase(),
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get failover history');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve failover history'
+        });
+      }
+    });
+
+    fastify.post('/internal/database/resilience/failover', async (request, reply) => {
+      try {
+        const { databaseResilienceService } = await import('./src/services/database-resilience.service');
+        const { target } = request.body as { target: string };
+        
+        if (!target) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Target database is required'
+          });
+        }
+        
+        await databaseResilienceService.forceFailover(target);
+        
+        reply.send({
+          success: true,
+          message: `Failover to ${target} initiated`,
+          currentDatabase: databaseResilienceService.getCurrentDatabase(),
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to initiate failover');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to initiate database failover'
+        });
+      }
+    });
+
+    // Automatic recovery endpoints
+    fastify.get('/internal/recovery/health', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const health = await automaticRecoveryService.healthCheck();
+        
+        reply.send({
+          success: true,
+          ...health,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recovery health');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recovery service health'
+        });
+      }
+    });
+
+    fastify.get('/internal/recovery/scenarios', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const scenarios = automaticRecoveryService.getScenarios();
+        
+        reply.send({
+          success: true,
+          scenarios,
+          totalScenarios: scenarios.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recovery scenarios');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recovery scenarios'
+        });
+      }
+    });
+
+    fastify.get('/internal/recovery/executions', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const executions = automaticRecoveryService.getExecutionHistory();
+        
+        reply.send({
+          success: true,
+          executions: executions.slice(-50), // Last 50 executions
+          totalExecutions: executions.length,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to get recovery executions');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to retrieve recovery execution history'
+        });
+      }
+    });
+
+    fastify.post('/internal/recovery/trigger', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const { trigger, context } = request.body as { trigger: string; context?: Record<string, any> };
+        
+        if (!trigger) {
+          return reply.status(400).send({
+            success: false,
+            error: 'Trigger is required'
+          });
+        }
+        
+        const executionId = await automaticRecoveryService.triggerRecovery(trigger, context);
+        
+        reply.send({
+          success: true,
+          executionId,
+          message: (executionId != null) ? 'Recovery triggered successfully' : 'No matching recovery scenarios found',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to trigger recovery');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to trigger recovery'
+        });
+      }
+    });
+
+    fastify.post('/internal/recovery/enable', async (request, reply) => {
+      try {
+        const { automaticRecoveryService } = await import('./src/services/automatic-recovery.service');
+        const { enabled } = request.body as { enabled: boolean };
+        
+        automaticRecoveryService.setEnabled(enabled);
+        
+        reply.send({
+          success: true,
+          enabled,
+          message: `Recovery service ${enabled ? 'enabled' : 'disabled'}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        logger.error({ error }, 'Failed to update recovery service status');
+        reply.status(500).send({
+          success: false,
+          error: 'Failed to update recovery service status'
+        });
+      }
+    });
+
     // Optional websocket init (no hard dependency)
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { setupWebSocket } = require('./websocket');
       const ws = setupWebSocket(fastify);
-      if (ws) fastify.log.info('WebSocket ready');
+      if (Boolean(ws)) fastify.log.info('WebSocket ready');
     } catch {
       fastify.log.info('WebSocket not initialized');
     }
@@ -1175,9 +3168,9 @@ const start = async () => {
     // Attach graceful shutdown handlers (queues discovered lazily if available)
     try {
       const queues: any[] = [];
-      if (getQueue) {
+      if (getQueue != null) {
         for (const name of ['ingestion','overview','clauses','rates','compliance','benchmark','risk','report']) {
-          try { const q = getQueue(name); if (q && typeof q.close === 'function') queues.push({ name, close: q.close.bind(q) }); } catch {}
+          try { const q = getQueue(name); if ((Boolean(q)) && typeof q.close === 'function') queues.push({ name, close: q.close.bind(q) }); } catch {}
         }
       }
       setupGracefulShutdown(fastify, { queues });
@@ -1187,7 +3180,7 @@ const start = async () => {
     
     // Optional internal workers (AIO mode)
     try {
-      if (String(process.env['WORKERS_INLINE'] || '').toLowerCase() === 'true') {
+      if (String((process.env['WORKERS_INLINE'] != null) || '').toLowerCase() === 'true') {
         const { WorkerManager } = require('./worker-manager');
         const wm = new WorkerManager(fastify.log);
         await wm.startWorkers();
@@ -1225,7 +3218,7 @@ fastify.addHook('onRequest', async (request, _reply) => {
 // Add response time tracking
 fastify.addHook('onResponse', async (request, reply) => {
   const startTime = (request as any).startTime;
-  const responseTime = startTime ? Date.now() - startTime : 0;
+  const responseTime = (Boolean(startTime)) ? Date.now() - startTime : 0;
   request.log.info({
     method: request.method,
     url: request.url,

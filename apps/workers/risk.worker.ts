@@ -1,12 +1,33 @@
-// Prefer workspace import, fallback to relative if needed
-let RiskArtifactV1Schema: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  RiskArtifactV1Schema = require('schemas').RiskArtifactV1Schema;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  RiskArtifactV1Schema = require('../../packages/schemas/src').RiskArtifactV1Schema;
-}
+/**
+ * Enhanced Risk Worker with LLM and RAG Integration
+ * Provides comprehensive risk assessment with expert recommendations
+ */
+
+// Import shared utilities
+import { 
+  getSharedLLMClient, 
+  EXPERT_PERSONAS, 
+  createProvenance,
+  isLLMAvailable 
+} from './shared/llm-utils';
+import { 
+  getSharedDatabaseClient 
+} from './shared/database-utils';
+import { 
+  RAGIntegration 
+} from './shared/rag-utils';
+import { 
+  BestPracticesGenerator,
+  BestPracticesCategory 
+} from './shared/best-practices-utils';
+
+// Import schemas
+import pkg from 'schemas';
+const { RiskArtifactV1Schema } = pkg;
+
+// Initialize shared clients
+const llmClient = getSharedLLMClient();
+const dbClient = getSharedDatabaseClient();
 
 /**
  * Enhanced Risk Worker with LLM-Powered Best Practices
@@ -90,238 +111,401 @@ export interface StakeholderCommunication {
   documentationRequirement: string;
 }
 
-let db: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('clients-db');
-  db = mod.default || mod;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('../../packages/clients/db');
-  db = mod.default || mod;
-}
+// Legacy imports removed - using shared utilities
 
-let OpenAIClient: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  OpenAIClient = require('clients-openai').OpenAIClient;
-} catch {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    OpenAIClient = require('../../packages/clients/openai').OpenAIClient;
-  } catch {
-    OpenAIClient = null;
-  }
-}
-
-export async function runRisk(job: { data: { docId: string; tenantId?: string } }) {
+export async function runRisk(job: { data: { docId: string; tenantId?: string } }): Promise<{ docId: string }> {
   const { docId, tenantId } = job.data;
-  console.log(`[worker:risk] Starting advanced risk analysis for ${docId}`);
+  console.log(`🔍 [worker:risk] Starting enhanced risk analysis for ${docId}`);
   const startTime = Date.now();
   
-  // Get contract to ensure we have tenantId
-  const contract = await db.contract.findUnique({ where: { id: docId } });
-  if (!contract) throw new Error(`Contract ${docId} not found`);
-  
-  const contractTenantId = tenantId || contract.tenantId;
-  
-  // Read ingestion text and previous artifacts for context
-  const ingestion = await db.artifact.findFirst({ 
-    where: { contractId: docId, type: 'INGESTION' }, 
-    orderBy: { createdAt: 'desc' } 
-  });
-  const clauses = await db.artifact.findFirst({ 
-    where: { contractId: docId, type: 'CLAUSES' }, 
-    orderBy: { createdAt: 'desc' } 
-  });
-  
-  const text = String((ingestion?.data as any)?.content || '');
-  const extractedClauses = (clauses?.data as any)?.clauses || [];
-  
-  let risks: any[] = [];
-  let client: any = null;
-  
-  const apiKey = process.env['OPENAI_API_KEY'];
-  const model = process.env['OPENAI_MODEL'] || 'gpt-4o-mini';
-  
-  if (apiKey && OpenAIClient && text.trim().length > 0) {
-    try {
-      client = new OpenAIClient(apiKey);
-      
-      // Create context from extracted clauses
-      const clauseContext = extractedClauses.map((clause: any) => 
-        `${clause.clauseId}: ${clause.text}`
-      ).join('\n');
-      
-      const riskAnalysisPrompt = `
-You are a legal risk analysis expert specializing in contract review. Analyze the provided contract for potential business and legal risks.
-
-Evaluate the following risk categories and identify specific risks:
-
-1. **Financial Risks**: Payment terms, penalties, late fees, currency risks, cost overruns
-2. **Legal/Compliance Risks**: Regulatory compliance, governing law issues, dispute resolution
-3. **Operational Risks**: Service level agreements, performance standards, delivery requirements
-4. **Liability Risks**: Indemnification, limitation of liability, insurance requirements
-5. **Intellectual Property Risks**: IP ownership, licensing, confidentiality breaches
-6. **Termination Risks**: Termination clauses, notice periods, exit costs
-7. **Force Majeure Risks**: Force majeure coverage, business continuity
-
-For each identified risk, provide:
-- riskType: Category of risk (Financial, Legal, Operational, Liability, IP, Termination, Force Majeure)
-- description: Clear description of the specific risk
-- severity: LOW, MEDIUM, or HIGH based on potential business impact
-- recommendation: Brief mitigation recommendation (optional)
-
-Return the result as a JSON array of risk objects. Focus on the most significant risks (max 15).
-`;
-
-      const response = await client.createChatCompletion({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: riskAnalysisPrompt
-          },
-          {
-            role: 'user',
-            content: `CONTRACT CLAUSES:\n${clauseContext}\n\nFULL CONTRACT TEXT (first 12000 characters):\n${text.slice(0, 12000)}`
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 3000
-      });
-
-      const responseText = response.choices?.[0]?.message?.content || '';
-      
+  try {
+    // Get contract information using shared database client
+    const contractResult = await dbClient.findContract(docId, false);
+    if (!contractResult.success || !contractResult.data) {
+      throw new Error(`Contract ${docId} not found`);
+    }
+    
+    const contract = contractResult.data;
+    const contractTenantId = tenantId || contract.tenantId;
+    
+    // Read ingestion text and previous artifacts for context
+    const ingestionResult = await dbClient.findArtifacts(docId, 'INGESTION', 1);
+    const clausesResult = await dbClient.findArtifacts(docId, 'CLAUSES', 1);
+    
+    const text = ingestionResult.success && ingestionResult.data?.[0] 
+      ? String((ingestionResult.data[0].data as any)?.content || '') 
+      : '';
+    const extractedClauses = clausesResult.success && clausesResult.data?.[0]
+      ? (clausesResult.data[0].data as any)?.clauses || []
+      : [];
+    
+    let risks: any[] = [];
+    let confidenceScore = 0;
+    
+    if (isLLMAvailable() && text.trim().length > 0) {
       try {
-        // Try to parse JSON from the response
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          const parsedRisks = JSON.parse(jsonMatch[0]);
-          if (Array.isArray(parsedRisks)) {
-            risks = parsedRisks.map((risk: any) => ({
-              riskType: risk.riskType || 'General',
-              description: risk.description || 'Risk identified',
-              severity: (risk.severity || 'medium').toLowerCase(),
-              recommendation: risk.recommendation || undefined
-            }));
-          }
-        }
-      } catch (parseError) {
-        console.warn(`[worker:risk] Failed to parse LLM response as JSON for ${docId}:`, parseError);
+        console.log('🧠 Analyzing risks with GPT-4 expert system...');
+        
+        const riskAnalysis = await performAdvancedRiskAnalysis(text, extractedClauses);
+        risks = riskAnalysis.risks;
+        confidenceScore = riskAnalysis.confidenceScore;
+        
+        console.log(`✅ GPT-4 identified ${risks.length} risks with ${confidenceScore}% confidence`);
+        
+      } catch (error) {
+        console.warn(`⚠️ LLM risk analysis failed for ${docId}:`, error);
       }
-      
-      console.log(`[worker:risk] LLM identified ${risks.length} risks for ${docId}`);
-      
-    } catch (error) {
-      console.warn(`[worker:risk] LLM risk analysis failed for ${docId}:`, error);
     }
-  }
   
-  // Fallback to heuristic risk analysis if LLM fails
-  if (risks.length === 0) {
-    console.log(`[worker:risk] Falling back to heuristic risk analysis for ${docId}`);
-    const t = text.toLowerCase();
-    
-    // Financial risks
-    if (/payment\s+terms?:?\s*(more than|over|exceed)\s*60/.test(t) || /net\s*(?:90|120)/.test(t)) {
-      risks.push({ 
-        riskType: 'Financial', 
-        description: 'Extended payment terms may impact cash flow (60+ days)', 
-        severity: 'medium' 
-      });
-    }
-    
-    // Liability risks
-    if (!/limitation\s+of\s+liability|liability\s+cap/.test(t)) {
-      risks.push({ 
-        riskType: 'Liability', 
-        description: 'No clear limitation of liability clause found', 
-        severity: 'high' 
-      });
-    }
-    
-    // IP risks
-    if (!/confidential/.test(t) && !/non.?disclosure/.test(t)) {
-      risks.push({ 
-        riskType: 'IP', 
-        description: 'Confidentiality terms not clearly defined', 
-        severity: 'medium' 
-      });
-    }
-    
-    // Termination risks
-    if (!/terminat/.test(t) || !/notice/.test(t)) {
-      risks.push({ 
-        riskType: 'Termination', 
-        description: 'Termination clauses may be unclear or missing', 
-        severity: 'medium' 
-      });
-    }
-    
-    // Operational risks
-    if (/penalty|penalt/.test(t) || /liquidated\s+damages/.test(t)) {
-      risks.push({ 
-        riskType: 'Operational', 
-        description: 'Performance penalties or liquidated damages present', 
-        severity: 'high' 
-      });
-    }
-    
+    // Enhanced fallback risk analysis if LLM fails
     if (risks.length === 0) {
-      risks.push({ 
-        riskType: 'General', 
-        description: 'No major risks detected in heuristic analysis', 
-        severity: 'low' 
-      });
+      console.log(`🔄 Falling back to enhanced heuristic risk analysis for ${docId}`);
+      const fallbackResult = performFallbackRiskAnalysis(text);
+      risks = fallbackResult.risks;
+      confidenceScore = fallbackResult.confidenceScore;
     }
-  }
 
-  // Generate LLM-powered best practices for risk management
-  let bestPractices: RiskBestPractices | null = null;
-  if (client && risks.length > 0) {
-    try {
-      bestPractices = await generateRiskBestPractices(client, risks, text);
-    } catch (error) {
-      console.warn(`[worker:risk] Best practices generation failed for ${docId}:`, error);
+    // Generate comprehensive risk management best practices using shared utilities
+    let bestPractices: any = null;
+    if (risks.length > 0) {
+      try {
+        console.log('📋 Generating expert risk management best practices...');
+        bestPractices = BestPracticesGenerator.generateContextualPractices(
+          { 
+            risks: risks,
+            riskLevel: calculateOverallRiskLevel(risks),
+            complexity: risks.length > 5 ? 'complex' : 'moderate'
+          },
+          'risk-management'
+        );
+      } catch (error) {
+        console.warn(`⚠️ Best practices generation failed for ${docId}:`, error);
+      }
     }
-  }
 
-  // Clean up risks for schema (remove recommendation field if present)
-  const risksForSchema = risks.map(risk => ({
-    riskType: risk.riskType,
-    description: risk.description,
-    severity: risk.severity
-  }));
+    // Calculate overall risk score
+    const overallRiskScore = calculateOverallRiskScore(risks);
 
-  const artifact = RiskArtifactV1Schema.parse({
-    metadata: { 
-      docId, 
-      fileType: 'pdf', 
-      totalPages: 1, 
-      ocrRate: 0, 
-      provenance: [{ 
-        worker: 'risk', 
-        timestamp: new Date().toISOString(), 
-        durationMs: Date.now() - startTime 
-      }] 
-    },
-    risks: risksForSchema,
-    // Add best practices to the artifact (if schema supports it)
-    bestPractices: bestPractices
-  });
+    // Clean up risks for schema (remove recommendation field if present)
+    const risksForSchema = risks.map(risk => ({
+      riskType: risk.riskType,
+      description: risk.description,
+      severity: risk.severity
+    }));
 
-  await db.artifact.create({
-    data: {
+    // Create enhanced risk artifact
+    const artifact = RiskArtifactV1Schema.parse({
+      metadata: { 
+        docId, 
+        fileType: 'pdf', 
+        totalPages: 1, 
+        ocrRate: 0, 
+        provenance: [createProvenance('risk', { confidence: confidenceScore, processingTime: Date.now() - startTime })]
+      },
+      risks: risksForSchema,
+      overallRiskScore,
+      confidenceScore,
+      bestPractices: bestPractices
+    });
+
+    // Store artifact using shared database client
+    const artifactResult = await dbClient.createArtifact({
       contractId: docId,
       type: 'RISK',
-      data: artifact as any,
+      data: artifact,
       tenantId: contractTenantId,
+      metadata: {
+        confidence: confidenceScore,
+        processingTime: Date.now() - startTime,
+        llmEnhanced: isLLMAvailable()
+      }
+    });
+
+    if (!artifactResult.success) {
+      throw new Error(`Failed to store risk artifact: ${artifactResult.error}`);
+    }
+
+    // Trigger RAG indexation
+    await RAGIntegration.triggerAutoIndexation(docId, contractTenantId, 'risk_analysis_complete');
+
+    const processingTime = Date.now() - startTime;
+    console.log(`🎯 Enhanced risk analysis complete for ${docId} in ${processingTime}ms`);
+    console.log(`📊 Results: ${risks.length} risks, ${overallRiskScore}% risk score, ${confidenceScore}% confidence`);
+    
+    return { docId };
+    
+  } catch (error) {
+    console.error(`❌ Enhanced risk analysis failed for ${docId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Perform advanced risk analysis using shared LLM utilities
+ */
+async function performAdvancedRiskAnalysis(
+  contractText: string,
+  extractedClauses: any[]
+): Promise<{ risks: any[], confidenceScore: number }> {
+  const clauseContext = extractedClauses.map((clause: any) => 
+    `${clause.clauseId}: ${clause.text}`
+  ).join('\n');
+
+  const riskAnalysisPrompt = `
+You are a Chief Risk Officer with 25+ years of experience in enterprise risk management, legal risk assessment, and contract analysis across multiple industries including technology, healthcare, finance, and manufacturing.
+
+Analyze the provided contract for comprehensive risk assessment across these critical categories:
+
+**FINANCIAL RISKS:**
+1. Payment terms and cash flow impact
+2. Currency and foreign exchange risks
+3. Cost escalation and budget overruns
+4. Revenue recognition and accounting risks
+5. Credit and counterparty risks
+
+**LEGAL & COMPLIANCE RISKS:**
+6. Regulatory compliance violations
+7. Governing law and jurisdiction issues
+8. Dispute resolution inadequacies
+9. Contract enforceability concerns
+10. Statutory and regulatory changes
+
+**OPERATIONAL RISKS:**
+11. Service level agreement failures
+12. Performance standard violations
+13. Delivery and timeline risks
+14. Resource availability and capacity
+15. Technology and system dependencies
+
+**LIABILITY & INSURANCE RISKS:**
+16. Indemnification exposure
+17. Limitation of liability gaps
+18. Insurance coverage inadequacies
+19. Professional liability exposure
+20. Product liability concerns
+
+**INTELLECTUAL PROPERTY RISKS:**
+21. IP ownership disputes
+22. Licensing and usage violations
+23. Confidentiality breaches
+24. Trade secret exposure
+25. Patent infringement risks
+
+**TERMINATION & EXIT RISKS:**
+26. Termination clause inadequacies
+27. Notice period complications
+28. Exit cost exposures
+29. Data and asset return issues
+30. Transition and handover risks
+
+**STRATEGIC & BUSINESS RISKS:**
+31. Force majeure inadequacies
+32. Business continuity threats
+33. Reputation and brand risks
+34. Competitive disadvantage
+35. Market and economic risks
+
+For each identified risk, provide:
+- riskId: Unique identifier (e.g., "FIN-001", "LEG-002")
+- riskType: Primary category (Financial, Legal, Operational, Liability, IP, Termination, Strategic)
+- riskSubcategory: Specific subcategory
+- description: Detailed description of the specific risk
+- severity: "low", "medium", "high", "critical" based on potential business impact
+- likelihood: "low", "medium", "high" probability of occurrence
+- businessImpact: Specific business consequences if risk materializes
+- mitigationPriority: "low", "medium", "high", "critical" for prioritization
+- evidenceFromContract: Specific contract language that creates this risk
+- recommendedActions: Immediate actions to mitigate this risk
+
+Also provide:
+- overallConfidence: 0-100 confidence score in your analysis
+- riskProfile: "low-risk", "moderate-risk", "high-risk", "critical-risk"
+- industryContext: Identified industry/sector for context-specific risks
+- criticalRisks: Top 5 most critical risks requiring immediate attention
+
+Return as JSON:
+{
+  "risks": [array of risk objects],
+  "overallConfidence": number,
+  "riskProfile": "string",
+  "industryContext": "string", 
+  "criticalRisks": ["risk1", "risk2", "risk3", "risk4", "risk5"]
+}
+
+Focus on accuracy and provide specific evidence from the contract text. Prioritize risks with high business impact.
+`;
+
+  const clauseContext = extractedClauses.map((clause: any) => 
+    `${clause.clauseId}: ${clause.text}`
+  ).join('\n');
+
+  const userPrompt = `CONTRACT CLAUSES:\n${clauseContext}\n\nFULL CONTRACT TEXT FOR RISK ANALYSIS:\n\n${contractText.slice(0, 15000)}`;
+
+  const response = await llmClient.generateExpertAnalysis(
+    'RISK_ANALYST',
+    'comprehensive risk assessment',
+    userPrompt,
+    { responseFormat: 'json' }
+  );
+
+  return {
+    risks: response.data.risks || [],
+    confidenceScore: response.confidence || 75
+  };
+}
+
+/**
+ * Enhanced fallback risk analysis with better heuristics
+ */
+function performFallbackRiskAnalysis(text: string): { risks: any[], confidenceScore: number } {
+  const t = text.toLowerCase();
+  const risks: any[] = [];
+  
+  // Enhanced pattern matching with confidence scoring
+  const riskPatterns = [
+    {
+      id: 'FIN-001',
+      type: 'Financial',
+      subcategory: 'Payment Terms',
+      patterns: [/payment\s+terms?:?\s*(more than|over|exceed)\s*60/g, /net\s*(?:90|120)/g],
+      description: 'Extended payment terms may impact cash flow',
+      severity: 'medium',
+      weight: 0.8
     },
+    {
+      id: 'LIA-001', 
+      type: 'Liability',
+      subcategory: 'Limitation of Liability',
+      patterns: [/limitation\s+of\s+liability|liability\s+cap/g],
+      description: 'Liability limitation clauses',
+      severity: 'high',
+      weight: 0.9,
+      inverse: true // Risk exists when pattern is NOT found
+    },
+    {
+      id: 'IP-001',
+      type: 'IP',
+      subcategory: 'Confidentiality',
+      patterns: [/confidential|non.?disclosure|nda/g],
+      description: 'Confidentiality and IP protection',
+      severity: 'medium',
+      weight: 0.7,
+      inverse: true
+    },
+    {
+      id: 'TER-001',
+      type: 'Termination',
+      subcategory: 'Termination Clauses',
+      patterns: [/terminat|notice\s+period/g],
+      description: 'Termination and notice provisions',
+      severity: 'medium',
+      weight: 0.7,
+      inverse: true
+    },
+    {
+      id: 'OPE-001',
+      type: 'Operational',
+      subcategory: 'Performance Penalties',
+      patterns: [/penalty|penalt|liquidated\s+damages/g],
+      description: 'Performance penalties and liquidated damages',
+      severity: 'high',
+      weight: 0.8
+    },
+    {
+      id: 'LEG-001',
+      type: 'Legal',
+      subcategory: 'Dispute Resolution',
+      patterns: [/dispute|arbitration|mediation/g],
+      description: 'Dispute resolution mechanisms',
+      severity: 'medium',
+      weight: 0.6,
+      inverse: true
+    },
+    {
+      id: 'STR-001',
+      type: 'Strategic',
+      subcategory: 'Force Majeure',
+      patterns: [/force\s+majeure|act\s+of\s+god/g],
+      description: 'Force majeure and business continuity',
+      severity: 'medium',
+      weight: 0.7,
+      inverse: true
+    }
+  ];
+
+  riskPatterns.forEach(pattern => {
+    const matches = pattern.patterns.reduce((total, regex) => {
+      const found = t.match(regex) || [];
+      return total + found.length;
+    }, 0);
+    
+    const hasEvidence = matches > 0;
+    const riskExists = pattern.inverse ? !hasEvidence : hasEvidence;
+    
+    if (riskExists) {
+      const severity = pattern.severity;
+      const likelihood = hasEvidence ? 'medium' : 'high';
+      
+      risks.push({
+        riskId: pattern.id,
+        riskType: pattern.type,
+        riskSubcategory: pattern.subcategory,
+        description: pattern.description,
+        severity,
+        likelihood,
+        businessImpact: `Potential ${severity} impact on business operations`,
+        mitigationPriority: severity === 'high' ? 'high' : 'medium',
+        evidenceFromContract: hasEvidence 
+          ? `Found ${matches} relevant clause(s)`
+          : 'No evidence found in contract',
+        recommendedActions: pattern.inverse 
+          ? `Add comprehensive ${pattern.subcategory.toLowerCase()} clauses`
+          : `Review and mitigate ${pattern.subcategory.toLowerCase()} risks`
+      });
+    }
   });
 
-  console.log(`[worker:risk] Finished advanced risk analysis for ${docId} (${risks.length} risks identified)`);
-  return { docId };
+  if (risks.length === 0) {
+    risks.push({
+      riskId: 'GEN-001',
+      riskType: 'General',
+      riskSubcategory: 'Contract Review',
+      description: 'No major risks detected in heuristic analysis',
+      severity: 'low',
+      likelihood: 'low',
+      businessImpact: 'Minimal business impact expected',
+      mitigationPriority: 'low',
+      evidenceFromContract: 'Comprehensive contract review completed',
+      recommendedActions: 'Continue regular contract monitoring'
+    });
+  }
+
+  const avgSeverity = risks.reduce((sum, r) => {
+    const severityScore = { low: 25, medium: 50, high: 75, critical: 100 };
+    return sum + (severityScore[r.severity as keyof typeof severityScore] || 50);
+  }, 0) / risks.length;
+  
+  const confidenceScore = Math.min(60 + (avgSeverity * 0.2), 80); // Fallback has lower confidence
+
+  return { risks, confidenceScore };
+}
+
+/**
+ * Calculate overall risk score from individual risk assessments
+ */
+function calculateOverallRiskScore(risks: any[]): number {
+  if (risks.length === 0) return 0;
+  
+  const severityWeights = { low: 25, medium: 50, high: 75, critical: 100 };
+  const likelihoodWeights = { low: 0.3, medium: 0.6, high: 0.9 };
+  
+  const totalRiskScore = risks.reduce((sum, risk) => {
+    const severityScore = severityWeights[risk.severity as keyof typeof severityWeights] || 50;
+    const likelihoodMultiplier = likelihoodWeights[risk.likelihood as keyof typeof likelihoodWeights] || 0.6;
+    return sum + (severityScore * likelihoodMultiplier);
+  }, 0);
+  
+  return Math.round(totalRiskScore / risks.length);
 }
 
 /**
@@ -438,7 +622,7 @@ Provide 3-5 specific, actionable recommendations in each category based on the a
 `;
 
   try {
-    const response = await client.createChatCompletion({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {
@@ -485,4 +669,20 @@ Provide 3-5 specific, actionable recommendations in each category based on the a
     riskMonitoring: [],
     stakeholderCommunication: []
   };
+}
+
+/**
+ * Calculate overall risk level from individual risks
+ */
+function calculateOverallRiskLevel(risks: any[]): string {
+  if (risks.length === 0) return 'low';
+  
+  const criticalCount = risks.filter(r => r.severity === 'critical').length;
+  const highCount = risks.filter(r => r.severity === 'high').length;
+  const mediumCount = risks.filter(r => r.severity === 'medium').length;
+  
+  if (criticalCount > 0) return 'critical';
+  if (highCount > 2) return 'high';
+  if (highCount > 0 || mediumCount > 3) return 'medium';
+  return 'low';
 }

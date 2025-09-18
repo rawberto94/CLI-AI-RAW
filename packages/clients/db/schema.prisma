@@ -1,5 +1,5 @@
-// This is a placeholder for the Prisma schema.
-// TODO: Define the Prisma schema for the database.
+// Enhanced Prisma schema for Contract Intelligence System
+// Supports production-ready features with proper indexing and constraints
 
 datasource db {
   provider = "postgresql"
@@ -8,37 +8,313 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["nativeTypes"]
+  previewFeatures = ["postgresqlExtensions"]
 }
+
+// ============================================================================
+// TENANT AND USER MANAGEMENT
+// ============================================================================
 
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String            @id @default(cuid())
+  name          String            @unique
+  slug          String            @unique
+  configuration TenantConfig?
+  subscription  TenantSubscription?
+  usage         TenantUsage?
+  status        TenantStatus      @default(ACTIVE)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  contracts Contract[]
+  // Relations
+  contracts         Contract[]
+  users            User[]
+  templates        ContractTemplate[]
+  auditLogs        AuditLog[]
+  metrics          Metric[]
+  
+  @@index([status])
+  @@index([createdAt])
 }
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  DELETED
+}
+
+model TenantConfig {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  // AI Configuration
+  aiModels          Json     @default("{}")
+  aiCostBudget      Decimal? @db.Decimal(10, 2)
+  aiCostAlerts      Boolean  @default(true)
+  
+  // Security Settings
+  securitySettings  Json     @default("{}")
+  
+  // Integration Settings
+  integrations      Json     @default("{}")
+  
+  // Workflow Settings
+  workflowSettings  Json     @default("{}")
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model TenantSubscription {
+  id            String           @id @default(cuid())
+  tenantId      String           @unique
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  plan          SubscriptionPlan
+  status        SubscriptionStatus
+  startDate     DateTime
+  endDate       DateTime?
+  billingCycle  BillingCycle
+  
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  @@index([status])
+  @@index([endDate])
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  EXPIRED
+  CANCELLED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+model TenantUsage {
+  id                String   @id @default(cuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  contractsProcessed Int     @default(0)
+  aiTokensUsed      BigInt   @default(0)
+  storageUsed       BigInt   @default(0) // in bytes
+  apiCallsCount     Int      @default(0)
+  
+  // Monthly limits
+  monthlyContractLimit Int?
+  monthlyTokenLimit    BigInt?
+  monthlyStorageLimit  BigInt?
+  monthlyApiLimit      Int?
+  
+  resetDate         DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([resetDate])
+}
+
+model User {
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  email         String       @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  
+  status        UserStatus   @default(ACTIVE)
+  emailVerified Boolean      @default(false)
+  lastLoginAt   DateTime?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  // Relations
+  roles         UserRole[]
+  sessions      UserSession[]
+  auditLogs     AuditLog[]
+  
+  @@index([email])
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  DELETED
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  isSystem    Boolean      @default(false)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relations
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String @id @default(cuid())
+  action      String // e.g., 'create', 'read', 'update', 'delete'
+  subject     String // e.g., 'Contract', 'User', 'Template'
+  conditions  Json?  // Additional conditions for the permission
+  
+  // Relations
+  roles       RolePermission[]
+  
+  @@unique([action, subject])
+}
+
+model UserRole {
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId      String
+  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedAt  DateTime @default(now())
+  assignedBy  String?
+  
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+  
+  @@id([roleId, permissionId])
+}
+
+model UserSession {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  token       String    @unique
+  refreshToken String?  @unique
+  expiresAt   DateTime
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ============================================================================
+// CONTRACT MANAGEMENT
+// ============================================================================
 
 model Contract {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name        String
-  status      String   @default("UPLOADED")
-  storagePath String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  artifacts   Artifact[]
-  runs        Run[]
-  embeddings  Embedding[] @relation("ContractEmbeddings")
-
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  filename      String
+  originalName  String?
+  contentType   String
+  size          BigInt
+  checksum      String?
+  
+  status        ContractStatus @default(UPLOADED)
+  processingStatus ProcessingStatus @default(PENDING)
+  
+  // Storage information
+  storagePath   String?
+  storageProvider String?     @default("local")
+  
+  // Contract metadata
+  contractType  String?
+  parties       Json?
+  effectiveDate DateTime?
+  expirationDate DateTime?
+  jurisdiction  String?
+  
+  // Processing metadata
+  uploadedBy    String?
+  processedAt   DateTime?
+  lastAnalyzedAt DateTime?
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  artifacts     Artifact[]
+  runs          Run[]
+  embeddings    Embedding[]
+  templateAnalysis TemplateAnalysis[]
+  financialAnalysis FinancialAnalysis[]
+  overviewAnalysis OverviewAnalysis[]
+  
   @@index([tenantId])
+  @@index([status])
+  @@index([processingStatus])
+  @@index([contractType])
+  @@index([createdAt])
+  @@index([tenantId, status])
+  @@index([tenantId, contractType])
 }
+
+enum ContractStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+  ARCHIVED
+  DELETED
+}
+
+enum ProcessingStatus {
+  PENDING
+  INGESTION
+  TEMPLATE_ANALYSIS
+  FINANCIAL_ANALYSIS
+  OVERVIEW_ANALYSIS
+  CLAUSES_ANALYSIS
+  COMPLIANCE_ANALYSIS
+  RISK_ANALYSIS
+  RATES_ANALYSIS
+  BENCHMARK_ANALYSIS
+  REPORT_GENERATION
+  COMPLETED
+  FAILED
+}
+
+// ============================================================================
+// ANALYSIS ARTIFACTS
+// ============================================================================
 
 enum ArtifactType {
   INGESTION
+  TEMPLATE
+  FINANCIAL
   OVERVIEW
   CLAUSES
   RATES
@@ -49,111 +325,274 @@ enum ArtifactType {
 }
 
 model Artifact {
-  id           String       @id @default(cuid())
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  contractId   String
-  contract     Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId     String
-  type         ArtifactType
-  data         Json
-  schemaVersion String?     @default("v1")
-  hash         String? 
-  location     String?
-
+  id            String       @id @default(cuid())
+  contractId    String
+  contract      Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId      String
+  
+  type          ArtifactType
+  data          Json
+  schemaVersion String       @default("v1")
+  hash          String?
+  size          Int?
+  
+  // Storage information
+  location      String?
+  storageProvider String?    @default("database")
+  
+  // Processing metadata
+  processingTime Int?       // in milliseconds
+  confidence    Decimal?    @db.Decimal(3, 2)
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
   @@index([contractId])
   @@index([tenantId])
+  @@index([type])
   @@index([contractId, type])
+  @@index([tenantId, type])
+  @@unique([contractId, type])
 }
+
+// ============================================================================
+// SPECIALIZED ANALYSIS RESULTS
+// ============================================================================
+
+model TemplateAnalysis {
+  id            String   @id @default(cuid())
+  contractId    String
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId      String
+  
+  detectedTemplates Json
+  complianceScore   Decimal? @db.Decimal(3, 2)
+  deviations       Json
+  recommendations  Json
+  
+  processingTime   Int?     // in milliseconds
+  confidence       Decimal? @db.Decimal(3, 2)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([complianceScore])
+}
+
+model FinancialAnalysis {
+  id              String   @id @default(cuid())
+  contractId      String
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId        String
+  
+  totalValue      Json?    // { amount, currency, confidence }
+  paymentTerms    Json?
+  costBreakdown   Json?
+  pricingTables   Json?
+  discounts       Json?
+  escalationClauses Json?
+  financialRisks  Json?
+  recommendations Json?
+  
+  processingTime  Int?     // in milliseconds
+  confidence      Decimal? @db.Decimal(3, 2)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([contractId])
+  @@index([tenantId])
+}
+
+model OverviewAnalysis {
+  id              String   @id @default(cuid())
+  contractId      String
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId        String
+  
+  summary         String?
+  parties         Json?
+  keyTerms        Json?
+  contractType    String?
+  jurisdiction    String?
+  effectiveDate   DateTime?
+  expirationDate  DateTime?
+  renewalTerms    Json?
+  terminationClauses Json?
+  
+  processingTime  Int?     // in milliseconds
+  confidence      Decimal? @db.Decimal(3, 2)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([contractType])
+}
+
+// ============================================================================
+// JOB PROCESSING
+// ============================================================================
 
 enum RunStatus {
   PENDING
   RUNNING
   COMPLETED
   FAILED
+  CANCELLED
+  TIMEOUT
 }
 
 model Run {
-  id         String    @id @default(cuid())
-  runId      String    @unique
-  contractId String?
-  contract   Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId   String
-  status     RunStatus @default(PENDING)
-  startedAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  completedAt DateTime?
-  summary    String?
-
+  id            String    @id @default(cuid())
+  runId         String    @unique
+  contractId    String?
+  contract      Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  tenantId      String
+  
+  status        RunStatus @default(PENDING)
+  jobType       String?   // e.g., 'full_analysis', 'template_only'
+  priority      Int       @default(0)
+  
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  updatedAt     DateTime  @updatedAt
+  
+  // Progress tracking
+  totalSteps    Int?
+  completedSteps Int?     @default(0)
+  currentStep   String?
+  
+  // Results and errors
+  summary       String?
+  errorMessage  String?
+  errorDetails  Json?
+  
+  // Performance metrics
+  processingTime Int?     // in milliseconds
+  
   @@index([runId])
   @@index([contractId])
   @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([tenantId, status])
 }
 
-// Lightweight embedding storage for demo RAG (JSON vector; pgvector not required)
+// ============================================================================
+// RAG AND EMBEDDINGS
+// ============================================================================
+
 model Embedding {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   contractId String
-  contract   Contract  @relation(name: "ContractEmbeddings", fields: [contractId], references: [id], onDelete: Cascade)
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   tenantId   String
+  
   chunkIndex Int
   text       String
-    //   embedding  Json?
-
+  embedding  Json?    // Vector embedding as JSON array
+  
+  // Metadata
+  chunkType  String?  // e.g., 'clause', 'section', 'paragraph'
+  section    String?
+  confidence Decimal? @db.Decimal(3, 2)
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
   @@index([contractId])
   @@index([tenantId])
+  @@index([chunkType])
   @@unique([contractId, chunkIndex])
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  roleId    String
-  role      Role     @relation(fields: [roleId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([email])
-}
-
-model Role {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  users       User[]
-  permissions PermissionsOnRoles[]
-}
-
-model Permission {
-  id      String @id @default(cuid())
-  action  String // e.g., 'create', 'read', 'update', 'delete'
-  subject String // e.g., 'Contract', 'User'
-  roles   PermissionsOnRoles[]
-
-  @@unique([action, subject])
-}
-
-model PermissionsOnRoles {
-  role         Role       @relation(fields: [roleId], references: [id])
-  roleId       String
-  permission   Permission @relation(fields: [permissionId], references: [id])
-  permissionId String
-  assignedAt   DateTime   @default(now())
-
-  @@id([roleId, permissionId])
-}
+// ============================================================================
+// TEMPLATES
+// ============================================================================
 
 model ContractTemplate {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  clauses   Json
-  structure Json
-  metadata  Json
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name          String
+  description   String?
+  category      String?
+  
+  // Template structure
+  clauses       Json
+  structure     Json
+  metadata      Json
+  
+  // Versioning
+  version       Int      @default(1)
+  isActive      Boolean  @default(true)
+  parentId      String?  // For template versioning
+  
+  // Usage statistics
+  usageCount    Int      @default(0)
+  lastUsedAt    DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  
   @@unique([tenantId, name, version])
   @@index([tenantId])
+  @@index([category])
+  @@index([isActive])
+  @@index([tenantId, category])
+}
+
+// ============================================================================
+// AUDIT AND MONITORING
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  action      String   // e.g., 'contract.upload', 'user.login'
+  resource    String?  // Resource identifier
+  resourceType String? // e.g., 'contract', 'user'
+  
+  details     Json?
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+  @@index([tenantId, action])
+}
+
+model Metric {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name        String
+  value       Decimal  @db.Decimal(15, 4)
+  unit        String?
+  tags        Json?
+  
+  timestamp   DateTime @default(now())
+  
+  @@index([name])
+  @@index([tenantId])
+  @@index([timestamp])
+  @@index([name, timestamp])
+  @@index([tenantId, name, timestamp])
 }

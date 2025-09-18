@@ -1,22 +1,106 @@
-// Prefer workspace import, fallback to relative if needed
-let ReportArtifactV1Schema: any;
+/**
+ * Enhanced Report Worker with LLM-Powered Executive Intelligence
+ * Provides comprehensive executive reports with AI-generated insights and recommendations
+ */
+
+import pkg from 'schemas';
+const { ReportArtifactV1Schema } = pkg;
+import db from 'clients-db';
+
+// Import OpenAI directly
+let OpenAI: any;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  ReportArtifactV1Schema = require('schemas').ReportArtifactV1Schema;
+  OpenAI = require('openai').OpenAI;
 } catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  ReportArtifactV1Schema = require('../../packages/schemas/src').ReportArtifactV1Schema;
+  OpenAI = null;
 }
 
-let db: any;
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('clients-db');
-  db = mod.default || mod;
-} catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('../../packages/clients/db');
-  db = mod.default || mod;
+export interface ReportBestPractices {
+  executiveSummary: ExecutiveSummary;
+  strategicRecommendations: StrategicRecommendation[];
+  riskManagement: RiskManagementInsight[];
+  operationalExcellence: OperationalExcellence[];
+  financialOptimization: FinancialOptimization[];
+  complianceGuidance: ComplianceGuidance[];
+  performanceMetrics: PerformanceMetric[];
+}
+
+export interface ExecutiveSummary {
+  overallAssessment: string;
+  keyFindings: string[];
+  criticalIssues: string[];
+  opportunityAreas: string[];
+  recommendedActions: string[];
+  executiveRecommendation: string;
+  confidenceLevel: string;
+}
+
+export interface StrategicRecommendation {
+  category: string;
+  recommendation: string;
+  businessImpact: string;
+  implementationComplexity: string;
+  timeline: string;
+  resourceRequirements: string[];
+  successMetrics: string[];
+  riskFactors: string[];
+  dependencies: string[];
+}
+
+export interface RiskManagementInsight {
+  riskCategory: string;
+  riskDescription: string;
+  currentMitigation: string;
+  recommendedEnhancements: string[];
+  priorityLevel: string;
+  implementationSteps: string[];
+  monitoringApproach: string;
+  escalationTriggers: string[];
+}
+
+export interface OperationalExcellence {
+  operationalArea: string;
+  currentState: string;
+  bestPracticeGap: string;
+  improvementOpportunity: string;
+  implementationApproach: string;
+  expectedBenefits: string[];
+  timeline: string;
+  successIndicators: string[];
+}
+
+export interface FinancialOptimization {
+  financialArea: string;
+  currentPerformance: string;
+  optimizationOpportunity: string;
+  potentialSavings: string;
+  investmentRequired: string;
+  paybackPeriod: string;
+  implementationSteps: string[];
+  riskConsiderations: string[];
+}
+
+export interface ComplianceGuidance {
+  complianceArea: string;
+  currentStatus: string;
+  regulatoryRequirements: string[];
+  gapAnalysis: string;
+  remediationPlan: string[];
+  timeline: string;
+  responsibleParties: string[];
+  monitoringRequirements: string[];
+}
+
+export interface PerformanceMetric {
+  metricCategory: string;
+  currentPerformance: string;
+  industryBenchmark: string;
+  targetPerformance: string;
+  improvementPlan: string;
+  measurementFrequency: string;
+  reportingMechanism: string;
+  actionTriggers: string[];
 }
 
 // Import storage client and puppeteer for PDF rendering

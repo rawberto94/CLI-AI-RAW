@@ -87,6 +87,34 @@ export const ComplianceArtifactV1Schema = z.object({
     })),
 });
 
+export const FinancialArtifactV1Schema = z.object({
+    metadata: BaseMetadataSchema,
+    financialTerms: z.array(z.object({
+        termId: z.string().optional(),
+        termType: z.string(),
+        termSubcategory: z.string().optional(),
+        description: z.string(),
+        amount: z.string().optional(),
+        frequency: z.string().optional(),
+        conditions: z.string().optional(),
+        businessImpact: z.string().optional(),
+        cashFlowImpact: z.enum(['positive', 'negative', 'neutral']).optional(),
+        riskLevel: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        complianceRequirements: z.string().optional(),
+    })),
+    financialSummary: z.object({
+        totalValue: z.string().optional(),
+        paymentTerms: z.number().optional(),
+        penalties: z.number().optional(),
+        obligations: z.number().optional(),
+        controls: z.number().optional(),
+        riskLevel: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+        cashFlowImpact: z.enum(['positive', 'negative', 'neutral']).optional(),
+    }).optional(),
+    confidenceScore: z.number().min(0).max(100).optional(),
+    bestPractices: z.any().optional(),
+});
+
 export const BenchmarkArtifactV1Schema = z.object({
     metadata: BaseMetadataSchema,
     benchmarks: z.array(z.object({
@@ -171,6 +199,7 @@ export const schemas = {
   RatesArtifactV1Schema,
   RiskArtifactV1Schema,
   ComplianceArtifactV1Schema,
+  FinancialArtifactV1Schema,
   BenchmarkArtifactV1Schema,
   ReportArtifactV1Schema,
   DocumentTypeEnum,
@@ -188,6 +217,7 @@ export const jsonSchemas = {
   RatesArtifactV1Schema: zodToJsonSchema(RatesArtifactV1Schema, "RatesArtifactV1Schema"),
   RiskArtifactV1Schema: zodToJsonSchema(RiskArtifactV1Schema, "RiskArtifactV1Schema"),
   ComplianceArtifactV1Schema: zodToJsonSchema(ComplianceArtifactV1Schema, "ComplianceArtifactV1Schema"),
+  FinancialArtifactV1Schema: zodToJsonSchema(FinancialArtifactV1Schema, "FinancialArtifactV1Schema"),
   BenchmarkArtifactV1Schema: zodToJsonSchema(BenchmarkArtifactV1Schema, "BenchmarkArtifactV1Schema"),
   ReportArtifactV1Schema: zodToJsonSchema(ReportArtifactV1Schema, "ReportArtifactV1Schema"),
   DocumentTypeEnum: zodToJsonSchema(DocumentTypeEnum, "DocumentTypeEnum"),

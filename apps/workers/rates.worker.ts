@@ -93,29 +93,29 @@ export interface PerformanceIncentive {
   payoutMechanism: string;
 }
 
-let db: any;
+// Import enhanced database layer
+let getDatabaseManager: any;
+let getRepositoryManager: any;
+let db: any; // Keep for backward compatibility
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('clients-db');
-  db = mod.default || mod;
+  const dbModule = require('clients-db');
+  getDatabaseManager = dbModule.getDatabaseManager;
+  getRepositoryManager = dbModule.getRepositoryManager;
+  db = dbModule.default || dbModule; // Fallback to old client
 } catch {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const mod = require('../../packages/clients/db');
-  db = mod.default || mod;
+  const dbModule = require('../../packages/clients/db');
+  getDatabaseManager = dbModule.getDatabaseManager;
+  getRepositoryManager = dbModule.getRepositoryManager;
+  db = dbModule.default || dbModule;
 }
 
-// Optional OpenAI client
-let OpenAIClient: any;
+// Import OpenAI directly
+let OpenAI: any;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  OpenAIClient = require('clients-openai').OpenAIClient;
+  OpenAI = require('openai').OpenAI;
 } catch {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    OpenAIClient = require('../../packages/clients/openai').OpenAIClient;
-  } catch {
-    OpenAIClient = null;
-  }
+  OpenAI = null;
 }
 
 // Utilities (normalize and mapping) from workspace utils
@@ -199,7 +199,7 @@ export async function runRates(job: { data: { docId: string } }) {
     } catch { /* swallow table parse errors */ }
   }
 
-  if (USE_LLM && apiKey && OpenAIClient && textContent) {
+  if (USE_LLM && apiKey && OpenAI && textContent) {
     try {
       // Retrieve likely relevant sections for rates using embeddings when enabled
       let ragContext = '';
@@ -212,7 +212,7 @@ export async function runRates(job: { data: { docId: string } }) {
           ragContext = (scored || []).map((s: any) => s.text).join('\n---\n');
         }
       } catch {}
-      client = new OpenAIClient(apiKey);
+      client = new OpenAI({ apiKey });
   const schema = {
     type: 'object',
     // Allow extra top-level props from the model to avoid brittle failures (we only read .items)
@@ -468,7 +468,7 @@ Provide 3-5 specific, actionable recommendations in each category based on the a
 `;
 
   try {
-    const response = await client.createChatCompletion({
+    const response = await client.chat.completions.create({
       model: 'gpt-4o',
       messages: [
         {

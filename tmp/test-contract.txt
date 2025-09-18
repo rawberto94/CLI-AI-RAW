@@ -1,14 +1,79 @@
-This is a test contract document.
+PROFESSIONAL SERVICES AGREEMENT
 
-AGREEMENT between ACME Corporation and XYZ Services Ltd.
+This Professional Services Agreement ("Agreement") is entered into on January 15, 2024, 
+between TechCorp Inc., a Delaware corporation ("Client") and ConsultingPro LLC, 
+a California limited liability company ("Consultant").
 
-This contract governs the provision of services from XYZ Services Ltd to ACME Corporation.
+SCOPE OF WORK:
+The Consultant will provide the following services:
+1. Software development services including frontend and backend development
+2. Database design and optimization
+3. API development and integration
+4. Code review and quality assurance
+5. Technical documentation and training
 
-The term of this agreement shall be for one year, with rates as follows:
-- Base service fee: $10,000 per month
-- Premium support: $2,000 per month  
-- Implementation fee: $5,000 one-time
+PAYMENT TERMS AND RATES:
+The following hourly rates apply:
+- Senior Software Engineer: $180/hour
+- Mid-level Software Engineer: $140/hour  
+- Junior Software Engineer: $95/hour
+- Technical Lead: $220/hour
+- Project Manager: $160/hour
+- DevOps Engineer: $170/hour
 
-Both parties agree to maintain confidentiality and comply with applicable regulations.
+Payment terms: Net 30 days from invoice date.
+Late payment penalty: 1.5% per month on overdue amounts.
 
-IN WITNESS WHEREOF, the parties have executed this Agreement.
+CONFIDENTIALITY:
+Both parties acknowledge that they may have access to certain confidential information. 
+Each party agrees to maintain in confidence all proprietary and confidential information 
+received from the other party and not to disclose such information to third parties.
+
+INTELLECTUAL PROPERTY:
+All work product, including but not limited to software code, documentation, and 
+technical specifications created by Consultant shall be the exclusive property of Client.
+Consultant hereby assigns all rights, title, and interest in such work product to Client.
+
+TERMINATION:
+Either party may terminate this agreement with thirty (30) days written notice.
+In the event of termination, Consultant shall deliver all work product and 
+confidential information to Client.
+
+LIMITATION OF LIABILITY:
+Consultant's total liability under this agreement shall not exceed the total amount 
+paid by Client to Consultant under this agreement. Neither party shall be liable 
+for any indirect, incidental, or consequential damages.
+
+INDEMNIFICATION:
+Each party agrees to indemnify and hold harmless the other party from any claims, 
+damages, or expenses arising from their breach of this agreement or negligent acts.
+
+FORCE MAJEURE:
+Neither party shall be liable for any delay or failure to perform due to causes 
+beyond their reasonable control, including but not limited to acts of God, 
+government actions, or natural disasters.
+
+GOVERNING LAW:
+This agreement shall be governed by and construed in accordance with the laws 
+of the State of California. Any disputes shall be resolved through binding arbitration.
+
+DATA PROTECTION:
+Both parties agree to comply with all applicable data protection laws, including 
+GDPR where applicable. Personal data shall be processed in accordance with 
+applicable privacy regulations.
+
+PERFORMANCE STANDARDS:
+Consultant agrees to maintain the following service levels:
+- 99.5% uptime for delivered systems
+- Response time within 24 hours for critical issues
+- Code quality standards as defined in the project specifications
+
+This agreement constitutes the entire agreement between the parties and supersedes 
+all prior negotiations, representations, or agreements relating to the subject matter.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+TechCorp Inc.                    ConsultingPro LLC
+By: John Smith                   By: Jane Doe
+Title: CEO                       Title: Managing Partner
+Date: January 15, 2024          Date: January 15, 2024

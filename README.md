@@ -107,6 +107,22 @@ Notes:
 
 ## 🛠️ Operations & Production
 
+### Simplified Analysis Pipeline (Local Dev)
+If Redis or workers are not running you can force a dependency‑free analysis enqueue path so uploads succeed without BullMQ parent/child relationships.
+
+Run API in simplified mode:
+
+```bash
+PIPELINE_SIMPLE=1 pnpm -w --filter api dev
+```
+
+Behavior:
+- Skips parent job linkage; enqueues each stage independently.
+- Automatic fallback: even without the flag, if full pipeline enqueue fails the server logs a warning and falls back to the simplified mode.
+- Use full mode by unsetting the variable and ensuring Redis + workers are running.
+
+Environment values accepted: `1`, `true` (case-insensitive) enable the flag.
+
 ### Health & Readiness
 - Liveness: `GET /healthz` returns `{ status: 'ok' }`.
 - Readiness: `GET /api/ready` performs best-effort DB (Prisma) and queue (BullMQ) pings; returns 503 if a core dependency is down.

@@ -157,8 +157,21 @@ async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
       priority: 10
     });
 
-    // Stage 2: Parallel analysis after ingestion
+    // Stage 2: Enhanced parallel analysis after ingestion
+    const templateQueue = getQueue('template');
+    const financialQueue = getQueue('financial');
+    
     await Promise.all([
+      templateQueue.add('analyze-template', { docId, tenantId }, { 
+        parent: { id: ingestionJob.id, queue: (ingestionQueue as any).name || 'ingestion' },
+        attempts: 3,
+        priority: 9
+      }),
+      financialQueue.add('analyze-financial', { docId, tenantId }, { 
+        parent: { id: ingestionJob.id, queue: (ingestionQueue as any).name || 'ingestion' },
+        attempts: 3,
+        priority: 9
+      }),
       overviewQueue.add('analyze-overview', { docId, tenantId }, { 
         parent: { id: ingestionJob.id, queue: (ingestionQueue as any).name || 'ingestion' },
         attempts: 3,
@@ -203,8 +216,8 @@ async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
       priority: 4
     });
 
-    logger.info(`Enqueued complete analysis pipeline for document ${docId}`);
-    return { ingestionJobId: ingestionJob.id, stages: 8 };
+    logger.info(`Enqueued enhanced analysis pipeline for document ${docId} with template and financial analysis`);
+    return { ingestionJobId: ingestionJob.id, stages: 10 };
   } catch (err: any) {
     const msg = String(err?.message || err);
     logger.warn({ docId, err: msg }, 'Pipeline enqueue failed; using simplified pipeline');
