@@ -7,16 +7,23 @@ import { Worker, Queue, QueueEvents, FlowProducer } from 'bullmq';
 // Import all worker functions
 import { runCompliance } from './compliance.worker';
 import { runIngestion } from './ingestion.worker';
-import { runOverview } from './overview.worker';
-import { runClauses } from './clauses.worker';
+// import { runOverview } from './overview.worker';    // Temporarily disabled  
+// import { runClauses } from './clauses.worker';      // Temporarily disabled
 import { runRates } from './rates.worker';
-import { runRisk } from './risk.worker';
+// import { runRisk } from './risk.worker';            // Temporarily disabled
 import { runBenchmark } from './benchmark.worker';
 import { runReport } from './report.worker';
 import { runSearch } from './search.worker';
 import { runTemplate } from './template.worker';
 import { runFinancial } from './financial.worker';
 import { runEnhancedOverview } from './enhanced-overview.worker';
+
+// Debug environment loading
+console.log('🔧 Worker Environment Debug:');
+console.log('  Working Directory:', process.cwd());
+console.log('  OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET (length: ' + process.env.OPENAI_API_KEY.length + ')' : 'NOT SET');
+console.log('  OPENAI_MODEL:', process.env.OPENAI_MODEL || 'NOT SET');
+console.log('  ENABLE_LLM:', process.env.ENABLE_LLM || 'NOT SET (defaults to true)');
 
 // Best-effort: if key env vars are missing, try known monorepo .env locations
 (() => {
@@ -71,12 +78,12 @@ const workerProcessors: Record<string, (data: any) => Promise<any>> = {
   ingestion: runIngestion,
   template: runTemplate,
   financial: runFinancial,
-  overview: runOverview,
-  'enhanced-overview': (job: any) => enhancedOverviewWorker.process(job),
-  clauses: runClauses,
+  // overview: runOverview,       // Temporarily disabled
+  'enhanced-overview': runEnhancedOverview,
+  // clauses: runClauses,         // Temporarily disabled
   rates: runRates,
   benchmark: runBenchmark,
-  risk: runRisk,
+  // risk: runRisk,               // Temporarily disabled
   report: runReport,
   compliance: runCompliance,
   search: runSearch,

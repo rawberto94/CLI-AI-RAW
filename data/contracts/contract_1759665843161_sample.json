@@ -1,0 +1,56 @@
+{
+  "id": "contract_1759665843161_sample",
+  "filename": "Sample_SOW_Contract.pdf",
+  "originalName": "Sample_SOW_Contract.pdf",
+  "uploadDate": "2025-10-05T12:04:03.161Z",
+  "status": "completed",
+  "fileSize": 245760,
+  "mimeType": "application/pdf",
+  "processing": {
+    "status": "completed",
+    "progress": 100,
+    "currentStage": "completed",
+    "completedAt": "2025-10-05T12:04:03.165Z"
+  },
+  "extractedData": {
+    "metadata": {
+      "contractType": "Statement of Work",
+      "parties": [
+        "Acme Corp",
+        "Tech Solutions Inc"
+      ],
+      "effectiveDate": "2024-01-01",
+      "expirationDate": "2024-12-31",
+      "totalValue": "$500,000",
+      "currency": "USD"
+    },
+    "financial": {
+      "totalValue": 500000,
+      "currency": "USD",
+      "rateCards": [
+        {
+          "title": "Professional Services Rate Card",
+          "rates": [
+            {
+              "role": "Senior Consultant",
+              "hourlyRate": 175,
+              "dailyRate": 1400
+            },
+            {
+              "role": "Developer",
+              "hourlyRate": 110,
+              "dailyRate": 880
+            }
+          ]
+        }
+      ]
+    },
+    "risk": {
+      "overallScore": 45,
+      "level": "Low"
+    },
+    "compliance": {
+      "score": 92
+    }
+  }
+}

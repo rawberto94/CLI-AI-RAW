@@ -3,8 +3,7 @@
  * Provides comprehensive executive reports with AI-generated insights and recommendations
  */
 
-import pkg from 'schemas';
-const { ReportArtifactV1Schema } = pkg;
+import { ReportArtifactV1Schema } from 'schemas';
 import db from 'clients-db';
 
 // Import OpenAI directly
@@ -239,7 +238,7 @@ export async function runReport(job: { data: { docId: string } }) {
   };
 
   const artifact = ReportArtifactV1Schema.parse(artifactData);
-  await db.artifact.create({ data: { contractId: docId, type: 'REPORT', data: artifact as any } });
+  await db.artifact.create({ data: { contractId: docId, type: 'REPORT', data: artifact as any, tenantId: 'default' } });
   console.log(`[worker:report] Finished report for ${docId}`);
   return { docId };
 }

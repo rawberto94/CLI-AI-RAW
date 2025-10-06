@@ -83,13 +83,17 @@ Include reasoning for your confidence assessment.
 };
 
 /**
- * Shared LLM Client with enhanced error handling and retry logic
+ * Enhanced Shared LLM Client with comprehensive features
  */
 export class SharedLLMClient {
   private client: OpenAI | null = null;
   private config: LLMConfig;
   private retryAttempts = 3;
   private retryDelay = 1000; // ms
+  private tokenUsage: { prompt: number; completion: number; total: number } = { prompt: 0, completion: 0, total: 0 };
+  private requestCount = 0;
+  private errorCount = 0;
+  private rateLimiter: { requests: number; resetTime: number } = { requests: 0, resetTime: Date.now() + 60000 };
 
   constructor(config: LLMConfig = {}) {
     this.config = {
@@ -116,7 +120,7 @@ export class SharedLLMClient {
   }
 
   /**
-   * Generate LLM response with retry logic and confidence scoring
+   * Generate LLM response with enhanced features
    */
   async generateResponse<T = any>(
     systemPrompt: string,
@@ -132,11 +136,16 @@ export class SharedLLMClient {
       throw new Error('LLM client not available - missing API key or client initialization failed');
     }
 
+    // Check rate limiting
+    await this.checkRateLimit();
+
     const startTime = Date.now();
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
       try {
+        this.requestCount++;
+        
         const response = await this.client!.chat.completions.create({
           model: this.config.model!,
           messages: [
@@ -150,31 +159,22 @@ export class SharedLLMClient {
         const responseText = response.choices?.[0]?.message?.content || '';
         const processingTime = Date.now() - startTime;
 
+        // Track token usage
+        const tokens = {
+          prompt: response.usage?.prompt_tokens || 0,
+          completion: response.usage?.completion_tokens || 0,
+          total: response.usage?.total_tokens || 0
+        };
+        this.updateTokenUsage(tokens);
+
         // Parse response based on format
         let parsedData: T;
         let confidence = 85; // Default confidence
 
         if (options.responseFormat === 'json') {
-          try {
-            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const jsonData = JSON.parse(jsonMatch[0]);
-              parsedData = jsonData as T;
-              
-              // Extract confidence if available
-              if (typeof jsonData === 'object' && jsonData.confidence) {
-                confidence = jsonData.confidence;
-              } else if (typeof jsonData === 'object' && jsonData.overallConfidence) {
-                confidence = jsonData.overallConfidence;
-              }
-            } else {
-              throw new Error('No JSON found in response');
-            }
-          } catch (parseError) {
-            console.warn('Failed to parse JSON response, using text fallback');
-            parsedData = responseText as unknown as T;
-            confidence = 60; // Lower confidence for unparsed response
-          }
+          const parseResult = this.parseJsonResponse(responseText);
+          parsedData = parseResult.data as T;
+          confidence = parseResult.confidence;
         } else if (options.parser) {
           parsedData = options.parser(responseText);
         } else {
@@ -186,15 +186,12 @@ export class SharedLLMClient {
           confidence,
           processingTime,
           model: this.config.model!,
-          tokens: {
-            prompt: response.usage?.prompt_tokens || 0,
-            completion: response.usage?.completion_tokens || 0,
-            total: response.usage?.total_tokens || 0
-          }
+          tokens
         };
 
       } catch (error) {
         lastError = error as Error;
+        this.errorCount++;
         console.warn(`LLM request attempt ${attempt} failed:`, error);
 
         if (attempt < this.retryAttempts) {
@@ -204,6 +201,109 @@ export class SharedLLMClient {
     }
 
     throw new Error(`LLM request failed after ${this.retryAttempts} attempts: ${lastError?.message}`);
+  }
+
+  /**
+   * Generate response with fallback mechanism
+   */
+  async generateWithFallback<T>(
+    systemPrompt: string,
+    userPrompt: string,
+    fallback: () => Promise<T>,
+    options: {
+      temperature?: number;
+      maxTokens?: number;
+      responseFormat?: 'json' | 'text';
+      parser?: (text: string) => T;
+    } = {}
+  ): Promise<{ data: T; usedFallback: boolean; confidence: number; processingTime: number }> {
+    const startTime = Date.now();
+    
+    try {
+      const response = await this.generateResponse<T>(systemPrompt, userPrompt, options);
+      return {
+        data: response.data,
+        usedFallback: false,
+        confidence: response.confidence,
+        processingTime: response.processingTime
+      };
+    } catch (error) {
+      console.warn('LLM generation failed, using fallback:', error);
+      
+      try {
+        const fallbackData = await fallback();
+        return {
+          data: fallbackData,
+          usedFallback: true,
+          confidence: 60, // Lower confidence for fallback
+          processingTime: Date.now() - startTime
+        };
+      } catch (fallbackError) {
+        throw new Error(`Both LLM and fallback failed: ${error}, ${fallbackError}`);
+      }
+    }
+  }
+
+  /**
+   * Validate response format and content
+   */
+  async validateResponse(response: string, expectedFormat: 'json' | 'text'): Promise<{
+    isValid: boolean;
+    errors: string[];
+    parsedData?: any;
+  }> {
+    const errors: string[] = [];
+    let parsedData: any;
+
+    if (!response || response.trim().length === 0) {
+      errors.push('Response is empty');
+      return { isValid: false, errors };
+    }
+
+    if (expectedFormat === 'json') {
+      try {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          errors.push('No JSON object found in response');
+        } else {
+          parsedData = JSON.parse(jsonMatch[0]);
+        }
+      } catch (parseError) {
+        errors.push(`Invalid JSON format: ${parseError}`);
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      parsedData
+    };
+  }
+
+  /**
+   * Get token usage metrics
+   */
+  getTokenUsageMetrics(): { prompt: number; completion: number; total: number; requests: number; errors: number } {
+    return {
+      ...this.tokenUsage,
+      requests: this.requestCount,
+      errors: this.errorCount
+    };
+  }
+
+  /**
+   * Get cost estimate based on token usage
+   */
+  getCostEstimate(): { estimatedCost: number; currency: string; model: string } {
+    // Rough cost estimates (these would need to be updated based on actual pricing)
+    const costPerToken = this.config.model?.includes('gpt-4') ? 0.00003 : 0.000002;
+    const estimatedCost = this.tokenUsage.total * costPerToken;
+    
+    return {
+      estimatedCost: Math.round(estimatedCost * 100) / 100,
+      currency: 'USD',
+      model: this.config.model!
+    };
   }
 
   /**
@@ -268,6 +368,66 @@ ${options.responseFormat === 'json' ? 'Return your response as valid JSON.' : ''
 `;
 
     return this.generateResponse(systemPrompt, userPrompt, options);
+  }
+
+  /**
+   * Check and enforce rate limiting
+   */
+  private async checkRateLimit(): Promise<void> {
+    const now = Date.now();
+    
+    // Reset rate limiter every minute
+    if (now > this.rateLimiter.resetTime) {
+      this.rateLimiter.requests = 0;
+      this.rateLimiter.resetTime = now + 60000;
+    }
+    
+    // Simple rate limiting - max 50 requests per minute
+    if (this.rateLimiter.requests >= 50) {
+      const waitTime = this.rateLimiter.resetTime - now;
+      console.warn(`Rate limit reached, waiting ${waitTime}ms`);
+      await this.delay(waitTime);
+      this.rateLimiter.requests = 0;
+      this.rateLimiter.resetTime = Date.now() + 60000;
+    }
+    
+    this.rateLimiter.requests++;
+  }
+
+  /**
+   * Parse JSON response with error handling
+   */
+  private parseJsonResponse(responseText: string): { data: any; confidence: number } {
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const jsonData = JSON.parse(jsonMatch[0]);
+        
+        // Extract confidence if available
+        let confidence = 85;
+        if (typeof jsonData === 'object' && jsonData.confidence) {
+          confidence = jsonData.confidence;
+        } else if (typeof jsonData === 'object' && jsonData.overallConfidence) {
+          confidence = jsonData.overallConfidence;
+        }
+        
+        return { data: jsonData, confidence };
+      } else {
+        throw new Error('No JSON found in response');
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse JSON response, using text fallback');
+      return { data: responseText, confidence: 60 };
+    }
+  }
+
+  /**
+   * Update token usage tracking
+   */
+  private updateTokenUsage(tokens: { prompt: number; completion: number; total: number }): void {
+    this.tokenUsage.prompt += tokens.prompt;
+    this.tokenUsage.completion += tokens.completion;
+    this.tokenUsage.total += tokens.total;
   }
 
   /**

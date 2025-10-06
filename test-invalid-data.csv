@@ -1,0 +1,10 @@
+Role,Level,Rate,Currency,Period
+,Senior,850,USD,Daily
+Software Engineer,Senior,-100,USD,Daily
+Project Manager,Lead,950,XXX,Daily
+Business Analyst,Mid,0,USD,Daily
+Data Scientist,,900,USD,Daily
+DevOps Engineer,Senior,abc,USD,Daily
+QA Engineer,Senior,850,USD,
+,,,,,
+Software Engineer,Senior,850,USD,Daily

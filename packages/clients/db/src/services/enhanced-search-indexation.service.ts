@@ -1,17 +1,12 @@
 import type { PrismaClient } from '@prisma/client';
-// Try to import DatabaseManager, fallback if not available
-let DatabaseManager: any;
-try {
-  const dbModule = require('../database-manager');
-  DatabaseManager = dbModule.DatabaseManager;
-} catch (error) {
-  // Fallback DatabaseManager
-  DatabaseManager = class {
-    prisma: any;
-    constructor() {
-      this.prisma = require('clients-db').default;
-    }
-  };
+
+// Fallback DatabaseManager class
+class DatabaseManager {
+  prisma: PrismaClient;
+  
+  constructor(prisma: PrismaClient) {
+    this.prisma = prisma;
+  }
 }
 
 export interface SearchableContent {
@@ -289,7 +284,7 @@ export class EnhancedSearchIndexationService {
           searchableContent.riskFactors.push(risk.description);
         }
         if (risk.severity) {
-          searchableContent.riskLevel = this.determineHighestRiskLevel(searchableContent.riskLevel, risk.severity);
+          searchableContent.riskLevel = this.determineHighestRiskLevel(searchableContent.riskLevel || 'low', risk.severity);
         }
       });
     }

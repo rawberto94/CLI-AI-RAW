@@ -1,0 +1,286 @@
+{
+  "id": "contract_1759282027781_d0rra5qbf",
+  "filename": "Statement_of_Work_Corporate.pdf",
+  "uploadDate": "2025-10-01T01:27:07.782Z",
+  "status": "completed",
+  "tenantId": "demo",
+  "uploadedBy": "demo-user",
+  "fileSize": 6968,
+  "mimeType": "application/pdf",
+  "filePath": "/Users/maddalena/Downloads/contract-intelligence/apps/web/uploads/demo/contract_1759282027781_d0rra5qbf_Statement_of_Work_Corporate.pdf",
+  "processing": {
+    "status": "completed",
+    "progress": 100,
+    "currentStage": "completed",
+    "startTime": "2025-10-01T01:27:07.782Z",
+    "llmEnabled": false,
+    "completedAt": "2025-10-01T01:27:07.808Z"
+  },
+  "extractedData": {
+    "text": "STATEMENT OF WORK\nProfessional Services Agreement\n\nContract Number: SOW-2024-001\nEffective Date: January 1, 2024\nExpiration Date: December 31, 2024\nTotal Contract Value: $750,000 USD\n\nPARTIES:\nClient: TechCorp Inc.\nAddress: 123 Technology Drive, San Francisco, CA 94105\nContact: John Smith, VP of Technology\n\nService Provider: Digital Solutions LLC\nAddress: 456 Innovation Boulevard, Austin, TX 78701\nContact: Sarah Johnson, Managing Director\n\nSCOPE OF WORK:\nThis Statement of Work outlines professional services for digital transformation platform development including:\n- System architecture design and implementation\n- Application development and testing\n- Data migration and integration services\n- User training and change management\n- Post-implementation support and maintenance\n\nPAYMENT SCHEDULE:\nTotal contract value: $750,000 USD payable as follows:\n- Project Kickoff: $187,500 (25%) - Due: January 15, 2024\n- Phase 1 Completion: $187,500 (25%) - Due: April 15, 2024\n- Phase 2 Completion: $187,500 (25%) - Due: July 15, 2024\n- Final Delivery: $187,500 (25%) - Due: October 15, 2024\n\nEXPENSE BREAKDOWN:\n- Professional Services: $525,000 (70%)\n- Travel & Expenses: $112,500 (15%)\n- Software Licenses: $75,000 (10%)\n- Contingency: $37,500 (5%)\n\nPROFESSIONAL SERVICES RATE CARD:\nEffective Date: January 1, 2024 | Currency: USD\n- Senior Consultant: $175/hr ($1,400/day) - Consulting\n- Project Manager: $150/hr ($1,200/day) - Management\n- Business Analyst: $125/hr ($1,000/day) - Analysis\n- Senior Developer: $140/hr ($1,120/day) - Development\n- Developer: $110/hr ($880/day) - Development\n- QA Engineer: $115/hr ($920/day) - Quality Assurance\n- Technical Architect: $195/hr ($1,560/day) - Architecture\n- Data Analyst: $120/hr ($960/day) - Analysis\n- UX Designer: $130/hr ($1,040/day) - Design\n- DevOps Engineer: $165/hr ($1,320/day) - Operations\n\nTERMS:\nPayment Terms: Net 30 days from invoice date\nLate Payment Penalties: 1.5% per month compounded monthly\nTermination: Either party may terminate with 30 days written notice\nLiability: Service Provider's liability limited to total contract value\nGoverning Law: State of California\nCompliance: SOX and GDPR compliant",
+    "metadata": {
+      "contractType": "Statement of Work",
+      "parties": [
+        "TechCorp Inc.",
+        "Digital Solutions LLC"
+      ],
+      "effectiveDate": "2024-01-01",
+      "expirationDate": "2024-12-31",
+      "totalValue": 750000,
+      "currency": "USD"
+    },
+    "financial": {
+      "totalValue": 750000,
+      "currency": "USD",
+      "paymentTerms": "Net 30 days",
+      "milestones": 4,
+      "penalties": "Late payment: 1.5% per month",
+      "extractedTables": [
+        {
+          "title": "Payment Schedule",
+          "type": "payment_schedule",
+          "rows": [
+            {
+              "milestone": "Project Kickoff",
+              "percentage": "25%",
+              "amount": "$187,500",
+              "dueDate": "January 15, 2024"
+            },
+            {
+              "milestone": "Phase 1 Completion",
+              "percentage": "25%",
+              "amount": "$187,500",
+              "dueDate": "April 15, 2024"
+            },
+            {
+              "milestone": "Phase 2 Completion",
+              "percentage": "25%",
+              "amount": "$187,500",
+              "dueDate": "July 15, 2024"
+            },
+            {
+              "milestone": "Final Delivery",
+              "percentage": "25%",
+              "amount": "$187,500",
+              "dueDate": "October 15, 2024"
+            }
+          ]
+        },
+        {
+          "title": "Expense Breakdown",
+          "type": "expense_breakdown",
+          "rows": [
+            {
+              "category": "Professional Services",
+              "budgetAmount": "$525,000",
+              "percentage": "70%"
+            },
+            {
+              "category": "Travel & Expenses",
+              "budgetAmount": "$112,500",
+              "percentage": "15%"
+            },
+            {
+              "category": "Software Licenses",
+              "budgetAmount": "$75,000",
+              "percentage": "10%"
+            },
+            {
+              "category": "Contingency",
+              "budgetAmount": "$37,500",
+              "percentage": "5%"
+            }
+          ]
+        }
+      ],
+      "rateCards": [
+        {
+          "title": "Professional Services Rate Card",
+          "type": "hourly_rates",
+          "currency": "USD",
+          "effectiveDate": "2024-01-01",
+          "rates": [
+            {
+              "role": "Senior Consultant",
+              "level": "Senior",
+              "hourlyRate": 175,
+              "dailyRate": 1400,
+              "marketBenchmark": 165,
+              "variance": "+6.1%",
+              "annualSavingsOpportunity": "$20,800"
+            },
+            {
+              "role": "Project Manager",
+              "level": "Senior",
+              "hourlyRate": 150,
+              "dailyRate": 1200,
+              "marketBenchmark": 145,
+              "variance": "+3.4%",
+              "annualSavingsOpportunity": "$10,400"
+            },
+            {
+              "role": "Business Analyst",
+              "level": "Mid",
+              "hourlyRate": 125,
+              "dailyRate": 1000,
+              "marketBenchmark": 120,
+              "variance": "+4.2%",
+              "annualSavingsOpportunity": "$10,400"
+            },
+            {
+              "role": "Senior Developer",
+              "level": "Senior",
+              "hourlyRate": 140,
+              "dailyRate": 1120,
+              "marketBenchmark": 155,
+              "variance": "-9.7%",
+              "annualSavingsOpportunity": "Market Rate"
+            },
+            {
+              "role": "Developer",
+              "level": "Mid",
+              "hourlyRate": 110,
+              "dailyRate": 880,
+              "marketBenchmark": 115,
+              "variance": "-4.3%",
+              "annualSavingsOpportunity": "Market Rate"
+            },
+            {
+              "role": "QA Engineer",
+              "level": "Mid",
+              "hourlyRate": 115,
+              "dailyRate": 920,
+              "marketBenchmark": 115,
+              "variance": "0.0%",
+              "annualSavingsOpportunity": "Market Rate"
+            },
+            {
+              "role": "Technical Architect",
+              "level": "Principal",
+              "hourlyRate": 195,
+              "dailyRate": 1560,
+              "marketBenchmark": 185,
+              "variance": "+5.4%",
+              "annualSavingsOpportunity": "$20,800"
+            },
+            {
+              "role": "Data Analyst",
+              "level": "Mid",
+              "hourlyRate": 120,
+              "dailyRate": 960,
+              "marketBenchmark": 125,
+              "variance": "-4.0%",
+              "annualSavingsOpportunity": "Market Rate"
+            },
+            {
+              "role": "UX Designer",
+              "level": "Mid",
+              "hourlyRate": 130,
+              "dailyRate": 1040,
+              "marketBenchmark": 135,
+              "variance": "-3.7%",
+              "annualSavingsOpportunity": "Market Rate"
+            },
+            {
+              "role": "DevOps Engineer",
+              "level": "Senior",
+              "hourlyRate": 165,
+              "dailyRate": 1320,
+              "marketBenchmark": 160,
+              "variance": "+3.1%",
+              "annualSavingsOpportunity": "$10,400"
+            }
+          ],
+          "insights": {
+            "totalAnnualSavings": "$62,400",
+            "averageVariance": "+1.8%",
+            "ratesAboveMarket": 4,
+            "ratesBelowMarket": 4,
+            "recommendation": "Negotiate rates for Senior Consultant and Technical Architect roles"
+          }
+        }
+      ]
+    },
+    "risk": {
+      "overallScore": 67,
+      "level": "Medium",
+      "factors": [
+        {
+          "type": "Liability Cap",
+          "severity": "High",
+          "description": "Liability cap may be insufficient for contract value"
+        },
+        {
+          "type": "Auto-Renewal",
+          "severity": "Medium",
+          "description": "Contract has automatic renewal clause"
+        },
+        {
+          "type": "Termination Notice",
+          "severity": "Low",
+          "description": "Standard 30-day termination notice period"
+        }
+      ]
+    },
+    "compliance": {
+      "score": 85,
+      "checks": [
+        {
+          "regulation": "GDPR",
+          "status": "Compliant",
+          "details": "Data protection clauses present"
+        },
+        {
+          "regulation": "SOX",
+          "status": "Compliant",
+          "details": "Financial controls documented"
+        },
+        {
+          "regulation": "Industry Standards",
+          "status": "Partial",
+          "details": "Some industry-specific clauses missing"
+        }
+      ]
+    },
+    "clauses": {
+      "total": 23,
+      "categories": [
+        {
+          "type": "Payment Terms",
+          "count": 3,
+          "riskLevel": "Low"
+        },
+        {
+          "type": "Termination",
+          "count": 2,
+          "riskLevel": "Medium"
+        },
+        {
+          "type": "Liability",
+          "count": 4,
+          "riskLevel": "High"
+        },
+        {
+          "type": "Intellectual Property",
+          "count": 5,
+          "riskLevel": "Low"
+        },
+        {
+          "type": "Confidentiality",
+          "count": 3,
+          "riskLevel": "Low"
+        },
+        {
+          "type": "Compliance",
+          "count": 6,
+          "riskLevel": "Medium"
+        }
+      ]
+    },
+    "processingInfo": {
+      "llmEnabled": false,
+      "analysisType": "Enhanced Mock Analysis",
+      "timestamp": "2025-10-01T01:27:07.805Z"
+    }
+  }
+}

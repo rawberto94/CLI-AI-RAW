@@ -3,18 +3,46 @@ import { TenantRepository } from './tenant.repository';
 import { ContractRepository } from './contract.repository';
 import { UserRepository } from './user.repository';
 import { ArtifactRepository } from './artifact.repository';
+import { ImportJobRepository } from './import-job.repository';
+import { RateCardRepository } from './rate-card.repository';
+import { RoleRateRepository } from './role-rate.repository';
+import { MappingTemplateRepository } from './mapping-template.repository';
+import { ContractArtifactRepository } from './contract-artifact.repository';
+import { ClauseRepository } from './clause.repository';
+import { ProcessingJobRepository } from './processing-job.repository';
+import { PartyRepository } from './party.repository';
 
 export class RepositoryManager {
   public readonly tenants: TenantRepository;
   public readonly contracts: ContractRepository;
   public readonly users: UserRepository;
   public readonly artifacts: ArtifactRepository;
+  public readonly importJobs: ImportJobRepository;
+  public readonly rateCards: RateCardRepository;
+  public readonly roleRates: RoleRateRepository;
+  public readonly mappingTemplates: MappingTemplateRepository;
+  
+  // Contract Repository Optimization repositories
+  public readonly contractArtifacts: ContractArtifactRepository;
+  public readonly clauses: ClauseRepository;
+  public readonly processingJobs: ProcessingJobRepository;
+  public readonly parties: PartyRepository;
 
   constructor(private databaseManager: DatabaseManager) {
     this.tenants = new TenantRepository(databaseManager);
     this.contracts = new ContractRepository(databaseManager);
     this.users = new UserRepository(databaseManager);
     this.artifacts = new ArtifactRepository(databaseManager);
+    this.importJobs = new ImportJobRepository(databaseManager);
+    this.rateCards = new RateCardRepository(databaseManager);
+    this.roleRates = new RoleRateRepository(databaseManager);
+    this.mappingTemplates = new MappingTemplateRepository(databaseManager);
+    
+    // Contract Repository Optimization repositories
+    this.contractArtifacts = new ContractArtifactRepository(databaseManager);
+    this.clauses = new ClauseRepository(databaseManager);
+    this.processingJobs = new ProcessingJobRepository(databaseManager);
+    this.parties = new PartyRepository(databaseManager);
   }
 
   // Transaction support
@@ -57,6 +85,14 @@ export class RepositoryManager {
       contracts: false,
       users: false,
       artifacts: false,
+      importJobs: false,
+      rateCards: false,
+      roleRates: false,
+      mappingTemplates: false,
+      contractArtifacts: false,
+      clauses: false,
+      processingJobs: false,
+      parties: false,
     };
 
     try {
@@ -88,6 +124,62 @@ export class RepositoryManager {
       console.error('Artifacts repository health check failed:', error);
     }
 
+    try {
+      await this.importJobs.count();
+      checks.importJobs = true;
+    } catch (error) {
+      console.error('ImportJobs repository health check failed:', error);
+    }
+
+    try {
+      await this.rateCards.count();
+      checks.rateCards = true;
+    } catch (error) {
+      console.error('RateCards repository health check failed:', error);
+    }
+
+    try {
+      await this.roleRates.count();
+      checks.roleRates = true;
+    } catch (error) {
+      console.error('RoleRates repository health check failed:', error);
+    }
+
+    try {
+      await this.mappingTemplates.count();
+      checks.mappingTemplates = true;
+    } catch (error) {
+      console.error('MappingTemplates repository health check failed:', error);
+    }
+
+    try {
+      await this.contractArtifacts.count();
+      checks.contractArtifacts = true;
+    } catch (error) {
+      console.error('ContractArtifacts repository health check failed:', error);
+    }
+
+    try {
+      await this.clauses.count();
+      checks.clauses = true;
+    } catch (error) {
+      console.error('Clauses repository health check failed:', error);
+    }
+
+    try {
+      await this.processingJobs.count();
+      checks.processingJobs = true;
+    } catch (error) {
+      console.error('ProcessingJobs repository health check failed:', error);
+    }
+
+    try {
+      await this.parties.count();
+      checks.parties = true;
+    } catch (error) {
+      console.error('Parties repository health check failed:', error);
+    }
+
     const allHealthy = Object.values(checks).every(check => check);
 
     return {
@@ -104,6 +196,10 @@ export class RepositoryManager {
     totalArtifacts: number;
     activeTenantsCount: number;
     processingContractsCount: number;
+    totalImportJobs: number;
+    totalRateCards: number;
+    totalRoleRates: number;
+    totalMappingTemplates: number;
   }> {
     const [
       totalTenants,
@@ -112,6 +208,10 @@ export class RepositoryManager {
       totalArtifacts,
       activeTenantsCount,
       processingContractsCount,
+      totalImportJobs,
+      totalRateCards,
+      totalRoleRates,
+      totalMappingTemplates,
     ] = await Promise.all([
       this.tenants.count(),
       this.contracts.count(),
@@ -121,6 +221,10 @@ export class RepositoryManager {
       this.contracts.count({ 
         status: { in: ['UPLOADED', 'PROCESSING'] } 
       }),
+      this.importJobs.count(),
+      this.rateCards.count(),
+      this.roleRates.count(),
+      this.mappingTemplates.count(),
     ]);
 
     return {
@@ -130,6 +234,10 @@ export class RepositoryManager {
       totalArtifacts,
       activeTenantsCount,
       processingContractsCount,
+      totalImportJobs,
+      totalRateCards,
+      totalRoleRates,
+      totalMappingTemplates,
     };
   }
 }
@@ -140,6 +248,14 @@ export * from './tenant.repository';
 export * from './contract.repository';
 export * from './user.repository';
 export * from './artifact.repository';
+export * from './import-job.repository';
+export * from './rate-card.repository';
+export * from './role-rate.repository';
+export * from './mapping-template.repository';
+export * from './contract-artifact.repository';
+export * from './clause.repository';
+export * from './processing-job.repository';
+export * from './party.repository';
 
 // Create a singleton repository manager
 let repositoryManagerInstance: RepositoryManager | null = null;

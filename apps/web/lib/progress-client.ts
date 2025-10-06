@@ -329,7 +329,8 @@ export class ProgressClient {
       
       eventSource.addEventListener('progress', (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const messageEvent = event as MessageEvent;
+          const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'progress', ...data });
         } catch (error) {
           console.error('Failed to parse SSE progress event:', error);
@@ -338,7 +339,8 @@ export class ProgressClient {
       
       eventSource.addEventListener('error', (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const messageEvent = event as MessageEvent;
+          const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'error', ...data });
         } catch (error) {
           console.error('Failed to parse SSE error event:', error);
@@ -347,7 +349,8 @@ export class ProgressClient {
       
       eventSource.addEventListener('completed', (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const messageEvent = event as MessageEvent;
+          const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'completed', ...data });
         } catch (error) {
           console.error('Failed to parse SSE completed event:', error);
@@ -356,7 +359,8 @@ export class ProgressClient {
       
       eventSource.addEventListener('failed', (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const messageEvent = event as MessageEvent;
+          const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'failed', ...data });
         } catch (error) {
           console.error('Failed to parse SSE failed event:', error);

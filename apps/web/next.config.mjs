@@ -18,6 +18,23 @@ const nextConfig = {
 		removeConsole: process.env.NODE_ENV === 'production',
 	},
 	
+	// Webpack configuration to handle server-side modules
+	webpack: (config, { isServer }) => {
+		if (!isServer) {
+			// Exclude server-side modules from client bundle
+			config.resolve.fallback = {
+				...config.resolve.fallback,
+				dns: false,
+				net: false,
+				tls: false,
+				fs: false,
+				child_process: false,
+				worker_threads: false,
+			};
+		}
+		return config;
+	},
+	
 	// Security headers
 	async headers() {
 		return [

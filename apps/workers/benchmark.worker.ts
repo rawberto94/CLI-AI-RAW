@@ -22,8 +22,7 @@ import {
 } from './shared/best-practices-utils';
 
 // Import schemas
-import pkg from 'schemas';
-const { BenchmarkArtifactV1Schema } = pkg;
+import { BenchmarkArtifactV1Schema } from 'schemas';
 
 // Initialize shared clients
 const llmClient = getSharedLLMClient();
@@ -109,24 +108,22 @@ export async function runBenchmark(job: { data: { docId: string; tenantId?: stri
   
   try {
     // Get contract to ensure we have tenantId
-    const contract = await db.contract.findUnique({ where: { id: docId } });
+    const contractResult = await dbClient.findContract(docId, false);
+    if (!contractResult.success || !contractResult.data) {
+      throw new Error(`Contract ${docId} not found`);
+    }
+    const contract = contractResult.data;
     if (!contract) throw new Error(`Contract ${docId} not found`);
     
     const contractTenantId = tenantId || contract.tenantId;
     
     // Get existing artifacts for comprehensive analysis
-    const rates = await db.artifact.findFirst({ 
-      where: { contractId: docId, type: 'RATES' }, 
-      orderBy: { createdAt: 'desc' } 
-    });
-    const financial = await db.artifact.findFirst({ 
-      where: { contractId: docId, type: 'FINANCIAL' }, 
-      orderBy: { createdAt: 'desc' } 
-    });
-    const ingestion = await db.artifact.findFirst({ 
-      where: { contractId: docId, type: 'INGESTION' }, 
-      orderBy: { createdAt: 'desc' } 
-    });
+    const ratesResult = await dbClient.findArtifacts(docId, 'RATES', 1);
+    const rates = ratesResult.success && ratesResult.data?.[0] ? ratesResult.data[0] : null;
+    const financialResult = await dbClient.findArtifacts(docId, 'FINANCIAL', 1);
+    const financial = financialResult.success && financialResult.data?.[0] ? financialResult.data[0] : null;
+    const ingestionResult = await dbClient.findArtifacts(docId, 'INGESTION', 1);
+    const ingestion = ingestionResult.success && ingestionResult.data?.[0] ? ingestionResult.data[0] : null;
     
     const text = String((ingestion?.data as any)?.content || '');
     const ratesData = (rates?.data as any)?.rates || [];
@@ -139,9 +136,8 @@ export async function runBenchmark(job: { data: { docId: string; tenantId?: stri
     const apiKey = process.env['OPENAI_API_KEY'];
     const model = process.env['OPENAI_MODEL'] || 'gpt-4o';
     
-    if (apiKey && OpenAI && text.trim().length > 0) {
+    if (isLLMAvailable() && text.trim().length > 0) {
       try {
-        client = new OpenAI({ apiKey });
         console.log('🧠 Analyzing market benchmarks with GPT-4 expert system...');
         
         const benchmarkAnalysis = await performAdvancedBenchmarkAnalysis(
@@ -185,49 +181,15 @@ export async function runBenchmark(job: { data: { docId: string; tenantId?: stri
     benchmarks,
   });
 
-  await db.artifact.create({
-    data: {
-      contractId: docId,
-      type: 'BENCHMARK',
-      data: artifact as any,
-      tenantId: contractTenantId,
-    },
+  await dbClient.createArtifact({
+    contractId: docId,
+    type: 'BENCHMARK',
+    data: artifact as any,
+    tenantId: contractTenantId,
   });
 
   console.log(`[worker:benchmark] Finished benchmark analysis for ${docId}`);
   return { docId };
-}
-    const artifact = BenchmarkArtifactV1Schema.parse({
-      metadata: {
-        docId,
-        fileType: 'pdf',
-        totalPages: 1,
-        ocrRate: 0,
-        provenance: [{ 
-          worker: 'benchmark', 
-          timestamp: new Date().toISOString(), 
-          durationMs: Date.now() - startTime,
-          model: model,
-          confidenceScore: confidenceScore
-        }],
-      },
-      benchmarks,
-      confidenceScore,
-      bestPractices: bestPractices
-    });
-
-    await db.artifact.create({
-      data: {
-        contractId: docId,
-        type: 'BENCHMARK',
-        data: artifact as any,
-        tenantId: contractTenantId,
-      },
-    });
-
-    console.log(`🎯 Finished enhanced benchmark analysis for ${docId} (${benchmarks.length} benchmarks identified)`);
-    return { docId, benchmarksIdentified: benchmarks.length };
-    
   } catch (error) {
     console.error(`❌ Benchmark analysis failed for ${docId}:`, error);
     throw error;

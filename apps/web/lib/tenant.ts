@@ -1,34 +1,72 @@
-// Ensure a tenant id exists for local/dev usage. Defaults to "demo" on localhost.
-export function ensureTenantId(defaultId = 'demo'): string | undefined {
-  try {
-    if (typeof window === 'undefined') return undefined
-  const envDefault = (process.env.NEXT_PUBLIC_DEFAULT_TENANT_ID || '').trim()
-  let tid = localStorage.getItem('x-tenant-id') || ''
-    // Default only in non-production OR localhost style hosts
-    const isLocal = /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(window.location.hostname)
-    if (!tid && (process.env.NODE_ENV !== 'production' || isLocal)) {
-      tid = envDefault || defaultId
-      localStorage.setItem('x-tenant-id', tid)
-    }
-    return tid || undefined
-  } catch {
-    return undefined
+/**
+ * Tenant Management Utilities
+ * Handles multi-tenant functionality
+ */
+
+// Get tenant ID from environment or default
+export function getTenantId(): string {
+  if (typeof window !== 'undefined') {
+    // Client-side: check localStorage or use default
+    return localStorage.getItem('tenantId') || process.env.NEXT_PUBLIC_TENANT_ID || 'default';
+  }
+  // Server-side: use environment variable
+  return process.env.NEXT_PUBLIC_TENANT_ID || 'default';
+}
+
+// Set tenant ID (client-side only)
+export function setTenantId(tenantId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('tenantId', tenantId);
   }
 }
 
-export function tenantHeaders(extra?: HeadersInit): HeadersInit {
-  try {
-    if (typeof window !== 'undefined') {
-      const tid = ensureTenantId() || ''
-      return { ...(extra || {}), ...(tid ? { 'x-tenant-id': tid } : {}) }
-    }
-  } catch {}
-  return extra || {}
+// Ensure tenant ID exists (creates default if needed)
+export function ensureTenantId(): string {
+  const tenantId = getTenantId();
+  if (typeof window !== 'undefined' && !localStorage.getItem('tenantId')) {
+    localStorage.setItem('tenantId', tenantId);
+  }
+  return tenantId;
 }
 
-export function getTenantId(): string | undefined {
-  try {
-    if (typeof window !== 'undefined') return ensureTenantId()
-  } catch {}
-  return undefined
+// Get tenant headers for API requests
+export function tenantHeaders(): Record<string, string> {
+  return {
+    'X-Tenant-ID': getTenantId(),
+  };
 }
+
+// Tenant configuration
+export interface TenantConfig {
+  id: string;
+  name: string;
+  features: {
+    aiChat: boolean;
+    batchUpload: boolean;
+    advancedAnalytics: boolean;
+  };
+}
+
+// Get tenant configuration
+export function getTenantConfig(): TenantConfig {
+  const tenantId = getTenantId();
+  
+  // Default configuration
+  return {
+    id: tenantId,
+    name: tenantId === 'default' ? 'Default Tenant' : tenantId,
+    features: {
+      aiChat: true,
+      batchUpload: true,
+      advancedAnalytics: true,
+    },
+  };
+}
+
+export default {
+  getTenantId,
+  setTenantId,
+  ensureTenantId,
+  tenantHeaders,
+  getTenantConfig,
+};

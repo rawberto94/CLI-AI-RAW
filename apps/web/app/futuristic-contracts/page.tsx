@@ -1,33 +1,34 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+
 import { 
   Brain, 
   Sparkles, 
   Rocket, 
   Search, 
-  TrendingUp, 
-  Shield,
+  TrendingUp,
   Zap,
-  Users,
   Settings,
   Bell,
   Menu,
   X,
   ChevronRight,
-  Star,
-  Heart,
-  Lightbulb
+  Lightbulb,
+  Briefcase
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GuidedOnboarding } from '@/components/futuristic/GuidedOnboarding';
 import { SmartContractDiscovery } from '@/components/futuristic/SmartContractDiscovery';
 import { PredictiveDashboard } from '@/components/futuristic/PredictiveDashboard';
+import { CTODemoDashboard } from '@/components/futuristic/CTODemoDashboard';
+import { ProcurementBPODashboard } from '@/components/futuristic/ProcurementBPODashboard';
+import { RealTimeProcessingDemo } from '@/components/futuristic/RealTimeProcessingDemo';
 import { ConversationalSearch } from '@/components/futuristic/ConversationalSearch';
 
-type ViewMode = 'onboarding' | 'dashboard' | 'discovery' | 'chat' | 'analytics';
+type ViewMode = 'onboarding' | 'dashboard' | 'cto-demo' | 'bpo-demo' | 'processing' | 'discovery' | 'chat' | 'analytics';
 
 interface UserProfile {
   name: string;
@@ -53,11 +54,32 @@ export default function FuturisticContractsPage() {
     if (!userProfile.completedOnboarding && userProfile.isNewUser) {
       setCurrentView('onboarding');
     } else {
-      setCurrentView('dashboard');
+      setCurrentView('bpo-demo');
     }
   }, [userProfile]);
 
   const navigationItems = [
+    {
+      id: 'bpo-demo' as ViewMode,
+      name: 'BPO Intelligence',
+      icon: <Briefcase className="w-5 h-5" />,
+      description: 'Procurement BPO transformation',
+      badge: 'Revolutionary'
+    },
+    {
+      id: 'cto-demo' as ViewMode,
+      name: 'Executive Dashboard',
+      icon: <Rocket className="w-5 h-5" />,
+      description: 'CTO-ready business intelligence',
+      badge: 'Demo Ready'
+    },
+    {
+      id: 'processing' as ViewMode,
+      name: 'Live Processing',
+      icon: <Zap className="w-5 h-5" />,
+      description: 'Real-time AI contract analysis',
+      badge: 'Live Demo'
+    },
     {
       id: 'dashboard' as ViewMode,
       name: 'AI Dashboard',
@@ -78,13 +100,6 @@ export default function FuturisticContractsPage() {
       icon: <Brain className="w-5 h-5" />,
       description: 'Conversational contract analysis',
       badge: null
-    },
-    {
-      id: 'analytics' as ViewMode,
-      name: 'Risk Analytics',
-      icon: <Shield className="w-5 h-5" />,
-      description: 'Advanced risk assessment',
-      badge: null
     }
   ];
 
@@ -92,28 +107,20 @@ export default function FuturisticContractsPage() {
     switch (currentView) {
       case 'onboarding':
         return <GuidedOnboarding />;
+      case 'bpo-demo':
+        return <ProcurementBPODashboard />;
+      case 'cto-demo':
+        return <CTODemoDashboard />;
+      case 'processing':
+        return <RealTimeProcessingDemo />;
       case 'dashboard':
         return <PredictiveDashboard />;
       case 'discovery':
         return <SmartContractDiscovery />;
       case 'chat':
         return <ConversationalSearch />;
-      case 'analytics':
-        return (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Shield className="w-12 h-12 text-white" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Advanced Risk Analytics</h2>
-            <p className="text-gray-600 mb-6">Coming soon - AI-powered risk assessment and compliance monitoring</p>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              <Bell className="w-4 h-4 mr-2" />
-              Notify Me When Ready
-            </Button>
-          </div>
-        );
       default:
-        return <PredictiveDashboard />;
+        return <ProcurementBPODashboard />;
     }
   };
 
@@ -207,7 +214,7 @@ export default function FuturisticContractsPage() {
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">{item.name}</h3>
-                      {item.badge && (
+                      {(item.badge != null) && (
                         <Badge className={`text-xs ${
                           currentView === item.id
                             ? 'bg-white/20 text-white'
@@ -283,6 +290,24 @@ export default function FuturisticContractsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                {currentView === 'bpo-demo' && (
+                  <>
+                    <Briefcase className="w-6 h-6 text-purple-600" />
+                    BPO Intelligence Platform
+                  </>
+                )}
+                {currentView === 'cto-demo' && (
+                  <>
+                    <Rocket className="w-6 h-6 text-blue-600" />
+                    Executive Dashboard
+                  </>
+                )}
+                {currentView === 'processing' && (
+                  <>
+                    <Zap className="w-6 h-6 text-purple-600" />
+                    Live Processing Demo
+                  </>
+                )}
                 {currentView === 'dashboard' && (
                   <>
                     <TrendingUp className="w-6 h-6 text-blue-600" />
@@ -301,18 +326,14 @@ export default function FuturisticContractsPage() {
                     AI Assistant
                   </>
                 )}
-                {currentView === 'analytics' && (
-                  <>
-                    <Shield className="w-6 h-6 text-red-600" />
-                    Risk Analytics
-                  </>
-                )}
               </h1>
               <p className="text-gray-600">
+                {currentView === 'bpo-demo' && 'Revolutionary AI-powered procurement intelligence for BPO transformation'}
+                {currentView === 'cto-demo' && 'Executive-ready business intelligence and strategic insights'}
+                {currentView === 'processing' && 'Watch AI analyze contracts in real-time with parallel processing'}
                 {currentView === 'dashboard' && 'Real-time insights and predictive analytics'}
                 {currentView === 'discovery' && 'Find contracts with natural language queries'}
                 {currentView === 'chat' && 'Conversational contract analysis and insights'}
-                {currentView === 'analytics' && 'Advanced risk assessment and compliance monitoring'}
               </p>
             </div>
             

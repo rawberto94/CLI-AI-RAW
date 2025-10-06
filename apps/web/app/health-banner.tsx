@@ -1,7 +1,12 @@
 "use client"
 import { useEffect, useState } from "react"
 import { tenantHeaders, ensureTenantId } from "@/lib/tenant"
-import { logger } from "utils"
+
+// Simple client-side logger to avoid server-side dependencies
+const logger = {
+  warn: (msg: string) => console.warn(`[Health] ${msg}`),
+  error: (msg: string) => console.error(`[Health] ${msg}`)
+}
 
 export function HealthBanner() {
   const [api, setApi] = useState<'ok'|'down'|'?'>('?')

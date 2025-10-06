@@ -105,11 +105,28 @@ try {
 
 // In-memory store for demo run tracking
 import { createRun, getRun, markStage, getSection, addContract, getContract, listContracts, saveArtifacts, updateContract, getAllRates, addManualRate, bulkAddManualRates, listManualRates, deleteManualRate, updateManualRate, getNegotiation, initNegotiation, updateNegotiationContent, addComment as addNegComment, addHighlight as addNegHighlight, addSuggestion as addNegSuggestion, resolveSuggestion as resolveNegSuggestion, approveSuggestion as approveNegSuggestion, listNegotiationTasks, getNegotiationAudit, shareNegotiation, lockBaseline, listPendingRates, addPendingRate, bulkAddPendingRates, updatePendingRate, approvePendingRate, rejectPendingRate, validatePendingRateShape, approveAllValidPending, bulkRejectPending, normalization, addTemplate, getTemplate, listTemplates, updateTemplate, updateNegotiationMeta, approveHighlight as approveNegHighlight, addAppEvent, listAppEvents, findDocByContentHash, rememberDocContentHash, addTask, updateTask, listTemplateHistory, createTemplateVersion, getAllBundles, bulkArchiveContracts, bulkDeleteContracts, getSection as getArtifactSection, updateCommentStatus, bulkUnarchiveContracts, listSnapshots, createSnapshot, diffSnapshot, listTenants, addTenant, getTenant, updateTenant, deleteTenant } from './store';
+
+// Shared Redis-based contract store for workers
+import { getSharedContractStore, type SharedContractStore } from 'utils';
 import { matchRole, matchSupplier, addRoleAlias, addSupplierAlias, reloadNormalizationDicts, importNormalization } from './normalization/matcher';
 import { handlePortfolioQuery, handleContractQuery } from './query';
 // import fs from 'fs';
 // import path from 'path';
 import { randomBytes } from 'crypto';
+
+// Initialize shared contract store for worker communication
+let sharedStore: SharedContractStore | null = null;
+try {
+  const redisUrl = process.env['REDIS_URL'];
+  if (redisUrl) {
+    sharedStore = getSharedContractStore({ url: redisUrl });
+    logger.info('Shared contract store initialized with Redis');
+  } else {
+    logger.warn('REDIS_URL not set. Workers will not have access to shared contract data');
+  }
+} catch (e) {
+  logger.error({ err: e }, 'Failed to initialize shared contract store');
+}
 
 // --- QUEUE ORCHESTRATION ---
 async function enqueueAnalysisPipeline(docId: string, tenantId: string) {
@@ -775,6 +792,17 @@ async function runAnalysisPipeline(docId: string, tenantId: string, text: string
 }
 
 // --- SINGLE UPLOAD ---
+// Direct upload endpoint (alias for main upload)
+fastify.post('/uploads/direct', async (request, reply) => {
+  // Forward to main upload handler
+  return fastify.inject({
+    method: 'POST',
+    url: '/uploads',
+    headers: request.headers,
+    payload: request.body
+  });
+});
+
 fastify.post('/uploads', async (request, reply) => {
   try {
     const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
@@ -887,6 +915,23 @@ fastify.post('/uploads', async (request, reply) => {
         storagePath 
       });
       
+      // Store contract in shared Redis store for workers
+      if (sharedStore && fileText) {
+        try {
+          await sharedStore.storeContract({
+            docId: id,
+            pdfText: fileText,
+            fileName: filename,
+            uploadedAt: new Date(),
+            metadata: { tenantId, mimetype, storagePath }
+          });
+          request.log.info({ docId: id }, 'Contract stored in shared Redis store');
+        } catch (e) {
+          request.log.error({ err: e, docId: id }, 'Failed to store contract in shared store');
+          // Continue processing even if shared store fails
+        }
+      }
+      
       // Invalidate contract cache for this tenant
       contractCache.clear(`contract_list`);
       contractCache.delete('contract_detail', `${tenantId}_${id}`);
@@ -991,6 +1036,23 @@ fastify.post('/uploads/batch', async (request, reply) => {
         tenantId,
         storagePath 
       });
+      
+      // Store contract in shared Redis store for workers
+      if (sharedStore && fileText) {
+        try {
+          await sharedStore.storeContract({
+            docId: id,
+            pdfText: fileText,
+            fileName: filename,
+            uploadedAt: new Date(),
+            metadata: { tenantId, storagePath }
+          });
+          request.log.info({ docId: id }, 'Contract stored in shared Redis store (batch)');
+        } catch (e) {
+          request.log.error({ err: e, docId: id }, 'Failed to store contract in shared store (batch)');
+          // Continue processing even if shared store fails
+        }
+      }
       
       request.log.info({ docId: id }, 'Contract added');
       
@@ -1264,6 +1326,78 @@ fastify.register(async (fastify) => {
     }
   });
 
+  // --- DOCUMENTS/CONTRACTS (API prefix) ---
+  // List documents (alias for contracts)
+  fastify.get('/documents', async (request, reply) => {
+    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
+    const { archived } = (request.query as any) || {};
+
+    const cacheKey = `${tenantId}_${archived === 'true' ? 'archived' : 'active'}`;
+    let items = contractCache.get('contract_list', cacheKey);
+    if (items === null) {
+      items = listContracts(tenantId, { archived: String(archived) === 'true' });
+      contractCache.set('contract_list', cacheKey, items, 120);
+    }
+    return reply.code(200).send(items);
+  });
+
+  // Get document details (alias for contract detail)
+  fastify.get('/documents/:id', async (request, reply) => {
+    const { id } = request.params as any;
+    const tenantId = (request as any).tenantId;
+    
+    const cacheKey = `${tenantId}_${id}`;
+    let contract = contractCache.get('contract_detail', cacheKey);
+    
+    if (contract === null) {
+      contract = getContract(id, tenantId);
+      if (!contract) {
+        return reply.code(404).send({ error: 'Contract not found' });
+      }
+      contractCache.set('contract_detail', cacheKey, contract, 300);
+    }
+    
+    // Get artifacts for this contract
+    const artifacts = getArtifacts(id);
+    const artifactList = artifacts ? Object.entries(artifacts).map(([type, data]) => ({
+      id: `${id}-${type}`,
+      contractId: id,
+      type: type.toUpperCase(),
+      title: (data as any)?.title || `${type} analysis`,
+      content: (data as any)?.content || JSON.stringify(data),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })) : [];
+    
+    return reply.code(200).send({ 
+      ...contract, 
+      artifacts: artifactList 
+    });
+  });
+
+  // Get document artifacts
+  fastify.get('/documents/:id/artifacts', async (request, reply) => {
+    const { id } = request.params as any;
+    const tenantId = (request as any).tenantId;
+    const contract = getContract(id, tenantId);
+    if (!contract) {
+      return reply.code(404).send({ error: 'Contract not found' });
+    }
+    
+    const artifacts = getArtifacts(id);
+    const artifactList = artifacts ? Object.entries(artifacts).map(([type, data]) => ({
+      id: `${id}-${type}`,
+      contractId: id,
+      type: type.toUpperCase(),
+      title: (data as any)?.title || `${type} analysis`,
+      content: (data as any)?.content || JSON.stringify(data),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })) : [];
+    
+    return reply.code(200).send(artifactList);
+  });
+
   // --- BENCHMARKS ---
   fastify.get('/benchmarks', async (_request, reply) => {
     try {
@@ -1308,20 +1442,6 @@ fastify.register(healthRoutes);
 fastify.register(authRoutes, { prefix: '/api/auth' });
 
 // --- SERVER START ---
-// Legacy compatibility routes (non-prefixed)
-fastify.get('/contracts/:id/status', async (request, reply) => {
-  try {
-    const { id } = request.params as any;
-    const tenantId = (request as any).tenantId || (request.headers['x-tenant-id'] as string) || 'demo';
-    const contract = getContract(id, tenantId);
-    if (!contract) return reply.code(404).send({ error: 'Contract not found' });
-    const run = getRun(id);
-    return reply.code(200).send({ id: contract.id, name: contract.name, status: contract.status, stages: run?.stages, updatedAt: contract.updatedAt });
-  } catch (e) {
-    request.log.error(e, 'legacy-status-error');
-    return reply.code(500).send({ error: 'Internal Server Error' });
-  }
-});
 const start = async () => {
   try {
     const port = env.PORT ? parseInt(env.PORT as string, 10) : 3001;

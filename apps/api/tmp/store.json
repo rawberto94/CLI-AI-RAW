@@ -5546,111 +5546,744 @@
         "tenantId": "demo",
         "storagePath": "memory://doc-1758029097494-0f196f"
       }
+    ],
+    [
+      "doc-1758161275039-284d80",
+      {
+        "id": "doc-1758161275039-284d80",
+        "name": "Deloitte_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T02:07:55.181Z",
+        "updatedAt": "2025-09-18T02:07:55.181Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758161275039-284d80"
+      }
+    ],
+    [
+      "doc-1758161275225-3d0a50",
+      {
+        "id": "doc-1758161275225-3d0a50",
+        "name": "Deloitte_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T02:07:55.226Z",
+        "updatedAt": "2025-09-18T02:07:55.226Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758161275225-3d0a50"
+      }
+    ],
+    [
+      "doc-1758161275342-55e35b",
+      {
+        "id": "doc-1758161275342-55e35b",
+        "name": "Ernst_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T02:07:55.344Z",
+        "updatedAt": "2025-09-18T02:07:55.344Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758161275342-55e35b"
+      }
+    ],
+    [
+      "doc-1758197146279-b4c674",
+      {
+        "id": "doc-1758197146279-b4c674",
+        "name": "Deloitte_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:05:46.375Z",
+        "updatedAt": "2025-09-18T12:05:46.375Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758197146279-b4c674"
+      }
+    ],
+    [
+      "doc-1758197146608-3906d2",
+      {
+        "id": "doc-1758197146608-3906d2",
+        "name": "Deloitte_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:05:46.609Z",
+        "updatedAt": "2025-09-18T12:05:46.609Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758197146608-3906d2"
+      }
+    ],
+    [
+      "doc-1758197146732-a7eb6b",
+      {
+        "id": "doc-1758197146732-a7eb6b",
+        "name": "Ernst_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:05:46.733Z",
+        "updatedAt": "2025-09-18T12:05:46.733Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758197146732-a7eb6b"
+      }
+    ],
+    [
+      "doc-1758197146897-fbcb43",
+      {
+        "id": "doc-1758197146897-fbcb43",
+        "name": "Ernst_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:05:46.898Z",
+        "updatedAt": "2025-09-18T12:05:46.898Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758197146897-fbcb43"
+      }
+    ],
+    [
+      "doc-1758197146995-f70d60",
+      {
+        "id": "doc-1758197146995-f70d60",
+        "name": "Ernst_SOW_3.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:05:46.997Z",
+        "updatedAt": "2025-09-18T12:05:46.997Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758197146995-f70d60"
+      }
+    ],
+    [
+      "doc-1758198365056-0926f9",
+      {
+        "id": "doc-1758198365056-0926f9",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:26:05.063Z",
+        "updatedAt": "2025-09-18T12:26:05.063Z",
+        "tenantId": "default",
+        "storagePath": "memory://doc-1758198365056-0926f9"
+      }
+    ],
+    [
+      "doc-1758198435448-88c5e8",
+      {
+        "id": "doc-1758198435448-88c5e8",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T12:27:15.449Z",
+        "updatedAt": "2025-09-18T12:27:15.449Z",
+        "tenantId": "default",
+        "storagePath": "memory://doc-1758198435448-88c5e8"
+      }
+    ],
+    [
+      "doc-1758201031197-66ddde",
+      {
+        "id": "doc-1758201031197-66ddde",
+        "name": "demo-presentation-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:10:31.297Z",
+        "updatedAt": "2025-09-18T13:10:31.297Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758201031197-66ddde"
+      }
+    ],
+    [
+      "doc-1758201466341-e27f35",
+      {
+        "id": "doc-1758201466341-e27f35",
+        "name": "Deloitte_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:17:46.344Z",
+        "updatedAt": "2025-09-18T13:17:46.344Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758201466341-e27f35"
+      }
+    ],
+    [
+      "doc-1758201466429-88ce80",
+      {
+        "id": "doc-1758201466429-88ce80",
+        "name": "Deloitte_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:17:46.431Z",
+        "updatedAt": "2025-09-18T13:17:46.431Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758201466429-88ce80"
+      }
+    ],
+    [
+      "doc-1758201466715-36bf5c",
+      {
+        "id": "doc-1758201466715-36bf5c",
+        "name": "Ernst_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:17:46.717Z",
+        "updatedAt": "2025-09-18T13:17:46.717Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758201466715-36bf5c"
+      }
+    ],
+    [
+      "doc-1758201466969-c93e94",
+      {
+        "id": "doc-1758201466969-c93e94",
+        "name": "Ernst_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:17:46.970Z",
+        "updatedAt": "2025-09-18T13:17:46.970Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758201466969-c93e94"
+      }
+    ],
+    [
+      "doc-1758201467042-891b5c",
+      {
+        "id": "doc-1758201467042-891b5c",
+        "name": "Ernst_SOW_3.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:17:47.044Z",
+        "updatedAt": "2025-09-18T13:17:47.044Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758201467042-891b5c"
+      }
+    ],
+    [
+      "doc-1758202282375-53e564",
+      {
+        "id": "doc-1758202282375-53e564",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:31:22.376Z",
+        "updatedAt": "2025-09-18T13:31:22.376Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758202282375-53e564"
+      }
+    ],
+    [
+      "doc-1758202327629-3dcd08",
+      {
+        "id": "doc-1758202327629-3dcd08",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T13:32:07.630Z",
+        "updatedAt": "2025-09-18T13:32:07.630Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758202327629-3dcd08"
+      }
+    ],
+    [
+      "doc-1758218984877-6207a0",
+      {
+        "id": "doc-1758218984877-6207a0",
+        "name": "Deloitte_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T18:09:44.989Z",
+        "updatedAt": "2025-09-18T18:09:44.989Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758218984877-6207a0"
+      }
+    ],
+    [
+      "doc-1758218985161-39253b",
+      {
+        "id": "doc-1758218985161-39253b",
+        "name": "Deloitte_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T18:09:45.162Z",
+        "updatedAt": "2025-09-18T18:09:45.162Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758218985161-39253b"
+      }
+    ],
+    [
+      "doc-1758218985581-7d3383",
+      {
+        "id": "doc-1758218985581-7d3383",
+        "name": "Ernst_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T18:09:45.583Z",
+        "updatedAt": "2025-09-18T18:09:45.583Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758218985581-7d3383"
+      }
+    ],
+    [
+      "doc-1758218985655-046976",
+      {
+        "id": "doc-1758218985655-046976",
+        "name": "Ernst_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T18:09:45.656Z",
+        "updatedAt": "2025-09-18T18:09:45.656Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758218985655-046976"
+      }
+    ],
+    [
+      "doc-1758218985796-5ac997",
+      {
+        "id": "doc-1758218985796-5ac997",
+        "name": "Ernst_SOW_3.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T18:09:45.797Z",
+        "updatedAt": "2025-09-18T18:09:45.797Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758218985796-5ac997"
+      }
+    ],
+    [
+      "doc-1758227036473-fc2395",
+      {
+        "id": "doc-1758227036473-fc2395",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T20:23:56.477Z",
+        "updatedAt": "2025-09-18T20:23:56.477Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758227036473-fc2395"
+      }
+    ],
+    [
+      "doc-1758229480345-09a806",
+      {
+        "id": "doc-1758229480345-09a806",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:04:40.363Z",
+        "updatedAt": "2025-09-18T21:04:40.363Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758229480345-09a806"
+      }
+    ],
+    [
+      "doc-1758229503129-eb28ba",
+      {
+        "id": "doc-1758229503129-eb28ba",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:05:03.133Z",
+        "updatedAt": "2025-09-18T21:05:03.133Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758229503129-eb28ba"
+      }
+    ],
+    [
+      "doc-1758229536167-e3e227",
+      {
+        "id": "doc-1758229536167-e3e227",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:05:36.180Z",
+        "updatedAt": "2025-09-18T21:05:36.180Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758229536167-e3e227"
+      }
+    ],
+    [
+      "doc-1758229560563-051208",
+      {
+        "id": "doc-1758229560563-051208",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:06:00.657Z",
+        "updatedAt": "2025-09-18T21:06:00.657Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758229560563-051208"
+      }
+    ],
+    [
+      "doc-1758230078498-cc52cf",
+      {
+        "id": "doc-1758230078498-cc52cf",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:14:38.501Z",
+        "updatedAt": "2025-09-18T21:14:38.501Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758230078498-cc52cf"
+      }
+    ],
+    [
+      "doc-1758230128307-d392bd",
+      {
+        "id": "doc-1758230128307-d392bd",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:15:28.309Z",
+        "updatedAt": "2025-09-18T21:15:28.309Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758230128307-d392bd"
+      }
+    ],
+    [
+      "doc-1758230533737-6fc216",
+      {
+        "id": "doc-1758230533737-6fc216",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:22:13.740Z",
+        "updatedAt": "2025-09-18T21:22:13.740Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758230533737-6fc216"
+      }
+    ],
+    [
+      "doc-1758230945171-052bc5",
+      {
+        "id": "doc-1758230945171-052bc5",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:29:05.176Z",
+        "updatedAt": "2025-09-18T21:29:05.176Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758230945171-052bc5"
+      }
+    ],
+    [
+      "doc-1758231193805-8e6949",
+      {
+        "id": "doc-1758231193805-8e6949",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:33:13.861Z",
+        "updatedAt": "2025-09-18T21:33:13.861Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758231193805-8e6949"
+      }
+    ],
+    [
+      "doc-1758231529817-6a9649",
+      {
+        "id": "doc-1758231529817-6a9649",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:38:49.912Z",
+        "updatedAt": "2025-09-18T21:38:49.912Z",
+        "tenantId": "test-tenant",
+        "storagePath": "memory://doc-1758231529817-6a9649"
+      }
+    ],
+    [
+      "doc-1758231643150-eda7ed",
+      {
+        "id": "doc-1758231643150-eda7ed",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:40:43.151Z",
+        "updatedAt": "2025-09-18T21:40:43.151Z",
+        "tenantId": "test-tenant",
+        "storagePath": "memory://doc-1758231643150-eda7ed"
+      }
+    ],
+    [
+      "doc-1758232717168-2d610b",
+      {
+        "id": "doc-1758232717168-2d610b",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T21:58:37.243Z",
+        "updatedAt": "2025-09-18T21:58:37.243Z",
+        "tenantId": "test-tenant",
+        "storagePath": "memory://doc-1758232717168-2d610b"
+      }
+    ],
+    [
+      "doc-1758234260282-b16a94",
+      {
+        "id": "doc-1758234260282-b16a94",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T22:24:20.357Z",
+        "updatedAt": "2025-09-18T22:24:20.357Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758234260282-b16a94"
+      }
+    ],
+    [
+      "doc-1758234364031-17c295",
+      {
+        "id": "doc-1758234364031-17c295",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T22:26:04.032Z",
+        "updatedAt": "2025-09-18T22:26:04.032Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758234364031-17c295"
+      }
+    ],
+    [
+      "doc-1758235815164-b3341d",
+      {
+        "id": "doc-1758235815164-b3341d",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T22:50:15.344Z",
+        "updatedAt": "2025-09-18T22:50:15.344Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758235815164-b3341d"
+      }
+    ],
+    [
+      "doc-1758235909138-be4c9a",
+      {
+        "id": "doc-1758235909138-be4c9a",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T22:51:49.139Z",
+        "updatedAt": "2025-09-18T22:51:49.139Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758235909138-be4c9a"
+      }
+    ],
+    [
+      "doc-1758235938435-f749b5",
+      {
+        "id": "doc-1758235938435-f749b5",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T22:52:18.436Z",
+        "updatedAt": "2025-09-18T22:52:18.436Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758235938435-f749b5"
+      }
+    ],
+    [
+      "doc-1758236050352-72dd66",
+      {
+        "id": "doc-1758236050352-72dd66",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T22:54:10.353Z",
+        "updatedAt": "2025-09-18T22:54:10.353Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758236050352-72dd66"
+      }
+    ],
+    [
+      "doc-1758236615060-096d7c",
+      {
+        "id": "doc-1758236615060-096d7c",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T23:03:35.061Z",
+        "updatedAt": "2025-09-18T23:03:35.061Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758236615060-096d7c"
+      }
+    ],
+    [
+      "doc-1758236685516-85bf9c",
+      {
+        "id": "doc-1758236685516-85bf9c",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T23:04:45.521Z",
+        "updatedAt": "2025-09-18T23:04:45.521Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758236685516-85bf9c"
+      }
+    ],
+    [
+      "doc-1758236764811-a01ec7",
+      {
+        "id": "doc-1758236764811-a01ec7",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T23:06:04.982Z",
+        "updatedAt": "2025-09-18T23:06:04.982Z",
+        "tenantId": "test-tenant",
+        "storagePath": "memory://doc-1758236764811-a01ec7"
+      }
+    ],
+    [
+      "doc-1758236771217-b8827d",
+      {
+        "id": "doc-1758236771217-b8827d",
+        "name": "test-contract-demo.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-18T23:06:11.219Z",
+        "updatedAt": "2025-09-18T23:06:11.219Z",
+        "tenantId": "test-tenant",
+        "storagePath": "memory://doc-1758236771217-b8827d"
+      }
+    ],
+    [
+      "doc-1758751052897-9fd356",
+      {
+        "id": "doc-1758751052897-9fd356",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T21:57:33.144Z",
+        "updatedAt": "2025-09-24T21:57:33.144Z",
+        "tenantId": "default",
+        "storagePath": "memory://doc-1758751052897-9fd356"
+      }
+    ],
+    [
+      "doc-1758756087846-6ad033",
+      {
+        "id": "doc-1758756087846-6ad033",
+        "name": "Deloitte_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:27.857Z",
+        "updatedAt": "2025-09-24T23:21:27.857Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756087846-6ad033"
+      }
+    ],
+    [
+      "doc-1758756087902-1157aa",
+      {
+        "id": "doc-1758756087902-1157aa",
+        "name": "Deloitte_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:27.903Z",
+        "updatedAt": "2025-09-24T23:21:27.903Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756087902-1157aa"
+      }
+    ],
+    [
+      "doc-1758756087943-24decd",
+      {
+        "id": "doc-1758756087943-24decd",
+        "name": "Ernst_SOW_1.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:27.945Z",
+        "updatedAt": "2025-09-24T23:21:27.945Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756087943-24decd"
+      }
+    ],
+    [
+      "doc-1758756087989-c9fd8c",
+      {
+        "id": "doc-1758756087989-c9fd8c",
+        "name": "Ernst_SOW_2.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:27.991Z",
+        "updatedAt": "2025-09-24T23:21:27.991Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756087989-c9fd8c"
+      }
+    ],
+    [
+      "doc-1758756088039-276988",
+      {
+        "id": "doc-1758756088039-276988",
+        "name": "Ernst_SOW_3.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:28.041Z",
+        "updatedAt": "2025-09-24T23:21:28.041Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756088039-276988"
+      }
+    ],
+    [
+      "doc-1758756088101-80999d",
+      {
+        "id": "doc-1758756088101-80999d",
+        "name": "Ernst_SOW_4.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:28.102Z",
+        "updatedAt": "2025-09-24T23:21:28.102Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756088101-80999d"
+      }
+    ],
+    [
+      "doc-1758756088143-8d5249",
+      {
+        "id": "doc-1758756088143-8d5249",
+        "name": "Ernst_SOW_5.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:21:28.144Z",
+        "updatedAt": "2025-09-24T23:21:28.144Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756088143-8d5249"
+      }
+    ],
+    [
+      "doc-1758756145051-a25b21",
+      {
+        "id": "doc-1758756145051-a25b21",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:22:25.053Z",
+        "updatedAt": "2025-09-24T23:22:25.053Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758756145051-a25b21"
+      }
+    ],
+    [
+      "doc-1758757734493-eaa73d",
+      {
+        "id": "doc-1758757734493-eaa73d",
+        "name": "test-contract.pdf",
+        "status": "UPLOADED",
+        "createdAt": "2025-09-24T23:48:54.504Z",
+        "updatedAt": "2025-09-24T23:48:54.504Z",
+        "tenantId": "demo",
+        "storagePath": "memory://doc-1758757734493-eaa73d"
+      }
     ]
   ],
   "store": [
     [
-      "doc-1758029097085-cfc330",
+      "doc-1758751052897-9fd356",
       {
-        "ingestion": {
-          "text": "%PDF-1.4\n%���� ReportLab Generated PDF document http://www.reportlab.com\n1 0 obj\n<<\n/F1 2 0 R /F2 3 0 R\n>>\nendobj\n2 0 obj\n<<\n/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font\n>>\nendobj\n3 0 obj\n<<\n/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font\n>>\nendobj\n4 0 obj\n<<\n/Contents 8 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 7 0 R /Resources <<\n/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]\n>> /Rotate 0 /Trans <<\n\n>> \n  /Type /Page\n>>\nendobj\n5 0 obj\n<<\n/PageMode /UseNone /Pages 7 0 R /Type /Catalog\n>>\nendobj\n6 0 obj\n<<\n/Author (\\(anonymous\\)) /CreationDate (D:20250906080149+00'00') /Creator (\\(unspecified\\)) /Keywords () /ModDate (D:20250906080149+00'00') /Producer (ReportLab PDF Library - www.reportlab.com) \n  /Subject (\\(unspecified\\)) /Title (\\(anonymous\\)) /Trapped /False\n>>\nendobj\n7 0 obj\n<<\n/Count 1 /Kids [ 4 0 R ] /Type /Pages\n>>\nendobj\n8 0 obj\n<<\n/Filter [ /ASCII85Decode /FlateDecode ] /Length 1212\n>>\nstream\nGatm:95iQE&AJ$Cb\\?#O)b(O@=)M<U.<aZ.WTBk@?5T*=g$%Ckk[`LV^I(.(3O*,1-j3bkE$!mq*--dcK+G*`P76BQ\"^Kq_TIqcr5WRf-R)-h^khcth1kQ>@*fr(76F=N3#Da=PS5CDXi-8Z9H9FSZo\\^XYA[P`K\\b3('b!Nr^3cSQ4KQ1g]OdXE&'J&rbkXYD&Npj^^GkV[`5@O('Y)Wr&doUpWEOk^.>RatsCOE>I<bT$sLHS=B=t!l+9T$L<V+0Q^R*G&'9IE+c0-FRQq;J/qlf+ZBihY4!S#BHS-^Dbn#a\"M%7oA[F3YFYFEfMnP,Wf<#b!M$!>ST:57MRq>HjT=\\]1r#Rfa*k\\h:AMurMio?+<6I8k(cC?+[7TagSUR<((]YteBm-je4es^/bW1VC`3Xtre.g3+5oRib-J)ak-C:KMJSb3OXF7#)jrgcW^Q)<Q;ora7UtP`pObFGY:jNpoK-fZ&XWr1k!C_JJT-tN$q'TASI:j\\60*QO3P2\"6Og'.mIdBu8]\"W=AKY#DCdt,UBi_g;=^k*TQjHE8!W&fgckCi[:c$>Godu&$n)0?CH;k^F9/`kIHbR]POd%9U2Q?fc#Xil\">`@rg*l4A'%]7ne7Uf53;io-3S(mUDD.<H)Ak*(V1\\p.-)>%B='j+\\^p>\\c\\oTCoE!.:H)Sp\\1#\"%roppEn]a5X]FP\\coi8S]n?EaQ\"hjk<G;.YEj:qD\"?kaaY;NR:TeopsadEjd*eJVRI(qNF\"5:XGL^8KMrUF)661/sPI??i,&TiipK?Lh/S$!oTe&N&O?j7RNgKgE'dLk_hNf?WG_I8IahR@_j]SVX)n0Y_1U#=I6i[hKP_e\\?E882G\"l`!%hfXfAXB3h*8aG6a?B:.5]kOi_a^\"ND$hp2o)*#eWtK=uTW5N*5;\\(=b`?\"j\"q6<qW9dBTLB;D5bh$f\"4++0EcIN=8$T)=ndbI^ClC:2:_re2$==61\"I[`:[l=I34-D&[JR$ZW_&\"NUZ8g(<\",IZ%i/30)E$2e32rjkFCfS0]iLBU<ZC+_]G;DZ3OgBH\"..cfY\"CqVSn*ZQ,2]RCiA64aqD-L/HI5e<0YBHc&1:mb/%3b3F!!/P#ZeX.W,5b^D-RnNgs\"8NRWbRS,I<qMhdWLpf-0rPZQ>8GeSb(=d`VpV`<39LNM21+fG)+)jmF1=%^OA\"7e[HM@sL)&Z\\#cG>%`Y3/mhA`H(OG~>endstream\nendobj\nxref\n0 9\n0000000000 65535 f \n0000000073 00000 n \n0000000114 00000 n \n0000000221 00000 n \n0000000333 00000 n \n0000000536 00000 n \n0000000604 00000 n \n0000000887 00000 n \n0000000946 00000 n \ntrailer\n<<\n/ID \n[<a36c87a9a5e11b2a7731fc1445b57a77><a36c87a9a5e11b2a7731fc1445b57a77>]\n% ReportLab generated PDF document -- digest (http://www.reportlab.com)\n\n/Info 6 0 R\n/Root 5 0 R\n/Size 9\n>>\nstartxref\n2249\n%%EOF\n"
-        },
         "overview": {
           "metadata": {
-            "docId": "doc-1758029097085-cfc330",
+            "docId": "doc-1758751052897-9fd356",
             "fileType": "pdf",
             "totalPages": 1,
             "ocrRate": 0,
             "provenance": [
               {
                 "worker": "overview",
-                "timestamp": "2025-09-16T13:24:59.292Z",
-                "durationMs": 2022
+                "timestamp": "2025-09-24T21:58:04.157Z",
+                "durationMs": 1
               }
             ]
           },
-          "summary": "The document is a ReportLab generated PDF file containing various objects and metadata.",
-          "parties": [
-            "PDF-1.4",
-            "ReportLab Generated PDF document http"
-          ]
-        },
-        "rates": {
-          "metadata": {
-            "docId": "doc-1758029097085-cfc330",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "rates",
-                "timestamp": "2025-09-16T13:24:59.887Z",
-                "durationMs": 590
-              }
-            ]
-          },
-          "rates": [
-            {
-              "rateName": "Day Rate",
-              "value": 1000,
-              "currency": "USD"
-            }
-          ]
-        },
-        "risk": {
-          "metadata": {
-            "docId": "doc-1758029097085-cfc330",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "risk",
-                "timestamp": "2025-09-16T13:24:59.891Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "risks": [
-            {
-              "riskType": "Confidentiality",
-              "description": "Confidentiality not clearly defined",
-              "severity": "medium"
-            },
-            {
-              "riskType": "Liability",
-              "description": "No clear limitation of liability found",
-              "severity": "high"
-            }
-          ]
+          "summary": "Processing…",
+          "parties": []
         },
         "clauses": {
           "metadata": {
-            "docId": "doc-1758029097085-cfc330",
+            "docId": "doc-1758751052897-9fd356",
             "fileType": "pdf",
             "totalPages": 1,
             "ocrRate": 0,
             "provenance": [
               {
                 "worker": "clauses",
-                "timestamp": "2025-09-16T13:24:59.894Z",
-                "durationMs": 0
+                "timestamp": "2025-09-24T21:58:04.160Z",
+                "durationMs": 1
               }
             ]
           },
           "clauses": []
         },
+        "rates": {
+          "metadata": {
+            "docId": "doc-1758751052897-9fd356",
+            "fileType": "pdf",
+            "totalPages": 1,
+            "ocrRate": 0,
+            "provenance": [
+              {
+                "worker": "rates",
+                "timestamp": "2025-09-24T21:58:04.163Z",
+                "durationMs": 1
+              }
+            ]
+          },
+          "rates": []
+        },
         "compliance": {
           "metadata": {
-            "docId": "doc-1758029097085-cfc330",
+            "docId": "doc-1758751052897-9fd356",
             "fileType": "pdf",
             "totalPages": 1,
             "ocrRate": 0,
             "provenance": [
               {
                 "worker": "compliance",
-                "timestamp": "2025-09-16T13:24:59.898Z",
-                "durationMs": 0
+                "timestamp": "2025-09-24T21:58:04.166Z",
+                "durationMs": 1
               }
             ]
           },
@@ -5658,510 +6291,35 @@
         },
         "benchmark": {
           "metadata": {
-            "docId": "doc-1758029097085-cfc330",
+            "docId": "doc-1758751052897-9fd356",
             "fileType": "pdf",
             "totalPages": 1,
             "ocrRate": 0,
             "provenance": [
               {
                 "worker": "benchmark",
-                "timestamp": "2025-09-16T13:24:59.901Z",
-                "durationMs": 0
+                "timestamp": "2025-09-24T21:58:04.172Z",
+                "durationMs": 1
               }
             ]
           },
           "benchmark": {}
-        }
-      }
-    ],
-    [
-      "doc-1758029097385-2669a4",
-      {
-        "ingestion": {
-          "text": "\n\nStatement of Work (SOW)\nPrepared by Deloitte Consulting LLP\n1. Scope of Services\nData Analytics, Cybersecurity, and Technology Consulting.\n2. Deliverables\nCompliance Checklist, Deployment Support, Knowledge Transfer, Risk Assessment Report\n3. Rate Card\nLevelRoleDaily RateCurrencyLocation\nDirectorProgram Director866INRNearshore\nPartnerEngagement Partner1972INRNearshore\nManagerProject Manager1947USDOffshore\nSenior ConsultantFunctional Lead1077USDOnsite\n4. Terms & Conditions\n- Payment Terms: Net 60.\n- Termination: 30 days by either party.\n- Confidentiality: Standard non-disclosure terms.\n- Governing Law: Switzerland."
-        },
-        "overview": {
-          "metadata": {
-            "docId": "doc-1758029097385-2669a4",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "overview",
-                "timestamp": "2025-09-16T13:24:59.283Z",
-                "durationMs": 1793
-              }
-            ]
-          },
-          "summary": "This Statement of Work outlines the scope of services, deliverables, rates, and terms for data analytics, cybersecurity, and technology consulting provided by Deloitte Consulting LLP.",
-          "parties": [
-            "Deloitte Consulting LLP"
-          ]
-        },
-        "rates": {
-          "metadata": {
-            "docId": "doc-1758029097385-2669a4",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "rates",
-                "timestamp": "2025-09-16T13:25:02.753Z",
-                "durationMs": 3467
-              }
-            ]
-          },
-          "rates": [
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "INR",
-              "uom": "Day",
-              "amount": 866,
-              "dailyUsd": 10,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "INR",
-              "uom": "Day",
-              "amount": 1972,
-              "dailyUsd": 24,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "USD",
-              "uom": "Day",
-              "amount": 1947,
-              "dailyUsd": 1947,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "USD",
-              "uom": "Day",
-              "amount": 1077,
-              "dailyUsd": 1077,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            }
-          ]
         },
         "risk": {
           "metadata": {
-            "docId": "doc-1758029097385-2669a4",
+            "docId": "doc-1758751052897-9fd356",
             "fileType": "pdf",
             "totalPages": 1,
             "ocrRate": 0,
             "provenance": [
               {
                 "worker": "risk",
-                "timestamp": "2025-09-16T13:25:02.759Z",
-                "durationMs": 6
+                "timestamp": "2025-09-24T21:58:04.175Z",
+                "durationMs": 1
               }
             ]
           },
-          "risks": [
-            {
-              "riskType": "Liability",
-              "description": "No clear limitation of liability found",
-              "severity": "high"
-            }
-          ]
-        },
-        "clauses": {
-          "metadata": {
-            "docId": "doc-1758029097385-2669a4",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "clauses",
-                "timestamp": "2025-09-16T13:25:02.773Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "clauses": []
-        },
-        "compliance": {
-          "metadata": {
-            "docId": "doc-1758029097385-2669a4",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "compliance",
-                "timestamp": "2025-09-16T13:25:02.778Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "compliance": []
-        },
-        "benchmark": {
-          "metadata": {
-            "docId": "doc-1758029097385-2669a4",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "benchmark",
-                "timestamp": "2025-09-16T13:25:02.783Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "benchmark": {}
-        }
-      }
-    ],
-    [
-      "doc-1758029097440-37584c",
-      {
-        "ingestion": {
-          "text": "\n\nStatement of Work (SOW)\nPrepared by Ernst & Young (EY)\n1. Scope of Services\nProcurement Transformation and Supply Chain Optimization.\n2. Deliverables\nTesting Strategy, Compliance Checklist, System Design & Configuration, Deployment Support\n3. Rate Card\nLevelRoleDaily RateCurrencyLocation\nDirectorProgram Director1231INROffshore\nSenior ConsultantFunctional Lead1850CHFNearshore\nConsultantAnalyst/Developer587GBPOnsite\nAnalystJunior Consultant1414GBPNearshore\n4. Terms & Conditions\n- Payment Terms: Net 60.\n- GDPR: Fully compliant.\n- Payment Terms: Net 30.\n- Termination: 60 days by client only."
-        },
-        "overview": {
-          "metadata": {
-            "docId": "doc-1758029097440-37584c",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "overview",
-                "timestamp": "2025-09-16T13:24:59.520Z",
-                "durationMs": 1751
-              }
-            ]
-          },
-          "summary": "This Statement of Work outlines the procurement transformation and supply chain optimization services provided by Ernst & Young, including deliverables, rates, and terms and conditions.",
-          "parties": [
-            "Ernst & Young (EY)"
-          ]
-        },
-        "rates": {
-          "metadata": {
-            "docId": "doc-1758029097440-37584c",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "rates",
-                "timestamp": "2025-09-16T13:25:02.141Z",
-                "durationMs": 2618
-              }
-            ]
-          },
-          "rates": [
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "INR",
-              "uom": "Day",
-              "amount": 1231,
-              "dailyUsd": 15,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "CHF",
-              "uom": "Day",
-              "amount": 1850,
-              "dailyUsd": 1850,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "GBP",
-              "uom": "Day",
-              "amount": 587,
-              "dailyUsd": 734,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "GBP",
-              "uom": "Day",
-              "amount": 1414,
-              "dailyUsd": 1768,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            }
-          ]
-        },
-        "risk": {
-          "metadata": {
-            "docId": "doc-1758029097440-37584c",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "risk",
-                "timestamp": "2025-09-16T13:25:02.145Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "risks": [
-            {
-              "riskType": "Confidentiality",
-              "description": "Confidentiality not clearly defined",
-              "severity": "medium"
-            },
-            {
-              "riskType": "Liability",
-              "description": "No clear limitation of liability found",
-              "severity": "high"
-            }
-          ]
-        },
-        "clauses": {
-          "metadata": {
-            "docId": "doc-1758029097440-37584c",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "clauses",
-                "timestamp": "2025-09-16T13:25:02.149Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "clauses": []
-        },
-        "compliance": {
-          "metadata": {
-            "docId": "doc-1758029097440-37584c",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "compliance",
-                "timestamp": "2025-09-16T13:25:02.153Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "compliance": []
-        },
-        "benchmark": {
-          "metadata": {
-            "docId": "doc-1758029097440-37584c",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "benchmark",
-                "timestamp": "2025-09-16T13:25:02.161Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "benchmark": {}
-        }
-      }
-    ],
-    [
-      "doc-1758029097494-0f196f",
-      {
-        "ingestion": {
-          "text": "\n\nStatement of Work (SOW)\nPrepared by Ernst & Young (EY)\n1. Scope of Services\nData Analytics, Cybersecurity, and Technology Consulting.\n2. Deliverables\nCompliance Checklist, Risk Assessment Report, Project Plan, Deployment Support\n3. Rate Card\nLevelRoleDaily RateCurrencyLocation\nAnalystJunior Consultant934GBPNearshore\nSenior ConsultantFunctional Lead613EUROnsite\nSenior ManagerWorkstream Lead532GBPOnsite\nPartnerEngagement Partner686GBPOnsite\n4. Terms & Conditions\n- GDPR: Fully compliant.\n- Liability Cap: Fees paid in last 12 months.\n- Payment Terms: Net 30.\n- Payment Terms: Net 60."
-        },
-        "overview": {
-          "metadata": {
-            "docId": "doc-1758029097494-0f196f",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "overview",
-                "timestamp": "2025-09-16T13:24:59.694Z",
-                "durationMs": 1918
-              }
-            ]
-          },
-          "summary": "This Statement of Work outlines the scope of services, deliverables, rate card, and terms and conditions for data analytics, cybersecurity, and technology consulting provided by Ernst & Young.",
-          "parties": [
-            "Ernst & Young (EY)"
-          ]
-        },
-        "rates": {
-          "metadata": {
-            "docId": "doc-1758029097494-0f196f",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "rates",
-                "timestamp": "2025-09-16T13:25:02.481Z",
-                "durationMs": 2782
-              }
-            ]
-          },
-          "rates": [
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "GBP",
-              "uom": "Day",
-              "amount": 934,
-              "dailyUsd": 1168,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "EURO",
-              "uom": "Day",
-              "amount": 613,
-              "dailyUsd": 613,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "GBP",
-              "uom": "Day",
-              "amount": 532,
-              "dailyUsd": 665,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            },
-            {
-              "pdfRole": "Daily Rate",
-              "role": "Consultant",
-              "seniority": "Mid",
-              "mappingConfidence": 0.4,
-              "currency": "GBP",
-              "uom": "Day",
-              "amount": 686,
-              "dailyUsd": 858,
-              "country": "Unknown",
-              "lineOfService": "Unknown"
-            }
-          ]
-        },
-        "risk": {
-          "metadata": {
-            "docId": "doc-1758029097494-0f196f",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "risk",
-                "timestamp": "2025-09-16T13:25:02.484Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "risks": [
-            {
-              "riskType": "Confidentiality",
-              "description": "Confidentiality not clearly defined",
-              "severity": "medium"
-            }
-          ]
-        },
-        "clauses": {
-          "metadata": {
-            "docId": "doc-1758029097494-0f196f",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "clauses",
-                "timestamp": "2025-09-16T13:25:02.488Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "clauses": []
-        },
-        "compliance": {
-          "metadata": {
-            "docId": "doc-1758029097494-0f196f",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "compliance",
-                "timestamp": "2025-09-16T13:25:02.492Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "compliance": []
-        },
-        "benchmark": {
-          "metadata": {
-            "docId": "doc-1758029097494-0f196f",
-            "fileType": "pdf",
-            "totalPages": 1,
-            "ocrRate": 0,
-            "provenance": [
-              {
-                "worker": "benchmark",
-                "timestamp": "2025-09-16T13:25:02.495Z",
-                "durationMs": 0
-              }
-            ]
-          },
-          "benchmark": {}
+          "risks": []
         }
       }
     ]

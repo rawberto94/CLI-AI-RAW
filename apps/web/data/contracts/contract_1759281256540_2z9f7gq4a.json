@@ -1,0 +1,181 @@
+{
+  "id": "contract_1759281256540_2z9f7gq4a",
+  "filename": "Statement_of_Work_Corporate.pdf",
+  "uploadDate": "2025-10-01T01:14:16.543Z",
+  "status": "completed",
+  "tenantId": "demo",
+  "uploadedBy": "demo-user",
+  "fileSize": 6968,
+  "mimeType": "application/pdf",
+  "filePath": "/Users/maddalena/Downloads/contract-intelligence/apps/web/uploads/demo/contract_1759281256540_2z9f7gq4a_Statement_of_Work_Corporate.pdf",
+  "processing": {
+    "jobId": "job_1759281256543_ek6w2tzhw",
+    "status": "completed",
+    "progress": 100,
+    "startTime": "2025-10-01T01:14:16.543Z",
+    "completedAt": "2025-10-01T01:14:16.548Z",
+    "currentStage": "completed"
+  },
+  "extractedData": {
+    "text": "",
+    "metadata": {
+      "parties": [],
+      "contractType": "Unknown",
+      "effectiveDate": null,
+      "expirationDate": null,
+      "jurisdiction": null,
+      "language": "en"
+    },
+    "financial": {
+      "totalValue": 500000,
+      "currency": "USD",
+      "paymentTerms": "Net 30 days",
+      "paymentSchedule": {
+        "frequency": "Monthly",
+        "amount": 41667
+      },
+      "penalties": [
+        "1.5% per month on overdue amounts"
+      ],
+      "extractedTables": [],
+      "rateCards": [],
+      "benchmarkingResults": [],
+      "insights": {
+        "totalPotentialSavings": 0,
+        "highestSavingsOpportunity": {
+          "role": "N/A",
+          "amount": 0
+        },
+        "rateAnalysisSummary": {
+          "totalRoles": 0,
+          "aboveMarketCount": 0,
+          "belowMarketCount": 0,
+          "averageVariance": 0
+        },
+        "recommendations": [],
+        "riskFactors": []
+      },
+      "confidence": 0,
+      "metrics": {
+        "monthlyValue": 41667,
+        "annualValue": 500000
+      }
+    },
+    "risk": {
+      "riskScore": 20,
+      "riskLevel": "LOW",
+      "riskFactors": [
+        {
+          "type": "STANDARD_RISK",
+          "category": "GENERAL",
+          "severity": "LOW",
+          "description": "Standard contractual risks",
+          "impact": "Normal business risk exposure"
+        }
+      ],
+      "recommendations": [
+        "Regular contract performance reviews and monitoring",
+        "Maintain clear communication channels with all parties"
+      ]
+    },
+    "compliance": {
+      "complianceScore": 35,
+      "complianceLevel": "POOR",
+      "regulations": [],
+      "issues": [
+        {
+          "type": "MISSING_CLAUSE",
+          "severity": "MEDIUM",
+          "description": "Force majeure clause not found",
+          "recommendation": "Add force majeure clause to address unforeseeable circumstances"
+        },
+        {
+          "type": "MISSING_CLAUSE",
+          "severity": "HIGH",
+          "description": "Governing law clause not specified",
+          "recommendation": "Specify governing law and jurisdiction for dispute resolution"
+        },
+        {
+          "type": "MISSING_CLAUSE",
+          "severity": "MEDIUM",
+          "description": "Dispute resolution mechanism not specified",
+          "recommendation": "Add dispute resolution clause (arbitration, mediation, or litigation)"
+        },
+        {
+          "type": "MISSING_CLAUSE",
+          "severity": "LOW",
+          "description": "Entire agreement clause not found",
+          "recommendation": "Add entire agreement clause to prevent external modifications"
+        },
+        {
+          "type": "MISSING_PROTECTION",
+          "severity": "MEDIUM",
+          "description": "Indemnification clause not found",
+          "recommendation": "Add mutual indemnification clause for third-party claims"
+        },
+        {
+          "type": "MISSING_CLAUSE",
+          "severity": "HIGH",
+          "description": "Intellectual property rights not addressed",
+          "recommendation": "Add intellectual property ownership and licensing clauses"
+        }
+      ],
+      "recommendations": [
+        "Add force majeure clause to address unforeseeable circumstances",
+        "Specify governing law and jurisdiction for dispute resolution",
+        "Add dispute resolution clause (arbitration, mediation, or litigation)",
+        "Add entire agreement clause to prevent external modifications",
+        "Add mutual indemnification clause for third-party claims",
+        "Add intellectual property ownership and licensing clauses",
+        "Conduct regular compliance reviews and updates",
+        "Maintain documentation of all compliance measures",
+        "Establish compliance monitoring and reporting procedures"
+      ]
+    },
+    "clauses": {
+      "clauses": [],
+      "completeness": {
+        "score": 0,
+        "missing": [
+          "PAYMENT",
+          "TERMINATION",
+          "LIABILITY",
+          "INTELLECTUAL_PROPERTY",
+          "CONFIDENTIALITY",
+          "FORCE_MAJEURE",
+          "GOVERNING_LAW",
+          "DISPUTE_RESOLUTION",
+          "INDEMNIFICATION",
+          "WARRANTIES"
+        ],
+        "present": [],
+        "recommendations": [
+          "Consider adding payment terms",
+          "Consider adding termination clause",
+          "Consider adding liability and damages",
+          "Consider adding intellectual property rights",
+          "Consider adding confidentiality agreement",
+          "Consider adding force majeure",
+          "Consider adding governing law",
+          "Consider adding dispute resolution",
+          "Consider adding indemnification",
+          "Consider adding warranties and representations"
+        ]
+      },
+      "standardClauses": [],
+      "customClauses": []
+    },
+    "search": {
+      "searchableContent": "",
+      "keywords": [],
+      "entities": {
+        "organizations": [],
+        "dates": [],
+        "amounts": []
+      },
+      "embeddings": [
+        null
+      ]
+    }
+  }
+}

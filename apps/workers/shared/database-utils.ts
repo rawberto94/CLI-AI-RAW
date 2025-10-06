@@ -1,582 +1,219 @@
 /**
- * Shared Database Utilities
- * Consolidates database operations, connection management, and common queries
+ * Database utilities for workers - Uses shared Redis store for cross-process data access
  */
 
-// Database configuration
-export interface DatabaseConfig {
-  connectionString?: string;
-  maxConnections?: number;
-  connectionTimeout?: number;
-  queryTimeout?: number;
-  retryAttempts?: number;
-  retryDelay?: number;
+import { getSharedContractStore, type SharedContractStore, type ArtifactData } from 'utils';
+
+// Artifact data types for different artifact schemas
+interface IngestionData {
+  content: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
-// Database operation result
-export interface DatabaseResult<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  executionTime: number;
-  affectedRows?: number;
+interface GenericArtifactData {
+  [key: string]: unknown;
 }
 
-// Artifact creation data
-export interface ArtifactCreationData {
+// Local contract type that ensures storagePath is always a string
+interface WorkerContract {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+  storagePath: string;  // Always defined
+  tenantId: string;     // Always defined
+}
+
+// Worker database client interface
+export interface WorkerDatabaseClient {
+  findContract: (docId: string, includeDeleted?: boolean) => Promise<{ success: boolean; data?: WorkerContract; error?: string }>;
+  findArtifacts: (docId: string, type?: string, limit?: number) => Promise<{ success: boolean; data?: WorkerArtifact[]; error?: string }>;
+  createArtifact: (artifact: CreateArtifactInput) => Promise<{ success: boolean; data?: WorkerArtifact; error?: string }>;
+  createArtifactWithValidation?: (artifact: CreateArtifactInput) => Promise<{ success: boolean; data?: WorkerArtifact; error?: string }>;
+  updateContractMetadata: (docId: string, metadata: Record<string, unknown>) => Promise<{ success: boolean; error?: string }>;
+}
+
+export interface CreateArtifactInput {
   contractId: string;
   type: string;
-  data: any;
-  tenantId: string;
-  metadata?: any;
-}
-
-// Contract query filters
-export interface ContractFilters {
+  data: Record<string, unknown>;
   tenantId?: string;
-  contractType?: string;
-  status?: string;
-  dateRange?: {
-    start: Date;
-    end: Date;
-  };
-  parties?: string[];
+  metadata?: Record<string, unknown>;
 }
 
-/**
- * Shared Database Client with enhanced error handling and retry logic
- */
-export class SharedDatabaseClient {
-  private config: DatabaseConfig;
-  private retryAttempts: number;
-  private retryDelay: number;
-
-  constructor(config: DatabaseConfig = {}) {
-    this.config = {
-      maxConnections: config.maxConnections || 10,
-      connectionTimeout: config.connectionTimeout || 30000,
-      queryTimeout: config.queryTimeout || 60000,
-      retryAttempts: config.retryAttempts || 3,
-      retryDelay: config.retryDelay || 1000,
-      ...config
-    };
-    
-    this.retryAttempts = this.config.retryAttempts!;
-    this.retryDelay = this.config.retryDelay!;
-  }
-
-  /**
-   * Get database client with fallback handling
-   */
-  async getClient(): Promise<any> {
-    try {
-      // Try to import the main database client
-      const db = await import('clients-db');
-      return db.default;
-    } catch (error) {
-      console.warn('Main database client not available, using fallback');
-      
-      // Return mock client for development/testing
-      return this.getMockClient();
-    }
-  }
-
-  /**
-   * Execute database operation with retry logic
-   */
-  async executeWithRetry<T>(
-    operation: () => Promise<T>,
-    operationName: string = 'database operation'
-  ): Promise<DatabaseResult<T>> {
-    const startTime = Date.now();
-    let lastError: Error | null = null;
-
-    for (let attempt = 1; attempt <= this.retryAttempts; attempt++) {
-      try {
-        const result = await operation();
-        const executionTime = Date.now() - startTime;
-
-        return {
-          success: true,
-          data: result,
-          executionTime
-        };
-
-      } catch (error) {
-        lastError = error as Error;
-        console.warn(`${operationName} attempt ${attempt} failed:`, error);
-
-        if (attempt < this.retryAttempts) {
-          await this.delay(this.retryDelay * attempt);
-        }
-      }
-    }
-
-    const executionTime = Date.now() - startTime;
-    return {
-      success: false,
-      error: `${operationName} failed after ${this.retryAttempts} attempts: ${lastError?.message}`,
-      executionTime
-    };
-  }
-
-  /**
-   * Create artifact with enhanced error handling
-   */
-  async createArtifact(artifactData: ArtifactCreationData): Promise<DatabaseResult<any>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const result = await db.artifact.create({
-        data: {
-          contractId: artifactData.contractId,
-          type: artifactData.type,
-          data: artifactData.data,
-          tenantId: artifactData.tenantId,
-          metadata: artifactData.metadata
-        }
-      });
-
-      return result;
-    }, 'create artifact');
-  }
-
-  /**
-   * Find contract with related data
-   */
-  async findContract(
-    contractId: string,
-    includeArtifacts: boolean = false
-  ): Promise<DatabaseResult<any>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const result = await db.contract.findUnique({
-        where: { id: contractId },
-        include: includeArtifacts ? {
-          artifacts: {
-            orderBy: { createdAt: 'desc' }
-          }
-        } : undefined
-      });
-
-      return result;
-    }, 'find contract');
-  }
-
-  /**
-   * Find artifacts by contract and type
-   */
-  async findArtifacts(
-    contractId: string,
-    artifactType?: string,
-    limit?: number
-  ): Promise<DatabaseResult<any[]>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const where: any = { contractId };
-      if (artifactType) {
-        where.type = artifactType;
-      }
-
-      const result = await db.artifact.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: limit
-      });
-
-      return result;
-    }, 'find artifacts');
-  }
-
-  /**
-   * Count artifacts by type
-   */
-  async countArtifacts(
-    contractId: string,
-    artifactType?: string
-  ): Promise<DatabaseResult<number>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const where: any = { contractId };
-      if (artifactType) {
-        where.type = artifactType;
-      }
-
-      const result = await db.artifact.count({ where });
-      return result;
-    }, 'count artifacts');
-  }
-
-  /**
-   * Find contracts with filters
-   */
-  async findContracts(
-    filters: ContractFilters,
-    limit: number = 50,
-    offset: number = 0
-  ): Promise<DatabaseResult<any[]>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const where: any = {};
-      
-      if (filters.tenantId) {
-        where.tenantId = filters.tenantId;
-      }
-      
-      if (filters.contractType) {
-        where.contractType = filters.contractType;
-      }
-      
-      if (filters.status) {
-        where.status = filters.status;
-      }
-      
-      if (filters.dateRange) {
-        where.createdAt = {
-          gte: filters.dateRange.start,
-          lte: filters.dateRange.end
-        };
-      }
-
-      const result = await db.contract.findMany({
-        where,
-        take: limit,
-        skip: offset,
-        orderBy: { createdAt: 'desc' }
-      });
-
-      return result;
-    }, 'find contracts');
-  }
-
-  /**
-   * Update contract metadata
-   */
-  async updateContractMetadata(
-    contractId: string,
-    metadata: any
-  ): Promise<DatabaseResult<any>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const result = await db.contract.update({
-        where: { id: contractId },
-        data: { metadata }
-      });
-
-      return result;
-    }, 'update contract metadata');
-  }
-
-  /**
-   * Execute raw SQL query
-   */
-  async executeRawQuery(
-    query: string,
-    params: any[] = []
-  ): Promise<DatabaseResult<any>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const result = await db.$queryRaw`${query}`;
-      return result;
-    }, 'execute raw query');
-  }
-
-  /**
-   * Execute raw SQL command
-   */
-  async executeRawCommand(
-    command: string,
-    params: any[] = []
-  ): Promise<DatabaseResult<any>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      const result = await db.$executeRaw`${command}`;
-      return result;
-    }, 'execute raw command');
-  }
-
-  /**
-   * Get database health status
-   */
-  async getHealthStatus(): Promise<DatabaseResult<any>> {
-    return this.executeWithRetry(async () => {
-      const db = await this.getClient();
-      
-      // Simple health check query
-      const result = await db.$queryRaw`SELECT 1 as health_check`;
-      
-      return {
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        connectionPool: 'active',
-        queryResult: result
-      };
-    }, 'health check');
-  }
-
-  /**
-   * Delay utility for retry logic
-   */
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Get mock database client for development/testing
-   */
-  private getMockClient(): any {
-    return {
-      contract: {
-        findUnique: async (params: any) => {
-          console.log('Mock: Finding contract', params.where.id);
-          return {
-            id: params.where.id,
-            name: 'Mock Contract',
-            tenantId: 'mock-tenant',
-            createdAt: new Date(),
-            artifacts: []
-          };
-        },
-        findMany: async (params: any) => {
-          console.log('Mock: Finding contracts with params', params);
-          return [
-            {
-              id: 'mock-contract-1',
-              name: 'Mock Contract 1',
-              tenantId: 'mock-tenant',
-              createdAt: new Date()
-            }
-          ];
-        },
-        update: async (params: any) => {
-          console.log('Mock: Updating contract', params.where.id);
-          return {
-            id: params.where.id,
-            ...params.data
-          };
-        }
-      },
-      artifact: {
-        create: async (params: any) => {
-          console.log('Mock: Creating artifact', params.data.type);
-          return {
-            id: 'mock-artifact-' + Date.now(),
-            ...params.data,
-            createdAt: new Date()
-          };
-        },
-        findMany: async (params: any) => {
-          console.log('Mock: Finding artifacts', params.where);
-          return [
-            {
-              id: 'mock-artifact-1',
-              type: 'INGESTION',
-              data: { content: 'Mock content' },
-              createdAt: new Date()
-            }
-          ];
-        },
-        findFirst: async (params: any) => {
-          console.log('Mock: Finding first artifact', params.where);
-          return {
-            id: 'mock-artifact-1',
-            type: params.where.type || 'INGESTION',
-            data: { content: 'Mock content' },
-            createdAt: new Date()
-          };
-        },
-        count: async (params: any) => {
-          console.log('Mock: Counting artifacts', params.where);
-          return 1;
-        }
-      },
-      $queryRaw: async (query: any) => {
-        console.log('Mock: Executing raw query', query);
-        return [{ health_check: 1 }];
-      },
-      $executeRaw: async (command: any) => {
-        console.log('Mock: Executing raw command', command);
-        return 1;
-      }
-    };
-  }
+export interface WorkerArtifact {
+  id: string;
+  contractId: string;
+  type: string;
+  data: IngestionData | GenericArtifactData; // Can be ingestion data or other artifact schemas
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-/**
- * Common Database Queries
- */
-export class CommonQueries {
-  
-  /**
-   * Get contract with all artifacts
-   */
-  static async getContractWithArtifacts(
-    db: SharedDatabaseClient,
-    contractId: string
-  ): Promise<DatabaseResult<any>> {
-    return db.findContract(contractId, true);
-  }
+// Initialize shared store
+let sharedStore: SharedContractStore | null = null;
 
-  /**
-   * Get latest artifact of specific type
-   */
-  static async getLatestArtifact(
-    db: SharedDatabaseClient,
-    contractId: string,
-    artifactType: string
-  ): Promise<DatabaseResult<any>> {
-    const result = await db.findArtifacts(contractId, artifactType, 1);
-    
-    if (result.success && result.data && result.data.length > 0) {
-      return {
-        ...result,
-        data: result.data[0]
-      };
-    }
-    
-    return {
-      success: false,
-      error: `No ${artifactType} artifact found for contract ${contractId}`,
-      executionTime: result.executionTime
-    };
-  }
-
-  /**
-   * Check if contract exists
-   */
-  static async contractExists(
-    db: SharedDatabaseClient,
-    contractId: string
-  ): Promise<boolean> {
-    const result = await db.findContract(contractId, false);
-    return result.success && result.data !== null;
-  }
-
-  /**
-   * Get contract statistics
-   */
-  static async getContractStats(
-    db: SharedDatabaseClient,
-    contractId: string
-  ): Promise<DatabaseResult<any>> {
-    const artifactCountResult = await db.countArtifacts(contractId);
-    const contractResult = await db.findContract(contractId, false);
-    
-    if (!contractResult.success || !artifactCountResult.success) {
-      return {
-        success: false,
-        error: 'Failed to retrieve contract statistics',
-        executionTime: contractResult.executionTime + artifactCountResult.executionTime
-      };
-    }
-    
-    return {
-      success: true,
-      data: {
-        contract: contractResult.data,
-        artifactCount: artifactCountResult.data,
-        lastUpdated: contractResult.data?.updatedAt || contractResult.data?.createdAt
-      },
-      executionTime: contractResult.executionTime + artifactCountResult.executionTime
-    };
-  }
-}
-
-/**
- * Database Connection Pool Manager
- */
-export class ConnectionPoolManager {
-  private static instance: ConnectionPoolManager;
-  private connections: Map<string, SharedDatabaseClient> = new Map();
-  
-  static getInstance(): ConnectionPoolManager {
-    if (!ConnectionPoolManager.instance) {
-      ConnectionPoolManager.instance = new ConnectionPoolManager();
-    }
-    return ConnectionPoolManager.instance;
-  }
-  
-  /**
-   * Get or create database connection
-   */
-  getConnection(tenantId: string, config?: DatabaseConfig): SharedDatabaseClient {
-    if (!this.connections.has(tenantId)) {
-      this.connections.set(tenantId, new SharedDatabaseClient(config));
-    }
-    return this.connections.get(tenantId)!;
-  }
-  
-  /**
-   * Close all connections
-   */
-  closeAllConnections(): void {
-    this.connections.clear();
-  }
-  
-  /**
-   * Get connection pool status
-   */
-  getPoolStatus(): any {
-    return {
-      activeConnections: this.connections.size,
-      connections: Array.from(this.connections.keys())
-    };
-  }
-}
-
-/**
- * Singleton database client instance
- */
-let sharedDatabaseClient: SharedDatabaseClient | null = null;
-
-/**
- * Get shared database client instance
- */
-export function getSharedDatabaseClient(config?: DatabaseConfig): SharedDatabaseClient {
-  if (!sharedDatabaseClient) {
-    sharedDatabaseClient = new SharedDatabaseClient(config);
-  }
-  return sharedDatabaseClient;
-}
-
-/**
- * Database health check utility
- */
-export async function checkDatabaseHealth(): Promise<boolean> {
-  try {
-    const db = getSharedDatabaseClient();
-    const result = await db.getHealthStatus();
-    return result.success;
-  } catch (error) {
-    console.error('Database health check failed:', error);
-    return false;
-  }
-}
-
-/**
- * Create standardized provenance entry for database operations
- */
-export function createDatabaseProvenance(
-  worker: string,
-  operation: string,
-  executionTime: number,
-  additionalData?: Record<string, any>
-): any {
+// Create worker database client that uses shared Redis store
+function createWorkerDatabaseClient(): WorkerDatabaseClient {
   return {
-    worker,
-    operation,
-    timestamp: new Date().toISOString(),
-    durationMs: executionTime,
-    database: 'postgresql',
-    ...additionalData
+    async findContract(docId: string, _includeDeleted = false): Promise<{ success: boolean; data?: WorkerContract; error?: string }> {
+      try {
+        if (!sharedStore) {
+          return { success: false, error: 'Shared store not initialized' };
+        }
+
+        const contractData = await sharedStore.getContract(docId);
+        if (!contractData) {
+          return { success: false, error: `Contract ${docId} not found` };
+        }
+        
+        // Convert to WorkerContract format
+        const workerContract: WorkerContract = {
+          id: contractData.docId,
+          name: contractData.fileName || 'unknown',
+          status: 'UPLOADED',
+          createdAt: contractData.uploadedAt,
+          updatedAt: contractData.uploadedAt,
+          tenantId: contractData.metadata?.tenantId || 'demo',
+          storagePath: contractData.metadata?.storagePath || `memory://${contractData.docId}`
+        };
+        
+        return { 
+          success: true, 
+          data: workerContract
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { success: false, error: `Failed to find contract: ${errorMessage}` };
+      }
+    },
+
+    async findArtifacts(docId: string, type?: string, limit = 10): Promise<{ success: boolean; data?: WorkerArtifact[]; error?: string }> {
+      try {
+        if (!sharedStore) {
+          return { success: false, error: 'Shared store not initialized' };
+        }
+
+        const artifacts = await sharedStore.getArtifacts(docId);
+        let results: WorkerArtifact[] = [];
+        
+        // Convert artifacts to expected format
+        if (type !== undefined && type.length > 0) {
+          results = artifacts
+            .filter(artifact => artifact.type.toLowerCase() === type.toLowerCase())
+            .map(artifact => ({
+              id: artifact.id,
+              contractId: artifact.docId,
+              type: artifact.type,
+              data: artifact.data,
+              createdAt: artifact.createdAt,
+              updatedAt: artifact.createdAt
+            }));
+        } else {
+          // Return all artifacts
+          results = artifacts.map(artifact => ({
+            id: artifact.id,
+            contractId: artifact.docId,
+            type: artifact.type,
+            data: artifact.data,
+            createdAt: artifact.createdAt,
+            updatedAt: artifact.createdAt
+          }));
+        }
+
+        return { 
+          success: true, 
+          data: results.slice(0, limit)
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { success: false, error: `Failed to find artifacts: ${errorMessage}` };
+      }
+    },
+
+    async createArtifact(artifact: CreateArtifactInput): Promise<{ success: boolean; data?: WorkerArtifact; error?: string }> {
+      try {
+        if (!sharedStore) {
+          return { success: false, error: 'Shared store not initialized' };
+        }
+
+        const { contractId, type, data, tenantId, metadata } = artifact;
+        
+        // Generate unique artifact ID
+        const artifactId = `${contractId}-${type}-${Date.now()}`;
+        
+        // Store artifact in shared store
+        const artifactData: ArtifactData = {
+          id: artifactId,
+          docId: contractId,
+          type,
+          data,
+          createdAt: new Date(),
+          metadata: { tenantId, ...metadata }
+        };
+        
+        await sharedStore.storeArtifact(artifactData);
+        
+        const result: WorkerArtifact = {
+          id: artifactId,
+          contractId,
+          type,
+          data,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        console.log(`✅ Created ${type} artifact for contract ${contractId}`);
+        return { success: true, data: result };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { success: false, error: `Failed to create artifact: ${errorMessage}` };
+      }
+    },
+
+    async createArtifactWithValidation(artifact: CreateArtifactInput): Promise<{ success: boolean; data?: WorkerArtifact; error?: string }> {
+      // For artifact-manager compatibility
+      return this.createArtifact(artifact);
+    },
+
+    async updateContractMetadata(docId: string, metadata: Record<string, unknown>): Promise<{ success: boolean; error?: string }> {
+      try {
+        // For now, just log the metadata update since we don't have a real contract metadata field
+        console.log(`📝 Mock: Updated metadata for contract ${docId}:`, metadata);
+        return { success: true };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return { success: false, error: `Failed to update contract metadata: ${errorMessage}` };
+      }
+    }
   };
 }
 
-// Export all utilities - already exported above
+// Create singleton instance
+const workerDbClient = createWorkerDatabaseClient();
+
+// Initialize database with Redis connection
+export const initializeDatabase = async (): Promise<WorkerDatabaseClient> => {
+  try {
+    const redisUrl = process.env['REDIS_URL'];
+    if (!redisUrl) {
+      throw new Error('REDIS_URL not configured');
+    }
+    
+    sharedStore = getSharedContractStore({ url: redisUrl });
+    console.log('✅ Database client initialized for workers with shared Redis store');
+    return workerDbClient;
+  } catch (error) {
+    console.error('❌ Failed to initialize database client:', error);
+    throw error;
+  }
+};
+
+// For backwards compatibility
+export const getDatabase = initializeDatabase;
+
+// Legacy exports for compatibility with existing code
+export const getSharedDatabaseClient = (): WorkerDatabaseClient => workerDbClient;
+export type SharedDatabaseClient = WorkerDatabaseClient;

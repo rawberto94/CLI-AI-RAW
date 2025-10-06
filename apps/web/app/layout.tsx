@@ -1,7 +1,16 @@
 import "./globals.css"
-import { Sidebar } from "@/components/Sidebar"
-import { Topbar } from "@/components/Topbar"
+import "../styles/rate-benchmarking-animations.css"
+
 import { HealthBanner } from "./health-banner"
+
+import { FloatingDemoButton } from "@/components/FloatingDemoButton"
+import { ToastProvider } from "@/components/ui"
+import MainNavigation from "@/components/layout/MainNavigation"
+
+export const metadata = {
+  title: "Contract Intelligence Platform",
+  description: "AI-powered contract management and analysis platform",
+}
 
 export default function RootLayout({
   children,
@@ -11,14 +20,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans antialiased">
-  <HealthBanner />
-  <div className="grid min-h-screen w-full grid-cols-[240px_1fr]">
-          <Sidebar />
-          <div className="flex flex-col">
-            <Topbar />
-            <main className="flex-1 p-6">{children}</main>
+        <ToastProvider position="top-right">
+          <HealthBanner />
+          <MainNavigation />
+          <div className="lg:pl-64 pt-16 lg:pt-0">
+            {children}
           </div>
-        </div>
+          <FloatingDemoButton />
+        </ToastProvider>
       </body>
     </html>
   )

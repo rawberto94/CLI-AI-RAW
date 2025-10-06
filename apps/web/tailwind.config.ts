@@ -56,6 +56,14 @@ export default {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
+        ai: {
+          primary: "hsl(var(--ai-primary))",
+          secondary: "hsl(var(--ai-secondary))",
+          accent: "hsl(var(--ai-accent))",
+          success: "hsl(var(--ai-success))",
+          warning: "hsl(var(--ai-warning))",
+          danger: "hsl(var(--ai-danger))",
+        },
       },
       keyframes: {
         "accordion-down": {

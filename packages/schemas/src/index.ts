@@ -228,3 +228,6 @@ export const jsonSchemas = {
   IntelligenceBundleV1Schema: zodToJsonSchema(IntelligenceBundleV1Schema, "IntelligenceBundleV1Schema"),
 };
 
+// Export rate card ingestion schemas
+export * from './rate-card-ingestion';
+

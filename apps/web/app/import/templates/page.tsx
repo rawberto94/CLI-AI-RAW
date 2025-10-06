@@ -1,0 +1,284 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { TemplateManager, type MappingTemplate } from '@/lib/import/template-manager';
+
+export default function TemplatesPage() {
+  const [templates, setTemplates] = useState<MappingTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<MappingTemplate | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importJson, setImportJson] = useState('');
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = () => {
+    const loaded = TemplateManager.getAllTemplates();
+    setTemplates(loaded);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+
+    await TemplateManager.deleteTemplate(id);
+    loadTemplates();
+    if (selectedTemplate?.id === id) {
+      setSelectedTemplate(null);
+    }
+  };
+
+  const handleExport = (template: MappingTemplate) => {
+    const json = TemplateManager.exportTemplate(template);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${template.name.replace(/\s+/g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async () => {
+    try {
+      const template = await TemplateManager.importTemplate(importJson, 'current-user');
+      loadTemplates();
+      setShowImport(false);
+      setImportJson('');
+      alert(`Template "${template.name}" imported successfully!`);
+    } catch (error) {
+      alert('Failed to import template: ' + (error instanceof Error ? error.message : 'Invalid JSON'));
+    }
+  };
+
+  const stats = TemplateManager.getStatistics();
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Mapping Templates</h1>
+          <p className="mt-2 text-gray-600">
+            Manage reusable column mapping templates for faster imports
+          </p>
+        </div>
+
+        {/* Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-sm text-gray-600">Total Templates</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-sm text-gray-600">Avg Success Rate</p>
+            <p className="text-3xl font-bold text-green-600">
+              {Math.round(stats.avgSuccessRate * 100)}%
+            </p>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <p className="text-sm text-gray-600">Suppliers</p>
+            <p className="text-3xl font-bold text-blue-600">
+              {Object.keys(stats.bySupplier).length}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="mb-6 flex gap-4">
+          <button
+            onClick={() => setShowImport(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Import Template
+          </button>
+        </div>
+
+        {/* Import Modal */}
+        {showImport && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+              <h2 className="text-xl font-bold mb-4">Import Template</h2>
+              <textarea
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                placeholder="Paste template JSON here..."
+                className="w-full h-64 p-4 border rounded-lg font-mono text-sm"
+              />
+              <div className="mt-4 flex gap-4">
+                <button
+                  onClick={handleImport}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Import
+                </button>
+                <button
+                  onClick={() => {
+                    setShowImport(false);
+                    setImportJson('');
+                  }}
+                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Templates Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Template List */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900">Templates</h2>
+            {templates.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <p className="text-gray-600">No templates yet</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Create templates while importing rate cards
+                </p>
+              </div>
+            ) : (
+              templates.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => setSelectedTemplate(template)}
+                  className={`
+                    bg-white rounded-lg shadow p-6 cursor-pointer transition-colors
+                    ${selectedTemplate?.id === template.id ? 'ring-2 ring-blue-500' : 'hover:shadow-lg'}
+                  `}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900">{template.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{template.description}</p>
+                      
+                      {template.supplierName && (
+                        <p className="text-sm text-blue-600 mt-2">
+                          Supplier: {template.supplierName}
+                        </p>
+                      )}
+
+                      <div className="flex gap-4 mt-3 text-sm text-gray-500">
+                        <span>Used: {template.usageCount}x</span>
+                        <span>Success: {Math.round(template.successRate * 100)}%</span>
+                        <span>{template.mappings.length} mappings</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExport(template);
+                        }}
+                        className="p-2 text-gray-600 hover:text-gray-900"
+                        title="Export"
+                      >
+                        ⬇️
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(template.id);
+                        }}
+                        className="p-2 text-red-600 hover:text-red-800"
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Template Details */}
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Details</h2>
+            {selectedTemplate ? (
+              <div className="bg-white rounded-lg shadow p-6 space-y-6">
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Information</h3>
+                  <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-gray-600">Name:</dt>
+                      <dd className="font-medium">{selectedTemplate.name}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-gray-600">Version:</dt>
+                      <dd className="font-medium">{selectedTemplate.version}</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-gray-600">Created:</dt>
+                      <dd className="font-medium">
+                        {selectedTemplate.createdAt.toLocaleDateString()}
+                      </dd>
+                    </div>
+                    {selectedTemplate.lastUsed && (
+                      <div className="flex justify-between">
+                        <dt className="text-gray-600">Last Used:</dt>
+                        <dd className="font-medium">
+                          {selectedTemplate.lastUsed.toLocaleDateString()}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Column Mappings</h3>
+                  <div className="space-y-2">
+                    {selectedTemplate.mappings.map((mapping, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                      >
+                        <span className="text-sm text-gray-700">{mapping.sourceColumn}</span>
+                        <span className="text-sm text-gray-400">→</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {mapping.targetField}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {Math.round(mapping.confidence * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedTemplate.fileNamePattern && (
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-2">File Pattern</h3>
+                    <code className="block p-2 bg-gray-50 rounded text-sm">
+                      {selectedTemplate.fileNamePattern}
+                    </code>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="font-medium text-gray-900 mb-2">Header Patterns</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTemplate.headerPatterns.map((pattern, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm"
+                      >
+                        {pattern}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                Select a template to view details
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

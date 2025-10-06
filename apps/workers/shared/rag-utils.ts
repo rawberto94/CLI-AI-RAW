@@ -229,7 +229,7 @@ export class ContentProcessor {
         }
         if (risk.severity) {
           searchableContent.metadata.riskLevel = this.determineHighestRiskLevel(
-            searchableContent.metadata.riskLevel, 
+            searchableContent.metadata.riskLevel || 'low', 
             risk.severity
           );
         }
@@ -637,11 +637,3 @@ export class RAGIntegration {
   }
 }
 
-/**
- * Export all utilities for easy access
- */
-export {
-  ContentProcessor,
-  SearchIndexManager,
-  VectorEmbeddingUtils
-};

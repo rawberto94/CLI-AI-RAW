@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle, 
   Clock, 
@@ -14,9 +13,11 @@ import {
   Zap,
   Eye
 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 
 interface AnalysisStage {
   id: string;
@@ -46,7 +47,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
   useEffect(() => {
     // Simulate real-time analysis updates
     const mockAnalysis: ContractAnalysis = {
-      contractId: contractId || 'demo-contract-1',
+      contractId: contractId ?? 'demo-contract-1',
       contractName: 'MSA-TechCorp-2024.pdf',
       uploadedAt: new Date().toISOString(),
       totalProgress: 0,
@@ -116,7 +117,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
     setSelectedAnalysis(mockAnalysis.contractId);
 
     // Simulate progress updates
-    const interval = setInterval(() => {
+    const interval = globalThis.setInterval(() => {
       setAnalyses(prev => prev.map(analysis => {
         const updatedStages = analysis.stages.map(stage => {
           if (stage.status === 'processing' && stage.progress < 100) {
@@ -124,18 +125,18 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
             return {
               ...stage,
               progress: newProgress,
-              status: newProgress >= 100 ? 'completed' : 'processing'
+              status: newProgress >= 100 ? 'completed' as const : 'processing' as const
             };
           }
           
           // Start next stage when current completes
           if (stage.status === 'pending') {
             const prevStageIndex = analysis.stages.findIndex(s => s.id === stage.id) - 1;
-            const prevStage = analysis.stages[prevStageIndex];
-            if (!prevStage || prevStage.status === 'completed') {
+            const prevStage = prevStageIndex >= 0 ? analysis.stages[prevStageIndex] : null;
+            if (prevStage === null || prevStage.status === 'completed') {
               return {
                 ...stage,
-                status: 'processing',
+                status: 'processing' as const,
                 progress: Math.random() * 20
               };
             }
@@ -146,7 +147,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
 
         const completedStages = updatedStages.filter(s => s.status === 'completed').length;
         const totalProgress = (completedStages / updatedStages.length) * 100;
-        const overallStatus = totalProgress >= 100 ? 'completed' : 'processing';
+        const overallStatus = totalProgress >= 100 ? 'completed' as const : 'processing' as const;
 
         return {
           ...analysis,
@@ -157,7 +158,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
       }));
     }, 1500);
 
-    return () => clearInterval(interval);
+    return () => globalThis.clearInterval(interval);
   }, [contractId]);
 
   const getStatusIcon = (status: string) => {
@@ -201,7 +202,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {selectedAnalysisData && (
+          {selectedAnalysisData != null && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -232,7 +233,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
 
       {/* Pipeline Stages */}
       <div className="grid gap-4">
-        {selectedAnalysisData?.stages.map((stage, index) => (
+        {selectedAnalysisData?.stages.map((stage) => (
           <Card key={stage.id} className={`transition-all duration-300 ${getStatusColor(stage.status)}`}>
             <CardContent className="p-4">
               <div className="flex items-start gap-4">
@@ -244,7 +245,7 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-gray-900">{stage.name}</h3>
                     <div className="flex items-center gap-2">
-                      {stage.duration && (
+                      {stage.duration != null && stage.duration > 0 && (
                         <span className="text-xs text-gray-500">
                           {formatDuration(stage.duration)}
                         </span>
@@ -265,14 +266,14 @@ export function RealTimeProgressTracker({ contractId }: { contractId?: string })
                     </div>
                   )}
                   
-                  {stage.estimatedTime && stage.status === 'processing' && (
+                  {stage.estimatedTime != null && stage.estimatedTime > 0 && stage.status === 'processing' && (
                     <div className="text-xs text-blue-600 mb-2">
                       <Clock className="w-3 h-3 inline mr-1" />
                       ~{formatDuration(stage.estimatedTime)} remaining
                     </div>
                   )}
                   
-                  {stage.insights && stage.insights.length > 0 && (
+                  {stage.insights != null && stage.insights.length > 0 && (
                     <div className="space-y-1">
                       <h4 className="text-xs font-medium text-gray-700">Key Insights:</h4>
                       {stage.insights.map((insight, i) => (

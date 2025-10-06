@@ -1,0 +1,17 @@
+{
+  "id": "contract_1759281056975_s31yqctdi",
+  "filename": "Statement_of_Work_Corporate.pdf",
+  "uploadDate": "2025-10-01T01:10:56.977Z",
+  "status": "processing",
+  "tenantId": "demo",
+  "uploadedBy": "demo-user",
+  "fileSize": 6968,
+  "mimeType": "application/pdf",
+  "filePath": "/Users/maddalena/Downloads/contract-intelligence/apps/web/uploads/demo/contract_1759281056975_s31yqctdi_Statement_of_Work_Corporate.pdf",
+  "processing": {
+    "jobId": "job_1759281056977_skkn6mdxe",
+    "status": "processing",
+    "progress": 0,
+    "startTime": "2025-10-01T01:10:56.977Z"
+  }
+}

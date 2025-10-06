@@ -1,16 +1,18 @@
 {
   "name": "Contract Intelligence",
-  "dockerComposeFile": "docker-compose.yml",
-  "service": "app",
-  "workspaceFolder": "/workspaces/contract-intelligence",
-  "shutdownAction": "stopCompose",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/node:1": {
       "nodeGypDependencies": true,
       "version": "20"
     },
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-contrib/features/pnpm:2": {
+      "version": "8.6.1"
+    },
+    "ghcr.io/devcontainers-contrib/features/postgres-asdf:1": {
+      "version": "16"
+    }
   },
   "forwardPorts": [3001, 3002, 5432, 6379, 9000, 9001],
   "portsAttributes": {
@@ -69,6 +71,7 @@
       }
     }
   },
-  "postCreateCommand": ".devcontainer/setup.sh",
-  "remoteUser": "node"
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "remoteUser": "node",
+  "onCreateCommand": "sudo chown -R node:node /workspaces"
 }

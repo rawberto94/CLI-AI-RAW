@@ -1,0 +1,126 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Resources << /Font << /F1 4 0 R >> >>
+/Contents 5 0 R
+>>
+endobj
+
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+
+5 0 obj
+<< /Length 2200 >>
+stream
+BT
+/F1 16 Tf
+200 750 Td
+(STATEMENT OF WORK) Tj
+0 -25 Td
+/F1 12 Tf
+(Professional Services Agreement) Tj
+0 -30 Td
+(Contract Number: SOW-2024-001) Tj
+0 -15 Td
+(Effective Date: January 1, 2024) Tj
+0 -15 Td
+(Total Value: $750,000 USD) Tj
+0 -30 Td
+/F1 14 Tf
+(PARTIES) Tj
+0 -20 Td
+/F1 12 Tf
+(Client: TechCorp Inc.) Tj
+0 -15 Td
+(Service Provider: Digital Solutions LLC) Tj
+0 -30 Td
+/F1 14 Tf
+(PAYMENT SCHEDULE) Tj
+0 -20 Td
+/F1 12 Tf
+(Total: $750,000 USD) Tj
+0 -15 Td
+(Project Kickoff: $187,500 \(25%\)) Tj
+0 -15 Td
+(Phase 1 Completion: $187,500 \(25%\)) Tj
+0 -15 Td
+(Phase 2 Completion: $187,500 \(25%\)) Tj
+0 -15 Td
+(Final Delivery: $187,500 \(25%\)) Tj
+0 -30 Td
+/F1 14 Tf
+(EXPENSE BREAKDOWN) Tj
+0 -20 Td
+/F1 12 Tf
+(Professional Services: $525,000 \(70%\)) Tj
+0 -15 Td
+(Travel & Expenses: $112,500 \(15%\)) Tj
+0 -15 Td
+(Software Licenses: $75,000 \(10%\)) Tj
+0 -15 Td
+(Contingency: $37,500 \(5%\)) Tj
+0 -30 Td
+/F1 14 Tf
+(RATE CARD) Tj
+0 -20 Td
+/F1 12 Tf
+(Senior Consultant: $175/hr) Tj
+0 -15 Td
+(Project Manager: $150/hr) Tj
+0 -15 Td
+(Business Analyst: $125/hr) Tj
+0 -15 Td
+(Senior Developer: $140/hr) Tj
+0 -15 Td
+(Developer: $110/hr) Tj
+0 -15 Td
+(QA Engineer: $115/hr) Tj
+0 -15 Td
+(Technical Architect: $195/hr) Tj
+0 -15 Td
+(Data Analyst: $120/hr) Tj
+0 -15 Td
+(UX Designer: $130/hr) Tj
+0 -15 Td
+(DevOps Engineer: $165/hr) Tj
+0 -30 Td
+/F1 14 Tf
+(TERMS) Tj
+0 -20 Td
+/F1 12 Tf
+(Payment: Net 30 days) Tj
+0 -15 Td
+(Late Penalties: 1.5% per month) Tj
+0 -15 Td
+(Termination: 30 days notice) Tj
+0 -15 Td
+(Governing Law: California) Tj
+ET
+endstream
+endobj
+
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000318 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2570
+%%EOF

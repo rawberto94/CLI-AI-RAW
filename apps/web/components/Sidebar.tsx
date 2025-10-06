@@ -13,6 +13,10 @@ import {
   Upload,
   Bell,
   FileText,
+  Presentation,
+  Sparkles,
+  Play,
+  Rocket
 } from "lucide-react"
 import {
   Tooltip,
@@ -33,6 +37,12 @@ const items = [
   { href: "/risk", label: "Risk", Icon: AlertTriangle },
   { href: "/upload", label: "Upload", Icon: Upload },
   { href: "/runs", label: "Runs", Icon: Layers },
+]
+
+const demoItems = [
+  { href: "/futuristic-contracts", label: "AI Intelligence Hub", Icon: Sparkles, badge: "Live Demo", description: "Complete AI-powered contract intelligence" },
+  { href: "/pilot-demo", label: "Executive Pilot Demo", Icon: Rocket, badge: "CTO Ready", description: "Executive presentation demo" },
+  { href: "/mvp", label: "MVP Showcase", Icon: Play, badge: "Interactive", description: "Core functionality demo" },
 ]
 
 export function Sidebar() {
@@ -62,6 +72,81 @@ export function Sidebar() {
           </TooltipProvider>
         </div>
         <div className="flex-1">
+          {/* AI Intelligence Demo Section */}
+          <div className="px-2 lg:px-4 mb-4">
+            <div className="mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
+                AI Intelligence Platform
+              </h3>
+            </div>
+            
+            {demoItems.map(({ href, label, Icon, badge, description }) => {
+              const active = pathname === href
+              const isMainDemo = href === "/futuristic-contracts"
+              
+              return (
+                <div key={href} className="mb-2">
+                  {isMainDemo ? (
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-1">
+                      <Link
+                        href={href}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-3 text-white transition-all hover:bg-white/10 ${
+                          active ? "bg-white/20" : ""
+                        }`}
+                      >
+                        <div className="p-1 bg-white/20 rounded-full">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-sm">{label}</span>
+                            {badge && (
+                              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                                {badge}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-blue-100">{description}</span>
+                        </div>
+                        <Sparkles className="h-4 w-4 ml-auto animate-pulse" />
+                      </Link>
+                    </div>
+                  ) : (
+                    <Link
+                      href={href}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary hover:bg-muted/50 ${
+                        active ? "bg-muted text-primary" : ""
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{label}</span>
+                          {badge && (
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                              {badge}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">{description}</span>
+                      </div>
+                    </Link>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Separator */}
+          <div className="px-2 lg:px-4 mb-4">
+            <div className="border-t border-muted"></div>
+            <div className="mt-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3">
+                Core Platform
+              </h3>
+            </div>
+          </div>
+
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {items.map(({ href, label, Icon }) => {
               const active = pathname === href

@@ -1,0 +1,111 @@
+{
+  "timestamp": "2025-10-04T13:05:04.646Z",
+  "summary": {
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "passRate": "100.0%"
+  },
+  "tests": [
+    {
+      "name": "File upload simulation",
+      "status": "passed"
+    },
+    {
+      "name": "File parsing simulation",
+      "status": "passed"
+    },
+    {
+      "name": "Fuzzy matching - Role variations",
+      "status": "passed"
+    },
+    {
+      "name": "Fuzzy matching - Rate variations",
+      "status": "passed"
+    },
+    {
+      "name": "Fuzzy matching - Level/Seniority variations",
+      "status": "passed"
+    },
+    {
+      "name": "Complete column mapping",
+      "status": "passed"
+    },
+    {
+      "name": "Validate complete records",
+      "status": "passed"
+    },
+    {
+      "name": "Detect missing required fields",
+      "status": "passed"
+    },
+    {
+      "name": "Validate rate ranges",
+      "status": "passed"
+    },
+    {
+      "name": "Validate currency codes",
+      "status": "passed"
+    },
+    {
+      "name": "Detect duplicate records",
+      "status": "passed"
+    },
+    {
+      "name": "Rate normalization - Daily to Hourly",
+      "status": "passed"
+    },
+    {
+      "name": "Rate normalization - Daily to Monthly",
+      "status": "passed"
+    },
+    {
+      "name": "Rate normalization - Hourly to Daily",
+      "status": "passed"
+    },
+    {
+      "name": "Currency conversion simulation",
+      "status": "passed"
+    },
+    {
+      "name": "Role name standardization",
+      "status": "passed"
+    },
+    {
+      "name": "Level standardization",
+      "status": "passed"
+    },
+    {
+      "name": "Create mapping template",
+      "status": "passed"
+    },
+    {
+      "name": "Load and reuse template",
+      "status": "passed"
+    },
+    {
+      "name": "Template validation",
+      "status": "passed"
+    },
+    {
+      "name": "Create import job",
+      "status": "passed"
+    },
+    {
+      "name": "Progress through stages",
+      "status": "passed"
+    },
+    {
+      "name": "Track validation statistics",
+      "status": "passed"
+    },
+    {
+      "name": "Handle import errors gracefully",
+      "status": "passed"
+    },
+    {
+      "name": "Complete import workflow",
+      "status": "passed"
+    }
+  ]
+}

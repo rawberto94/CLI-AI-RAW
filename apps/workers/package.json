@@ -17,6 +17,7 @@
     "@opentelemetry/resources": "^2.1.0",
     "@opentelemetry/sdk-node": "^0.205.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
+    "@prisma/client": "^6.16.2",
     "bullmq": "^4.12.3",
     "clients-db": "workspace:*",
     "clients-openai": "workspace:*",

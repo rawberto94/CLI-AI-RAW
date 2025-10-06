@@ -89,7 +89,9 @@ export default function DraftsPage() {
   };
 
   const createAndOpenDraft = () => {
-    const id = `doc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // Generate proper hexadecimal hash to match API validation
+    const randomHex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    const id = `doc-${Date.now()}-${randomHex}`;
     router.push(`/drafts/workspace/${id}?role=client`);
   };
 
