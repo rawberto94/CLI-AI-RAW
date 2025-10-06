@@ -69,5 +69,6 @@
       }
     }
   },
-  "postCreateCommand": "bash .devcontainer/setup.sh"
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "nohup bash .devcontainer/start-services.sh > /tmp/services.log 2>&1 &"
 }
