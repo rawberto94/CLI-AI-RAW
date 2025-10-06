@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
-import { readFile, writeFile } from "fs/promises"
-import { join } from "path"
-import { existsSync } from "fs"
 
 export const runtime = "nodejs"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 // Get contract details and processing status
 export async function GET(
@@ -18,14 +17,48 @@ export async function GET(
       return NextResponse.json({ error: "Contract ID is required" }, { status: 400 })
     }
 
-    // Load contract data
-    const contractDataPath = join(process.cwd(), 'data', 'contracts', `${contractId}.json`)
+    // Fetch contract from backend API
+    const contractRes = await fetch(`${API_URL}/api/contracts/${contractId}`, {
+      headers: {
+        'x-tenant-id': 'demo'
+      }
+    });
     
-    if (!existsSync(contractDataPath)) {
+    if (!contractRes.ok) {
       return NextResponse.json({ error: "Contract not found" }, { status: 404 })
     }
 
-    const contractData = JSON.parse(await readFile(contractDataPath, 'utf-8'))
+    const contract = await contractRes.json();
+    
+    // Fetch artifacts
+    const artifactsRes = await fetch(`${API_URL}/api/contracts/${contractId}/artifacts`, {
+      headers: {
+        'x-tenant-id': 'demo'
+      }
+    });
+    
+    const artifacts = artifactsRes.ok ? await artifactsRes.json() : {};
+    
+    // Combine contract metadata with artifacts
+    const contractData = {
+      id: contract.id,
+      filename: contract.name,
+      uploadDate: contract.createdAt,
+      status: contract.status === 'COMPLETED' ? 'completed' : contract.status === 'PROCESSING' ? 'processing' : 'error',
+      tenantId: contract.tenantId || 'demo',
+      uploadedBy: 'user',
+      fileSize: 0,
+      mimeType: 'application/pdf',
+      processing: {
+        jobId: contract.id,
+        status: contract.status,
+        currentStage: 'completed',
+        progress: 100,
+        startTime: contract.createdAt,
+        completedAt: contract.updatedAt
+      },
+      extractedData: artifacts
+    }
     
     // Check if we have real processing results
     const hasRealResults = contractData.extractedData && contractData.status === 'completed'
