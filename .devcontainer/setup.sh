@@ -36,30 +36,10 @@ EOF
   echo "⚠️  Please update .env with your OPENAI_API_KEY"
 fi
 
-# Initialize PostgreSQL if needed
-echo "🗄️ Initializing PostgreSQL..."
-if command -v psql &> /dev/null; then
-  # Start PostgreSQL service
-  sudo service postgresql start || true
-  
-  # Wait for PostgreSQL to be ready
-  sleep 3
-  
-  # Create database and user if they don't exist
-  sudo -u postgres psql -c "CREATE DATABASE contract_intelligence;" 2>/dev/null || echo "Database already exists"
-  sudo -u postgres psql -c "CREATE USER postgres WITH PASSWORD 'postgres';" 2>/dev/null || echo "User already exists"
-  sudo -u postgres psql -c "ALTER DATABASE contract_intelligence OWNER TO postgres;" 2>/dev/null || true
-  sudo -u postgres psql -d contract_intelligence -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
-  
-  echo "✅ PostgreSQL is ready!"
-else
-  echo "⚠️  PostgreSQL not found. You may need to set up an external database."
-fi
-
 echo ""
 echo "🎉 Setup complete!"
 echo ""
 echo "Next steps:"
-echo "  1. Update .env with your OPENAI_API_KEY"
-echo "  2. Run: pnpm dev"
+echo "  1. Update .env with your OPENAI_API_KEY (if needed)"
+echo "  2. Run: ./launch.sh"
 echo ""

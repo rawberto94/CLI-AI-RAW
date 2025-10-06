@@ -10,9 +10,7 @@
     "ghcr.io/devcontainers-contrib/features/pnpm:2": {
       "version": "8.6.1"
     },
-    "ghcr.io/devcontainers-contrib/features/postgres-asdf:1": {
-      "version": "16"
-    }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
   "forwardPorts": [3001, 3002, 5432, 6379, 9000, 9001],
   "portsAttributes": {
@@ -71,7 +69,5 @@
       }
     }
   },
-  "postCreateCommand": "bash .devcontainer/setup.sh",
-  "remoteUser": "node",
-  "onCreateCommand": "sudo chown -R node:node /workspaces"
+  "postCreateCommand": "bash .devcontainer/setup.sh"
 }
