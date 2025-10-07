@@ -240,9 +240,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
     // Create contract record in database using ContractCreationService
     let result;
     try {
-      const { getDatabaseManager } = await import('../../../../../packages/clients/db');
-      const { getFileStorageService } = await import('../../../../../apps/core/storage/file-storage.service');
-      const { createContractCreationService } = await import('../../../../../apps/core/contracts/contract-creation.service');
+      const { getDatabaseManager } = await import('clients-db');
+      const { getFileStorageService } = await import('@core/storage/file-storage.service');
+      const { createContractCreationService } = await import('@core/contracts/contract-creation.service');
 
       const databaseManager = getDatabaseManager();
       const fileStorageService = getFileStorageService();

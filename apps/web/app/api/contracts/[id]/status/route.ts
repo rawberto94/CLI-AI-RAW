@@ -7,14 +7,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ProcessingJobService } from '@core/contracts/processing-job.service';
 import { ProcessingJobRepository, databaseManager } from 'clients-db';
 
-const jobRepository = new ProcessingJobRepository(databaseManager);
-const jobService = new ProcessingJobService(jobRepository);
+// Lazy initialization to avoid build-time database connections
+let jobRepository: ProcessingJobRepository | null = null;
+let jobService: ProcessingJobService | null = null;
+
+function getServices() {
+  if (!jobRepository) {
+    jobRepository = new ProcessingJobRepository(databaseManager);
+  }
+  if (!jobService) {
+    jobService = new ProcessingJobService(jobRepository);
+  }
+  return { jobService };
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { jobService } = getServices();
     const contractId = params.id;
 
     if (!contractId) {

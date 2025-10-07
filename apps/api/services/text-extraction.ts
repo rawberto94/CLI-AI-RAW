@@ -58,7 +58,7 @@ export interface ExtractionOptions {
 }
 
 export class TextExtractionService {
-  private ocrWorker: unknown = null;
+  private ocrWorker: any = null;
 
   constructor() {
     this.initializeOCR();

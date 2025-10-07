@@ -9,15 +9,30 @@ import { ProcessingJobRepository, databaseManager } from 'clients-db';
 import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
 import { processingStatusBroadcaster } from '@core/contracts/processing-status-broadcaster';
 
-const jobRepository = new ProcessingJobRepository(databaseManager);
-const jobService = new ProcessingJobService(jobRepository);
-const workerOrchestrator = new WorkerOrchestrator();
+// Lazy initialization to avoid build-time database connections
+let jobRepository: ProcessingJobRepository | null = null;
+let jobService: ProcessingJobService | null = null;
+let workerOrchestrator: WorkerOrchestrator | null = null;
+
+function getServices() {
+  if (!jobRepository) {
+    jobRepository = new ProcessingJobRepository(databaseManager);
+  }
+  if (!jobService) {
+    jobService = new ProcessingJobService(jobRepository);
+  }
+  if (!workerOrchestrator) {
+    workerOrchestrator = new WorkerOrchestrator();
+  }
+  return { jobRepository, jobService, workerOrchestrator };
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { jobService, workerOrchestrator } = getServices();
     const contractId = params.id;
 
     if (!contractId) {

@@ -12,23 +12,47 @@ import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
 import { ProcessingJobService } from '@core/contracts/processing-job.service';
 import { ContractRepository, ProcessingJobRepository, databaseManager } from 'clients-db';
 
-const contractRepository = new ContractRepository(databaseManager);
-const jobRepository = new ProcessingJobRepository(databaseManager);
-const creationService = new ContractCreationService(contractRepository);
-const workerOrchestrator = new WorkerOrchestrator();
-const jobService = new ProcessingJobService(jobRepository);
-const batchService = new BatchOperationsService(
-  creationService,
-  workerOrchestrator,
-  jobService,
-  contractRepository
-);
+// Lazy initialization to avoid build-time database connections
+let contractRepository: ContractRepository | null = null;
+let jobRepository: ProcessingJobRepository | null = null;
+let creationService: ContractCreationService | null = null;
+let workerOrchestrator: WorkerOrchestrator | null = null;
+let jobService: ProcessingJobService | null = null;
+let batchService: BatchOperationsService | null = null;
+
+function getServices() {
+  if (!contractRepository) {
+    contractRepository = new ContractRepository(databaseManager);
+  }
+  if (!jobRepository) {
+    jobRepository = new ProcessingJobRepository(databaseManager);
+  }
+  if (!creationService) {
+    creationService = new ContractCreationService(contractRepository);
+  }
+  if (!workerOrchestrator) {
+    workerOrchestrator = new WorkerOrchestrator();
+  }
+  if (!jobService) {
+    jobService = new ProcessingJobService(jobRepository);
+  }
+  if (!batchService) {
+    batchService = new BatchOperationsService(
+      creationService,
+      workerOrchestrator,
+      jobService,
+      contractRepository
+    );
+  }
+  return { batchService };
+}
 
 /**
  * Batch upload contracts
  */
 export async function POST(request: NextRequest) {
   try {
+    const { batchService } = getServices();
     const formData = await request.formData();
     const files: File[] = [];
     
