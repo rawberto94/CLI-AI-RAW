@@ -3,7 +3,17 @@
  * Broadcasts contract processing status updates via WebSocket
  */
 
-import { webSocketService } from '@/apps/api/services/websocket-service';
+// Try to import websocket service if available (API context)
+let webSocketService: any = null;
+try {
+  // Use dynamic import to avoid build errors
+  const wsModule = require('../../../apps/api/services/websocket-service');
+  webSocketService = wsModule.webSocketService;
+} catch (e) {
+  // WebSocket service not available in this context (likely web/frontend)
+  console.warn('WebSocket service not available - status updates will not be broadcast');
+}
+
 import { JobStatus } from '@prisma/client';
 
 export interface ProcessingStatusUpdate {
@@ -33,6 +43,19 @@ export class ProcessingStatusBroadcaster {
   }
 
   /**
+   * Helper to safely send messages via WebSocket if available
+   */
+  private safeSend(method: 'sendToSubscribers' | 'broadcastToTenant', ...args: any[]) {
+    if (webSocketService && typeof webSocketService[method] === 'function') {
+      try {
+        webSocketService[method](...args);
+      } catch (error) {
+        console.warn(`Failed to send WebSocket message:`, error);
+      }
+    }
+  }
+
+  /**
    * Broadcast processing started event
    */
   broadcastProcessingStarted(
@@ -53,14 +76,14 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.sendToSubscribers(
+    this.safeSend('sendToSubscribers', 
       this.tenantId,
       'contract:processing',
       message
     );
 
     // Also broadcast to general contract updates
-    webSocketService.broadcastToTenant(this.tenantId, message);
+    this.safeSend('broadcastToTenant', this.tenantId, message);
   }
 
   /**
@@ -84,7 +107,7 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.sendToSubscribers(
+    this.safeSend('sendToSubscribers', 
       this.tenantId,
       'contract:processing',
       message
@@ -113,14 +136,14 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.sendToSubscribers(
+    this.safeSend('sendToSubscribers', 
       this.tenantId,
       'contract:processing',
       message
     );
 
     // Broadcast to all tenant connections
-    webSocketService.broadcastToTenant(this.tenantId, message);
+    this.safeSend('broadcastToTenant', this.tenantId, message);
   }
 
   /**
@@ -144,14 +167,14 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.sendToSubscribers(
+    this.safeSend('sendToSubscribers', 
       this.tenantId,
       'contract:processing',
       message
     );
 
     // Broadcast to all tenant connections
-    webSocketService.broadcastToTenant(this.tenantId, message);
+    this.safeSend('broadcastToTenant', this.tenantId, message);
   }
 
   /**
@@ -176,7 +199,7 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.sendToSubscribers(
+    this.safeSend('sendToSubscribers', 
       this.tenantId,
       'contract:processing',
       message
@@ -206,7 +229,7 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.sendToSubscribers(
+    this.safeSend('sendToSubscribers', 
       this.tenantId,
       'contract:processing',
       message
@@ -236,7 +259,7 @@ export class ProcessingStatusBroadcaster {
       timestamp: new Date(),
     };
 
-    webSocketService.broadcastToTenant(this.tenantId, message);
+    this.safeSend('broadcastToTenant', this.tenantId, message);
   }
 
   /**

@@ -5,7 +5,7 @@
 
 import { fullTextSearchService } from './full-text-search.service';
 import { vectorSearchService } from './vector-search.service';
-import { prisma } from '@/packages/clients/db';
+import { prisma } from 'clients-db';
 
 export interface IndexUpdateResult {
   contractId: string;

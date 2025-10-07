@@ -270,6 +270,12 @@ export function getDatabaseManager(config?: Partial<DatabaseConfig>): DatabaseMa
 export * from '@prisma/client';
 export * from './src/repositories';
 
+// Export prisma client instance for convenience
+export const prisma = getDatabaseManager().getClient();
+
+// Export database manager for repositories
+export const databaseManager = getDatabaseManager();
+
 // Default export for backward compatibility
 export default function getClient() {
   return getDatabaseManager().getClient();

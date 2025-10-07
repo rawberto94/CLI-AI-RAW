@@ -7,7 +7,7 @@ import { ContractCreationService } from './contract-creation.service';
 import { WorkerOrchestrator } from '../workers/worker-orchestrator';
 import { ProcessingJobService } from './processing-job.service';
 import { processingStatusBroadcaster } from './processing-status-broadcaster';
-import { ContractRepository } from '@/packages/clients/db/src/repositories/contract.repository';
+import { ContractRepository } from 'clients-db';
 
 export interface BatchUploadFile {
   file: File;

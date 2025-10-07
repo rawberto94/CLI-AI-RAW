@@ -111,7 +111,7 @@ export class WorkerOrchestrator {
    * @param contractId - Contract ID to process
    * @returns Orchestration result
    */
-  async executeProcessing Pipeline(contractId: string): Promise<OrchestrationResult> {
+  async executeProcessingPipeline(contractId: string): Promise<OrchestrationResult> {
     const startTime = Date.now();
     const completedStages: string[] = [];
     const failedStages: string[] = [];

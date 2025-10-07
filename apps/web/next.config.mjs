@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 import bundleAnalyzer from '@next/bundle-analyzer'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const withBundleAnalyzer = bundleAnalyzer({
 	enabled: process.env.ANALYZE === 'true',
@@ -12,6 +17,9 @@ const nextConfig = {
 		ignoreDuringBuilds: true,
 	},
 	output: 'standalone',
+	
+	// Externalize packages with native bindings that should only run on server
+	serverExternalPackages: ['sharp'],
 	
 	// Performance optimizations
 	compiler: {
@@ -32,6 +40,21 @@ const nextConfig = {
 				worker_threads: false,
 			};
 		}
+		
+		// Add aliases for monorepo packages
+		config.resolve.alias = {
+			...config.resolve.alias,
+			'@core': path.resolve(__dirname, '..', 'core'),
+		};
+		
+		// Externalize sharp and its dependencies for both client and server
+		config.externals = config.externals || [];
+		config.externals.push({
+			'sharp': 'commonjs sharp',
+			'@img/sharp-libvips-dev': 'commonjs @img/sharp-libvips-dev',
+			'@img/sharp-wasm32': 'commonjs @img/sharp-wasm32',
+		});
+		
 		return config;
 	},
 	

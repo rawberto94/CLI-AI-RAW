@@ -3,7 +3,7 @@
  * Handles contract retrieval with filtering, sorting, and pagination
  */
 
-import { ContractRepository } from '@/packages/clients/db/src/repositories/contract.repository';
+import { ContractRepository } from 'clients-db';
 import { Prisma } from '@prisma/client';
 
 export interface ContractFilter {

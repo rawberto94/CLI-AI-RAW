@@ -6,16 +6,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { BatchOperationsService } from '../../../../../apps/core/contracts/batch-operations.service';
-import { ContractCreationService } from '../../../../../apps/core/contracts/contract-creation.service';
-import { WorkerOrchestrator } from '../../../../../apps/core/workers/worker-orchestrator';
-import { ProcessingJobService } from '../../../../../apps/core/contracts/processing-job.service';
-import { ContractRepository } from '../../../../../packages/clients/db/src/repositories/contract.repository';
-import { ProcessingJobRepository } from '../../../../../packages/clients/db/src/repositories/processing-job.repository';
-import { prisma } from '../../../../../packages/clients/db';
+import { BatchOperationsService } from '@core/contracts/batch-operations.service';
+import { ContractCreationService } from '@core/contracts/contract-creation.service';
+import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
+import { ProcessingJobService } from '@core/contracts/processing-job.service';
+import { ContractRepository, ProcessingJobRepository, databaseManager } from 'clients-db';
 
-const contractRepository = new ContractRepository(prisma);
-const jobRepository = new ProcessingJobRepository(prisma);
+const contractRepository = new ContractRepository(databaseManager);
+const jobRepository = new ProcessingJobRepository(databaseManager);
 const creationService = new ContractCreationService(contractRepository);
 const workerOrchestrator = new WorkerOrchestrator();
 const jobService = new ProcessingJobService(jobRepository);

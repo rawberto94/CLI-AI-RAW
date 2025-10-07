@@ -4,13 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ProcessingJobService } from '../../../../../../apps/core/contracts/processing-job.service';
-import { ProcessingJobRepository } from '../../../../../../packages/clients/db/src/repositories/processing-job.repository';
-import { WorkerOrchestrator } from '../../../../../../apps/core/workers/worker-orchestrator';
-import { processingStatusBroadcaster } from '../../../../../../apps/core/contracts/processing-status-broadcaster';
-import { prisma } from '../../../../../../packages/clients/db';
+import { ProcessingJobService } from '@core/contracts/processing-job.service';
+import { ProcessingJobRepository, databaseManager } from 'clients-db';
+import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
+import { processingStatusBroadcaster } from '@core/contracts/processing-status-broadcaster';
 
-const jobRepository = new ProcessingJobRepository(prisma);
+const jobRepository = new ProcessingJobRepository(databaseManager);
 const jobService = new ProcessingJobService(jobRepository);
 const workerOrchestrator = new WorkerOrchestrator();
 

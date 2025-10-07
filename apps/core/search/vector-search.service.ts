@@ -3,7 +3,7 @@
  * Semantic search using pgvector and OpenAI embeddings
  */
 
-import { prisma } from '@/packages/clients/db';
+import { prisma } from 'clients-db';
 import { Prisma } from '@prisma/client';
 import OpenAI from 'openai';
 
