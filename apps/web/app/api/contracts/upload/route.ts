@@ -3,6 +3,10 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // ============================================================================
 // FILE VALIDATION CONSTANTS
 // ============================================================================

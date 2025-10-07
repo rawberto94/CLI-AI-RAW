@@ -5,9 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ProcessingJobService } from '@core/contracts/processing-job.service';
-import { ProcessingJobRepository, databaseManager } from 'clients-db';
+import { ProcessingJobRepository, getDatabaseManager } from 'clients-db';
 import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
 import { processingStatusBroadcaster } from '@core/contracts/processing-status-broadcaster';
+
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Lazy initialization to avoid build-time database connections
 let jobRepository: ProcessingJobRepository | null = null;
@@ -16,7 +20,7 @@ let workerOrchestrator: WorkerOrchestrator | null = null;
 
 function getServices() {
   if (!jobRepository) {
-    jobRepository = new ProcessingJobRepository(databaseManager);
+    jobRepository = new ProcessingJobRepository(getDatabaseManager());
   }
   if (!jobService) {
     jobService = new ProcessingJobService(jobRepository);

@@ -10,7 +10,11 @@ import { BatchOperationsService } from '@core/contracts/batch-operations.service
 import { ContractCreationService } from '@core/contracts/contract-creation.service';
 import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
 import { ProcessingJobService } from '@core/contracts/processing-job.service';
-import { ContractRepository, ProcessingJobRepository, databaseManager } from 'clients-db';
+import { ContractRepository, ProcessingJobRepository, getDatabaseManager } from 'clients-db';
+
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Lazy initialization to avoid build-time database connections
 let contractRepository: ContractRepository | null = null;
@@ -22,10 +26,10 @@ let batchService: BatchOperationsService | null = null;
 
 function getServices() {
   if (!contractRepository) {
-    contractRepository = new ContractRepository(databaseManager);
+    contractRepository = new ContractRepository(getDatabaseManager());
   }
   if (!jobRepository) {
-    jobRepository = new ProcessingJobRepository(databaseManager);
+    jobRepository = new ProcessingJobRepository(getDatabaseManager());
   }
   if (!creationService) {
     creationService = new ContractCreationService(contractRepository);

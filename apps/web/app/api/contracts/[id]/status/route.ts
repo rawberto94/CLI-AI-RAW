@@ -5,7 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ProcessingJobService } from '@core/contracts/processing-job.service';
-import { ProcessingJobRepository, databaseManager } from 'clients-db';
+import { ProcessingJobRepository, getDatabaseManager } from 'clients-db';
+
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Lazy initialization to avoid build-time database connections
 let jobRepository: ProcessingJobRepository | null = null;
@@ -13,7 +17,7 @@ let jobService: ProcessingJobService | null = null;
 
 function getServices() {
   if (!jobRepository) {
-    jobRepository = new ProcessingJobRepository(databaseManager);
+    jobRepository = new ProcessingJobRepository(getDatabaseManager());
   }
   if (!jobService) {
     jobService = new ProcessingJobService(jobRepository);
