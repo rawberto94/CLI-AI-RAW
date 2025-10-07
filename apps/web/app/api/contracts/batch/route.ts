@@ -6,31 +6,57 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { BatchOperationsService } from '../../../../../apps/core/contracts/batch-operations.service';
-import { ContractCreationService } from '../../../../../apps/core/contracts/contract-creation.service';
-import { WorkerOrchestrator } from '../../../../../apps/core/workers/worker-orchestrator';
-import { ProcessingJobService } from '../../../../../apps/core/contracts/processing-job.service';
-import { ContractRepository } from '../../../../../packages/clients/db/src/repositories/contract.repository';
-import { ProcessingJobRepository } from '../../../../../packages/clients/db/src/repositories/processing-job.repository';
-import { prisma } from '../../../../../packages/clients/db';
+import { BatchOperationsService } from '@core/contracts/batch-operations.service';
+import { ContractCreationService } from '@core/contracts/contract-creation.service';
+import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
+import { ProcessingJobService } from '@core/contracts/processing-job.service';
+import { ContractRepository, ProcessingJobRepository, getDatabaseManager } from 'clients-db';
 
-const contractRepository = new ContractRepository(prisma);
-const jobRepository = new ProcessingJobRepository(prisma);
-const creationService = new ContractCreationService(contractRepository);
-const workerOrchestrator = new WorkerOrchestrator();
-const jobService = new ProcessingJobService(jobRepository);
-const batchService = new BatchOperationsService(
-  creationService,
-  workerOrchestrator,
-  jobService,
-  contractRepository
-);
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Lazy initialization to avoid build-time database connections
+let contractRepository: ContractRepository | null = null;
+let jobRepository: ProcessingJobRepository | null = null;
+let creationService: ContractCreationService | null = null;
+let workerOrchestrator: WorkerOrchestrator | null = null;
+let jobService: ProcessingJobService | null = null;
+let batchService: BatchOperationsService | null = null;
+
+function getServices() {
+  if (!contractRepository) {
+    contractRepository = new ContractRepository(getDatabaseManager());
+  }
+  if (!jobRepository) {
+    jobRepository = new ProcessingJobRepository(getDatabaseManager());
+  }
+  if (!creationService) {
+    creationService = new ContractCreationService(contractRepository);
+  }
+  if (!workerOrchestrator) {
+    workerOrchestrator = new WorkerOrchestrator();
+  }
+  if (!jobService) {
+    jobService = new ProcessingJobService(jobRepository);
+  }
+  if (!batchService) {
+    batchService = new BatchOperationsService(
+      creationService,
+      workerOrchestrator,
+      jobService,
+      contractRepository
+    );
+  }
+  return { batchService };
+}
 
 /**
  * Batch upload contracts
  */
 export async function POST(request: NextRequest) {
   try {
+    const { batchService } = getServices();
     const formData = await request.formData();
     const files: File[] = [];
     

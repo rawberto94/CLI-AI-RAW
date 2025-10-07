@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { hybridSearchService } from '../../../../../../apps/core/search/hybrid-search.service';
+import { hybridSearchService } from '@core/search/hybrid-search.service';
 import { z } from 'zod';
 
 // Request validation schema

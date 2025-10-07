@@ -4,21 +4,39 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ProcessingJobService } from '../../../../../../apps/core/contracts/processing-job.service';
-import { ProcessingJobRepository } from '../../../../../../packages/clients/db/src/repositories/processing-job.repository';
-import { WorkerOrchestrator } from '../../../../../../apps/core/workers/worker-orchestrator';
-import { processingStatusBroadcaster } from '../../../../../../apps/core/contracts/processing-status-broadcaster';
-import { prisma } from '../../../../../../packages/clients/db';
+import { ProcessingJobService } from '@core/contracts/processing-job.service';
+import { ProcessingJobRepository, getDatabaseManager } from 'clients-db';
+import { WorkerOrchestrator } from '@core/workers/worker-orchestrator';
+import { processingStatusBroadcaster } from '@core/contracts/processing-status-broadcaster';
 
-const jobRepository = new ProcessingJobRepository(prisma);
-const jobService = new ProcessingJobService(jobRepository);
-const workerOrchestrator = new WorkerOrchestrator();
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Lazy initialization to avoid build-time database connections
+let jobRepository: ProcessingJobRepository | null = null;
+let jobService: ProcessingJobService | null = null;
+let workerOrchestrator: WorkerOrchestrator | null = null;
+
+function getServices() {
+  if (!jobRepository) {
+    jobRepository = new ProcessingJobRepository(getDatabaseManager());
+  }
+  if (!jobService) {
+    jobService = new ProcessingJobService(jobRepository);
+  }
+  if (!workerOrchestrator) {
+    workerOrchestrator = new WorkerOrchestrator();
+  }
+  return { jobRepository, jobService, workerOrchestrator };
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { jobService, workerOrchestrator } = getServices();
     const contractId = params.id;
 
     if (!contractId) {

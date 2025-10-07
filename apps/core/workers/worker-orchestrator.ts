@@ -1,7 +1,5 @@
 import { JobStatus, ProcessingStatus } from '@prisma/client';
-import { ProcessingJobRepository } from '../../../packages/clients/db/src/repositories/processing-job.repository';
-import { ContractRepository } from '../../../packages/clients/db/src/repositories/contract.repository';
-import { DatabaseManager } from '../../../packages/clients/db';
+import { ProcessingJobRepository, ContractRepository, DatabaseManager } from 'clients-db';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -111,7 +109,7 @@ export class WorkerOrchestrator {
    * @param contractId - Contract ID to process
    * @returns Orchestration result
    */
-  async executeProcessing Pipeline(contractId: string): Promise<OrchestrationResult> {
+  async executeProcessingPipeline(contractId: string): Promise<OrchestrationResult> {
     const startTime = Date.now();
     const completedStages: string[] = [];
     const failedStages: string[] = [];
@@ -669,7 +667,7 @@ export class WorkerOrchestrator {
 
     try {
       const { ContractEmbeddingRepository } = await import(
-        '../../../packages/clients/db/src/repositories/contract-embedding.repository'
+        'clients-db'
       );
       const embeddingRepository = new ContractEmbeddingRepository(
         this.contractRepository['databaseManager']

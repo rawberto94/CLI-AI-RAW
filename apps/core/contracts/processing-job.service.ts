@@ -4,7 +4,7 @@
  */
 
 import { ProcessingJob, JobStatus, Prisma } from '@prisma/client';
-import { ProcessingJobRepository } from '@/packages/clients/db/src/repositories/processing-job.repository';
+import { ProcessingJobRepository } from 'clients-db';
 
 export interface CreateJobDto {
   contractId: string;

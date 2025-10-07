@@ -4,18 +4,33 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ProcessingJobService } from '../../../../../../apps/core/contracts/processing-job.service';
-import { ProcessingJobRepository } from '../../../../../../packages/clients/db/src/repositories/processing-job.repository';
-import { prisma } from '../../../../../../packages/clients/db';
+import { ProcessingJobService } from '@core/contracts/processing-job.service';
+import { ProcessingJobRepository, getDatabaseManager } from 'clients-db';
 
-const jobRepository = new ProcessingJobRepository(prisma);
-const jobService = new ProcessingJobService(jobRepository);
+// Force dynamic rendering to avoid build-time database initialization
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Lazy initialization to avoid build-time database connections
+let jobRepository: ProcessingJobRepository | null = null;
+let jobService: ProcessingJobService | null = null;
+
+function getServices() {
+  if (!jobRepository) {
+    jobRepository = new ProcessingJobRepository(getDatabaseManager());
+  }
+  if (!jobService) {
+    jobService = new ProcessingJobService(jobRepository);
+  }
+  return { jobService };
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const { jobService } = getServices();
     const contractId = params.id;
 
     if (!contractId) {
