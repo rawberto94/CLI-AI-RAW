@@ -29,6 +29,13 @@
       "clients-storage/*": ["./packages/clients/storage/src/*"],
       "agents": ["./packages/agents/src"],
       "agents/*": ["./packages/agents/src/*"],
+      "@/apps/*": ["./apps/*"],
+      "@/core": ["./apps/core"],
+      "@/core/*": ["./apps/core/*"],
+      "@/packages/*": ["./packages/*"],
+      "@/packages/clients/*": ["./packages/clients/*"],
+      "@/packages/clients/db": ["./packages/clients/db"],
+      "@/packages/clients/db/*": ["./packages/clients/db/*"],
       "@/*": ["./apps/web/*"]
     }
   },

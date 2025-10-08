@@ -21,10 +21,32 @@
         "name": "next"
       }
     ],
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@/apps/*": [
+        "../../apps/*"
+      ],
+      "@/core": [
+        "../../apps/core"
+      ],
+      "@/core/*": [
+        "../../apps/core/*"
+      ],
+      "@/packages/*": [
+        "../../packages/*"
+      ],
+      "@/packages/clients/*": [
+        "../../packages/clients/*"
+      ],
+      "@/packages/clients/db": [
+        "../../packages/clients/db"
+      ],
+      "@/packages/clients/db/*": [
+        "../../packages/clients/db/*"
       ]
     }
   },

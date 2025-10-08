@@ -3,84 +3,69 @@
  * GET /api/contracts/:id/status - Get current processing status and progress
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { ProcessingJobService } from '../../../../../../apps/core/contracts/processing-job.service';
-import { ProcessingJobRepository } from '../../../../../../packages/clients/db/src/repositories/processing-job.repository';
-import { prisma } from '../../../../../../packages/clients/db';
-
-const jobRepository = new ProcessingJobRepository(prisma);
-const jobService = new ProcessingJobService(jobRepository);
+import { NextRequest, NextResponse } from "next/server";
+import {
+  ensureProcessingJob,
+  getProcessingJob,
+} from "@/lib/contract-processing";
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: NextRequest,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = params.id;
+    const params = await context.params;
+    const contractId = params?.id;
 
     if (!contractId) {
       return NextResponse.json(
-        { error: 'Contract ID is required' },
+        { error: "Contract ID is required" },
         { status: 400 }
       );
     }
 
-    // Get the latest processing job for this contract
-    const job = await jobService.getJobByContractId(contractId);
+    const job = getProcessingJob(contractId) ?? ensureProcessingJob(contractId);
 
-    if (!job) {
-      return NextResponse.json(
-        { error: 'No processing job found for this contract' },
-        { status: 404 }
-      );
-    }
+    const now = Date.now();
+    const startedAtMs = job.startedAt?.getTime?.() ?? now;
+    const completedAtMs = job.completedAt?.getTime?.();
+    const duration = completedAtMs
+      ? completedAtMs - startedAtMs
+      : Math.max(0, now - startedAtMs);
 
-    // Get detailed progress information
-    const progress = await jobService.getJobProgress(job.id);
+    const estimatedTimeRemaining =
+      job.status === "PROCESSING"
+        ? Math.max(
+            0,
+            Math.round(((100 - job.progress) / Math.max(job.progress, 1)) * 300)
+          )
+        : 0;
 
-    if (!progress) {
-      return NextResponse.json(
-        { error: 'Unable to retrieve job progress' },
-        { status: 500 }
-      );
-    }
-
-    // Calculate estimated time remaining
-    let estimatedTimeRemaining: number | null = null;
-    if (
-      progress.status === 'PROCESSING' &&
-      progress.duration &&
-      progress.progress > 0
-    ) {
-      const estimatedTotal = (progress.duration / progress.progress) * 100;
-      estimatedTimeRemaining = Math.ceil(estimatedTotal - progress.duration);
-    }
-
-    // Build response
-    const response = {
-      contractId: progress.contractId,
-      jobId: progress.id,
-      status: progress.status,
-      progress: progress.progress,
-      currentStep: progress.currentStep,
-      error: progress.error,
-      startedAt: progress.startedAt,
-      completedAt: progress.completedAt,
-      duration: progress.duration,
-      estimatedTimeRemaining,
-      isProcessing: progress.status === 'PROCESSING',
-      isCompleted: progress.status === 'COMPLETED',
-      isFailed: progress.status === 'FAILED',
-      canRetry: progress.status === 'FAILED',
-    };
-
-    return NextResponse.json(response, { status: 200 });
-  } catch (error) {
-    console.error('Error fetching contract status:', error);
     return NextResponse.json(
       {
-        error: 'Failed to fetch contract status',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        contractId: job.contractId,
+        jobId: job.id,
+        status: job.status,
+        progress: job.progress,
+        currentStep: job.currentStep,
+        error: job.error,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        duration,
+        estimatedTimeRemaining,
+        isProcessing: job.status === "PROCESSING",
+        isCompleted: job.status === "COMPLETED",
+        isFailed: job.status === "FAILED",
+        canRetry: job.status === "FAILED" || job.status === "COMPLETED",
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error fetching contract status:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch contract status",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

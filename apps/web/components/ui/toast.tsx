@@ -3,28 +3,13 @@
  * Individual toast notification
  */
 
-'use client';
+"use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { X, Check, AlertCircle, Info, AlertTriangle } from 'lucide-react';
+import { motion } from "framer-motion";
+import { X, Check, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import type { Toast, ToastProps } from "./toast-types";
 
-export interface Toast {
-  id: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-  title: string;
-  message?: string;
-  duration?: number;
-  dismissible?: boolean;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
-
-export interface ToastProps extends Toast {
-  onDismiss: (id: string) => void;
-}
+export type { Toast, ToastProps };
 
 export function ToastComponent({
   id,
@@ -37,13 +22,13 @@ export function ToastComponent({
 }: ToastProps) {
   const getIcon = () => {
     switch (type) {
-      case 'success':
+      case "success":
         return <Check className="w-5 h-5" />;
-      case 'error':
+      case "error":
         return <AlertCircle className="w-5 h-5" />;
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="w-5 h-5" />;
-      case 'info':
+      case "info":
       default:
         return <Info className="w-5 h-5" />;
     }
@@ -51,38 +36,38 @@ export function ToastComponent({
 
   const getColors = () => {
     switch (type) {
-      case 'success':
+      case "success":
         return {
-          bg: 'bg-green-50',
-          border: 'border-green-200',
-          icon: 'text-green-600',
-          title: 'text-green-900',
-          message: 'text-green-700',
+          bg: "bg-green-50",
+          border: "border-green-200",
+          icon: "text-green-600",
+          title: "text-green-900",
+          message: "text-green-700",
         };
-      case 'error':
+      case "error":
         return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          icon: 'text-red-600',
-          title: 'text-red-900',
-          message: 'text-red-700',
+          bg: "bg-red-50",
+          border: "border-red-200",
+          icon: "text-red-600",
+          title: "text-red-900",
+          message: "text-red-700",
         };
-      case 'warning':
+      case "warning":
         return {
-          bg: 'bg-orange-50',
-          border: 'border-orange-200',
-          icon: 'text-orange-600',
-          title: 'text-orange-900',
-          message: 'text-orange-700',
+          bg: "bg-orange-50",
+          border: "border-orange-200",
+          icon: "text-orange-600",
+          title: "text-orange-900",
+          message: "text-orange-700",
         };
-      case 'info':
+      case "info":
       default:
         return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          icon: 'text-blue-600',
-          title: 'text-blue-900',
-          message: 'text-blue-700',
+          bg: "bg-blue-50",
+          border: "border-blue-200",
+          icon: "text-blue-600",
+          title: "text-blue-900",
+          message: "text-blue-700",
         };
     }
   };
@@ -102,22 +87,16 @@ export function ToastComponent({
       `}
     >
       {/* Icon */}
-      <div className={`flex-shrink-0 ${colors.icon}`}>
-        {getIcon()}
-      </div>
+      <div className={`flex-shrink-0 ${colors.icon}`}>{getIcon()}</div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <h4 className={`text-sm font-semibold ${colors.title}`}>
-          {title}
-        </h4>
-        
+        <h4 className={`text-sm font-semibold ${colors.title}`}>{title}</h4>
+
         {message && (
-          <p className={`text-sm mt-1 ${colors.message}`}>
-            {message}
-          </p>
+          <p className={`text-sm mt-1 ${colors.message}`}>{message}</p>
         )}
-        
+
         {action && (
           <button
             onClick={action.onClick}

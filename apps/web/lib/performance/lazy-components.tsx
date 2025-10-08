@@ -4,6 +4,7 @@
  */
 
 import dynamic from 'next/dynamic';
+import React from 'react';
 
 // Heavy UI components - load on demand
 export const LazyContractDetailTabs = dynamic(

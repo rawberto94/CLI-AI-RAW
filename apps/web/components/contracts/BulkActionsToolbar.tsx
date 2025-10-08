@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Trash2,
   Download,
@@ -10,22 +10,20 @@ import {
   Archive,
   CheckCircle,
   X,
-  MoreHorizontal,
   GitCompare,
-} from 'lucide-react'
+} from "lucide-react";
 import {
   executeBulkAction,
-  getBulkActionLabel,
   type BulkAction,
-} from '@/lib/contracts/bulk-actions'
-import { TagSelector } from './TagSelector'
+} from "@/lib/contracts/bulk-actions";
+import { TagSelector } from "./TagSelector";
 
 interface BulkActionsToolbarProps {
-  selectedCount: number
-  onClearSelection: () => void
-  onActionComplete: () => void
-  selectedIds: string[]
-  onCompare?: () => void
+  selectedCount: number;
+  onClearSelection: () => void;
+  onActionComplete: () => void;
+  selectedIds: string[];
+  onCompare?: () => void;
 }
 
 export function BulkActionsToolbar({
@@ -33,35 +31,38 @@ export function BulkActionsToolbar({
   onClearSelection,
   onActionComplete,
   selectedIds,
+  onCompare,
 }: BulkActionsToolbarProps) {
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [showTagSelector, setShowTagSelector] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showTagSelector, setShowTagSelector] = useState(false);
 
   const handleAction = async (action: BulkAction, options?: any) => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      const result = await executeBulkAction(action, selectedIds, options)
-      
+      const result = await executeBulkAction(action, selectedIds, options);
+
       if (result.success) {
-        alert(`Successfully ${action}ed ${result.processed} contract(s)`)
-        onActionComplete()
-        onClearSelection()
+        alert(`Successfully ${action}ed ${result.processed} contract(s)`);
+        onActionComplete();
+        onClearSelection();
       } else {
-        alert(`Failed: ${result.errors?.join(', ')}`)
+        alert(`Failed: ${result.errors?.join(", ")}`);
       }
     } catch (error) {
-      alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      alert(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const handleTagAction = async (tagIds: string[]) => {
-    await handleAction('tag', { tagIds })
-    setShowTagSelector(false)
-  }
+    await handleAction("tag", { tagIds });
+    setShowTagSelector(false);
+  };
 
-  if (selectedCount === 0) return null
+  if (selectedCount === 0) return null;
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
@@ -113,7 +114,7 @@ export function BulkActionsToolbar({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAction('export')}
+            onClick={() => handleAction("export")}
             disabled={isProcessing}
           >
             <Download className="w-4 h-4 mr-2" />
@@ -123,7 +124,7 @@ export function BulkActionsToolbar({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAction('archive')}
+            onClick={() => handleAction("archive")}
             disabled={isProcessing}
           >
             <Archive className="w-4 h-4 mr-2" />
@@ -133,7 +134,7 @@ export function BulkActionsToolbar({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAction('mark-reviewed')}
+            onClick={() => handleAction("mark-reviewed")}
             disabled={isProcessing}
           >
             <CheckCircle className="w-4 h-4 mr-2" />
@@ -145,7 +146,7 @@ export function BulkActionsToolbar({
             size="sm"
             onClick={() => {
               if (confirm(`Delete ${selectedCount} contract(s)?`)) {
-                handleAction('delete')
+                handleAction("delete");
               }
             }}
             disabled={isProcessing}
@@ -173,5 +174,5 @@ export function BulkActionsToolbar({
         />
       )}
     </div>
-  )
+  );
 }

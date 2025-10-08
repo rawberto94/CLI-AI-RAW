@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   X,
   Download,
@@ -10,8 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
-} from 'lucide-react'
-import { Contract } from '@/lib/contracts/contracts-data-service'
+} from "lucide-react";
+import { Contract } from "@/lib/contracts/contracts-data-service";
 import {
   createComparison,
   saveComparison,
@@ -20,23 +20,23 @@ import {
   formatDifferenceValue,
   type Comparison,
   type Difference,
-} from '@/lib/contracts/comparison'
-import { formatCurrency, formatDateTime } from '@/lib/utils/formatters'
+} from "@/lib/contracts/comparison";
+import { formatCurrency, formatDateTime } from "@/lib/utils/formatters";
 
 interface ComparisonViewProps {
-  contracts: Contract[]
-  onClose: () => void
+  contracts: Contract[];
+  onClose: () => void;
 }
 
 export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
-  const [comparison, setComparison] = useState<Comparison | null>(null)
-  const [currentDiffIndex, setCurrentDiffIndex] = useState(0)
-  const scrollRefs = useRef<(HTMLDivElement | null)[]>([])
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [currentDiffIndex, setCurrentDiffIndex] = useState(0);
+  const scrollRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    const comp = createComparison(contracts)
-    setComparison(comp)
-  }, [contracts])
+    const comp = createComparison(contracts);
+    setComparison(comp);
+  }, [contracts]);
 
   if (!comparison) {
     return (
@@ -46,34 +46,34 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
           <p className="text-gray-600">Analyzing contracts...</p>
         </div>
       </div>
-    )
+    );
   }
 
   const handleSave = () => {
-    saveComparison(comparison)
-    alert('Comparison saved!')
-  }
+    saveComparison(comparison);
+    alert("Comparison saved!");
+  };
 
   const handleExport = () => {
     // TODO: Implement export functionality
-    alert('Export functionality coming soon!')
-  }
+    alert("Export functionality coming soon!");
+  };
 
   const handleSyncScroll = (index: number, scrollTop: number) => {
     scrollRefs.current.forEach((ref, i) => {
       if (ref && i !== index) {
-        ref.scrollTop = scrollTop
+        ref.scrollTop = scrollTop;
       }
-    })
-  }
+    });
+  };
 
-  const navigateToDifference = (direction: 'prev' | 'next') => {
+  const navigateToDifference = (direction: "prev" | "next") => {
     const newIndex =
-      direction === 'prev'
+      direction === "prev"
         ? Math.max(0, currentDiffIndex - 1)
-        : Math.min(comparison.differences.length - 1, currentDiffIndex + 1)
-    setCurrentDiffIndex(newIndex)
-  }
+        : Math.min(comparison.differences.length - 1, currentDiffIndex + 1);
+    setCurrentDiffIndex(newIndex);
+  };
 
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
@@ -88,7 +88,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
             <div>
               <h2 className="text-xl font-semibold">Contract Comparison</h2>
               <p className="text-sm text-gray-600">
-                {comparison.contracts.length} contracts •{' '}
+                {comparison.contracts.length} contracts •{" "}
                 {comparison.differences.length} differences found
               </p>
             </div>
@@ -146,10 +146,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               {comparison.metrics.keyDifferences.map((diff, idx) => (
-                <Badge
-                  key={idx}
-                  className={getSeverityColor(diff.severity)}
-                >
+                <Badge key={idx} className={getSeverityColor(diff.severity)}>
                   {diff.field} ({diff.count})
                 </Badge>
               ))}
@@ -163,13 +160,14 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
         <div className="border-b border-gray-200 bg-white px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Difference {currentDiffIndex + 1} of {comparison.differences.length}
+              Difference {currentDiffIndex + 1} of{" "}
+              {comparison.differences.length}
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigateToDifference('prev')}
+                onClick={() => navigateToDifference("prev")}
                 disabled={currentDiffIndex === 0}
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -178,8 +176,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigateToDifference('next')}
-                disabled={currentDiffIndex === comparison.differences.length - 1}
+                onClick={() => navigateToDifference("next")}
+                disabled={
+                  currentDiffIndex === comparison.differences.length - 1
+                }
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -191,7 +191,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
 
       {/* Comparison Columns */}
       <div className="flex-1 overflow-hidden">
-        <div className="h-full grid" style={{ gridTemplateColumns: `repeat(${contracts.length}, 1fr)` }}>
+        <div
+          className="h-full grid"
+          style={{ gridTemplateColumns: `repeat(${contracts.length}, 1fr)` }}
+        >
           {contracts.map((contract, index) => (
             <div
               key={contract.id}
@@ -200,7 +203,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
               {/* Column Header */}
               <div className="bg-gray-50 border-b border-gray-200 p-4 sticky top-0 z-10">
                 <h3 className="font-semibold text-gray-900 truncate">
-                  {contract.filename || contract.originalName || 'Untitled'}
+                  {contract.filename || contract.originalName || "Untitled"}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {formatDateTime(contract.uploadDate)}
@@ -209,7 +212,9 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
 
               {/* Column Content */}
               <div
-                ref={(el) => (scrollRefs.current[index] = el)}
+                ref={(el: HTMLDivElement | null) => {
+                  scrollRefs.current[index] = el as HTMLDivElement | null;
+                }}
                 className="flex-1 overflow-y-auto p-4 space-y-4"
                 onScroll={(e) =>
                   handleSyncScroll(index, e.currentTarget.scrollTop)
@@ -219,7 +224,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                   label="Parties"
                   value={contract.extractedData?.parties}
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.parties'
+                    (d) => d.field === "extractedData.parties"
                   )}
                   contractIndex={index}
                 />
@@ -232,10 +237,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                           contract.extractedData.financial.totalValue,
                           contract.extractedData.financial.currency
                         )
-                      : 'Not specified'
+                      : "Not specified"
                   }
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.financial.totalValue'
+                    (d) => d.field === "extractedData.financial.totalValue"
                   )}
                   contractIndex={index}
                 />
@@ -247,10 +252,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                       ? formatDateTime(
                           contract.extractedData.dates.effectiveDate
                         )
-                      : 'Not specified'
+                      : "Not specified"
                   }
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.dates.effectiveDate'
+                    (d) => d.field === "extractedData.dates.effectiveDate"
                   )}
                   contractIndex={index}
                 />
@@ -262,10 +267,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                       ? formatDateTime(
                           contract.extractedData.dates.expirationDate
                         )
-                      : 'Not specified'
+                      : "Not specified"
                   }
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.dates.expirationDate'
+                    (d) => d.field === "extractedData.dates.expirationDate"
                   )}
                   contractIndex={index}
                 />
@@ -274,10 +279,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                   label="Payment Terms"
                   value={
                     contract.extractedData?.terms?.paymentTerms ||
-                    'Not specified'
+                    "Not specified"
                   }
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.terms.paymentTerms'
+                    (d) => d.field === "extractedData.terms.paymentTerms"
                   )}
                   contractIndex={index}
                 />
@@ -286,19 +291,19 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                   label="Termination Clause"
                   value={
                     contract.extractedData?.terms?.terminationClause ||
-                    'Not specified'
+                    "Not specified"
                   }
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.terms.terminationClause'
+                    (d) => d.field === "extractedData.terms.terminationClause"
                   )}
                   contractIndex={index}
                 />
 
                 <ComparisonField
                   label="Risk Score"
-                  value={contract.extractedData?.risk?.overallScore || 'N/A'}
+                  value={contract.extractedData?.risk?.overallScore || "N/A"}
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.risk.overallScore'
+                    (d) => d.field === "extractedData.risk.overallScore"
                   )}
                   contractIndex={index}
                 />
@@ -306,10 +311,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Compliance Score"
                   value={
-                    contract.extractedData?.compliance?.overallScore || 'N/A'
+                    contract.extractedData?.compliance?.overallScore || "N/A"
                   }
                   difference={comparison.differences.find(
-                    (d) => d.field === 'extractedData.compliance.overallScore'
+                    (d) => d.field === "extractedData.compliance.overallScore"
                   )}
                   contractIndex={index}
                 />
@@ -319,15 +324,15 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // Comparison Field Component
 interface ComparisonFieldProps {
-  label: string
-  value: any
-  difference?: Difference
-  contractIndex: number
+  label: string;
+  value: any;
+  difference?: Difference;
+  contractIndex: number;
 }
 
 function ComparisonField({
@@ -336,15 +341,15 @@ function ComparisonField({
   difference,
   contractIndex,
 }: ComparisonFieldProps) {
-  const isDifferent = difference && difference.type !== 'identical'
-  const displayValue = formatDifferenceValue(value)
+  const isDifferent = difference && difference.type !== "identical";
+  const displayValue = formatDifferenceValue(value);
 
   return (
     <div
       className={`p-3 rounded-lg border ${
         isDifferent
           ? getDifferenceColor(difference.type)
-          : 'border-gray-200 bg-white'
+          : "border-gray-200 bg-white"
       }`}
     >
       <div className="text-sm font-medium text-gray-700 mb-1">{label}</div>
@@ -352,12 +357,12 @@ function ComparisonField({
       {isDifferent && difference && (
         <div className="mt-2">
           <Badge className={getSeverityColor(difference.severity)}>
-            {difference.type === 'modified' && 'Different'}
-            {difference.type === 'added' && 'Added'}
-            {difference.type === 'removed' && 'Missing'}
+            {difference.type === "modified" && "Different"}
+            {difference.type === "added" && "Added"}
+            {difference.type === "removed" && "Missing"}
           </Badge>
         </div>
       )}
     </div>
-  )
+  );
 }

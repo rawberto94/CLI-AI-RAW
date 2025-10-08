@@ -3,14 +3,57 @@
  * POST /api/contracts/search - Search contracts using hybrid search
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { hybridSearchService } from '../../../../../../apps/core/search/hybrid-search.service';
-import { z } from 'zod';
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { mockDatabase } from "@/lib/mock-database";
 
-// Request validation schema
+type SearchMode = "balanced" | "semantic" | "keyword";
+
+type SearchFilters = {
+  contractType?: string;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+  clientId?: string;
+  supplierId?: string;
+};
+
+type HybridSearchResult = {
+  id: string;
+  contractId: string;
+  fileName: string;
+  contractType: string | null;
+  snippet: string;
+  score: number;
+  relevanceBreakdown: {
+    keywordScore: number;
+    semanticScore: number;
+    finalScore: number;
+  };
+  matchType: "keyword" | "semantic" | "both";
+  highlights: string[];
+  metadata: {
+    uploadedAt: Date;
+    status: string;
+  };
+};
+
+type HybridSearchResponse = {
+  results: HybridSearchResult[];
+  total: number;
+  query: string;
+  executionTime: number;
+  searchStrategy: {
+    mode: SearchMode;
+    keywordResults: number;
+    semanticResults: number;
+    mergedResults: number;
+  };
+};
+
 const searchRequestSchema = z.object({
-  query: z.string().min(1, 'Query is required'),
-  mode: z.enum(['balanced', 'semantic', 'keyword']).optional().default('balanced'),
+  query: z.string().min(1, "Query is required"),
+  mode: z.enum(["balanced", "semantic", "keyword"]).optional().default("balanced"),
   filters: z
     .object({
       contractType: z.string().optional(),
@@ -36,13 +79,96 @@ const searchRequestSchema = z.object({
     .optional(),
 });
 
+function buildExplanation(result: HybridSearchResult): string {
+  const baseMessage =
+    result.matchType === "both"
+      ? `Matched on semantic and keyword signals (${(result.relevanceBreakdown.finalScore * 100).toFixed(1)}% confidence)`
+      : result.matchType === "keyword"
+      ? `Matched contract metadata (${(result.relevanceBreakdown.keywordScore * 100).toFixed(1)}% relevance)`
+      : `Matched semantic intent (${(result.relevanceBreakdown.semanticScore * 100).toFixed(1)}% similarity)`;
+
+  if (result.highlights.length === 0) {
+    return baseMessage;
+  }
+
+  return `${baseMessage}. Highlights: ${result.highlights.join(", ")}`;
+}
+
+async function performMockSearch(
+  query: string,
+  mode: SearchMode,
+  filters?: SearchFilters,
+  pagination?: { limit?: number; offset?: number }
+): Promise<HybridSearchResponse> {
+  const limit = pagination?.limit ?? 20;
+  const offset = pagination?.offset ?? 0;
+
+  const contracts = await mockDatabase.searchContracts(query, {
+    contractType: filters?.contractType,
+    status: filters?.status,
+  });
+
+  const normalizedQuery = query.toLowerCase();
+
+  const results: HybridSearchResult[] = contracts.map((contract, index) => {
+    const scoreBase = 0.92 - index * 0.05;
+    const score = Math.max(0.4, Math.min(0.95, scoreBase));
+    const keywordScore = mode === "semantic" ? score * 0.6 : score;
+    const semanticScore = mode === "semantic" ? score : score * 0.5;
+
+    const parties = contract.parties ?? [];
+    const highlights = [contract.name, ...parties]
+      .filter(Boolean)
+      .map((value) => value!.toLowerCase())
+      .filter((value) => value.includes(normalizedQuery))
+      .map((value) => value.replace(normalizedQuery, `<mark>${normalizedQuery}</mark>`));
+
+    return {
+      id: `${contract.id}-match-${index}`,
+      contractId: contract.id,
+      fileName: contract.name,
+      contractType: contract.contractType ?? null,
+      snippet:
+        contract.contractType
+          ? `${contract.contractType} agreement with ${parties.join(" & ") || "unknown parties"}`
+          : `Contract with ${parties.join(" & ") || "unknown parties"}`,
+      score,
+      relevanceBreakdown: {
+        keywordScore,
+        semanticScore,
+        finalScore: mode === "semantic" ? (keywordScore + semanticScore) / 2 : score,
+      },
+      matchType: mode === "semantic" ? "both" : "keyword",
+      highlights,
+      metadata: {
+        uploadedAt: contract.uploadDate ?? new Date(),
+        status: contract.status ?? "completed",
+      },
+    };
+  });
+
+  const total = results.length;
+  const paginated = results.slice(offset, offset + limit);
+
+  return {
+    results: paginated,
+    total,
+    query,
+    executionTime: Math.round(80 + Math.random() * 120),
+    searchStrategy: {
+      mode,
+      keywordResults: total,
+      semanticResults: mode === "semantic" ? total : 0,
+      mergedResults: total,
+    },
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Parse and validate request body
     const body = await request.json();
     const validatedData = searchRequestSchema.parse(body);
 
-    // Convert date strings to Date objects
     const filters = validatedData.filters
       ? {
           ...validatedData.filters,
@@ -55,54 +181,58 @@ export async function POST(request: NextRequest) {
         }
       : undefined;
 
-    // Perform hybrid search
-    const searchResults = await hybridSearchService.search({
-      query: validatedData.query,
-      mode: validatedData.mode,
+    const searchResults = await performMockSearch(
+      validatedData.query,
+      validatedData.mode,
       filters,
-      pagination: validatedData.pagination,
-      options: validatedData.options,
-    });
-
-    // Get search recommendations
-    const recommendations = await hybridSearchService.getSearchRecommendations(
-      validatedData.query
+      validatedData.pagination
     );
 
-    // Build response
-    const response = {
-      success: true,
-      data: {
-        results: searchResults.results.map((result) => ({
-          ...result,
-          explanation: hybridSearchService.explainResult(result),
-        })),
-        pagination: {
-          total: searchResults.total,
-          limit: validatedData.pagination?.limit || 20,
-          offset: validatedData.pagination?.offset || 0,
-          hasMore:
-            (validatedData.pagination?.offset || 0) +
-              (validatedData.pagination?.limit || 20) <
-            searchResults.total,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          results: searchResults.results.map((result) => ({
+            ...result,
+            explanation: buildExplanation(result),
+          })),
+          pagination: {
+            total: searchResults.total,
+            limit: validatedData.pagination?.limit ?? 20,
+            offset: validatedData.pagination?.offset ?? 0,
+            hasMore:
+              (validatedData.pagination?.offset ?? 0) +
+                (validatedData.pagination?.limit ?? 20) <
+              searchResults.total,
+          },
+          query: searchResults.query,
+          executionTime: searchResults.executionTime,
+          searchStrategy: searchResults.searchStrategy,
+          recommendations: {
+            suggestedMode: validatedData.mode,
+            reason:
+              validatedData.mode === "semantic"
+                ? "Semantic search is recommended for natural language queries."
+                : "Keyword search is recommended for structured queries.",
+            alternativeQueries: [
+              `${validatedData.query} supplier risk`,
+              `${validatedData.query} compliance`,
+              `${validatedData.query} pricing`,
+            ],
+          },
         },
-        query: searchResults.query,
-        executionTime: searchResults.executionTime,
-        searchStrategy: searchResults.searchStrategy,
-        recommendations,
       },
-    };
-
-    return NextResponse.json(response, { status: 200 });
+      { status: 200 }
+    );
   } catch (error) {
-    console.error('Search error:', error);
+    console.error("Search error:", error);
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid request data',
-          details: error.errors,
+          error: "Invalid request data",
+          details: error.issues,
         },
         { status: 400 }
       );
@@ -111,75 +241,76 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Search failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: "Search failed",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
 }
 
-// GET endpoint for simple searches (query parameter)
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('q') || searchParams.get('query');
+    const query = searchParams.get("q") || searchParams.get("query");
 
     if (!query) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Query parameter is required',
+          error: "Query parameter is required",
         },
         { status: 400 }
       );
     }
 
-    // Parse optional parameters
-    const mode = (searchParams.get('mode') as any) || 'balanced';
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const contractType = searchParams.get('contractType') || undefined;
-    const status = searchParams.get('status') || undefined;
+    const mode = (searchParams.get("mode") as SearchMode) || "balanced";
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const contractType = searchParams.get("contractType") || undefined;
+    const status = searchParams.get("status") || undefined;
 
-    // Perform search
-    const searchResults = await hybridSearchService.search({
+    const searchResults = await performMockSearch(
       query,
       mode,
-      filters: {
-        contractType,
-        status,
+      {
+        contractType: contractType ?? undefined,
+        status: status ?? undefined,
       },
-      pagination: {
+      {
         limit,
         offset,
-      },
-    });
+      }
+    );
 
-    const response = {
-      success: true,
-      data: {
-        results: searchResults.results,
-        pagination: {
-          total: searchResults.total,
-          limit,
-          offset,
-          hasMore: offset + limit < searchResults.total,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          results: searchResults.results.map((result) => ({
+            ...result,
+            explanation: buildExplanation(result),
+          })),
+          pagination: {
+            total: searchResults.total,
+            limit,
+            offset,
+            hasMore: offset + limit < searchResults.total,
+          },
+          query: searchResults.query,
+          executionTime: searchResults.executionTime,
         },
-        query: searchResults.query,
-        executionTime: searchResults.executionTime,
       },
-    };
-
-    return NextResponse.json(response, { status: 200 });
+      { status: 200 }
+    );
   } catch (error) {
-    console.error('Search error:', error);
+    console.error("Search error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        error: 'Search failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: "Search failed",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

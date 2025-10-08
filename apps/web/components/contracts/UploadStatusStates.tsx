@@ -1,30 +1,32 @@
-'use client'
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  CheckCircle2, 
-  XCircle, 
-  AlertTriangle, 
-  RefreshCw, 
+import { motion } from "framer-motion";
+import {
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  RefreshCw,
   Download,
   Eye,
-  Trash2,
   Upload,
   FileText,
-  Clock,
-  PartyPopper
-} from 'lucide-react'
-import { bounceIn, shake, fadeIn, pulse } from '@/lib/contracts/animations'
-import { cn } from '@/lib/utils'
-import { UploadFile, formatFileSize } from '@/lib/contracts/upload-manager'
-import { useState } from 'react'
+  Trash2,
+} from "lucide-react";
+import { bounceIn, shake, fadeIn, pulse } from "@/lib/contracts/animations";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import type { UploadFile } from "@/lib/contracts/upload-manager";
+import { formatFileSize } from "@/lib/contracts/upload-manager";
+
+// Framer Motion typing workaround for React 19
+const MotionDiv = motion.div as any;
 
 export interface UploadSuccessStateProps {
-  files: UploadFile[]
-  onViewContract?: (contractId: string) => void
-  onDownload?: (contractId: string) => void
-  onStartNew?: () => void
-  className?: string
+  files: UploadFile[];
+  onViewContract?: (contractId: string) => void;
+  onDownload?: (contractId: string) => void;
+  onStartNew?: () => void;
+  className?: string;
 }
 
 export function UploadSuccessState({
@@ -32,23 +34,23 @@ export function UploadSuccessState({
   onViewContract,
   onDownload,
   onStartNew,
-  className
+  className,
 }: UploadSuccessStateProps) {
-  const successfulFiles = files.filter(f => f.status === 'success')
-  const totalSize = successfulFiles.reduce((sum, f) => sum + f.file.size, 0)
+  const successfulFiles = files.filter((f) => f.status === "success");
+  const totalSize = successfulFiles.reduce((sum, f) => sum + f.file.size, 0);
 
   return (
-    <motion.div
+    <MotionDiv
       variants={bounceIn}
       initial="initial"
       animate="animate"
       className={cn(
-        'bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-8 text-center',
+        "bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-8 text-center",
         className
       )}
     >
       {/* Success Icon */}
-      <motion.div
+      <MotionDiv
         variants={bounceIn}
         initial="initial"
         animate="animate"
@@ -56,10 +58,10 @@ export function UploadSuccessState({
         className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center"
       >
         <CheckCircle2 className="w-8 h-8 text-green-600" />
-      </motion.div>
+      </MotionDiv>
 
       {/* Success Message */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -70,15 +72,16 @@ export function UploadSuccessState({
           Upload Successful! 🎉
         </h3>
         <p className="text-green-700">
-          {successfulFiles.length} file{successfulFiles.length !== 1 ? 's' : ''} uploaded successfully
+          {successfulFiles.length} file{successfulFiles.length !== 1 ? "s" : ""}{" "}
+          uploaded successfully
           <span className="block text-sm text-green-600 mt-1">
             Total size: {formatFileSize(totalSize)}
           </span>
         </p>
-      </motion.div>
+      </MotionDiv>
 
       {/* File List */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -86,7 +89,7 @@ export function UploadSuccessState({
         className="space-y-3 mb-6 max-h-40 overflow-y-auto"
       >
         {successfulFiles.map((file, index) => (
-          <motion.div
+          <MotionDiv
             key={file.id}
             variants={fadeIn}
             initial="initial"
@@ -101,11 +104,14 @@ export function UploadSuccessState({
                   {file.file.name}
                 </p>
                 <p className="text-xs text-green-600">
-                  {formatFileSize(file.file.size)} • Uploaded {file.uploadedAt?.toLocaleTimeString()}
+                  {formatFileSize(file.file.size)}
+                  {file.uploadedAt
+                    ? ` • Uploaded ${file.uploadedAt.toLocaleTimeString()}`
+                    : ""}
                 </p>
               </div>
             </div>
-            
+
             {file.contractId && (
               <div className="flex items-center gap-1">
                 {onViewContract && (
@@ -128,12 +134,12 @@ export function UploadSuccessState({
                 )}
               </div>
             )}
-          </motion.div>
+          </MotionDiv>
         ))}
-      </motion.div>
+      </MotionDiv>
 
       {/* Action Buttons */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -145,22 +151,21 @@ export function UploadSuccessState({
             onClick={onStartNew}
             className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2"
           >
-            <Upload className="w-4 h-4" />
-            Upload More Files
+            <Upload className="w-4 h-4" /> Upload More Files
           </button>
         )}
-      </motion.div>
-    </motion.div>
-  )
+      </MotionDiv>
+    </MotionDiv>
+  );
 }
 
 export interface UploadErrorStateProps {
-  files: UploadFile[]
-  onRetry?: (fileId: string) => void
-  onRetryAll?: () => void
-  onRemove?: (fileId: string) => void
-  onStartNew?: () => void
-  className?: string
+  files: UploadFile[];
+  onRetry?: (fileId: string) => void;
+  onRetryAll?: () => void;
+  onRemove?: (fileId: string) => void;
+  onStartNew?: () => void;
+  className?: string;
 }
 
 export function UploadErrorState({
@@ -169,44 +174,42 @@ export function UploadErrorState({
   onRetryAll,
   onRemove,
   onStartNew,
-  className
+  className,
 }: UploadErrorStateProps) {
-  const errorFiles = files.filter(f => f.status === 'error')
-  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set())
+  const [retryingFiles, setRetryingFiles] = useState<Set<string>>(new Set());
+  const errorFiles = files.filter((f) => f.status === "error");
 
   const handleRetry = (fileId: string) => {
-    setRetryingFiles(prev => new Set([...prev, fileId]))
-    onRetry?.(fileId)
+    setRetryingFiles((prev) => new Set([...prev, fileId]));
+    onRetry?.(fileId);
     setTimeout(() => {
-      setRetryingFiles(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(fileId)
-        return newSet
-      })
-    }, 2000)
-  }
+      setRetryingFiles((prev) => {
+        const n = new Set(prev);
+        n.delete(fileId);
+        return n;
+      });
+    }, 2000);
+  };
 
   const handleRetryAll = () => {
-    const allErrorIds = errorFiles.map(f => f.id)
-    setRetryingFiles(new Set(allErrorIds))
-    onRetryAll?.()
-    setTimeout(() => {
-      setRetryingFiles(new Set())
-    }, 2000)
-  }
+    if (errorFiles.length === 0) return;
+    setRetryingFiles(new Set(errorFiles.map((f) => f.id)));
+    onRetryAll?.();
+    setTimeout(() => setRetryingFiles(new Set()), 2000);
+  };
 
   return (
-    <motion.div
+    <MotionDiv
       variants={shake}
       initial="initial"
       animate="animate"
       className={cn(
-        'bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-xl p-8 text-center',
+        "bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-xl p-8 text-center",
         className
       )}
     >
       {/* Error Icon */}
-      <motion.div
+      <MotionDiv
         variants={bounceIn}
         initial="initial"
         animate="animate"
@@ -214,10 +217,10 @@ export function UploadErrorState({
         className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center"
       >
         <XCircle className="w-8 h-8 text-red-600" />
-      </motion.div>
+      </MotionDiv>
 
       {/* Error Message */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -228,15 +231,16 @@ export function UploadErrorState({
           Upload Failed
         </h3>
         <p className="text-red-700">
-          {errorFiles.length} file{errorFiles.length !== 1 ? 's' : ''} failed to upload
+          {errorFiles.length} file{errorFiles.length !== 1 ? "s" : ""} failed to
+          upload
           <span className="block text-sm text-red-600 mt-1">
             Please check the errors below and try again
           </span>
         </p>
-      </motion.div>
+      </MotionDiv>
 
       {/* Error File List */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -244,7 +248,7 @@ export function UploadErrorState({
         className="space-y-3 mb-6 max-h-40 overflow-y-auto"
       >
         {errorFiles.map((file, index) => (
-          <motion.div
+          <MotionDiv
             key={file.id}
             variants={fadeIn}
             initial="initial"
@@ -259,14 +263,12 @@ export function UploadErrorState({
                   {file.file.name}
                 </p>
                 <p className="text-xs text-red-600 truncate">
-                  {file.error || 'Unknown error occurred'}
-                  {file.retryCount > 0 && (
-                    <span className="ml-1">(Retry {file.retryCount})</span>
-                  )}
+                  {file.error || "Unknown error occurred"}
+                  {file.retryCount > 0 ? ` (Retry ${file.retryCount})` : ""}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => handleRetry(file.id)}
@@ -275,9 +277,9 @@ export function UploadErrorState({
                 title="Retry upload"
               >
                 {retryingFiles.has(file.id) ? (
-                  <motion.div variants={pulse} animate="animate">
+                  <MotionDiv variants={pulse} animate="animate">
                     <RefreshCw className="w-4 h-4 text-red-600 animate-spin" />
-                  </motion.div>
+                  </MotionDiv>
                 ) : (
                   <RefreshCw className="w-4 h-4 text-red-600" />
                 )}
@@ -292,12 +294,12 @@ export function UploadErrorState({
                 </button>
               )}
             </div>
-          </motion.div>
+          </MotionDiv>
         ))}
-      </motion.div>
+      </MotionDiv>
 
       {/* Action Buttons */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -310,37 +312,37 @@ export function UploadErrorState({
             disabled={retryingFiles.size > 0}
             className="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
           >
-            {retryingFiles.size > 0 ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
+            <RefreshCw
+              className={cn(
+                "w-4 h-4",
+                retryingFiles.size > 0 && "animate-spin"
+              )}
+            />{" "}
             Retry All
           </button>
         )}
-        
+
         {onStartNew && (
           <button
             onClick={onStartNew}
             className="px-6 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors flex items-center gap-2"
           >
-            <Upload className="w-4 h-4" />
-            Start Over
+            <Upload className="w-4 h-4" /> Start Over
           </button>
         )}
-      </motion.div>
-    </motion.div>
-  )
+      </MotionDiv>
+    </MotionDiv>
+  );
 }
 
 export interface UploadMixedStateProps {
-  files: UploadFile[]
-  onViewContract?: (contractId: string) => void
-  onDownload?: (contractId: string) => void
-  onRetry?: (fileId: string) => void
-  onRemove?: (fileId: string) => void
-  onStartNew?: () => void
-  className?: string
+  files: UploadFile[];
+  onViewContract?: (contractId: string) => void;
+  onDownload?: (contractId: string) => void;
+  onRetry?: (fileId: string) => void;
+  onRemove?: (fileId: string) => void;
+  onStartNew?: () => void;
+  className?: string;
 }
 
 export function UploadMixedState({
@@ -350,23 +352,23 @@ export function UploadMixedState({
   onRetry,
   onRemove,
   onStartNew,
-  className
+  className,
 }: UploadMixedStateProps) {
-  const successFiles = files.filter(f => f.status === 'success')
-  const errorFiles = files.filter(f => f.status === 'error')
+  const successFiles = files.filter((f) => f.status === "success");
+  const errorFiles = files.filter((f) => f.status === "error");
 
   return (
-    <motion.div
+    <MotionDiv
       variants={fadeIn}
       initial="initial"
       animate="animate"
       className={cn(
-        'bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-8',
+        "bg-gradient-to-br from-yellow-50 to-amber-50 border border-yellow-200 rounded-xl p-8",
         className
       )}
     >
       {/* Mixed State Icon */}
-      <motion.div
+      <MotionDiv
         variants={bounceIn}
         initial="initial"
         animate="animate"
@@ -374,10 +376,10 @@ export function UploadMixedState({
         className="w-16 h-16 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center"
       >
         <AlertTriangle className="w-8 h-8 text-yellow-600" />
-      </motion.div>
+      </MotionDiv>
 
       {/* Mixed State Message */}
-      <motion.div
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
@@ -388,14 +390,14 @@ export function UploadMixedState({
           Upload Partially Complete
         </h3>
         <p className="text-yellow-700">
-          {successFiles.length} file{successFiles.length !== 1 ? 's' : ''} uploaded successfully, 
-          {errorFiles.length} failed
+          {successFiles.length} file{successFiles.length !== 1 ? "s" : ""}{" "}
+          uploaded successfully, {errorFiles.length} failed
         </p>
-      </motion.div>
+      </MotionDiv>
 
       {/* Success Files */}
       {successFiles.length > 0 && (
-        <motion.div
+        <MotionDiv
           variants={fadeIn}
           initial="initial"
           animate="animate"
@@ -403,8 +405,8 @@ export function UploadMixedState({
           className="mb-6"
         >
           <h4 className="text-sm font-medium text-green-700 mb-3 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            Successful Uploads ({successFiles.length})
+            <CheckCircle2 className="w-4 h-4" /> Successful Uploads (
+            {successFiles.length})
           </h4>
           <div className="space-y-2 max-h-32 overflow-y-auto">
             {successFiles.map((file) => (
@@ -429,17 +431,26 @@ export function UploadMixedState({
                         <Eye className="w-3.5 h-3.5 text-green-600" />
                       </button>
                     )}
+                    {onDownload && (
+                      <button
+                        onClick={() => onDownload(file.contractId!)}
+                        className="p-1 hover:bg-green-200 rounded transition-colors"
+                        title="Download contract"
+                      >
+                        <Download className="w-3.5 h-3.5 text-green-600" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             ))}
           </div>
-        </motion.div>
+        </MotionDiv>
       )}
 
       {/* Error Files */}
       {errorFiles.length > 0 && (
-        <motion.div
+        <MotionDiv
           variants={fadeIn}
           initial="initial"
           animate="animate"
@@ -447,8 +458,7 @@ export function UploadMixedState({
           className="mb-6"
         >
           <h4 className="text-sm font-medium text-red-700 mb-3 flex items-center gap-2">
-            <XCircle className="w-4 h-4" />
-            Failed Uploads ({errorFiles.length})
+            <XCircle className="w-4 h-4" /> Failed Uploads ({errorFiles.length})
           </h4>
           <div className="space-y-2 max-h-32 overflow-y-auto">
             {errorFiles.map((file) => (
@@ -463,7 +473,7 @@ export function UploadMixedState({
                       {file.file.name}
                     </p>
                     <p className="text-xs text-red-600 truncate">
-                      {file.error}
+                      {file.error || "Unknown error"}
                     </p>
                   </div>
                 </div>
@@ -490,27 +500,26 @@ export function UploadMixedState({
               </div>
             ))}
           </div>
-        </motion.div>
+        </MotionDiv>
       )}
 
-      {/* Action Buttons */}
-      <motion.div
+      {/* Actions */}
+      <MotionDiv
         variants={fadeIn}
         initial="initial"
         animate="animate"
         transition={{ delay: 1.0 }}
-        className="flex items-center justify-center gap-3 flex-wrap"
+        className="flex items-center justify-center gap-3"
       >
         {onStartNew && (
           <button
             onClick={onStartNew}
             className="px-6 py-2 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-colors flex items-center gap-2"
           >
-            <Upload className="w-4 h-4" />
-            Upload More Files
+            <Upload className="w-4 h-4" /> Upload More Files
           </button>
         )}
-      </motion.div>
-    </motion.div>
-  )
+      </MotionDiv>
+    </MotionDiv>
+  );
 }

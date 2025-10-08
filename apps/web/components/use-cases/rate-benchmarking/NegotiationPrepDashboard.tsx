@@ -1,30 +1,43 @@
-'use client'
+"use client";
 
-import React, { useState, useMemo, useRef } from 'react'
-import { RateCardRole } from '@/lib/use-cases/multi-client-rate-data'
-import { getRateHistory, analyzeTrend, RateHistoryPoint } from '@/lib/use-cases/rate-history-data'
-import { TargetRateCalculator } from '@/lib/use-cases/target-rate-calculator'
-import { TalkingPointsGenerator } from '@/lib/use-cases/talking-points-generator'
-import { ScenarioModeler } from '@/lib/use-cases/scenario-modeling'
-import { TargetRateCalculatorComponent } from './TargetRateCalculator'
-import { TalkingPointsLibrary } from './TalkingPointsLibrary'
-import { ScenarioComparisonComponent } from './ScenarioComparison'
-import { InteractiveRateChart } from '../negotiation-prep/InteractiveRateChart'
-import { MarketPositionBar, SavingsPotentialBar, ConfidenceBar } from '../negotiation-prep/AnimatedProgressBar'
-import { PDFExportService } from '@/lib/negotiation-prep/pdf-export-service'
-import { useKeyboardShortcuts, commonShortcuts, getShortcutDisplay } from '@/hooks/useKeyboardShortcuts'
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout'
-import { AIRecommendationPanel } from '../negotiation-prep/AIRecommendationPanel'
-import { RecommendationCards } from '../negotiation-prep/RecommendationCards'
-import { AIRecommendationEngine, type NegotiationContext } from '@/lib/negotiation-prep/ai-recommendation-engine'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { 
-  FileText, 
-  Download, 
+import React, { useState, useMemo, useRef } from "react";
+import { RateCardRole } from "@/lib/use-cases/multi-client-rate-data";
+import {
+  getRateHistory,
+  analyzeTrend,
+} from "@/lib/use-cases/rate-history-data";
+import { TargetRateCalculator } from "@/lib/use-cases/target-rate-calculator";
+import { TalkingPointsGenerator } from "@/lib/use-cases/talking-points-generator";
+import { ScenarioModeler } from "@/lib/use-cases/scenario-modeling";
+import { TargetRateCalculatorComponent } from "./TargetRateCalculator";
+import { TalkingPointsLibrary } from "./TalkingPointsLibrary";
+import { ScenarioComparisonComponent } from "./ScenarioComparison";
+import { PDFExportService } from "@/lib/negotiation-prep/pdf-export-service";
+import {
+  useKeyboardShortcuts,
+  commonShortcuts,
+} from "@/hooks/useKeyboardShortcuts";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { AIRecommendationPanel } from "../negotiation-prep/AIRecommendationPanel";
+import { RecommendationCards } from "../negotiation-prep/RecommendationCards";
+import {
+  AIRecommendationEngine,
+  type NegotiationContext,
+} from "@/lib/negotiation-prep/ai-recommendation-engine";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  FileText,
+  Download,
   Share2,
   Briefcase,
   TrendingUp,
@@ -36,19 +49,19 @@ import {
   MapPin,
   Building2,
   Keyboard,
-  FileDown
-} from 'lucide-react'
+  FileDown,
+} from "lucide-react";
 
 interface NegotiationPrepDashboardProps {
-  role: string
-  level: string
-  location: string
-  supplier: string
-  client?: string
-  currentRate: number
-  annualVolume?: number
-  marketData: RateCardRole[]
-  relationshipYears?: number
+  role: string;
+  level: string;
+  location: string;
+  supplier: string;
+  client?: string;
+  currentRate: number;
+  annualVolume?: number;
+  marketData: RateCardRole[];
+  relationshipYears?: number;
 }
 
 export function NegotiationPrepDashboard({
@@ -60,45 +73,79 @@ export function NegotiationPrepDashboard({
   currentRate,
   annualVolume = 220,
   marketData,
-  relationshipYears = 2
+  relationshipYears = 2,
 }: NegotiationPrepDashboardProps) {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [selectedTargetRate, setSelectedTargetRate] = useState<number | null>(null)
-  const [showExportDialog, setShowExportDialog] = useState(false)
-  const [showHelpDialog, setShowHelpDialog] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
-  const [aiRecommendation, setAiRecommendation] = useState<any>(null)
-  const [aiLoading, setAiLoading] = useState(false)
-  const dashboardRef = useRef<HTMLDivElement>(null)
-  
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedTargetRate, setSelectedTargetRate] = useState<number | null>(
+    null
+  );
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [aiRecommendation, setAiRecommendation] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const dashboardRef = useRef<HTMLDivElement>(null);
+
   // Responsive layout
-  const layout = useResponsiveLayout()
-  
+  const layout = useResponsiveLayout();
+
   // Generate historical data and trends
   const rateHistory = useMemo(() => {
-    return getRateHistory(role, level, location, supplier)
-  }, [role, level, location, supplier])
-  
+    return getRateHistory(role, level, location, supplier);
+  }, [role, level, location, supplier]);
+
   const trendAnalysis = useMemo(() => {
-    return analyzeTrend(rateHistory)
-  }, [rateHistory])
-  
+    return analyzeTrend(rateHistory);
+  }, [rateHistory]);
+
   // Calculate market intelligence
   const marketIntelligence = useMemo(() => {
-    const matchingRoles = marketData.filter(r => 
-      r.role === role && r.level === level && r.location === location
-    )
-    
-    const rates = matchingRoles.map(r => r.dailyRateCHF).sort((a, b) => a - b)
-    const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length
-    const medianRate = rates[Math.floor(rates.length / 2)]
-    const minRate = rates[0]
-    const maxRate = rates[rates.length - 1]
-    
-    const currentRank = rates.filter(r => r < currentRate).length + 1
-    const competitorsBelow = rates.filter(r => r < currentRate).length
-    const competitorsAbove = rates.filter(r => r > currentRate).length
-    
+    if (!marketData || marketData.length === 0) {
+      return {
+        averageRate: currentRate,
+        medianRate: currentRate,
+        minRate: currentRate,
+        maxRate: currentRate,
+        competitivePosition: {
+          marketRank: 1,
+          competitorsBelow: 0,
+          competitorsAbove: 0,
+          percentile: 50,
+        },
+      };
+    }
+
+    const matchingRoles = marketData.filter(
+      (r) => r.role === role && r.level === level && r.location === location
+    );
+
+    if (matchingRoles.length === 0) {
+      return {
+        averageRate: currentRate,
+        medianRate: currentRate,
+        minRate: currentRate,
+        maxRate: currentRate,
+        competitivePosition: {
+          marketRank: 1,
+          competitorsBelow: 0,
+          competitorsAbove: 0,
+          percentile: 50,
+        },
+      };
+    }
+
+    const rates = matchingRoles
+      .map((r) => r.dailyRateCHF)
+      .sort((a, b) => a - b);
+    const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+    const medianRate = rates[Math.floor(rates.length / 2)];
+    const minRate = rates[0];
+    const maxRate = rates[rates.length - 1];
+
+    const currentRank = rates.filter((r) => r < currentRate).length + 1;
+    const competitorsBelow = rates.filter((r) => r < currentRate).length;
+    const competitorsAbove = rates.filter((r) => r > currentRate).length;
+
     return {
       averageRate: avgRate,
       medianRate,
@@ -108,11 +155,11 @@ export function NegotiationPrepDashboard({
         marketRank: currentRank,
         competitorsBelow,
         competitorsAbove,
-        percentile: Math.round((currentRank / rates.length) * 100)
-      }
-    }
-  }, [role, level, location, marketData, currentRate])
-  
+        percentile: Math.round((currentRank / rates.length) * 100),
+      },
+    };
+  }, [role, level, location, marketData, currentRate]);
+
   // Calculate target rates
   const targetRates = useMemo(() => {
     return TargetRateCalculator.calculateTargetRates({
@@ -121,14 +168,14 @@ export function NegotiationPrepDashboard({
       location,
       currentRate,
       annualVolume,
-      marketData
-    })
-  }, [role, level, location, currentRate, annualVolume, marketData])
-  
+      marketData,
+    });
+  }, [role, level, location, currentRate, annualVolume, marketData]);
+
   // Generate talking points
   const talkingPoints = useMemo(() => {
-    const targetRate = selectedTargetRate || targetRates.targets.moderate
-    
+    const targetRate = selectedTargetRate || targetRates.targets.moderate;
+
     return TalkingPointsGenerator.generateTalkingPoints({
       role,
       level,
@@ -140,32 +187,44 @@ export function NegotiationPrepDashboard({
       trendAnalysis,
       targetRates,
       annualVolume,
-      relationshipYears
-    })
-  }, [role, level, location, supplier, currentRate, selectedTargetRate, targetRates, marketIntelligence, trendAnalysis, annualVolume, relationshipYears])
-  
+      relationshipYears,
+    });
+  }, [
+    role,
+    level,
+    location,
+    supplier,
+    currentRate,
+    selectedTargetRate,
+    targetRates,
+    marketIntelligence,
+    trendAnalysis,
+    annualVolume,
+    relationshipYears,
+  ]);
+
   // Generate scenarios
   const scenarios = useMemo(() => {
     return ScenarioModeler.generateStandardScenarios(
       currentRate,
       annualVolume,
       targetRates.market
-    )
-  }, [currentRate, annualVolume, targetRates])
-  
+    );
+  }, [currentRate, annualVolume, targetRates]);
+
   const comparison = useMemo(() => {
-    return ScenarioModeler.compareScenarios(scenarios)
-  }, [scenarios])
-  
+    return ScenarioModeler.compareScenarios(scenarios);
+  }, [scenarios]);
+
   // Generate AI recommendation
   React.useEffect(() => {
     const generateRecommendation = async () => {
       // Only generate if we have market intelligence data
       if (!marketIntelligence || !trendAnalysis) {
-        return
+        return;
       }
 
-      setAiLoading(true)
+      setAiLoading(true);
       try {
         const context: NegotiationContext = {
           role,
@@ -178,34 +237,55 @@ export function NegotiationPrepDashboard({
             currentRate,
             marketMedian: marketIntelligence.medianRate,
             percentile: marketIntelligence.competitivePosition.percentile,
-            competitorsAbove: marketIntelligence.competitivePosition.competitorsAbove,
-            competitorsBelow: marketIntelligence.competitivePosition.competitorsBelow
+            competitorsAbove:
+              marketIntelligence.competitivePosition.competitorsAbove,
+            competitorsBelow:
+              marketIntelligence.competitivePosition.competitorsBelow,
           },
           historicalPattern: {
-            trend: trendAnalysis.direction as 'increasing' | 'decreasing' | 'stable',
-            volatility: trendAnalysis.volatility > 10 ? 'high' : trendAnalysis.volatility > 5 ? 'medium' : 'low',
-            averageChange: trendAnalysis.percentChange
-          }
-        }
-        
-        const recommendation = await AIRecommendationEngine.generateRecommendation(context)
-        setAiRecommendation(recommendation)
+            trend: trendAnalysis.direction as
+              | "increasing"
+              | "decreasing"
+              | "stable",
+            volatility:
+              trendAnalysis.volatility > 10
+                ? "high"
+                : trendAnalysis.volatility > 5
+                ? "medium"
+                : "low",
+            averageChange: trendAnalysis.percentChange,
+          },
+        };
+
+        const recommendation =
+          await AIRecommendationEngine.generateRecommendation(context);
+        setAiRecommendation(recommendation);
       } catch (error) {
-        console.error('Error generating AI recommendation:', error)
+        console.error("Error generating AI recommendation:", error);
       } finally {
-        setAiLoading(false)
+        setAiLoading(false);
       }
-    }
-    
-    generateRecommendation()
-  }, [role, level, location, supplier, currentRate, relationshipYears, annualVolume, marketIntelligence, trendAnalysis])
-  
+    };
+
+    generateRecommendation();
+  }, [
+    role,
+    level,
+    location,
+    supplier,
+    currentRate,
+    relationshipYears,
+    annualVolume,
+    marketIntelligence,
+    trendAnalysis,
+  ]);
+
   // Export to PDF
   const handleExportPDF = async () => {
-    setIsExporting(true)
+    setIsExporting(true);
     try {
-      const pdfService = new PDFExportService()
-      
+      const pdfService = new PDFExportService();
+
       const negotiationData = {
         role,
         level,
@@ -214,15 +294,16 @@ export function NegotiationPrepDashboard({
         targetRate: selectedTargetRate || targetRates.targets.moderate,
         marketMedian: marketIntelligence.medianRate,
         percentile: marketIntelligence.competitivePosition.percentile,
-        potentialSavings: (currentRate - targetRates.targets.aggressive) * annualVolume,
-        talkingPoints: talkingPoints.map(tp => tp.point),
-        scenarios: scenarios.map(s => ({
+        potentialSavings:
+          (currentRate - targetRates.targets.aggressive) * annualVolume,
+        talkingPoints: talkingPoints.map((tp) => tp.text),
+        scenarios: scenarios.map((s) => ({
           name: s.name,
-          rate: s.rate,
-          savings: s.annualSavings
-        }))
-      }
-      
+          rate: s.targetRate,
+          savings: s.expectedSavings,
+        })),
+      };
+
       await pdfService.generatePDF(negotiationData, {
         includeCoverPage: true,
         includeExecutiveSummary: true,
@@ -230,57 +311,61 @@ export function NegotiationPrepDashboard({
         includeTalkingPoints: true,
         includeScenarios: true,
         includeMarketIntelligence: true,
-        companyName: client || 'Your Company',
-        preparedBy: 'Procurement Team',
-        preparedFor: 'Negotiation Team'
-      })
-      
-      pdfService.downloadPDF(`negotiation-prep-${role}-${level}-${Date.now()}.pdf`)
-      setShowExportDialog(false)
+        companyName: client || "Your Company",
+        preparedBy: "Procurement Team",
+        preparedFor: "Negotiation Team",
+      });
+
+      pdfService.downloadPDF(
+        `negotiation-prep-${role}-${level}-${Date.now()}.pdf`
+      );
+      setShowExportDialog(false);
     } catch (error) {
-      console.error('Error exporting PDF:', error)
-      alert('Error generating PDF. Please try again.')
+      console.error("Error exporting PDF:", error);
+      alert("Error generating PDF. Please try again.");
     } finally {
-      setIsExporting(false)
+      setIsExporting(false);
     }
-  }
-  
+  };
+
   // Share dashboard (placeholder)
   const handleShare = () => {
     // In a real implementation, this would create a shareable link
     if (navigator.share) {
-      navigator.share({
-        title: `Negotiation Prep: ${role} - ${level}`,
-        text: `Market analysis for ${role} - ${level} in ${location}`,
-        url: window.location.href
-      }).catch(err => console.log('Error sharing:', err))
+      navigator
+        .share({
+          title: `Negotiation Prep: ${role} - ${level}`,
+          text: `Market analysis for ${role} - ${level} in ${location}`,
+          url: window.location.href,
+        })
+        .catch((err) => console.log("Error sharing:", err));
     } else {
-      alert('Share functionality would be implemented here')
+      alert("Share functionality would be implemented here");
     }
-  }
-  
+  };
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     enabled: true,
     shortcuts: [
-      commonShortcuts.tab(1, () => setActiveTab('overview')),
-      commonShortcuts.tab(2, () => setActiveTab('calculator')),
-      commonShortcuts.tab(3, () => setActiveTab('talking-points')),
-      commonShortcuts.tab(4, () => setActiveTab('scenarios')),
-      commonShortcuts.tab(5, () => setActiveTab('trends')),
+      commonShortcuts.tab(1, () => setActiveTab("overview")),
+      commonShortcuts.tab(2, () => setActiveTab("calculator")),
+      commonShortcuts.tab(3, () => setActiveTab("talking-points")),
+      commonShortcuts.tab(4, () => setActiveTab("scenarios")),
+      commonShortcuts.tab(5, () => setActiveTab("trends")),
       commonShortcuts.export(() => setShowExportDialog(true)),
       {
-        key: 's',
+        key: "s",
         ctrl: true,
         meta: true,
         shift: true,
         callback: handleShare,
-        description: 'Share Dashboard'
+        description: "Share Dashboard",
       },
-      commonShortcuts.help(() => setShowHelpDialog(true))
-    ]
-  })
-  
+      commonShortcuts.help(() => setShowHelpDialog(true)),
+    ],
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -290,7 +375,9 @@ export function NegotiationPrepDashboard({
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Briefcase className="w-6 h-6 text-blue-600" />
-                <CardTitle className="text-2xl">Negotiation Preparation Dashboard</CardTitle>
+                <CardTitle className="text-2xl">
+                  Negotiation Preparation Dashboard
+                </CardTitle>
               </div>
               <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-1">
@@ -317,23 +404,32 @@ export function NegotiationPrepDashboard({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Button onClick={handleShare} variant="outline" size="sm">
                 <Share2 className="w-4 h-4 mr-2" />
                 Share
               </Button>
-              <Button onClick={() => setShowExportDialog(true)} variant="outline" size="sm">
+              <Button
+                onClick={() => setShowExportDialog(true)}
+                variant="outline"
+                size="sm"
+              >
                 <Download className="w-4 h-4 mr-2" />
                 Export PDF
               </Button>
-              <Button onClick={() => setShowHelpDialog(true)} variant="ghost" size="sm" title="Keyboard Shortcuts">
+              <Button
+                onClick={() => setShowHelpDialog(true)}
+                variant="ghost"
+                size="sm"
+                title="Keyboard Shortcuts"
+              >
                 <Keyboard className="w-4 h-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -370,7 +466,7 @@ export function NegotiationPrepDashboard({
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
@@ -386,7 +482,10 @@ export function NegotiationPrepDashboard({
             <Target className="w-4 h-4" />
             Targets
           </TabsTrigger>
-          <TabsTrigger value="talking-points" className="flex items-center gap-2">
+          <TabsTrigger
+            value="talking-points"
+            className="flex items-center gap-2"
+          >
             <MessageSquare className="w-4 h-4" />
             Talking Points
           </TabsTrigger>
@@ -395,7 +494,7 @@ export function NegotiationPrepDashboard({
             Scenarios
           </TabsTrigger>
         </TabsList>
-        
+
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <Card>
@@ -406,27 +505,41 @@ export function NegotiationPrepDashboard({
               <div>
                 <h4 className="font-semibold mb-2">Market Position</h4>
                 <p className="text-gray-700">
-                  Your current rate of CHF {currentRate.toLocaleString()} places you in the{' '}
-                  <strong>{marketIntelligence.competitivePosition.marketRank}th percentile</strong> of the market.
-                  There are {marketIntelligence.competitivePosition.competitorsBelow} suppliers offering lower rates
-                  and {marketIntelligence.competitivePosition.competitorsAbove} offering higher rates.
+                  Your current rate of CHF {currentRate.toLocaleString()} places
+                  you in the{" "}
+                  <strong>
+                    {marketIntelligence.competitivePosition.marketRank}th
+                    percentile
+                  </strong>{" "}
+                  of the market. There are{" "}
+                  {marketIntelligence.competitivePosition.competitorsBelow}{" "}
+                  suppliers offering lower rates and{" "}
+                  {marketIntelligence.competitivePosition.competitorsAbove}{" "}
+                  offering higher rates.
                 </p>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold mb-2">Recommended Strategy</h4>
                 <p className="text-gray-700">
-                  Based on market analysis, we recommend a <strong>moderate approach</strong> targeting
-                  the 25th percentile (CHF {targetRates.targets.moderate.toLocaleString()}). This represents
-                  a {Math.round(((currentRate - targetRates.targets.moderate) / currentRate) * 100)}% reduction
-                  with a 60% probability of success.
+                  Based on market analysis, we recommend a{" "}
+                  <strong>moderate approach</strong> targeting the 25th
+                  percentile (CHF{" "}
+                  {targetRates.targets.moderate.toLocaleString()}). This
+                  represents a{" "}
+                  {Math.round(
+                    ((currentRate - targetRates.targets.moderate) /
+                      currentRate) *
+                      100
+                  )}
+                  % reduction with a 60% probability of success.
                 </p>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold mb-2">Key Talking Points</h4>
                 <ul className="space-y-2">
-                  {talkingPoints.slice(0, 3).map(point => (
+                  {talkingPoints.slice(0, 3).map((point) => (
                     <li key={point.id} className="flex items-start gap-2">
                       <Badge className="mt-0.5">{point.category}</Badge>
                       <span className="text-gray-700">{point.title}</span>
@@ -434,41 +547,54 @@ export function NegotiationPrepDashboard({
                   ))}
                 </ul>
               </div>
-              
+
               <div>
                 <h4 className="font-semibold mb-2">Expected Outcome</h4>
                 <p className="text-gray-700">
-                  Expected value across all scenarios: <strong>CHF {comparison.expectedValue.toLocaleString()}</strong> in annual savings.
-                  Risk level: <Badge className={comparison.riskAssessment.level === 'low' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                  Expected value across all scenarios:{" "}
+                  <strong>
+                    CHF {comparison.expectedValue.toLocaleString()}
+                  </strong>{" "}
+                  in annual savings. Risk level:{" "}
+                  <Badge
+                    className={
+                      comparison.riskAssessment.level === "low"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }
+                  >
                     {comparison.riskAssessment.level.toUpperCase()}
                   </Badge>
                 </p>
               </div>
             </CardContent>
           </Card>
-          
+
           {/* AI Recommendation Panel */}
           <Card>
             <CardHeader>
               <CardTitle>AI-Powered Strategy Recommendation</CardTitle>
             </CardHeader>
             <CardContent>
-              <AIRecommendationPanel 
+              <AIRecommendationPanel
                 recommendation={aiRecommendation}
                 loading={aiLoading}
               />
-              
-              {aiRecommendation && aiRecommendation.alternativeStrategies.length > 0 && (
-                <div className="mt-6">
-                  <RecommendationCards 
-                    strategies={aiRecommendation.alternativeStrategies}
-                    selectedApproach={aiRecommendation.primaryStrategy.approach}
-                  />
-                </div>
-              )}
+
+              {aiRecommendation &&
+                aiRecommendation.alternativeStrategies.length > 0 && (
+                  <div className="mt-6">
+                    <RecommendationCards
+                      strategies={aiRecommendation.alternativeStrategies}
+                      selectedApproach={
+                        aiRecommendation.primaryStrategy.approach
+                      }
+                    />
+                  </div>
+                )}
             </CardContent>
           </Card>
-          
+
           {/* Quick Actions */}
           <Card>
             <CardHeader>
@@ -476,19 +602,35 @@ export function NegotiationPrepDashboard({
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Button onClick={() => setActiveTab('trends')} variant="outline" className="h-auto py-4 flex-col">
+                <Button
+                  onClick={() => setActiveTab("trends")}
+                  variant="outline"
+                  className="h-auto py-4 flex-col"
+                >
                   <TrendingUp className="w-6 h-6 mb-2" />
                   <span>View Trends</span>
                 </Button>
-                <Button onClick={() => setActiveTab('targets')} variant="outline" className="h-auto py-4 flex-col">
+                <Button
+                  onClick={() => setActiveTab("targets")}
+                  variant="outline"
+                  className="h-auto py-4 flex-col"
+                >
                   <Target className="w-6 h-6 mb-2" />
                   <span>Set Targets</span>
                 </Button>
-                <Button onClick={() => setActiveTab('talking-points')} variant="outline" className="h-auto py-4 flex-col">
+                <Button
+                  onClick={() => setActiveTab("talking-points")}
+                  variant="outline"
+                  className="h-auto py-4 flex-col"
+                >
                   <MessageSquare className="w-6 h-6 mb-2" />
                   <span>Review Arguments</span>
                 </Button>
-                <Button onClick={() => setActiveTab('scenarios')} variant="outline" className="h-auto py-4 flex-col">
+                <Button
+                  onClick={() => setActiveTab("scenarios")}
+                  variant="outline"
+                  className="h-auto py-4 flex-col"
+                >
                   <GitCompare className="w-6 h-6 mb-2" />
                   <span>Compare Scenarios</span>
                 </Button>
@@ -496,7 +638,7 @@ export function NegotiationPrepDashboard({
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Trends Tab */}
         <TabsContent value="trends">
           <Card>
@@ -508,25 +650,31 @@ export function NegotiationPrepDashboard({
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-600">Trend Direction</div>
-                    <div className="text-xl font-bold capitalize">{trendAnalysis.direction}</div>
+                    <div className="text-xl font-bold capitalize">
+                      {trendAnalysis.direction}
+                    </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-600">Change</div>
                     <div className="text-xl font-bold">
-                      {trendAnalysis.percentChange > 0 ? '+' : ''}
+                      {trendAnalysis.percentChange > 0 ? "+" : ""}
                       {trendAnalysis.percentChange.toFixed(1)}%
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-600">Volatility</div>
-                    <div className="text-xl font-bold">{trendAnalysis.volatility.toFixed(1)}%</div>
+                    <div className="text-xl font-bold">
+                      {trendAnalysis.volatility.toFixed(1)}%
+                    </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-600">Confidence</div>
-                    <div className="text-xl font-bold capitalize">{trendAnalysis.confidence}</div>
+                    <div className="text-xl font-bold capitalize">
+                      {trendAnalysis.confidence}
+                    </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-6">
                   <h4 className="font-semibold mb-3">Historical Data Points</h4>
                   <div className="max-h-96 overflow-y-auto">
@@ -539,11 +687,17 @@ export function NegotiationPrepDashboard({
                         </tr>
                       </thead>
                       <tbody>
-                        {rateHistory.map(point => (
+                        {rateHistory.map((point) => (
                           <tr key={point.id} className="border-t">
-                            <td className="p-2">{point.timestamp.toLocaleDateString()}</td>
-                            <td className="text-right p-2">{point.dailyRateCHF.toLocaleString()}</td>
-                            <td className="p-2 capitalize">{point.changeReason?.replace('_', ' ')}</td>
+                            <td className="p-2">
+                              {point.timestamp.toLocaleDateString()}
+                            </td>
+                            <td className="text-right p-2">
+                              {point.dailyRateCHF.toLocaleString()}
+                            </td>
+                            <td className="p-2 capitalize">
+                              {point.changeReason?.replace("_", " ")}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -554,7 +708,7 @@ export function NegotiationPrepDashboard({
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Targets Tab */}
         <TabsContent value="targets">
           <TargetRateCalculatorComponent
@@ -566,12 +720,12 @@ export function NegotiationPrepDashboard({
             annualVolume={annualVolume}
             marketData={marketData}
             onSelectTarget={(rate, scenario) => {
-              setSelectedTargetRate(rate)
-              setActiveTab('talking-points')
+              setSelectedTargetRate(rate);
+              setActiveTab("talking-points");
             }}
           />
         </TabsContent>
-        
+
         {/* Talking Points Tab */}
         <TabsContent value="talking-points">
           <TalkingPointsLibrary
@@ -580,7 +734,7 @@ export function NegotiationPrepDashboard({
             showPersuasivenessFilter={true}
           />
         </TabsContent>
-        
+
         {/* Scenarios Tab */}
         <TabsContent value="scenarios">
           <ScenarioComparisonComponent
@@ -588,8 +742,8 @@ export function NegotiationPrepDashboard({
             annualVolume={annualVolume}
             marketPercentiles={targetRates.market}
             onSelectScenario={(scenario) => {
-              setSelectedTargetRate(scenario.targetRate)
-              setActiveTab('talking-points')
+              setSelectedTargetRate(scenario.targetRate);
+              setActiveTab("talking-points");
             }}
           />
         </TabsContent>
@@ -607,7 +761,7 @@ export function NegotiationPrepDashboard({
               Generate a professional PDF report with all negotiation insights
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <h4 className="font-medium text-sm">Report will include:</h4>
@@ -619,10 +773,10 @@ export function NegotiationPrepDashboard({
                 <li>• Scenario Analysis</li>
               </ul>
             </div>
-            
+
             <div className="flex gap-2">
-              <Button 
-                onClick={handleExportPDF} 
+              <Button
+                onClick={handleExportPDF}
                 disabled={isExporting}
                 className="flex-1"
               >
@@ -638,8 +792,8 @@ export function NegotiationPrepDashboard({
                   </>
                 )}
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowExportDialog(false)}
                 disabled={isExporting}
               >
@@ -662,52 +816,65 @@ export function NegotiationPrepDashboard({
               Use these shortcuts to navigate faster
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-3 py-4">
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Overview</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+1</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+1
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Calculator</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+2</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+2
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Talking Points</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+3</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+3
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Scenarios</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+4</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+4
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Trends</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+5</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+5
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Export</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+E</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+E
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Share</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">⌘/Ctrl+Shift+S</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ⌘/Ctrl+Shift+S
+                </kbd>
               </div>
               <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
                 <span>Help</span>
-                <kbd className="px-2 py-1 bg-white border rounded text-xs">?</kbd>
+                <kbd className="px-2 py-1 bg-white border rounded text-xs">
+                  ?
+                </kbd>
               </div>
             </div>
-            
-            <Button 
-              onClick={() => setShowHelpDialog(false)}
-              className="w-full"
-            >
+
+            <Button onClick={() => setShowHelpDialog(false)} className="w-full">
               Got it!
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
