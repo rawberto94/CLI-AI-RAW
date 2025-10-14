@@ -1,0 +1,262 @@
+// Analytical Intelligence Database Schema Extensions
+// Add these to your main Prisma schema alongside existing tables
+
+// ============================================================================
+// RATE CARD BENCHMARKING TABLES
+// ============================================================================
+
+model RateCard {
+  id            String   @id @default(cuid())
+  contractId    String
+  supplierId    String
+  tenantId      String
+  effectiveDate DateTime
+  currency      String   @db.VarChar(3)
+  region        String   @db.VarChar(100)
+  deliveryModel String   @db.VarChar(50) // onshore, nearshore, offshore
+  
+  // Audit fields
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  rates         Rate[]
+  
+  @@map("rate_cards")
+  @@index([contractId])
+  @@index([supplierId])
+  @@index([tenantId, effectiveDate])
+}
+
+model Rate {
+  id           String   @id @default(cuid())
+  rateCardId   String
+  role         String   @db.VarChar(200)
+  level        String?  @db.VarChar(100)
+  hourlyRate   Decimal? @db.Decimal(10,2)
+  dailyRate    Decimal? @db.Decimal(10,2)
+  monthlyRate  Decimal? @db.Decimal(10,2)
+  billableHours Int     @default(8)
+  
+  // Audit fields
+  createdAt    DateTime @default(now())
+  
+  // Relations
+  rateCard     RateCard @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+  
+  @@map("rates")
+  @@index([rateCardId])
+  @@index([role, level])
+}
+
+model Benchmark {
+  id            String   @id @default(cuid())
+  cohortHash    String   @unique @db.VarChar(64)
+  tenantId      String
+  role          String   @db.VarChar(200)
+  level         String?  @db.VarChar(100)
+  region        String   @db.VarChar(100)
+  deliveryModel String   @db.VarChar(50)
+  category      String   @db.VarChar(100)
+  
+  // Statistical measures
+  p25           Decimal  @db.Decimal(10,2)
+  p50           Decimal  @db.Decimal(10,2)
+  p75           Decimal  @db.Decimal(10,2)
+  p90           Decimal  @db.Decimal(10,2)
+  mean          Decimal  @db.Decimal(10,2)
+  stdDev        Decimal  @db.Decimal(10,2)
+  sampleSize    Int
+  confidence    Decimal  @db.Decimal(5,2)
+  
+  // Audit fields
+  lastUpdated   DateTime @default(now())
+  
+  @@map("benchmarks")
+  @@index([tenantId])
+  @@index([role, level, region, deliveryModel])
+  @@index([cohortHash])
+}
+
+// ============================================================================
+// RENEWAL RADAR TABLES
+// ============================================================================
+
+model RenewalAlert {
+  id             String   @id @default(cuid())
+  contractId     String
+  tenantId       String
+  alertType      String   @db.VarChar(50) // renewal, termination, renegotiation
+  dueDate        DateTime
+  daysUntilDue   Int
+  priority       String   @db.VarChar(20) // low, medium, high, critical
+  status         String   @default("pending") @db.VarChar(20) // pending, acknowledged, actioned, dismissed
+  
+  // Audit fields
+  createdAt      DateTime @default(now())
+  acknowledgedAt DateTime?
+  actionedAt     DateTime?
+  
+  // Relations
+  contract       Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  
+  @@map("renewal_alerts")
+  @@index([contractId])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, priority, status])
+}
+
+// ============================================================================
+// COMPLIANCE TABLES
+// ============================================================================
+
+model CompliancePolicy {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clauseType      String   @db.VarChar(50) // liability, ip, termination, etc.
+  requirement     String   @db.VarChar(10) // must, should, can
+  weight          Decimal  @db.Decimal(3,2)
+  template        String?  @db.Text
+  validationRules Json?
+  
+  // Audit fields
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("compliance_policies")
+  @@index([tenantId])
+  @@index([tenantId, clauseType])
+}
+
+model ComplianceScore {
+  id             String   @id @default(cuid())
+  contractId     String
+  tenantId       String
+  overallScore   Decimal  @db.Decimal(5,2)
+  riskLevel      String   @db.VarChar(20) // low, medium, high, critical
+  clauseScores   Json     // Array of clause results
+  recommendations String[]
+  
+  // Audit fields
+  lastAssessed   DateTime @default(now())
+  
+  // Relations
+  contract       Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  
+  @@map("compliance_scores")
+  @@index([contractId])
+  @@index([tenantId, riskLevel])
+  @@index([tenantId, lastAssessed])
+}
+
+// ============================================================================
+// SUPPLIER INTELLIGENCE TABLES
+// ============================================================================
+
+model SupplierIntelligence {
+  id                  String   @id @default(cuid())
+  supplierId          String
+  tenantId            String
+  financialHealth     Decimal? @db.Decimal(5,2)
+  performanceScore    Decimal? @db.Decimal(5,2)
+  riskScore           Decimal? @db.Decimal(5,2)
+  complianceScore     Decimal? @db.Decimal(5,2)
+  relationshipMetrics Json?
+  externalData        Json?
+  aiSummary           String?  @db.Text
+  
+  // Audit fields
+  lastUpdated         DateTime @default(now())
+  
+  @@map("supplier_intelligence")
+  @@index([supplierId])
+  @@index([tenantId])
+  @@index([tenantId, lastUpdated])
+  @@unique([supplierId, tenantId])
+}
+
+// ============================================================================
+// SPEND OVERLAY TABLES
+// ============================================================================
+
+model SpendData {
+  id          String   @id @default(cuid())
+  tenantId    String
+  supplierId  String?
+  category    String   @db.VarChar(200)
+  costCenter  String?  @db.VarChar(100)
+  amount      Decimal  @db.Decimal(12,2)
+  currency    String   @db.VarChar(3)
+  period      String   @db.VarChar(20) // YYYY-MM format
+  poReference String?  @db.VarChar(100)
+  description String?  @db.Text
+  source      String   @db.VarChar(50) // sievo, ariba, manual, etc.
+  
+  // Audit fields
+  importedAt  DateTime @default(now())
+  
+  @@map("spend_data")
+  @@index([tenantId])
+  @@index([supplierId, period])
+  @@index([tenantId, category, period])
+}
+
+model SpendAnalysis {
+  id                  String   @id @default(cuid())
+  supplierId          String
+  tenantId            String
+  period              String   @db.VarChar(20)
+  contractedSpend     Decimal? @db.Decimal(12,2)
+  actualSpend         Decimal  @db.Decimal(12,2)
+  variance            Decimal  @db.Decimal(12,2)
+  variancePercentage  Decimal  @db.Decimal(5,2)
+  leakageAmount       Decimal? @db.Decimal(12,2)
+  utilizationRate     Decimal? @db.Decimal(5,2)
+  
+  // Audit fields
+  analyzedAt          DateTime @default(now())
+  
+  @@map("spend_analysis")
+  @@index([supplierId])
+  @@index([tenantId, period])
+  @@index([tenantId, analyzedAt])
+  @@unique([supplierId, tenantId, period])
+}
+
+// ============================================================================
+// NATURAL LANGUAGE QUERY TABLES
+// ============================================================================
+
+model QueryHistory {
+  id           String   @id @default(cuid())
+  sessionId    String
+  tenantId     String
+  userId       String?
+  query        String   @db.Text
+  response     Json
+  confidence   Decimal? @db.Decimal(5,2)
+  responseTime Int?     // milliseconds
+  
+  // Audit fields
+  createdAt    DateTime @default(now())
+  
+  @@map("query_history")
+  @@index([sessionId, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([userId, createdAt])
+}
+
+// ============================================================================
+// EXTEND EXISTING MODELS
+// ============================================================================
+
+// Add these relations to existing Contract model
+model Contract {
+  // ... existing fields ...
+  
+  // New analytical relations
+  rateCards        RateCard[]
+  renewalAlerts    RenewalAlert[]
+  complianceScores ComplianceScore[]
+}

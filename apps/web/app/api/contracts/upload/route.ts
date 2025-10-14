@@ -275,6 +275,19 @@ export async function POST(
     ensureProcessingJob(contract.id);
     const processingJob = startProcessingJob(contract.id);
 
+    // Initialize contract metadata
+    const { initializeContractMetadata } = await import("@/lib/contract-integration");
+    initializeContractMetadata(contract.id, contract.tenantId, {
+      fileName: file.name,
+      contractType: metadata.contractType,
+      clientName: metadata.clientName,
+      supplierName: metadata.supplierName,
+      totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
+      currency: metadata.currency
+    }).catch((error) => {
+      console.error("❌ Metadata initialization error:", error);
+    });
+
     // Trigger artifact generation in background
     triggerArtifactGeneration({
       contractId: contract.id,

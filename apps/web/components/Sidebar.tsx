@@ -16,7 +16,8 @@ import {
   Presentation,
   Sparkles,
   Play,
-  Rocket
+  Rocket,
+  Tag
 } from "lucide-react"
 import {
   Tooltip,
@@ -35,6 +36,9 @@ const items = [
   { href: "/benchmarks/compare", label: "Compare", Icon: Percent },
   { href: "/compliance", label: "Compliance", Icon: ShieldAlert },
   { href: "/risk", label: "Risk", Icon: AlertTriangle },
+  { href: "/taxonomy", label: "Taxonomy", Icon: Tag },
+  { href: "/analytics", label: "Analytics", Icon: Presentation },
+  { href: "/automation", label: "Automation", Icon: Sparkles },
   { href: "/upload", label: "Upload", Icon: Upload },
   { href: "/runs", label: "Runs", Icon: Layers },
 ]

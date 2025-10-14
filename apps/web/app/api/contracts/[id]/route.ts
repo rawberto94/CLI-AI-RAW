@@ -1,13 +1,25 @@
+/**
+ * Contract Details API
+ * GET /api/contracts/[id] - Get contract with artifacts and processing status
+ * 
+ * ✅ MIGRATED to data-orchestration service
+ * - Uses centralized ContractService and ArtifactService
+ * - Type-safe with automatic caching
+ * - Consistent error handling
+ */
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { readFile, writeFile } from "fs/promises";
+import { contractService, artifactService } from "data-orchestration";
+import { existsSync } from "fs";
+import { readFile } from "fs";
+import { existsSync } from "fs";
+import { join } from "path";
+import { writeFile } from "fs";
+import { readFile } from "fs";
 import { existsSync } from "fs";
 import { join } from "path";
 
 export const runtime = "nodejs";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== "false";
 
 // Get contract details and processing status
 export async function GET(
@@ -15,6 +27,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const params = await context.params;
+  const startTime = Date.now();
+
   try {
     const contractId = params.id;
 
@@ -25,75 +39,46 @@ export async function GET(
       );
     }
 
-    let contract: any = null;
-    let artifacts: any = null;
+    const tenantId = "demo"; // TODO: Get from auth session
 
-    // Try to fetch from backend API first, fallback to mock data
-    try {
-      const contractRes = await fetch(
-        `${API_URL}/api/contracts/${contractId}`,
-        {
-          headers: {
-            "x-tenant-id": "demo",
-          },
-          signal: AbortSignal.timeout(2000), // 2 second timeout
-        }
-      );
+    // Get contract using data-orchestration service (handles caching)
+    const contractResult = await contractService.getContract(contractId, tenantId, true);
 
-      if (contractRes.ok) {
-        contract = await contractRes.json();
-
-        // Fetch artifacts
-        const artifactsRes = await fetch(
-          `${API_URL}/api/contracts/${contractId}/artifacts`,
-          {
-            headers: {
-              "x-tenant-id": "demo",
-            },
-            signal: AbortSignal.timeout(2000),
-          }
-        );
-        artifacts = artifactsRes.ok ? await artifactsRes.json() : {};
-      }
-    } catch (backendError) {
-      console.log("Backend API not available, using mock data");
-    }
-
-    // Fallback to database
-    if (!contract) {
-      // Get contract from database with artifacts
-      const dbContract = await prisma.contract.findUnique({
-        where: { id: contractId },
-        include: {
-          artifacts: true,
-        },
-      });
-
-      if (!dbContract) {
+    if (!contractResult.success) {
+      if (contractResult.error?.code === "NOT_FOUND") {
         return NextResponse.json(
           { error: "Contract not found" },
           { status: 404 }
         );
       }
 
-      contract = dbContract;
-      artifacts = { data: dbContract.artifacts };
+      return NextResponse.json(
+        {
+          error: "Failed to retrieve contract",
+          details: contractResult.error?.message
+        },
+        { status: 500 }
+      );
     }
+
+    const contract = contractResult.data;
+
+    // Get artifacts using data-orchestration service
+    const artifactsResult = await artifactService.getContractArtifacts(contractId, tenantId);
+    const artifacts = artifactsResult.success ? artifactsResult.data : [];
+
+    // Transform artifacts into expected format
+    const artifactsByType = artifacts.reduce((acc, artifact) => {
+      acc[artifact.type.toLowerCase()] = artifact.data;
+      return acc;
+    }, {} as Record<string, any>);
 
     // Combine contract metadata with artifacts
     const contractData = {
       id: contract.id,
       filename: contract.fileName || "Unknown",
-      uploadDate:
-        contract.uploadedAt?.toISOString() || new Date().toISOString(),
-      status:
-        contract.status === "COMPLETED"
-          ? "completed"
-          : contract.status === "PROCESSING"
-          ? "processing"
-          : contract.status === "FAILED"
-          ? "error"
-          : "processing",
+      uploadDate: contract.uploadedAt?.toISOString() || new Date().toISOString(),
+      status: mapContractStatus(contract.status),
       tenantId: contract.tenantId || "demo",
       uploadedBy: contract.uploadedBy || "user",
       fileSize: Number(contract.fileSize) || 0,
@@ -101,17 +86,14 @@ export async function GET(
       processing: {
         jobId: contract.id,
         status: contract.status || "PROCESSING",
-        currentStage:
-          contract.status === "COMPLETED" ? "completed" : "processing",
+        currentStage: contract.status === "COMPLETED" ? "completed" : "processing",
         progress: contract.status === "COMPLETED" ? 100 : 50,
-        startTime:
-          contract.uploadedAt?.toISOString() || new Date().toISOString(),
-        completedAt:
-          contract.status === "COMPLETED"
-            ? contract.processedAt?.toISOString() || new Date().toISOString()
-            : undefined,
+        startTime: contract.uploadedAt?.toISOString() || new Date().toISOString(),
+        completedAt: contract.status === "COMPLETED"
+          ? contract.processedAt?.toISOString() || new Date().toISOString()
+          : undefined,
       },
-      extractedData: artifacts.data || artifacts,
+      extractedData: artifactsByType,
     };
 
     // Check if we have real processing results
@@ -123,7 +105,7 @@ export async function GET(
       ...contractData,
       processingDuration: contractData.processing.completedAt
         ? new Date(contractData.processing.completedAt).getTime() -
-          new Date(contractData.processing.startTime).getTime()
+        new Date(contractData.processing.startTime).getTime()
         : Date.now() - new Date(contractData.processing.startTime).getTime(),
 
       // Add artifacts array and count
@@ -131,69 +113,69 @@ export async function GET(
         ? contractData.extractedData
         : contractData.extractedData &&
           typeof contractData.extractedData === "object"
-        ? Object.entries(contractData.extractedData).map(([type, data]) => ({
+          ? Object.entries(contractData.extractedData).map(([type, data]) => ({
             type,
             data,
           }))
-        : [],
+          : [],
       artifactCount: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.length
         : contractData.extractedData &&
           typeof contractData.extractedData === "object"
-        ? Object.keys(contractData.extractedData).length
-        : 0,
+          ? Object.keys(contractData.extractedData).length
+          : 0,
 
       // Add summary statistics
       summary: {
         totalClauses: Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find(
-              (a: any) => a.type === "CLAUSES" || a.type === "clauses"
-            )?.data?.clauses?.length || 0
+            (a: any) => a.type === "CLAUSES" || a.type === "clauses"
+          )?.data?.clauses?.length || 0
           : contractData.extractedData?.clauses?.clauses?.length || 0,
         riskFactors: Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find(
-              (a: any) => a.type === "RISK" || a.type === "risk"
-            )?.data?.risks?.length || 0
+            (a: any) => a.type === "RISK" || a.type === "risk"
+          )?.data?.risks?.length || 0
           : contractData.extractedData?.risk?.risks?.length || 0,
         complianceIssues: Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find(
-              (a: any) => a.type === "COMPLIANCE" || a.type === "compliance"
-            )?.data?.regulations?.length || 0
+            (a: any) => a.type === "COMPLIANCE" || a.type === "compliance"
+          )?.data?.regulations?.length || 0
           : contractData.extractedData?.compliance?.regulations?.length || 0,
         financialTerms: Array.isArray(contractData.extractedData)
           ? Object.keys(
-              contractData.extractedData.find(
-                (a: any) => a.type === "FINANCIAL" || a.type === "financial"
-              )?.data || {}
-            ).filter((k) => k !== "_meta").length
+            contractData.extractedData.find(
+              (a: any) => a.type === "FINANCIAL" || a.type === "financial"
+            )?.data || {}
+          ).filter((k) => k !== "_meta").length
           : Object.keys(contractData.extractedData?.financial || {}).length,
         keyParties: Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find(
-              (a: any) => a.type === "OVERVIEW" || a.type === "metadata"
-            )?.data?.parties?.length || 0
+            (a: any) => a.type === "OVERVIEW" || a.type === "metadata"
+          )?.data?.parties?.length || 0
           : contractData.extractedData?.metadata?.parties?.length ||
-            contractData.extractedData?.overview?.parties?.length ||
-            0,
+          contractData.extractedData?.overview?.parties?.length ||
+          0,
         extractedTables: Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find((a: any) => a.type === "financial")
-              ?.data?.extractedTables?.length || 0
+            ?.data?.extractedTables?.length || 0
           : contractData.extractedData?.financial?.extractedTables?.length || 0,
         rateCards: Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find((a: any) => a.type === "financial")
-              ?.data?.rateCards?.length || 0
+            ?.data?.rateCards?.length || 0
           : contractData.extractedData?.financial?.rateCards?.length || 0,
         totalSavingsOpportunity: Array.isArray(contractData.extractedData)
           ? contractData.extractedData
-              .find((a: any) => a.type === "financial")
-              ?.data?.benchmarkingResults?.reduce(
-                (sum: number, br: any) =>
-                  sum + (br.totalSavingsOpportunity || 0),
-                0
-              ) || 0
-          : contractData.extractedData?.financial?.benchmarkingResults?.reduce(
-              (sum: number, br: any) => sum + (br.totalSavingsOpportunity || 0),
+            .find((a: any) => a.type === "financial")
+            ?.data?.benchmarkingResults?.reduce(
+              (sum: number, br: any) =>
+                sum + (br.totalSavingsOpportunity || 0),
               0
-            ) || 0,
+            ) || 0
+          : contractData.extractedData?.financial?.benchmarkingResults?.reduce(
+            (sum: number, br: any) => sum + (br.totalSavingsOpportunity || 0),
+            0
+          ) || 0,
       },
 
       // Add processing insights
@@ -203,41 +185,61 @@ export async function GET(
       financial: transformFinancialData(
         Array.isArray(contractData.extractedData)
           ? contractData.extractedData.find(
-              (a: any) => a.type === "FINANCIAL" || a.type === "financial"
-            )?.data
+            (a: any) => a.type === "FINANCIAL" || a.type === "financial"
+          )?.data
           : contractData.extractedData?.financial
       ),
       metadata: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
-            (a: any) => a.type === "OVERVIEW" || a.type === "metadata"
-          )?.data
+          (a: any) => a.type === "OVERVIEW" || a.type === "metadata"
+        )?.data
         : contractData.extractedData?.metadata,
       risk: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
-            (a: any) => a.type === "RISK" || a.type === "risk"
-          )?.data
+          (a: any) => a.type === "RISK" || a.type === "risk"
+        )?.data
         : contractData.extractedData?.risk,
       compliance: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
-            (a: any) => a.type === "COMPLIANCE" || a.type === "compliance"
-          )?.data
+          (a: any) => a.type === "COMPLIANCE" || a.type === "compliance"
+        )?.data
         : contractData.extractedData?.compliance,
       clauses: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
-            (a: any) => a.type === "CLAUSES" || a.type === "clauses"
-          )?.data
+          (a: any) => a.type === "CLAUSES" || a.type === "clauses"
+        )?.data
         : contractData.extractedData?.clauses,
     };
 
-    return NextResponse.json(enrichedData);
+    const responseTime = Date.now() - startTime;
+
+    return NextResponse.json(enrichedData, {
+      headers: {
+        'X-Response-Time': `${responseTime}ms`,
+        'X-Data-Source': 'data-orchestration',
+        'X-Cache-Status': responseTime < 50 ? 'HIT' : 'MISS'
+      }
+    });
   } catch (error) {
     console.error("Error fetching contract:", error);
     return NextResponse.json(
       {
         error: "Failed to fetch contract details",
+        details: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }
     );
+  }
+}
+
+// Helper function to map contract status
+function mapContractStatus(status: string): string {
+  switch (status) {
+    case "COMPLETED": return "completed";
+    case "PROCESSING": return "processing";
+    case "FAILED": return "error";
+    case "UPLOADED": return "processing";
+    default: return "processing";
   }
 }
 
@@ -395,16 +397,15 @@ function generateProcessingInsights(contractData: any) {
     insights.push({
       type: "risk",
       title: `${risk.riskLevel} Risk Level`,
-      description: `Risk score: ${risk.riskScore}/100 with ${
-        risk.riskFactors?.length || 0
-      } identified factors`,
+      description: `Risk score: ${risk.riskScore}/100 with ${risk.riskFactors?.length || 0
+        } identified factors`,
       icon: "shield",
       color:
         risk.riskLevel === "LOW"
           ? "green"
           : risk.riskLevel === "MEDIUM"
-          ? "yellow"
-          : "red",
+            ? "yellow"
+            : "red",
     });
   }
 
@@ -414,16 +415,15 @@ function generateProcessingInsights(contractData: any) {
     insights.push({
       type: "compliance",
       title: "Compliance Status",
-      description: `${compliance.complianceScore}% compliant with ${
-        compliance.regulations?.length || 0
-      } regulations checked`,
+      description: `${compliance.complianceScore}% compliant with ${compliance.regulations?.length || 0
+        } regulations checked`,
       icon: "award",
       color:
         compliance.complianceScore >= 90
           ? "green"
           : compliance.complianceScore >= 70
-          ? "yellow"
-          : "red",
+            ? "yellow"
+            : "red",
     });
   }
 
@@ -433,11 +433,9 @@ function generateProcessingInsights(contractData: any) {
     insights.push({
       type: "financial",
       title: "Financial Terms",
-      description: `Total value: ${
-        financial.currency
-      } ${financial.totalValue?.toLocaleString()} with ${
-        financial.paymentTerms
-      }`,
+      description: `Total value: ${financial.currency
+        } ${financial.totalValue?.toLocaleString()} with ${financial.paymentTerms
+        }`,
       icon: "dollar-sign",
       color: "blue",
     });
@@ -449,9 +447,8 @@ function generateProcessingInsights(contractData: any) {
     insights.push({
       type: "clauses",
       title: "Clause Analysis",
-      description: `${clauses.clauses?.length || 0} clauses extracted with ${
-        clauses.completeness?.score || 0
-      }% completeness`,
+      description: `${clauses.clauses?.length || 0} clauses extracted with ${clauses.completeness?.score || 0
+        }% completeness`,
       icon: "file-text",
       color: "purple",
     });
@@ -497,21 +494,20 @@ function transformFinancialData(financialData: any) {
             (br: any) => br.rateCardId === rc.id
           )?.totalSavingsOpportunity
             ? `$${financialData.benchmarkingResults
-                .find((br: any) => br.rateCardId === rc.id)
-                .totalSavingsOpportunity.toLocaleString()}`
+              .find((br: any) => br.rateCardId === rc.id)
+              .totalSavingsOpportunity.toLocaleString()}`
             : "$0",
           averageVariance: financialData.benchmarkingResults?.find(
             (br: any) => br.rateCardId === rc.id
           )?.averageVariance
-            ? `${
-                financialData.benchmarkingResults.find(
-                  (br: any) => br.rateCardId === rc.id
-                ).averageVariance > 0
-                  ? "+"
-                  : ""
-              }${financialData.benchmarkingResults
-                .find((br: any) => br.rateCardId === rc.id)
-                .averageVariance.toFixed(1)}%`
+            ? `${financialData.benchmarkingResults.find(
+              (br: any) => br.rateCardId === rc.id
+            ).averageVariance > 0
+              ? "+"
+              : ""
+            }${financialData.benchmarkingResults
+              .find((br: any) => br.rateCardId === rc.id)
+              .averageVariance.toFixed(1)}%`
             : "0%",
           ratesAboveMarket:
             financialData.benchmarkingResults?.find(

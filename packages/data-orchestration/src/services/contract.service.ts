@@ -1,5 +1,7 @@
 import { dbAdaptor } from "../dal/database.adaptor";
 import { cacheAdaptor } from "../dal/cache.adaptor";
+import { eventBus, Events } from "../events/event-bus";
+import { contractIndexingService } from "./contract-indexing.service";
 import pino from "pino";
 import {
   Contract,
@@ -47,6 +49,13 @@ export class ContractService {
 
       // Invalidate list caches for this tenant
       await cacheAdaptor.invalidatePattern(`contracts:${contract.tenantId}:*`);
+
+      // Emit contract created event for intelligence processing
+      await eventBus.publish(Events.CONTRACT_CREATED, {
+        contractId: contract.id,
+        tenantId: contract.tenantId,
+        contract,
+      });
 
       logger.info({ contractId: contract.id }, "Contract created successfully");
 
@@ -115,6 +124,13 @@ export class ContractService {
       // Track view
       await this.incrementViewCount(id, tenantId);
 
+      // Emit contract viewed event for analytics
+      await eventBus.publish(Events.CONTRACT_VIEWED, {
+        contractId: id,
+        tenantId,
+        timestamp: new Date(),
+      });
+
       logger.debug({ contractId: id }, "Contract retrieved from database");
 
       return {
@@ -146,6 +162,14 @@ export class ContractService {
       // Invalidate caches
       await cacheAdaptor.delete(this.getCacheKey(tenantId, id));
       await cacheAdaptor.invalidatePattern(`contracts:${tenantId}:*`);
+
+      // Emit contract updated event for intelligence processing
+      await eventBus.publish(Events.CONTRACT_UPDATED, {
+        contractId: id,
+        tenantId,
+        changes: data,
+        contract,
+      });
 
       logger.info({ contractId: id }, "Contract updated successfully");
 

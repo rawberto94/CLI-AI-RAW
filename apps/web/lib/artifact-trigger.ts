@@ -137,39 +137,29 @@ async function generateArtifactsInBackground(
   mimeType: string
 ): Promise<void> {
   try {
-    console.log(`📊 Starting artifact generation for contract: ${contractId}`);
+    console.log(`📊 Starting enhanced artifact generation for contract: ${contractId}`);
     console.log(`📂 File path: ${filePath}`);
     console.log(`📋 MIME type: ${mimeType}`);
 
-    // Check if we have OpenAI API key - use real LLM or fallback to mocks
-    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+    // Use the enhanced artifact generator
+    const { generateEnhancedArtifacts } = await import("./artifact-generator-enhanced");
+    
+    const analysisResult = await generateEnhancedArtifacts(
+      contractId,
+      tenantId, 
+      filePath,
+      mimeType
+    );
 
-    if (hasOpenAI) {
-      console.log("🧠 Using REAL LLM generation with OpenAI API");
-      try {
-        // Use the no-dependencies version that calls OpenAI API directly
-        const { generateArtifactsNoDeps } = await import(
-          "./artifact-generator-no-deps"
-        );
-        await generateArtifactsNoDeps(contractId, jobId, filePath, mimeType);
-        console.log(`✅ Real LLM artifacts generated for ${contractId}`);
-        return;
-      } catch (error) {
-        console.error(
-          "❌ Real LLM generation failed, falling back to mocks:",
-          error
-        );
-        // Fall through to mock generation
-      }
-    } else {
-      console.log("💭 No OPENAI_API_KEY found, using mock generation");
-    }
+    console.log(`✅ Enhanced artifacts generated for ${contractId}:`, {
+      riskScore: analysisResult.risk.overallScore,
+      opportunityScore: analysisResult.opportunities.overallScore,
+      clausesFound: analysisResult.clauses.length,
+      riskFactors: analysisResult.risk.riskFactors.length
+    });
 
-    // Fallback to mock artifacts (simplified - no database required)
-    console.log(`⚠️  Using MOCK generation for ${contractId}`);
-    console.log(`🎉 Mock artifacts would be generated here`);
   } catch (error) {
-    console.error(`❌ Artifact generation failed for ${contractId}:`, error);
+    console.error(`❌ Enhanced artifact generation failed for ${contractId}:`, error);
     throw error;
   }
 }
