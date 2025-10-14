@@ -1,7 +1,6 @@
-import { 
-  Contract, 
-  ContractStatus, 
-  ProcessingStatus, 
+import {
+  Contract,
+  ContractStatus,
   Prisma,
   ContractArtifact,
   ContractEmbedding,
@@ -9,11 +8,10 @@ import {
   ProcessingJob,
   JobStatus,
   Party,
-  PartyType,
-  ContractVersion
-} from '@prisma/client';
-import { AbstractRepository } from './base.repository';
-import { DatabaseManager } from '../../index';
+  ContractVersion,
+} from "@prisma/client";
+import { AbstractRepository } from "./base.repository";
+import { DatabaseManager } from "../../index";
 
 export type ContractCreateInput = Prisma.ContractCreateInput;
 export type ContractUpdateInput = Prisma.ContractUpdateInput;
@@ -62,7 +60,7 @@ export class ContractRepository extends AbstractRepository<
   ContractUpdateInput,
   ContractWhereInput
 > {
-  protected modelName = 'contract';
+  protected modelName = "contract";
 
   constructor(databaseManager: DatabaseManager) {
     super(databaseManager);
@@ -74,12 +72,12 @@ export class ContractRepository extends AbstractRepository<
       status?: ContractStatus[];
       limit?: number;
       offset?: number;
-      orderBy?: 'createdAt' | 'updatedAt' | 'filename';
-      order?: 'asc' | 'desc';
+      orderBy?: "createdAt" | "updatedAt" | "filename";
+      order?: "asc" | "desc";
     }
   ): Promise<Contract[]> {
     const where: Prisma.ContractWhereInput = { tenantId };
-    
+
     if (options?.status) {
       where.status = { in: options.status };
     }
@@ -88,7 +86,9 @@ export class ContractRepository extends AbstractRepository<
       where,
       take: options?.limit,
       skip: options?.offset,
-      orderBy: options?.orderBy ? { [options.orderBy]: options?.order || 'desc' } : { createdAt: 'desc' },
+      orderBy: options?.orderBy
+        ? { [options.orderBy]: options?.order || "desc" }
+        : { createdAt: "desc" },
     });
   }
 
@@ -97,22 +97,22 @@ export class ContractRepository extends AbstractRepository<
       where: { id },
       include: {
         artifacts: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         runs: {
-          orderBy: { startedAt: 'desc' },
+          orderBy: { startedAt: "desc" },
           take: 5,
         },
         templateAnalysis: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
         financialAnalysis: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
         overviewAnalysis: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
       },
@@ -122,18 +122,8 @@ export class ContractRepository extends AbstractRepository<
   async updateStatus(id: string, status: ContractStatus): Promise<Contract> {
     return await this.prisma.contract.update({
       where: { id },
-      data: { 
+      data: {
         status,
-        updatedAt: new Date(),
-      },
-    });
-  }
-
-  async updateProcessingStatus(id: string, processingStatus: ProcessingStatus): Promise<Contract> {
-    return await this.prisma.contract.update({
-      where: { id },
-      data: { 
-        processingStatus,
         updatedAt: new Date(),
       },
     });
@@ -161,26 +151,28 @@ export class ContractRepository extends AbstractRepository<
 
     if (filters.search) {
       where.OR = [
-        { filename: { contains: filters.search, mode: 'insensitive' } },
-        { originalName: { contains: filters.search, mode: 'insensitive' } },
+        { fileName: { contains: filters.search, mode: "insensitive" } },
+        { originalName: { contains: filters.search, mode: "insensitive" } },
       ];
     }
 
     return await this.prisma.contract.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async getContractsByStatus(tenantId: string): Promise<Record<ContractStatus, number>> {
+  async getContractsByStatus(
+    tenantId: string
+  ): Promise<Record<ContractStatus, number>> {
     const statusCounts = await this.prisma.contract.groupBy({
-      by: ['status'],
+      by: ["status"],
       where: { tenantId },
       _count: { status: true },
     });
 
     const result: Record<string, number> = {};
-    statusCounts.forEach(item => {
+    statusCounts.forEach((item) => {
       result[item.status] = item._count.status;
     });
 
@@ -190,7 +182,7 @@ export class ContractRepository extends AbstractRepository<
   async getRecentContracts(tenantId: string, limit = 10): Promise<Contract[]> {
     return await this.prisma.contract.findMany({
       where: { tenantId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
     });
   }
@@ -199,9 +191,8 @@ export class ContractRepository extends AbstractRepository<
     return await this.prisma.contract.findMany({
       where: {
         status: ContractStatus.UPLOADED,
-        processingStatus: ProcessingStatus.PENDING,
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
       take: limit,
     });
   }
@@ -211,16 +202,18 @@ export class ContractRepository extends AbstractRepository<
       where: { id },
       data: {
         status: ContractStatus.COMPLETED,
-        processingStatus: ProcessingStatus.COMPLETED,
         processedAt: new Date(),
         lastAnalyzedAt: new Date(),
       },
     });
   }
 
-  async getContractMetrics(tenantId: string, dateRange?: { from: Date; to: Date }) {
+  async getContractMetrics(
+    tenantId: string,
+    dateRange?: { from: Date; to: Date }
+  ) {
     const where: Prisma.ContractWhereInput = { tenantId };
-    
+
     if (dateRange) {
       where.createdAt = {
         gte: dateRange.from,
@@ -231,12 +224,12 @@ export class ContractRepository extends AbstractRepository<
     const [total, byStatus, byType, avgProcessingTime] = await Promise.all([
       this.prisma.contract.count({ where }),
       this.prisma.contract.groupBy({
-        by: ['status'],
+        by: ["status"],
         where,
         _count: { status: true },
       }),
       this.prisma.contract.groupBy({
-        by: ['contractType'],
+        by: ["contractType"],
         where: { ...where, contractType: { not: null } },
         _count: { contractType: true },
       }),
@@ -281,7 +274,7 @@ export class ContractRepository extends AbstractRepository<
         },
         status: { not: ContractStatus.ARCHIVED },
       },
-      orderBy: { expirationDate: 'asc' },
+      orderBy: { expirationDate: "asc" },
     });
   }
 
@@ -292,27 +285,29 @@ export class ContractRepository extends AbstractRepository<
   /**
    * Find contract with all optimized relations (artifacts, embeddings, clauses, etc.)
    */
-  async findByIdWithOptimizedRelations(id: string): Promise<ContractWithOptimizedRelations | null> {
+  async findByIdWithOptimizedRelations(
+    id: string
+  ): Promise<ContractWithOptimizedRelations | null> {
     return await this.prisma.contract.findUnique({
       where: { id },
       include: {
         contractArtifacts: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         contractEmbeddings: {
-          orderBy: { chunkIndex: 'asc' },
+          orderBy: { chunkIndex: "asc" },
         },
         clauses: {
-          orderBy: { position: 'asc' },
+          orderBy: { position: "asc" },
         },
         processingJobs: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 5,
         },
         client: true,
         supplier: true,
         versions: {
-          orderBy: { versionNumber: 'desc' },
+          orderBy: { versionNumber: "desc" },
         },
       },
     });
@@ -325,7 +320,7 @@ export class ContractRepository extends AbstractRepository<
     data: ContractCreateInput,
     options?: {
       createProcessingJob?: boolean;
-      initialArtifacts?: Omit<Prisma.ContractArtifactCreateInput, 'contract'>[];
+      initialArtifacts?: Omit<Prisma.ContractArtifactCreateInput, "contract">[];
     }
   ): Promise<Contract> {
     return await this.prisma.$transaction(async (tx) => {
@@ -346,7 +341,7 @@ export class ContractRepository extends AbstractRepository<
       // Create initial artifacts if provided
       if (options?.initialArtifacts && options.initialArtifacts.length > 0) {
         await tx.contractArtifact.createMany({
-          data: options.initialArtifacts.map(artifact => ({
+          data: options.initialArtifacts.map((artifact) => ({
             ...artifact,
             contractId: contract.id,
           })),
@@ -381,9 +376,12 @@ export class ContractRepository extends AbstractRepository<
       offset?: number;
     }
   ): Promise<Contract[]> {
-    const whereClause = options?.tenantId ? `AND "tenantId" = '${options.tenantId}'` : '';
-    
-    const results = await this.prisma.$queryRawUnsafe<Contract[]>(`
+    const whereClause = options?.tenantId
+      ? `AND "tenantId" = '${options.tenantId}'`
+      : "";
+
+    const results = await this.prisma.$queryRawUnsafe<Contract[]>(
+      `
       SELECT *
       FROM "Contract"
       WHERE "textVector" @@ plainto_tsquery('english', $1)
@@ -391,7 +389,9 @@ export class ContractRepository extends AbstractRepository<
       ORDER BY ts_rank("textVector", plainto_tsquery('english', $1)) DESC
       LIMIT ${options?.limit || 10}
       OFFSET ${options?.offset || 0}
-    `, query);
+    `,
+      query
+    );
 
     return results;
   }
@@ -407,10 +407,15 @@ export class ContractRepository extends AbstractRepository<
       threshold?: number;
     }
   ): Promise<Array<Contract & { similarity: number }>> {
-    const whereClause = options?.tenantId ? `AND c."tenantId" = '${options.tenantId}'` : '';
+    const whereClause = options?.tenantId
+      ? `AND c."tenantId" = '${options.tenantId}'`
+      : "";
     const threshold = options?.threshold || 0.7;
-    
-    const results = await this.prisma.$queryRawUnsafe<Array<Contract & { similarity: number }>>(`
+
+    const results = await this.prisma.$queryRawUnsafe<
+      Array<Contract & { similarity: number }>
+    >(
+      `
       SELECT DISTINCT ON (c.id) c.*, 
              1 - (ce.embedding <=> $1::vector) as similarity
       FROM "Contract" c
@@ -419,7 +424,10 @@ export class ContractRepository extends AbstractRepository<
       ${whereClause}
       ORDER BY c.id, similarity DESC
       LIMIT ${options?.limit || 10}
-    `, `[${embedding.join(',')}]`, threshold);
+    `,
+      `[${embedding.join(",")}]`,
+      threshold
+    );
 
     return results;
   }
@@ -438,12 +446,19 @@ export class ContractRepository extends AbstractRepository<
     if (!embedding) {
       // Fall back to full-text search only
       const results = await this.fullTextSearch(query, options);
-      return results.map(r => ({ ...r, relevance_score: 1.0, snippet: '' }));
+      return results.map((r) => ({ ...r, relevance_score: 1.0, snippet: "" }));
     }
 
-    const results = await this.prisma.$queryRawUnsafe<Array<Contract & { relevance_score: number; snippet: string }>>(`
+    const results = await this.prisma.$queryRawUnsafe<
+      Array<Contract & { relevance_score: number; snippet: string }>
+    >(
+      `
       SELECT * FROM search_contracts($1, $2::vector, $3)
-    `, query, `[${embedding.join(',')}]`, options?.limit || 10);
+    `,
+      query,
+      `[${embedding.join(",")}]`,
+      options?.limit || 10
+    );
 
     return results;
   }
@@ -527,7 +542,7 @@ export class ContractRepository extends AbstractRepository<
           where: {
             status: JobStatus.FAILED,
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 1,
         },
       },
@@ -545,7 +560,7 @@ export class ContractRepository extends AbstractRepository<
       await tx.clause.deleteMany({ where: { contractId: id } });
       await tx.contractEmbedding.deleteMany({ where: { contractId: id } });
       await tx.contractArtifact.deleteMany({ where: { contractId: id } });
-      
+
       // Delete legacy relations
       await tx.embedding.deleteMany({ where: { contractId: id } });
       await tx.artifact.deleteMany({ where: { contractId: id } });
@@ -553,7 +568,7 @@ export class ContractRepository extends AbstractRepository<
       await tx.templateAnalysis.deleteMany({ where: { contractId: id } });
       await tx.financialAnalysis.deleteMany({ where: { contractId: id } });
       await tx.overviewAnalysis.deleteMany({ where: { contractId: id } });
-      
+
       // Finally delete the contract
       await tx.contract.delete({ where: { id } });
     });
@@ -619,9 +634,14 @@ export class ContractRepository extends AbstractRepository<
    * Calculate data quality score for a contract
    */
   async calculateQualityScore(id: string): Promise<number> {
-    const result = await this.prisma.$queryRawUnsafe<Array<{ quality_score: number }>>(`
+    const result = await this.prisma.$queryRawUnsafe<
+      Array<{ quality_score: number }>
+    >(
+      `
       SELECT calculate_contract_quality($1) as quality_score
-    `, id);
+    `,
+      id
+    );
 
     return result[0]?.quality_score || 0;
   }
@@ -678,7 +698,7 @@ export class ContractRepository extends AbstractRepository<
   async getVersions(contractId: string): Promise<ContractVersion[]> {
     return await this.prisma.contractVersion.findMany({
       where: { contractId },
-      orderBy: { versionNumber: 'desc' },
+      orderBy: { versionNumber: "desc" },
     });
   }
 
@@ -696,7 +716,7 @@ export class ContractRepository extends AbstractRepository<
       // Get the latest version number
       const latestVersion = await tx.contractVersion.findFirst({
         where: { contractId },
-        orderBy: { versionNumber: 'desc' },
+        orderBy: { versionNumber: "desc" },
       });
 
       const versionNumber = (latestVersion?.versionNumber || 0) + 1;

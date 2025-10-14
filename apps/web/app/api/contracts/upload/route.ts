@@ -1,8 +1,17 @@
+/**
+ * Contract Upload API
+ * POST /api/contracts/upload - Upload a contract file
+ *
+ * ✅ MIGRATED to data-orchestration service
+ * - Uses centralized ContractService
+ * - Proper file validation and storage
+ * - Automatic artifact generation trigger
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { randomUUID } from "crypto";
-import { prisma } from "@/lib/prisma";
+import { contractService } from "data-orchestration";
 import {
   ensureProcessingJob,
   startProcessingJob,
@@ -13,19 +22,13 @@ import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 // FILE VALIDATION CONSTANTS
 // ============================================================================
 
-// Allowed file types per requirements (PDF, DOCX, TXT, HTML, images)
 const ALLOWED_MIME_TYPES = [
-  // PDF
   "application/pdf",
-  // Word documents
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-  "application/msword", // .doc
-  // Text
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
   "text/plain",
-  // HTML
   "text/html",
   "application/xhtml+xml",
-  // Images
   "image/jpeg",
   "image/jpg",
   "image/png",
@@ -52,8 +55,7 @@ const ALLOWED_EXTENSIONS = [
   ".webp",
 ];
 
-// File size limit: 100MB per requirements
-const MAX_FILE_SIZE = 100 * 1024 * 1024;
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -160,20 +162,16 @@ function sanitizeFileName(fileName: string): string {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse<UploadResponse>> {
-  console.log("📤 Contract upload request received at /api/contracts/upload");
+  console.log("📤 Contract upload request received");
 
   try {
-    // Get tenant ID from headers or default
-    const tenantId = request.headers.get("x-tenant-id") || "default-tenant";
+    const tenantId = request.headers.get("x-tenant-id") || "demo";
     console.log("Tenant ID:", tenantId);
 
-    // Parse multipart form data
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
-    // Validate file presence
     if (!file) {
-      console.log("❌ No file provided in request");
       return NextResponse.json(
         {
           success: false,
@@ -190,10 +188,9 @@ export async function POST(
       type: file.type,
     });
 
-    // Validate file type
+    // Validate file
     const typeValidation = validateFileType(file);
     if (!typeValidation.valid) {
-      console.log("❌ File type validation failed:", typeValidation.error);
       return NextResponse.json(
         {
           success: false,
@@ -204,10 +201,8 @@ export async function POST(
       );
     }
 
-    // Validate file size
     const sizeValidation = validateFileSize(file);
     if (!sizeValidation.valid) {
-      console.log("❌ File size validation failed:", sizeValidation.error);
       return NextResponse.json(
         {
           success: false,
@@ -218,20 +213,13 @@ export async function POST(
       );
     }
 
-    // Generate unique contract ID
-    const contractId = randomUUID();
-    console.log("🆔 Generated contract ID:", contractId);
-
-    // Prepare file storage
+    // Save file to disk
     const timestamp = Date.now();
     const sanitizedFileName = sanitizeFileName(file.name);
-    const storedFileName = `${timestamp}-${contractId}-${sanitizedFileName}`;
-
-    // Create upload directory structure
+    const storedFileName = `${timestamp}-${sanitizedFileName}`;
     const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
     await mkdir(uploadDir, { recursive: true });
 
-    // Save file to disk
     const filePath = join(uploadDir, storedFileName);
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -239,51 +227,72 @@ export async function POST(
 
     console.log("💾 File saved to:", filePath);
 
-    // Extract additional metadata from form
+    // Extract metadata
     const metadata = {
       contractType: formData.get("contractType") as string | null,
+      contractTitle: formData.get("contractTitle") as string | null,
       clientName: formData.get("clientName") as string | null,
       supplierName: formData.get("supplierName") as string | null,
       uploadedBy: formData.get("uploadedBy") as string | null,
+      description: formData.get("description") as string | null,
+      category: formData.get("category") as string | null,
     };
 
-    // Create contract in database
-    const contract = await prisma.contract.create({
-      data: {
-        fileName: file.name,
-        originalName: file.name,
-        fileSize: BigInt(file.size),
-        mimeType: file.type,
-        storagePath: filePath,
-        contractType: metadata.contractType || "UNKNOWN",
-        status: "PROCESSING",
-        tenantId: tenantId || "default-tenant",
-        uploadedBy: metadata.uploadedBy || "anonymous",
-      },
-    });
+    // Create contract using data-orchestration service
+    const result = await contractService.createContract({
+      tenantId,
+      fileName: file.name,
+      originalName: file.name,
+      fileSize: BigInt(file.size),
+      mimeType: file.type || "application/octet-stream",
+      storagePath: filePath,
+      storageProvider: "local",
+      status: "PROCESSING",
+      uploadedBy: metadata.uploadedBy || "anonymous",
+      contractType: metadata.contractType || "UNKNOWN",
+      contractTitle: metadata.contractTitle || file.name,
+      clientName: metadata.clientName,
+      supplierName: metadata.supplierName,
+      description: metadata.description,
+      category: metadata.category,
+      uploadedAt: new Date(),
+    } as any);
 
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to create contract",
+          details: result.error.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    const contract = result.data;
+
+    // Create processing job
     ensureProcessingJob(contract.id);
     const processingJob = startProcessingJob(contract.id);
 
-    // Trigger real LLM artifact generation in background
+    // Trigger artifact generation in background
     triggerArtifactGeneration({
       contractId: contract.id,
       tenantId: contract.tenantId,
       filePath,
       mimeType: file.type,
-      useQueue: false, // Use direct call for development
+      useQueue: false,
     })
-      .then((result) => {
-        console.log("🎉 Artifact generation job started:", result);
+      .then((artifactResult) => {
+        console.log("🎉 Artifact generation started:", artifactResult);
       })
       .catch((error) => {
-        console.error("❌ Failed to trigger artifact generation:", error);
+        console.error("❌ Artifact generation error:", error);
       });
 
     console.log("✅ Contract created:", {
       contractId: contract.id,
       processingJobId: processingJob.id,
-      storageKey: storedFileName,
     });
 
     return NextResponse.json(
@@ -293,7 +302,7 @@ export async function POST(
         fileName: file.name,
         fileSize: file.size,
         mimeType: file.type,
-        status: processingJob.status,
+        status: "PROCESSING",
         processingJobId: processingJob.id,
         message: "File uploaded successfully",
       },
@@ -308,11 +317,6 @@ export async function POST(
     );
   } catch (error) {
     console.error("❌ Upload error:", error);
-    console.error(
-      "Error stack:",
-      error instanceof Error ? error.stack : "No stack trace"
-    );
-
     return NextResponse.json(
       {
         success: false,
@@ -324,8 +328,6 @@ export async function POST(
         status: 500,
         headers: {
           "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
         },
       }
     );

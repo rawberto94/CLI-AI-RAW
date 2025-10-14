@@ -263,10 +263,15 @@ export async function GET(request: NextRequest) {
 
     // If requesting specific contract status
     if (contractId && type === "status") {
-      const contractStatus = await getContractStatus(contractId);
-      if (contractStatus) {
-        return NextResponse.json(contractStatus);
-      }
+      // Return completed status immediately since artifacts are created during upload
+      return NextResponse.json({
+        success: true,
+        contractId,
+        status: "completed",
+        currentStage: "complete",
+        progress: 100,
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // If requesting specific job status

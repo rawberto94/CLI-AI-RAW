@@ -17,6 +17,7 @@
     "type-check:strict:core": "tsc --noEmit -p tsconfig.strict-core.json || echo 'Run from root: pnpm type-check:web:strict:core'"
   },
   "dependencies": {
+    "data-orchestration": "workspace:*",
     "@aws-sdk/client-s3": "^3.701.0",
     "@aws-sdk/s3-request-presigner": "^3.701.0",
     "@hookform/resolvers": "^3.9.1",

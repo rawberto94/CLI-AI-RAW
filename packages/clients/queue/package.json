@@ -10,14 +10,15 @@
     }
   },
   "scripts": {
-  "build": "tsc",
-  "dev": "tsc -w",
+    "build": "tsc",
+    "dev": "tsc -w",
     "test": "vitest run"
   },
   "dependencies": {
     "bullmq": "^4.12.3"
   },
   "devDependencies": {
+    "@types/node": "^24.7.1",
     "typescript": "^5.2.2",
     "vitest": "^0.34.4"
   }

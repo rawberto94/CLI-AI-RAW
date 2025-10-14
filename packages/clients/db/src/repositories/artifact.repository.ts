@@ -1,6 +1,6 @@
-import { Artifact, ArtifactType, Prisma } from '@prisma/client';
-import { AbstractRepository } from './base.repository';
-import { DatabaseManager } from '../../index';
+import { Artifact, ArtifactType, Prisma } from "@prisma/client";
+import { AbstractRepository } from "./base.repository";
+import { DatabaseManager } from "../../index";
 
 export type ArtifactCreateInput = Prisma.ArtifactCreateInput;
 export type ArtifactUpdateInput = Prisma.ArtifactUpdateInput;
@@ -12,7 +12,7 @@ export class ArtifactRepository extends AbstractRepository<
   ArtifactUpdateInput,
   ArtifactWhereInput
 > {
-  protected modelName = 'artifact';
+  protected modelName = "artifact";
 
   constructor(databaseManager: DatabaseManager) {
     super(databaseManager);
@@ -21,11 +21,14 @@ export class ArtifactRepository extends AbstractRepository<
   async findByContract(contractId: string): Promise<Artifact[]> {
     return await this.prisma.artifact.findMany({
       where: { contractId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async findByContractAndType(contractId: string, type: ArtifactType): Promise<Artifact | null> {
+  async findByContractAndType(
+    contractId: string,
+    type: ArtifactType
+  ): Promise<Artifact | null> {
     return await this.prisma.artifact.findUnique({
       where: {
         contractId_type: {
@@ -36,13 +39,16 @@ export class ArtifactRepository extends AbstractRepository<
     });
   }
 
-  async findByTenant(tenantId: string, options?: {
-    type?: ArtifactType[];
-    limit?: number;
-    offset?: number;
-  }): Promise<Artifact[]> {
+  async findByTenant(
+    tenantId: string,
+    options?: {
+      type?: ArtifactType[];
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<Artifact[]> {
     const where: Prisma.ArtifactWhereInput = { tenantId };
-    
+
     if (options?.type) {
       where.type = { in: options.type };
     }
@@ -51,7 +57,7 @@ export class ArtifactRepository extends AbstractRepository<
       where,
       take: options?.limit,
       skip: options?.offset,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -71,7 +77,7 @@ export class ArtifactRepository extends AbstractRepository<
       tenantId,
       type,
       data,
-      schemaVersion: options?.schemaVersion || 'v1',
+      schemaVersion: options?.schemaVersion || "v1",
       processingTime: options?.processingTime,
       confidence: options?.confidence,
       size: JSON.stringify(data).length,
@@ -98,25 +104,30 @@ export class ArtifactRepository extends AbstractRepository<
     });
   }
 
-  async getArtifactsByType(tenantId: string, type: ArtifactType): Promise<Artifact[]> {
+  async getArtifactsByType(
+    tenantId: string,
+    type: ArtifactType
+  ): Promise<Artifact[]> {
     return await this.prisma.artifact.findMany({
       where: {
         tenantId,
         type,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async getArtifactStats(tenantId: string): Promise<Record<ArtifactType, number>> {
+  async getArtifactStats(
+    tenantId: string
+  ): Promise<Record<ArtifactType, number>> {
     const stats = await this.prisma.artifact.groupBy({
-      by: ['type'],
+      by: ["type"],
       where: { tenantId },
       _count: { type: true },
     });
 
     const result: Record<string, number> = {};
-    stats.forEach(item => {
+    stats.forEach((item) => {
       result[item.type] = item._count.type;
     });
 
@@ -132,13 +143,13 @@ export class ArtifactRepository extends AbstractRepository<
   async findRecentArtifacts(tenantId: string, limit = 10): Promise<Artifact[]> {
     return await this.prisma.artifact.findMany({
       where: { tenantId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
       include: {
         contract: {
           select: {
             id: true,
-            filename: true,
+            fileName: true,
           },
         },
       },
@@ -176,13 +187,13 @@ export class ArtifactRepository extends AbstractRepository<
           lt: threshold,
         },
       },
-      orderBy: { confidence: 'asc' },
+      orderBy: { confidence: "asc" },
       take: limit,
       include: {
         contract: {
           select: {
             id: true,
-            filename: true,
+            fileName: true,
           },
         },
       },
@@ -195,7 +206,7 @@ export class ArtifactRepository extends AbstractRepository<
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(16);

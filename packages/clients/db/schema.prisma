@@ -1,40 +1,689 @@
-// Enhanced Prisma schema for Contract Intelligence System
-// Supports production-ready features with proper indexing and constraints
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
-}
-
-// ============================================================================
-// TENANT AND USER MANAGEMENT
-// ============================================================================
-
 model Tenant {
-  id            String            @id @default(cuid())
-  name          String            @unique
-  slug          String            @unique
+  id            String              @id @default(cuid())
+  name          String              @unique
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  slug          String              @unique
+  status        TenantStatus        @default(ACTIVE)
+  auditLogs     AuditLog[]
+  contracts     Contract[]
+  templates     ContractTemplate[]
+  metrics       Metric[]
   configuration TenantConfig?
   subscription  TenantSubscription?
   usage         TenantUsage?
-  status        TenantStatus      @default(ACTIVE)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  users         User[]
 
-  // Relations
-  contracts         Contract[]
-  users            User[]
-  templates        ContractTemplate[]
-  auditLogs        AuditLog[]
-  metrics          Metric[]
-  
   @@index([status])
   @@index([createdAt])
+}
+
+model TenantConfig {
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  aiModels         Json     @default("{}")
+  aiCostBudget     Decimal? @db.Decimal(10, 2)
+  aiCostAlerts     Boolean  @default(true)
+  securitySettings Json     @default("{}")
+  integrations     Json     @default("{}")
+  workflowSettings Json     @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model TenantSubscription {
+  id           String             @id @default(cuid())
+  tenantId     String             @unique
+  plan         SubscriptionPlan
+  status       SubscriptionStatus
+  startDate    DateTime
+  endDate      DateTime?
+  billingCycle BillingCycle
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([endDate])
+}
+
+model TenantUsage {
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique
+  contractsProcessed   Int      @default(0)
+  aiTokensUsed         BigInt   @default(0)
+  storageUsed          BigInt   @default(0)
+  apiCallsCount        Int      @default(0)
+  monthlyContractLimit Int?
+  monthlyTokenLimit    BigInt?
+  monthlyStorageLimit  BigInt?
+  monthlyApiLimit      Int?
+  resetDate            DateTime
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([resetDate])
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  avatar        String?
+  emailVerified Boolean       @default(false)
+  firstName     String?
+  lastLoginAt   DateTime?
+  lastName      String?
+  passwordHash  String
+  status        UserStatus    @default(ACTIVE)
+  tenantId      String
+  auditLogs     AuditLog[]
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roles         UserRole[]
+  sessions      UserSession[]
+
+  @@index([email])
+  @@index([tenantId])
+  @@index([status])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  createdAt   DateTime         @default(now())
+  description String?
+  isSystem    Boolean          @default(false)
+  updatedAt   DateTime         @updatedAt
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id         String           @id @default(cuid())
+  action     String
+  subject    String
+  conditions Json?
+  roles      RolePermission[]
+
+  @@unique([action, subject])
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  assignedAt   DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String?  @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Contract {
+  id                 String                   @id @default(cuid())
+  tenantId           String
+  storagePath        String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  checksum           String?
+  mimeType           String
+  contractType       String?
+  effectiveDate      DateTime?
+  expirationDate     DateTime?
+  fileName           String
+  jurisdiction       String?
+  lastAnalyzedAt     DateTime?
+  originalName       String?
+  processedAt        DateTime?
+  searchMetadata     Json?                    @default("{}")
+  fileSize           BigInt
+  storageProvider    String?                  @default("local")
+  uploadedBy         String?
+  status             ContractStatus           @default(PROCESSING)
+  uploadedAt         DateTime                 @default(now())
+  rawText            String?
+  startDate          DateTime?
+  endDate            DateTime?
+  totalValue         Decimal?                 @db.Decimal(15, 2)
+  currency           String?
+  clientId           String?
+  supplierId         String?
+  category           String?
+  clientName         String?
+  contractTitle      String?
+  description        String?
+  keywords           Json?
+  lastViewedAt       DateTime?
+  lastViewedBy       String?
+  searchableText     String?
+  supplierName       String?
+  tags               Json?                    @default("[]")
+  textVector         Unsupported("tsvector")?
+  viewCount          Int                      @default(0)
+  artifacts          Artifact[]
+  clauses            Clause[]
+  client             Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
+  supplier           Party?                   @relation("SupplierContracts", fields: [supplierId], references: [id])
+  tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractArtifacts  ContractArtifact[]
+  contractEmbeddings ContractEmbedding[]
+  versions           ContractVersion[]
+  embeddings         Embedding[]
+  financialAnalysis  FinancialAnalysis[]
+  overviewAnalysis   OverviewAnalysis[]
+  processingJobs     ProcessingJob[]
+  runs               Run[]
+  templateAnalysis   TemplateAnalysis[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([contractType])
+  @@index([createdAt])
+  @@index([startDate, endDate])
+  @@index([clientId])
+  @@index([supplierId])
+  @@index([clientName])
+  @@index([supplierName])
+  @@index([category])
+  @@index([tenantId, status])
+  @@index([tenantId, contractType])
+  @@index([tenantId, clientName])
+  @@index([tenantId, supplierName])
+}
+
+model Party {
+  id                String     @id @default(cuid())
+  name              String
+  type              PartyType
+  email             String?
+  phone             String?
+  address           Json?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  clientContracts   Contract[] @relation("ClientContracts")
+  supplierContracts Contract[] @relation("SupplierContracts")
+
+  @@unique([name, type])
+  @@index([type])
+}
+
+model ContractArtifact {
+  id         String   @id @default(cuid())
+  contractId String
+  type       String
+  key        String
+  value      Json
+  confidence Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([contractId, type])
+  @@index([type])
+}
+
+model ContractEmbedding {
+  id         String                 @id @default(cuid())
+  contractId String
+  chunkIndex Int
+  chunkText  String
+  embedding  Unsupported("vector")?
+  chunkType  String?
+  section    String?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  contract   Contract               @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, chunkIndex])
+  @@index([contractId])
+  @@index([chunkType])
+}
+
+model Clause {
+  id              String   @id @default(cuid())
+  contractId      String
+  category        String
+  text            String
+  riskLevel       String?
+  position        Int?
+  libraryClauseId String?
+  similarity      Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([contractId, category])
+  @@index([category])
+  @@index([riskLevel])
+}
+
+model ProcessingJob {
+  id          String    @id @default(cuid())
+  contractId  String
+  status      JobStatus @default(PENDING)
+  progress    Int       @default(0)
+  currentStep String?
+  error       String?
+  errorStack  String?
+  retryCount  Int       @default(0)
+  maxRetries  Int       @default(3)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  contract    Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ContractVersion {
+  id              String    @id @default(cuid())
+  contractId      String
+  versionNumber   Int
+  parentVersionId String?
+  changes         Json?
+  uploadedBy      String?
+  uploadedAt      DateTime  @default(now())
+  isActive        Boolean   @default(true)
+  supersededAt    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, versionNumber])
+  @@index([contractId])
+  @@index([isActive])
+}
+
+model Artifact {
+  id              String       @id @default(cuid())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  contractId      String
+  tenantId        String
+  type            ArtifactType
+  data            Json
+  schemaVersion   String       @default("v1")
+  hash            String?
+  location        String?
+  confidence      Decimal?     @db.Decimal(3, 2)
+  processingTime  Int?
+  size            Int?
+  storageProvider String?      @default("database")
+  contract        Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, type])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([type])
+  @@index([contractId, type])
+  @@index([tenantId, type])
+}
+
+model TemplateAnalysis {
+  id                String   @id @default(cuid())
+  contractId        String
+  tenantId          String
+  detectedTemplates Json
+  complianceScore   Decimal? @db.Decimal(3, 2)
+  deviations        Json
+  recommendations   Json
+  processingTime    Int?
+  confidence        Decimal? @db.Decimal(3, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  contract          Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([complianceScore])
+}
+
+model FinancialAnalysis {
+  id                String   @id @default(cuid())
+  contractId        String
+  tenantId          String
+  totalValue        Json?
+  paymentTerms      Json?
+  costBreakdown     Json?
+  pricingTables     Json?
+  discounts         Json?
+  escalationClauses Json?
+  financialRisks    Json?
+  recommendations   Json?
+  processingTime    Int?
+  confidence        Decimal? @db.Decimal(3, 2)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  contract          Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+}
+
+model OverviewAnalysis {
+  id                 String    @id @default(cuid())
+  contractId         String
+  tenantId           String
+  summary            String?
+  parties            Json?
+  keyTerms           Json?
+  contractType       String?
+  jurisdiction       String?
+  effectiveDate      DateTime?
+  expirationDate     DateTime?
+  renewalTerms       Json?
+  terminationClauses Json?
+  processingTime     Int?
+  confidence         Decimal?  @db.Decimal(3, 2)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  contract           Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([contractType])
+}
+
+model Run {
+  id             String    @id @default(cuid())
+  runId          String    @unique
+  contractId     String?
+  tenantId       String
+  status         RunStatus @default(PENDING)
+  startedAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  completedAt    DateTime?
+  summary        String?
+  completedSteps Int?      @default(0)
+  currentStep    String?
+  errorDetails   Json?
+  errorMessage   String?
+  jobType        String?
+  priority       Int       @default(0)
+  processingTime Int?
+  totalSteps     Int?
+  contract       Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([tenantId, status])
+}
+
+model Embedding {
+  id         String   @id @default(cuid())
+  contractId String
+  tenantId   String
+  chunkIndex Int
+  text       String
+  chunkType  String?
+  confidence Decimal? @db.Decimal(3, 2)
+  createdAt  DateTime @default(now())
+  embedding  Json?
+  section    String?
+  updatedAt  DateTime @updatedAt
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, chunkIndex])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([chunkType])
+}
+
+model ContractTemplate {
+  id          String    @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  category    String?
+  clauses     Json
+  structure   Json
+  metadata    Json
+  version     Int       @default(1)
+  isActive    Boolean   @default(true)
+  parentId    String?
+  usageCount  Int       @default(0)
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([category])
+  @@index([isActive])
+  @@index([tenantId, category])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String?
+  action       String
+  resource     String?
+  resourceType String?
+  details      Json?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([resourceType])
+  @@index([createdAt])
+  @@index([tenantId, action])
+}
+
+model Metric {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  name      String
+  value     Decimal  @db.Decimal(15, 4)
+  unit      String?
+  tags      Json?
+  timestamp DateTime @default(now())
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([name])
+  @@index([tenantId])
+  @@index([timestamp])
+  @@index([name, timestamp])
+  @@index([tenantId, name, timestamp])
+}
+
+model ImportJob {
+  id                String           @id @default(cuid())
+  tenantId          String
+  source            ImportSource
+  status            ImportStatus     @default(PENDING)
+  priority          ImportPriority   @default(NORMAL)
+  fileName          String?
+  fileSize          BigInt?
+  fileType          FileTypeImport
+  emailFrom         String?
+  emailSubject      String?
+  apiSource         String?
+  storagePath       String?
+  createdAt         DateTime         @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  processedBy       String?
+  rowsProcessed     Int              @default(0)
+  rowsSucceeded     Int              @default(0)
+  rowsFailed        Int              @default(0)
+  errors            Json             @default("[]")
+  warnings          Json             @default("[]")
+  mappingTemplateId String?
+  columnMappings    Json             @default("[]")
+  mappingConfidence Decimal          @default(0) @db.Decimal(3, 2)
+  extractedData     Json
+  normalizedData    Json?
+  requiresReview    Boolean          @default(false)
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  reviewNotes       String?
+  mappingTemplate   MappingTemplate? @relation(fields: [mappingTemplateId], references: [id])
+  rateCards         RateCard[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([source])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([tenantId, status])
+  @@index([tenantId, source])
+}
+
+model RateCard {
+  id               String         @id @default(cuid())
+  tenantId         String
+  importJobId      String
+  supplierId       String
+  supplierName     String
+  supplierTier     SupplierTier
+  contractId       String?
+  effectiveDate    DateTime
+  expiryDate       DateTime?
+  originalCurrency String
+  baseCurrency     String         @default("CHF")
+  exchangeRate     Decimal?       @db.Decimal(10, 6)
+  exchangeRateDate DateTime?
+  source           String
+  importedAt       DateTime       @default(now())
+  importedBy       String
+  version          Int            @default(1)
+  status           RateCardStatus @default(DRAFT)
+  dataQuality      Json
+  importJob        ImportJob      @relation(fields: [importJobId], references: [id], onDelete: Cascade)
+  roles            RoleRate[]
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([effectiveDate])
+  @@index([tenantId, supplierId])
+  @@index([tenantId, status])
+}
+
+model RoleRate {
+  id               String           @id @default(cuid())
+  rateCardId       String
+  originalRoleName String
+  standardizedRole String
+  roleCategory     String
+  seniorityLevel   SeniorityLevel
+  serviceLine      String
+  subCategory      String?
+  skills           Json             @default("[]")
+  certifications   Json             @default("[]")
+  originalLocation String
+  geography        String
+  region           String
+  country          String
+  city             String?
+  originalRate     Decimal          @db.Decimal(10, 2)
+  originalPeriod   RatePeriod
+  originalCurrency String
+  hourlyRate       Decimal          @db.Decimal(10, 2)
+  dailyRate        Decimal          @db.Decimal(10, 2)
+  monthlyRate      Decimal          @db.Decimal(10, 2)
+  annualRate       Decimal          @db.Decimal(10, 2)
+  baseCurrency     String
+  volumeDiscounts  Json?
+  minimumHours     Int?
+  minimumDays      Int?
+  confidence       Decimal          @db.Decimal(3, 2)
+  dataQuality      DataQualityLevel
+  issues           Json             @default("[]")
+  warnings         Json             @default("[]")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  rateCard         RateCard         @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
+
+  @@index([rateCardId])
+  @@index([standardizedRole])
+  @@index([seniorityLevel])
+  @@index([country])
+  @@index([serviceLine])
+  @@index([rateCardId, standardizedRole])
+}
+
+model MappingTemplate {
+  id              String      @id @default(cuid())
+  tenantId        String
+  name            String
+  supplierId      String?
+  supplierName    String?
+  description     String
+  mappings        Json
+  requiredFields  Json        @default("[]")
+  optionalFields  Json        @default("[]")
+  fileNamePattern String?
+  headerPatterns  Json        @default("[]")
+  usageCount      Int         @default(0)
+  successRate     Decimal     @default(0) @db.Decimal(3, 2)
+  lastUsed        DateTime?
+  version         Int         @default(1)
+  createdBy       String
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  importJobs      ImportJob[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([tenantId, supplierId])
 }
 
 enum TenantStatus {
@@ -42,47 +691,6 @@ enum TenantStatus {
   SUSPENDED
   INACTIVE
   DELETED
-}
-
-model TenantConfig {
-  id                String   @id @default(cuid())
-  tenantId          String   @unique
-  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  // AI Configuration
-  aiModels          Json     @default("{}")
-  aiCostBudget      Decimal? @db.Decimal(10, 2)
-  aiCostAlerts      Boolean  @default(true)
-  
-  // Security Settings
-  securitySettings  Json     @default("{}")
-  
-  // Integration Settings
-  integrations      Json     @default("{}")
-  
-  // Workflow Settings
-  workflowSettings  Json     @default("{}")
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-model TenantSubscription {
-  id            String           @id @default(cuid())
-  tenantId      String           @unique
-  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  plan          SubscriptionPlan
-  status        SubscriptionStatus
-  startDate     DateTime
-  endDate       DateTime?
-  billingCycle  BillingCycle
-  
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  
-  @@index([status])
-  @@index([endDate])
 }
 
 enum SubscriptionPlan {
@@ -104,228 +712,11 @@ enum BillingCycle {
   YEARLY
 }
 
-model TenantUsage {
-  id                String   @id @default(cuid())
-  tenantId          String   @unique
-  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  contractsProcessed Int     @default(0)
-  aiTokensUsed      BigInt   @default(0)
-  storageUsed       BigInt   @default(0) // in bytes
-  apiCallsCount     Int      @default(0)
-  
-  // Monthly limits
-  monthlyContractLimit Int?
-  monthlyTokenLimit    BigInt?
-  monthlyStorageLimit  BigInt?
-  monthlyApiLimit      Int?
-  
-  resetDate         DateTime
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@index([resetDate])
-}
-
-model User {
-  id            String       @id @default(cuid())
-  tenantId      String
-  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  email         String       @unique
-  passwordHash  String
-  firstName     String?
-  lastName      String?
-  avatar        String?
-  
-  status        UserStatus   @default(ACTIVE)
-  emailVerified Boolean      @default(false)
-  lastLoginAt   DateTime?
-  
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  
-  // Relations
-  roles         UserRole[]
-  sessions      UserSession[]
-  auditLogs     AuditLog[]
-  
-  @@index([email])
-  @@index([tenantId])
-  @@index([status])
-}
-
 enum UserStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
   DELETED
-}
-
-model Role {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  description String?
-  isSystem    Boolean      @default(false)
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
-  // Relations
-  users       UserRole[]
-  permissions RolePermission[]
-}
-
-model Permission {
-  id          String @id @default(cuid())
-  action      String // e.g., 'create', 'read', 'update', 'delete'
-  subject     String // e.g., 'Contract', 'User', 'Template'
-  conditions  Json?  // Additional conditions for the permission
-  
-  // Relations
-  roles       RolePermission[]
-  
-  @@unique([action, subject])
-}
-
-model UserRole {
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roleId      String
-  role        Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  assignedAt  DateTime @default(now())
-  assignedBy  String?
-  
-  @@id([userId, roleId])
-}
-
-model RolePermission {
-  roleId       String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permissionId String
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  assignedAt   DateTime   @default(now())
-  
-  @@id([roleId, permissionId])
-}
-
-model UserSession {
-  id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  token       String    @unique
-  refreshToken String?  @unique
-  expiresAt   DateTime
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  @@index([token])
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-// ============================================================================
-// CONTRACT MANAGEMENT
-// ============================================================================
-
-model Contract {
-  id            String        @id @default(cuid())
-  tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  // File information
-  fileName      String
-  originalName  String?
-  fileSize      BigInt
-  mimeType      String
-  checksum      String?
-  uploadedAt    DateTime      @default(now())
-  
-  // Storage information
-  storagePath   String?
-  storageProvider String?     @default("local")
-  
-  // Content
-  rawText       String?       @db.Text
-  textVector    Unsupported("tsvector")?
-  
-  // Contract metadata
-  contractType  String?
-  status        ContractStatus @default(PROCESSING)
-  
-  // Parties
-  clientId      String?
-  client        Party?        @relation("ClientContracts", fields: [clientId], references: [id], onDelete: SetNull)
-  supplierId    String?
-  supplier      Party?        @relation("SupplierContracts", fields: [supplierId], references: [id], onDelete: SetNull)
-  
-  // Financial
-  totalValue    Decimal?      @db.Decimal(15, 2)
-  currency      String?
-  
-  // Dates
-  startDate     DateTime?
-  endDate       DateTime?
-  effectiveDate DateTime?
-  expirationDate DateTime?
-  jurisdiction  String?
-  
-  // Processing metadata
-  uploadedBy    String?
-  processedAt   DateTime?
-  lastAnalyzedAt DateTime?
-  
-  // Search metadata
-  searchMetadata Json?        @default("{}")
-  
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  
-  // Relations
-  artifacts     Artifact[]
-  contractArtifacts ContractArtifact[]
-  contractEmbeddings ContractEmbedding[]
-  clauses       Clause[]
-  processingJobs ProcessingJob[]
-  versions      ContractVersion[]
-  runs          Run[]
-  embeddings    Embedding[]
-  templateAnalysis TemplateAnalysis[]
-  financialAnalysis FinancialAnalysis[]
-  overviewAnalysis OverviewAnalysis[]
-  
-  @@index([tenantId])
-  @@index([status])
-  @@index([contractType])
-  @@index([createdAt])
-  @@index([startDate, endDate])
-  @@index([clientId])
-  @@index([supplierId])
-  @@index([tenantId, status])
-  @@index([tenantId, contractType])
-}
-
-model Party {
-  id            String     @id @default(cuid())
-  name          String
-  type          PartyType
-  email         String?
-  phone         String?
-  address       Json?
-  
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  
-  // Relations
-  clientContracts   Contract[] @relation("ClientContracts")
-  supplierContracts Contract[] @relation("SupplierContracts")
-  
-  @@unique([name, type])
-  @@index([type])
 }
 
 enum PartyType {
@@ -344,99 +735,6 @@ enum ContractStatus {
   DELETED
 }
 
-// ============================================================================
-// CONTRACT REPOSITORY OPTIMIZATION MODELS
-// ============================================================================
-
-model ContractArtifact {
-  id          String   @id @default(cuid())
-  contractId  String
-  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  
-  type        String   // "party", "date", "value", "term", "clause"
-  key         String
-  value       Json
-  confidence  Float
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@index([contractId])
-  @@index([contractId, type])
-  @@index([type])
-}
-
-model ContractEmbedding {
-  id          String   @id @default(cuid())
-  contractId  String
-  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  
-  chunkIndex  Int
-  chunkText   String   @db.Text
-  embedding   Unsupported("vector(1536)")?  // pgvector for OpenAI embeddings
-  
-  // Metadata
-  chunkType   String?  // e.g., 'clause', 'section', 'paragraph'
-  section     String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@unique([contractId, chunkIndex])
-  @@index([contractId])
-  @@index([chunkType])
-}
-
-model Clause {
-  id          String   @id @default(cuid())
-  contractId  String
-  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  
-  category    String   // e.g., 'payment', 'liability', 'termination', 'confidentiality'
-  text        String   @db.Text
-  riskLevel   String?  // 'low', 'medium', 'high'
-  position    Int?     // Position in contract
-  
-  // Clause library linkage
-  libraryClauseId String?
-  similarity      Float?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@index([contractId])
-  @@index([contractId, category])
-  @@index([category])
-  @@index([riskLevel])
-}
-
-model ProcessingJob {
-  id          String    @id @default(cuid())
-  contractId  String
-  contract    Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  
-  status      JobStatus @default(PENDING)
-  progress    Int       @default(0)
-  currentStep String?
-  
-  // Error handling
-  error       String?   @db.Text
-  errorStack  String?   @db.Text
-  retryCount  Int       @default(0)
-  maxRetries  Int       @default(3)
-  
-  // Timing
-  startedAt   DateTime?
-  completedAt DateTime?
-  
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  @@index([contractId])
-  @@index([status])
-  @@index([createdAt])
-}
-
 enum JobStatus {
   PENDING
   RUNNING
@@ -446,32 +744,6 @@ enum JobStatus {
   CANCELLED
 }
 
-model ContractVersion {
-  id              String   @id @default(cuid())
-  contractId      String
-  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  
-  versionNumber   Int
-  parentVersionId String?
-  
-  // Version metadata
-  changes         Json?
-  uploadedBy      String?
-  uploadedAt      DateTime @default(now())
-  
-  // Status
-  isActive        Boolean  @default(true)
-  supersededAt    DateTime?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@unique([contractId, versionNumber])
-  @@index([contractId])
-  @@index([isActive])
-}
-
-// Legacy processing status enum (kept for backward compatibility)
 enum ProcessingStatus {
   PENDING
   INGESTION
@@ -488,14 +760,8 @@ enum ProcessingStatus {
   FAILED
 }
 
-// ============================================================================
-// ANALYSIS ARTIFACTS
-// ============================================================================
-
 enum ArtifactType {
   INGESTION
-  TEMPLATE
-  FINANCIAL
   OVERVIEW
   CLAUSES
   RATES
@@ -503,120 +769,9 @@ enum ArtifactType {
   BENCHMARK
   RISK
   REPORT
+  TEMPLATE
+  FINANCIAL
 }
-
-model Artifact {
-  id            String       @id @default(cuid())
-  contractId    String
-  contract      Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId      String
-  
-  type          ArtifactType
-  data          Json
-  schemaVersion String       @default("v1")
-  hash          String?
-  size          Int?
-  
-  // Storage information
-  location      String?
-  storageProvider String?    @default("database")
-  
-  // Processing metadata
-  processingTime Int?       // in milliseconds
-  confidence    Decimal?    @db.Decimal(3, 2)
-  
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  
-  @@index([contractId])
-  @@index([tenantId])
-  @@index([type])
-  @@index([contractId, type])
-  @@index([tenantId, type])
-  @@unique([contractId, type])
-}
-
-// ============================================================================
-// SPECIALIZED ANALYSIS RESULTS
-// ============================================================================
-
-model TemplateAnalysis {
-  id            String   @id @default(cuid())
-  contractId    String
-  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId      String
-  
-  detectedTemplates Json
-  complianceScore   Decimal? @db.Decimal(3, 2)
-  deviations       Json
-  recommendations  Json
-  
-  processingTime   Int?     // in milliseconds
-  confidence       Decimal? @db.Decimal(3, 2)
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
-  @@index([contractId])
-  @@index([tenantId])
-  @@index([complianceScore])
-}
-
-model FinancialAnalysis {
-  id              String   @id @default(cuid())
-  contractId      String
-  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId        String
-  
-  totalValue      Json?    // { amount, currency, confidence }
-  paymentTerms    Json?
-  costBreakdown   Json?
-  pricingTables   Json?
-  discounts       Json?
-  escalationClauses Json?
-  financialRisks  Json?
-  recommendations Json?
-  
-  processingTime  Int?     // in milliseconds
-  confidence      Decimal? @db.Decimal(3, 2)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@index([contractId])
-  @@index([tenantId])
-}
-
-model OverviewAnalysis {
-  id              String   @id @default(cuid())
-  contractId      String
-  contract        Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId        String
-  
-  summary         String?
-  parties         Json?
-  keyTerms        Json?
-  contractType    String?
-  jurisdiction    String?
-  effectiveDate   DateTime?
-  expirationDate  DateTime?
-  renewalTerms    Json?
-  terminationClauses Json?
-  
-  processingTime  Int?     // in milliseconds
-  confidence      Decimal? @db.Decimal(3, 2)
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@index([contractId])
-  @@index([tenantId])
-  @@index([contractType])
-}
-
-// ============================================================================
-// JOB PROCESSING
-// ============================================================================
 
 enum RunStatus {
   PENDING
@@ -626,161 +781,6 @@ enum RunStatus {
   CANCELLED
   TIMEOUT
 }
-
-model Run {
-  id            String    @id @default(cuid())
-  runId         String    @unique
-  contractId    String?
-  contract      Contract? @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId      String
-  
-  status        RunStatus @default(PENDING)
-  jobType       String?   // e.g., 'full_analysis', 'template_only'
-  priority      Int       @default(0)
-  
-  startedAt     DateTime  @default(now())
-  completedAt   DateTime?
-  updatedAt     DateTime  @updatedAt
-  
-  // Progress tracking
-  totalSteps    Int?
-  completedSteps Int?     @default(0)
-  currentStep   String?
-  
-  // Results and errors
-  summary       String?
-  errorMessage  String?
-  errorDetails  Json?
-  
-  // Performance metrics
-  processingTime Int?     // in milliseconds
-  
-  @@index([runId])
-  @@index([contractId])
-  @@index([tenantId])
-  @@index([status])
-  @@index([startedAt])
-  @@index([tenantId, status])
-}
-
-// ============================================================================
-// RAG AND EMBEDDINGS
-// ============================================================================
-
-model Embedding {
-  id         String   @id @default(cuid())
-  contractId String
-  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  tenantId   String
-  
-  chunkIndex Int
-  text       String
-  embedding  Json?    // Vector embedding as JSON array
-  
-  // Metadata
-  chunkType  String?  // e.g., 'clause', 'section', 'paragraph'
-  section    String?
-  confidence Decimal? @db.Decimal(3, 2)
-  
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  
-  @@index([contractId])
-  @@index([tenantId])
-  @@index([chunkType])
-  @@unique([contractId, chunkIndex])
-}
-
-// ============================================================================
-// TEMPLATES
-// ============================================================================
-
-model ContractTemplate {
-  id            String   @id @default(cuid())
-  tenantId      String
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  name          String
-  description   String?
-  category      String?
-  
-  // Template structure
-  clauses       Json
-  structure     Json
-  metadata      Json
-  
-  // Versioning
-  version       Int      @default(1)
-  isActive      Boolean  @default(true)
-  parentId      String?  // For template versioning
-  
-  // Usage statistics
-  usageCount    Int      @default(0)
-  lastUsedAt    DateTime?
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  createdBy     String?
-  
-  @@unique([tenantId, name, version])
-  @@index([tenantId])
-  @@index([category])
-  @@index([isActive])
-  @@index([tenantId, category])
-}
-
-// ============================================================================
-// AUDIT AND MONITORING
-// ============================================================================
-
-model AuditLog {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  action      String   // e.g., 'contract.upload', 'user.login'
-  resource    String?  // Resource identifier
-  resourceType String? // e.g., 'contract', 'user'
-  
-  details     Json?
-  ipAddress   String?
-  userAgent   String?
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([tenantId])
-  @@index([userId])
-  @@index([action])
-  @@index([resourceType])
-  @@index([createdAt])
-  @@index([tenantId, action])
-}
-
-model Metric {
-  id          String   @id @default(cuid())
-  tenantId    String?
-  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  name        String
-  value       Decimal  @db.Decimal(15, 4)
-  unit        String?
-  tags        Json?
-  
-  timestamp   DateTime @default(now())
-  
-  @@index([name])
-  @@index([tenantId])
-  @@index([timestamp])
-  @@index([name, timestamp])
-  @@index([tenantId, name, timestamp])
-}
-
-// ============================================================================
-// RATE CARD INGESTION
-// ============================================================================
 
 enum ImportSource {
   UPLOAD
@@ -813,66 +813,6 @@ enum FileTypeImport {
   JSON
 }
 
-model ImportJob {
-  id            String         @id @default(cuid())
-  tenantId      String
-  
-  source        ImportSource
-  status        ImportStatus   @default(PENDING)
-  priority      ImportPriority @default(NORMAL)
-  
-  // Source information
-  fileName      String?
-  fileSize      BigInt?
-  fileType      FileTypeImport
-  emailFrom     String?
-  emailSubject  String?
-  apiSource     String?
-  
-  // Storage
-  storagePath   String?
-  
-  // Processing metadata
-  createdAt     DateTime       @default(now())
-  startedAt     DateTime?
-  completedAt   DateTime?
-  processedBy   String?
-  
-  // Results
-  rowsProcessed Int            @default(0)
-  rowsSucceeded Int            @default(0)
-  rowsFailed    Int            @default(0)
-  errors        Json           @default("[]")
-  warnings      Json           @default("[]")
-  
-  // Mapping
-  mappingTemplateId String?
-  mappingTemplate   MappingTemplate? @relation(fields: [mappingTemplateId], references: [id], onDelete: SetNull)
-  columnMappings    Json           @default("[]")
-  mappingConfidence Decimal        @default(0) @db.Decimal(3, 2)
-  
-  // Extracted data
-  extractedData Json
-  normalizedData Json?
-  
-  // Review
-  requiresReview Boolean        @default(false)
-  reviewedBy     String?
-  reviewedAt     DateTime?
-  reviewNotes    String?
-  
-  // Relations
-  rateCards     RateCard[]
-  
-  @@index([tenantId])
-  @@index([status])
-  @@index([source])
-  @@index([priority])
-  @@index([createdAt])
-  @@index([tenantId, status])
-  @@index([tenantId, source])
-}
-
 enum SupplierTier {
   BIG_4
   TIER_2
@@ -886,49 +826,6 @@ enum RateCardStatus {
   APPROVED
   REJECTED
   ARCHIVED
-}
-
-model RateCard {
-  id              String         @id @default(cuid())
-  tenantId        String
-  importJobId     String
-  importJob       ImportJob      @relation(fields: [importJobId], references: [id], onDelete: Cascade)
-  
-  // Supplier information
-  supplierId      String
-  supplierName    String
-  supplierTier    SupplierTier
-  
-  // Contract information
-  contractId      String?
-  effectiveDate   DateTime
-  expiryDate      DateTime?
-  
-  // Currency
-  originalCurrency String
-  baseCurrency    String         @default("CHF")
-  exchangeRate    Decimal?       @db.Decimal(10, 6)
-  exchangeRateDate DateTime?
-  
-  // Metadata
-  source          String
-  importedAt      DateTime       @default(now())
-  importedBy      String
-  version         Int            @default(1)
-  status          RateCardStatus @default(DRAFT)
-  
-  // Quality metrics
-  dataQuality     Json
-  
-  // Relations
-  roles           RoleRate[]
-  
-  @@index([tenantId])
-  @@index([supplierId])
-  @@index([status])
-  @@index([effectiveDate])
-  @@index([tenantId, supplierId])
-  @@index([tenantId, status])
 }
 
 enum SeniorityLevel {
@@ -950,100 +847,4 @@ enum DataQualityLevel {
   HIGH
   MEDIUM
   LOW
-}
-
-model RoleRate {
-  id              String           @id @default(cuid())
-  rateCardId      String
-  rateCard        RateCard         @relation(fields: [rateCardId], references: [id], onDelete: Cascade)
-  
-  // Role identification
-  originalRoleName String
-  standardizedRole String
-  roleCategory    String
-  seniorityLevel  SeniorityLevel
-  
-  // Service classification
-  serviceLine     String
-  subCategory     String?
-  skills          Json             @default("[]")
-  certifications  Json             @default("[]")
-  
-  // Geography
-  originalLocation String
-  geography       String
-  region          String
-  country         String
-  city            String?
-  
-  // Rate information
-  originalRate    Decimal          @db.Decimal(10, 2)
-  originalPeriod  RatePeriod
-  originalCurrency String
-  
-  // Normalized rates
-  hourlyRate      Decimal          @db.Decimal(10, 2)
-  dailyRate       Decimal          @db.Decimal(10, 2)
-  monthlyRate     Decimal          @db.Decimal(10, 2)
-  annualRate      Decimal          @db.Decimal(10, 2)
-  baseCurrency    String
-  
-  // Volume discounts
-  volumeDiscounts Json?
-  minimumHours    Int?
-  minimumDays     Int?
-  
-  // Quality indicators
-  confidence      Decimal          @db.Decimal(3, 2)
-  dataQuality     DataQualityLevel
-  issues          Json             @default("[]")
-  warnings        Json             @default("[]")
-  
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  
-  @@index([rateCardId])
-  @@index([standardizedRole])
-  @@index([seniorityLevel])
-  @@index([country])
-  @@index([serviceLine])
-  @@index([rateCardId, standardizedRole])
-}
-
-model MappingTemplate {
-  id              String   @id @default(cuid())
-  tenantId        String
-  
-  name            String
-  supplierId      String?
-  supplierName    String?
-  description     String
-  
-  // Template definition
-  mappings        Json
-  requiredFields  Json     @default("[]")
-  optionalFields  Json     @default("[]")
-  
-  // Pattern matching
-  fileNamePattern String?
-  headerPatterns  Json     @default("[]")
-  
-  // Usage stats
-  usageCount      Int      @default(0)
-  successRate     Decimal  @default(0) @db.Decimal(3, 2)
-  lastUsed        DateTime?
-  
-  // Versioning
-  version         Int      @default(1)
-  createdBy       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  importJobs      ImportJob[]
-  
-  @@unique([tenantId, name, version])
-  @@index([tenantId])
-  @@index([supplierId])
-  @@index([tenantId, supplierId])
 }

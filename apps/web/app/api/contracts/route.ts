@@ -1,118 +1,132 @@
 /**
  * Contracts List API
  * GET /api/contracts - List contracts with filtering, sorting, and pagination
+ *
+ * ✅ MIGRATED to data-orchestration service
+ * - Uses centralized ContractService with automatic caching
+ * - Type-safe with Zod validation
+ * - Consistent error handling
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { mockDatabase } from "@/lib/mock-database";
-
-// Query parameter schema
-const querySchema = z.object({
-  // Filters
-  status: z.string().optional(),
-  contractType: z.string().optional(),
-  clientId: z.string().optional(),
-  supplierId: z.string().optional(),
-  startDateFrom: z.string().datetime().optional(),
-  startDateTo: z.string().datetime().optional(),
-  endDateFrom: z.string().datetime().optional(),
-  endDateTo: z.string().datetime().optional(),
-  search: z.string().optional(),
-  
-  // Sorting
-  sortBy: z.string().optional().default("uploadedAt"),
-  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
-  
-  // Pagination
-  limit: z.string().optional().transform((val) => (val ? parseInt(val, 10) : 20)),
-  offset: z.string().optional().transform((val) => (val ? parseInt(val, 10) : 0)),
-  page: z.string().optional().transform((val) => (val ? parseInt(val, 10) : undefined)),
-  
-  // Includes
-  include: z.string().optional(),
-});
+import { contractService, ContractQuerySchema } from "data-orchestration";
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { searchParams } = new URL(request.url);
-    const params = Object.fromEntries(searchParams.entries());
-    
-    // Validate query parameters
-    const validated = querySchema.parse(params);
 
-    const filters = {
-      status: validated.status,
-      contractType: validated.contractType,
+    // Build query object from search params
+    const queryData = {
+      tenantId: searchParams.get("tenantId") || "demo", // TODO: Get from auth session
+      search: searchParams.get("search") || undefined,
+      status:
+        searchParams.getAll("status").length > 0
+          ? searchParams.getAll("status")
+          : undefined,
+      clientName:
+        searchParams.getAll("clientName").length > 0
+          ? searchParams.getAll("clientName")
+          : undefined,
+      supplierName:
+        searchParams.getAll("supplierName").length > 0
+          ? searchParams.getAll("supplierName")
+          : undefined,
+      category:
+        searchParams.getAll("category").length > 0
+          ? searchParams.getAll("category")
+          : undefined,
+      minValue: searchParams.get("minValue")
+        ? Number(searchParams.get("minValue"))
+        : undefined,
+      maxValue: searchParams.get("maxValue")
+        ? Number(searchParams.get("maxValue"))
+        : undefined,
+      startDateFrom: searchParams.get("startDateFrom")
+        ? new Date(searchParams.get("startDateFrom")!)
+        : undefined,
+      startDateTo: searchParams.get("startDateTo")
+        ? new Date(searchParams.get("startDateTo")!)
+        : undefined,
+      page: searchParams.get("page") ? Number(searchParams.get("page")) : 1,
+      limit: searchParams.get("limit") ? Number(searchParams.get("limit")) : 20,
+      sortBy: (searchParams.get("sortBy") as any) || "createdAt",
+      sortOrder: (searchParams.get("sortOrder") as any) || "desc",
     };
 
-    const contracts = await mockDatabase.searchContracts(validated.search ?? "", filters);
+    // Validate query with Zod schema
+    const query = ContractQuerySchema.parse(queryData);
 
-    const filtered = contracts.filter((contract) => {
-      const matchesClient = validated.clientId ? contract.parties?.includes(validated.clientId) : true;
-      const matchesSupplier = validated.supplierId ? contract.parties?.includes(validated.supplierId) : true;
+    // Use data-orchestration service (handles caching automatically)
+    const result = await contractService.queryContracts(query);
 
-      const contractStart = contract.uploadDate instanceof Date ? contract.uploadDate : new Date(contract.uploadDate ?? Date.now());
-      const matchesStartFrom = validated.startDateFrom ? contractStart >= new Date(validated.startDateFrom) : true;
-      const matchesStartTo = validated.startDateTo ? contractStart <= new Date(validated.startDateTo) : true;
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error.message,
+          code: result.error.code,
+        },
+        { status: 500 }
+      );
+    }
 
-      return matchesClient && matchesSupplier && matchesStartFrom && matchesStartTo;
-    });
-
-    const sorted = [...filtered].sort((a, b) => {
-      const field = validated.sortBy as keyof typeof a;
-      const aVal = a[field] as any;
-      const bVal = b[field] as any;
-
-      if (aVal === bVal) return 0;
-      if (aVal == null) return validated.sortOrder === "asc" ? -1 : 1;
-      if (bVal == null) return validated.sortOrder === "asc" ? 1 : -1;
-
-      if (aVal > bVal) return validated.sortOrder === "asc" ? 1 : -1;
-      return validated.sortOrder === "asc" ? -1 : 1;
-    });
-
-    const limit = validated.limit ?? 20;
-    const offset = validated.page ? (validated.page - 1) * limit : validated.offset ?? 0;
-    const paginated = sorted.slice(offset, offset + limit);
-    const total = sorted.length;
-
-    const responseContracts = paginated.map((contract) => ({
-      id: contract.id,
-      filename: contract.name,
-      originalName: contract.name,
-      status: contract.status ?? "COMPLETED",
-      processingStatus: contract.status ?? "COMPLETED",
-      uploadedAt: contract.uploadDate ?? new Date(),
-      fileSize: 0,
-      mimeType: "application/pdf",
-      contractType: contract.contractType ?? "UNKNOWN",
-      totalValue: contract.totalValue ?? 0,
-      currency: "USD",
-      startDate: contract.uploadDate ?? new Date(),
-      endDate: contract.uploadDate ?? new Date(),
-    }));
+    const responseTime = Date.now() - startTime;
 
     return NextResponse.json(
       {
         success: true,
         data: {
-          contracts: responseContracts,
+          contracts: result.data.contracts.map((contract) => ({
+            id: contract.id,
+            filename: contract.fileName,
+            originalName: contract.originalName || contract.fileName,
+            status: contract.status,
+            processingStatus: contract.status,
+            uploadedAt: contract.uploadedAt,
+            fileSize: Number(contract.fileSize),
+            mimeType: contract.mimeType,
+            contractType: contract.contractType || "UNKNOWN",
+            contractTitle: contract.contractTitle,
+            description: contract.description,
+            category: contract.category,
+            totalValue: contract.totalValue
+              ? Number(contract.totalValue)
+              : null,
+            currency: contract.currency,
+            startDate: contract.startDate,
+            endDate: contract.endDate,
+            clientName: contract.clientName,
+            supplierName: contract.supplierName,
+            viewCount: contract.viewCount,
+            lastViewedAt: contract.lastViewedAt,
+          })),
           pagination: {
-            total,
-            limit,
-            offset,
-            page: validated.page ?? Math.floor(offset / limit) + 1,
-            totalPages: Math.ceil(total / limit),
-            hasMore: offset + limit < total,
-            hasPrevious: offset > 0,
+            total: result.data.total,
+            limit: result.data.limit,
+            page: result.data.page,
+            totalPages: result.data.totalPages,
+            hasMore: result.data.page < result.data.totalPages,
+            hasPrevious: result.data.page > 1,
+          },
+          meta: {
+            responseTime: `${responseTime}ms`,
+            cached: responseTime < 50, // Likely from cache if very fast
           },
         },
       },
-      { status: 200 }
+      {
+        status: 200,
+        headers: {
+          "X-Response-Time": `${responseTime}ms`,
+          "X-Data-Source": "data-orchestration",
+        },
+      }
     );
   } catch (error) {
     console.error("Contract query error:", error);
+
     return NextResponse.json(
       {
         success: false,

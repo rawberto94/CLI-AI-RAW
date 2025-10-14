@@ -1,0 +1,44 @@
+{
+  "name": "data-orchestration",
+  "version": "1.0.0",
+  "description": "Unified data orchestration layer for Contract Intelligence Platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "clients-db": "workspace:*",
+    "clients-storage": "workspace:*",
+    "schemas": "workspace:*",
+    "@prisma/client": "^5.22.0",
+    "redis": "^4.6.0",
+    "ioredis": "^5.3.0",
+    "zod": "^4.1.11",
+    "pino": "^8.16.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "rimraf": "^6.0.1",
+    "@types/node": "^20.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    },
+    "./services": {
+      "types": "./dist/services/index.d.ts",
+      "default": "./dist/services/index.js"
+    }
+  }
+}
