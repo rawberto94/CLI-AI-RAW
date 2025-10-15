@@ -9,3 +9,8 @@ export * from "./taxonomy.service";
 export * from "./rate-card-intelligence.service";
 export * from "./data-standardization.service";
 export * from "./rate-card-management.service";
+export * from "./analytical-intelligence.service";
+export * from "./enhanced-rate-analytics.service";
+export * from "./rate-calculation.engine";
+export * from "./rate-validation.service";
+export * from "./analytical-database.service";

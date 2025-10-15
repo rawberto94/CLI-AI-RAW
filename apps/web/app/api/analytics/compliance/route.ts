@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { analyticalIntelligenceService } from '../../../../../packages/data-orchestration/src/services/analytical-intelligence.service';
+import { analyticalIntelligenceService } from '@/lib/services/analytical-intelligence.service';
 
 export async function GET(request: NextRequest) {
   try {
