@@ -223,6 +223,76 @@ export class AnalyticalEventPublisher {
       throw error;
     }
   }
+
+  // Rate Card Management Events
+  async publishRateCardBenchmark(data: {
+    tenantId: string;
+    benchmarkId: string;
+    cohort: any;
+    statistics: any;
+  }): Promise<void> {
+    try {
+      await eventBus.publish(AnalyticalEvents.BENCHMARK_UPDATED, {
+        ...data,
+        updatedAt: new Date()
+      });
+      logger.info({ benchmarkId: data.benchmarkId }, "Rate card benchmark event published");
+    } catch (error) {
+      logger.error({ error, data }, "Failed to publish rate card benchmark event");
+      throw error;
+    }
+  }
+
+  async publishRateCardCreated(data: {
+    tenantId: string;
+    rateCardId: string;
+    supplierId: string;
+  }): Promise<void> {
+    try {
+      await eventBus.publish(AnalyticalEvents.RATE_CARD_PARSED, {
+        ...data,
+        createdAt: new Date()
+      });
+      logger.info({ rateCardId: data.rateCardId }, "Rate card created event published");
+    } catch (error) {
+      logger.error({ error, data }, "Failed to publish rate card created event");
+      throw error;
+    }
+  }
+
+  async publishBulkUploadCompleted(data: {
+    tenantId: string;
+    uploadId: string;
+    results: any;
+  }): Promise<void> {
+    try {
+      await eventBus.publish(AnalyticalEvents.RATE_CARD_PARSED, {
+        ...data,
+        completedAt: new Date()
+      });
+      logger.info({ uploadId: data.uploadId }, "Bulk upload completed event published");
+    } catch (error) {
+      logger.error({ error, data }, "Failed to publish bulk upload completed event");
+      throw error;
+    }
+  }
+
+  async publishDataStandardization(data: {
+    tenantId: string;
+    entityType: string;
+    results: any;
+  }): Promise<void> {
+    try {
+      await eventBus.publish(AnalyticalEvents.BENCHMARK_UPDATED, {
+        ...data,
+        processedAt: new Date()
+      });
+      logger.info({ entityType: data.entityType }, "Data standardization event published");
+    } catch (error) {
+      logger.error({ error, data }, "Failed to publish data standardization event");
+      throw error;
+    }
+  }
 }
 
 export const analyticalEventPublisher = AnalyticalEventPublisher.getInstance();

@@ -29,12 +29,11 @@ export class EventBus {
 
   private constructor(redisUrl: string) {
     this.redis = new Redis(redisUrl, {
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
 
-    this.redis.on("error", (err) => {
+    this.redis.on("error", (err: Error) => {
       logger.error({ err }, "Redis connection error");
     });
 
@@ -43,7 +42,7 @@ export class EventBus {
     });
 
     // Set up message handler
-    this.redis.on("message", (channel, message) => {
+    this.redis.on("message", (channel: string, message: string) => {
       this.handleMessage(channel, message);
     });
   }
@@ -59,7 +58,11 @@ export class EventBus {
   /**
    * Publish an event to the event bus
    */
-  async publish(eventType: string, data: any, metadata?: EventPayload["metadata"]): Promise<void> {
+  async publish(
+    eventType: string,
+    data: any,
+    metadata?: EventPayload["metadata"]
+  ): Promise<void> {
     try {
       const payload: EventPayload = {
         eventId: `evt_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -72,10 +75,10 @@ export class EventBus {
       };
 
       const serialized = JSON.stringify(payload);
-      
+
       // Publish to specific event type channel
       await this.redis.publish(`events:${eventType}`, serialized);
-      
+
       // Also publish to general events channel for monitoring
       await this.redis.publish("events:all", serialized);
 
@@ -93,7 +96,7 @@ export class EventBus {
     try {
       if (!this.subscribers.has(eventType)) {
         this.subscribers.set(eventType, new Set());
-        
+
         // Subscribe to Redis channel
         await this.redis.subscribe(`events:${eventType}`);
         logger.info({ eventType }, "Subscribed to event type");
@@ -141,7 +144,7 @@ export class EventBus {
     try {
       const payload: EventPayload = JSON.parse(message);
       const eventType = channel.replace("events:", "");
-      
+
       const handlers = this.subscribers.get(eventType);
       if (handlers) {
         // Execute all handlers concurrently
@@ -182,55 +185,81 @@ export class EventBus {
   }
 
   /**
+   * Alias for subscribe - for compatibility with EventEmitter-style APIs
+   */
+  on(eventType: string, handler: EventHandler): void {
+    this.subscribe(eventType, handler).catch((err) => {
+      logger.error({ error: err, eventType }, "Failed to subscribe via on()");
+    });
+  }
+
+  /**
+   * Alias for publish - for compatibility with EventEmitter-style APIs
+   */
+  emit(eventType: string, data: any): void {
+    this.publish(eventType, data).catch((err) => {
+      logger.error({ error: err, eventType }, "Failed to publish via emit()");
+    });
+  }
+
+  /**
    * Disconnect from Redis
    */
   async disconnect(): Promise<void> {
     await this.redis.disconnect();
     logger.info("Event bus disconnected");
   }
-}
-
-// Event type constants
+} // Event type constants
 export const Events = {
   // Contract lifecycle
   CONTRACT_CREATED: "contract.created",
   CONTRACT_UPDATED: "contract.updated",
   CONTRACT_DELETED: "contract.deleted",
   CONTRACT_VIEWED: "contract.viewed",
-  
+
   // Processing lifecycle
   PROCESSING_STARTED: "processing.started",
   PROCESSING_STAGE_COMPLETED: "processing.stage.completed",
   PROCESSING_COMPLETED: "processing.completed",
   PROCESSING_FAILED: "processing.failed",
-  
+
   // Artifact lifecycle
   ARTIFACT_CREATED: "artifact.created",
   ARTIFACT_UPDATED: "artifact.updated",
   ARTIFACT_DELETED: "artifact.deleted",
-  
+
   // Intelligence events
   PATTERN_DETECTED: "intelligence.pattern.detected",
   ANOMALY_DETECTED: "intelligence.anomaly.detected",
   INSIGHT_GENERATED: "intelligence.insight.generated",
   RECOMMENDATION_CREATED: "intelligence.recommendation.created",
-  
+
   // Rate card events
   RATE_CARD_IMPORTED: "ratecard.imported",
   RATE_CARD_ANALYZED: "ratecard.analyzed",
   BENCHMARK_COMPLETED: "benchmark.completed",
-  
+  CONTRACT_INDEXED: "contract.indexed",
+
+  // Taxonomy events
+  TAXONOMY_UPDATED: "taxonomy.updated",
+  TAG_UPDATED: "taxonomy.tag.updated",
+  METADATA_FIELD_UPDATED: "taxonomy.field.updated",
+  CONTRACT_METADATA_UPDATED: "contract.metadata.updated",
+
+  // Performance events
+  PERFORMANCE_METRICS_UPDATED: "performance.metrics.updated",
+
   // User activity
   USER_LOGIN: "user.login",
   USER_ACTION: "user.action",
-  
+
   // System events
   SYSTEM_HEALTH_CHECK: "system.health.check",
   CACHE_INVALIDATED: "system.cache.invalidated",
   ERROR_OCCURRED: "system.error.occurred",
 } as const;
 
-export type EventType = typeof Events[keyof typeof Events];
+export type EventType = (typeof Events)[keyof typeof Events];
 
 // Singleton instance
 export const eventBus = EventBus.getInstance();

@@ -50,12 +50,19 @@ export class ContractService {
       // Invalidate list caches for this tenant
       await cacheAdaptor.invalidatePattern(`contracts:${contract.tenantId}:*`);
 
-      // Emit contract created event for intelligence processing
-      await eventBus.publish(Events.CONTRACT_CREATED, {
-        contractId: contract.id,
-        tenantId: contract.tenantId,
-        contract,
-      });
+      // Emit contract created event for intelligence processing (non-blocking)
+      try {
+        await eventBus.publish(Events.CONTRACT_CREATED, {
+          contractId: contract.id,
+          tenantId: contract.tenantId,
+          contract,
+        });
+      } catch (eventError) {
+        logger.warn(
+          { error: eventError, contractId: contract.id },
+          "Failed to publish contract created event, continuing anyway"
+        );
+      }
 
       logger.info({ contractId: contract.id }, "Contract created successfully");
 
@@ -122,14 +129,25 @@ export class ContractService {
       }
 
       // Track view
-      await this.incrementViewCount(id, tenantId);
+      try {
+        await this.incrementViewCount(id, tenantId);
+      } catch (viewError) {
+        logger.warn(
+          { error: viewError, contractId: id },
+          "Failed to increment view count"
+        );
+      }
 
-      // Emit contract viewed event for analytics
-      await eventBus.publish(Events.CONTRACT_VIEWED, {
-        contractId: id,
-        tenantId,
-        timestamp: new Date(),
-      });
+      // Emit contract viewed event for analytics (non-blocking) - DISABLED FOR NOW
+      // try {
+      //   await eventBus.publish(Events.CONTRACT_VIEWED, {
+      //     contractId: id,
+      //     tenantId,
+      //     timestamp: new Date(),
+      //   });
+      // } catch (eventError) {
+      //   logger.warn({ error: eventError, contractId: id }, "Failed to publish contract viewed event, continuing anyway");
+      // }
 
       logger.debug({ contractId: id }, "Contract retrieved from database");
 

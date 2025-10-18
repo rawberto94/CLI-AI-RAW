@@ -149,17 +149,44 @@ async function generateOverviewArtifact(
       },
       {
         role: "user",
-        content: `Analyze this contract and extract:
-- summary (2-3 sentence overview)
-- parties (array of party names)
-- effectiveDate (YYYY-MM-DD format if found)
-- expirationDate (YYYY-MM-DD format if found)
-- contractType (e.g., "Service Agreement", "NDA", etc.)
+        content: `Analyze this contract and extract comprehensive overview information:
 
-Return ONLY valid JSON with these fields. If a field is not found, use null.
+1. summary: 3-4 sentence executive summary covering purpose, key terms, and significance
+2. detailedDescription: Longer description (2-3 paragraphs) explaining what this contract is about
+3. parties: Array of parties with:
+   - name: party name
+   - role: their role (e.g., "Client", "Service Provider", "Vendor")
+   - address: address if mentioned
+   - contact: contact information if provided
+   - obligations: brief summary of main obligations
+4. effectiveDate: Start date (YYYY-MM-DD format if found)
+5. expirationDate: End date (YYYY-MM-DD format if found)
+6. duration: Contract duration (e.g., "12 months", "3 years")
+7. renewalTerms: Renewal provisions (automatic renewal, notice period, etc.)
+8. contractType: Type (e.g., "Service Agreement", "NDA", "MSA", "SoW", "License Agreement")
+9. governingLaw: Jurisdiction and governing law
+10. scope: Description of scope of work/services
+11. deliverables: Array of key deliverables with:
+    - name: deliverable name
+    - description: what it is
+    - deadline: when it's due
+    - acceptanceCriteria: how it will be accepted
+12. keyDates: Array of important dates with:
+    - date: YYYY-MM-DD
+    - description: what happens
+    - type: "milestone", "deadline", "review", etc.
+13. terminationRights: Summary of termination provisions
+14. noticePeriod: Required notice period for termination
+15. jurisdiction: Legal jurisdiction for disputes
+16. signatories: Array of people who must sign with their titles
+17. amendments: How amendments must be made
+18. entireAgreement: If this is the entire agreement clause present
+19. executionMethod: How contract is executed (electronic, physical, etc.)
+
+Return ONLY valid JSON with these fields. If a field is not found, use null or empty array.
 
 Contract text:
-${text.substring(0, 8000)}`,
+${text.substring(0, 10000)}`,
       },
     ]);
 
@@ -215,15 +242,34 @@ async function generateClausesArtifact(
         role: "user",
         content: `Extract all major clauses from this contract. For each clause return:
 - title (clause name/heading)
-- content (brief summary or key points)
-- riskLevel ("low", "medium", "high")
-- category (e.g., "payment", "termination", "liability", "confidentiality")
+- content (brief summary or key points, 2-3 sentences)
+- fullText (complete clause text if available, otherwise summary)
+- riskLevel ("low", "medium", "high", "critical")
+- category (e.g., "payment", "termination", "liability", "confidentiality", "intellectual_property", "warranties", "indemnification", "dispute_resolution", "force_majeure")
+- obligations: array of specific obligations with:
+  - party: which party has the obligation ("client", "supplier", "both")
+  - description: what must be done
+  - deadline: any timeframes specified
+  - consequence: what happens if not fulfilled
+- recommendations: array of recommended actions or concerns
 
-Return JSON array with field "clauses". Example:
-{"clauses": [{"title": "Payment Terms", "content": "...", "riskLevel": "low", "category": "payment"}]}
+Focus on these critical clause types:
+1. Termination clauses (notice periods, conditions, consequences)
+2. Liability and indemnification (caps, exclusions, insurance requirements)
+3. Intellectual property rights (ownership, licenses, restrictions)
+4. Confidentiality and data protection (scope, duration, exceptions)
+5. Warranties and representations (what is guaranteed)
+6. Change management (how changes are requested and approved)
+7. Dispute resolution (arbitration, jurisdiction, governing law)
+8. Force majeure (what events excuse performance)
+9. Assignment and subcontracting (restrictions, approvals needed)
+10. Service levels and performance standards (SLAs, KPIs, remedies)
+
+Return JSON object with field "clauses" as an array. Example:
+{"clauses": [{"title": "Payment Terms", "content": "...", "fullText": "...", "riskLevel": "low", "category": "payment", "obligations": [...], "recommendations": [...]}]}
 
 Contract text:
-${text.substring(0, 8000)}`,
+${text.substring(0, 10000)}`,
       },
     ]);
 
@@ -281,6 +327,7 @@ async function generateFinancialArtifact(
    - amount: payment amount
    - dueDate: when payment is due
    - percentage: percentage of total
+   - conditions: any conditions for payment
 4. rateCards: Array of rate card tables found in the contract, each with:
    - title: rate card name
    - currency: currency code
@@ -290,10 +337,36 @@ async function generateFinancialArtifact(
    - type: "payment_schedule", "rate_card", or "other"
    - headers: array of column headers
    - rows: array of row objects
-6. penalties: Array of penalty/fee descriptions
+6. penalties: Array of penalty/fee descriptions with:
+   - description: what triggers the penalty
+   - amount: penalty amount or formula
+   - type: "late_payment", "termination", "performance", "other"
+7. bonuses: Array of bonus/incentive provisions with:
+   - description: what triggers the bonus
+   - amount: bonus amount or formula
+   - criteria: specific criteria to achieve
+8. paymentSchedule: Detailed payment schedule with:
+   - frequency: "monthly", "quarterly", "milestone-based", etc.
+   - method: payment method if specified
+   - terms: net payment terms (e.g., "Net 30", "Net 60")
+   - lateFees: late payment fees if specified
+9. budgetAllocation: Budget breakdown by category if available, array of:
+   - category: budget category name
+   - amount: allocated amount
+   - percentage: percentage of total budget
+10. expenses: Reimbursable expenses information:
+   - reimbursable: boolean if expenses are reimbursable
+   - categories: array of reimbursable expense categories
+   - limits: any limits on reimbursements
+   - approvalRequired: if approval is needed
+11. priceAdjustments: Price adjustment clauses:
+   - inflationAdjustment: if prices adjust for inflation
+   - formula: adjustment formula if specified
+   - frequency: how often adjustments occur
+   - indices: any indices used (CPI, etc.)
 
 If the contract contains rate cards or pricing tables, extract ALL roles and rates.
-Return JSON with these fields. Use empty arrays [] if sections not found.
+Return JSON with these fields. Use empty arrays [] or null if sections not found.
 
 Contract text:
 ${text.substring(0, 12000)}`,
@@ -345,16 +418,44 @@ async function generateRiskArtifact(
       },
       {
         role: "user",
-        content: `Analyze this contract for risks. For each risk return:
-- description (what the risk is)
-- severity ("low", "medium", "high", "critical")
-- category (e.g., "financial", "legal", "operational", "reputational")
-- mitigation (suggested mitigation strategy)
+        content: `Analyze this contract comprehensively for risks. For each risk return:
+- id: unique identifier (e.g., "RISK-001")
+- title: short risk title
+- description: detailed description of what the risk is
+- severity: "low", "medium", "high", "critical"
+- probability: "low", "medium", "high" (likelihood of occurrence)
+- impact: detailed impact if risk materializes
+- category: "financial", "legal", "operational", "reputational", "compliance", "strategic", "technical"
+- affectedParties: array of parties affected ("client", "supplier", "both")
+- triggers: array of conditions or events that could trigger this risk
+- mitigation: array of mitigation strategies with:
+  - action: what to do
+  - responsibility: who should do it
+  - priority: "immediate", "high", "medium", "low"
+  - cost: estimated cost/effort if known
+- residualRisk: risk level after mitigation ("low", "medium", "high")
+- relatedClauses: array of clause titles this risk relates to
 
-Return JSON with field "risks" as an array.
+Analyze these risk categories:
+1. Financial risks (payment defaults, cost overruns, penalties, exchange rates)
+2. Legal risks (liability exposure, non-compliance, jurisdiction issues, enforceability)
+3. Operational risks (delivery failures, resource constraints, dependencies, force majeure)
+4. Reputational risks (brand damage, confidentiality breaches, quality issues)
+5. Compliance risks (regulatory violations, data protection, industry standards)
+6. Strategic risks (scope creep, changing requirements, market conditions)
+7. Technical risks (technology dependencies, IP issues, security vulnerabilities)
+
+Also calculate an overall risk score (0-100) and provide a risk matrix summary.
+
+Return JSON with:
+- risks: array of detailed risk objects
+- overallScore: 0-100 risk score
+- riskMatrix: object with counts for each severity level
+- summary: brief executive summary of key risks
+- recommendations: top 3-5 priority actions
 
 Contract text:
-${text.substring(0, 8000)}`,
+${text.substring(0, 10000)}`,
       },
     ]);
 
@@ -403,17 +504,77 @@ async function generateComplianceArtifact(
       },
       {
         role: "user",
-        content: `Analyze this contract for compliance requirements:
-- regulations (relevant laws/regulations mentioned)
-- dataProtection (GDPR, privacy requirements)
-- industryStandards (ISO, SOC2, etc.)
-- auditRequirements (audit rights, frequency)
-- certifications (required certifications)
+        content: `Analyze this contract for comprehensive compliance requirements:
 
-Return JSON with these fields as arrays. Use empty arrays if not found.
+1. regulations: Array of relevant laws/regulations with:
+   - name: regulation name (e.g., "GDPR", "SOX", "HIPAA")
+   - jurisdiction: applicable jurisdiction
+   - requirements: array of specific requirements
+   - penalties: potential penalties for non-compliance
+   - references: where mentioned in contract
+
+2. dataProtection: Data protection and privacy requirements:
+   - gdprCompliant: boolean if GDPR requirements are met
+   - dataTypes: types of data handled (PII, sensitive, etc.)
+   - dataProcessing: how data is processed
+   - dataRetention: retention policies
+   - dataSubjects: whose data is involved
+   - transferMechanisms: international data transfer mechanisms
+   - breachNotification: breach notification requirements
+   - dpoRequired: if Data Protection Officer is required
+   - rights: data subject rights that must be supported
+
+3. industryStandards: Industry standards and certifications:
+   - name: standard name (ISO 27001, SOC 2, PCI-DSS, etc.)
+   - required: if it's required or recommended
+   - scope: what it applies to
+   - evidence: evidence requirements
+   - timeline: when compliance must be achieved
+
+4. auditRequirements: Audit and inspection rights:
+   - frequency: how often audits can occur
+   - notice: notice period required
+   - scope: what can be audited
+   - costs: who bears audit costs
+   - remediation: remediation timeline if issues found
+   - thirdParty: if third-party audits are allowed
+
+5. certifications: Required certifications and qualifications:
+   - type: certification type
+   - holder: who must hold it (company, personnel)
+   - validity: how long it's valid
+   - renewal: renewal requirements
+   - verification: how it's verified
+
+6. recordKeeping: Documentation and record retention:
+   - documents: types of records to maintain
+   - duration: how long to keep records
+   - format: required format (electronic, paper, etc.)
+   - access: who has access rights
+   - destruction: secure destruction requirements
+
+7. reporting: Compliance reporting obligations:
+   - type: type of report required
+   - frequency: reporting frequency
+   - recipients: who receives reports
+   - content: what must be included
+   - deadline: reporting deadlines
+
+8. insuranceRequirements: Insurance and bonding requirements:
+   - types: types of insurance required
+   - coverage: minimum coverage amounts
+   - providers: any requirements on insurance providers
+   - certificates: certificate of insurance requirements
+   - beneficiaries: who must be named as beneficiaries
+
+9. complianceScore: Overall compliance score (0-100)
+10. gaps: Array of compliance gaps or concerns
+11. recommendations: Priority recommendations to ensure compliance
+
+Return JSON with all these fields. Use empty arrays/null if sections not found.
 
 Contract text:
-${text.substring(0, 8000)}`,
+${text.substring(0, 10000)}`,
       },
     ]);
 

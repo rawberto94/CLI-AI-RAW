@@ -167,7 +167,7 @@ export class NaturalLanguageQueryEngineImpl implements NaturalLanguageQueryEngin
     try {
       // Store conversation context in cache
       const contextKey = `query-context:${sessionId}`;
-      const existingContext = await cacheAdaptor.get(contextKey) || { queries: [] };
+      const existingContext = (await cacheAdaptor.get<{ queries: any[] }>(contextKey)) || { queries: [] };
       
       existingContext.queries.push({
         query,

@@ -1,6 +1,5 @@
-import { dbAdaptor } from "../dal/database.adaptor";
 import { cacheAdaptor } from "../dal/cache.adaptor";
-import { eventBus, Events } from "../events/event-bus";
+import { eventBus } from "../events/event-bus";
 import pino from "pino";
 import type { ServiceResponse } from "./contract.service";
 
@@ -98,7 +97,7 @@ export class WorkflowService {
               },
               {
                 id: "risk",
-                name: "Risk Analysis", 
+                name: "Risk Analysis",
                 type: "worker",
                 config: { worker: "risk", timeout: 45000, retries: 2 },
                 status: "pending",
@@ -106,7 +105,7 @@ export class WorkflowService {
               {
                 id: "compliance",
                 name: "Compliance Check",
-                type: "worker", 
+                type: "worker",
                 config: { worker: "compliance", timeout: 45000, retries: 2 },
                 status: "pending",
               },
@@ -151,8 +150,8 @@ export class WorkflowService {
       ],
     });
   }
-}  /**
 
+  /**
    * Create and start a new workflow
    */
   async createWorkflow(
@@ -199,7 +198,10 @@ export class WorkflowService {
       // Start execution
       await this.executeWorkflow(workflow.id);
 
-      logger.info({ workflowId: workflow.id, type, tenantId }, "Workflow created and started");
+      logger.info(
+        { workflowId: workflow.id, type, tenantId },
+        "Workflow created and started"
+      );
 
       return {
         success: true,
@@ -224,9 +226,11 @@ export class WorkflowService {
   async getWorkflow(workflowId: string): Promise<ServiceResponse<Workflow>> {
     try {
       let workflow = this.activeWorkflows.get(workflowId);
-      
+
       if (!workflow) {
-        workflow = await cacheAdaptor.get<Workflow>(`workflow:${workflowId}`);
+        workflow =
+          (await cacheAdaptor.get<Workflow>(`workflow:${workflowId}`)) ||
+          undefined;
       }
 
       if (!workflow) {
@@ -322,21 +326,28 @@ export class WorkflowService {
       await this.executeSteps(workflow, workflow.steps);
 
       // Check final status
-      const allCompleted = workflow.steps.every(step => 
-        step.status === "completed" || step.status === "skipped"
+      const allCompleted = workflow.steps.every(
+        (step) => step.status === "completed" || step.status === "skipped"
       );
-      const anyFailed = workflow.steps.some(step => step.status === "failed");
+      const anyFailed = workflow.steps.some((step) => step.status === "failed");
 
-      workflow.status = anyFailed ? "failed" : allCompleted ? "completed" : "running";
+      workflow.status = anyFailed
+        ? "failed"
+        : allCompleted
+        ? "completed"
+        : "running";
       workflow.completedAt = new Date();
-      workflow.metadata.actualDuration = workflow.completedAt.getTime() - workflow.startedAt!.getTime();
+      workflow.metadata.actualDuration =
+        workflow.completedAt.getTime() - workflow.startedAt!.getTime();
 
       // Update progress
       this.updateWorkflowProgress(workflow);
 
       // Emit completion event
       await eventBus.publish(
-        workflow.status === "completed" ? "workflow.completed" : "workflow.failed",
+        workflow.status === "completed"
+          ? "workflow.completed"
+          : "workflow.failed",
         {
           workflowId,
           tenantId: workflow.tenantId,
@@ -345,18 +356,20 @@ export class WorkflowService {
         }
       );
 
-      logger.info({ 
-        workflowId, 
-        status: workflow.status, 
-        duration: workflow.metadata.actualDuration 
-      }, "Workflow execution completed");
-
+      logger.info(
+        {
+          workflowId,
+          status: workflow.status,
+          duration: workflow.metadata.actualDuration,
+        },
+        "Workflow execution completed"
+      );
     } catch (error) {
       workflow.status = "failed";
       workflow.completedAt = new Date();
-      
+
       logger.error({ error, workflowId }, "Workflow execution failed");
-      
+
       await eventBus.publish("workflow.failed", {
         workflowId,
         tenantId: workflow.tenantId,
@@ -371,7 +384,10 @@ export class WorkflowService {
   /**
    * Execute workflow steps respecting dependencies
    */
-  private async executeSteps(workflow: Workflow, steps: WorkflowStep[]): Promise<void> {
+  private async executeSteps(
+    workflow: Workflow,
+    steps: WorkflowStep[]
+  ): Promise<void> {
     const executedSteps = new Set<string>();
     const maxIterations = steps.length * 2; // Prevent infinite loops
     let iterations = 0;
@@ -386,17 +402,21 @@ export class WorkflowService {
         }
 
         // Check if dependencies are satisfied
-        const dependenciesMet = !step.dependsOn || 
-          step.dependsOn.every(depId => {
+        const dependenciesMet =
+          !step.dependsOn ||
+          step.dependsOn.every((depId) => {
             const depStep = this.findStepById(steps, depId);
-            return depStep && (depStep.status === "completed" || depStep.status === "skipped");
+            return (
+              depStep &&
+              (depStep.status === "completed" || depStep.status === "skipped")
+            );
           });
 
         if (dependenciesMet) {
           await this.executeStep(workflow, step);
           executedSteps.add(step.id);
           progressMade = true;
-          
+
           // Update workflow progress
           this.updateWorkflowProgress(workflow);
         }
@@ -404,12 +424,15 @@ export class WorkflowService {
 
       if (!progressMade) {
         // No progress made, check for circular dependencies or failed dependencies
-        const pendingSteps = steps.filter(s => s.status === "pending");
+        const pendingSteps = steps.filter((s) => s.status === "pending");
         if (pendingSteps.length > 0) {
-          logger.warn({ 
-            workflowId: workflow.id, 
-            pendingSteps: pendingSteps.map(s => s.id) 
-          }, "Workflow stuck - possible circular dependencies");
+          logger.warn(
+            {
+              workflowId: workflow.id,
+              pendingSteps: pendingSteps.map((s) => s.id),
+            },
+            "Workflow stuck - possible circular dependencies"
+          );
           break;
         }
       }
@@ -419,12 +442,18 @@ export class WorkflowService {
   /**
    * Execute a single workflow step
    */
-  private async executeStep(workflow: Workflow, step: WorkflowStep): Promise<void> {
+  private async executeStep(
+    workflow: Workflow,
+    step: WorkflowStep
+  ): Promise<void> {
     step.status = "running";
     step.startedAt = new Date();
 
     try {
-      logger.debug({ workflowId: workflow.id, stepId: step.id, type: step.type }, "Executing step");
+      logger.debug(
+        { workflowId: workflow.id, stepId: step.id, type: step.type },
+        "Executing step"
+      );
 
       switch (step.type) {
         case "worker":
@@ -450,23 +479,28 @@ export class WorkflowService {
       step.completedAt = new Date();
       workflow.metadata.completedSteps++;
 
-      logger.debug({ 
-        workflowId: workflow.id, 
-        stepId: step.id, 
-        duration: step.completedAt.getTime() - step.startedAt!.getTime() 
-      }, "Step completed");
-
+      logger.debug(
+        {
+          workflowId: workflow.id,
+          stepId: step.id,
+          duration: step.completedAt.getTime() - step.startedAt!.getTime(),
+        },
+        "Step completed"
+      );
     } catch (error) {
       step.status = "failed";
       step.completedAt = new Date();
       step.error = error instanceof Error ? error.message : "Unknown error";
       workflow.metadata.failedSteps++;
 
-      logger.error({ 
-        error, 
-        workflowId: workflow.id, 
-        stepId: step.id 
-      }, "Step failed");
+      logger.error(
+        {
+          error,
+          workflowId: workflow.id,
+          stepId: step.id,
+        },
+        "Step failed"
+      );
 
       // Retry logic
       const retries = step.config.retries || 0;
@@ -474,22 +508,28 @@ export class WorkflowService {
         step.config.retries = retries - 1;
         step.status = "pending";
         workflow.metadata.failedSteps--;
-        
-        logger.info({ 
-          workflowId: workflow.id, 
-          stepId: step.id, 
-          retriesLeft: step.config.retries 
-        }, "Retrying step");
+
+        logger.info(
+          {
+            workflowId: workflow.id,
+            stepId: step.id,
+            retriesLeft: step.config.retries,
+          },
+          "Retrying step"
+        );
       }
     }
   }
 
-  private async executeWorkerStep(workflow: Workflow, step: WorkflowStep): Promise<void> {
+  private async executeWorkerStep(
+    workflow: Workflow,
+    step: WorkflowStep
+  ): Promise<void> {
     // Simulate worker execution - in real implementation, this would:
     // 1. Queue the job in BullMQ
     // 2. Wait for completion or timeout
     // 3. Return the result
-    
+
     const workerName = step.config.worker;
     const timeout = step.config.timeout || 60000;
 
@@ -502,7 +542,9 @@ export class WorkflowService {
     });
 
     // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 1000 + 500)
+    );
 
     // Simulate success/failure (90% success rate)
     if (Math.random() < 0.9) {
@@ -512,7 +554,10 @@ export class WorkflowService {
     }
   }
 
-  private async executeServiceStep(workflow: Workflow, step: WorkflowStep): Promise<void> {
+  private async executeServiceStep(
+    workflow: Workflow,
+    step: WorkflowStep
+  ): Promise<void> {
     const serviceName = step.config.service;
     const methodName = step.config.method;
 
@@ -520,34 +565,49 @@ export class WorkflowService {
     logger.debug({ serviceName, methodName }, "Executing service step");
 
     // Simulate service call
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 200));
-    
-    step.result = { success: true, data: `${serviceName}.${methodName} completed` };
-  }
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 500 + 200)
+    );
 
-  private async executeParallelStep(workflow: Workflow, step: WorkflowStep): Promise<void> {
-    const subSteps = step.config.steps || [];
-    
-    // Execute all sub-steps in parallel
-    const promises = subSteps.map(subStep => this.executeStep(workflow, subStep));
-    await Promise.allSettled(promises);
-
-    // Check if all sub-steps completed successfully
-    const allSuccessful = subSteps.every(s => s.status === "completed");
-    if (!allSuccessful) {
-      const failedSteps = subSteps.filter(s => s.status === "failed");
-      throw new Error(`Parallel execution failed: ${failedSteps.map(s => s.id).join(", ")}`);
-    }
-
-    step.result = { 
-      success: true, 
-      subResults: subSteps.map(s => ({ id: s.id, result: s.result })) 
+    step.result = {
+      success: true,
+      data: `${serviceName}.${methodName} completed`,
     };
   }
 
-  private async executeSequentialStep(workflow: Workflow, step: WorkflowStep): Promise<void> {
+  private async executeParallelStep(
+    workflow: Workflow,
+    step: WorkflowStep
+  ): Promise<void> {
     const subSteps = step.config.steps || [];
-    
+
+    // Execute all sub-steps in parallel
+    const promises = subSteps.map((subStep) =>
+      this.executeStep(workflow, subStep)
+    );
+    await Promise.allSettled(promises);
+
+    // Check if all sub-steps completed successfully
+    const allSuccessful = subSteps.every((s) => s.status === "completed");
+    if (!allSuccessful) {
+      const failedSteps = subSteps.filter((s) => s.status === "failed");
+      throw new Error(
+        `Parallel execution failed: ${failedSteps.map((s) => s.id).join(", ")}`
+      );
+    }
+
+    step.result = {
+      success: true,
+      subResults: subSteps.map((s) => ({ id: s.id, result: s.result })),
+    };
+  }
+
+  private async executeSequentialStep(
+    workflow: Workflow,
+    step: WorkflowStep
+  ): Promise<void> {
+    const subSteps = step.config.steps || [];
+
     // Execute sub-steps sequentially
     for (const subStep of subSteps) {
       await this.executeStep(workflow, subStep);
@@ -556,18 +616,21 @@ export class WorkflowService {
       }
     }
 
-    step.result = { 
-      success: true, 
-      subResults: subSteps.map(s => ({ id: s.id, result: s.result })) 
+    step.result = {
+      success: true,
+      subResults: subSteps.map((s) => ({ id: s.id, result: s.result })),
     };
   }
 
-  private async executeConditionStep(workflow: Workflow, step: WorkflowStep): Promise<void> {
+  private async executeConditionStep(
+    workflow: Workflow,
+    step: WorkflowStep
+  ): Promise<void> {
     const condition = step.config.condition;
-    
+
     // Simple condition evaluation - in real implementation, this would be more sophisticated
     const conditionMet = this.evaluateCondition(condition, workflow.context);
-    
+
     if (conditionMet) {
       step.result = { success: true, conditionMet: true };
     } else {
@@ -576,29 +639,38 @@ export class WorkflowService {
     }
   }
 
-  private evaluateCondition(condition: string | undefined, context: Record<string, any>): boolean {
+  private evaluateCondition(
+    condition: string | undefined,
+    context: Record<string, any>
+  ): boolean {
     if (!condition) return true;
-    
+
     // Simple condition evaluation - could be enhanced with a proper expression parser
     try {
       // Replace context variables in condition
       let evaluatedCondition = condition;
       Object.entries(context).forEach(([key, value]) => {
         evaluatedCondition = evaluatedCondition.replace(
-          new RegExp(`\\$\\{${key}\\}`, 'g'), 
+          new RegExp(`\\$\\{${key}\\}`, "g"),
           JSON.stringify(value)
         );
       });
-      
+
       // Evaluate simple conditions like "${status} === 'COMPLETED'"
       return eval(evaluatedCondition);
     } catch (error) {
-      logger.warn({ condition, error }, "Failed to evaluate condition, defaulting to true");
+      logger.warn(
+        { condition, error },
+        "Failed to evaluate condition, defaulting to true"
+      );
       return true;
     }
   }
 
-  private findStepById(steps: WorkflowStep[], stepId: string): WorkflowStep | undefined {
+  private findStepById(
+    steps: WorkflowStep[],
+    stepId: string
+  ): WorkflowStep | undefined {
     for (const step of steps) {
       if (step.id === stepId) return step;
       if (step.config.steps) {
@@ -621,17 +693,21 @@ export class WorkflowService {
   private updateWorkflowProgress(workflow: Workflow): void {
     const totalSteps = workflow.metadata.totalSteps;
     const completedSteps = workflow.metadata.completedSteps;
-    workflow.metadata.progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+    workflow.metadata.progress =
+      totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
   }
 
   /**
    * Get workflows for a tenant
    */
-  async getTenantWorkflows(tenantId: string, status?: string): Promise<ServiceResponse<Workflow[]>> {
+  async getTenantWorkflows(
+    tenantId: string,
+    status?: string
+  ): Promise<ServiceResponse<Workflow[]>> {
     try {
       const workflows = Array.from(this.activeWorkflows.values())
-        .filter(w => w.tenantId === tenantId)
-        .filter(w => !status || w.status === status)
+        .filter((w) => w.tenantId === tenantId)
+        .filter((w) => !status || w.status === status)
         .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       return {
@@ -655,13 +731,18 @@ export class WorkflowService {
    * Create a contract processing workflow
    */
   async createContractProcessingWorkflow(
-    contractId: string, 
+    contractId: string,
     tenantId: string
   ): Promise<ServiceResponse<Workflow>> {
-    return this.createWorkflow(tenantId, "contract_processing", {
-      contractId,
+    return this.createWorkflow(
       tenantId,
-    }, 5);
+      "contract_processing",
+      {
+        contractId,
+        tenantId,
+      },
+      5
+    );
   }
 }
 

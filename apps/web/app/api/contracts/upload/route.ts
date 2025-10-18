@@ -236,6 +236,8 @@ export async function POST(
       uploadedBy: formData.get("uploadedBy") as string | null,
       description: formData.get("description") as string | null,
       category: formData.get("category") as string | null,
+      totalValue: formData.get("totalValue") as string | null,
+      currency: formData.get("currency") as string | null,
     };
 
     // Create contract using data-orchestration service
@@ -276,14 +278,16 @@ export async function POST(
     const processingJob = startProcessingJob(contract.id);
 
     // Initialize contract metadata
-    const { initializeContractMetadata } = await import("@/lib/contract-integration");
+    const { initializeContractMetadata } = await import(
+      "@/lib/contract-integration"
+    );
     initializeContractMetadata(contract.id, contract.tenantId, {
       fileName: file.name,
       contractType: metadata.contractType,
       clientName: metadata.clientName,
       supplierName: metadata.supplierName,
       totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
-      currency: metadata.currency
+      currency: metadata.currency,
     }).catch((error) => {
       console.error("❌ Metadata initialization error:", error);
     });

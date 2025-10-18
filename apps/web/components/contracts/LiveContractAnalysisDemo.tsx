@@ -212,117 +212,98 @@ export const LiveContractAnalysisDemo = () => {
         body: formData,
       });
 
-      if (uploadResponse.ok) {
-        const uploadResult = await uploadResponse.json();
-        const contractId = uploadResult.contractId;
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse
+          .json()
+          .catch(() => ({ error: "Upload failed" }));
+        console.error("Upload error:", errorData);
+        throw new Error(
+          errorData.error || errorData.details || "Upload failed"
+        );
+      }
 
-        // Since artifacts are created immediately, simulate the analysis stages
-        // and then fetch the results
-        await simulateAnalysisProcess();
+      const uploadResult = await uploadResponse.json();
+      console.log("Upload result:", uploadResult);
 
-        // Fetch the contract with artifacts using the [id] route
-        try {
-          const contractResponse = await fetch(`/api/contracts/${contractId}`);
-          if (contractResponse.ok) {
-            const contractData = await contractResponse.json();
-            // The existing endpoint returns a complex format, use it directly
-            setAnalysisResults({
-              metadata: contractData.metadata || {
-                contractType: contractData.filename || "Contract",
-                parties: [
-                  contractData.metadata?.clientName || "Client",
-                  contractData.metadata?.supplierName || "Supplier",
-                ],
-                effectiveDate:
-                  contractData.metadata?.startDate || new Date().toISOString(),
-                expirationDate:
-                  contractData.metadata?.endDate || new Date().toISOString(),
-                totalValue:
-                  contractData.financial?.totalValue ||
-                  contractData.metadata?.totalValue ||
-                  0,
-                currency: contractData.financial?.currency || "USD",
-              },
-              financial: contractData.financial || {},
-              clauses: contractData.clauses || { total: 0, categories: [] },
-              risk: contractData.risk || {
-                overallScore: 0,
-                level: "Low",
-                factors: [],
-              },
-              compliance: contractData.compliance || { score: 0, checks: [] },
-            });
-          }
-        } catch (err) {
-          console.error("Failed to fetch contract results:", err);
+      if (!uploadResult.success || !uploadResult.contractId) {
+        throw new Error("Upload succeeded but no contract ID returned");
+      }
+
+      const contractId = uploadResult.contractId;
+      console.log("Contract uploaded successfully:", contractId);
+
+      // Since artifacts are created immediately, simulate the analysis stages
+      // and then fetch the results
+      await simulateAnalysisProcess();
+
+      // Fetch the contract with artifacts using the [id] route
+      try {
+        const contractResponse = await fetch(`/api/contracts/${contractId}`);
+        if (!contractResponse.ok) {
+          const errorData = await contractResponse
+            .json()
+            .catch(() => ({ error: "Failed to fetch contract" }));
+          console.error("Contract fetch error:", errorData);
+          throw new Error("Failed to load contract results");
         }
-      } else {
-        throw new Error("Upload failed");
+
+        const contractData = await contractResponse.json();
+        console.log("✅ Contract data fetched:", contractData);
+        console.log("📊 Financial data:", contractData.financial);
+        console.log("📋 Metadata:", contractData.metadata);
+        console.log("⚠️ Risk:", contractData.risk);
+        console.log("✓ Compliance:", contractData.compliance);
+        console.log("📄 Clauses:", contractData.clauses);
+
+        // The existing endpoint returns a complex format, use it directly
+        const results = {
+          metadata: contractData.metadata || {
+            contractType: contractData.filename || "Contract",
+            parties: [
+              contractData.metadata?.clientName || "Client",
+              contractData.metadata?.supplierName || "Supplier",
+            ],
+            effectiveDate:
+              contractData.metadata?.startDate || new Date().toISOString(),
+            expirationDate:
+              contractData.metadata?.endDate || new Date().toISOString(),
+            totalValue:
+              contractData.financial?.totalValue ||
+              contractData.metadata?.totalValue ||
+              0,
+            currency: contractData.financial?.currency || "USD",
+          },
+          financial: contractData.financial || {},
+          clauses: contractData.clauses || { total: 0, categories: [] },
+          risk: contractData.risk || {
+            overallScore: 0,
+            level: "Low",
+            factors: [],
+          },
+          compliance: contractData.compliance || { score: 0, checks: [] },
+        };
+        console.log("🎯 Setting analysis results:", results);
+        setAnalysisResults(results);
+      } catch (err) {
+        console.error("Failed to fetch contract results:", err);
+        throw err;
       }
     } catch (error) {
       console.error("Analysis failed:", error);
-      // Fallback to simulation if real processing fails
-      await simulateAnalysisProcess();
+      setAnalysisStage("complete");
+      setAnalysisProgress(0);
+      setIsAnalyzing(false);
+      alert(
+        `Upload failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }. Please try again.`
+      );
+      return;
     }
 
-    // Provide fallback results if real processing wasn't successful
-    if (!analysisResults) {
-      const fallbackResults = {
-        metadata: {
-          contractType: "Statement of Work",
-          parties: ["TechCorp Inc.", "ServiceProvider LLC"],
-          effectiveDate: "2024-01-01",
-          expirationDate: "2024-12-31",
-          totalValue: "$500,000",
-          currency: "USD",
-        },
-        clauses: {
-          total: 23,
-          categories: [
-            { type: "Payment Terms", count: 3, riskLevel: "Low" },
-            { type: "Termination", count: 2, riskLevel: "Medium" },
-            { type: "Liability", count: 4, riskLevel: "High" },
-            { type: "Intellectual Property", count: 5, riskLevel: "Low" },
-            { type: "Confidentiality", count: 3, riskLevel: "Low" },
-            { type: "Compliance", count: 6, riskLevel: "Medium" },
-          ],
-        },
-        risk: {
-          overallScore: 67,
-          level: "Medium",
-          factors: [
-            {
-              type: "Liability Cap",
-              severity: "High",
-              description:
-                "Liability cap may be insufficient for contract value",
-            },
-          ],
-        },
-        compliance: {
-          score: 85,
-          checks: [
-            {
-              regulation: "GDPR",
-              status: "Compliant",
-              details: "Data protection clauses present",
-            },
-          ],
-        },
-        financial: {
-          totalValue: 500000,
-          paymentTerms: "Net 30",
-          currency: "USD",
-          milestones: 4,
-          penalties: ["Late payment: 1.5% per month"],
-          extractedTables: [],
-          rateCards: [],
-        },
-      };
-
-      setAnalysisResults(fallbackResults);
-    }
-
+    // Mark analysis as complete
+    setAnalysisStage("complete");
+    setAnalysisProgress(100);
     setIsAnalyzing(false);
   };
 

@@ -285,23 +285,21 @@ export class SpendOverlayEngineImpl implements SpendOverlayEngine {
       const topSuppliers = this.getTopSuppliers(spendData);
       const topCategories = this.getTopCategories(spendData);
       
-      // Calculate trends
-      const trends = await this.calculateSpendTrends(filters);
+    // Calculate trends
+    const trends = await this.calculateSpendTrends(filters);
 
-      const report: SpendReport = {
-        tenantId: filters.tenantId,
-        period: filters.period,
-        filters,
-        summary,
-        topSuppliers,
-        topCategories,
-        variances: [variances],
-        trends,
-        recommendations: this.generateSpendRecommendations(summary, variances),
-        generatedAt: new Date()
-      };
-
-      // Cache the report
+    const report: SpendReport = {
+      tenantId: filters.tenantId,
+      period: filters.period || 'current',
+      filters,
+      summary,
+      topSuppliers,
+      topCategories,
+      variances: [variances],
+      trends,
+      recommendations: this.generateSpendRecommendations(summary, variances),
+      generatedAt: new Date()
+    };      // Cache the report
       const cacheKey = `spend-report:${JSON.stringify(filters)}`;
       await cacheAdaptor.set(cacheKey, report, 1800); // 30 minutes TTL
 

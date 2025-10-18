@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
-import React, { useEffect, useState, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useState, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   FileText,
   Upload,
@@ -22,8 +22,8 @@ import {
   Table,
   Grid,
   Settings,
-} from 'lucide-react'
-import Link from 'next/link'
+} from "lucide-react";
+import Link from "next/link";
 import {
   getStatusDisplay,
   formatFileSize,
@@ -31,202 +31,212 @@ import {
   formatDateTime,
   getContractSummary,
   type Contract,
-} from '@/lib/contracts/contracts-data-service'
+} from "@/lib/contracts/contracts-data-service";
 import {
   ContractFiltersPanel,
   type FilterOptions,
-} from '@/components/contracts/ContractFiltersPanel'
+} from "@/components/contracts/ContractFiltersPanel";
 import {
   filterContracts,
   sortContracts,
   getDefaultFilters,
   extractPartiesFromContracts,
   type SortOption,
-} from '@/lib/contracts/filter-utils'
-import { BulkActionsToolbar } from '@/components/contracts/BulkActionsToolbar'
-import { SavedFiltersPanel } from '@/components/contracts/SavedFiltersPanel'
-import { getContractTags, getTagById, getTagColor } from '@/lib/contracts/tags'
-import { getDefaultFilter } from '@/lib/contracts/saved-filters'
-import { TableView } from '@/components/contracts/TableView'
-import { ColumnCustomizer } from '@/components/contracts/ColumnCustomizer'
-import { DEFAULT_COLUMNS, type TableColumn } from '@/lib/contracts/table-config'
-import { 
-  loadViewPreferences, 
+} from "@/lib/contracts/filter-utils";
+import { BulkActionsToolbar } from "@/components/contracts/BulkActionsToolbar";
+import { SavedFiltersPanel } from "@/components/contracts/SavedFiltersPanel";
+import { getContractTags, getTagById, getTagColor } from "@/lib/contracts/tags";
+import { getDefaultFilter } from "@/lib/contracts/saved-filters";
+import { TableView } from "@/components/contracts/TableView";
+import { ColumnCustomizer } from "@/components/contracts/ColumnCustomizer";
+import {
+  DEFAULT_COLUMNS,
+  type TableColumn,
+} from "@/lib/contracts/table-config";
+import {
+  loadViewPreferences,
   saveViewPreferences,
-  type ViewMode 
-} from '@/lib/contracts/view-preferences'
-import { ComparisonSelector } from '@/components/contracts/ComparisonSelector'
-import { ComparisonView } from '@/components/contracts/ComparisonView'
+  type ViewMode,
+} from "@/lib/contracts/view-preferences";
+import { ComparisonSelector } from "@/components/contracts/ComparisonSelector";
+import { ComparisonView } from "@/components/contracts/ComparisonView";
 
 export default function ContractsPage() {
-  const [contracts, setContracts] = useState<Contract[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [filters, setFilters] = useState<FilterOptions>(getDefaultFilters())
-  const [sortBy, setSortBy] = useState<SortOption>('date-desc')
-  const [showFilters, setShowFilters] = useState(false)
-  
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterOptions>(getDefaultFilters());
+  const [sortBy, setSortBy] = useState<SortOption>("date-desc");
+  const [showFilters, setShowFilters] = useState(false);
+
   // Step 1: Bulk selection state
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [showSavedFilters, setShowSavedFilters] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showSavedFilters, setShowSavedFilters] = useState(false);
 
   // Step 2: Table view state
-  const [viewMode, setViewMode] = useState<ViewMode>('card')
-  const [columns, setColumns] = useState<TableColumn[]>(DEFAULT_COLUMNS)
-  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false)
-  const [tableSortBy, setTableSortBy] = useState<string>('date')
-  const [tableSortDirection, setTableSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [viewMode, setViewMode] = useState<ViewMode>("card");
+  const [columns, setColumns] = useState<TableColumn[]>(DEFAULT_COLUMNS);
+  const [showColumnCustomizer, setShowColumnCustomizer] = useState(false);
+  const [tableSortBy, setTableSortBy] = useState<string>("date");
+  const [tableSortDirection, setTableSortDirection] = useState<"asc" | "desc">(
+    "desc"
+  );
 
   // Step 3: Comparison state
-  const [showComparisonSelector, setShowComparisonSelector] = useState(false)
-  const [showComparisonView, setShowComparisonView] = useState(false)
-  const [comparisonContracts, setComparisonContracts] = useState<Contract[]>([])
+  const [showComparisonSelector, setShowComparisonSelector] = useState(false);
+  const [showComparisonView, setShowComparisonView] = useState(false);
+  const [comparisonContracts, setComparisonContracts] = useState<Contract[]>(
+    []
+  );
 
   // Extract unique clients and suppliers
-  const { clients: availableClients, suppliers: availableSuppliers} = useMemo(() => {
-    return extractPartiesFromContracts(contracts)
-  }, [contracts])
+  const { clients: availableClients, suppliers: availableSuppliers } =
+    useMemo(() => {
+      return extractPartiesFromContracts(contracts);
+    }, [contracts]);
 
   // Filtered and sorted contracts
   const filteredContracts = useMemo(() => {
-    const filtered = filterContracts(contracts, filters)
-    return sortContracts(filtered, sortBy)
-  }, [contracts, filters, sortBy])
+    const filtered = filterContracts(contracts, filters);
+    return sortContracts(filtered, sortBy);
+  }, [contracts, filters, sortBy]);
 
   // Step 1: Selection handlers
   const toggleSelection = (id: string) => {
-    const newSelection = new Set(selectedIds)
+    const newSelection = new Set(selectedIds);
     if (newSelection.has(id)) {
-      newSelection.delete(id)
+      newSelection.delete(id);
     } else {
-      newSelection.add(id)
+      newSelection.add(id);
     }
-    setSelectedIds(newSelection)
-  }
+    setSelectedIds(newSelection);
+  };
 
   const selectAll = () => {
-    setSelectedIds(new Set(filteredContracts.map(c => c.id)))
-  }
+    setSelectedIds(new Set(filteredContracts.map((c) => c.id)));
+  };
 
   const clearSelection = () => {
-    setSelectedIds(new Set())
-  }
+    setSelectedIds(new Set());
+  };
 
-  const isSelected = (id: string) => selectedIds.has(id)
+  const isSelected = (id: string) => selectedIds.has(id);
 
   useEffect(() => {
-    fetchContracts()
-  }, [])
+    fetchContracts();
+  }, []);
 
   // Step 1: Load default filter on mount
   useEffect(() => {
-    const defaultFilter = getDefaultFilter()
+    const defaultFilter = getDefaultFilter();
     if (defaultFilter) {
-      setFilters(defaultFilter.filters)
+      setFilters(defaultFilter.filters);
     }
-  }, [])
+  }, []);
 
   // Step 2: Load view preferences on mount
   useEffect(() => {
-    const prefs = loadViewPreferences()
-    setViewMode(prefs.viewMode)
-    setColumns(prefs.columns)
-  }, [])
+    const prefs = loadViewPreferences();
+    setViewMode(prefs.viewMode);
+    setColumns(prefs.columns);
+  }, []);
 
   // Step 1: Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Select all
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault()
-        selectAll()
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        selectAll();
       }
       // Clear selection
-      if (e.key === 'Escape') {
-        clearSelection()
+      if (e.key === "Escape") {
+        clearSelection();
       }
-    }
-    
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [filteredContracts])
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [filteredContracts]);
 
   const fetchContracts = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const response = await fetch('/api/contracts/list')
+      const response = await fetch("/api/contracts/list");
 
       if (!response.ok) {
         throw new Error(
           `Failed to fetch contracts: ${response.status} ${response.statusText}`
-        )
+        );
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.success) {
-        setContracts(data.contracts || [])
+        setContracts(data.data?.contracts || []);
       } else {
-        throw new Error(data.error || 'Failed to load contracts')
+        throw new Error(data.error || "Failed to load contracts");
       }
     } catch (err) {
-      console.error('Error fetching contracts:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load contracts')
+      console.error("Error fetching contracts:", err);
+      setError(err instanceof Error ? err.message : "Failed to load contracts");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleResetFilters = () => {
-    setFilters(getDefaultFilters())
-  }
+    setFilters(getDefaultFilters());
+  };
 
   // Step 2: View mode handlers
   const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode)
-    saveViewPreferences({ viewMode: mode, columns })
-  }
+    setViewMode(mode);
+    saveViewPreferences({ viewMode: mode, columns });
+  };
 
   const handleColumnsChange = (newColumns: TableColumn[]) => {
-    setColumns(newColumns)
-    saveViewPreferences({ viewMode, columns: newColumns })
-  }
+    setColumns(newColumns);
+    saveViewPreferences({ viewMode, columns: newColumns });
+  };
 
   const handleTableSort = (columnId: string) => {
     if (tableSortBy === columnId) {
-      setTableSortDirection(tableSortDirection === 'asc' ? 'desc' : 'asc')
+      setTableSortDirection(tableSortDirection === "asc" ? "desc" : "asc");
     } else {
-      setTableSortBy(columnId)
-      setTableSortDirection('desc')
+      setTableSortBy(columnId);
+      setTableSortDirection("desc");
     }
-  }
+  };
 
   // Step 3: Comparison handlers
   const handleCompareClick = () => {
     if (selectedIds.size < 2) {
-      alert('Please select at least 2 contracts to compare')
-      return
+      alert("Please select at least 2 contracts to compare");
+      return;
     }
     if (selectedIds.size > 4) {
-      alert('You can compare up to 4 contracts at once')
-      return
+      alert("You can compare up to 4 contracts at once");
+      return;
     }
-    setShowComparisonSelector(true)
-  }
+    setShowComparisonSelector(true);
+  };
 
   const handleCompare = (contractIds: string[]) => {
-    const contractsToCompare = contracts.filter(c => contractIds.includes(c.id))
-    setComparisonContracts(contractsToCompare)
-    setShowComparisonSelector(false)
-    setShowComparisonView(true)
-  }
+    const contractsToCompare = contracts.filter((c) =>
+      contractIds.includes(c.id)
+    );
+    setComparisonContracts(contractsToCompare);
+    setShowComparisonSelector(false);
+    setShowComparisonView(true);
+  };
 
   const handleCloseComparison = () => {
-    setShowComparisonView(false)
-    setComparisonContracts([])
-  }
+    setShowComparisonView(false);
+    setComparisonContracts([]);
+  };
 
   if (loading) {
     return (
@@ -239,7 +249,7 @@ export default function ContractsPage() {
           <p className="text-gray-600 mt-2">Please wait</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -267,7 +277,7 @@ export default function ContractsPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -324,7 +334,7 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Completed</p>
                   <p className="text-3xl font-bold text-green-600">
-                    {contracts.filter((c) => c.status === 'completed').length}
+                    {contracts.filter((c) => c.status === "completed").length}
                   </p>
                 </div>
                 <CheckCircle className="w-8 h-8 text-green-600" />
@@ -338,7 +348,7 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Processing</p>
                   <p className="text-3xl font-bold text-blue-600">
-                    {contracts.filter((c) => c.status === 'processing').length}
+                    {contracts.filter((c) => c.status === "processing").length}
                   </p>
                 </div>
                 <Loader2 className="w-8 h-8 text-blue-600" />
@@ -352,7 +362,7 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Failed</p>
                   <p className="text-3xl font-bold text-red-600">
-                    {contracts.filter((c) => c.status === 'failed').length}
+                    {contracts.filter((c) => c.status === "failed").length}
                   </p>
                 </div>
                 <AlertTriangle className="w-8 h-8 text-red-600" />
@@ -366,8 +376,8 @@ export default function ContractsPage() {
           <SavedFiltersPanel
             currentFilters={filters}
             onApply={(newFilters) => {
-              setFilters(newFilters)
-              setShowSavedFilters(false)
+              setFilters(newFilters);
+              setShowSavedFilters(false);
             }}
             onClose={() => setShowSavedFilters(false)}
           />
@@ -390,24 +400,24 @@ export default function ContractsPage() {
             <div className="flex items-center justify-between flex-wrap gap-4">
               <CardTitle className="text-2xl">
                 {filteredContracts.length === contracts.length
-                  ? 'All Contracts'
+                  ? "All Contracts"
                   : `Filtered Contracts (${filteredContracts.length}/${contracts.length})`}
               </CardTitle>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Step 2: View Mode Toggle */}
                 <div className="flex items-center gap-1 border border-gray-300 rounded-md p-1">
                   <Button
-                    variant={viewMode === 'card' ? 'default' : 'ghost'}
+                    variant={viewMode === "card" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => handleViewModeChange('card')}
+                    onClick={() => handleViewModeChange("card")}
                     className="h-8"
                   >
                     <Grid className="w-4 h-4" />
                   </Button>
                   <Button
-                    variant={viewMode === 'table' ? 'default' : 'ghost'}
+                    variant={viewMode === "table" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => handleViewModeChange('table')}
+                    onClick={() => handleViewModeChange("table")}
                     className="h-8"
                   >
                     <Table className="w-4 h-4" />
@@ -415,7 +425,7 @@ export default function ContractsPage() {
                 </div>
 
                 {/* Step 2: Column Customizer (only in table view) */}
-                {viewMode === 'table' && (
+                {viewMode === "table" && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -435,15 +445,15 @@ export default function ContractsPage() {
                   Saved Filters
                 </Button>
                 <Button
-                  variant={showFilters ? 'default' : 'outline'}
+                  variant={showFilters ? "default" : "outline"}
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
                 >
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
+                  {showFilters ? "Hide Filters" : "Show Filters"}
                 </Button>
-                
+
                 {/* Only show sort dropdown in card view */}
-                {viewMode === 'card' && (
+                {viewMode === "card" && (
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
@@ -493,7 +503,7 @@ export default function ContractsPage() {
                   Reset Filters
                 </Button>
               </div>
-            ) : viewMode === 'table' ? (
+            ) : viewMode === "table" ? (
               /* Step 2: Table View */
               <TableView
                 contracts={filteredContracts}
@@ -529,8 +539,8 @@ export default function ContractsPage() {
         selectedIds={Array.from(selectedIds)}
         onClearSelection={clearSelection}
         onActionComplete={() => {
-          fetchContracts()
-          clearSelection()
+          fetchContracts();
+          clearSelection();
         }}
         onCompare={handleCompareClick}
       />
@@ -562,33 +572,37 @@ export default function ContractsPage() {
         />
       )}
     </div>
-  )
+  );
 }
 
 // Contract Card Component with Step 1 features
 interface ContractCardProps {
-  contract: Contract
-  isSelected?: boolean
-  onToggleSelection?: (id: string) => void
+  contract: Contract;
+  isSelected?: boolean;
+  onToggleSelection?: (id: string) => void;
 }
 
-function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardProps) {
-  const statusDisplay = getStatusDisplay(contract.status)
-  const summary = getContractSummary(contract)
-  const contractTags = getContractTags(contract.id)
+function ContractCard({
+  contract,
+  isSelected,
+  onToggleSelection,
+}: ContractCardProps) {
+  const statusDisplay = getStatusDisplay(contract.status);
+  const summary = getContractSummary(contract);
+  const contractTags = getContractTags(contract.id);
 
   const getStatusIcon = () => {
     switch (contract.status) {
-      case 'completed':
-        return <CheckCircle className="w-5 h-5 text-green-500" />
-      case 'processing':
-        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-      case 'failed':
-        return <AlertTriangle className="w-5 h-5 text-red-500" />
+      case "completed":
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case "processing":
+        return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
+      case "failed":
+        return <AlertTriangle className="w-5 h-5 text-red-500" />;
       default:
-        return <Clock className="w-5 h-5 text-gray-500" />
+        return <Clock className="w-5 h-5 text-gray-500" />;
     }
-  }
+  };
 
   return (
     <div className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all bg-white">
@@ -611,29 +625,50 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
             <h3 className="text-lg font-semibold text-gray-900 truncate">
               {contract.filename ||
                 contract.originalName ||
-                'Untitled Contract'}
+                "Untitled Contract"}
             </h3>
             <Badge
               className={`
-                ${statusDisplay.color === 'green' ? 'bg-green-100 text-green-800' : ''}
-                ${statusDisplay.color === 'blue' ? 'bg-blue-100 text-blue-800' : ''}
-                ${statusDisplay.color === 'red' ? 'bg-red-100 text-red-800' : ''}
-                ${statusDisplay.color === 'yellow' ? 'bg-yellow-100 text-yellow-800' : ''}
-                ${statusDisplay.color === 'gray' ? 'bg-gray-100 text-gray-800' : ''}
+                ${
+                  statusDisplay.color === "green"
+                    ? "bg-green-100 text-green-800"
+                    : ""
+                }
+                ${
+                  statusDisplay.color === "blue"
+                    ? "bg-blue-100 text-blue-800"
+                    : ""
+                }
+                ${
+                  statusDisplay.color === "red" ? "bg-red-100 text-red-800" : ""
+                }
+                ${
+                  statusDisplay.color === "yellow"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : ""
+                }
+                ${
+                  statusDisplay.color === "gray"
+                    ? "bg-gray-100 text-gray-800"
+                    : ""
+                }
               `}
             >
               {statusDisplay.label}
             </Badge>
-            
+
             {/* Step 1: Tags Display */}
-            {contractTags.map(tagId => {
-              const tag = getTagById(tagId)
-              if (!tag) return null
+            {contractTags.map((tagId) => {
+              const tag = getTagById(tagId);
+              if (!tag) return null;
               return (
-                <Badge key={tagId} className={getTagColor(tag.color) + ' text-xs border'}>
+                <Badge
+                  key={tagId}
+                  className={getTagColor(tag.color) + " text-xs border"}
+                >
                   {tag.name}
                 </Badge>
-              )
+              );
             })}
           </div>
 
@@ -652,7 +687,9 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
             {summary.parties && summary.parties.length > 0 && (
               <div className="flex items-center gap-2 text-gray-600">
                 <Users className="w-4 h-4" />
-                <span className="truncate">{summary.parties.length} parties</span>
+                <span className="truncate">
+                  {summary.parties.length} parties
+                </span>
               </div>
             )}
 
@@ -667,20 +704,20 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
           </div>
 
           {/* Additional Info */}
-          {contract.status === 'completed' && (
+          {contract.status === "completed" && (
             <div className="mt-3 flex items-center gap-4 text-sm">
               {summary.riskScore !== undefined && (
                 <div className="flex items-center gap-2">
                   <Shield className="w-4 h-4 text-gray-500" />
                   <span className="text-gray-600">
-                    Risk:{' '}
+                    Risk:{" "}
                     <span
                       className={`font-medium ${
                         summary.riskScore >= 80
-                          ? 'text-red-600'
+                          ? "text-red-600"
                           : summary.riskScore >= 50
-                          ? 'text-yellow-600'
-                          : 'text-green-600'
+                          ? "text-yellow-600"
+                          : "text-green-600"
                       }`}
                     >
                       {summary.riskScore}
@@ -692,16 +729,16 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-gray-500" />
                   <span className="text-gray-600">
-                    Compliance:{' '}
+                    Compliance:{" "}
                     <span
                       className={`font-medium ${
                         summary.complianceScore >= 90
-                          ? 'text-green-600'
+                          ? "text-green-600"
                           : summary.complianceScore >= 70
-                          ? 'text-blue-600'
+                          ? "text-blue-600"
                           : summary.complianceScore >= 50
-                          ? 'text-yellow-600'
-                          : 'text-red-600'
+                          ? "text-yellow-600"
+                          : "text-red-600"
                       }`}
                     >
                       {summary.complianceScore}
@@ -713,7 +750,7 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
           )}
 
           {/* Processing Progress */}
-          {contract.status === 'processing' && contract.processing && (
+          {contract.status === "processing" && contract.processing && (
             <div className="mt-3">
               <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
                 <span>{contract.processing.currentStage}</span>
@@ -729,7 +766,7 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
           )}
 
           {/* Error Message */}
-          {contract.status === 'failed' && contract.error && (
+          {contract.status === "failed" && contract.error && (
             <div className="mt-3 text-sm text-red-600 bg-red-50 p-2 rounded">
               {contract.error}
             </div>
@@ -744,7 +781,7 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
               View
             </Button>
           </Link>
-          {contract.status === 'completed' && (
+          {contract.status === "completed" && (
             <Button size="sm" variant="outline" className="w-full">
               <Download className="w-4 h-4 mr-2" />
               Export
@@ -753,5 +790,5 @@ function ContractCard({ contract, isSelected, onToggleSelection }: ContractCardP
         </div>
       </div>
     </div>
-  )
+  );
 }

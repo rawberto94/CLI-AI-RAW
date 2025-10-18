@@ -1,6 +1,6 @@
 /**
  * Rate Validation Service
- * 
+ *
  * Provides comprehensive validation for enhanced rate card data including:
  * - Rate consistency validation across different formats
  * - Geographic data validation
@@ -20,7 +20,7 @@ import {
   Skill,
   SeniorityLevel,
   EngagementModel,
-  ApprovalStatus
+  ApprovalStatus,
 } from "../types/enhanced-rate-card.types";
 import { dbAdaptor } from "../dal/database.adaptor";
 import { rateCalculationEngine } from "./rate-calculation.engine";
@@ -32,11 +32,44 @@ export class RateValidationService {
   private static instance: RateValidationService;
 
   // Validation constants
-  private readonly VALID_COUNTRIES = ['USA', 'CAN', 'GBR', 'AUS', 'IND', 'DEU', 'FRA', 'JPN']; // ISO 3166-1 alpha-3
-  private readonly VALID_CURRENCIES = ['USD', 'CAD', 'GBP', 'AUD', 'INR', 'EUR', 'JPY'];
-  private readonly VALID_SENIORITY_LEVELS: SeniorityLevel[] = ['Junior', 'Mid-Level', 'Senior', 'Lead', 'Principal', 'Director'];
-  private readonly VALID_ENGAGEMENT_MODELS: EngagementModel[] = ['Staff Augmentation', 'Project', 'Outcome'];
-  private readonly VALID_APPROVAL_STATUS: ApprovalStatus[] = ['pending', 'approved', 'rejected', 'under_review'];
+  private readonly VALID_COUNTRIES = [
+    "USA",
+    "CAN",
+    "GBR",
+    "AUS",
+    "IND",
+    "DEU",
+    "FRA",
+    "JPN",
+  ]; // ISO 3166-1 alpha-3
+  private readonly VALID_CURRENCIES = [
+    "USD",
+    "CAD",
+    "GBP",
+    "AUD",
+    "INR",
+    "EUR",
+    "JPY",
+  ];
+  private readonly VALID_SENIORITY_LEVELS: SeniorityLevel[] = [
+    "Junior",
+    "Mid-Level",
+    "Senior",
+    "Lead",
+    "Principal",
+    "Director",
+  ];
+  private readonly VALID_ENGAGEMENT_MODELS: EngagementModel[] = [
+    "Staff Augmentation",
+    "Project",
+    "Outcome",
+  ];
+  private readonly VALID_APPROVAL_STATUS: ApprovalStatus[] = [
+    "pending",
+    "approved",
+    "rejected",
+    "under_review",
+  ];
 
   private constructor() {}
 
@@ -54,9 +87,15 @@ export class RateValidationService {
   /**
    * Validate complete rate card with all rates
    */
-  async validateRateCard(rateCard: EnhancedRateCard, rates: EnhancedRate[]): Promise<ValidationResult> {
+  async validateRateCard(
+    rateCard: EnhancedRateCard,
+    rates: EnhancedRate[]
+  ): Promise<ValidationResult> {
     try {
-      logger.info({ rateCardId: rateCard.id, rateCount: rates.length }, "Validating rate card");
+      logger.info(
+        { rateCardId: rateCard.id, rateCount: rates.length },
+        "Validating rate card"
+      );
 
       const errors: ValidationError[] = [];
       const warnings: ValidationWarning[] = [];
@@ -77,29 +116,37 @@ export class RateValidationService {
       }
 
       // Cross-validation between rate card and rates
-      const crossValidation = await this.validateRateCardRateConsistency(rateCard, rates);
+      const crossValidation = await this.validateRateCardRateConsistency(
+        rateCard,
+        rates
+      );
       errors.push(...crossValidation.errors);
       warnings.push(...crossValidation.warnings);
       suggestions.push(...crossValidation.suggestions);
 
       const result: ValidationResult = {
-        isValid: errors.filter(e => e.severity === 'error').length === 0,
+        isValid: errors.filter((e) => e.severity === "error").length === 0,
         errors,
         warnings,
-        suggestions
+        suggestions,
       };
 
-      logger.info({ 
-        rateCardId: rateCard.id, 
-        isValid: result.isValid, 
-        errorCount: errors.length,
-        warningCount: warnings.length 
-      }, "Completed rate card validation");
+      logger.info(
+        {
+          rateCardId: rateCard.id,
+          isValid: result.isValid,
+          errorCount: errors.length,
+          warningCount: warnings.length,
+        },
+        "Completed rate card validation"
+      );
 
       return result;
-
     } catch (error) {
-      logger.error({ error, rateCardId: rateCard.id }, "Failed to validate rate card");
+      logger.error(
+        { error, rateCardId: rateCard.id },
+        "Failed to validate rate card"
+      );
       throw error;
     }
   }
@@ -116,71 +163,92 @@ export class RateValidationService {
       const suggestions: CorrectionSuggestion[] = [];
 
       // Check if at least one rate format is provided
-      if (!rate.hourlyRate && !rate.dailyRate && !rate.weeklyRate && !rate.monthlyRate && !rate.annualRate) {
+      if (
+        !rate.hourlyRate &&
+        !rate.dailyRate &&
+        !rate.weeklyRate &&
+        !rate.monthlyRate &&
+        !rate.annualRate
+      ) {
         errors.push({
-          field: 'rates',
-          message: 'At least one rate format must be specified',
-          code: 'MISSING_RATE',
-          severity: 'error'
+          field: "rates",
+          message: "At least one rate format must be specified",
+          code: "MISSING_RATE",
+          severity: "error",
         });
         return { isValid: false, errors, warnings, suggestions };
       }
 
       // Use rate calculation engine to validate consistency
-      const consistencyCheck = rateCalculationEngine.validateRateConsistency(rate);
-      
+      const consistencyCheck =
+        rateCalculationEngine.validateRateConsistency(rate);
+
       if (!consistencyCheck.isConsistent) {
-        consistencyCheck.discrepancies.forEach(discrepancy => {
+        consistencyCheck.discrepancies.forEach((discrepancy) => {
           errors.push({
-            field: 'rate_consistency',
+            field: "rate_consistency",
             message: discrepancy,
-            code: 'RATE_INCONSISTENCY',
-            severity: 'error'
+            code: "RATE_INCONSISTENCY",
+            severity: "error",
           });
         });
 
         // Suggest corrections
         if (rate.hourlyRate) {
-          const correctedRates = rateCalculationEngine.calculateEquivalentRates(rate.hourlyRate, 'hourly', rate.billableHours);
-          
-          if (rate.dailyRate && Math.abs(rate.dailyRate - correctedRates.dailyRate) > 0.01) {
+          const correctedRates = rateCalculationEngine.calculateEquivalentRates(
+            rate.hourlyRate,
+            "hourly",
+            rate.billableHours
+          );
+
+          if (
+            rate.dailyRate &&
+            Math.abs(rate.dailyRate - correctedRates.dailyRate) > 0.01
+          ) {
             suggestions.push({
-              field: 'dailyRate',
+              field: "dailyRate",
               currentValue: rate.dailyRate,
               suggestedValue: correctedRates.dailyRate,
-              reason: 'Calculated from hourly rate',
-              confidence: 0.95
+              reason: "Calculated from hourly rate",
+              confidence: 0.95,
             });
           }
 
-          if (rate.monthlyRate && Math.abs(rate.monthlyRate - correctedRates.monthlyRate) > 0.01) {
+          if (
+            rate.monthlyRate &&
+            Math.abs(rate.monthlyRate - correctedRates.monthlyRate) > 0.01
+          ) {
             suggestions.push({
-              field: 'monthlyRate',
+              field: "monthlyRate",
               currentValue: rate.monthlyRate,
               suggestedValue: correctedRates.monthlyRate,
-              reason: 'Calculated from hourly rate',
-              confidence: 0.95
+              reason: "Calculated from hourly rate",
+              confidence: 0.95,
             });
           }
         }
       }
 
       // Validate rate ranges
-      const hourlyRate = rate.hourlyRate || (rate.dailyRate ? rate.dailyRate / rate.billableHours : 0);
+      const hourlyRate =
+        rate.hourlyRate ||
+        (rate.dailyRate ? rate.dailyRate / rate.billableHours : 0);
       if (hourlyRate > 0) {
         if (hourlyRate < 10) {
           warnings.push({
-            field: 'hourlyRate',
-            message: 'Hourly rate seems unusually low',
-            recommendation: 'Verify rate is correct or consider minimum wage requirements'
+            field: "hourlyRate",
+            message: "Hourly rate seems unusually low",
+            recommendation:
+              "Verify rate is correct or consider minimum wage requirements",
           });
         }
 
         if (hourlyRate > 500) {
           warnings.push({
-            field: 'hourlyRate',
-            message: 'Hourly rate seems unusually high',
-            recommendation: 'Verify rate is correct for the role and seniority level'
+            field: "hourlyRate",
+            message: "Hourly rate seems unusually high",
+            recommendation:
+              "Verify rate is correct for the role and seniority level",
           });
         }
       }
@@ -189,21 +257,25 @@ export class RateValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        suggestions
+        suggestions,
       };
-
     } catch (error) {
-      logger.error({ error, rateId: rate.id }, "Failed to validate rate consistency");
+      logger.error(
+        { error, rateId: rate.id },
+        "Failed to validate rate consistency"
+      );
       return {
         isValid: false,
-        errors: [{
-          field: 'validation',
-          message: 'Validation error occurred',
-          code: 'VALIDATION_ERROR',
-          severity: 'error'
-        }],
+        errors: [
+          {
+            field: "validation",
+            message: "Validation error occurred",
+            code: "VALIDATION_ERROR",
+            severity: "error",
+          },
+        ],
         warnings: [],
-        suggestions: []
+        suggestions: [],
       };
     }
   }
@@ -222,51 +294,58 @@ export class RateValidationService {
       // Validate country code
       if (!location.country) {
         errors.push({
-          field: 'country',
-          message: 'Country is required',
-          code: 'MISSING_COUNTRY',
-          severity: 'error'
+          field: "country",
+          message: "Country is required",
+          code: "MISSING_COUNTRY",
+          severity: "error",
         });
       } else if (!this.VALID_COUNTRIES.includes(location.country)) {
         errors.push({
-          field: 'country',
+          field: "country",
           message: `Invalid country code: ${location.country}`,
-          code: 'INVALID_COUNTRY',
-          severity: 'error'
+          code: "INVALID_COUNTRY",
+          severity: "error",
         });
 
         // Suggest similar country codes
         const suggestion = this.findSimilarCountryCode(location.country);
         if (suggestion) {
           suggestions.push({
-            field: 'country',
+            field: "country",
             currentValue: location.country,
             suggestedValue: suggestion,
-            reason: 'Similar country code found',
-            confidence: 0.8
+            reason: "Similar country code found",
+            confidence: 0.8,
           });
         }
       }
 
       // Validate geographic consistency
       if (location.country && location.stateProvince) {
-        const isValidCombination = await this.validateCountryStateCombo(location.country, location.stateProvince);
+        const isValidCombination = await this.validateCountryStateCombo(
+          location.country,
+          location.stateProvince
+        );
         if (!isValidCombination) {
           warnings.push({
-            field: 'stateProvince',
+            field: "stateProvince",
             message: `State/Province ${location.stateProvince} may not be valid for country ${location.country}`,
-            recommendation: 'Verify geographic data accuracy'
+            recommendation: "Verify geographic data accuracy",
           });
         }
       }
 
       // Validate cost of living index
       if (location.costOfLivingIndex !== undefined) {
-        if (location.costOfLivingIndex < 20 || location.costOfLivingIndex > 300) {
+        if (
+          location.costOfLivingIndex < 20 ||
+          location.costOfLivingIndex > 300
+        ) {
           warnings.push({
-            field: 'costOfLivingIndex',
-            message: 'Cost of living index seems unusual',
-            recommendation: 'Verify cost of living data (typical range: 20-300, base 100)'
+            field: "costOfLivingIndex",
+            message: "Cost of living index seems unusual",
+            recommendation:
+              "Verify cost of living data (typical range: 20-300, base 100)",
           });
         }
       }
@@ -275,9 +354,8 @@ export class RateValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        suggestions
+        suggestions,
       };
-
     } catch (error) {
       logger.error({ error, location }, "Failed to validate geographic data");
       throw error;
@@ -287,9 +365,15 @@ export class RateValidationService {
   /**
    * Validate skill requirements
    */
-  async validateSkillRequirements(skills: Skill[], role: string): Promise<ValidationResult> {
+  async validateSkillRequirements(
+    skills: Skill[],
+    role: string
+  ): Promise<ValidationResult> {
     try {
-      logger.info({ skillCount: skills.length, role }, "Validating skill requirements");
+      logger.info(
+        { skillCount: skills.length, role },
+        "Validating skill requirements"
+      );
 
       const errors: ValidationError[] = [];
       const warnings: ValidationWarning[] = [];
@@ -301,42 +385,48 @@ export class RateValidationService {
         const skillExists = await this.checkSkillInRegistry(skill.name);
         if (!skillExists) {
           warnings.push({
-            field: 'requiredSkills',
+            field: "requiredSkills",
             message: `Skill "${skill.name}" not found in skills registry`,
-            recommendation: 'Add skill to registry or verify spelling'
+            recommendation: "Add skill to registry or verify spelling",
           });
 
           // Suggest similar skills
           const similarSkill = await this.findSimilarSkill(skill.name);
           if (similarSkill) {
             suggestions.push({
-              field: 'requiredSkills',
+              field: "requiredSkills",
               currentValue: skill.name,
               suggestedValue: similarSkill,
-              reason: 'Similar skill found in registry',
-              confidence: 0.7
+              reason: "Similar skill found in registry",
+              confidence: 0.7,
             });
           }
         }
 
         // Validate skill level progression
-        if (skill.level && !['Basic', 'Intermediate', 'Advanced', 'Expert'].includes(skill.level)) {
+        if (
+          skill.level &&
+          !["Basic", "Intermediate", "Advanced", "Expert"].includes(skill.level)
+        ) {
           errors.push({
-            field: 'skillLevel',
+            field: "skillLevel",
             message: `Invalid skill level: ${skill.level}`,
-            code: 'INVALID_SKILL_LEVEL',
-            severity: 'error'
+            code: "INVALID_SKILL_LEVEL",
+            severity: "error",
           });
         }
       }
 
       // Check for role-skill alignment
-      const roleSkillAlignment = await this.validateRoleSkillAlignment(role, skills);
+      const roleSkillAlignment = await this.validateRoleSkillAlignment(
+        role,
+        skills
+      );
       if (!roleSkillAlignment.isAligned) {
         warnings.push({
-          field: 'requiredSkills',
-          message: 'Some skills may not be typical for this role',
-          recommendation: 'Review skill requirements for role alignment'
+          field: "requiredSkills",
+          message: "Some skills may not be typical for this role",
+          recommendation: "Review skill requirements for role alignment",
         });
       }
 
@@ -344,9 +434,9 @@ export class RateValidationService {
       const duplicateSkills = this.findDuplicateSkills(skills);
       if (duplicateSkills.length > 0) {
         warnings.push({
-          field: 'requiredSkills',
-          message: `Duplicate skills found: ${duplicateSkills.join(', ')}`,
-          recommendation: 'Remove duplicate skill requirements'
+          field: "requiredSkills",
+          message: `Duplicate skills found: ${duplicateSkills.join(", ")}`,
+          recommendation: "Remove duplicate skill requirements",
         });
       }
 
@@ -354,11 +444,13 @@ export class RateValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        suggestions
+        suggestions,
       };
-
     } catch (error) {
-      logger.error({ error, skills, role }, "Failed to validate skill requirements");
+      logger.error(
+        { error, skills, role },
+        "Failed to validate skill requirements"
+      );
       throw error;
     }
   }
@@ -366,9 +458,16 @@ export class RateValidationService {
   /**
    * Validate seniority alignment with role and experience
    */
-  validateSeniorityAlignment(seniority: SeniorityLevel, role: string, experience?: number): ValidationResult {
+  validateSeniorityAlignment(
+    seniority: SeniorityLevel,
+    role: string,
+    experience?: number
+  ): ValidationResult {
     try {
-      logger.info({ seniority, role, experience }, "Validating seniority alignment");
+      logger.info(
+        { seniority, role, experience },
+        "Validating seniority alignment"
+      );
 
       const errors: ValidationError[] = [];
       const warnings: ValidationWarning[] = [];
@@ -377,10 +476,10 @@ export class RateValidationService {
       // Validate seniority level
       if (!this.VALID_SENIORITY_LEVELS.includes(seniority)) {
         errors.push({
-          field: 'seniorityLevel',
+          field: "seniorityLevel",
           message: `Invalid seniority level: ${seniority}`,
-          code: 'INVALID_SENIORITY',
-          severity: 'error'
+          code: "INVALID_SENIORITY",
+          severity: "error",
         });
         return { isValid: false, errors, warnings, suggestions };
       }
@@ -388,43 +487,49 @@ export class RateValidationService {
       // Validate experience alignment
       if (experience !== undefined) {
         const expectedExperience = this.getExpectedExperienceRange(seniority);
-        
+
         if (experience < expectedExperience.min) {
           warnings.push({
-            field: 'minimumExperienceYears',
+            field: "minimumExperienceYears",
             message: `Experience (${experience} years) seems low for ${seniority} level`,
-            recommendation: `Typical range for ${seniority}: ${expectedExperience.min}-${expectedExperience.max} years`
+            recommendation: `Typical range for ${seniority}: ${expectedExperience.min}-${expectedExperience.max} years`,
           });
 
           // Suggest appropriate seniority level
-          const appropriateSeniority = this.suggestSeniorityForExperience(experience);
+          const appropriateSeniority =
+            this.suggestSeniorityForExperience(experience);
           if (appropriateSeniority !== seniority) {
             suggestions.push({
-              field: 'seniorityLevel',
+              field: "seniorityLevel",
               currentValue: seniority,
               suggestedValue: appropriateSeniority,
               reason: `Better match for ${experience} years experience`,
-              confidence: 0.8
+              confidence: 0.8,
             });
           }
         }
 
         if (experience > expectedExperience.max + 5) {
           warnings.push({
-            field: 'minimumExperienceYears',
+            field: "minimumExperienceYears",
             message: `Experience (${experience} years) seems high for ${seniority} level`,
-            recommendation: 'Consider higher seniority level or verify experience requirement'
+            recommendation:
+              "Consider higher seniority level or verify experience requirement",
           });
         }
       }
 
       // Validate role-seniority alignment
-      const roleSeniorityAlignment = this.validateRoleSeniorityAlignment(role, seniority);
+      const roleSeniorityAlignment = this.validateRoleSeniorityAlignment(
+        role,
+        seniority
+      );
       if (!roleSeniorityAlignment.isValid) {
         warnings.push({
-          field: 'seniorityLevel',
-          message: roleSeniorityAlignment.message,
-          recommendation: 'Review role and seniority level combination'
+          field: "seniorityLevel",
+          message:
+            roleSeniorityAlignment.message || "Role and seniority mismatch",
+          recommendation: "Review role and seniority level combination",
         });
       }
 
@@ -432,11 +537,13 @@ export class RateValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        suggestions
+        suggestions,
       };
-
     } catch (error) {
-      logger.error({ error, seniority, role, experience }, "Failed to validate seniority alignment");
+      logger.error(
+        { error, seniority, role, experience },
+        "Failed to validate seniority alignment"
+      );
       throw error;
     }
   }
@@ -444,44 +551,49 @@ export class RateValidationService {
   /**
    * Generate correction suggestions for validation errors
    */
-  suggestCorrections(validationErrors: ValidationError[]): CorrectionSuggestion[] {
+  suggestCorrections(
+    validationErrors: ValidationError[]
+  ): CorrectionSuggestion[] {
     try {
-      logger.info({ errorCount: validationErrors.length }, "Generating correction suggestions");
+      logger.info(
+        { errorCount: validationErrors.length },
+        "Generating correction suggestions"
+      );
 
       const suggestions: CorrectionSuggestion[] = [];
 
-      validationErrors.forEach(error => {
+      validationErrors.forEach((error) => {
         switch (error.code) {
-          case 'MISSING_RATE':
+          case "MISSING_RATE":
             suggestions.push({
-              field: 'hourlyRate',
+              field: "hourlyRate",
               currentValue: null,
               suggestedValue: 100, // Default suggestion
-              reason: 'Provide at least one rate format',
-              confidence: 0.5
+              reason: "Provide at least one rate format",
+              confidence: 0.5,
             });
             break;
 
-          case 'INVALID_COUNTRY':
+          case "INVALID_COUNTRY":
             const suggestion = this.findSimilarCountryCode(error.field);
             if (suggestion) {
               suggestions.push({
-                field: 'country',
+                field: "country",
                 currentValue: error.field,
                 suggestedValue: suggestion,
-                reason: 'Corrected country code',
-                confidence: 0.8
+                reason: "Corrected country code",
+                confidence: 0.8,
               });
             }
             break;
 
-          case 'INVALID_SENIORITY':
+          case "INVALID_SENIORITY":
             suggestions.push({
-              field: 'seniorityLevel',
+              field: "seniorityLevel",
               currentValue: error.field,
-              suggestedValue: 'Mid-Level',
-              reason: 'Default seniority level',
-              confidence: 0.6
+              suggestedValue: "Mid-Level",
+              reason: "Default seniority level",
+              confidence: 0.6,
             });
             break;
 
@@ -494,11 +606,16 @@ export class RateValidationService {
         }
       });
 
-      logger.info({ suggestionCount: suggestions.length }, "Generated correction suggestions");
+      logger.info(
+        { suggestionCount: suggestions.length },
+        "Generated correction suggestions"
+      );
       return suggestions;
-
     } catch (error) {
-      logger.error({ error, validationErrors }, "Failed to generate correction suggestions");
+      logger.error(
+        { error, validationErrors },
+        "Failed to generate correction suggestions"
+      );
       return [];
     }
   }
@@ -507,7 +624,9 @@ export class RateValidationService {
   // PRIVATE VALIDATION METHODS
   // ============================================================================
 
-  private async validateRateCardFields(rateCard: EnhancedRateCard): Promise<ValidationResult> {
+  private async validateRateCardFields(
+    rateCard: EnhancedRateCard
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     const suggestions: CorrectionSuggestion[] = [];
@@ -515,76 +634,82 @@ export class RateValidationService {
     // Required fields validation
     if (!rateCard.contractId) {
       errors.push({
-        field: 'contractId',
-        message: 'Contract ID is required',
-        code: 'MISSING_CONTRACT_ID',
-        severity: 'error'
+        field: "contractId",
+        message: "Contract ID is required",
+        code: "MISSING_CONTRACT_ID",
+        severity: "error",
       });
     }
 
     if (!rateCard.supplierId) {
       errors.push({
-        field: 'supplierId',
-        message: 'Supplier ID is required',
-        code: 'MISSING_SUPPLIER_ID',
-        severity: 'error'
+        field: "supplierId",
+        message: "Supplier ID is required",
+        code: "MISSING_SUPPLIER_ID",
+        severity: "error",
       });
     }
 
     if (!rateCard.currency) {
       errors.push({
-        field: 'currency',
-        message: 'Currency is required',
-        code: 'MISSING_CURRENCY',
-        severity: 'error'
+        field: "currency",
+        message: "Currency is required",
+        code: "MISSING_CURRENCY",
+        severity: "error",
       });
     } else if (!this.VALID_CURRENCIES.includes(rateCard.currency)) {
       errors.push({
-        field: 'currency',
+        field: "currency",
         message: `Invalid currency code: ${rateCard.currency}`,
-        code: 'INVALID_CURRENCY',
-        severity: 'error'
+        code: "INVALID_CURRENCY",
+        severity: "error",
       });
     }
 
     // Engagement model validation
-    if (rateCard.engagementModel && !this.VALID_ENGAGEMENT_MODELS.includes(rateCard.engagementModel)) {
+    if (
+      rateCard.engagementModel &&
+      !this.VALID_ENGAGEMENT_MODELS.includes(rateCard.engagementModel)
+    ) {
       errors.push({
-        field: 'engagementModel',
+        field: "engagementModel",
         message: `Invalid engagement model: ${rateCard.engagementModel}`,
-        code: 'INVALID_ENGAGEMENT_MODEL',
-        severity: 'error'
+        code: "INVALID_ENGAGEMENT_MODEL",
+        severity: "error",
       });
     }
 
     // Approval status validation
-    if (rateCard.approvalStatus && !this.VALID_APPROVAL_STATUS.includes(rateCard.approvalStatus)) {
+    if (
+      rateCard.approvalStatus &&
+      !this.VALID_APPROVAL_STATUS.includes(rateCard.approvalStatus)
+    ) {
       errors.push({
-        field: 'approvalStatus',
+        field: "approvalStatus",
         message: `Invalid approval status: ${rateCard.approvalStatus}`,
-        code: 'INVALID_APPROVAL_STATUS',
-        severity: 'error'
+        code: "INVALID_APPROVAL_STATUS",
+        severity: "error",
       });
     }
 
     // Date validation
     if (rateCard.effectiveDate > new Date()) {
       warnings.push({
-        field: 'effectiveDate',
-        message: 'Effective date is in the future',
-        recommendation: 'Verify effective date is correct'
+        field: "effectiveDate",
+        message: "Effective date is in the future",
+        recommendation: "Verify effective date is correct",
       });
     }
 
     // Geographic validation
     if (rateCard.country || rateCard.stateProvince || rateCard.city) {
       const location: Location = {
-        country: rateCard.country || '',
+        country: rateCard.country || "",
         stateProvince: rateCard.stateProvince,
         city: rateCard.city,
-        costOfLivingIndex: rateCard.costOfLivingIndex
+        costOfLivingIndex: rateCard.costOfLivingIndex,
       };
-      
+
       const geoValidation = await this.validateGeographicData(location);
       errors.push(...geoValidation.errors);
       warnings.push(...geoValidation.warnings);
@@ -608,8 +733,8 @@ export class RateValidationService {
     // Seniority validation
     if (rate.seniorityLevel) {
       const seniorityValidation = this.validateSeniorityAlignment(
-        rate.seniorityLevel, 
-        rate.role, 
+        rate.seniorityLevel,
+        rate.role,
         rate.minimumExperienceYears
       );
       errors.push(...seniorityValidation.errors);
@@ -619,7 +744,10 @@ export class RateValidationService {
 
     // Skills validation
     if (rate.requiredSkills && rate.requiredSkills.length > 0) {
-      const skillsValidation = await this.validateSkillRequirements(rate.requiredSkills, rate.role);
+      const skillsValidation = await this.validateSkillRequirements(
+        rate.requiredSkills,
+        rate.role
+      );
       errors.push(...skillsValidation.errors);
       warnings.push(...skillsValidation.warnings);
       suggestions.push(...skillsValidation.suggestions);
@@ -628,25 +756,28 @@ export class RateValidationService {
     // Business logic validation
     if (rate.travelPercentage > 100) {
       errors.push({
-        field: 'travelPercentage',
-        message: 'Travel percentage cannot exceed 100%',
-        code: 'INVALID_TRAVEL_PERCENTAGE',
-        severity: 'error'
+        field: "travelPercentage",
+        message: "Travel percentage cannot exceed 100%",
+        code: "INVALID_TRAVEL_PERCENTAGE",
+        severity: "error",
       });
     }
 
     if (rate.overtimeMultiplier < 1) {
       warnings.push({
-        field: 'overtimeMultiplier',
-        message: 'Overtime multiplier less than 1.0 is unusual',
-        recommendation: 'Verify overtime multiplier (typical: 1.5)'
+        field: "overtimeMultiplier",
+        message: "Overtime multiplier less than 1.0 is unusual",
+        recommendation: "Verify overtime multiplier (typical: 1.5)",
       });
     }
 
     return { isValid: errors.length === 0, errors, warnings, suggestions };
   }
 
-  private async validateRateCardRateConsistency(rateCard: EnhancedRateCard, rates: EnhancedRate[]): Promise<ValidationResult> {
+  private async validateRateCardRateConsistency(
+    rateCard: EnhancedRateCard,
+    rates: EnhancedRate[]
+  ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     const suggestions: CorrectionSuggestion[] = [];
@@ -654,9 +785,9 @@ export class RateValidationService {
     // Check if rates exist
     if (rates.length === 0) {
       warnings.push({
-        field: 'rates',
-        message: 'No rates defined for this rate card',
-        recommendation: 'Add at least one rate to make the rate card useful'
+        field: "rates",
+        message: "No rates defined for this rate card",
+        recommendation: "Add at least one rate to make the rate card useful",
       });
     }
 
@@ -665,19 +796,23 @@ export class RateValidationService {
       // All rates should be in the same currency as the rate card
       // This is implicit since rates don't have their own currency field
       // but we can validate related fields
-      
-      if (rate.effectiveStartDate && rate.effectiveStartDate < rateCard.effectiveDate) {
+
+      if (
+        rate.effectiveStartDate &&
+        rate.effectiveStartDate < rateCard.effectiveDate
+      ) {
         warnings.push({
           field: `rates[${index}].effectiveStartDate`,
-          message: 'Rate effective start date is before rate card effective date',
-          recommendation: 'Align rate and rate card effective dates'
+          message:
+            "Rate effective start date is before rate card effective date",
+          recommendation: "Align rate and rate card effective dates",
         });
       }
     });
 
     // Check for duplicate roles at same seniority level
     const roleMap = new Map<string, EnhancedRate[]>();
-    rates.forEach(rate => {
+    rates.forEach((rate) => {
       const key = `${rate.role}-${rate.seniorityLevel}`;
       if (!roleMap.has(key)) {
         roleMap.set(key, []);
@@ -688,9 +823,10 @@ export class RateValidationService {
     roleMap.forEach((duplicates, key) => {
       if (duplicates.length > 1) {
         warnings.push({
-          field: 'rates',
+          field: "rates",
           message: `Multiple rates found for ${key}`,
-          recommendation: 'Consider consolidating or differentiating duplicate rates'
+          recommendation:
+            "Consider consolidating or differentiating duplicate rates",
         });
       }
     });
@@ -705,34 +841,38 @@ export class RateValidationService {
   private findSimilarCountryCode(country: string): string | null {
     // Simple similarity matching - in production, use more sophisticated matching
     const similarities: Record<string, string> = {
-      'US': 'USA',
-      'UK': 'GBR',
-      'CA': 'CAN',
-      'AU': 'AUS',
-      'IN': 'IND',
-      'DE': 'DEU',
-      'FR': 'FRA',
-      'JP': 'JPN'
+      US: "USA",
+      UK: "GBR",
+      CA: "CAN",
+      AU: "AUS",
+      IN: "IND",
+      DE: "DEU",
+      FR: "FRA",
+      JP: "JPN",
     };
-    
+
     return similarities[country.toUpperCase()] || null;
   }
 
-  private async validateCountryStateCombo(country: string, state: string): Promise<boolean> {
+  private async validateCountryStateCombo(
+    country: string,
+    state: string
+  ): Promise<boolean> {
     // In production, this would check against a geographic database
     // For now, simple validation for common countries
     const validCombos: Record<string, string[]> = {
-      'USA': ['CA', 'NY', 'TX', 'FL', 'WA', 'IL'], // Sample states
-      'CAN': ['ON', 'BC', 'AB', 'QC'], // Sample provinces
-      'AUS': ['NSW', 'VIC', 'QLD', 'WA'] // Sample states
+      USA: ["CA", "NY", "TX", "FL", "WA", "IL"], // Sample states
+      CAN: ["ON", "BC", "AB", "QC"], // Sample provinces
+      AUS: ["NSW", "VIC", "QLD", "WA"], // Sample states
     };
-    
+
     return validCombos[country]?.includes(state) ?? true; // Default to valid if not in our list
   }
 
   private async checkSkillInRegistry(skillName: string): Promise<boolean> {
     try {
-      const query = "SELECT 1 FROM skills_registry WHERE skill_name = ? LIMIT 1";
+      const query =
+        "SELECT 1 FROM skills_registry WHERE skill_name = ? LIMIT 1";
       const result = await dbAdaptor.prisma.$queryRawUnsafe(query, skillName);
       return Array.isArray(result) && result.length > 0;
     } catch (error) {
@@ -750,7 +890,10 @@ export class RateValidationService {
         ORDER BY LENGTH(skill_name) 
         LIMIT 1
       `;
-      const [result] = await dbAdaptor.prisma.$queryRawUnsafe(query, `%${skillName}%`) as any[];
+      const [result] = (await dbAdaptor.prisma.$queryRawUnsafe(
+        query,
+        `%${skillName}%`
+      )) as any[];
       return result?.skill_name || null;
     } catch (error) {
       logger.warn({ error, skillName }, "Failed to find similar skill");
@@ -758,89 +901,114 @@ export class RateValidationService {
     }
   }
 
-  private async validateRoleSkillAlignment(role: string, skills: Skill[]): Promise<{ isAligned: boolean; message?: string }> {
+  private async validateRoleSkillAlignment(
+    role: string,
+    skills: Skill[]
+  ): Promise<{ isAligned: boolean; message?: string }> {
     // Simplified role-skill alignment check
     // In production, this would use ML or comprehensive mapping
-    
-    const technicalRoles = ['Developer', 'Engineer', 'Architect', 'Analyst'];
-    const managementRoles = ['Manager', 'Director', 'Lead'];
-    
-    const hasTechnicalSkills = skills.some(s => s.category === 'Technical');
-    const hasLeadershipSkills = skills.some(s => s.category === 'Leadership');
-    
-    const isTechnicalRole = technicalRoles.some(tr => role.includes(tr));
-    const isManagementRole = managementRoles.some(mr => role.includes(mr));
-    
+
+    const technicalRoles = ["Developer", "Engineer", "Architect", "Analyst"];
+    const managementRoles = ["Manager", "Director", "Lead"];
+
+    const hasTechnicalSkills = skills.some((s) => s.category === "Technical");
+    const hasLeadershipSkills = skills.some((s) => s.category === "Leadership");
+
+    const isTechnicalRole = technicalRoles.some((tr) => role.includes(tr));
+    const isManagementRole = managementRoles.some((mr) => role.includes(mr));
+
     if (isTechnicalRole && !hasTechnicalSkills) {
-      return { isAligned: false, message: 'Technical role should have technical skills' };
+      return {
+        isAligned: false,
+        message: "Technical role should have technical skills",
+      };
     }
-    
+
     if (isManagementRole && !hasLeadershipSkills) {
-      return { isAligned: false, message: 'Management role should have leadership skills' };
+      return {
+        isAligned: false,
+        message: "Management role should have leadership skills",
+      };
     }
-    
+
     return { isAligned: true };
   }
 
   private findDuplicateSkills(skills: Skill[]): string[] {
-    const skillNames = skills.map(s => s.name.toLowerCase());
-    const duplicates = skillNames.filter((name, index) => skillNames.indexOf(name) !== index);
+    const skillNames = skills.map((s) => s.name.toLowerCase());
+    const duplicates = skillNames.filter(
+      (name, index) => skillNames.indexOf(name) !== index
+    );
     return [...new Set(duplicates)];
   }
 
-  private getExpectedExperienceRange(seniority: SeniorityLevel): { min: number; max: number } {
+  private getExpectedExperienceRange(seniority: SeniorityLevel): {
+    min: number;
+    max: number;
+  } {
     const ranges: Record<SeniorityLevel, { min: number; max: number }> = {
-      'Junior': { min: 0, max: 3 },
-      'Mid-Level': { min: 2, max: 6 },
-      'Senior': { min: 5, max: 10 },
-      'Lead': { min: 8, max: 15 },
-      'Principal': { min: 12, max: 20 },
-      'Director': { min: 15, max: 25 }
+      Junior: { min: 0, max: 3 },
+      "Mid-Level": { min: 2, max: 6 },
+      Senior: { min: 5, max: 10 },
+      Lead: { min: 8, max: 15 },
+      Principal: { min: 12, max: 20 },
+      Director: { min: 15, max: 25 },
     };
-    
+
     return ranges[seniority] || { min: 0, max: 50 };
   }
 
   private suggestSeniorityForExperience(experience: number): SeniorityLevel {
-    if (experience <= 2) return 'Junior';
-    if (experience <= 5) return 'Mid-Level';
-    if (experience <= 8) return 'Senior';
-    if (experience <= 12) return 'Lead';
-    if (experience <= 18) return 'Principal';
-    return 'Director';
+    if (experience <= 2) return "Junior";
+    if (experience <= 5) return "Mid-Level";
+    if (experience <= 8) return "Senior";
+    if (experience <= 12) return "Lead";
+    if (experience <= 18) return "Principal";
+    return "Director";
   }
 
-  private validateRoleSeniorityAlignment(role: string, seniority: SeniorityLevel): { isValid: boolean; message?: string } {
+  private validateRoleSeniorityAlignment(
+    role: string,
+    seniority: SeniorityLevel
+  ): { isValid: boolean; message?: string } {
     // Simplified validation - in production, use comprehensive role taxonomy
-    const seniorRoles = ['Architect', 'Principal', 'Director', 'VP'];
-    const juniorRoles = ['Intern', 'Associate', 'Assistant'];
-    
-    const isSeniorRole = seniorRoles.some(sr => role.includes(sr));
-    const isJuniorRole = juniorRoles.some(jr => role.includes(jr));
-    
-    if (isSeniorRole && ['Junior', 'Mid-Level'].includes(seniority)) {
-      return { isValid: false, message: 'Senior role title with junior seniority level' };
+    const seniorRoles = ["Architect", "Principal", "Director", "VP"];
+    const juniorRoles = ["Intern", "Associate", "Assistant"];
+
+    const isSeniorRole = seniorRoles.some((sr) => role.includes(sr));
+    const isJuniorRole = juniorRoles.some((jr) => role.includes(jr));
+
+    if (isSeniorRole && ["Junior", "Mid-Level"].includes(seniority)) {
+      return {
+        isValid: false,
+        message: "Senior role title with junior seniority level",
+      };
     }
-    
-    if (isJuniorRole && ['Lead', 'Principal', 'Director'].includes(seniority)) {
-      return { isValid: false, message: 'Junior role title with senior seniority level' };
+
+    if (isJuniorRole && ["Lead", "Principal", "Director"].includes(seniority)) {
+      return {
+        isValid: false,
+        message: "Junior role title with senior seniority level",
+      };
     }
-    
+
     return { isValid: true };
   }
 
-  private generateGenericSuggestion(error: ValidationError): CorrectionSuggestion | null {
+  private generateGenericSuggestion(
+    error: ValidationError
+  ): CorrectionSuggestion | null {
     // Generate generic suggestions based on field patterns
-    if (error.field.includes('rate') || error.field.includes('Rate')) {
+    if (error.field.includes("rate") || error.field.includes("Rate")) {
       return {
         field: error.field,
         currentValue: null,
         suggestedValue: 100,
-        reason: 'Default rate suggestion',
-        confidence: 0.3
+        reason: "Default rate suggestion",
+        confidence: 0.3,
       };
     }
-    
+
     return null;
   }
 
@@ -851,10 +1019,10 @@ export class RateValidationService {
     try {
       // Test basic validation functionality
       const testRate: Partial<EnhancedRate> = {
-        id: 'test',
-        rateCardId: 'test',
-        role: 'Test Role',
-        seniorityLevel: 'Mid-Level',
+        id: "test",
+        rateCardId: "test",
+        role: "Test Role",
+        seniorityLevel: "Mid-Level",
         hourlyRate: 100,
         billableHours: 8,
         requiredSkills: [],
@@ -862,9 +1030,9 @@ export class RateValidationService {
         securityClearanceRequired: false,
         remoteWorkAllowed: true,
         travelPercentage: 0,
-        rateType: 'standard',
+        rateType: "standard",
         overtimeMultiplier: 1.5,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
       const validation = this.validateRateConsistency(testRate as EnhancedRate);

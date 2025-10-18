@@ -110,6 +110,11 @@ interface ContractData {
     color: string;
   }>;
   processingDuration: number;
+  artifacts?: Array<{
+    type: string;
+    data: any;
+  }>;
+  artifactCount?: number;
 }
 
 export default function ContractDetailsPage() {
@@ -398,6 +403,80 @@ export default function ContractDetailsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Artifacts Display */}
+          {contract.artifacts && contract.artifacts.length > 0 && (
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-6 h-6 text-purple-600" />
+                  Generated Artifacts ({contract.artifactCount})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {contract.artifacts.map((artifact, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="font-semibold text-purple-900">
+                          {artifact.type.toUpperCase()}
+                        </h4>
+                        <Badge className="bg-purple-600 text-white">
+                          Generated
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-purple-700">
+                        {typeof artifact.data === "object" ? (
+                          <div className="space-y-1">
+                            {Object.entries(artifact.data || {})
+                              .slice(0, 3)
+                              .map(([key, value]) => (
+                                <div
+                                  key={key}
+                                  className="flex items-start gap-2"
+                                >
+                                  <span className="font-medium capitalize">
+                                    {key}:
+                                  </span>
+                                  <span className="text-purple-600">
+                                    {typeof value === "object"
+                                      ? Array.isArray(value)
+                                        ? `${value.length} items`
+                                        : "Complex data"
+                                      : String(value).substring(0, 50)}
+                                  </span>
+                                </div>
+                              ))}
+                            {Object.keys(artifact.data || {}).length > 3 && (
+                              <div className="text-xs text-purple-500 mt-2">
+                                +{Object.keys(artifact.data).length - 3} more
+                                fields
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-purple-600">
+                            {String(artifact.data).substring(0, 100)}
+                          </p>
+                        )}
+                      </div>
+                      <details className="mt-3">
+                        <summary className="cursor-pointer text-xs text-purple-600 hover:text-purple-800 font-medium">
+                          View Full Data
+                        </summary>
+                        <pre className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-60">
+                          {JSON.stringify(artifact.data, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Contract Overview */}
           {contract.metadata && (

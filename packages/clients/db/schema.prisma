@@ -207,6 +207,7 @@ model Contract {
   tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contractArtifacts  ContractArtifact[]
   contractEmbeddings ContractEmbedding[]
+  contractMetadata   ContractMetadata?
   versions           ContractVersion[]
   embeddings         Embedding[]
   financialAnalysis  FinancialAnalysis[]
@@ -229,6 +230,49 @@ model Contract {
   @@index([tenantId, contractType])
   @@index([tenantId, clientName])
   @@index([tenantId, supplierName])
+}
+
+model ContractMetadata {
+  id           String   @id @default(cuid())
+  contractId   String   @unique
+  tenantId     String
+  categoryId   String?
+  tags         String[]
+  systemFields Json     @default("{}")
+  customFields Json     @default("{}")
+  lastUpdated  DateTime @default(now())
+  updatedBy    String
+  createdAt    DateTime @default(now())
+  contract     Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@map("contract_metadata")
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([tags])
+}
+
+model TaxonomyCategory {
+  id          String             @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?
+  parentId    String?
+  level       Int                @default(0)
+  path        String
+  color       String             @default("#3B82F6")
+  icon        String             @default("folder")
+  isActive    Boolean            @default(true)
+  metadata    Json               @default("{}")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  parent      TaxonomyCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    TaxonomyCategory[] @relation("CategoryHierarchy")
+
+  @@map("taxonomy_categories")
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([parentId])
+  @@index([path])
 }
 
 model Party {

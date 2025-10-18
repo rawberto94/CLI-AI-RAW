@@ -1,5 +1,13 @@
 // Advanced Compliance Analysis Models
 
+export interface CompliancePolicy {
+  id: string;
+  name: string;
+  type: string;
+  requirements: any[];
+  enforcementLevel: string;
+}
+
 export interface AdvancedComplianceResult {
   contractId: string;
   analysisDate: Date;
@@ -32,14 +40,14 @@ export interface IdentifiedClause {
     end: number;
   };
   analysis: string;
-  quality?: 'excellent' | 'good' | 'fair' | 'poor';
+  quality?: "excellent" | "good" | "fair" | "poor";
   risks?: string[];
   suggestions?: string[];
 }
 
 export interface MissingClause {
   type: string;
-  importance: 'critical' | 'high' | 'medium' | 'low';
+  importance: "critical" | "high" | "medium" | "low";
   recommendation: string;
   template?: string;
   riskImpact?: number;
@@ -54,7 +62,7 @@ export interface ClauseQuality {
 }
 
 export interface ComplianceRiskAssessment {
-  overallRiskLevel: 'low' | 'medium' | 'high' | 'critical';
+  overallRiskLevel: "low" | "medium" | "high" | "critical";
   riskFactors: RiskFactor[];
   riskScore: number;
   mitigationStrategies: string[];
@@ -62,9 +70,9 @@ export interface ComplianceRiskAssessment {
 }
 
 export interface RiskFactor {
-  type: 'legal' | 'operational' | 'financial' | 'regulatory' | 'reputational';
+  type: "legal" | "operational" | "financial" | "regulatory" | "reputational";
   description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   likelihood: number;
   impact: number;
   riskScore?: number;
@@ -80,7 +88,7 @@ export interface RiskMatrix {
 
 export interface RegulatoryComplianceResult {
   regulations: RegulationCompliance[];
-  overallCompliance: 'compliant' | 'partial' | 'non-compliant';
+  overallCompliance: "compliant" | "partial" | "non-compliant";
   complianceScore: number;
   recommendations: string[];
   auditTrail?: ComplianceAuditEntry[];
@@ -89,7 +97,7 @@ export interface RegulatoryComplianceResult {
 export interface RegulationCompliance {
   name: string;
   applicable: boolean;
-  compliance: 'compliant' | 'partial' | 'non-compliant' | 'n/a';
+  compliance: "compliant" | "partial" | "non-compliant" | "n/a";
   issues: string[];
   requirements: string[];
   score?: number;
@@ -114,7 +122,7 @@ export interface IndustryStandardsResult {
 export interface IndustryStandard {
   name: string;
   applicable: boolean;
-  compliance: 'compliant' | 'partial' | 'non-compliant';
+  compliance: "compliant" | "partial" | "non-compliant";
   score: number;
   gaps?: string[];
   requirements?: string[];
@@ -131,13 +139,13 @@ export interface BestPracticesResult {
   bestPractices: BestPractice[];
   overallScore: number;
   improvements: string[];
-  maturityLevel?: 'basic' | 'developing' | 'advanced' | 'optimized';
+  maturityLevel?: "basic" | "developing" | "advanced" | "optimized";
 }
 
 export interface BestPractice {
   practice: string;
   present: boolean;
-  quality: 'excellent' | 'good' | 'fair' | 'poor' | 'missing';
+  quality: "excellent" | "good" | "fair" | "poor" | "missing";
   score: number;
   recommendation?: string;
   examples?: string[];
@@ -154,11 +162,11 @@ export interface SemanticAnalysisResult {
 }
 
 export interface SemanticIssue {
-  type: 'ambiguity' | 'inconsistency' | 'complexity' | 'readability';
+  type: "ambiguity" | "inconsistency" | "complexity" | "readability";
   description: string;
   location: string;
   suggestion: string;
-  severity?: 'low' | 'medium' | 'high';
+  severity?: "low" | "medium" | "high";
 }
 
 export interface LanguageMetrics {
@@ -172,7 +180,7 @@ export interface ComplianceInsight {
   type: string;
   title: string;
   description: string;
-  impact: 'low' | 'medium' | 'high' | 'critical';
+  impact: "low" | "medium" | "high" | "critical";
   confidence: number;
   actionable?: boolean;
   category?: string;
@@ -182,8 +190,8 @@ export interface PriorityAction {
   id: string;
   type: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  effort: 'low' | 'medium' | 'high';
+  priority: "low" | "medium" | "high" | "critical";
+  effort: "low" | "medium" | "high";
   timeline: string;
   dependencies?: string[];
   expectedOutcome?: string;
@@ -192,9 +200,9 @@ export interface PriorityAction {
 export interface ComplianceGap {
   type: string;
   description: string;
-  importance: 'low' | 'medium' | 'high' | 'critical';
+  importance: "low" | "medium" | "high" | "critical";
   recommendation: string;
-  effort?: 'low' | 'medium' | 'high';
+  effort?: "low" | "medium" | "high";
   cost?: number;
 }
 
@@ -237,19 +245,19 @@ export interface PolicyTrend {
 export interface PolicyGap {
   area: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: "low" | "medium" | "high" | "critical";
   impact: string;
   currentCoverage?: number;
   requiredCoverage?: number;
 }
 
 export interface PolicyRecommendation {
-  type: 'new_policy' | 'policy_update' | 'policy_retirement';
+  type: "new_policy" | "policy_update" | "policy_retirement";
   area?: string;
   policyId?: string;
   description: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  effort: 'low' | 'medium' | 'high';
+  priority: "low" | "medium" | "high" | "critical";
+  effort: "low" | "medium" | "high";
   expectedBenefit?: string;
 }
 
@@ -279,7 +287,7 @@ export interface ImplementationTimeline {
 export interface TimedPhase extends PolicyPhase {
   startDate: Date;
   endDate: Date;
-  status?: 'planned' | 'in_progress' | 'completed' | 'delayed';
+  status?: "planned" | "in_progress" | "completed" | "delayed";
 }
 
 export interface PolicyImpact {
@@ -306,8 +314,8 @@ export interface ComplianceMonitoringSetup {
 export interface MonitoringRequirement {
   type: string;
   description: string;
-  frequency: 'real-time' | 'daily' | 'weekly' | 'monthly' | 'quarterly';
-  criticality: 'low' | 'medium' | 'high' | 'critical';
+  frequency: "real-time" | "daily" | "weekly" | "monthly" | "quarterly";
+  criticality: "low" | "medium" | "high" | "critical";
   dataSource?: string;
 }
 
@@ -325,7 +333,11 @@ export interface MonitoringRule {
 export interface AutomatedCheck {
   id: string;
   name: string;
-  type: 'clause_presence' | 'value_validation' | 'date_monitoring' | 'compliance_status';
+  type:
+    | "clause_presence"
+    | "value_validation"
+    | "date_monitoring"
+    | "compliance_status";
   schedule: string;
   parameters: Record<string, any>;
   enabled: boolean;
@@ -341,7 +353,7 @@ export interface AlertConfiguration {
 }
 
 export interface AlertChannel {
-  type: 'email' | 'sms' | 'webhook' | 'dashboard';
+  type: "email" | "sms" | "webhook" | "dashboard";
   configuration: Record<string, any>;
   enabled: boolean;
 }
@@ -375,7 +387,7 @@ export interface DashboardConfiguration {
 
 export interface DashboardWidget {
   id: string;
-  type: 'chart' | 'table' | 'metric' | 'alert';
+  type: "chart" | "table" | "metric" | "alert";
   title: string;
   configuration: Record<string, any>;
   position: { x: number; y: number; width: number; height: number };
@@ -460,8 +472,8 @@ export interface IndustryBestPractice {
 export interface ImprovementOpportunity {
   area: string;
   description: string;
-  impact: 'low' | 'medium' | 'high';
-  effort: 'low' | 'medium' | 'high';
+  impact: "low" | "medium" | "high";
+  effort: "low" | "medium" | "high";
   timeline: string;
   expectedBenefit: string;
 }
@@ -561,7 +573,7 @@ export interface ComplianceValidation {
 export interface ValidationError {
   field: string;
   message: string;
-  severity: 'critical' | 'major' | 'minor';
+  severity: "critical" | "major" | "minor";
   code: string;
   location?: string;
 }
@@ -569,7 +581,7 @@ export interface ValidationError {
 export interface ValidationWarning {
   field: string;
   message: string;
-  impact: 'high' | 'medium' | 'low';
+  impact: "high" | "medium" | "low";
   code: string;
   suggestion?: string;
 }
@@ -579,7 +591,7 @@ export interface ValidationSuggestion {
   message: string;
   improvement: string;
   code: string;
-  priority?: 'high' | 'medium' | 'low';
+  priority?: "high" | "medium" | "low";
 }
 
 // Analytics and Reporting Models

@@ -30,6 +30,14 @@ const nextConfig = {
     // webpackBuildWorker causes issues in 15.1.0
     webpackBuildWorker: false,
     externalDir: true,
+    // Allow Server Actions from Codespaces forwarded requests
+    serverActions: {
+      allowedOrigins: [
+        "localhost:3005",
+        "*.app.github.dev",
+        "zany-journey-69w67jw7vvwj347jg-3005.app.github.dev",
+      ],
+    },
   },
 
   // Minimal webpack configuration

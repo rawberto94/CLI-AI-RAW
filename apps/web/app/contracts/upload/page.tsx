@@ -3,14 +3,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { BatchUploadZone } from "@/components/batch-upload-zone";
-import { ContractUploadZone } from "@/components/contracts/ContractUploadZone";
-import { UploadProgressTracker } from "@/components/contracts/UploadProgressTracker";
-import {
-  UploadSuccessState,
-  UploadErrorState,
-  UploadMixedState,
-} from "@/components/contracts/UploadStatusStates";
 import { useUploadManager } from "@/lib/contracts/upload-manager";
 import { API_BASE_URL } from "../../../lib/config";
 import { tenantHeaders, getTenantId } from "../../../lib/tenant";
@@ -111,7 +103,7 @@ export default function ContractsUploadPage() {
   const loadPacks = () => {
     const fetchPacks = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/policies/packs`, {
+        const res = await fetch(`${API_BASE_URL}/policies/packs`, {
           headers: tenantHeaders(),
         });
         if (res.ok) {

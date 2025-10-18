@@ -1,6 +1,6 @@
-"use client"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Home,
   FolderOpen,
@@ -17,21 +17,23 @@ import {
   Sparkles,
   Play,
   Rocket,
-  Tag
-} from "lucide-react"
+  Tag,
+  CreditCard,
+} from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "./ui/tooltip"
-import { Button } from "./ui/button"
+} from "./ui/tooltip";
+import { Button } from "./ui/button";
 
 const items = [
   { href: "/", label: "Dashboard", Icon: Home },
   { href: "/contracts", label: "Contracts", Icon: FolderOpen },
   { href: "/suppliers", label: "Suppliers", Icon: Building2 },
   { href: "/drafts", label: "Draft Editor", Icon: FileEdit },
+  { href: "/rate-cards", label: "Rate Cards", Icon: CreditCard },
   { href: "/benchmarks", label: "Benchmarks", Icon: Percent },
   { href: "/benchmarks/compare", label: "Compare", Icon: Percent },
   { href: "/compliance", label: "Compliance", Icon: ShieldAlert },
@@ -41,16 +43,34 @@ const items = [
   { href: "/automation", label: "Automation", Icon: Sparkles },
   { href: "/upload", label: "Upload", Icon: Upload },
   { href: "/runs", label: "Runs", Icon: Layers },
-]
+];
 
 const demoItems = [
-  { href: "/futuristic-contracts", label: "AI Intelligence Hub", Icon: Sparkles, badge: "Live Demo", description: "Complete AI-powered contract intelligence" },
-  { href: "/pilot-demo", label: "Executive Pilot Demo", Icon: Rocket, badge: "CTO Ready", description: "Executive presentation demo" },
-  { href: "/mvp", label: "MVP Showcase", Icon: Play, badge: "Interactive", description: "Core functionality demo" },
-]
+  {
+    href: "/futuristic-contracts",
+    label: "AI Intelligence Hub",
+    Icon: Sparkles,
+    badge: "Live Demo",
+    description: "Complete AI-powered contract intelligence",
+  },
+  {
+    href: "/pilot-demo",
+    label: "Executive Pilot Demo",
+    Icon: Rocket,
+    badge: "CTO Ready",
+    description: "Executive presentation demo",
+  },
+  {
+    href: "/mvp",
+    label: "MVP Showcase",
+    Icon: Play,
+    badge: "Interactive",
+    description: "Core functionality demo",
+  },
+];
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = usePathname();
   return (
     <aside className="hidden border-r bg-muted/40 md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
@@ -83,11 +103,11 @@ export function Sidebar() {
                 AI Intelligence Platform
               </h3>
             </div>
-            
+
             {demoItems.map(({ href, label, Icon, badge, description }) => {
-              const active = pathname === href
-              const isMainDemo = href === "/futuristic-contracts"
-              
+              const active = pathname === href;
+              const isMainDemo = href === "/futuristic-contracts";
+
               return (
                 <div key={href} className="mb-2">
                   {isMainDemo ? (
@@ -103,14 +123,18 @@ export function Sidebar() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold text-sm">{label}</span>
+                            <span className="font-semibold text-sm">
+                              {label}
+                            </span>
                             {badge && (
                               <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
                                 {badge}
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-blue-100">{description}</span>
+                          <span className="text-xs text-blue-100">
+                            {description}
+                          </span>
                         </div>
                         <Sparkles className="h-4 w-4 ml-auto animate-pulse" />
                       </Link>
@@ -132,12 +156,14 @@ export function Sidebar() {
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-muted-foreground">{description}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {description}
+                        </span>
                       </div>
                     </Link>
                   )}
                 </div>
-              )
+              );
             })}
           </div>
 
@@ -153,7 +179,7 @@ export function Sidebar() {
 
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
             {items.map(({ href, label, Icon }) => {
-              const active = pathname === href
+              const active = pathname === href;
               return (
                 <Link
                   key={href}
@@ -165,7 +191,7 @@ export function Sidebar() {
                   <Icon className="h-4 w-4" />
                   {label}
                 </Link>
-              )
+              );
             })}
           </nav>
         </div>
@@ -182,6 +208,5 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
-  )
+  );
 }
-

@@ -66,6 +66,11 @@ export class CacheAdaptor {
     }
   }
 
+  // Alias for delete
+  async del(key: string): Promise<void> {
+    return this.delete(key);
+  }
+
   async invalidatePattern(pattern: string): Promise<void> {
     try {
       if (!this.connected) await this.connect();

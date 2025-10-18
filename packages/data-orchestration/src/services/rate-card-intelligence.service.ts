@@ -1,19 +1,16 @@
 /**
  * Rate Card Intelligence Service
- * 
+ *
  * Provides comprehensive intelligence and analytics for rate card data
  * across the entire contract portfolio.
  */
 
 import { dbAdaptor } from "../dal/database.adaptor";
 import { cacheAdaptor } from "../dal/cache.adaptor";
-import { analyticalEventPublisher } from "../events/analytical-event-publisher";
 import { analyticalDatabaseService } from "./analytical-database.service";
-import { 
-  EnhancedRateCardFilters, 
+import {
+  EnhancedRateCardFilters,
   EnhancedRateFilters,
-  EnhancedRateCard,
-  EnhancedRate 
 } from "../types/enhanced-rate-card.types";
 import { enhancedRateAnalyticsService } from "./enhanced-rate-analytics.service";
 import pino from "pino";
@@ -65,12 +62,12 @@ export interface RateAnalytics {
 }
 
 export interface TrendAnalysis {
-  overallTrend: 'increasing' | 'decreasing' | 'stable';
+  overallTrend: "increasing" | "decreasing" | "stable";
   trendStrength: number;
   periodOverPeriodChange: number;
   roleSpecificTrends: Array<{
     role: string;
-    trend: 'increasing' | 'decreasing' | 'stable';
+    trend: "increasing" | "decreasing" | "stable";
     changePercentage: number;
     confidence: number;
   }>;
@@ -104,7 +101,7 @@ export interface QueryResult {
   summary: string;
   confidence: number;
   suggestions: string[];
-  visualizationType?: 'table' | 'chart' | 'comparison' | 'trend';
+  visualizationType?: "table" | "chart" | "comparison" | "trend";
 }
 
 export class RateCardIntelligenceService {
@@ -128,7 +125,10 @@ export class RateCardIntelligenceService {
    */
   async getAllRateCards(filters: RateCardFilters = {}): Promise<any[]> {
     try {
-      logger.info({ filters }, "Getting all rate cards with enhanced filtering");
+      logger.info(
+        { filters },
+        "Getting all rate cards with enhanced filtering"
+      );
 
       const whereConditions = [];
       const params: any[] = [];
@@ -143,14 +143,14 @@ export class RateCardIntelligenceService {
         params.push(filters.supplierId);
       }
 
-      if (filters.region) {
+      if ((filters as any).region) {
         whereConditions.push("rc.region = ?");
-        params.push(filters.region);
+        params.push((filters as any).region);
       }
 
-      if (filters.deliveryModel) {
+      if ((filters as any).deliveryModel) {
         whereConditions.push("rc.delivery_model = ?");
-        params.push(filters.deliveryModel);
+        params.push((filters as any).deliveryModel);
       }
 
       // Enhanced filters
@@ -189,19 +189,25 @@ export class RateCardIntelligenceService {
         params.push(filters.approvalStatus);
       }
 
-      if (filters.effectiveDateFrom || filters.dateFrom) {
+      if (filters.effectiveDateFrom || (filters as any).dateFrom) {
         whereConditions.push("rc.effective_date >= ?");
-        params.push((filters.effectiveDateFrom || filters.dateFrom)!.toISOString());
+        params.push(
+          (filters.effectiveDateFrom ||
+            (filters as any).dateFrom)!.toISOString()
+        );
       }
 
-      if (filters.effectiveDateTo || filters.dateTo) {
+      if (filters.effectiveDateTo || (filters as any).dateTo) {
         whereConditions.push("rc.effective_date <= ?");
-        params.push((filters.effectiveDateTo || filters.dateTo)!.toISOString());
+        params.push(
+          (filters.effectiveDateTo || (filters as any).dateTo)!.toISOString()
+        );
       }
 
-      const whereClause = whereConditions.length > 0 
-        ? `WHERE ${whereConditions.join(" AND ")}`
-        : "";
+      const whereClause =
+        whereConditions.length > 0
+          ? `WHERE ${whereConditions.join(" AND ")}`
+          : "";
 
       const query = `
         SELECT 
@@ -227,11 +233,13 @@ export class RateCardIntelligenceService {
         ORDER BY rc.effective_date DESC
       `;
 
-      const rateCards = await dbAdaptor.prisma.$queryRawUnsafe(query, ...params);
+      const rateCards = (await dbAdaptor.prisma.$queryRawUnsafe(
+        query,
+        ...params
+      )) as any[];
 
       logger.info({ count: rateCards.length }, "Retrieved enhanced rate cards");
-      return rateCards as any[];
-
+      return rateCards;
     } catch (error) {
       logger.error({ error, filters }, "Failed to get enhanced rate cards");
       throw error;
@@ -241,9 +249,15 @@ export class RateCardIntelligenceService {
   /**
    * Get rates by role with enhanced filtering
    */
-  async getRatesByRole(role: string, filters: RateFilters = {}): Promise<any[]> {
+  async getRatesByRole(
+    role: string,
+    filters: RateFilters = {}
+  ): Promise<any[]> {
     try {
-      logger.info({ role, filters }, "Getting rates by role with enhanced filtering");
+      logger.info(
+        { role, filters },
+        "Getting rates by role with enhanced filtering"
+      );
 
       const whereConditions = ["r.role = ?"];
       const params: any[] = [role];
@@ -254,14 +268,14 @@ export class RateCardIntelligenceService {
       }
 
       // Enhanced seniority filtering
-      if (filters.seniorityLevel || filters.level) {
+      if (filters.seniorityLevel || (filters as any).level) {
         whereConditions.push("r.seniority_level = ?");
-        params.push(filters.seniorityLevel || filters.level);
+        params.push(filters.seniorityLevel || (filters as any).level);
       }
 
-      if (filters.region) {
+      if ((filters as any).region) {
         whereConditions.push("rc.region = ?");
-        params.push(filters.region);
+        params.push((filters as any).region);
       }
 
       if (filters.country) {
@@ -344,13 +358,21 @@ export class RateCardIntelligenceService {
         ORDER BY r.hourly_rate DESC
       `;
 
-      const rates = await dbAdaptor.prisma.$queryRawUnsafe(query, ...params);
+      const rates = (await dbAdaptor.prisma.$queryRawUnsafe(
+        query,
+        ...params
+      )) as any[];
 
-      logger.info({ role, count: rates.length }, "Retrieved enhanced rates by role");
-      return rates as any[];
-
+      logger.info(
+        { role, count: rates.length },
+        "Retrieved enhanced rates by role"
+      );
+      return rates;
     } catch (error) {
-      logger.error({ error, role, filters }, "Failed to get enhanced rates by role");
+      logger.error(
+        { error, role, filters },
+        "Failed to get enhanced rates by role"
+      );
       throw error;
     }
   }
@@ -358,7 +380,10 @@ export class RateCardIntelligenceService {
   /**
    * Get rates by supplier
    */
-  async getRatesBySupplier(supplierId: string, tenantId: string = 'default'): Promise<any[]> {
+  async getRatesBySupplier(
+    supplierId: string,
+    tenantId: string = "default"
+  ): Promise<any[]> {
     try {
       logger.info({ supplierId, tenantId }, "Getting rates by supplier");
 
@@ -377,11 +402,17 @@ export class RateCardIntelligenceService {
         ORDER BY rc.effective_date DESC, r.role, r.level
       `;
 
-      const rates = await dbAdaptor.prisma.$queryRawUnsafe(query, supplierId, tenantId);
+      const rates = (await dbAdaptor.prisma.$queryRawUnsafe(
+        query,
+        supplierId,
+        tenantId
+      )) as any[];
 
-      logger.info({ supplierId, count: rates.length }, "Retrieved rates by supplier");
-      return rates as any[];
-
+      logger.info(
+        { supplierId, count: rates.length },
+        "Retrieved rates by supplier"
+      );
+      return rates;
     } catch (error) {
       logger.error({ error, supplierId }, "Failed to get rates by supplier");
       throw error;
@@ -395,7 +426,10 @@ export class RateCardIntelligenceService {
   /**
    * Generate comprehensive rate analytics
    */
-  async generateRateAnalytics(tenantId: string = 'default', period: string = '12M'): Promise<RateAnalytics> {
+  async generateRateAnalytics(
+    tenantId: string = "default",
+    period: string = "12M"
+  ): Promise<RateAnalytics> {
     try {
       logger.info({ tenantId, period }, "Generating rate analytics");
 
@@ -411,7 +445,10 @@ export class RateCardIntelligenceService {
         WHERE rc.tenant_id = ?
       `;
 
-      const [stats] = await dbAdaptor.prisma.$queryRawUnsafe(statsQuery, tenantId) as any[];
+      const [stats] = (await dbAdaptor.prisma.$queryRawUnsafe(
+        statsQuery,
+        tenantId
+      )) as any[];
 
       // Get top suppliers
       const suppliersQuery = `
@@ -429,7 +466,10 @@ export class RateCardIntelligenceService {
         LIMIT 10
       `;
 
-      const topSuppliers = await dbAdaptor.prisma.$queryRawUnsafe(suppliersQuery, tenantId) as any[];
+      const topSuppliers = (await dbAdaptor.prisma.$queryRawUnsafe(
+        suppliersQuery,
+        tenantId
+      )) as any[];
 
       // Get role distribution
       const rolesQuery = `
@@ -444,15 +484,20 @@ export class RateCardIntelligenceService {
         ORDER BY average_rate DESC
       `;
 
-      const roleDistribution = await dbAdaptor.prisma.$queryRawUnsafe(rolesQuery, tenantId) as any[];
+      const roleDistribution = (await dbAdaptor.prisma.$queryRawUnsafe(
+        rolesQuery,
+        tenantId
+      )) as any[];
 
       // Calculate market position (mock for now)
       const marketPosition = this.calculateMarketPosition(stats.average_rate);
       const trendDirection = await this.calculateTrendDirection(tenantId);
 
       // Get enhanced analytics from the new service
-      const lineOfServiceAnalytics = await enhancedRateAnalyticsService.analyzeByLineOfService(tenantId);
-      const seniorityAnalytics = await enhancedRateAnalyticsService.analyzeBySeniority(tenantId);
+      const lineOfServiceAnalytics =
+        await enhancedRateAnalyticsService.analyzeByLineOfService(tenantId);
+      const seniorityAnalytics =
+        await enhancedRateAnalyticsService.analyzeBySeniority(tenantId);
 
       const analytics: RateAnalytics = {
         totalRateCards: stats.total_rate_cards || 0,
@@ -467,17 +512,19 @@ export class RateCardIntelligenceService {
           supplierName: supplier.supplier_name,
           averageRate: supplier.average_rate || 0,
           rateCount: supplier.rate_count || 0,
-          marketPosition: this.calculateSupplierMarketPosition(supplier.average_rate || 0)
+          marketPosition: this.calculateSupplierMarketPosition(
+            supplier.average_rate || 0
+          ),
         })),
         roleDistribution: roleDistribution.map((role: any) => ({
           role: role.role,
           count: role.count || 0,
           averageRate: role.average_rate || 0,
-          marketVariance: this.calculateMarketVariance(role.average_rate || 0)
+          marketVariance: this.calculateMarketVariance(role.average_rate || 0),
         })),
         // Enhanced analytics
         lineOfServiceBreakdown: lineOfServiceAnalytics.serviceBreakdown,
-        seniorityProgression: seniorityAnalytics.seniorityProgression
+        seniorityProgression: seniorityAnalytics.seniorityProgression as any,
       };
 
       // Cache analytics
@@ -486,9 +533,11 @@ export class RateCardIntelligenceService {
 
       logger.info({ tenantId, analytics }, "Generated rate analytics");
       return analytics;
-
     } catch (error) {
-      logger.error({ error, tenantId, period }, "Failed to generate rate analytics");
+      logger.error(
+        { error, tenantId, period },
+        "Failed to generate rate analytics"
+      );
       throw error;
     }
   }
@@ -496,7 +545,10 @@ export class RateCardIntelligenceService {
   /**
    * Analyze rate trends over time
    */
-  async analyzeTrends(tenantId: string = 'default', timeframe: string = '24M'): Promise<TrendAnalysis> {
+  async analyzeTrends(
+    tenantId: string = "default",
+    timeframe: string = "24M"
+  ): Promise<TrendAnalysis> {
     try {
       logger.info({ tenantId, timeframe }, "Analyzing rate trends");
 
@@ -514,15 +566,20 @@ export class RateCardIntelligenceService {
         ORDER BY rc.effective_date
       `;
 
-      const historicalRates = await dbAdaptor.prisma.$queryRawUnsafe(trendsQuery, tenantId) as any[];
+      const historicalRates = (await dbAdaptor.prisma.$queryRawUnsafe(
+        trendsQuery,
+        tenantId
+      )) as any[];
 
       // Calculate overall trend
       const overallTrend = this.calculateOverallTrend(historicalRates);
       const trendStrength = this.calculateTrendStrength(historicalRates);
-      const periodOverPeriodChange = this.calculatePeriodOverPeriodChange(historicalRates);
+      const periodOverPeriodChange =
+        this.calculatePeriodOverPeriodChange(historicalRates);
 
       // Calculate role-specific trends
-      const roleSpecificTrends = this.calculateRoleSpecificTrends(historicalRates);
+      const roleSpecificTrends =
+        this.calculateRoleSpecificTrends(historicalRates);
 
       // Generate forecast
       const forecast = this.generateRateForecast(historicalRates, 6); // 6 months ahead
@@ -533,12 +590,11 @@ export class RateCardIntelligenceService {
         periodOverPeriodChange,
         roleSpecificTrends,
         seasonalPatterns: this.identifySeasonalPatterns(historicalRates),
-        forecast
+        forecast,
       };
 
       logger.info({ tenantId, trendAnalysis }, "Analyzed rate trends");
       return trendAnalysis;
-
     } catch (error) {
       logger.error({ error, tenantId, timeframe }, "Failed to analyze trends");
       throw error;
@@ -548,7 +604,10 @@ export class RateCardIntelligenceService {
   /**
    * Compare suppliers across multiple dimensions
    */
-  async compareSuppliers(supplierIds: string[], tenantId: string = 'default'): Promise<SupplierComparison> {
+  async compareSuppliers(
+    supplierIds: string[],
+    tenantId: string = "default"
+  ): Promise<SupplierComparison> {
     try {
       logger.info({ supplierIds, tenantId }, "Comparing suppliers");
 
@@ -556,11 +615,14 @@ export class RateCardIntelligenceService {
 
       for (const supplierId of supplierIds) {
         const rates = await this.getRatesBySupplier(supplierId, tenantId);
-        
+
         if (rates.length > 0) {
-          const averageRate = rates.reduce((sum, rate) => sum + (rate.hourly_rate || 0), 0) / rates.length;
-          const marketPosition = this.calculateSupplierMarketPosition(averageRate);
-          
+          const averageRate =
+            rates.reduce((sum, rate) => sum + (rate.hourly_rate || 0), 0) /
+            rates.length;
+          const marketPosition =
+            this.calculateSupplierMarketPosition(averageRate);
+
           suppliers.push({
             supplierId,
             supplierName: rates[0]?.supplier_name || supplierId,
@@ -569,17 +631,20 @@ export class RateCardIntelligenceService {
             marketPosition,
             strengths: this.identifySupplierStrengths(rates),
             weaknesses: this.identifySupplierWeaknesses(rates),
-            recommendedAction: this.generateSupplierRecommendation(averageRate, marketPosition)
+            recommendedAction: this.generateSupplierRecommendation(
+              averageRate,
+              marketPosition
+            ),
           });
         }
       }
 
       // Identify leaders
-      const marketLeader = suppliers.reduce((leader, supplier) => 
+      const marketLeader = suppliers.reduce((leader, supplier) =>
         supplier.marketPosition > leader.marketPosition ? supplier : leader
       ).supplierId;
 
-      const costLeader = suppliers.reduce((leader, supplier) => 
+      const costLeader = suppliers.reduce((leader, supplier) =>
         supplier.averageRate < leader.averageRate ? supplier : leader
       ).supplierId;
 
@@ -587,12 +652,11 @@ export class RateCardIntelligenceService {
         suppliers,
         marketLeader,
         costLeader,
-        recommendations: this.generateComparisonRecommendations(suppliers)
+        recommendations: this.generateComparisonRecommendations(suppliers),
       };
 
       logger.info({ supplierIds, comparison }, "Completed supplier comparison");
       return comparison;
-
     } catch (error) {
       logger.error({ error, supplierIds }, "Failed to compare suppliers");
       throw error;
@@ -606,7 +670,10 @@ export class RateCardIntelligenceService {
   /**
    * Process natural language queries about rate data
    */
-  async queryRateData(query: string, tenantId: string = 'default'): Promise<QueryResult> {
+  async queryRateData(
+    query: string,
+    tenantId: string = "default"
+  ): Promise<QueryResult> {
     try {
       logger.info({ query, tenantId }, "Processing natural language query");
 
@@ -614,33 +681,37 @@ export class RateCardIntelligenceService {
       const intent = this.parseQueryIntent(query);
       let results: any[] = [];
       let summary = "";
-      let visualizationType: 'table' | 'chart' | 'comparison' | 'trend' = 'table';
+      let visualizationType: "table" | "chart" | "comparison" | "trend" =
+        "table";
 
       switch (intent.type) {
-        case 'rate_lookup':
+        case "rate_lookup":
           results = await this.handleRateLookupQuery(intent, tenantId);
           summary = `Found ${results.length} rates matching your criteria`;
-          visualizationType = 'table';
+          visualizationType = "table";
           break;
 
-        case 'supplier_comparison':
-          const comparison = await this.handleSupplierComparisonQuery(intent, tenantId);
+        case "supplier_comparison":
+          const comparison = await this.handleSupplierComparisonQuery(
+            intent,
+            tenantId
+          );
           results = comparison.suppliers;
           summary = `Compared ${results.length} suppliers`;
-          visualizationType = 'comparison';
+          visualizationType = "comparison";
           break;
 
-        case 'trend_analysis':
+        case "trend_analysis":
           const trends = await this.handleTrendAnalysisQuery(intent, tenantId);
           results = trends.roleSpecificTrends;
           summary = `Analyzed trends showing ${trends.overallTrend} pattern`;
-          visualizationType = 'trend';
+          visualizationType = "trend";
           break;
 
-        case 'market_position':
+        case "market_position":
           results = await this.handleMarketPositionQuery(intent, tenantId);
           summary = `Analyzed market position for ${results.length} items`;
-          visualizationType = 'chart';
+          visualizationType = "chart";
           break;
 
         default:
@@ -655,7 +726,7 @@ export class RateCardIntelligenceService {
         summary,
         confidence: this.calculateQueryConfidence(intent, results),
         suggestions: this.generateQuerySuggestions(query, intent),
-        visualizationType
+        visualizationType,
       };
 
       // Store query history
@@ -665,14 +736,19 @@ export class RateCardIntelligenceService {
         query,
         response: queryResult,
         confidence: queryResult.confidence,
-        responseTime: Date.now()
+        responseTime: Date.now(),
       });
 
-      logger.info({ query, resultCount: results.length }, "Processed natural language query");
+      logger.info(
+        { query, resultCount: results.length },
+        "Processed natural language query"
+      );
       return queryResult;
-
     } catch (error) {
-      logger.error({ error, query }, "Failed to process natural language query");
+      logger.error(
+        { error, query },
+        "Failed to process natural language query"
+      );
       throw error;
     }
   }
@@ -683,16 +759,16 @@ export class RateCardIntelligenceService {
 
   private calculateMarketPosition(averageRate: number): string {
     // Mock market position calculation
-    if (averageRate > 180) return 'Above P90';
-    if (averageRate > 160) return 'Above P75';
-    if (averageRate > 140) return 'Above P50';
-    if (averageRate > 120) return 'Above P25';
-    return 'Below P25';
+    if (averageRate > 180) return "Above P90";
+    if (averageRate > 160) return "Above P75";
+    if (averageRate > 140) return "Above P50";
+    if (averageRate > 120) return "Above P25";
+    return "Below P25";
   }
 
   private async calculateTrendDirection(tenantId: string): Promise<string> {
     // Mock trend calculation
-    return Math.random() > 0.5 ? 'increasing' : 'stable';
+    return Math.random() > 0.5 ? "increasing" : "stable";
   }
 
   private calculateConfidenceScore(sampleSize: number): number {
@@ -713,20 +789,31 @@ export class RateCardIntelligenceService {
     return ((averageRate - marketAverage) / marketAverage) * 100;
   }
 
-  private calculateOverallTrend(historicalRates: any[]): 'increasing' | 'decreasing' | 'stable' {
-    if (historicalRates.length < 2) return 'stable';
-    
-    const firstHalf = historicalRates.slice(0, Math.floor(historicalRates.length / 2));
-    const secondHalf = historicalRates.slice(Math.floor(historicalRates.length / 2));
-    
-    const firstAvg = firstHalf.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / firstHalf.length;
-    const secondAvg = secondHalf.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / secondHalf.length;
-    
+  private calculateOverallTrend(
+    historicalRates: any[]
+  ): "increasing" | "decreasing" | "stable" {
+    if (historicalRates.length < 2) return "stable";
+
+    const firstHalf = historicalRates.slice(
+      0,
+      Math.floor(historicalRates.length / 2)
+    );
+    const secondHalf = historicalRates.slice(
+      Math.floor(historicalRates.length / 2)
+    );
+
+    const firstAvg =
+      firstHalf.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) /
+      firstHalf.length;
+    const secondAvg =
+      secondHalf.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) /
+      secondHalf.length;
+
     const change = ((secondAvg - firstAvg) / firstAvg) * 100;
-    
-    if (change > 5) return 'increasing';
-    if (change < -5) return 'decreasing';
-    return 'stable';
+
+    if (change > 5) return "increasing";
+    if (change < -5) return "decreasing";
+    return "stable";
   }
 
   private calculateTrendStrength(historicalRates: any[]): number {
@@ -741,7 +828,7 @@ export class RateCardIntelligenceService {
 
   private calculateRoleSpecificTrends(historicalRates: any[]): Array<{
     role: string;
-    trend: 'increasing' | 'decreasing' | 'stable';
+    trend: "increasing" | "decreasing" | "stable";
     changePercentage: number;
     confidence: number;
   }> {
@@ -753,9 +840,9 @@ export class RateCardIntelligenceService {
 
     return Object.entries(roleGroups).map(([role, rates]) => ({
       role,
-      trend: this.calculateOverallTrend(rates),
+      trend: this.calculateOverallTrend(rates as any[]),
       changePercentage: (Math.random() - 0.5) * 20,
-      confidence: Math.random() * 0.3 + 0.7
+      confidence: Math.random() * 0.3 + 0.7,
     }));
   }
 
@@ -764,112 +851,148 @@ export class RateCardIntelligenceService {
     return Array.from({ length: 12 }, () => Math.random() * 0.2 + 0.9);
   }
 
-  private generateRateForecast(historicalRates: any[], months: number): Array<{
+  private generateRateForecast(
+    historicalRates: any[],
+    months: number
+  ): Array<{
     period: string;
     predictedRate: number;
     confidence: number;
   }> {
-    const baseRate = historicalRates.length > 0 
-      ? historicalRates.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / historicalRates.length
-      : 150;
+    const baseRate =
+      historicalRates.length > 0
+        ? historicalRates.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) /
+          historicalRates.length
+        : 150;
 
     return Array.from({ length: months }, (_, i) => ({
-      period: new Date(Date.now() + (i + 1) * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 7),
+      period: new Date(Date.now() + (i + 1) * 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 7),
       predictedRate: baseRate * (1 + (Math.random() - 0.5) * 0.1),
-      confidence: Math.random() * 0.3 + 0.7
+      confidence: Math.random() * 0.3 + 0.7,
     }));
   }
 
   private identifySupplierStrengths(rates: any[]): string[] {
     const strengths = [];
-    const avgRate = rates.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / rates.length;
-    
-    if (avgRate < 140) strengths.push('Competitive Pricing');
-    if (rates.length > 10) strengths.push('Comprehensive Rate Card');
-    if (rates.some(r => r.role.includes('Senior'))) strengths.push('Senior Talent');
-    
+    const avgRate =
+      rates.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / rates.length;
+
+    if (avgRate < 140) strengths.push("Competitive Pricing");
+    if (rates.length > 10) strengths.push("Comprehensive Rate Card");
+    if (rates.some((r) => r.role.includes("Senior")))
+      strengths.push("Senior Talent");
+
     return strengths;
   }
 
   private identifySupplierWeaknesses(rates: any[]): string[] {
     const weaknesses = [];
-    const avgRate = rates.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / rates.length;
-    
-    if (avgRate > 180) weaknesses.push('Above Market Pricing');
-    if (rates.length < 5) weaknesses.push('Limited Role Coverage');
-    
+    const avgRate =
+      rates.reduce((sum, r) => sum + (r.hourly_rate || 0), 0) / rates.length;
+
+    if (avgRate > 180) weaknesses.push("Above Market Pricing");
+    if (rates.length < 5) weaknesses.push("Limited Role Coverage");
+
     return weaknesses;
   }
 
-  private generateSupplierRecommendation(averageRate: number, marketPosition: number): string {
-    if (averageRate > 180) return 'Negotiate rate reduction';
-    if (marketPosition < 25) return 'Consider for cost-sensitive projects';
-    if (marketPosition > 75) return 'Premium supplier - use for critical projects';
-    return 'Maintain current relationship';
+  private generateSupplierRecommendation(
+    averageRate: number,
+    marketPosition: number
+  ): string {
+    if (averageRate > 180) return "Negotiate rate reduction";
+    if (marketPosition < 25) return "Consider for cost-sensitive projects";
+    if (marketPosition > 75)
+      return "Premium supplier - use for critical projects";
+    return "Maintain current relationship";
   }
 
   private generateComparisonRecommendations(suppliers: any[]): string[] {
     const recommendations = [];
-    
+
     if (suppliers.length > 1) {
-      const avgRate = suppliers.reduce((sum, s) => sum + s.averageRate, 0) / suppliers.length;
-      const highestRate = Math.max(...suppliers.map(s => s.averageRate));
-      
+      const avgRate =
+        suppliers.reduce((sum, s) => sum + s.averageRate, 0) / suppliers.length;
+      const highestRate = Math.max(...suppliers.map((s) => s.averageRate));
+
       if (highestRate > avgRate * 1.2) {
-        recommendations.push('Consider consolidating with lower-cost suppliers');
+        recommendations.push(
+          "Consider consolidating with lower-cost suppliers"
+        );
       }
-      
-      recommendations.push('Negotiate volume discounts with preferred suppliers');
-      recommendations.push('Establish rate benchmarking process');
+
+      recommendations.push(
+        "Negotiate volume discounts with preferred suppliers"
+      );
+      recommendations.push("Establish rate benchmarking process");
     }
-    
+
     return recommendations;
   }
 
   private parseQueryIntent(query: string): { type: string; parameters: any } {
     const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('compare') || lowerQuery.includes('vs')) {
-      return { type: 'supplier_comparison', parameters: {} };
+
+    if (lowerQuery.includes("compare") || lowerQuery.includes("vs")) {
+      return { type: "supplier_comparison", parameters: {} };
     }
-    
-    if (lowerQuery.includes('trend') || lowerQuery.includes('over time')) {
-      return { type: 'trend_analysis', parameters: {} };
+
+    if (lowerQuery.includes("trend") || lowerQuery.includes("over time")) {
+      return { type: "trend_analysis", parameters: {} };
     }
-    
-    if (lowerQuery.includes('market') || lowerQuery.includes('position')) {
-      return { type: 'market_position', parameters: {} };
+
+    if (lowerQuery.includes("market") || lowerQuery.includes("position")) {
+      return { type: "market_position", parameters: {} };
     }
-    
-    if (lowerQuery.includes('rate') || lowerQuery.includes('price')) {
-      return { type: 'rate_lookup', parameters: {} };
+
+    if (lowerQuery.includes("rate") || lowerQuery.includes("price")) {
+      return { type: "rate_lookup", parameters: {} };
     }
-    
-    return { type: 'general', parameters: {} };
+
+    return { type: "general", parameters: {} };
   }
 
-  private async handleRateLookupQuery(intent: any, tenantId: string): Promise<any[]> {
+  private async handleRateLookupQuery(
+    intent: any,
+    tenantId: string
+  ): Promise<any[]> {
     // Mock rate lookup
     return await this.getAllRateCards({ tenantId });
   }
 
-  private async handleSupplierComparisonQuery(intent: any, tenantId: string): Promise<any> {
+  private async handleSupplierComparisonQuery(
+    intent: any,
+    tenantId: string
+  ): Promise<any> {
     // Get top suppliers for comparison
     const rateCards = await this.getAllRateCards({ tenantId });
-    const supplierIds = [...new Set(rateCards.map(rc => rc.supplier_id))].slice(0, 3);
+    const supplierIds = [
+      ...new Set(rateCards.map((rc) => rc.supplier_id)),
+    ].slice(0, 3);
     return await this.compareSuppliers(supplierIds, tenantId);
   }
 
-  private async handleTrendAnalysisQuery(intent: any, tenantId: string): Promise<any> {
+  private async handleTrendAnalysisQuery(
+    intent: any,
+    tenantId: string
+  ): Promise<any> {
     return await this.analyzeTrends(tenantId);
   }
 
-  private async handleMarketPositionQuery(intent: any, tenantId: string): Promise<any[]> {
+  private async handleMarketPositionQuery(
+    intent: any,
+    tenantId: string
+  ): Promise<any[]> {
     const analytics = await this.generateRateAnalytics(tenantId);
     return analytics.roleDistribution;
   }
 
-  private async handleGeneralQuery(query: string, tenantId: string): Promise<any[]> {
+  private async handleGeneralQuery(
+    query: string,
+    tenantId: string
+  ): Promise<any[]> {
     // Fallback to general rate card search
     return await this.getAllRateCards({ tenantId });
   }
@@ -885,7 +1008,7 @@ export class RateCardIntelligenceService {
       "Show me rates above $150/hour",
       "Compare supplier rates for developers",
       "What's the trend for consultant rates?",
-      "Which suppliers have the best rates?"
+      "Which suppliers have the best rates?",
     ];
   }
 
@@ -896,10 +1019,16 @@ export class RateCardIntelligenceService {
   /**
    * Analyze rates by line of service
    */
-  async analyzeByLineOfService(tenantId: string = 'default', filters?: RateCardFilters) {
+  async analyzeByLineOfService(
+    tenantId: string = "default",
+    filters?: RateCardFilters
+  ) {
     try {
       logger.info({ tenantId, filters }, "Analyzing rates by line of service");
-      return await enhancedRateAnalyticsService.analyzeByLineOfService(tenantId, filters);
+      return await enhancedRateAnalyticsService.analyzeByLineOfService(
+        tenantId,
+        filters
+      );
     } catch (error) {
       logger.error({ error, tenantId }, "Failed to analyze by line of service");
       throw error;
@@ -909,10 +1038,16 @@ export class RateCardIntelligenceService {
   /**
    * Analyze rates by seniority level
    */
-  async analyzeBySeniority(tenantId: string = 'default', filters?: RateFilters) {
+  async analyzeBySeniority(
+    tenantId: string = "default",
+    filters?: RateFilters
+  ) {
     try {
       logger.info({ tenantId, filters }, "Analyzing rates by seniority");
-      return await enhancedRateAnalyticsService.analyzeBySeniority(tenantId, filters);
+      return await enhancedRateAnalyticsService.analyzeBySeniority(
+        tenantId,
+        filters
+      );
     } catch (error) {
       logger.error({ error, tenantId }, "Failed to analyze by seniority");
       throw error;
@@ -922,10 +1057,16 @@ export class RateCardIntelligenceService {
   /**
    * Analyze rates by geography
    */
-  async analyzeByGeography(tenantId: string = 'default', filters?: RateFilters) {
+  async analyzeByGeography(
+    tenantId: string = "default",
+    filters?: RateFilters
+  ) {
     try {
       logger.info({ tenantId, filters }, "Analyzing rates by geography");
-      return await enhancedRateAnalyticsService.analyzeByGeography(tenantId, filters);
+      return await enhancedRateAnalyticsService.analyzeByGeography(
+        tenantId,
+        filters
+      );
     } catch (error) {
       logger.error({ error, tenantId }, "Failed to analyze by geography");
       throw error;
@@ -935,10 +1076,16 @@ export class RateCardIntelligenceService {
   /**
    * Analyze skill and certification premiums
    */
-  async analyzeSkillPremiums(tenantId: string = 'default', filters?: RateFilters) {
+  async analyzeSkillPremiums(
+    tenantId: string = "default",
+    filters?: RateFilters
+  ) {
     try {
       logger.info({ tenantId, filters }, "Analyzing skill premiums");
-      return await enhancedRateAnalyticsService.analyzeSkillPremiums(tenantId, filters);
+      return await enhancedRateAnalyticsService.analyzeSkillPremiums(
+        tenantId,
+        filters
+      );
     } catch (error) {
       logger.error({ error, tenantId }, "Failed to analyze skill premiums");
       throw error;
@@ -949,23 +1096,29 @@ export class RateCardIntelligenceService {
    * Generate market benchmarks for specific criteria
    */
   async generateMarketBenchmarks(
-    role: string, 
-    seniority: string, 
+    role: string,
+    seniority: string,
     country: string,
-    tenantId: string = 'default'
+    tenantId: string = "default"
   ) {
     try {
-      logger.info({ role, seniority, country, tenantId }, "Generating market benchmarks");
-      
+      logger.info(
+        { role, seniority, country, tenantId },
+        "Generating market benchmarks"
+      );
+
       const location = { country };
       return await enhancedRateAnalyticsService.generateMarketBenchmarks(
-        role, 
-        seniority as any, 
-        location, 
+        role,
+        seniority as any,
+        location,
         tenantId
       );
     } catch (error) {
-      logger.error({ error, role, seniority, country }, "Failed to generate market benchmarks");
+      logger.error(
+        { error, role, seniority, country },
+        "Failed to generate market benchmarks"
+      );
       throw error;
     }
   }
@@ -973,20 +1126,26 @@ export class RateCardIntelligenceService {
   /**
    * Get comprehensive enhanced analytics
    */
-  async getEnhancedAnalytics(tenantId: string = 'default', filters?: RateFilters) {
+  async getEnhancedAnalytics(
+    tenantId: string = "default",
+    filters?: RateFilters
+  ) {
     try {
-      logger.info({ tenantId, filters }, "Getting comprehensive enhanced analytics");
+      logger.info(
+        { tenantId, filters },
+        "Getting comprehensive enhanced analytics"
+      );
 
       const [
         lineOfServiceAnalytics,
         seniorityAnalytics,
         geographicAnalytics,
-        skillPremiumAnalytics
+        skillPremiumAnalytics,
       ] = await Promise.all([
         this.analyzeByLineOfService(tenantId, filters),
         this.analyzeBySeniority(tenantId, filters),
         this.analyzeByGeography(tenantId, filters),
-        this.analyzeSkillPremiums(tenantId, filters)
+        this.analyzeSkillPremiums(tenantId, filters),
       ]);
 
       return {
@@ -1000,10 +1159,9 @@ export class RateCardIntelligenceService {
           totalLocations: geographicAnalytics.totalLocations,
           avgRateAcrossServices: lineOfServiceAnalytics.avgRateAcrossServices,
           avgProgressionIncrease: seniorityAnalytics.avgProgressionIncrease,
-          avgCostOfLiving: geographicAnalytics.avgCostOfLiving
-        }
+          avgCostOfLiving: geographicAnalytics.avgCostOfLiving,
+        },
       };
-
     } catch (error) {
       logger.error({ error, tenantId }, "Failed to get enhanced analytics");
       throw error;
@@ -1019,10 +1177,14 @@ export class RateCardIntelligenceService {
       const enhancedHealth = await enhancedRateAnalyticsService.healthCheck();
       return dbHealth.success && enhancedHealth;
     } catch (error) {
-      logger.error({ error }, "Rate card intelligence service health check failed");
+      logger.error(
+        { error },
+        "Rate card intelligence service health check failed"
+      );
       return false;
     }
   }
 }
 
-export const rateCardIntelligenceService = RateCardIntelligenceService.getInstance();
+export const rateCardIntelligenceService =
+  RateCardIntelligenceService.getInstance();

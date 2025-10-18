@@ -44,8 +44,19 @@ export class ArtifactService {
         },
       });
 
-      // Transform and validate
-      const validatedArtifacts = artifacts.map((artifact) =>
+      // Transform Prisma types to expected types (Decimal -> number, etc.)
+      const transformedArtifacts = artifacts.map((artifact) => ({
+        ...artifact,
+        confidence: artifact.confidence ? Number(artifact.confidence) : null,
+        processingTime: artifact.processingTime || null,
+        size: artifact.size || null,
+        hash: artifact.hash || null,
+        location: artifact.location || null,
+        storageProvider: artifact.storageProvider || "database",
+      }));
+
+      // Validate the transformed data
+      const validatedArtifacts = transformedArtifacts.map((artifact) =>
         ArtifactSchema.parse(artifact)
       );
 

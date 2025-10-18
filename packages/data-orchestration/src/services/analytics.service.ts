@@ -217,18 +217,16 @@ export class AnalyticsService {
 
       if (!metricsResult.success) {
         throw new Error("Failed to get metrics for dashboard");
-      }
+    }
 
-      const dashboard: AnalyticsDashboard = {
-        overview: {
-          kpis,
-          alerts: await this.generateAlerts(tenantId, metricsResult.data),
-        },
-        charts,
-        tables,
-      };
-
-      return {
+    const dashboard: AnalyticsDashboard = {
+      overview: {
+        kpis,
+        alerts: await this.generateAlerts(tenantId, metricsResult.data || {} as any),
+      },
+      charts,
+      tables,
+    };      return {
         success: true,
         data: dashboard,
       };
@@ -536,35 +534,38 @@ export class AnalyticsService {
     }
 
     const metrics = metricsResult.data;
+    if (!metrics) {
+      return [];
+    }
 
     return [
       {
         name: "Total Contracts",
         value: metrics.contracts.total,
         change: metrics.trends.contractVelocity,
-        trend: metrics.trends.contractVelocity > 0 ? "up" : "stable",
-        format: "number",
+        trend: (metrics.trends.contractVelocity > 0 ? "up" : "stable") as "up" | "down" | "stable",
+        format: "number" as const,
       },
       {
         name: "Portfolio Value",
         value: metrics.contracts.totalValue,
         change: metrics.trends.valueVelocity,
-        trend: metrics.trends.valueVelocity > 0 ? "up" : "stable",
-        format: "currency",
+        trend: (metrics.trends.valueVelocity > 0 ? "up" : "stable") as "up" | "down" | "stable",
+        format: "currency" as const,
       },
       {
         name: "Processing Success Rate",
         value: metrics.processing.successRate * 100,
         change: 0, // Would calculate from historical data
-        trend: "stable",
-        format: "percentage",
+        trend: "stable" as const,
+        format: "percentage" as const,
       },
       {
         name: "High Priority Insights",
         value: metrics.intelligence.highPriorityInsights,
         change: 0, // Would calculate from historical data
-        trend: "stable",
-        format: "number",
+        trend: "stable" as const,
+        format: "number" as const,
       },
     ];
   }
@@ -596,7 +597,7 @@ export class AnalyticsService {
         id: "contract-trend",
         title: "Contract Volume Trend",
         type: "line" as const,
-        data: contractTrend.success ? contractTrend.data : [],
+        data: (contractTrend.success ? contractTrend.data : []) || [],
         config: {
           xAxis: "timestamp",
           yAxis: "value",
@@ -607,7 +608,7 @@ export class AnalyticsService {
         id: "value-trend",
         title: "Portfolio Value Trend",
         type: "area" as const,
-        data: valueTrend.success ? valueTrend.data : [],
+        data: (valueTrend.success ? valueTrend.data : []) || [],
         config: {
           xAxis: "timestamp",
           yAxis: "value",
@@ -619,7 +620,7 @@ export class AnalyticsService {
         id: "processing-trend",
         title: "Processing Success Rate",
         type: "line" as const,
-        data: processingTrend.success ? processingTrend.data : [],
+        data: (processingTrend.success ? processingTrend.data : []) || [],
         config: {
           xAxis: "timestamp",
           yAxis: "value",
@@ -637,6 +638,9 @@ export class AnalyticsService {
     }
 
     const metrics = metricsResult.data;
+    if (!metrics) {
+      return [];
+    }
 
     // Top suppliers by contract count
     const topSuppliers = Object.entries(metrics.contracts.bySupplier)

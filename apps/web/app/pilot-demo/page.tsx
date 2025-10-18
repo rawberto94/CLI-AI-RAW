@@ -237,7 +237,7 @@ const LiveContractAnalysisDemo = () => {
       setAnalysisStage("upload");
       setAnalysisProgress(10);
 
-      const uploadResponse = await fetch("/api/upload", {
+      const uploadResponse = await fetch("/api/contracts/upload", {
         method: "POST",
         body: formData,
       });
