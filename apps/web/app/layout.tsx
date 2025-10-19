@@ -5,6 +5,9 @@ import { HealthBanner } from "./health-banner";
 
 import { FloatingDemoButton } from "@/components/FloatingDemoButton";
 import MainNavigation from "@/components/layout/MainNavigation";
+import { GlobalCommandPalette } from "@/components/command/GlobalCommandPalette";
+import { OnboardingWrapper } from "@/components/OnboardingWrapper";
+import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
 
 export const metadata = {
   title: "Contract Intelligence Platform",
@@ -23,6 +26,9 @@ export default function RootLayout({
         <MainNavigation />
         <div className="lg:pl-64 pt-16 lg:pt-0">{children}</div>
         <FloatingDemoButton />
+        <GlobalCommandPalette />
+        <GlobalKeyboardShortcuts />
+        <OnboardingWrapper />
       </body>
     </html>
   );

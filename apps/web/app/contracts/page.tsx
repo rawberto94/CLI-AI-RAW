@@ -24,6 +24,9 @@ import {
   Settings,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ContractListSkeleton } from "@/components/ui/skeletons";
+import { NoContractsEmptyState, NoFilterResultsEmptyState } from "@/components/ui/empty-states";
 import {
   getStatusDisplay,
   formatFileSize,
@@ -62,6 +65,7 @@ import { ComparisonSelector } from "@/components/contracts/ComparisonSelector";
 import { ComparisonView } from "@/components/contracts/ComparisonView";
 
 export default function ContractsPage() {
+  const router = useRouter();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -240,13 +244,9 @@ export default function ContractsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900">
-            Loading contracts...
-          </h3>
-          <p className="text-gray-600 mt-2">Please wait</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          <ContractListSkeleton count={5} />
         </div>
       </div>
     );
@@ -474,35 +474,13 @@ export default function ContractsPage() {
           </CardHeader>
           <CardContent className="p-6">
             {contracts.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  No contracts yet
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Upload your first contract to get started with AI-powered
-                  analysis
-                </p>
-                <Link href="/contracts/upload">
-                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Contract
-                  </Button>
-                </Link>
-              </div>
+              <NoContractsEmptyState
+                onUpload={() => router.push('/contracts/upload')}
+              />
             ) : filteredContracts.length === 0 ? (
-              <div className="text-center py-12">
-                <AlertTriangle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  No contracts match your filters
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Try adjusting your filter criteria
-                </p>
-                <Button onClick={handleResetFilters} variant="outline">
-                  Reset Filters
-                </Button>
-              </div>
+              <NoFilterResultsEmptyState
+                onClearFilters={handleResetFilters}
+              />
             ) : viewMode === "table" ? (
               /* Step 2: Table View */
               <TableView

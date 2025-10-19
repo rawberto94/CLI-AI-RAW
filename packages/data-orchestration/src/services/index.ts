@@ -14,3 +14,15 @@ export * from "./enhanced-rate-analytics.service";
 export * from "./rate-calculation.engine";
 export * from "./rate-validation.service";
 export * from "./analytical-database.service";
+export * from "./enhanced-savings-opportunities.service";
+
+// Performance optimization services
+export * from "./smart-cache.service";
+export * from "./hybrid-artifact-storage.service";
+export * from "./file-integrity.service";
+export * from "./processing-job.service";
+export * from "./enhanced-artifact.service";
+
+// Integration services
+export * from "./rag-integration.service";
+export * from "./unified-orchestration.service";

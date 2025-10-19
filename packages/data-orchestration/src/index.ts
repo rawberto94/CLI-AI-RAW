@@ -17,7 +17,14 @@ export {
   rateCardIntelligenceService as RateCardIntelligenceService,
   dataStandardizationService as DataStandardizationService,
   rateCardManagementService as RateCardManagementService,
+  enhancedSavingsOpportunitiesService as EnhancedSavingsOpportunitiesService,
 } from "./services";
+
+// Export types
+export type { 
+  EnhancedSavingsOpportunity,
+  SavingsAnalysisResult 
+} from "./services/enhanced-savings-opportunities.service";
 
 export {
   eventBus as EventBus,

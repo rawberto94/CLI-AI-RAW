@@ -1,4 +1,6 @@
-import React from 'react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import { DashboardLayout } from '@/components/layout/AppLayout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,6 +30,8 @@ import {
   Network
 } from 'lucide-react'
 import Link from 'next/link'
+import { DashboardSkeleton } from '@/components/ui/skeletons'
+import { OnboardingManager } from '@/components/onboarding/OnboardingManager'
 
 // Mock data - in real app this would come from API
 const dashboardData = {
@@ -102,23 +106,64 @@ const dashboardData = {
 }
 
 export default function DashboardPage() {
-  return (
-    <DashboardLayout
-      title="Dashboard"
-      description="Overview of your contract intelligence platform"
-      actions={
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Reports
-          </Button>
-          <Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-            <Sparkles className="h-4 w-4 mr-2" />
-            AI Insights
-          </Button>
-        </div>
+  const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Load user preferences to get role
+    async function loadUserData() {
+      try {
+        const response = await fetch('/api/user/preferences')
+        if (response.ok) {
+          const { data } = await response.json()
+          setUserRole(data?.role || null)
+        }
+      } catch (error) {
+        console.error('Failed to load user preferences:', error)
       }
-    >
+    }
+
+    loadUserData()
+
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setLoading(false)
+    }, 1500)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (loading) {
+    return (
+      <DashboardLayout
+        title="Dashboard"
+        description="Overview of your contract intelligence platform"
+      >
+        <DashboardSkeleton />
+      </DashboardLayout>
+    )
+  }
+
+  return (
+    <>
+      {/* Onboarding Manager - handles first-time user experience */}
+      <OnboardingManager />
+
+      <DashboardLayout
+        title="Dashboard"
+        description="Overview of your contract intelligence platform"
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Reports
+            </Button>
+            <Button size="sm" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <Sparkles className="h-4 w-4 mr-2" />
+              AI Insights
+            </Button>
+          </div>
+        }
+      >
       {/* Key Metrics */}
       <Grid cols={4} gap="md">
         <Card>
@@ -384,6 +429,7 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </>
   )
 }

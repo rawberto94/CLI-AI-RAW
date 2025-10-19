@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRateCardsBySupplier } from '@/lib/mock-database';
+import { rateCardManagementService } from 'data-orchestration';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const tenantId = "demo"; // TODO: Get from auth session
     
-    const rateCards = getRateCardsBySupplier();
+    // Get rate cards using real service
+    const result = await rateCardManagementService.getRateCards(tenantId);
+    
+    if (!result.success || !result.data) {
+      return NextResponse.json({ error: 'Failed to fetch rate cards' }, { status: 500 });
+    }
+    
+    const rateCards = result.data;
     
     // Paginate results
     const startIndex = (page - 1) * limit;
@@ -30,12 +38,23 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const tenantId = "demo"; // TODO: Get from auth session
     
-    // For demo purposes, just return success
+    // Create rate card using real service
+    const result = await rateCardManagementService.createRateCard(tenantId, {
+      supplierName: body.supplierName,
+      effectiveDate: body.effectiveDate ? new Date(body.effectiveDate) : new Date(),
+      expiryDate: body.expiryDate ? new Date(body.expiryDate) : undefined,
+      currency: body.currency || 'CHF',
+      roles: body.roles || [],
+    });
+    
+    if (!result.success || !result.data) {
+      return NextResponse.json({ error: 'Failed to create rate card' }, { status: 500 });
+    }
+    
     return NextResponse.json({
-      id: `rate_${Date.now()}`,
-      ...body,
-      createdAt: new Date().toISOString(),
+      ...result.data,
       status: 'created'
     });
   } catch (error) {

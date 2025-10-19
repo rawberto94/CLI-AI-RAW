@@ -1,0 +1,373 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataModeToggle } from '@/components/analytics/DataModeToggle';
+import { useNegotiationPrep, type DataMode } from '@/hooks/useProcurementIntelligence';
+import { Skeleton } from '@/components/ui/skeleton-loader';
+import { Breadcrumbs } from '@/components/analytics/Breadcrumbs';
+import {
+  Handshake,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  AlertCircle,
+  CheckCircle,
+  BarChart3,
+  RefreshCw,
+  Download,
+  Filter,
+  Lightbulb,
+  Award
+} from 'lucide-react';
+
+export default function NegotiationPrepPage() {
+  const [mode, setMode] = useState<DataMode>('real');
+  const [contractId, setContractId] = useState<string>('');
+  const [supplierId, setSupplierId] = useState<string>('');
+  const [category, setCategory] = useState<string>('');
+
+  const { 
+    data, 
+    loading, 
+    error, 
+    metadata,
+    refetch 
+  } = useNegotiationPrep({
+    contractId: contractId || undefined,
+    supplierId: supplierId || undefined,
+    category: category || undefined
+  }, mode);
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'improving':
+        return <TrendingUp className="w-4 h-4 text-green-600" />;
+      case 'declining':
+        return <TrendingDown className="w-4 h-4 text-red-600" />;
+      default:
+        return <Minus className="w-4 h-4 text-gray-600" />;
+    }
+  };
+
+  const getImpactColor = (impact: string) => {
+    switch (impact) {
+      case 'high':
+        return 'bg-red-500/10 text-red-700 border-red-500/20';
+      case 'medium':
+        return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20';
+      case 'low':
+        return 'bg-green-500/10 text-green-700 border-green-500/20';
+      default:
+        return 'bg-gray-500/10 text-gray-700 border-gray-500/20';
+    }
+  };
+
+  return (
+    <div className="container mx-auto py-8 space-y-6">
+      <Breadcrumbs />
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+              <Handshake className="w-8 h-8 text-white" />
+            </div>
+            Negotiation Preparation
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Strategic insights and leverage points for successful negotiations
+          </p>
+          {metadata && (
+            <p className="text-xs text-gray-500 mt-1">
+              Data source: {metadata.source} • Last updated: {new Date(metadata.lastUpdated).toLocaleString()}
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <DataModeToggle currentMode={mode} onModeChange={(newMode) => setMode(newMode as 'real' | 'mock')} />
+          <Button variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            Negotiation Context
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Contract ID</label>
+              <Input
+                placeholder="Enter contract ID..."
+                value={contractId}
+                onChange={(e) => setContractId(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Supplier</label>
+              <Select value={supplierId} onValueChange={setSupplierId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select supplier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Suppliers</SelectItem>
+                  <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
+                  <SelectItem value="SUP002">Global IT Services</SelectItem>
+                  <SelectItem value="SUP003">Innovation Partners</SelectItem>
+                  <SelectItem value="SUP004">Digital Dynamics</SelectItem>
+                  <SelectItem value="SUP005">NextGen Technologies</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Category</label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="Software Development">Software Development</SelectItem>
+                  <SelectItem value="IT Services">IT Services</SelectItem>
+                  <SelectItem value="Consulting">Consulting</SelectItem>
+                  <SelectItem value="Cloud Services">Cloud Services</SelectItem>
+                  <SelectItem value="Professional Services">Professional Services</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button className="w-full">
+                Generate Prep
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-64" />
+          ))}
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <span>Error loading negotiation prep data: {error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Data Display */}
+      {data && !loading && (
+        <>
+          {/* Market Position Overview */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Supplier Rank</CardTitle>
+                <Award className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  #{data.marketPosition.supplierRank}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  out of {data.marketPosition.totalSuppliers} suppliers
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Market Share</CardTitle>
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {data.marketPosition.marketShare.toFixed(1)}%
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  of total market
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Leverage Points</CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {data.leveragePoints.length}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  identified opportunities
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content Grid */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Leverage Points */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Leverage Points
+                </CardTitle>
+                <CardDescription>
+                  Strategic advantages and negotiation opportunities
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {data.leveragePoints.map((point: any, index: number) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm">{point.type}</h4>
+                        <Badge 
+                          variant="outline" 
+                          className={getImpactColor(point.impact)}
+                        >
+                          {point.impact} impact
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {point.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Historical Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  Historical Performance
+                </CardTitle>
+                <CardDescription>
+                  Performance vs benchmarks and trends
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {data.historicalPerformance.map((metric: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{metric.metric}</div>
+                        <div className="flex items-center gap-4 mt-1">
+                          <span className="text-xs text-muted-foreground">
+                            Current: {metric.current}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Benchmark: {metric.benchmark}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getTrendIcon(metric.trend)}
+                        <span className="text-xs font-medium capitalize">
+                          {metric.trend}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Recommendations */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5" />
+                Strategic Recommendations
+              </CardTitle>
+              <CardDescription>
+                Actionable negotiation strategies with expected savings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {data.recommendations.map((rec: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-medium">{rec.action}</h4>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-600">
+                          ${(rec.expectedSavings / 1000).toFixed(0)}K
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          potential savings
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {rec.rationale}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="text-xs font-medium">Ready to implement</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Savings Summary */}
+              <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-green-900">Total Potential Savings</h4>
+                    <p className="text-sm text-green-700">
+                      Combined impact of all recommendations
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-900">
+                      ${(data.recommendations.reduce((sum: number, rec: any) => sum + rec.expectedSavings, 0) / 1000).toFixed(0)}K
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}

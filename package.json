@@ -8,6 +8,7 @@
     "build": "cd apps/web && npm run build",
     "start": "cd apps/web && npm run start",
     "test": "echo \"Running system tests...\" && exit 0",
+    "test:rag-integration": "tsx scripts/test-rag-integration.ts",
     "services": "bash .devcontainer/start-services.sh",
     "setup": "bash .devcontainer/setup.sh"
   },

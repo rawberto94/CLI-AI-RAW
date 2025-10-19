@@ -1,24 +1,31 @@
 import { NextResponse } from "next/server";
-import { mockRateCards } from "@/lib/mock-database";
+import { rateCardManagementService } from "data-orchestration";
 
 export async function GET() {
   try {
-    const rateCards = mockRateCards.map((card, index) => ({
+    const tenantId = "demo"; // TODO: Get from auth session
+    
+    // Get rate cards using real service
+    const result = await rateCardManagementService.getRateCards(tenantId);
+    
+    if (!result.success || !result.data) {
+      return NextResponse.json(
+        { error: "Failed to fetch rate cards" },
+        { status: 500 }
+      );
+    }
+
+    const rateCards = result.data.map((card: any) => ({
       id: card.id,
-      supplierName: card.supplier,
-      effectiveDate: card.extractedAt.toISOString(),
-      expiryDate: null,
-      originalCurrency: "USD",
-      status:
-        card.confidence > 90
-          ? "APPROVED"
-          : index % 2 === 0
-          ? "PENDING_APPROVAL"
-          : "DRAFT",
-      importedAt: card.extractedAt.toISOString(),
-      importedBy: "demo.user@acme.com",
+      supplierName: card.supplierName,
+      effectiveDate: card.effectiveDate.toISOString(),
+      expiryDate: card.expiryDate?.toISOString() || null,
+      originalCurrency: card.originalCurrency,
+      status: card.status,
+      importedAt: card.importedAt.toISOString(),
+      importedBy: card.importedBy,
       _count: {
-        roles: card.services.length,
+        roles: card.roles?.length || 0,
       },
     }));
 

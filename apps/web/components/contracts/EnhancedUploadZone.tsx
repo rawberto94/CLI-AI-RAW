@@ -10,6 +10,7 @@ import { EnhancedCard, MetricCard } from '@/components/ui/enhanced-card'
 import { LoadingState, ProgressIndicator } from '@/components/ui/loading-states'
 import { ScoreGauge, DataPoint } from '@/components/ui/data-visualization'
 import { InfoCallout, StatusIndicator } from '@/components/ui/interactive-elements'
+import { MultiStageProgress } from '@/components/progress/MultiStageProgress'
 import {
     Upload,
     CheckCircle,
@@ -63,6 +64,8 @@ export default function EnhancedUploadZone({
 }: UploadZoneProps) {
     const [files, setFiles] = useState<UploadFile[]>([])
     const [isDragActive, setIsDragActive] = useState(false)
+    const [showDetailedProgress, setShowDetailedProgress] = useState(false)
+    const [currentProcessingFile, setCurrentProcessingFile] = useState<UploadFile | null>(null)
     const router = useRouter()
 
     const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -91,8 +94,58 @@ export default function EnhancedUploadZone({
         onDragLeave: () => setIsDragActive(false),
     })
 
+    const getProgressStages = (uploadFile: UploadFile) => {
+        const progress = uploadFile.progress || 0
+        return [
+            {
+                id: 'upload',
+                name: 'Upload File',
+                description: 'Securely transferring document',
+                status: (progress >= 20 ? 'completed' : progress > 0 ? 'in-progress' : 'pending') as 'pending' | 'in-progress' | 'completed' | 'failed',
+                progress: Math.min(100, (progress / 20) * 100),
+                estimatedTime: 5
+            },
+            {
+                id: 'extract',
+                name: 'Extract Content',
+                description: 'Reading and parsing document',
+                status: (progress >= 50 ? 'completed' : progress > 20 ? 'in-progress' : 'pending') as 'pending' | 'in-progress' | 'completed' | 'failed',
+                progress: progress > 20 ? Math.min(100, ((progress - 20) / 30) * 100) : 0,
+                estimatedTime: 15
+            },
+            {
+                id: 'analyze',
+                name: 'AI Analysis',
+                description: 'Identifying risks and opportunities',
+                status: (progress >= 80 ? 'completed' : progress > 50 ? 'in-progress' : 'pending') as 'pending' | 'in-progress' | 'completed' | 'failed',
+                progress: progress > 50 ? Math.min(100, ((progress - 50) / 30) * 100) : 0,
+                estimatedTime: 20
+            },
+            {
+                id: 'intelligence',
+                name: 'Generate Insights',
+                description: 'Creating intelligence reports',
+                status: (progress >= 95 ? 'completed' : progress > 80 ? 'in-progress' : 'pending') as 'pending' | 'in-progress' | 'completed' | 'failed',
+                progress: progress > 80 ? Math.min(100, ((progress - 80) / 15) * 100) : 0,
+                estimatedTime: 10
+            },
+            {
+                id: 'complete',
+                name: 'Finalize',
+                description: 'Preparing results',
+                status: (progress >= 100 ? 'completed' : progress > 95 ? 'in-progress' : 'pending') as 'pending' | 'in-progress' | 'completed' | 'failed',
+                progress: progress > 95 ? Math.min(100, ((progress - 95) / 5) * 100) : 0,
+                estimatedTime: 2
+            }
+        ]
+    }
+
     const uploadFile = async (uploadFile: UploadFile) => {
         try {
+            // Show detailed progress for this file
+            setCurrentProcessingFile(uploadFile)
+            setShowDetailedProgress(true)
+
             // Update status to uploading
             setFiles(prev => prev.map(f =>
                 f.id === uploadFile.id
@@ -124,6 +177,9 @@ export default function EnhancedUploadZone({
                     : f
             ))
 
+            // Update current processing file
+            setCurrentProcessingFile(prev => prev ? { ...prev, progress: 30, contractId } : null)
+
             // Poll for processing completion
             await pollProcessingStatus(uploadFile.id, contractId)
 
@@ -134,6 +190,8 @@ export default function EnhancedUploadZone({
                     ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' }
                     : f
             ))
+            setShowDetailedProgress(false)
+            setCurrentProcessingFile(null)
         }
     }
 
@@ -162,6 +220,11 @@ export default function EnhancedUploadZone({
                         : f
                 ))
 
+                // Update current processing file
+                setCurrentProcessingFile(prev => 
+                    prev && prev.id === fileId ? { ...prev, progress } : prev
+                )
+
                 if (data.status === 'completed') {
                     // Get intelligence data
                     const intelligence = await getIntelligenceData(contractId)
@@ -176,6 +239,12 @@ export default function EnhancedUploadZone({
                             }
                             : f
                     ))
+
+                    // Close detailed progress after a brief delay
+                    setTimeout(() => {
+                        setShowDetailedProgress(false)
+                        setCurrentProcessingFile(null)
+                    }, 2000)
 
                     if (onUploadComplete) {
                         onUploadComplete(contractId)
@@ -446,6 +515,18 @@ export default function EnhancedUploadZone({
                     </div>
                 </CardContent>
             </EnhancedCard>
+
+            {/* Multi-Stage Progress Tracker */}
+            {showDetailedProgress && currentProcessingFile && (
+                <MultiStageProgress
+                    stages={getProgressStages(currentProcessingFile)}
+                    title={`Processing: ${currentProcessingFile.file.name}`}
+                    allowBackground={true}
+                    onBackground={() => {
+                        setShowDetailedProgress(false)
+                    }}
+                />
+            )}
 
             {/* Upload Progress */}
             {files.length > 0 && (

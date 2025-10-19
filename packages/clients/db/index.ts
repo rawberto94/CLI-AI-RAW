@@ -93,6 +93,64 @@ export class DatabaseManager {
       },
     });
 
+    // Add tenant isolation middleware
+    this.prisma.$use(async (params, next) => {
+      // Models that require tenant isolation
+      const tenantModels = [
+        'Contract',
+        'Artifact',
+        'ProcessingJob',
+        'FileIntegrity',
+        'AuditLog',
+        'ContractMetadata',
+        'RateCard',
+        'Supplier',
+        'ComplianceCheck',
+      ];
+
+      // Check if this model requires tenant isolation
+      if (tenantModels.includes(params.model || '')) {
+        // For read operations, ensure tenantId filter is present
+        if (['findUnique', 'findFirst', 'findMany', 'count', 'aggregate'].includes(params.action)) {
+          if (!params.args) {
+            params.args = {};
+          }
+          if (!params.args.where) {
+            params.args.where = {};
+          }
+          
+          // Warn if tenantId is not specified (but don't block - let the query return empty)
+          if (!params.args.where.tenantId) {
+            console.warn(
+              `⚠️ TENANT ISOLATION WARNING: Query on ${params.model}.${params.action} without tenantId filter. This may expose data across tenants!`
+            );
+          }
+        }
+
+        // For write operations, ensure tenantId is present
+        if (['create', 'update', 'upsert', 'delete', 'deleteMany', 'updateMany'].includes(params.action)) {
+          if (params.action === 'create' || params.action === 'upsert') {
+            if (!params.args?.data?.tenantId) {
+              console.error(
+                `🚨 TENANT ISOLATION ERROR: Attempted to create ${params.model} without tenantId!`
+              );
+              throw new Error(`tenantId is required when creating ${params.model}`);
+            }
+          }
+          
+          if (['update', 'delete', 'deleteMany', 'updateMany'].includes(params.action)) {
+            if (!params.args?.where?.tenantId) {
+              console.warn(
+                `⚠️ TENANT ISOLATION WARNING: ${params.action} on ${params.model} without tenantId filter!`
+              );
+            }
+          }
+        }
+      }
+
+      return next(params);
+    });
+
     // Add query logging middleware
     this.prisma.$use(async (params, next) => {
       const start = performance.now();

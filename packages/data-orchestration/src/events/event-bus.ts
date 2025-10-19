@@ -222,11 +222,25 @@ export const Events = {
   PROCESSING_STAGE_COMPLETED: "processing.stage.completed",
   PROCESSING_COMPLETED: "processing.completed",
   PROCESSING_FAILED: "processing.failed",
+  
+  // Job lifecycle
+  JOB_CREATED: "job.created",
+  JOB_PROGRESS: "job.progress",
+  JOB_STATUS_CHANGED: "job.status.changed",
+  JOB_ERROR: "job.error",
+  JOB_STALLED: "job.stalled",
 
   // Artifact lifecycle
   ARTIFACT_CREATED: "artifact.created",
   ARTIFACT_UPDATED: "artifact.updated",
   ARTIFACT_DELETED: "artifact.deleted",
+  ARTIFACTS_GENERATED: "artifacts.generated",
+
+  // RAG events
+  RAG_INDEXED: "rag.indexed",
+  RAG_INDEXING_FAILED: "rag.indexing.failed",
+  RAG_REINDEXED: "rag.reindexed",
+  RAG_REMOVED: "rag.removed",
 
   // Intelligence events
   PATTERN_DETECTED: "intelligence.pattern.detected",

@@ -2,6 +2,7 @@ import { cacheAdaptor } from "../dal/cache.adaptor";
 import { eventBus } from "../events/event-bus";
 import pino from "pino";
 import type { ServiceResponse } from "./contract.service";
+import { safeEvaluateCondition } from "../utils/expression-parser";
 
 const logger = pino({ name: "workflow-service" });
 
@@ -645,19 +646,9 @@ export class WorkflowService {
   ): boolean {
     if (!condition) return true;
 
-    // Simple condition evaluation - could be enhanced with a proper expression parser
+    // Use safe expression parser instead of eval()
     try {
-      // Replace context variables in condition
-      let evaluatedCondition = condition;
-      Object.entries(context).forEach(([key, value]) => {
-        evaluatedCondition = evaluatedCondition.replace(
-          new RegExp(`\\$\\{${key}\\}`, "g"),
-          JSON.stringify(value)
-        );
-      });
-
-      // Evaluate simple conditions like "${status} === 'COMPLETED'"
-      return eval(evaluatedCondition);
+      return safeEvaluateCondition(condition, context);
     } catch (error) {
       logger.warn(
         { condition, error },

@@ -1,0 +1,53 @@
+{
+  "scenarios": [
+    {
+      "name": "Conservative",
+      "targetReduction": 5,
+      "probability": 85,
+      "implementationRisk": "low",
+      "timeline": 30,
+      "description": "Modest rate reduction with high success probability"
+    },
+    {
+      "name": "Moderate",
+      "targetReduction": 12,
+      "probability": 65,
+      "implementationRisk": "medium",
+      "timeline": 45,
+      "description": "Balanced approach targeting market median rates"
+    },
+    {
+      "name": "Aggressive",
+      "targetReduction": 20,
+      "probability": 40,
+      "implementationRisk": "high",
+      "timeline": 60,
+      "description": "Significant reduction requiring strong leverage"
+    }
+  ],
+  "leverage": [
+    {
+      "volumeAdvantage": 75,
+      "relationshipScore": 82,
+      "competitiveAlternatives": 4,
+      "marketPosition": "strong"
+    }
+  ],
+  "talkingPoints": {
+    "conservative": [
+      "Market rates have increased 8% year-over-year, but we're seeking stability",
+      "Our volume has grown 15% - we'd like to discuss volume-based pricing",
+      "We value the partnership and want to ensure mutual success"
+    ],
+    "moderate": [
+      "Current rates are 12% above market median based on our benchmarking",
+      "We've identified 3 competitive alternatives at lower rates",
+      "We're looking to align with market standards while maintaining quality"
+    ],
+    "aggressive": [
+      "Our analysis shows rates 20% above market benchmarks",
+      "We have strong alternatives ready to engage",
+      "We need significant rate reduction to justify contract renewal"
+    ]
+  }
+}

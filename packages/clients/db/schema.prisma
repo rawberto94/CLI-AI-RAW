@@ -78,22 +78,27 @@ model TenantUsage {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  email         String        @unique
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  avatar        String?
-  emailVerified Boolean       @default(false)
-  firstName     String?
-  lastLoginAt   DateTime?
-  lastName      String?
-  passwordHash  String
-  status        UserStatus    @default(ACTIVE)
-  tenantId      String
-  auditLogs     AuditLog[]
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  roles         UserRole[]
-  sessions      UserSession[]
+  id                   String                 @id @default(cuid())
+  email                String                 @unique
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  avatar               String?
+  emailVerified        Boolean                @default(false)
+  firstName            String?
+  lastLoginAt          DateTime?
+  lastName             String?
+  passwordHash         String
+  status               UserStatus             @default(ACTIVE)
+  tenantId             String
+  auditLogs            AuditLog[]
+  tenant               Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roles                UserRole[]
+  sessions             UserSession[]
+  preferences          UserPreferences?
+  onboardingAnalytics  OnboardingAnalytics[]
+  backgroundJobs       BackgroundJob[]
+  helpAnalytics        HelpAnalytics[]
+  widgetAnalytics      WidgetAnalytics[]
 
   @@index([email])
   @@index([tenantId])
@@ -344,24 +349,38 @@ model Clause {
 }
 
 model ProcessingJob {
-  id          String    @id @default(cuid())
-  contractId  String
-  status      JobStatus @default(PENDING)
-  progress    Int       @default(0)
-  currentStep String?
-  error       String?
-  errorStack  String?
-  retryCount  Int       @default(0)
-  maxRetries  Int       @default(3)
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  contract    Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(cuid())
+  contractId            String
+  tenantId              String
+  status                JobStatus @default(PENDING)
+  progress              Int       @default(0)
+  currentStep           String?
+  totalStages           Int       @default(5)
+  error                 String?
+  errorStack            String?
+  errorCategory         String?
+  retryCount            Int       @default(0)
+  maxRetries            Int       @default(3)
+  nextRetryAt           DateTime?
+  priority              Int       @default(0)
+  queuePosition         Int?
+  lastCheckpoint        String?
+  checkpointData        Json?
+  metadata              Json?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  estimatedCompletionAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  contract              Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([contractId])
+  @@index([tenantId])
   @@index([status])
   @@index([createdAt])
+  @@index([priority])
+  @@index([nextRetryAt])
+  @@index([status, priority, createdAt])
 }
 
 model ContractVersion {
@@ -891,4 +910,113 @@ enum DataQualityLevel {
   HIGH
   MEDIUM
   LOW
+}
+
+
+// ============================================================================
+// UX Quick Wins Models
+// ============================================================================
+
+model UserPreferences {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  role                  String?
+  goals                 Json      @default("[]")
+  dashboardLayout       Json?
+  theme                 String    @default("light")
+  notifications         Json      @default("{}")
+  onboardingState       Json?
+  onboardingCompleted   Boolean   @default(false)
+  onboardingSkipped     Boolean   @default(false)
+  onboardingCompletedAt DateTime?
+  helpToursCompleted    Json      @default("[]")
+  customSettings        Json      @default("{}")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OnboardingAnalytics {
+  id        String   @id @default(cuid())
+  userId    String
+  stepId    String
+  action    String
+  timeSpent Int?
+  metadata  Json?
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([stepId])
+  @@index([timestamp])
+}
+
+model ProgressEvent {
+  id            String   @id @default(cuid())
+  jobId         String
+  stage         String
+  status        String
+  progress      Int
+  details       String?
+  error         String?
+  estimatedTime Int?
+  metadata      Json     @default("{}")
+  timestamp     DateTime @default(now())
+
+  @@index([jobId])
+  @@index([jobId, timestamp])
+}
+
+model BackgroundJob {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  status      String
+  progress    Int       @default(0)
+  result      Json?
+  error       String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  metadata    Json      @default("{}")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+}
+
+model HelpAnalytics {
+  id        String   @id @default(cuid())
+  userId    String
+  tourId    String?
+  stepId    String?
+  contentId String?
+  action    String
+  query     String?
+  metadata  Json?
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tourId])
+  @@index([action])
+  @@index([timestamp])
+}
+
+model WidgetAnalytics {
+  id         String   @id @default(cuid())
+  userId     String
+  widgetType String
+  action     String
+  duration   Int?
+  metadata   Json?
+  timestamp  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([widgetType])
+  @@index([timestamp])
 }

@@ -400,7 +400,7 @@ export class ContractIndexingService {
   }
 
   /**
-   * Perform intelligent search across contracts
+   * Perform intelligent search across contracts using PostgreSQL full-text search
    */
   async search(query: SearchQuery): Promise<ServiceResponse<SearchResponse>> {
     const startTime = Date.now();
@@ -411,42 +411,23 @@ export class ContractIndexingService {
         "Performing contract search"
       );
 
-      // Get all indexed contracts for tenant
-      const tenantContracts = Array.from(this.searchIndex.values()).filter(
-        (index) => index.tenantId === query.tenantId
-      );
+      // Use PostgreSQL full-text search for better performance
+      const results = await this.performDatabaseSearch(query);
 
-      // Apply filters and search
-      let results = await this.performSearch(tenantContracts, query);
-
-      // Sort results
-      results = this.sortResults(
-        results,
-        query.sortBy || "relevance",
-        query.sortOrder || "desc"
-      );
-
-      // Apply pagination
-      const total = results.length;
-      const offset = query.offset || 0;
-      const limit = query.limit || 20;
-      const paginatedResults = results.slice(offset, offset + limit);
-
-      // Generate facets
-      const facets = this.generateFacets(tenantContracts);
+      // Generate facets from database
+      const facets = await this.generateDatabaseFacets(query.tenantId, query.filters);
 
       // Generate suggestions
-      const suggestions = this.generateSuggestions(
-        query.query || "",
-        tenantContracts
-      );
+      const suggestions = query.query 
+        ? await this.getDatabaseSuggestions(query.tenantId, query.query)
+        : [];
 
       const queryTime = Date.now() - startTime;
 
       logger.info(
         {
-          total,
-          returned: paginatedResults.length,
+          total: results.total,
+          returned: results.results.length,
           queryTime,
         },
         "Search completed"
@@ -455,8 +436,8 @@ export class ContractIndexingService {
       return {
         success: true,
         data: {
-          results: paginatedResults,
-          total,
+          results: results.results,
+          total: results.total,
           facets,
           suggestions,
           queryTime,
@@ -471,6 +452,264 @@ export class ContractIndexingService {
           message: error instanceof Error ? error.message : "Unknown error",
         },
       };
+    }
+  }
+
+  /**
+   * Perform database-backed full-text search
+   */
+  private async performDatabaseSearch(
+    query: SearchQuery
+  ): Promise<{ results: SearchResult[]; total: number }> {
+    const limit = query.limit || 20;
+    const offset = query.offset || 0;
+
+    // Build WHERE clause for filters
+    const whereConditions: any = {
+      tenantId: query.tenantId,
+      status: { not: 'DELETED' },
+    };
+
+    if (query.filters) {
+      if (query.filters.contractType && query.filters.contractType.length > 0) {
+        whereConditions.contractType = { in: query.filters.contractType };
+      }
+
+      if (query.filters.category && query.filters.category.length > 0) {
+        whereConditions.category = { in: query.filters.category };
+      }
+
+      if (query.filters.dateRange) {
+        whereConditions.AND = [
+          { startDate: { gte: query.filters.dateRange.from } },
+          { endDate: { lte: query.filters.dateRange.to } },
+        ];
+      }
+
+      if (query.filters.valueRange) {
+        whereConditions.totalValue = {
+          gte: query.filters.valueRange.min,
+          lte: query.filters.valueRange.max,
+        };
+      }
+    }
+
+    // If text query, use full-text search
+    if (query.query && query.query.trim()) {
+      // Convert query to tsquery format
+      const tsQuery = query.query
+        .trim()
+        .split(/\s+/)
+        .map(term => term.replace(/[^\w]/g, ''))
+        .filter(term => term.length > 0)
+        .join(' & ');
+
+      // Use raw SQL for full-text search with ranking
+      const searchResults = await dbAdaptor.getClient().$queryRaw<any[]>`
+        SELECT 
+          c.*,
+          ts_rank(c."textVector", to_tsquery('contract_search', ${tsQuery})) AS rank,
+          ts_headline(
+            'contract_search',
+            c."searchableText",
+            to_tsquery('contract_search', ${tsQuery}),
+            'MaxWords=50, MinWords=25, ShortWord=3'
+          ) AS headline
+        FROM "Contract" c
+        WHERE 
+          c."tenantId" = ${query.tenantId}
+          AND c."textVector" @@ to_tsquery('contract_search', ${tsQuery})
+          AND c."status" != 'DELETED'
+          ${query.filters?.contractType ? `AND c."contractType" = ANY(ARRAY[${query.filters.contractType.map(t => `'${t}'`).join(',')}]::text[])` : ''}
+          ${query.filters?.category ? `AND c."category" = ANY(ARRAY[${query.filters.category.map(c => `'${c}'`).join(',')}]::text[])` : ''}
+        ORDER BY rank DESC, c."createdAt" DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
+      // Get total count
+      const countResult = await dbAdaptor.getClient().$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*) as count
+        FROM "Contract" c
+        WHERE 
+          c."tenantId" = ${query.tenantId}
+          AND c."textVector" @@ to_tsquery('contract_search', ${tsQuery})
+          AND c."status" != 'DELETED'
+      `;
+
+      const total = Number(countResult[0]?.count || 0);
+
+      // Convert to SearchResult format
+      const results: SearchResult[] = await Promise.all(
+        searchResults.map(async (row) => {
+          const contract = row as Contract;
+          const artifacts = query.includeArtifacts
+            ? await dbAdaptor.getArtifacts(contract.id)
+            : undefined;
+
+          return {
+            contract,
+            artifacts,
+            score: row.rank || 0,
+            highlights: [
+              {
+                field: 'content',
+                text: row.headline || '',
+                matches: [],
+              },
+            ],
+            explanation: `Full-text match with rank ${row.rank?.toFixed(2)}`,
+          };
+        })
+      );
+
+      return { results, total };
+    }
+
+    // No text query - use standard filtering
+    const [contracts, total] = await Promise.all([
+      dbAdaptor.getClient().contract.findMany({
+        where: whereConditions,
+        orderBy: this.buildOrderBy(query.sortBy, query.sortOrder),
+        take: limit,
+        skip: offset,
+      }),
+      dbAdaptor.getClient().contract.count({
+        where: whereConditions,
+      }),
+    ]);
+
+    const results: SearchResult[] = await Promise.all(
+      contracts.map(async (contract) => {
+        const artifacts = query.includeArtifacts
+          ? await dbAdaptor.getArtifacts(contract.id)
+          : undefined;
+
+        return {
+          contract: contract as Contract,
+          artifacts,
+          score: 1.0,
+          highlights: [],
+          explanation: 'Filter match',
+        };
+      })
+    );
+
+    return { results, total };
+  }
+
+  /**
+   * Build ORDER BY clause for queries
+   */
+  private buildOrderBy(sortBy?: string, sortOrder?: string): any {
+    const order = sortOrder === 'asc' ? 'asc' : 'desc';
+
+    switch (sortBy) {
+      case 'date':
+        return { createdAt: order };
+      case 'value':
+        return { totalValue: order };
+      case 'title':
+        return { contractTitle: order };
+      default:
+        return { createdAt: order };
+    }
+  }
+
+  /**
+   * Generate facets from database
+   */
+  private async generateDatabaseFacets(
+    tenantId: string,
+    filters?: SearchQuery['filters']
+  ): Promise<SearchResponse['facets']> {
+    const whereConditions: any = {
+      tenantId,
+      status: { not: 'DELETED' },
+    };
+
+    // Apply existing filters (except the one we're faceting on)
+    if (filters?.dateRange) {
+      whereConditions.AND = [
+        { startDate: { gte: filters.dateRange.from } },
+        { endDate: { lte: filters.dateRange.to } },
+      ];
+    }
+
+    // Get facet counts in parallel
+    const [contractTypes, categories, parties, tags] = await Promise.all([
+      // Contract types
+      dbAdaptor.getClient().contract.groupBy({
+        by: ['contractType'],
+        where: whereConditions,
+        _count: true,
+      }),
+
+      // Categories
+      dbAdaptor.getClient().contract.groupBy({
+        by: ['category'],
+        where: { ...whereConditions, category: { not: null } },
+        _count: true,
+      }),
+
+      // Parties (clients and suppliers)
+      Promise.all([
+        dbAdaptor.getClient().contract.groupBy({
+          by: ['clientName'],
+          where: { ...whereConditions, clientName: { not: null } },
+          _count: true,
+        }),
+        dbAdaptor.getClient().contract.groupBy({
+          by: ['supplierName'],
+          where: { ...whereConditions, supplierName: { not: null } },
+          _count: true,
+        }),
+      ]).then(([clients, suppliers]) => [
+        ...clients.map(c => ({ value: c.clientName!, count: c._count })),
+        ...suppliers.map(s => ({ value: s.supplierName!, count: s._count })),
+      ]),
+
+      // Tags (placeholder - would need JSON aggregation)
+      Promise.resolve([]),
+    ]);
+
+    return {
+      contractTypes: contractTypes
+        .filter(ct => ct.contractType)
+        .map(ct => ({ value: ct.contractType!, count: ct._count }))
+        .sort((a, b) => b.count - a.count),
+      
+      categories: categories
+        .filter(c => c.category)
+        .map(c => ({ value: c.category!, count: c._count }))
+        .sort((a, b) => b.count - a.count),
+      
+      parties: parties
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+      
+      riskLevels: [], // Would need to aggregate from artifacts
+      
+      tags: tags,
+    };
+  }
+
+  /**
+   * Get search suggestions from database
+   */
+  private async getDatabaseSuggestions(
+    tenantId: string,
+    partialQuery: string
+  ): Promise<string[]> {
+    try {
+      const suggestions = await dbAdaptor.getClient().$queryRaw<Array<{ suggestion: string }>>`
+        SELECT * FROM get_search_suggestions(${tenantId}, ${partialQuery}, 10)
+      `;
+
+      return suggestions.map(s => s.suggestion);
+    } catch (error) {
+      logger.warn({ error }, 'Failed to get search suggestions');
+      return [];
     }
   }
 

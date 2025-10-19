@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { mockDatabase } from "@/lib/mock-database";
+import { contractService } from "data-orchestration";
 import {
   ensureProcessingJob,
   startProcessingJob,
@@ -52,13 +52,26 @@ export async function POST(request: NextRequest) {
       jobId: string;
     }>;
 
+    const tenantId = "demo"; // TODO: Get from auth session
+
     for (const file of files) {
-      const contract = await mockDatabase.createContract({
-        name: file.name,
-        status: "uploaded",
+      // Create contract using real service
+      const result = await contractService.createContract({
+        tenantId,
+        fileName: file.name,
+        mimeType: file.type || "application/pdf",
+        fileSize: file.size,
+        uploadedBy: "user", // TODO: Get from auth session
+        status: "UPLOADED",
         contractType: formData.get(`${file.name}_type`) as string | undefined,
       });
 
+      if (!result.success || !result.data) {
+        console.error(`Failed to create contract for ${file.name}:`, result.error);
+        continue;
+      }
+
+      const contract = result.data;
       ensureProcessingJob(contract.id);
       const job = startProcessingJob(contract.id);
 

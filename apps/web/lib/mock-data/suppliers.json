@@ -1,0 +1,91 @@
+{
+  "overview": [
+    {
+      "supplierId": "accenture",
+      "supplierName": "Accenture",
+      "tier": "Big 4",
+      "activeContracts": 12,
+      "totalValue": 8500000,
+      "overallScore": 87
+    },
+    {
+      "supplierId": "deloitte",
+      "supplierName": "Deloitte",
+      "tier": "Big 4",
+      "activeContracts": 9,
+      "totalValue": 6200000,
+      "overallScore": 85
+    },
+    {
+      "supplierId": "pwc",
+      "supplierName": "PwC",
+      "tier": "Big 4",
+      "activeContracts": 7,
+      "totalValue": 5100000,
+      "overallScore": 83
+    },
+    {
+      "supplierId": "tcs",
+      "supplierName": "Tata Consultancy Services",
+      "tier": "Tier 2",
+      "activeContracts": 15,
+      "totalValue": 4800000,
+      "overallScore": 82
+    }
+  ],
+  "metrics": {
+    "accenture": {
+      "supplierId": "accenture",
+      "supplierName": "Accenture",
+      "financialHealth": {
+        "score": 92,
+        "creditRating": "AAA",
+        "riskLevel": "low"
+      },
+      "performance": {
+        "deliveryScore": 88,
+        "qualityScore": 90,
+        "responsivenessScore": 85,
+        "overallScore": 87
+      },
+      "contractMetrics": {
+        "totalValue": 8500000,
+        "activeContracts": 12,
+        "averageContractValue": 708333,
+        "relationshipDuration": 5.2
+      }
+    },
+    "deloitte": {
+      "supplierId": "deloitte",
+      "supplierName": "Deloitte",
+      "financialHealth": {
+        "score": 90,
+        "creditRating": "AAA",
+        "riskLevel": "low"
+      },
+      "performance": {
+        "deliveryScore": 86,
+        "qualityScore": 88,
+        "responsivenessScore": 82,
+        "overallScore": 85
+      },
+      "contractMetrics": {
+        "totalValue": 6200000,
+        "activeContracts": 9,
+        "averageContractValue": 688889,
+        "relationshipDuration": 4.8
+      }
+    }
+  },
+  "performance": {
+    "accenture": {
+      "supplierId": "accenture",
+      "trends": [
+        { "period": "2024-Q1", "deliveryScore": 85, "qualityScore": 88, "overallScore": 86 },
+        { "period": "2024-Q2", "deliveryScore": 87, "qualityScore": 89, "overallScore": 87 },
+        { "period": "2024-Q3", "deliveryScore": 88, "qualityScore": 90, "overallScore": 88 },
+        { "period": "2024-Q4", "deliveryScore": 88, "qualityScore": 90, "overallScore": 87 }
+      ]
+    }
+  }
+}

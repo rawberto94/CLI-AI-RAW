@@ -533,12 +533,36 @@ async function storeArtifacts(
         tenantId,
         type: artifact.type as any,
         data: artifact.data,
-        version: artifact.version,
-        createdAt: new Date(),
+        schemaVersion: artifact.version,
       });
     }
 
     console.log(`✅ Stored ${artifacts.length} artifacts for contract ${contractId}`);
+
+    // Generate enhanced savings opportunities using rate card intelligence
+    try {
+      const savingsModule = await import('../../../packages/data-orchestration/src/services/enhanced-savings-opportunities.service');
+      
+      const savingsAnalysis = await savingsModule.enhancedSavingsOpportunitiesService.analyzeSavingsOpportunities(
+        contractId,
+        tenantId,
+        analysis.financial
+      );
+      
+      // Store savings opportunities artifact
+      await artifactService.createArtifact({
+        contractId,
+        tenantId,
+        type: 'REPORT' as any, // Use REPORT type for opportunities
+        data: savingsAnalysis,
+        schemaVersion: '1.0',
+      });
+      
+      console.log(`✅ Savings opportunities analyzed: $${savingsAnalysis.totalPotentialSavings.toLocaleString()} potential savings`);
+    } catch (savingsError) {
+      console.error('❌ Savings analysis error:', savingsError);
+      // Don't fail the entire process if savings analysis fails
+    }
 
     // Trigger rate card analysis if this appears to be a service contract
     try {
@@ -555,8 +579,8 @@ async function storeArtifacts(
         console.log('🎯 Contract appears to contain rates, triggering rate card analysis...');
         
         // Import rate card benchmarking engine
-        const { RateCardBenchmarkingEngineImpl } = await import('data-orchestration/src/services/analytical-engines/rate-card-benchmarking.engine');
-        const rateCardEngine = new RateCardBenchmarkingEngineImpl();
+        const rateCardModule = await import('../../../packages/data-orchestration/src/services/analytical-engines/rate-card-benchmarking.engine');
+        const rateCardEngine = new rateCardModule.RateCardBenchmarkingEngineImpl();
         
         // Parse rate cards from the contract
         const rateCardResult = await rateCardEngine.parseRateCards(contractId);
@@ -568,10 +592,9 @@ async function storeArtifacts(
           await artifactService.createArtifact({
             contractId,
             tenantId,
-            type: 'RATE_CARD' as any,
+            type: 'RATES' as any,
             data: rateCardResult,
-            version: '1.0',
-            createdAt: new Date(),
+            schemaVersion: '1.0',
           });
 
           // Trigger standardization of extracted data

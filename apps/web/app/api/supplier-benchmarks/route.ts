@@ -1,26 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupplierBenchmarks, getSupplierRiskDistribution, mockContractMetrics } from '@/lib/mock-database';
+import { analyticalIntelligenceService, contractService } from 'data-orchestration';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const includeAnalytics = searchParams.get('analytics') === 'true';
+    const tenantId = "demo"; // TODO: Get from auth session
 
-    const benchmarks = getSupplierBenchmarks(category || undefined);
+    // Get contracts to analyze suppliers
+    const contractsResult = await contractService.queryContracts({
+      tenantId,
+      page: 1,
+      limit: 100,
+      sortBy: "createdAt",
+      sortOrder: "desc",
+      ...(category && { category: [category] }),
+    });
+
+    if (!contractsResult.success || !contractsResult.data) {
+      return NextResponse.json(
+        { error: 'Failed to fetch contracts for benchmarking' },
+        { status: 500 }
+      );
+    }
+
+    const contracts = contractsResult.data.contracts;
+    
+    // Group by supplier and calculate benchmarks
+    const supplierMap = new Map<string, any>();
+    
+    contracts.forEach(contract => {
+      const supplier = contract.supplierName || 'Unknown';
+      if (!supplierMap.has(supplier)) {
+        supplierMap.set(supplier, {
+          supplier,
+          category: contract.category || 'General',
+          contractCount: 0,
+          totalValue: 0,
+          avgRate: 0,
+          performanceScore: 85, // Default score
+          riskLevel: 'medium',
+          marketPosition: 'at-market',
+        });
+      }
+      
+      const supplierData = supplierMap.get(supplier);
+      supplierData.contractCount++;
+      supplierData.totalValue += Number(contract.totalValue) || 0;
+    });
+
+    const benchmarks = Array.from(supplierMap.values()).map(s => ({
+      ...s,
+      avgRate: s.totalValue / Math.max(s.contractCount, 1),
+    }));
     
     let response: any = {
       benchmarks,
       total: benchmarks.length
     };
 
-    if (includeAnalytics) {
-      const riskDistribution = getSupplierRiskDistribution();
+    if (includeAnalytics && benchmarks.length > 0) {
       const avgRate = benchmarks.reduce((sum, b) => sum + b.avgRate, 0) / benchmarks.length;
       const totalValue = benchmarks.reduce((sum, b) => sum + b.totalValue, 0);
       
       response.analytics = {
-        riskDistribution,
+        riskDistribution: {
+          low: benchmarks.filter(b => b.riskLevel === 'low').length,
+          medium: benchmarks.filter(b => b.riskLevel === 'medium').length,
+          high: benchmarks.filter(b => b.riskLevel === 'high').length,
+        },
         avgMarketRate: Math.round(avgRate * 100) / 100,
         totalPortfolioValue: totalValue,
         supplierCount: benchmarks.length,
@@ -37,7 +86,7 @@ export async function GET(request: NextRequest) {
             .map(b => ({
               supplier: b.supplier,
               category: b.category,
-              potentialSavings: Math.round((b.avgRate - (b.avgRate * 0.85)) * 2000), // Assume 15% reduction possible
+              potentialSavings: Math.round((b.avgRate - (b.avgRate * 0.85)) * 2000),
               currentSpend: b.totalValue
             }))
         },

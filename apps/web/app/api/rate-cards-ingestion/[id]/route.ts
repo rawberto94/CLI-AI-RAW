@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mockRateCards } from "@/lib/mock-database";
+import { rateCardManagementService } from "data-orchestration";
 
 export async function GET(
   request: Request,
@@ -7,53 +7,49 @@ export async function GET(
 ) {
   try {
     const params = await context.params;
-    const rateCard = mockRateCards.find((card) => card.id === params.id);
+    const tenantId = "demo"; // TODO: Get from auth session
+    
+    // Get rate card using real service
+    const result = await rateCardManagementService.getRateCard(tenantId, params.id);
 
-    if (!rateCard) {
+    if (!result.success || !result.data) {
       return NextResponse.json(
         { error: "Rate card not found" },
         { status: 404 }
       );
     }
 
+    const rateCard = result.data;
+
     const mappedRateCard = {
       id: rateCard.id,
-      supplierName: rateCard.supplier,
-      supplierTier: rateCard.confidence > 92 ? "TIER_1" : "TIER_2",
-      effectiveDate: rateCard.extractedAt.toISOString(),
-      expiryDate: null as string | null,
-      originalCurrency: "USD",
-      baseCurrency: "USD",
-      status: rateCard.confidence > 90 ? "APPROVED" : "PENDING_APPROVAL",
-      importedAt: rateCard.extractedAt.toISOString(),
-      importedBy: "demo.user@acme.com",
-      source: "Mock Import",
+      supplierName: rateCard.supplierName,
+      supplierTier: rateCard.supplierTier,
+      effectiveDate: rateCard.effectiveDate.toISOString(),
+      expiryDate: rateCard.expiryDate?.toISOString() || null,
+      originalCurrency: rateCard.originalCurrency,
+      baseCurrency: rateCard.baseCurrency,
+      status: rateCard.status,
+      importedAt: rateCard.importedAt.toISOString(),
+      importedBy: rateCard.importedBy,
+      source: rateCard.source,
     };
 
-    const roles = rateCard.services.map((service, idx) => {
-      const hourlyRate =
-        service.unit === "/hour"
-          ? service.currentRate
-          : service.currentRate / 8;
-      return {
-        id: `${rateCard.id}-${idx}`,
-        standardizedRole: service.name,
-        originalRoleName: service.name,
-        seniorityLevel: "Senior",
-        serviceLine: service.category,
-        country: "United States",
-        city: null,
-        dailyRate:
-          service.unit === "/hour"
-            ? service.currentRate * 8
-            : service.currentRate,
-        hourlyRate,
-        monthlyRate: hourlyRate * 8 * 20,
-        baseCurrency: "USD",
-        confidence: rateCard.confidence,
-        dataQuality: rateCard.confidence > 90 ? "HIGH" : "MEDIUM",
-      };
-    });
+    const roles = (rateCard.roles || []).map((role: any) => ({
+      id: role.id,
+      standardizedRole: role.standardizedRole,
+      originalRoleName: role.originalRoleName,
+      seniorityLevel: role.seniorityLevel,
+      serviceLine: role.serviceLine,
+      country: role.country,
+      city: role.city,
+      dailyRate: Number(role.dailyRate),
+      hourlyRate: Number(role.hourlyRate),
+      monthlyRate: Number(role.monthlyRate),
+      baseCurrency: role.baseCurrency,
+      confidence: Number(role.confidence),
+      dataQuality: role.dataQuality,
+    }));
 
     return NextResponse.json({ rateCard: mappedRateCard, roles });
   } catch (error) {

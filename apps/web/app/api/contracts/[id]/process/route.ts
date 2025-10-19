@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { mockDatabase } from "@/lib/mock-database";
+import { contractService } from "data-orchestration";
 import {
   ensureProcessingJob,
   startProcessingJob,
@@ -25,9 +25,12 @@ export async function POST(
   }
 
   try {
-    const contract = await mockDatabase.getContract(contractId);
+    const tenantId = "demo"; // TODO: Get from auth session
+    
+    // Get contract using real service
+    const result = await contractService.getContract(contractId, tenantId);
 
-    if (!contract) {
+    if (!result.success || !result.data) {
       return NextResponse.json(
         { error: "Contract not found" },
         { status: 404 }

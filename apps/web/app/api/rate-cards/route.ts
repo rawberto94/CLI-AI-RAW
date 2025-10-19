@@ -1,33 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getRateCardsBySupplier,
-  getTopSavingsOpportunities,
-  calculateTotalSavingsOpportunity,
-} from '@/lib/mock-database';
+import { rateCardManagementService } from 'data-orchestration';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const supplier = searchParams.get('supplier');
     const includeAnalytics = searchParams.get('analytics') === 'true';
+    const tenantId = "demo"; // TODO: Get from auth session
 
-    const rateCards = getRateCardsBySupplier(supplier || undefined);
+    // Get rate cards using real service
+    const result = await rateCardManagementService.getRateCards(tenantId, {
+      supplierName: supplier || undefined,
+    });
+
+    if (!result.success || !result.data) {
+      return NextResponse.json(
+        { error: 'Failed to fetch rate cards' },
+        { status: 500 }
+      );
+    }
+
+    const rateCards = result.data;
 
     let response: any = {
       rateCards,
       total: rateCards.length,
     };
 
-    if (includeAnalytics) {
+    if (includeAnalytics && rateCards.length > 0) {
+      // Calculate analytics from real data
+      const totalRoles = rateCards.reduce((sum: number, rc: any) => sum + (rc.roles?.length || 0), 0);
+      const avgConfidence = rateCards.reduce((sum: number, rc: any) => sum + (rc.dataQuality?.score || 0), 0) / rateCards.length;
+      
       response.analytics = {
-        totalSavingsOpportunity: calculateTotalSavingsOpportunity(),
-        topOpportunities: getTopSavingsOpportunities(),
-        avgConfidence:
-          rateCards.reduce((sum, rc) => sum + rc.confidence, 0) /
-          rateCards.length,
-        categoriesAnalyzed: [
-          ...new Set(rateCards.flatMap(rc => rc.services.map(s => s.category))),
-        ],
+        totalSavingsOpportunity: 0, // TODO: Calculate from benchmarking
+        topOpportunities: [], // TODO: Get from benchmarking service
+        avgConfidence,
+        categoriesAnalyzed: totalRoles,
         lastUpdated: new Date().toISOString(),
       };
     }
@@ -45,6 +54,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const tenantId = "demo"; // TODO: Get from auth session
     
     // Check if this is a manual entry or contract extraction
     if (body.supplierName && body.roles) {
@@ -69,71 +79,44 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // In a real implementation, you would:
-      // 1. Create RateCard record in database
-      // 2. Create RoleRate records for each role
-      // 3. Return the created rate card with ID
-
-      const rateCard = {
-        id: `rc_${Date.now()}`,
+      // Create rate card using real service
+      const result = await rateCardManagementService.createRateCard(tenantId, {
         supplierName,
-        clientName: clientName || null,
+        effectiveDate: validFrom ? new Date(validFrom) : new Date(),
+        expiryDate: validTo ? new Date(validTo) : undefined,
         currency: currency || 'CHF',
-        validFrom: validFrom ? new Date(validFrom) : new Date(),
-        validTo: validTo ? new Date(validTo) : null,
-        createdAt: new Date(),
-        roles: roles.map((role: any, index: number) => ({
-          id: `rr_${Date.now()}_${index}`,
-          ...role,
-          rateCardId: `rc_${Date.now()}`
-        }))
-      };
+        roles: roles.map((role: any) => ({
+          roleName: role.role,
+          level: role.level,
+          location: role.location,
+          dailyRate: role.dailyRate,
+          hourlyRate: role.dailyRate / 8, // Assuming 8 hour day
+        })),
+      });
 
-      console.log('Created rate card:', rateCard);
+      if (!result.success || !result.data) {
+        return NextResponse.json(
+          { error: 'Failed to create rate card' },
+          { status: 500 }
+        );
+      }
 
       return NextResponse.json({
         success: true,
-        rateCard,
+        rateCard: result.data,
         message: 'Rate card created successfully'
       });
     } else {
-      // Contract extraction (existing functionality)
+      // Contract extraction - use rate card intelligence service
       const { contractId, supplier } = body;
 
-      // Simulate rate card extraction process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      const mockExtractedRateCard = {
-        id: `rc-${Date.now()}`,
-        supplier: supplier || 'New Supplier',
-        contractId,
-        services: [
-          {
-            name: 'Senior Developer',
-            currentRate: 160,
-            marketRate: 150,
-            savings: 10,
-            unit: '/hour',
-            category: 'Development',
-          },
-          {
-            name: 'Junior Developer',
-            currentRate: 120,
-            marketRate: 110,
-            savings: 10,
-            unit: '/hour',
-            category: 'Development',
-          },
-        ],
-        totalSavings: 20,
-        extractedAt: new Date(),
-        confidence: 88,
-      };
-
+      // TODO: Implement real contract extraction using AI service
+      // For now, return a placeholder response
       return NextResponse.json({
         success: true,
-        rateCard: mockExtractedRateCard,
-        message: 'Rate card extracted successfully',
+        message: 'Rate card extraction from contract is not yet implemented',
+        contractId,
+        supplier,
       });
     }
   } catch (error) {

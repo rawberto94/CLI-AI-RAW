@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { EnhancedCard, MetricCard } from '@/components/ui/enhanced-card'
 import { LoadingState } from '@/components/ui/loading-states'
 import { ScoreGauge, DataPoint } from '@/components/ui/data-visualization'
+import { DataModeToggle } from '@/components/analytics/DataModeToggle'
+import { useRateBenchmarking, type DataMode } from '@/hooks/useProcurementIntelligence'
 import {
   Search,
   TrendingUp,
@@ -57,11 +59,24 @@ interface QueryResult {
 }
 
 export default function RateIntelligencePage() {
+  const [mode, setMode] = useState<DataMode>('real')
   const [analytics, setAnalytics] = useState<RateAnalytics | null>(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [queryResult, setQueryResult] = useState<QueryResult | null>(null)
   const [queryLoading, setQueryLoading] = useState(false)
+
+  // Use the new procurement intelligence hook for benchmarking data
+  const { 
+    data: benchmarkData, 
+    loading: benchmarkLoading, 
+    error: benchmarkError,
+    metadata,
+    refetch 
+  } = useRateBenchmarking({
+    lineOfService: 'All',
+    seniority: 'All'
+  }, mode)
 
   useEffect(() => {
     loadAnalytics()
@@ -135,9 +150,15 @@ export default function RateIntelligencePage() {
           <p className="text-gray-600 mt-2">
             Comprehensive analytics and intelligence for your rate card portfolio
           </p>
+          {metadata && (
+            <p className="text-xs text-gray-500 mt-1">
+              Data source: {metadata.source} • Last updated: {new Date(metadata.lastUpdated).toLocaleString()}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={loadAnalytics}>
+          <DataModeToggle currentMode={mode} onModeChange={setMode} />
+          <Button variant="outline" onClick={() => { loadAnalytics(); refetch(); }}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>

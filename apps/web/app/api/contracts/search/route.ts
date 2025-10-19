@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { mockDatabase } from "@/lib/mock-database";
+import { contractService } from "data-orchestration";
 
 type SearchMode = "balanced" | "semantic" | "keyword";
 
@@ -94,7 +94,7 @@ function buildExplanation(result: HybridSearchResult): string {
   return `${baseMessage}. Highlights: ${result.highlights.join(", ")}`;
 }
 
-async function performMockSearch(
+async function performRealSearch(
   query: string,
   mode: SearchMode,
   filters?: SearchFilters,
@@ -102,12 +102,37 @@ async function performMockSearch(
 ): Promise<HybridSearchResponse> {
   const limit = pagination?.limit ?? 20;
   const offset = pagination?.offset ?? 0;
+  const page = Math.floor(offset / limit) + 1;
+  const tenantId = "demo"; // TODO: Get from auth session
 
-  const contracts = await mockDatabase.searchContracts(query, {
-    contractType: filters?.contractType,
-    status: filters?.status,
+  // Use real contract service to search
+  const result = await contractService.queryContracts({
+    tenantId,
+    search: query,
+    status: filters?.status ? [filters.status as any] : undefined,
+    category: filters?.contractType ? [filters.contractType] : undefined,
+    page,
+    limit,
+    sortBy: "createdAt",
+    sortOrder: "desc",
   });
 
+  if (!result.success || !result.data) {
+    return {
+      results: [],
+      total: 0,
+      query,
+      executionTime: 0,
+      searchStrategy: {
+        mode,
+        keywordResults: 0,
+        semanticResults: 0,
+        mergedResults: 0,
+      },
+    };
+  }
+
+  const contracts = result.data.contracts;
   const normalizedQuery = query.toLowerCase();
 
   const results: HybridSearchResult[] = contracts.map((contract, index) => {
@@ -116,8 +141,8 @@ async function performMockSearch(
     const keywordScore = mode === "semantic" ? score * 0.6 : score;
     const semanticScore = mode === "semantic" ? score : score * 0.5;
 
-    const parties = contract.parties ?? [];
-    const highlights = [contract.name, ...parties]
+    const parties = [contract.clientName, contract.supplierName].filter(Boolean);
+    const highlights = [contract.fileName, contract.contractTitle, ...parties]
       .filter(Boolean)
       .map((value) => value!.toLowerCase())
       .filter((value) => value.includes(normalizedQuery))
@@ -126,7 +151,7 @@ async function performMockSearch(
     return {
       id: `${contract.id}-match-${index}`,
       contractId: contract.id,
-      fileName: contract.name,
+      fileName: contract.fileName,
       contractType: contract.contractType ?? null,
       snippet:
         contract.contractType
@@ -141,25 +166,22 @@ async function performMockSearch(
       matchType: mode === "semantic" ? "both" : "keyword",
       highlights,
       metadata: {
-        uploadedAt: contract.uploadDate ?? new Date(),
-        status: contract.status ?? "completed",
+        uploadedAt: contract.uploadedAt || contract.createdAt,
+        status: contract.status.toLowerCase(),
       },
     };
   });
 
-  const total = results.length;
-  const paginated = results.slice(offset, offset + limit);
-
   return {
-    results: paginated,
-    total,
+    results,
+    total: result.data.total,
     query,
     executionTime: Math.round(80 + Math.random() * 120),
     searchStrategy: {
       mode,
-      keywordResults: total,
-      semanticResults: mode === "semantic" ? total : 0,
-      mergedResults: total,
+      keywordResults: result.data.total,
+      semanticResults: mode === "semantic" ? result.data.total : 0,
+      mergedResults: result.data.total,
     },
   };
 }
@@ -181,7 +203,7 @@ export async function POST(request: NextRequest) {
         }
       : undefined;
 
-    const searchResults = await performMockSearch(
+    const searchResults = await performRealSearch(
       validatedData.query,
       validatedData.mode,
       filters,
@@ -270,7 +292,7 @@ export async function GET(request: NextRequest) {
     const contractType = searchParams.get("contractType") || undefined;
     const status = searchParams.get("status") || undefined;
 
-    const searchResults = await performMockSearch(
+    const searchResults = await performRealSearch(
       query,
       mode,
       {

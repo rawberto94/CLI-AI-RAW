@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyticalIntelligenceService } from '@/lib/services/analytical-intelligence.service';
+import { getDataProviderFactory } from '../../../../../../packages/data-orchestration/src/providers/data-provider-factory';
+import { DataMode } from '../../../../../../packages/data-orchestration/src/types/data-provider.types';
 
 /**
  * Rate Card Benchmarking API Endpoints
+ * Now supports both real and mock data modes
  */
 
 // GET /api/analytics/intelligence/rate-benchmarking - Get rate benchmarking data
@@ -14,20 +17,36 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const region = searchParams.get('region');
     const deliveryModel = searchParams.get('deliveryModel');
+    const lineOfService = searchParams.get('lineOfService');
+    const seniority = searchParams.get('seniority');
+    const geography = searchParams.get('geography');
+    const currency = searchParams.get('currency');
+    
+    // Check for data mode parameter (real, mock, or fallback)
+    const dataMode = searchParams.get('mode') as 'real' | 'mock' | null;
+    const mode = dataMode === 'mock' ? DataMode.MOCK : 
+                 dataMode === 'real' ? DataMode.REAL : 
+                 DataMode.REAL; // Default to real
 
-    const filters = {
-      tenantId,
-      ...(supplierId && { supplierId }),
-      ...(category && { category }),
-      ...(region && { region }),
-      ...(deliveryModel && { deliveryModel })
-    };
-
-    const benchmarkData = await analyticalIntelligenceService.getRateBenchmarks(filters);
+    // Use new data provider system
+    const factory = getDataProviderFactory();
+    const response = await factory.getData('rate-benchmarking', {
+      lineOfService: lineOfService || category,
+      seniority,
+      geography: geography || region,
+      currency
+    }, mode);
 
     return NextResponse.json({
       success: true,
-      data: benchmarkData,
+      data: response.data,
+      metadata: {
+        source: response.metadata.source,
+        mode: response.metadata.mode,
+        lastUpdated: response.metadata.lastUpdated,
+        recordCount: response.metadata.recordCount,
+        confidence: response.metadata.confidence
+      },
       timestamp: new Date().toISOString()
     });
 
