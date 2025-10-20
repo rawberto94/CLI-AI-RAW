@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { intelligenceProcessor, contractService, eventBus } from "data-orchestration";
+import { intelligenceProcessor, contractService, eventBus } from "@/lib/data-orchestration";
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

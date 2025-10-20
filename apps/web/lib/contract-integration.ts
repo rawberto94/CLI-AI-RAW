@@ -4,7 +4,7 @@
  * Essential functions to integrate taxonomy and metadata with contract operations
  */
 
-import { contractService, taxonomyService } from "data-orchestration";
+import { contractService, taxonomyService } from "@/lib/data-orchestration";
 
 /**
  * Initialize contract with default metadata after upload

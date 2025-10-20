@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { contractService, artifactService } from "data-orchestration";
+import { contractService, artifactService } from "@/lib/data-orchestration";
 import { existsSync, readFile, writeFile } from "fs";
 import { join } from "path";
 

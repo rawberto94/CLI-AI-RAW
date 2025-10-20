@@ -20,6 +20,9 @@ const nextConfig = {
   },
   output: "standalone",
 
+  // Transpile workspace packages
+  transpilePackages: ["data-orchestration"],
+
   // Performance optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === "production",
@@ -44,6 +47,15 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
+      "data-orchestration": path.resolve(
+        __dirname,
+        "..",
+        "..",
+        "packages",
+        "data-orchestration",
+        "dist",
+        "index.js"
+      ),
       "@/packages": path.resolve(__dirname, "..", "..", "packages"),
       "@/packages/clients": path.resolve(
         __dirname,

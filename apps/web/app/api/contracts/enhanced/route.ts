@@ -15,7 +15,7 @@ import {
   intelligenceService, 
   analyticsService,
   ContractQuerySchema 
-} from "data-orchestration";
+} from "@/lib/data-orchestration";
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

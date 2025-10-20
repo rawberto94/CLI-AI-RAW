@@ -10,7 +10,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { eventBus, Events } from "data-orchestration";
+import { eventBus, Events } from "@/lib/data-orchestration";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

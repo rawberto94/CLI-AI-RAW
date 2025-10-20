@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { contractService } from "data-orchestration";
+import { contractService } from "@/lib/data-orchestration";
 import {
   ensureProcessingJob,
   startProcessingJob,

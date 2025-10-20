@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { contractService } from "data-orchestration";
+import { contractService } from "@/lib/data-orchestration";
 
 type SearchMode = "balanced" | "semantic" | "keyword";
 

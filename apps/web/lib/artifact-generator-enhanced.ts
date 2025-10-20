@@ -5,7 +5,7 @@
  * and generates all required artifacts for the intelligence system.
  */
 
-import { contractService, artifactService } from "data-orchestration";
+import { contractService, artifactService } from "@/lib/data-orchestration";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 

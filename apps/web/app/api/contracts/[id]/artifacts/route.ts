@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { artifactService } from "data-orchestration";
+import { artifactService } from "@/lib/data-orchestration";
 
 export async function GET(
   request: NextRequest,

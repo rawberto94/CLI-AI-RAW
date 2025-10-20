@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get("limit")
       ? Number(searchParams.get("limit"))
       : 20;
-    const sortBy = searchParams.get("sortBy") || "uploadedAt";
+    const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = (searchParams.get("sortOrder") || "desc") as
       | "asc"
       | "desc";
@@ -44,38 +44,17 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const where: any = {
       tenantId,
-      deletedAt: null, // Only non-deleted contracts
     };
 
     if (search) {
       where.OR = [
         { fileName: { contains: search, mode: "insensitive" } },
         { originalName: { contains: search, mode: "insensitive" } },
-        { contractTitle: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
       ];
     }
 
     if (statuses.length > 0) {
       where.status = { in: statuses };
-    }
-
-    if (clientNames.length > 0) {
-      where.clientName = { in: clientNames };
-    }
-
-    if (supplierNames.length > 0) {
-      where.supplierName = { in: supplierNames };
-    }
-
-    if (categories.length > 0) {
-      where.category = { in: categories };
-    }
-
-    if (minValue !== undefined || maxValue !== undefined) {
-      where.totalValue = {};
-      if (minValue !== undefined) where.totalValue.gte = minValue;
-      if (maxValue !== undefined) where.totalValue.lte = maxValue;
     }
 
     // Build orderBy
@@ -96,20 +75,9 @@ export async function GET(request: NextRequest) {
           originalName: true,
           fileSize: true,
           mimeType: true,
-          uploadedAt: true,
+          createdAt: true,
           status: true,
           contractType: true,
-          contractTitle: true,
-          description: true,
-          category: true,
-          totalValue: true,
-          currency: true,
-          startDate: true,
-          endDate: true,
-          clientName: true,
-          supplierName: true,
-          viewCount: true,
-          lastViewedAt: true,
         },
       }),
       prisma.contract.count({ where }),
@@ -127,25 +95,10 @@ export async function GET(request: NextRequest) {
             filename: contract.fileName,
             originalName: contract.originalName || contract.fileName,
             status: contract.status,
-            processingStatus: contract.status,
-            uploadDate: contract.uploadedAt,
-            uploadedAt: contract.uploadedAt,
-            fileSize: Number(contract.fileSize),
+            fileSize: contract.fileSize.toString(),
             mimeType: contract.mimeType,
-            contractType: contract.contractType || "UNKNOWN",
-            contractTitle: contract.contractTitle,
-            description: contract.description,
-            category: contract.category,
-            totalValue: contract.totalValue
-              ? Number(contract.totalValue)
-              : null,
-            currency: contract.currency,
-            startDate: contract.startDate,
-            endDate: contract.endDate,
-            clientName: contract.clientName,
-            supplierName: contract.supplierName,
-            viewCount: contract.viewCount,
-            lastViewedAt: contract.lastViewedAt,
+            uploadedAt: contract.createdAt.toISOString(),
+            contractType: contract.contractType || "Unknown",
           })),
           pagination: {
             total,

@@ -415,10 +415,13 @@ export class ContractIndexingService {
       const results = await this.performDatabaseSearch(query);
 
       // Generate facets from database
-      const facets = await this.generateDatabaseFacets(query.tenantId, query.filters);
+      const facets = await this.generateDatabaseFacets(
+        query.tenantId,
+        query.filters
+      );
 
       // Generate suggestions
-      const suggestions = query.query 
+      const suggestions = query.query
         ? await this.getDatabaseSuggestions(query.tenantId, query.query)
         : [];
 
@@ -467,7 +470,7 @@ export class ContractIndexingService {
     // Build WHERE clause for filters
     const whereConditions: any = {
       tenantId: query.tenantId,
-      status: { not: 'DELETED' },
+      status: { not: "DELETED" },
     };
 
     if (query.filters) {
@@ -500,9 +503,9 @@ export class ContractIndexingService {
       const tsQuery = query.query
         .trim()
         .split(/\s+/)
-        .map(term => term.replace(/[^\w]/g, ''))
-        .filter(term => term.length > 0)
-        .join(' & ');
+        .map((term) => term.replace(/[^\w]/g, ""))
+        .filter((term) => term.length > 0)
+        .join(" & ");
 
       // Use raw SQL for full-text search with ranking
       const searchResults = await dbAdaptor.getClient().$queryRaw<any[]>`
@@ -520,15 +523,29 @@ export class ContractIndexingService {
           c."tenantId" = ${query.tenantId}
           AND c."textVector" @@ to_tsquery('contract_search', ${tsQuery})
           AND c."status" != 'DELETED'
-          ${query.filters?.contractType ? `AND c."contractType" = ANY(ARRAY[${query.filters.contractType.map(t => `'${t}'`).join(',')}]::text[])` : ''}
-          ${query.filters?.category ? `AND c."category" = ANY(ARRAY[${query.filters.category.map(c => `'${c}'`).join(',')}]::text[])` : ''}
+          ${
+            query.filters?.contractType
+              ? `AND c."contractType" = ANY(ARRAY[${query.filters.contractType
+                  .map((t) => `'${t}'`)
+                  .join(",")}]::text[])`
+              : ""
+          }
+          ${
+            query.filters?.category
+              ? `AND c."category" = ANY(ARRAY[${query.filters.category
+                  .map((c) => `'${c}'`)
+                  .join(",")}]::text[])`
+              : ""
+          }
         ORDER BY rank DESC, c."createdAt" DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
 
       // Get total count
-      const countResult = await dbAdaptor.getClient().$queryRaw<[{ count: bigint }]>`
+      const countResult = await dbAdaptor.getClient().$queryRaw<
+        [{ count: bigint }]
+      >`
         SELECT COUNT(*) as count
         FROM "Contract" c
         WHERE 
@@ -553,8 +570,8 @@ export class ContractIndexingService {
             score: row.rank || 0,
             highlights: [
               {
-                field: 'content',
-                text: row.headline || '',
+                field: "content",
+                text: row.headline || "",
                 matches: [],
               },
             ],
@@ -588,14 +605,14 @@ export class ContractIndexingService {
         return {
           contract: {
             ...contract,
-            totalValue: contract.totalValue 
-              ? Number(contract.totalValue) 
+            totalValue: contract.totalValue
+              ? Number(contract.totalValue)
               : null,
           } as Contract,
           artifacts,
           score: 1.0,
           highlights: [],
-          explanation: 'Filter match',
+          explanation: "Filter match",
         };
       })
     );
@@ -607,14 +624,14 @@ export class ContractIndexingService {
    * Build ORDER BY clause for queries
    */
   private buildOrderBy(sortBy?: string, sortOrder?: string): any {
-    const order = sortOrder === 'asc' ? 'asc' : 'desc';
+    const order = sortOrder === "asc" ? "asc" : "desc";
 
     switch (sortBy) {
-      case 'date':
+      case "date":
         return { createdAt: order };
-      case 'value':
+      case "value":
         return { totalValue: order };
-      case 'title':
+      case "title":
         return { contractTitle: order };
       default:
         return { createdAt: order };
@@ -626,11 +643,11 @@ export class ContractIndexingService {
    */
   private async generateDatabaseFacets(
     tenantId: string,
-    filters?: SearchQuery['filters']
-  ): Promise<SearchResponse['facets']> {
+    filters?: SearchQuery["filters"]
+  ): Promise<SearchResponse["facets"]> {
     const whereConditions: any = {
       tenantId,
-      status: { not: 'DELETED' },
+      status: { not: "DELETED" },
     };
 
     // Apply existing filters (except the one we're faceting on)
@@ -645,14 +662,14 @@ export class ContractIndexingService {
     const [contractTypes, categories, parties, tags] = await Promise.all([
       // Contract types
       dbAdaptor.getClient().contract.groupBy({
-        by: ['contractType'],
+        by: ["contractType"],
         where: whereConditions,
         _count: true,
       }),
 
       // Categories
       dbAdaptor.getClient().contract.groupBy({
-        by: ['category'],
+        by: ["category"],
         where: { ...whereConditions, category: { not: null } },
         _count: true,
       }),
@@ -660,18 +677,18 @@ export class ContractIndexingService {
       // Parties (clients and suppliers)
       Promise.all([
         dbAdaptor.getClient().contract.groupBy({
-          by: ['clientName'],
+          by: ["clientName"],
           where: { ...whereConditions, clientName: { not: null } },
           _count: true,
         }),
         dbAdaptor.getClient().contract.groupBy({
-          by: ['supplierName'],
+          by: ["supplierName"],
           where: { ...whereConditions, supplierName: { not: null } },
           _count: true,
         }),
       ]).then(([clients, suppliers]) => [
-        ...clients.map(c => ({ value: c.clientName!, count: c._count })),
-        ...suppliers.map(s => ({ value: s.supplierName!, count: s._count })),
+        ...clients.map((c) => ({ value: c.clientName!, count: c._count })),
+        ...suppliers.map((s) => ({ value: s.supplierName!, count: s._count })),
       ]),
 
       // Tags (placeholder - would need JSON aggregation)
@@ -680,21 +697,19 @@ export class ContractIndexingService {
 
     return {
       contractTypes: contractTypes
-        .filter(ct => ct.contractType)
-        .map(ct => ({ value: ct.contractType!, count: ct._count }))
+        .filter((ct) => ct.contractType)
+        .map((ct) => ({ value: ct.contractType!, count: ct._count }))
         .sort((a, b) => b.count - a.count),
-      
+
       categories: categories
-        .filter(c => c.category)
-        .map(c => ({ value: c.category!, count: c._count }))
+        .filter((c) => c.category)
+        .map((c) => ({ value: c.category!, count: c._count }))
         .sort((a, b) => b.count - a.count),
-      
-      parties: parties
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20),
-      
+
+      parties: parties.sort((a, b) => b.count - a.count).slice(0, 20),
+
       riskLevels: [], // Would need to aggregate from artifacts
-      
+
       tags: tags,
     };
   }
@@ -707,13 +722,15 @@ export class ContractIndexingService {
     partialQuery: string
   ): Promise<string[]> {
     try {
-      const suggestions = await dbAdaptor.getClient().$queryRaw<Array<{ suggestion: string }>>`
+      const suggestions = await dbAdaptor.getClient().$queryRaw<
+        Array<{ suggestion: string }>
+      >`
         SELECT * FROM get_search_suggestions(${tenantId}, ${partialQuery}, 10)
       `;
 
-      return suggestions.map(s => s.suggestion);
+      return suggestions.map((s) => s.suggestion);
     } catch (error) {
-      logger.warn({ error }, 'Failed to get search suggestions');
+      logger.warn({ error }, "Failed to get search suggestions");
       return [];
     }
   }

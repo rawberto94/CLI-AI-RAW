@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { rateCardManagementService } from "data-orchestration";
+import { rateCardManagementService } from "@/lib/data-orchestration";
 
 export async function GET() {
   try {

@@ -137,16 +137,20 @@ async function generateArtifactsInBackground(
   mimeType: string
 ): Promise<void> {
   try {
-    console.log(`📊 Starting enhanced artifact generation for contract: ${contractId}`);
+    console.log(
+      `📊 Starting enhanced artifact generation for contract: ${contractId}`
+    );
     console.log(`📂 File path: ${filePath}`);
     console.log(`📋 MIME type: ${mimeType}`);
 
     // Use the enhanced artifact generator
-    const { generateEnhancedArtifacts } = await import("./artifact-generator-enhanced");
-    
+    const { generateEnhancedArtifacts } = await import(
+      "./artifact-generator-enhanced"
+    );
+
     const analysisResult = await generateEnhancedArtifacts(
       contractId,
-      tenantId, 
+      tenantId,
       filePath,
       mimeType
     );
@@ -155,7 +159,7 @@ async function generateArtifactsInBackground(
       riskScore: analysisResult.risk.overallScore,
       opportunityScore: analysisResult.opportunities.overallScore,
       clausesFound: analysisResult.clauses.length,
-      riskFactors: analysisResult.risk.riskFactors.length
+      riskFactors: analysisResult.risk.riskFactors.length,
     });
 
     // Emit event for RAG integration
@@ -163,9 +167,11 @@ async function generateArtifactsInBackground(
 
     // Trigger RAG indexing
     await triggerRAGIndexing(contractId, tenantId, analysisResult);
-
   } catch (error) {
-    console.error(`❌ Enhanced artifact generation failed for ${contractId}:`, error);
+    console.error(
+      `❌ Enhanced artifact generation failed for ${contractId}:`,
+      error
+    );
     throw error;
   }
 }
@@ -179,10 +185,18 @@ async function emitArtifactsGeneratedEvent(
   analysisResult: any
 ): Promise<void> {
   try {
-    const { eventBus, Events } = await import("data-orchestration/events/event-bus");
-    
+    const eventModule = await resolveEventModule();
+    if (!eventModule) {
+      console.warn(
+        "⚠️  Skipping event emission: data-orchestration event bus not available"
+      );
+      return;
+    }
+
+    const { eventBus, Events } = eventModule;
+
     const artifacts = convertAnalysisToArtifacts(analysisResult);
-    
+
     eventBus.emit(Events.ARTIFACTS_GENERATED, {
       contractId,
       tenantId,
@@ -192,7 +206,9 @@ async function emitArtifactsGeneratedEvent(
     });
 
     console.log(`📢 Emitted ARTIFACTS_GENERATED event for ${contractId}`);
-    console.log(`   → Will trigger: Analytical Sync, RAG Indexing, Data Standardization, Taxonomy, Intelligence`);
+    console.log(
+      `   → Will trigger: Analytical Sync, RAG Indexing, Data Standardization, Taxonomy, Intelligence`
+    );
   } catch (error) {
     console.error(`❌ Failed to emit artifacts generated event:`, error);
     // Don't throw - event emission failure shouldn't break the flow
@@ -208,9 +224,13 @@ async function triggerRAGIndexing(
   analysisResult: any
 ): Promise<void> {
   try {
-    const { ragIntegrationService } = await import(
-      "data-orchestration/services/rag-integration.service"
-    );
+    const ragModule = await resolveRagIntegrationService();
+    if (!ragModule) {
+      console.log("ℹ️  RAG integration service unavailable; skipping indexing");
+      return;
+    }
+
+    const { ragIntegrationService } = ragModule;
 
     console.log(`🔍 Triggering RAG indexing for ${contractId}`);
 
@@ -228,7 +248,10 @@ async function triggerRAGIndexing(
             processingTime: result.processingTime,
           });
         } else {
-          console.warn(`⚠️  RAG indexing failed for ${contractId}:`, result.error);
+          console.warn(
+            `⚠️  RAG indexing failed for ${contractId}:`,
+            result.error
+          );
         }
       })
       .catch((error) => {
@@ -265,7 +288,8 @@ function convertAnalysisToArtifacts(analysisResult: any): any[] {
       content: JSON.stringify(analysisResult.opportunities),
       metadata: {
         overallScore: analysisResult.opportunities.overallScore,
-        opportunitiesCount: analysisResult.opportunities.opportunities?.length || 0,
+        opportunitiesCount:
+          analysisResult.opportunities.opportunities?.length || 0,
       },
     });
   }
@@ -308,4 +332,43 @@ function convertAnalysisToArtifacts(analysisResult: any): any[] {
   }
 
   return artifacts;
+}
+
+async function resolveEventModule(): Promise<{
+  eventBus: any;
+  Events: any;
+} | null> {
+  const candidates = ["data-orchestration/events", "data-orchestration"];
+
+  for (const specifier of candidates) {
+    try {
+      const module = await import(specifier);
+      if (module?.eventBus && module?.Events) {
+        return { eventBus: module.eventBus, Events: module.Events };
+      }
+    } catch (error) {
+      // Ignore and try next candidate
+    }
+  }
+
+  return null;
+}
+
+async function resolveRagIntegrationService(): Promise<{
+  ragIntegrationService: any;
+} | null> {
+  const candidates = ["data-orchestration/services", "data-orchestration"];
+
+  for (const specifier of candidates) {
+    try {
+      const module = await import(specifier);
+      if (module?.ragIntegrationService) {
+        return { ragIntegrationService: module.ragIntegrationService };
+      }
+    } catch (error) {
+      // Ignore and try next candidate
+    }
+  }
+
+  return null;
 }

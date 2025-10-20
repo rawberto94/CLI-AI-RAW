@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { taxonomyService } from "data-orchestration";
+import { taxonomyService } from "@/lib/data-orchestration";
 
 /**
  * GET /api/taxonomy - Get taxonomy data (categories, tags, fields)

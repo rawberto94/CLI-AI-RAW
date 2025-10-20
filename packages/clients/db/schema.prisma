@@ -171,17 +171,17 @@ model Contract {
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
   checksum           String?
-  mimeType           String
+  mimeType           String                   @map("contentType")
   contractType       String?
   effectiveDate      DateTime?
   expirationDate     DateTime?
-  fileName           String
+  fileName           String                   @map("filename")
   jurisdiction       String?
   lastAnalyzedAt     DateTime?
   originalName       String?
   processedAt        DateTime?
   searchMetadata     Json?                    @default("{}")
-  fileSize           BigInt
+  fileSize           BigInt                   @map("size")
   storageProvider    String?                  @default("local")
   uploadedBy         String?
   status             ContractStatus           @default(PROCESSING)

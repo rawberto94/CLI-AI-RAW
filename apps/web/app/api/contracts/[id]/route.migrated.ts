@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { contractService } from "data-orchestration";
+import { contractService } from "@/lib/data-orchestration";
 
 export const runtime = "nodejs";
 

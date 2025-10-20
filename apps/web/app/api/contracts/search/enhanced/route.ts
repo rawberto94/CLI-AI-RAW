@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { contractIndexingService } from "data-orchestration";
+import { contractIndexingService } from "@/lib/data-orchestration";
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { databaseOptimizationService } from "data-orchestration";
+import { databaseOptimizationService } from "@/lib/data-orchestration";
 
 /**
  * GET /api/database/optimization - Get database performance statistics

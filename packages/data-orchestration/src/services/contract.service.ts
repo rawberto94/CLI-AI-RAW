@@ -1,6 +1,5 @@
 import { dbAdaptor } from "../dal/database.adaptor";
 import { enhancedDbAdaptor } from "../dal/enhanced-database.adaptor";
-import { cacheAdaptor } from "../dal/cache.adaptor";
 import { smartCacheService } from "./smart-cache.service";
 import { eventBus, Events } from "../events/event-bus";
 import { fileIntegrityService } from "./file-integrity.service";
@@ -19,7 +18,8 @@ export type { ServiceResponse }; // Re-export for other services
 const logger = pino({ name: "contract-service" });
 
 // Extended DTO with file integrity fields
-export interface EnhancedCreateContractDTO extends Omit<CreateContractDTO, 'fileSize' | 'mimeType'> {
+export interface EnhancedCreateContractDTO
+  extends Omit<CreateContractDTO, "fileSize" | "mimeType"> {
   filePath?: string;
   checksum?: string;
   fileSize?: bigint | number; // Allow both for flexibility
@@ -99,7 +99,7 @@ export class ContractService {
     data: EnhancedCreateContractDTO
   ): Promise<ServiceResponse<{ contract: Contract; jobId?: string }>> {
     const startTime = Date.now();
-    
+
     try {
       logger.info(
         { fileName: data.fileName, tenantId: data.tenantId },
@@ -112,14 +112,18 @@ export class ContractService {
 
       if (data.filePath) {
         logger.debug({ filePath: data.filePath }, "Calculating file checksum");
-        
+
         // Calculate checksum
-        const checksumResult = await fileIntegrityService.calculateChecksum(data.filePath);
+        const checksumResult = await fileIntegrityService.calculateChecksum(
+          data.filePath
+        );
         checksum = checksumResult.checksum;
-        
+
         // Extract file metadata
-        fileMetadata = await fileIntegrityService.extractFileMetadata(data.filePath);
-        
+        fileMetadata = await fileIntegrityService.extractFileMetadata(
+          data.filePath
+        );
+
         logger.info(
           { checksum, fileSize: fileMetadata.size },
           "File integrity data calculated"
@@ -144,7 +148,10 @@ export class ContractService {
         }
 
         if (validation.warnings.length > 0) {
-          logger.warn({ warnings: validation.warnings }, "File validation warnings");
+          logger.warn(
+            { warnings: validation.warnings },
+            "File validation warnings"
+          );
         }
       }
 
@@ -160,7 +167,7 @@ export class ContractService {
             { duplicateId: duplicate.id, checksum },
             "Duplicate contract detected"
           );
-          
+
           return {
             success: false,
             error: {
@@ -182,21 +189,24 @@ export class ContractService {
         // Create contract with integrity data
         // Remove filePath from data as it's not in the schema
         const { filePath, ...contractDataWithoutPath } = data;
-        
+
         const contractData: any = {
           ...contractDataWithoutPath,
           checksum,
-          checksumAlgorithm: 'sha256',
+          checksumAlgorithm: "sha256",
           fileSize: BigInt(data.fileSize || fileMetadata.size || 0),
           mimeType: data.mimeType || fileMetadata.mimeType,
-          status: 'PROCESSING', // Use valid status from enum
+          status: "PROCESSING", // Use valid status from enum
         };
 
         const contract = await tx.contract.create({
           data: contractData,
         });
 
-        logger.info({ contractId: contract.id }, "Contract created in transaction");
+        logger.info(
+          { contractId: contract.id },
+          "Contract created in transaction"
+        );
 
         // Create processing job
         // Note: Using 'as any' temporarily until Prisma client is regenerated with new schema
@@ -204,9 +214,9 @@ export class ContractService {
           data: {
             contractId: contract.id,
             tenantId: contract.tenantId,
-            status: 'PENDING',
+            status: "PENDING",
             progress: 0,
-            currentStep: 'Queued',
+            currentStep: "Queued",
             totalStages: 5, // text extraction, AI analysis, artifact generation, standardization, completion
             priority: 0,
             maxRetries: 3,
@@ -271,8 +281,8 @@ export class ContractService {
         data: {
           contract: {
             ...result.contract,
-            totalValue: result.contract.totalValue 
-              ? Number(result.contract.totalValue) 
+            totalValue: result.contract.totalValue
+              ? Number(result.contract.totalValue)
               : null,
           } as Contract,
           jobId: result.job.id,
@@ -284,7 +294,7 @@ export class ContractService {
         { error, duration, fileName: data.fileName },
         "Failed to create contract with integrity checks"
       );
-      
+
       return {
         success: false,
         error: {
@@ -429,7 +439,9 @@ export class ContractService {
       await dbAdaptor.deleteContract(id, tenantId);
 
       // Selective cache invalidation
-      await smartCacheService.invalidateContract(tenantId, id, { status: 'DELETED' });
+      await smartCacheService.invalidateContract(tenantId, id, {
+        status: "DELETED",
+      });
 
       logger.info({ contractId: id }, "Contract deleted successfully");
 
@@ -454,10 +466,15 @@ export class ContractService {
   ): Promise<ServiceResponse<ContractQueryResponse>> {
     try {
       // Generate cache key from query (deterministic)
-      const cacheKey = smartCacheService.generateQueryKey(query.tenantId, query);
+      const cacheKey = smartCacheService.generateQueryKey(
+        query.tenantId,
+        query
+      );
 
       // Try smart cache first
-      const cached = await smartCacheService.get<ContractQueryResponse>(cacheKey);
+      const cached = await smartCacheService.get<ContractQueryResponse>(
+        cacheKey
+      );
       if (cached) {
         logger.debug("Contracts query retrieved from cache");
         return {
@@ -546,15 +563,15 @@ export class ContractService {
     try {
       // Try a simple database query
       await dbAdaptor.queryContracts({
-        tenantId: 'health-check',
+        tenantId: "health-check",
         page: 1,
         limit: 1,
-        sortBy: 'createdAt',
-        sortOrder: 'desc',
+        sortBy: "createdAt",
+        sortOrder: "desc",
       });
       return true;
     } catch (error) {
-      logger.error({ error }, 'Contract service health check failed');
+      logger.error({ error }, "Contract service health check failed");
       return false;
     }
   }

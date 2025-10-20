@@ -3,7 +3,6 @@
 import React, { Component, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -74,14 +73,14 @@ export class UXErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundary
 
       // Default error UI
       return (
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-900">
+        <div className="rounded-xl border border-red-200 bg-red-50 shadow">
+          <div className="flex flex-col space-y-1.5 p-6">
+            <h3 className="flex items-center gap-2 text-red-900 text-lg font-semibold">
               <AlertTriangle className="w-5 h-5" />
               Something went wrong
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </h3>
+          </div>
+          <div className="p-6 pt-0 space-y-4">
             <p className="text-sm text-red-700">
               {this.props.componentName 
                 ? `The ${this.props.componentName} encountered an error and couldn't be displayed.`
@@ -133,8 +132,8 @@ export class UXErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundary
                 Go Home
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )
     }
 
@@ -173,16 +172,16 @@ export function DashboardWidgetErrorBoundary({
     <UXErrorBoundary
       componentName={widgetName ? `${widgetName} Widget` : 'Dashboard Widget'}
       fallback={
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="p-4">
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 shadow">
+          <div className="p-4">
             <div className="flex items-center gap-2 text-yellow-800">
               <AlertTriangle className="w-4 h-4" />
               <span className="text-sm">
                 This widget couldn't be loaded. Try refreshing the page.
               </span>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       }
     >
       {children}
@@ -198,8 +197,8 @@ export function ProgressTrackerErrorBoundary({ children }: { children: ReactNode
     <UXErrorBoundary
       componentName="Progress Tracker"
       fallback={
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="p-4">
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 shadow">
+          <div className="p-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-yellow-800">
                 <AlertTriangle className="w-4 h-4" />
@@ -211,8 +210,8 @@ export function ProgressTrackerErrorBoundary({ children }: { children: ReactNode
                 Your upload is still processing in the background. Check back in a moment.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       }
     >
       {children}

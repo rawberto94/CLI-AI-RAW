@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { dataLineageTracker } from "data-orchestration";
+import { dataLineageTracker } from "@/lib/data-orchestration";
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
