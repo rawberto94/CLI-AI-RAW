@@ -10,7 +10,8 @@
 
 import pino from 'pino';
 import { aiArtifactGeneratorService, ArtifactType, GenerationOptions, GenerationResult } from './ai-artifact-generator.service';
-import { eventBus, Events } from '../events/event-bus';
+import { artifactContextEnrichmentService } from './artifact-context-enrichment.service';
+import { artifactValidationService } from './artifact-validation.service';
 
 const logger = pino({ name: 'parallel-artifact-generator-service' });
 
@@ -45,8 +46,11 @@ export interface ParallelGenerationResult {
     failed: number;
     totalProcessingTime: number;
     averageProcessingTime: number;
+    consistencyIssues?: number;
+    consistent?: boolean;
   };
   progress: ParallelGenerationProgress;
+  consistencyResult?: any;
 }
 
 export interface ArtifactDependency {
@@ -205,12 +209,35 @@ export class ParallelArtifactGeneratorService {
     const totalProcessingTime = Date.now() - startTime;
     const averageProcessingTime = totalProcessingTime / results.size;
 
+    // Validate consistency across artifacts
+    const artifactDataMap = new Map<ArtifactType, any>();
+    for (const [type, result] of results.entries()) {
+      if (result.success && result.data) {
+        artifactDataMap.set(type, result.data);
+      }
+    }
+
+    const consistencyResult = artifactValidationService.validateConsistency(artifactDataMap);
+    
+    if (!consistencyResult.consistent) {
+      logger.warn(
+        { 
+          contractId, 
+          issues: consistencyResult.issues.length,
+          criticalIssues: consistencyResult.issues.filter(i => i.severity === 'critical').length
+        },
+        'Consistency issues detected across artifacts'
+      );
+    }
+
     const summary = {
       total: artifactTypes.length,
       successful,
       failed,
       totalProcessingTime,
       averageProcessingTime,
+      consistencyIssues: consistencyResult.issues.length,
+      consistent: consistencyResult.consistent
     };
 
     logger.info(
@@ -222,10 +249,11 @@ export class ParallelArtifactGeneratorService {
     );
 
     return {
-      success: failed === 0,
+      success: failed === 0 && consistencyResult.consistent,
       results,
       summary,
       progress,
+      consistencyResult
     };
   }
 
@@ -311,12 +339,39 @@ export class ParallelArtifactGeneratorService {
     try {
       logger.debug({ artifactType, contractId }, 'Generating artifact');
 
+      // Build previous artifacts map from successful results
+      const previousArtifacts = new Map<ArtifactType, any>();
+      for (const [type, result] of results.entries()) {
+        if (result.success && result.data) {
+          previousArtifacts.set(type, result.data);
+        }
+      }
+
+      // Enrich context with previous artifacts
+      const enrichedContext = artifactContextEnrichmentService.enrichContext(
+        artifactType,
+        previousArtifacts
+      );
+
+      logger.debug(
+        { 
+          artifactType, 
+          previousArtifactsCount: previousArtifacts.size,
+          contextSummary: enrichedContext.contextSummary 
+        },
+        'Context enriched for artifact generation'
+      );
+
       const result = await aiArtifactGeneratorService.generateArtifact(
         artifactType,
         contractText,
         contractId,
         tenantId,
-        options
+        {
+          ...options,
+          previousArtifacts,
+          enrichedContext
+        }
       );
 
       results.set(artifactType, result);

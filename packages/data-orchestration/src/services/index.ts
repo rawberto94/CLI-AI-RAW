@@ -16,6 +16,8 @@ export * from './date-validation.service';
 export * from './enhanced-artifact.service';
 export * from './artifact-prompt-templates.service';
 export * from './artifact-context-enrichment.service';
+export * from './artifact-validation.service';
+export * from './artifact-cost-savings-integration.service';
 export * from './cost-savings-analyzer.service';
 export * from './data-standardization.service';
 export * from './rate-card-intelligence.service';

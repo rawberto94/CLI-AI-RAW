@@ -16,6 +16,9 @@
 import pino from 'pino';
 import { confidenceScoringService } from './confidence-scoring.service';
 import { artifactVersioningService } from './artifact-versioning.service';
+import { artifactPromptTemplatesService } from './artifact-prompt-templates.service';
+import { artifactValidationService } from './artifact-validation.service';
+import { artifactCostSavingsIntegrationService } from './artifact-cost-savings-integration.service';
 
 const logger = pino({ name: 'ai-artifact-generator-service' });
 
@@ -98,6 +101,8 @@ export interface GenerationOptions {
   maxRetries?: number;
   timeout?: number;
   userId?: string;
+  previousArtifacts?: Map<ArtifactType, any>;
+  enrichedContext?: any;
 }
 
 export interface GenerationResult {
@@ -111,6 +116,8 @@ export interface GenerationResult {
   retryCount?: number;
   flaggedForReview?: boolean;
   reviewReason?: string;
+  validation?: any;
+  completeness?: number;
 }
 
 export interface AIResponse {
@@ -328,14 +335,21 @@ export class AIArtifactGeneratorService {
           timeout: options.timeout || this.defaultTimeout,
         });
 
-        const prompt = this.buildPrompt(artifactType, contractText);
-        const systemPrompt = this.getSystemPrompt(artifactType);
+        // Use enhanced prompt templates with context
+        const template = artifactPromptTemplatesService.getPromptTemplate(
+          artifactType,
+          options.enrichedContext
+        );
+        const { systemPrompt, userPrompt } = artifactPromptTemplatesService.buildPrompt(
+          template,
+          contractText
+        );
 
         const response = await openai.chat.completions.create({
           model: 'gpt-4',
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: prompt },
+            { role: 'user', content: userPrompt },
           ],
           temperature: 0.1,
           max_tokens: 4000,
@@ -353,12 +367,59 @@ export class AIArtifactGeneratorService {
       // Extract certainty from response if available
       const aiCertainty = this.extractCertainty(result) || 0.85;
 
+      // Validate the result
+      const validation = artifactValidationService.validateArtifact(artifactType, result);
+      
+      // Auto-fix if needed
+      let finalData = result;
+      if (!validation.valid && validation.canAutoFix) {
+        const fixResult = artifactValidationService.autoFix(result, validation.issues);
+        if (fixResult.fixed) {
+          finalData = fixResult.artifact;
+          logger.info(
+            { artifactType, changes: fixResult.changes.length },
+            'Auto-fixed artifact issues'
+          );
+        }
+      }
+
+      // Integrate cost savings if applicable
+      if (options.previousArtifacts && ['FINANCIAL', 'RATES', 'RISK'].includes(artifactType)) {
+        try {
+          const allArtifacts = Object.fromEntries(options.previousArtifacts);
+          allArtifacts[artifactType] = finalData;
+          
+          const enhanced = await artifactCostSavingsIntegrationService.enhanceWithCostSavings(
+            artifactType,
+            finalData,
+            allArtifacts
+          );
+          
+          finalData = enhanced.artifact;
+          
+          if (enhanced.costSavings) {
+            logger.info(
+              { 
+                artifactType, 
+                opportunities: enhanced.costSavings.opportunities.length,
+                totalSavings: enhanced.costSavings.totalPotentialSavings.amount
+              },
+              'Cost savings integrated into artifact'
+            );
+          }
+        } catch (error) {
+          logger.warn({ error, artifactType }, 'Failed to integrate cost savings');
+        }
+      }
+
       return {
         success: true,
-        data: result,
+        data: finalData,
         method: 'ai',
         aiCertainty,
         processingTime: 0, // Will be set by caller
+        validation,
+        completeness: validation.completeness
       };
     } catch (error) {
       const circuitState = this.circuitBreaker.getState();
