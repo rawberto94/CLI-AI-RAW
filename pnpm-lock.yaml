@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  zod: 3.22.4
+
 importers:
 
   .:
@@ -143,7 +146,7 @@ importers:
         version: 2.0.2
       openai:
         specifier: ^4.73.1
-        version: 4.73.1(zod@3.23.8)
+        version: 4.73.1(zod@3.22.4)
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.1
@@ -163,8 +166,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/utils
       zod:
-        specifier: ^3.23.8
-        version: 3.23.8
+        specifier: 3.22.4
+        version: 3.22.4
     devDependencies:
       '@playwright/test':
         specifier: ^1.49.1
@@ -350,8 +353,8 @@ importers:
         specifier: ^0.18.5
         version: 0.18.5
       zod:
-        specifier: ^3.25.0
-        version: 3.25.0
+        specifier: 3.22.4
+        version: 3.22.4
     devDependencies:
       '@next/bundle-analyzer':
         specifier: ^15.1.4
@@ -439,7 +442,7 @@ importers:
         version: link:../../packages/clients/storage
       openai:
         specifier: ^4.67.1
-        version: 4.73.1(zod@3.23.8)
+        version: 4.73.1(zod@3.22.4)
       pdf-parse:
         specifier: ^1.1.1
         version: 1.1.1
@@ -508,8 +511,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       zod:
-        specifier: ^3.23.8
-        version: 3.23.8
+        specifier: 3.22.4
+        version: 3.22.4
     devDependencies:
       typescript:
         specifier: ^5.2.2
@@ -553,7 +556,7 @@ importers:
         version: 8.12.0
       openai:
         specifier: ^4.10.0
-        version: 4.73.1(zod@3.23.8)
+        version: 4.73.1(zod@3.22.4)
     devDependencies:
       '@types/node':
         specifier: ^20.6.2
@@ -591,7 +594,7 @@ importers:
         version: link:../db
       openai:
         specifier: ^4.10.0
-        version: 4.73.1(zod@3.23.8)
+        version: 4.73.1(zod@3.22.4)
       pgvector:
         specifier: ^0.1.8
         version: 0.1.8
@@ -658,8 +661,8 @@ importers:
         specifier: workspace:*
         version: link:../schemas
       zod:
-        specifier: ^4.1.11
-        version: 4.1.11
+        specifier: 3.22.4
+        version: 3.22.4
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -677,11 +680,11 @@ importers:
   packages/schemas:
     dependencies:
       zod:
-        specifier: ^3.23.8
-        version: 3.23.8
+        specifier: 3.22.4
+        version: 3.22.4
       zod-to-json-schema:
         specifier: ^3.21.4
-        version: 3.21.4(zod@3.23.8)
+        version: 3.21.4(zod@3.22.4)
     devDependencies:
       typescript:
         specifier: ^5.2.2
@@ -720,8 +723,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.2
       zod:
-        specifier: 3.23.8
-        version: 3.23.8
+        specifier: 3.22.4
+        version: 3.22.4
     devDependencies:
       tsup:
         specifier: ^8.5.0
@@ -3285,7 +3288,7 @@ packages:
       langsmith: 0.0.70
       redis: 4.6.0
       uuid: 9.0.1
-      zod: 3.25.0
+      zod: 3.22.4
     transitivePeerDependencies:
       - encoding
       - openai
@@ -3305,8 +3308,8 @@ packages:
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 9.0.1
-      zod: 3.25.0
-      zod-to-json-schema: 3.24.6(zod@3.25.0)
+      zod: 3.22.4
+      zod-to-json-schema: 3.24.6(zod@3.22.4)
     transitivePeerDependencies:
       - openai
     dev: false
@@ -3324,8 +3327,8 @@ packages:
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 10.0.0
-      zod: 3.25.0
-      zod-to-json-schema: 3.24.6(zod@3.25.0)
+      zod: 3.22.4
+      zod-to-json-schema: 3.24.6(zod@3.22.4)
     transitivePeerDependencies:
       - openai
     dev: false
@@ -3336,9 +3339,9 @@ packages:
     dependencies:
       '@langchain/core': 0.1.63(openai@4.73.1)
       js-tiktoken: 1.0.21
-      openai: 4.73.1(zod@3.25.0)
-      zod: 3.25.0
-      zod-to-json-schema: 3.24.6(zod@3.25.0)
+      openai: 4.73.1(zod@3.22.4)
+      zod: 3.22.4
+      zod-to-json-schema: 3.24.6(zod@3.22.4)
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -3349,9 +3352,9 @@ packages:
     dependencies:
       '@langchain/core': 0.2.36(openai@4.73.1)
       js-tiktoken: 1.0.21
-      openai: 4.73.1(zod@3.25.0)
-      zod: 3.25.0
-      zod-to-json-schema: 3.24.6(zod@3.25.0)
+      openai: 4.73.1(zod@3.22.4)
+      zod: 3.22.4
+      zod-to-json-schema: 3.24.6(zod@3.22.4)
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -13520,8 +13523,8 @@ packages:
       redis: 4.6.0
       uuid: 9.0.1
       yaml: 2.8.1
-      zod: 3.25.0
-      zod-to-json-schema: 3.20.3(zod@3.25.0)
+      zod: 3.22.4
+      zod-to-json-schema: 3.20.3(zod@3.22.4)
     transitivePeerDependencies:
       - '@aws-crypto/sha256-js'
       - '@aws-sdk/client-bedrock-agent-runtime'
@@ -13779,8 +13782,8 @@ packages:
       pdf-parse: 1.1.1
       uuid: 10.0.0
       yaml: 2.8.1
-      zod: 3.25.0
-      zod-to-json-schema: 3.24.6(zod@3.25.0)
+      zod: 3.22.4
+      zod-to-json-schema: 3.24.6(zod@3.22.4)
     transitivePeerDependencies:
       - encoding
       - openai
@@ -13811,7 +13814,7 @@ packages:
     dependencies:
       '@types/uuid': 10.0.0
       commander: 10.0.1
-      openai: 4.73.1(zod@3.25.0)
+      openai: 4.73.1(zod@3.22.4)
       p-queue: 6.6.2
       p-retry: 4.6.2
       semver: 7.7.3
@@ -14708,7 +14711,7 @@ packages:
       mimic-fn: 4.0.0
     dev: false
 
-  /openai@4.73.1(zod@3.23.8):
+  /openai@4.73.1(zod@3.22.4):
     resolution: {integrity: sha512-nWImDJBcUsqrhy7yJScXB4+iqjzbUEgzfA3un/6UnHFdwWhjX24oztj69Ped/njABfOdLcO/F7CeWTI5dt8Xmg==}
     hasBin: true
     peerDependencies:
@@ -14724,28 +14727,7 @@ packages:
       form-data-encoder: 1.7.2
       formdata-node: 4.4.1
       node-fetch: 2.7.0
-      zod: 3.23.8
-    transitivePeerDependencies:
-      - encoding
-    dev: false
-
-  /openai@4.73.1(zod@3.25.0):
-    resolution: {integrity: sha512-nWImDJBcUsqrhy7yJScXB4+iqjzbUEgzfA3un/6UnHFdwWhjX24oztj69Ped/njABfOdLcO/F7CeWTI5dt8Xmg==}
-    hasBin: true
-    peerDependencies:
-      zod: ^3.23.8
-    peerDependenciesMeta:
-      zod:
-        optional: true
-    dependencies:
-      '@types/node': 18.19.130
-      '@types/node-fetch': 2.6.13
-      abort-controller: 3.0.0
-      agentkeepalive: 4.6.0
-      form-data-encoder: 1.7.2
-      formdata-node: 4.4.1
-      node-fetch: 2.7.0
-      zod: 3.25.0
+      zod: 3.22.4
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -16430,7 +16412,7 @@ packages:
       recast: 0.23.11
       ts-morph: 18.0.0
       tsconfig-paths: 4.2.0
-      zod: 3.25.0
+      zod: 3.22.4
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -18471,38 +18453,30 @@ packages:
     resolution: {integrity: sha512-+J9RrgTKOmlxFSDHo0pI1xM6BLVUv+o0ZT9ANtCxGkjIVCCUdx9alUF8Gm+dGLKbkkkidWIHFDZHDMpfITt4+w==}
     dev: false
 
-  /zod-to-json-schema@3.20.3(zod@3.25.0):
+  /zod-to-json-schema@3.20.3(zod@3.22.4):
     resolution: {integrity: sha512-/Q3wnyxAfCt94ZcrGiXXoiAfRqasxl9CX64LZ9fj+4dKH68zulUtU0uk1WMxQPfAxQ0ZI70dKzcoW7hHj+DwSQ==}
     peerDependencies:
       zod: ^3.20.0
     dependencies:
-      zod: 3.25.0
+      zod: 3.22.4
     dev: false
 
-  /zod-to-json-schema@3.21.4(zod@3.23.8):
+  /zod-to-json-schema@3.21.4(zod@3.22.4):
     resolution: {integrity: sha512-fjUZh4nQ1s6HMccgIeE0VP4QG/YRGPmyjO9sAh890aQKPEk3nqbfUXhMFaC+Dr5KvYBm8BCyvfpZf2jY9aGSsw==}
     peerDependencies:
       zod: ^3.21.4
     dependencies:
-      zod: 3.23.8
+      zod: 3.22.4
     dev: false
 
-  /zod-to-json-schema@3.24.6(zod@3.25.0):
+  /zod-to-json-schema@3.24.6(zod@3.22.4):
     resolution: {integrity: sha512-h/z3PKvcTcTetyjl1fkj79MHNEjm+HpD6NXheWjzOekY7kV+lwDYnHw+ivHkijnCSMz1yJaWBD9vu/Fcmk+vEg==}
     peerDependencies:
       zod: ^3.24.1
     dependencies:
-      zod: 3.25.0
+      zod: 3.22.4
     dev: false
 
-  /zod@3.23.8:
-    resolution: {integrity: sha512-XBx9AXhXktjUqnepgTiE5flcKIYWi/rme0Eaj+5Y0lftuGBq+jyRu/md4WnuxqgP1ubdpNCsYEYPxrzVHD8d6g==}
-    dev: false
-
-  /zod@3.25.0:
-    resolution: {integrity: sha512-ficnZKUW0mlNivqeJkosTEkGbJ6NKCtSaOHGx5aXbtfeWMdRyzXLbAIn19my4C/KB7WPY/p9vlGPt+qpOp6c4Q==}
-    dev: false
-
-  /zod@4.1.11:
-    resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
+  /zod@3.22.4:
+    resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
     dev: false

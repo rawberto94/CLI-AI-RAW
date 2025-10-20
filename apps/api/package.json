@@ -47,7 +47,7 @@
     "pino-pretty": "^13.1.1",
     "schemas": "workspace:*",
     "utils": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "3.22.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",

@@ -51,8 +51,7 @@ export default defineConfig({
     "@langchain/core",
     "@langchain/openai",
     "@langchain/community",
+    "zod", // Also externalize zod to match langchain's expectations
   ],
-  noExternal: [
-    "zod", // Bundle zod to avoid module resolution issues
-  ],
+  noExternal: [],
 });
