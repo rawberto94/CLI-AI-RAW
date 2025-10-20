@@ -239,22 +239,34 @@ model Contract {
 }
 
 model ContractMetadata {
-  id           String   @id @default(cuid())
-  contractId   String   @unique
-  tenantId     String
-  categoryId   String?
-  tags         String[]
-  systemFields Json     @default("{}")
-  customFields Json     @default("{}")
-  lastUpdated  DateTime @default(now())
-  updatedBy    String
-  createdAt    DateTime @default(now())
-  contract     Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id                  String    @id @default(cuid())
+  contractId          String    @unique
+  tenantId            String
+  categoryId          String?
+  tags                String[]
+  systemFields        Json      @default("{}")
+  customFields        Json      @default("{}")
+  lastUpdated         DateTime  @default(now())
+  updatedBy           String
+  createdAt           DateTime  @default(now())
+  
+  // Enhanced fields for artifact repository
+  artifactSummary     Json?     @default("{}")
+  searchKeywords      String[]  @default([])
+  relatedContracts    String[]  @default([])
+  dataQualityScore    Int?      @default(0)
+  indexedAt           DateTime?
+  ragSyncedAt         DateTime?
+  analyticsUpdatedAt  DateTime?
+  
+  contract            Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@map("contract_metadata")
   @@index([tenantId])
   @@index([categoryId])
   @@index([tags])
+  @@index([dataQualityScore])
+  @@index([indexedAt])
 }
 
 model TaxonomyCategory {
@@ -404,21 +416,38 @@ model ContractVersion {
 }
 
 model Artifact {
-  id              String       @id @default(cuid())
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id              String         @id @default(cuid())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   contractId      String
   tenantId        String
   type            ArtifactType
   data            Json
-  schemaVersion   String       @default("v1")
+  schemaVersion   String         @default("v1")
   hash            String?
   location        String?
-  confidence      Decimal?     @db.Decimal(3, 2)
+  confidence      Decimal?       @db.Decimal(3, 2)
   processingTime  Int?
   size            Int?
-  storageProvider String?      @default("database")
-  contract        Contract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  storageProvider String?        @default("database")
+  
+  // Editability fields
+  isEdited        Boolean        @default(false)
+  editCount       Int            @default(0)
+  lastEditedBy    String?
+  lastEditedAt    DateTime?
+  validationStatus String?       @default("valid")
+  validationIssues Json?         @default("[]")
+  
+  // Integration tracking
+  consumedBy       String[]      @default([])
+  lastPropagatedAt DateTime?
+  propagationStatus String?      @default("synced")
+  
+  // Relations
+  contract        Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  editHistory     ArtifactEdit[]
+  costSavings     CostSavingsOpportunity[]
 
   @@unique([contractId, type])
   @@index([contractId])
@@ -426,6 +455,32 @@ model Artifact {
   @@index([type])
   @@index([contractId, type])
   @@index([tenantId, type])
+  @@index([isEdited])
+  @@index([validationStatus])
+  @@index([lastPropagatedAt])
+  @@index([propagationStatus])
+  @@index([lastEditedAt])
+}
+
+model ArtifactEdit {
+  id                  String   @id @default(cuid())
+  artifactId          String
+  version             Int
+  editedBy            String
+  editedAt            DateTime @default(now())
+  changeType          String
+  changes             Json
+  reason              String?
+  affectedEngines     String[] @default([])
+  propagationResults  Json?    @default("[]")
+  
+  artifact            Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  
+  @@unique([artifactId, version])
+  @@index([artifactId])
+  @@index([editedAt])
+  @@index([editedBy])
+  @@index([artifactId, version])
 }
 
 model TemplateAnalysis {
@@ -1023,40 +1078,42 @@ model WidgetAnalytics {
 }
 
 model CostSavingsOpportunity {
-  id                          String   @id @default(uuid())
+  id                          String    @id @default(uuid())
   artifactId                  String
   contractId                  String
   tenantId                    String
   
   category                    String
   title                       String
-  description                 String?  @db.Text
+  description                 String?   @db.Text
   
-  potentialSavingsAmount      Decimal  @db.Decimal(15, 2)
-  potentialSavingsCurrency    String   @default("USD") @db.VarChar(3)
-  potentialSavingsPercentage  Decimal? @db.Decimal(5, 2)
-  timeframe                   String?  @db.VarChar(20)
+  potentialSavingsAmount      Decimal   @db.Decimal(15, 2)
+  potentialSavingsCurrency    String    @default("USD") @db.VarChar(3)
+  potentialSavingsPercentage  Decimal?  @db.Decimal(5, 2)
+  timeframe                   String?   @db.VarChar(20)
   
-  confidence                  String   @db.VarChar(20)
-  effort                      String   @db.VarChar(20)
-  priority                    Int      @default(3)
+  confidence                  String    @db.VarChar(20)
+  effort                      String    @db.VarChar(20)
+  priority                    Int       @default(3)
   
-  actionItems                 Json?    @default("[]")
-  implementationTimeline      String?  @db.VarChar(100)
-  risks                       Json?    @default("[]")
+  actionItems                 Json?     @default("[]")
+  implementationTimeline      String?   @db.VarChar(100)
+  risks                       Json?     @default("[]")
   
-  status                      String   @default("identified") @db.VarChar(20)
+  status                      String    @default("identified") @db.VarChar(20)
   implementedAt               DateTime?
-  actualSavings               Decimal? @db.Decimal(15, 2)
-  notes                       String?  @db.Text
+  actualSavings               Decimal?  @db.Decimal(15, 2)
+  notes                       String?   @db.Text
   
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
   createdBy                   String?
   updatedBy                   String?
   
+  artifact  Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
   contract  Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   
+  @@index([artifactId])
   @@index([contractId])
   @@index([tenantId])
   @@index([status])

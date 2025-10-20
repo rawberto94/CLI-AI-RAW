@@ -235,6 +235,22 @@ export const Events = {
   ARTIFACT_UPDATED: "artifact.updated",
   ARTIFACT_DELETED: "artifact.deleted",
   ARTIFACTS_GENERATED: "artifacts.generated",
+  
+  // Artifact editing events
+  ARTIFACT_EDIT_STARTED: "artifact.edit.started",
+  ARTIFACT_FIELD_UPDATED: "artifact.field.updated",
+  ARTIFACT_BULK_UPDATED: "artifact.bulk.updated",
+  ARTIFACT_VALIDATED: "artifact.validated",
+  ARTIFACT_VALIDATION_FAILED: "artifact.validation.failed",
+  ARTIFACT_PROPAGATION_STARTED: "artifact.propagation.started",
+  ARTIFACT_PROPAGATION_COMPLETED: "artifact.propagation.completed",
+  ARTIFACT_PROPAGATION_FAILED: "artifact.propagation.failed",
+  
+  // Rate card specific events
+  RATE_CARD_ENTRY_ADDED: "ratecard.entry.added",
+  RATE_CARD_ENTRY_UPDATED: "ratecard.entry.updated",
+  RATE_CARD_ENTRY_DELETED: "ratecard.entry.deleted",
+  RATE_CARD_BULK_EDITED: "ratecard.bulk.edited",
 
   // RAG events
   RAG_INDEXED: "rag.indexed",

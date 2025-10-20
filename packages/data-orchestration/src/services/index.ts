@@ -39,3 +39,6 @@ export * from './analytics.service';
 export * from './intelligence.service';
 export * from './unified-orchestration.service';
 export * from './analytical-intelligence.service';
+export * from './editable-artifact.service';
+export * from './artifact-change-propagation.service';
+export * from './metadata-editor.service';
