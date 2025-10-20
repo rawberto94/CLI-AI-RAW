@@ -1,980 +1,480 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  ArrowLeft,
-  FileText,
-  AlertTriangle,
-  Shield,
-  DollarSign,
-  Award,
-  Zap,
-  Download,
-  Share,
-  Edit,
+import React, { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { ArtifactDisplay, ArtifactData } from '@/components/contracts/ArtifactDisplay';
+import { CostSavingsCard, CostSavingsAnalysis } from '@/components/contracts/CostSavingsCard';
+import { 
+  FileText, 
+  DollarSign, 
+  TrendingUp, 
+  AlertCircle,
+  CheckCircle2,
   RefreshCw,
-  Users,
-} from "lucide-react";
-import Link from "next/link";
+  Download
+} from 'lucide-react';
 
 interface ContractData {
   id: string;
-  filename: string;
-  uploadDate: string;
-  status: "processing" | "completed" | "error";
-  tenantId: string;
-  uploadedBy: string;
-  clientId?: string;
-  supplierId?: string;
-  fileSize: number;
-  mimeType: string;
-  processing: {
-    jobId: string;
-    status: string;
-    currentStage: string;
-    progress: number;
-    startTime: string;
-    completedAt?: string;
-  };
-  extractedData: any;
-  metadata?: {
-    summary?: string;
-    contractType?: string;
-    parties?: string[];
-    effectiveDate?: string;
-    expirationDate?: string;
-  };
-  clauses?: {
-    clauses: Array<{
-      title: string;
-      content: string;
-      riskLevel: string;
-      category?: string;
-    }>;
-  };
-  risk?: {
-    risks: Array<{
-      category: string;
-      severity: string;
-      description: string;
-      mitigation?: string;
-    }>;
-  };
-  compliance?: {
-    regulations?: string[];
-    dataProtection?: string[];
-    industryStandards?: string[];
-  };
-  financial?: {
-    totalValue?: number;
-    currency?: string;
-    paymentTerms?: string;
-    rateCards?: Array<{
-      title?: string;
-      rates?: Array<{
-        role: string;
-        level: string;
-        hourlyRate: number;
-        dailyRate: number;
-        marketBenchmark: number;
-        variance: string;
-      }>;
-      insights?: {
-        totalAnnualSavings: string;
-        averageVariance: string;
-        recommendation: string;
-      };
-    }>;
-    extractedTables?: Array<{
-      title: string;
-      rows: Array<Record<string, any>>;
-    }>;
-  };
-  summary: {
-    totalClauses: number;
-    riskFactors: number;
-    complianceIssues: number;
-    financialTerms: number;
-    keyParties: number;
-  };
-  insights: Array<{
-    type: string;
-    title: string;
-    description: string;
-    icon: string;
-    color: string;
-  }>;
-  processingDuration: number;
-  artifacts?: Array<{
-    type: string;
-    data: any;
-  }>;
-  artifactCount?: number;
+  name: string;
+  status: string;
+  uploadedAt: string;
+  artifacts?: ArtifactData[];
+  costSavings?: CostSavingsAnalysis;
 }
 
-export default function ContractDetailsPage() {
+export default function ContractDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const contractId = params.id as string;
-
+  
   const [contract, setContract] = useState<ContractData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
+  const [regenerating, setRegenerating] = useState<string | null>(null);
 
   useEffect(() => {
-    if (contractId) {
-      loadContract();
-    }
+    loadContractData();
   }, [contractId]);
 
-  // Separate effect for polling to avoid dependency issues
-  useEffect(() => {
-    if (contract?.status === "processing") {
-      const interval = setInterval(() => {
-        loadContract();
-      }, 2000);
-
-      return () => clearInterval(interval);
-    }
-  }, [contract?.status]);
-
-  const loadContract = async () => {
+  const loadContractData = async () => {
     try {
-      console.log("Loading contract:", contractId);
-      const response = await fetch(`/api/contracts/${contractId}`);
-      console.log("Contract response status:", response.status);
+      setLoading(true);
+      
+      // In production, this would fetch from API
+      // const response = await fetch(`/api/contracts/${contractId}`);
+      // const data = await response.json();
+      
+      // Mock data for demonstration
+      const mockData: ContractData = {
+        id: contractId,
+        name: 'Professional Services Agreement - Acme Corp',
+        status: 'active',
+        uploadedAt: new Date().toISOString(),
+        artifacts: [
+          {
+            type: 'OVERVIEW',
+            data: {
+              summary: 'Professional services agreement for software development',
+              contractType: 'Professional Services Agreement',
+              parties: [
+                { name: 'Acme Corp', role: 'client', type: 'corporation' },
+                { name: 'Tech Solutions LLC', role: 'vendor', type: 'llc' }
+              ],
+              effectiveDate: '2024-01-01',
+              expirationDate: '2025-01-01',
+              term: '12 months'
+            },
+            confidence: 0.92,
+            completeness: 95,
+            method: 'ai',
+            processingTime: 3200
+          },
+          {
+            type: 'FINANCIAL',
+            data: {
+              totalValue: 500000,
+              currency: 'USD',
+              paymentTerms: ['Net 30', 'Monthly invoicing'],
+              costSavingsOpportunities: [
+                {
+                  title: 'Early Payment Discount',
+                  amount: 12500,
+                  currency: 'USD',
+                  confidence: 'high'
+                }
+              ]
+            },
+            confidence: 0.88,
+            completeness: 85,
+            method: 'ai',
+            processingTime: 4100
+          },
+          {
+            type: 'RATES',
+            data: {
+              rateCards: [
+                { role: 'Senior Developer', level: 'L4', rate: 175, unit: 'hour', currency: 'USD', location: 'US' },
+                { role: 'Junior Developer', level: 'L2', rate: 125, unit: 'hour', currency: 'USD', location: 'US' }
+              ]
+            },
+            confidence: 0.85,
+            completeness: 80,
+            method: 'ai',
+            processingTime: 3800
+          },
+          {
+            type: 'CLAUSES',
+            data: {
+              clauses: [
+                {
+                  type: 'Termination',
+                  content: 'Either party may terminate with 30 days notice',
+                  riskLevel: 'low'
+                }
+              ]
+            },
+            confidence: 0.78,
+            completeness: 75,
+            method: 'hybrid',
+            processingTime: 5200
+          },
+          {
+            type: 'COMPLIANCE',
+            data: {
+              regulations: ['GDPR', 'SOC 2'],
+              certifications: ['ISO 27001']
+            },
+            confidence: 0.82,
+            completeness: 70,
+            method: 'ai',
+            processingTime: 3500
+          },
+          {
+            type: 'RISK',
+            data: {
+              overallScore: 45,
+              riskLevel: 'medium',
+              riskFactors: [
+                {
+                  category: 'Financial',
+                  severity: 'medium',
+                  description: 'No rate increase cap specified'
+                }
+              ]
+            },
+            confidence: 0.80,
+            completeness: 85,
+            method: 'ai',
+            processingTime: 4500
+          }
+        ],
+        costSavings: {
+          totalPotentialSavings: {
+            amount: 125000,
+            currency: 'USD',
+            percentage: 25
+          },
+          opportunities: [
+            {
+              id: 'opp-1',
+              category: 'rate_optimization',
+              title: 'Location-Based Rate Optimization',
+              description: 'Consider offshore/nearshore resources for suitable work',
+              potentialSavings: {
+                amount: 62500,
+                currency: 'USD',
+                percentage: 25,
+                timeframe: 'annual'
+              },
+              confidence: 'high',
+              effort: 'medium',
+              priority: 5,
+              actionItems: [
+                'Identify work suitable for offshore delivery',
+                'Request offshore rate cards from supplier',
+                'Pilot offshore resources on non-critical work'
+              ],
+              implementationTimeline: '3-4 months',
+              risks: ['Communication challenges', 'Time zone differences']
+            },
+            {
+              id: 'opp-2',
+              category: 'payment_terms',
+              title: 'Early Payment Discount',
+              description: 'Negotiate 2-3% discount for payment within 10-15 days',
+              potentialSavings: {
+                amount: 12500,
+                currency: 'USD',
+                percentage: 2.5,
+                timeframe: 'annual'
+              },
+              confidence: 'high',
+              effort: 'low',
+              priority: 5,
+              actionItems: [
+                'Propose early payment discount to supplier',
+                'Ensure cash flow supports early payment'
+              ],
+              implementationTimeline: '1 month',
+              risks: ['Cash flow impact']
+            },
+            {
+              id: 'opp-3',
+              category: 'volume_discount',
+              title: 'Volume Commitment Discount',
+              description: 'Negotiate volume-based discounts by committing to minimum spend',
+              potentialSavings: {
+                amount: 25000,
+                currency: 'USD',
+                percentage: 5,
+                timeframe: 'annual'
+              },
+              confidence: 'high',
+              effort: 'low',
+              priority: 4,
+              actionItems: [
+                'Analyze historical spend patterns',
+                'Propose tiered volume discount structure'
+              ],
+              implementationTimeline: '1-2 months',
+              risks: ['Commitment may reduce flexibility']
+            }
+          ],
+          quickWins: [],
+          strategicInitiatives: [],
+          summary: {
+            opportunityCount: 3,
+            averageSavingsPerOpportunity: 33333,
+            highConfidenceOpportunities: 3
+          }
+        }
+      };
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Unknown error" }));
-        console.error("Contract fetch error:", errorData);
-        throw new Error(errorData.error || "Failed to load contract");
-      }
+      // Categorize opportunities
+      mockData.costSavings!.quickWins = mockData.costSavings!.opportunities.filter(
+        opp => opp.confidence === 'high' && opp.effort === 'low'
+      );
+      mockData.costSavings!.strategicInitiatives = mockData.costSavings!.opportunities.filter(
+        opp => opp.potentialSavings.amount > 50000 || opp.effort === 'high'
+      );
 
-      const data = await response.json();
-      console.log("Contract data loaded:", data);
-      setContract(data);
-      setError(null);
-    } catch (err) {
-      console.error("Load contract error:", err);
-      setError(err instanceof Error ? err.message : "Failed to load contract");
+      setContract(mockData);
+    } catch (error) {
+      console.error('Failed to load contract:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExport = async (format: string) => {
+  const handleRegenerate = async (artifactType: string) => {
     try {
-      const response = await fetch(
-        `/api/contracts/${contractId}/export?format=${format}`
-      );
-      if (!response.ok) throw new Error("Export failed");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${contract?.filename}_analysis.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      setRegenerating(artifactType);
+      
+      // In production, this would call the API
+      // await fetch(`/api/contracts/${contractId}/artifacts/regenerate`, {
+      //   method: 'POST',
+      //   body: JSON.stringify({ artifactType, tenantId, userId, contractText })
+      // });
+      
+      // Simulate regeneration
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Reload contract data
+      await loadContractData();
     } catch (error) {
-      console.error("Export error:", error);
-      alert("Failed to export file");
+      console.error('Regeneration failed:', error);
+    } finally {
+      setRegenerating(null);
+    }
+  };
+
+  const handleImplementOpportunity = async (opportunityId: string) => {
+    try {
+      // In production, this would call the API
+      // await fetch('/api/analytics/cost-savings/track', {
+      //   method: 'POST',
+      //   body: JSON.stringify({ opportunityId, contractId, tenantId, userId, status: 'in_progress' })
+      // });
+      
+      console.log('Tracking implementation for opportunity:', opportunityId);
+    } catch (error) {
+      console.error('Failed to track opportunity:', error);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold">Loading contract details...</h3>
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
         </div>
       </div>
     );
   }
 
-  if (error || !contract) {
+  if (!contract) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Error Loading Contract
-            </h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <div className="flex gap-3 justify-center">
-              <Button onClick={loadContract} variant="outline">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Retry
-              </Button>
-              <Link href="/contracts">
-                <Button>
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Contracts
-                </Button>
-              </Link>
+      <div className="container mx-auto py-8">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-gray-500">
+              <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+              <p>Contract not found</p>
             </div>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  const avgConfidence = contract.artifacts
+    ? contract.artifacts.reduce((sum, a) => sum + (a.confidence || 0), 0) / contract.artifacts.length
+    : 0;
+
+  const avgCompleteness = contract.artifacts
+    ? contract.artifacts.reduce((sum, a) => sum + (a.completeness || 0), 0) / contract.artifacts.length
+    : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
-          <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-            <Link
-              href="/contracts"
-              className="hover:text-gray-700 flex items-center gap-1"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Contracts
-            </Link>
-            <span>/</span>
-            <span className="text-gray-900">{contract.filename}</span>
-          </nav>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <FileText className="w-8 h-8 text-blue-600" />
-            {contract.filename}
-          </h1>
-        </div>
-
-        {/* Export Actions */}
-        {contract.status === "completed" && (
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => handleExport("json")}>
-              <Download className="w-4 h-4 mr-2" />
-              Export JSON
-            </Button>
-            <Button variant="outline" onClick={() => handleExport("csv")}>
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button variant="outline" onClick={() => handleExport("summary")}>
-              <Download className="w-4 h-4 mr-2" />
-              Export Summary
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div>
-          <div className="flex items-center gap-4 mt-2">
-            <Badge
-              className={
-                contract.status === "completed"
-                  ? "bg-green-100 text-green-800"
-                  : contract.status === "processing"
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-red-100 text-red-800"
-              }
-            >
-              {contract.status === "processing"
-                ? "Processing"
-                : contract.status === "completed"
-                ? "Completed"
-                : "Error"}
+          <h1 className="text-3xl font-bold">{contract.name}</h1>
+          <p className="text-gray-600 mt-2">Contract ID: {contract.id}</p>
+          <div className="flex items-center gap-4 mt-4">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              {contract.status}
             </Badge>
-            <span className="text-gray-600">
-              Uploaded {new Date(contract.uploadDate).toLocaleDateString()}
-            </span>
-            <span className="text-gray-600">
-              {(contract.fileSize / 1024 / 1024).toFixed(1)} MB
+            <span className="text-sm text-gray-600">
+              Uploaded {new Date(contract.uploadedAt).toLocaleDateString()}
             </span>
           </div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Download
+        <div className="flex gap-2">
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export
           </Button>
-          <Button variant="outline" size="sm">
-            <Share className="w-4 h-4 mr-2" />
-            Share
-          </Button>
-          <Button variant="outline" size="sm">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
+          <Button>
+            <FileText className="h-4 w-4 mr-2" />
+            View Document
           </Button>
         </div>
       </div>
 
-      {/* Processing Status */}
-      {contract.status === "processing" && (
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Processing Contract
-                  </h3>
-                  <p className="text-gray-600">
-                    Current stage:{" "}
-                    {contract.processing.currentStage.replace("_", " ")}
-                  </p>
-                </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Artifacts</p>
+                <p className="text-2xl font-bold">{contract.artifacts?.length || 0}</p>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-blue-600">
-                  {contract.processing.progress}%
-                </div>
-                <div className="text-sm text-gray-600">Complete</div>
-              </div>
+              <FileText className="h-8 w-8 text-blue-500" />
             </div>
-            <Progress value={contract.processing.progress} className="h-3" />
-            <p className="text-sm text-gray-600 mt-2">
-              Started{" "}
-              {new Date(contract.processing.startTime).toLocaleTimeString()}
-            </p>
           </CardContent>
         </Card>
-      )}
 
-      {/* Contract completed - show results */}
-      {contract.status === "completed" && (
-        <>
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Avg Confidence</p>
+                <p className="text-2xl font-bold">{Math.round(avgConfidence * 100)}%</p>
+              </div>
+              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Completeness</p>
+                <p className="text-2xl font-bold">{Math.round(avgCompleteness)}%</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Potential Savings</p>
+                <p className="text-2xl font-bold text-green-600">
+                  ${(contract.costSavings?.totalPotentialSavings.amount || 0).toLocaleString()}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="artifacts" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="artifacts">
+            <FileText className="h-4 w-4 mr-2" />
+            Artifacts
+          </TabsTrigger>
+          <TabsTrigger value="savings">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Cost Savings
+          </TabsTrigger>
+          <TabsTrigger value="analysis">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Analysis
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="artifacts" className="mt-6">
+          {contract.artifacts && contract.artifacts.length > 0 ? (
+            <ArtifactDisplay
+              artifacts={contract.artifacts}
+              onRegenerate={handleRegenerate}
+            />
+          ) : (
             <Card>
-              <CardContent className="p-6 text-center">
-                <FileText className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
-                  {contract.summary.totalClauses}
-                </div>
-                <div className="text-sm text-gray-600">Clauses</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Shield className="w-8 h-8 text-red-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
-                  {contract.summary.riskFactors}
-                </div>
-                <div className="text-sm text-gray-600">Risk Factors</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Award className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
-                  {contract.summary.complianceIssues}
-                </div>
-                <div className="text-sm text-gray-600">Compliance Issues</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
-                  {contract.summary.financialTerms}
-                </div>
-                <div className="text-sm text-gray-600">Financial Terms</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6 text-center">
-                <Users className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-gray-900">
-                  {contract.summary.keyParties}
-                </div>
-                <div className="text-sm text-gray-600">Key Parties</div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Artifacts Display */}
-          {contract.artifacts && contract.artifacts.length > 0 && (
-            <Card className="border-l-4 border-l-purple-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-6 h-6 text-purple-600" />
-                  Generated Artifacts ({contract.artifactCount})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {contract.artifacts.map((artifact, idx) => (
-                    <div
-                      key={idx}
-                      className="p-4 border-2 border-purple-200 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-semibold text-purple-900">
-                          {artifact.type.toUpperCase()}
-                        </h4>
-                        <Badge className="bg-purple-600 text-white">
-                          Generated
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-purple-700">
-                        {typeof artifact.data === "object" ? (
-                          <div className="space-y-1">
-                            {Object.entries(artifact.data || {})
-                              .slice(0, 3)
-                              .map(([key, value]) => (
-                                <div
-                                  key={key}
-                                  className="flex items-start gap-2"
-                                >
-                                  <span className="font-medium capitalize">
-                                    {key}:
-                                  </span>
-                                  <span className="text-purple-600">
-                                    {typeof value === "object"
-                                      ? Array.isArray(value)
-                                        ? `${value.length} items`
-                                        : "Complex data"
-                                      : String(value).substring(0, 50)}
-                                  </span>
-                                </div>
-                              ))}
-                            {Object.keys(artifact.data || {}).length > 3 && (
-                              <div className="text-xs text-purple-500 mt-2">
-                                +{Object.keys(artifact.data).length - 3} more
-                                fields
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-purple-600">
-                            {String(artifact.data).substring(0, 100)}
-                          </p>
-                        )}
-                      </div>
-                      <details className="mt-3">
-                        <summary className="cursor-pointer text-xs text-purple-600 hover:text-purple-800 font-medium">
-                          View Full Data
-                        </summary>
-                        <pre className="mt-2 p-2 bg-white rounded text-xs overflow-auto max-h-60">
-                          {JSON.stringify(artifact.data, null, 2)}
-                        </pre>
-                      </details>
-                    </div>
-                  ))}
-                </div>
+              <CardContent className="py-8 text-center text-gray-500">
+                No artifacts available
               </CardContent>
             </Card>
           )}
+        </TabsContent>
 
-          {/* Contract Overview */}
-          {contract.metadata && (
+        <TabsContent value="savings" className="mt-6">
+          {contract.costSavings ? (
+            <CostSavingsCard
+              analysis={contract.costSavings}
+              contractId={contract.id}
+              onImplement={handleImplementOpportunity}
+            />
+          ) : (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                  Contract Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="md:col-span-2">
-                    <h4 className="text-sm font-medium text-gray-600 mb-2">
-                      Summary
-                    </h4>
-                    <p className="text-gray-900">{contract.metadata.summary}</p>
-                  </div>
-                  {contract.metadata.contractType && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-600 mb-2">
-                        Contract Type
-                      </h4>
-                      <p className="text-gray-900 font-medium">
-                        {contract.metadata.contractType}
-                      </p>
-                    </div>
-                  )}
-                  {contract.metadata.parties &&
-                    contract.metadata.parties.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-600 mb-2">
-                          Contracting Parties
-                        </h4>
-                        <div className="space-y-1">
-                          {contract.metadata.parties.map(
-                            (party: string, idx: number) => (
-                              <div
-                                key={idx}
-                                className="flex items-center gap-2"
-                              >
-                                <Users className="w-4 h-4 text-blue-500" />
-                                <span className="text-gray-900">{party}</span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  {contract.metadata.effectiveDate && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-600 mb-2">
-                        Effective Date
-                      </h4>
-                      <p className="text-gray-900">
-                        {new Date(
-                          contract.metadata.effectiveDate
-                        ).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
-                  {contract.metadata.expirationDate && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-600 mb-2">
-                        Expiration Date
-                      </h4>
-                      <p className="text-gray-900">
-                        {new Date(
-                          contract.metadata.expirationDate
-                        ).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
-                </div>
+              <CardContent className="py-8 text-center text-gray-500">
+                No cost savings analysis available
               </CardContent>
             </Card>
           )}
+        </TabsContent>
 
-          {/* Insights */}
+        <TabsContent value="analysis" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="w-6 h-6 text-yellow-500" />
-                AI Insights
-              </CardTitle>
+              <CardTitle>Contract Analysis</CardTitle>
+              <CardDescription>
+                Detailed analysis and insights
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contract.insights.map((insight, index) => (
-                  <div
-                    key={index}
-                    className={`p-4 rounded-lg border-2 ${
-                      insight.color === "green"
-                        ? "border-green-200 bg-green-50"
-                        : insight.color === "yellow"
-                        ? "border-yellow-200 bg-yellow-50"
-                        : insight.color === "red"
-                        ? "border-red-200 bg-red-50"
-                        : insight.color === "blue"
-                        ? "border-blue-200 bg-blue-50"
-                        : "border-purple-200 bg-purple-50"
-                    }`}
-                  >
-                    <h4 className="font-semibold text-gray-900 mb-2">
-                      {insight.title}
-                    </h4>
-                    <p className="text-gray-700 text-sm">
-                      {insight.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <p className="text-gray-600">
+                Additional analysis features coming soon...
+              </p>
             </CardContent>
           </Card>
+        </TabsContent>
+      </Tabs>
 
-          {/* Contract Clauses */}
-          {contract.clauses?.clauses && contract.clauses.clauses.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                  Contract Clauses ({contract.clauses.clauses.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {contract.clauses.clauses.map((clause: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-lg border-l-4 ${
-                        clause.riskLevel === "high"
-                          ? "border-l-red-500 bg-red-50"
-                          : clause.riskLevel === "medium"
-                          ? "border-l-yellow-500 bg-yellow-50"
-                          : "border-l-green-500 bg-green-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <h4 className="font-semibold text-gray-900">
-                          {clause.title}
-                        </h4>
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            clause.riskLevel === "high"
-                              ? "bg-red-200 text-red-800"
-                              : clause.riskLevel === "medium"
-                              ? "bg-yellow-200 text-yellow-800"
-                              : "bg-green-200 text-green-800"
-                          }`}
-                        >
-                          {clause.riskLevel} risk
-                        </span>
-                      </div>
-                      <p className="text-gray-700 mt-2 text-sm">
-                        {clause.content}
-                      </p>
-                      {clause.category && (
-                        <span className="text-xs text-gray-500 mt-2 inline-block">
-                          Category: {clause.category}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Risk Analysis */}
-          {contract.risk?.risks && contract.risk.risks.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-6 h-6 text-red-600" />
-                  Risk Analysis ({contract.risk.risks.length} Risks Identified)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {contract.risk.risks.map((risk: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-lg border-l-4 ${
-                        risk.severity === "high"
-                          ? "border-l-red-500 bg-red-50"
-                          : risk.severity === "medium"
-                          ? "border-l-yellow-500 bg-yellow-50"
-                          : "border-l-blue-500 bg-blue-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900">
-                          {risk.category} Risk
-                        </h4>
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            risk.severity === "high"
-                              ? "bg-red-200 text-red-800"
-                              : risk.severity === "medium"
-                              ? "bg-yellow-200 text-yellow-800"
-                              : "bg-blue-200 text-blue-800"
-                          }`}
-                        >
-                          {risk.severity} severity
-                        </span>
-                      </div>
-                      <p className="text-gray-700 text-sm mb-3">
-                        {risk.description}
-                      </p>
-                      {risk.mitigation && (
-                        <div className="bg-white p-3 rounded border border-gray-200">
-                          <p className="text-xs font-medium text-gray-600 mb-1">
-                            Recommended Mitigation:
-                          </p>
-                          <p className="text-sm text-gray-700">
-                            {risk.mitigation}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Compliance Analysis */}
-          {contract.compliance && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="w-6 h-6 text-purple-600" />
-                  Compliance Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {contract.compliance.regulations &&
-                    contract.compliance.regulations.length > 0 && (
-                      <div className="p-4 bg-purple-50 rounded-lg">
-                        <h4 className="font-semibold text-gray-900 mb-2">
-                          Applicable Regulations
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {contract.compliance.regulations.map(
-                            (reg: string, idx: number) => (
-                              <span
-                                key={idx}
-                                className="px-3 py-1 bg-purple-200 text-purple-800 rounded-full text-sm"
-                              >
-                                {reg}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  {contract.compliance.dataProtection &&
-                    contract.compliance.dataProtection.length > 0 && (
-                      <div className="p-4 bg-blue-50 rounded-lg">
-                        <h4 className="font-semibold text-gray-900 mb-2">
-                          Data Protection Requirements
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {contract.compliance.dataProtection.map(
-                            (dp: string, idx: number) => (
-                              <span
-                                key={idx}
-                                className="px-3 py-1 bg-blue-200 text-blue-800 rounded-full text-sm"
-                              >
-                                {dp}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Detailed Analysis - Financial Data, Rate Cards, Tables */}
-          {contract.extractedData && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="w-6 h-6 text-green-600" />
-                  Financial Analysis & Rate Cards
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Financial Terms */}
-                {contract.financial && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">
-                      Financial Terms
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {contract.financial.totalValue && (
-                        <div className="p-4 bg-green-50 rounded-lg">
-                          <div className="text-sm text-gray-600">
-                            Total Value
-                          </div>
-                          <div className="text-xl font-bold text-green-700">
-                            ${contract.financial.totalValue.toLocaleString()}{" "}
-                            {contract.financial.currency}
-                          </div>
-                        </div>
-                      )}
-                      {contract.financial.paymentTerms && (
-                        <div className="p-4 bg-blue-50 rounded-lg">
-                          <div className="text-sm text-gray-600">
-                            Payment Terms
-                          </div>
-                          <div className="text-xl font-bold text-blue-700">
-                            {contract.financial.paymentTerms}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Rate Cards */}
-                {contract.financial?.rateCards &&
-                  contract.financial.rateCards.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4">Rate Cards</h3>
-                      {contract.financial.rateCards.map(
-                        (rateCard: any, idx: number) => (
-                          <div key={idx} className="mb-6">
-                            <h4 className="font-medium text-gray-900 mb-3">
-                              {rateCard.title || "Rate Card"}
-                            </h4>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full divide-y divide-gray-200 border">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                      Role
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                                      Level
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                      Hourly Rate
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                      Daily Rate
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                      Market Benchmark
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                                      Variance
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                  {rateCard.rates?.map(
-                                    (rate: any, rateIdx: number) => (
-                                      <tr
-                                        key={rateIdx}
-                                        className="hover:bg-gray-50"
-                                      >
-                                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                          {rate.role}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600">
-                                          {rate.level}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right text-gray-900">
-                                          ${rate.hourlyRate}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right text-gray-900">
-                                          ${rate.dailyRate}
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-right text-gray-600">
-                                          ${rate.marketBenchmark}
-                                        </td>
-                                        <td
-                                          className={`px-4 py-3 text-sm text-right font-medium ${
-                                            rate.variance?.startsWith("+")
-                                              ? "text-red-600"
-                                              : "text-green-600"
-                                          }`}
-                                        >
-                                          {rate.variance}
-                                        </td>
-                                      </tr>
-                                    )
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                            {rateCard.insights && (
-                              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                                <h5 className="font-medium text-blue-900 mb-2">
-                                  Insights
-                                </h5>
-                                <div className="text-sm text-blue-800 space-y-1">
-                                  <div>
-                                    Total Annual Savings:{" "}
-                                    <span className="font-bold">
-                                      {rateCard.insights.totalAnnualSavings}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    Average Variance:{" "}
-                                    <span className="font-bold">
-                                      {rateCard.insights.averageVariance}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    Recommendation:{" "}
-                                    {rateCard.insights.recommendation}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
-
-                {/* Extracted Tables */}
-                {contract.financial?.extractedTables &&
-                  contract.financial.extractedTables.length > 0 && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-4">
-                        Extracted Tables
-                      </h3>
-                      {contract.financial.extractedTables.map(
-                        (table: any, idx: number) => (
-                          <div key={idx} className="mb-6">
-                            <h4 className="font-medium text-gray-900 mb-3">
-                              {table.title}
-                            </h4>
-                            <div className="overflow-x-auto">
-                              <table className="min-w-full divide-y divide-gray-200 border">
-                                <thead className="bg-gray-50">
-                                  <tr>
-                                    {Object.keys(table.rows[0] || {}).map(
-                                      (header) => (
-                                        <th
-                                          key={header}
-                                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                                        >
-                                          {header}
-                                        </th>
-                                      )
-                                    )}
-                                  </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                  {table.rows.map(
-                                    (row: any, rowIdx: number) => (
-                                      <tr
-                                        key={rowIdx}
-                                        className="hover:bg-gray-50"
-                                      >
-                                        {Object.values(row).map(
-                                          (cell: any, cellIdx: number) => (
-                                            <td
-                                              key={cellIdx}
-                                              className="px-4 py-3 text-sm text-gray-900"
-                                            >
-                                              {cell}
-                                            </td>
-                                          )
-                                        )}
-                                      </tr>
-                                    )
-                                  )}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
-
-                {/* Raw Extracted Data (for debugging) */}
-                <details className="mt-6">
-                  <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900 font-medium">
-                    View Raw Extracted Data (JSON)
-                  </summary>
-                  <pre className="mt-4 p-4 bg-gray-50 rounded-lg overflow-auto text-xs">
-                    {JSON.stringify(contract.extractedData, null, 2)}
-                  </pre>
-                </details>
-              </CardContent>
-            </Card>
-          )}
-        </>
+      {/* Regenerating Overlay */}
+      {regenerating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-96">
+            <CardContent className="py-8 text-center">
+              <RefreshCw className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-lg font-semibold">Regenerating {regenerating}...</p>
+              <p className="text-sm text-gray-600 mt-2">This may take a few moments</p>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
