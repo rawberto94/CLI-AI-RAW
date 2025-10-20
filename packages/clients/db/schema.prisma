@@ -220,6 +220,7 @@ model Contract {
   processingJobs     ProcessingJob[]
   runs               Run[]
   templateAnalysis   TemplateAnalysis[]
+  costSavings        CostSavingsOpportunity[]
 
   @@index([tenantId])
   @@index([status])
@@ -1020,3 +1021,49 @@ model WidgetAnalytics {
   @@index([widgetType])
   @@index([timestamp])
 }
+
+model CostSavingsOpportunity {
+  id                          String   @id @default(uuid())
+  artifactId                  String
+  contractId                  String
+  tenantId                    String
+  
+  category                    String
+  title                       String
+  description                 String?  @db.Text
+  
+  potentialSavingsAmount      Decimal  @db.Decimal(15, 2)
+  potentialSavingsCurrency    String   @default("USD") @db.VarChar(3)
+  potentialSavingsPercentage  Decimal? @db.Decimal(5, 2)
+  timeframe                   String?  @db.VarChar(20)
+  
+  confidence                  String   @db.VarChar(20)
+  effort                      String   @db.VarChar(20)
+  priority                    Int      @default(3)
+  
+  actionItems                 Json?    @default("[]")
+  implementationTimeline      String?  @db.VarChar(100)
+  risks                       Json?    @default("[]")
+  
+  status                      String   @default("identified") @db.VarChar(20)
+  implementedAt               DateTime?
+  actualSavings               Decimal? @db.Decimal(15, 2)
+  notes                       String?  @db.Text
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  createdBy                   String?
+  updatedBy                   String?
+  
+  contract  Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([category])
+  @@index([confidence])
+  @@index([potentialSavingsAmount(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("cost_savings_opportunities")
+}
+

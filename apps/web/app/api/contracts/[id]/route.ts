@@ -9,9 +9,12 @@
  */
 
 import { NextResponse } from "next/server";
-import { contractService, artifactService } from "@/lib/data-orchestration";
-import { existsSync, readFile, writeFile } from "fs";
+import { PrismaClient } from "@prisma/client";
+import { existsSync } from "fs";
+import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
+
+const prisma = new PrismaClient();
 
 export const runtime = "nodejs";
 
@@ -35,56 +38,39 @@ export async function GET(
 
     const tenantId = "demo"; // TODO: Get from auth session
 
-    // Get contract using data-orchestration service (handles caching)
-    const contractResult = await contractService.getContract(
-      contractId,
-      tenantId,
-      true
-    );
+    // Get contract directly from database
+    const contract = await prisma.contract.findFirst({
+      where: {
+        id: contractId,
+        tenantId: tenantId,
+      },
+    });
 
-    console.log(
-      "[API] Contract result:",
-      JSON.stringify({
-        success: contractResult.success,
-        errorCode: contractResult.error?.code,
-        errorMessage: contractResult.error?.message,
-        hasData: !!contractResult.data,
-      })
-    );
+    console.log("[API] Contract result:", {
+      found: !!contract,
+      id: contract?.id,
+      status: contract?.status,
+    });
 
-    if (!contractResult.success) {
-      if (contractResult.error?.code === "NOT_FOUND") {
-        return NextResponse.json(
-          { error: "Contract not found" },
-          { status: 404 }
-        );
-      }
-
+    if (!contract) {
       return NextResponse.json(
-        {
-          error: "Failed to retrieve contract",
-          details: contractResult.error?.message,
-        },
-        { status: 500 }
+        { error: "Contract not found" },
+        { status: 404 }
       );
     }
 
-    const contract = contractResult.data;
+    // Get artifacts directly from database
+    const artifacts = await prisma.artifact.findMany({
+      where: {
+        contractId: contractId,
+        tenantId: tenantId,
+      },
+    });
 
-    // Get artifacts using data-orchestration service
-    const artifactsResult = await artifactService.getContractArtifacts(
-      contractId,
-      tenantId
-    );
-    console.log(
-      "[API] Artifacts result:",
-      JSON.stringify({
-        success: artifactsResult.success,
-        count: artifactsResult.data?.length || 0,
-        error: artifactsResult.error?.message,
-      })
-    );
-    const artifacts = artifactsResult.success ? artifactsResult.data : [];
+    console.log("[API] Artifacts result:", {
+      count: artifacts.length,
+      types: artifacts.map((a) => a.type),
+    });
 
     // Transform artifacts into expected format
     const artifactsByType = artifacts.reduce((acc, artifact) => {
@@ -373,7 +359,6 @@ export async function DELETE(
     }
 
     // Delete contract file
-    const { unlink } = await import("fs/promises");
     await unlink(contractDataPath);
 
     // Also try to delete the uploaded file

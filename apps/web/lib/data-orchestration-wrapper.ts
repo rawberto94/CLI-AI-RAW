@@ -1,0 +1,284 @@
+/**
+ * Data Orchestration Wrapper
+ *
+ * This provides a working replacement for the broken data-orchestration services
+ * using Prisma directly until the package is fixed.
+ */
+
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+/**
+ * Contract Service Wrapper
+ */
+export const contractService = {
+  async getContract(
+    contractId: string,
+    tenantId: string,
+    includeArtifacts = false
+  ) {
+    try {
+      const contract = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
+        include: includeArtifacts ? { artifacts: true } : undefined,
+      });
+
+      if (!contract) {
+        return {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Contract not found" },
+          data: null,
+        };
+      }
+
+      return {
+        success: true,
+        data: contract,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "DATABASE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: null,
+      };
+    }
+  },
+
+  async updateContract(contractId: string, tenantId: string, data: any) {
+    try {
+      const contract = await prisma.contract.update({
+        where: { id: contractId },
+        data: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        data: contract,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "UPDATE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: null,
+      };
+    }
+  },
+
+  async listContracts(tenantId: string, options: any = {}) {
+    try {
+      const { limit = 20, offset = 0, status } = options;
+
+      const where: any = { tenantId };
+      if (status) {
+        where.status = status;
+      }
+
+      const contracts = await prisma.contract.findMany({
+        where,
+        take: limit,
+        skip: offset,
+        orderBy: { createdAt: "desc" },
+      });
+
+      const total = await prisma.contract.count({ where });
+
+      return {
+        success: true,
+        data: contracts,
+        pagination: {
+          total,
+          limit,
+          offset,
+          hasMore: offset + limit < total,
+        },
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "QUERY_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: [],
+      };
+    }
+  },
+};
+
+/**
+ * Artifact Service Wrapper
+ */
+export const artifactService = {
+  async getContractArtifacts(contractId: string, tenantId: string) {
+    try {
+      const artifacts = await prisma.artifact.findMany({
+        where: { contractId, tenantId },
+        orderBy: { createdAt: "desc" },
+      });
+
+      return {
+        success: true,
+        data: artifacts,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "QUERY_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: [],
+      };
+    }
+  },
+
+  async createArtifact(data: any) {
+    try {
+      const artifact = await prisma.artifact.create({
+        data: {
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        data: artifact,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "CREATE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: null,
+      };
+    }
+  },
+
+  async updateArtifact(artifactId: string, data: any) {
+    try {
+      const artifact = await prisma.artifact.update({
+        where: { id: artifactId },
+        data: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        data: artifact,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "UPDATE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: null,
+      };
+    }
+  },
+
+  async storeArtifacts(contractId: string, tenantId: string, artifacts: any[]) {
+    try {
+      const results = [];
+
+      for (const artifact of artifacts) {
+        const created = await prisma.artifact.create({
+          data: {
+            contractId,
+            tenantId,
+            type: artifact.type,
+            data: artifact.data,
+            schemaVersion: artifact.schemaVersion || "1.0",
+            storageProvider: "database",
+            confidence: artifact.confidence || 0.8,
+          },
+        });
+        results.push(created);
+      }
+
+      return {
+        success: true,
+        data: results,
+        error: null,
+      };
+    } catch (error) {
+      console.error("Error storing artifacts:", error);
+      return {
+        success: false,
+        error: {
+          code: "STORE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: [],
+      };
+    }
+  },
+};
+
+/**
+ * Taxonomy Service Wrapper (minimal implementation)
+ */
+export const taxonomyService = {
+  async getCategories(tenantId: string) {
+    return {
+      success: true,
+      data: [
+        { id: "1", name: "IT Services", slug: "it-services" },
+        {
+          id: "2",
+          name: "Professional Services",
+          slug: "professional-services",
+        },
+        { id: "3", name: "Software License", slug: "software-license" },
+        { id: "4", name: "Consulting", slug: "consulting" },
+        { id: "5", name: "Other", slug: "other" },
+      ],
+      error: null,
+    };
+  },
+};
+
+/**
+ * Event Bus Wrapper (no-op for now)
+ */
+export const eventBus = {
+  emit(event: string, data: any) {
+    console.log(`📡 Event emitted: ${event}`, {
+      contractId: data.contractId || "unknown",
+    });
+  },
+  on(event: string, handler: Function) {
+    console.log(`👂 Event listener registered: ${event}`);
+  },
+};
+
+export const Events = {
+  CONTRACT_CREATED: "contract.created",
+  CONTRACT_UPDATED: "contract.updated",
+  ARTIFACTS_GENERATED: "artifacts.generated",
+  PROCESSING_COMPLETED: "processing.completed",
+  PROCESSING_FAILED: "processing.failed",
+};
