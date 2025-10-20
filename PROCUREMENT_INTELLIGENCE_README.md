@@ -9,7 +9,7 @@ The Procurement Intelligence System provides a unified interface for accessing p
 1. **Rate Benchmarking** - Market rate analysis and comparisons
 2. **Supplier Analytics** - Supplier performance and financial health
 3. **Negotiation Prep** - Leverage points and negotiation strategies
-4. **Savings Pipeline** - Savings opportunities and ROI tracking
+4. **Savings Pipeline** - Cost savings opportunities and tracking
 5. **Renewal Radar** - Contract renewal tracking and alerts
 
 ## 🚀 Quick Start

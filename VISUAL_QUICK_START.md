@@ -229,7 +229,7 @@
 │     → /analytics/savings                                │
 │     • Cost savings opportunities                        │
 │     • Optimization suggestions                          │
-│     • ROI calculations                                  │
+│     • Savings tracking & analysis                       │
 │                                                         │
 │  📈 Rate Benchmarking                                   │
 │     → /analytics/rate-intelligence                      │

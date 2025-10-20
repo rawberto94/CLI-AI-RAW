@@ -423,10 +423,11 @@ Key Clauses Identified: ${context.clauses.clauses?.length || 0} clauses analyzed
 ` : '';
 
     return {
-      systemPrompt: `You are a risk assessment expert specializing in contract analysis.
-You identify financial, legal, operational, and reputational risks with detailed recommendations.${financialContext}${clausesContext}`,
+      systemPrompt: `You are a risk assessment expert specializing in indirect procurement contract analysis.
+You identify financial, legal, operational, and reputational risks with detailed recommendations.
+Focus on cost savings opportunities and optimization potential in indirect procurement.${financialContext}${clausesContext}`,
       
-      userPrompt: `Analyze all risks in the contract and provide a comprehensive risk assessment.`,
+      userPrompt: `Analyze all risks in the contract and provide a comprehensive risk assessment with focus on cost savings opportunities.`,
       
       examples: [
         {
@@ -467,6 +468,11 @@ You identify financial, legal, operational, and reputational risks with detailed
               'Consider insurance coverage',
               'Require legal review'
             ],
+            costSavingsOpportunities: [
+              'Negotiate liability cap to reduce insurance costs',
+              'Extended notice period allows better supplier transition planning',
+              'Penalty caps reduce financial exposure'
+            ],
             redFlags: [
               'Unlimited liability exposure',
               'Extremely short termination notice',
@@ -483,6 +489,7 @@ You identify financial, legal, operational, and reputational risks with detailed
         riskFactors: 'array of {category, severity, description, impact, likelihood, mitigation}',
         recommendations: 'array of strings',
         redFlags: 'array of strings',
+        costSavingsOpportunities: 'array of strings (indirect procurement cost optimization)',
         certainty: 'number (0-1)'
       },
       

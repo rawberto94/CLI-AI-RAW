@@ -1,28 +1,37 @@
-export * from "./contract.service";
-export * from "./artifact.service";
-export * from "./intelligence.service";
-export * from "./analytics.service";
-export * from "./workflow.service";
-export * from "./contract-indexing.service";
-export * from "./database-optimization.service";
-export * from "./taxonomy.service";
-export * from "./rate-card-intelligence.service";
-export * from "./data-standardization.service";
-export * from "./rate-card-management.service";
-export * from "./analytical-intelligence.service";
-export * from "./enhanced-rate-analytics.service";
-export * from "./rate-calculation.engine";
-export * from "./rate-validation.service";
-export * from "./analytical-database.service";
-export * from "./enhanced-savings-opportunities.service";
-
-// Performance optimization services
-export * from "./smart-cache.service";
-// export * from "./hybrid-artifact-storage.service"; // Temporarily disabled due to Prisma schema issues
-export * from "./file-integrity.service";
-// export * from "./processing-job.service"; // Temporarily disabled due to Prisma schema issues
-// export * from "./enhanced-artifact.service"; // Temporarily disabled due to Prisma schema issues
-
-// Integration services
-// export * from "./rag-integration.service"; // RAG services temporarily disabled due to missing dependencies
-// export * from "./unified-orchestration.service"; // Empty file - temporarily disabled
+// Export all services
+export * from './contract.service';
+export * from './validation.service';
+export * from './processing-job.service';
+export * from './file-integrity.service';
+export * from './audit-trail.service';
+export * from './chunked-upload.service';
+export * from './artifact-versioning.service';
+export * from './confidence-scoring.service';
+export * from './ai-artifact-generator.service';
+export * from './parallel-artifact-generator.service';
+export * from './data-validation.service';
+export * from './data-sanitization.service';
+export * from './financial-validation.service';
+export * from './date-validation.service';
+export * from './enhanced-artifact.service';
+export * from './artifact-prompt-templates.service';
+export * from './artifact-context-enrichment.service';
+export * from './cost-savings-analyzer.service';
+export * from './data-standardization.service';
+export * from './rate-card-intelligence.service';
+export * from './rate-card-management.service';
+export * from './enhanced-rate-analytics.service';
+export * from './rate-calculation.engine';
+export * from './rate-validation.service';
+export * from './analytical-database.service';
+export * from './enhanced-savings-opportunities.service';
+export * from './hybrid-artifact-storage.service';
+export * from './smart-cache.service';
+export * from './database-optimization.service';
+export * from './contract-indexing.service';
+export * from './taxonomy.service';
+export * from './workflow.service';
+export * from './analytics.service';
+export * from './intelligence.service';
+export * from './unified-orchestration.service';
+export * from './analytical-intelligence.service';
