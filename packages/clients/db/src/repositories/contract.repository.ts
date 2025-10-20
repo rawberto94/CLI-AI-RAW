@@ -332,6 +332,7 @@ export class ContractRepository extends AbstractRepository<
         await tx.processingJob.create({
           data: {
             contractId: contract.id,
+            tenantId: contract.tenantId,
             status: JobStatus.PENDING,
             progress: 0,
           },
@@ -594,6 +595,7 @@ export class ContractRepository extends AbstractRepository<
           await tx.processingJob.create({
             data: {
               contractId: contract.id,
+              tenantId: contract.tenantId,
               status: JobStatus.PENDING,
               progress: 0,
             },
