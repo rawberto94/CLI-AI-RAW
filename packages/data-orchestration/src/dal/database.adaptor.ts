@@ -11,6 +11,47 @@ import {
 
 const logger = pino({ name: "database-adaptor" });
 
+// ============================================================================
+// TYPE CONVERSION HELPERS
+// ============================================================================
+
+/**
+ * Convert Prisma Decimal type to JavaScript number
+ * Handles null and undefined values properly
+ */
+function toNumber(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return value;
+  // Handle Prisma Decimal type
+  return Number(value);
+}
+
+/**
+ * Convert Prisma Contract to TypeScript Contract type
+ * Handles Decimal to number conversion for totalValue
+ */
+function convertContract(prismaContract: any): Contract {
+  return {
+    ...prismaContract,
+    totalValue: toNumber(prismaContract.totalValue),
+  } as Contract;
+}
+
+/**
+ * Convert Prisma Artifact to TypeScript Artifact type
+ * Handles Decimal to number conversion for confidence
+ */
+function convertArtifact(prismaArtifact: any): Artifact {
+  return {
+    ...prismaArtifact,
+    confidence: toNumber(prismaArtifact.confidence),
+  } as Artifact;
+}
+
+// ============================================================================
+// DATABASE ADAPTOR CLASS
+// ============================================================================
+
 export class DatabaseAdaptor {
   public prisma: PrismaClient; // Public so services can use it
   private static instance: DatabaseAdaptor;
@@ -51,7 +92,7 @@ export class DatabaseAdaptor {
         },
       });
       logger.info({ contractId: contract.id }, "Contract created");
-      return contract as Contract;
+      return convertContract(contract);
     } catch (error) {
       logger.error({ error }, "Failed to create contract");
       throw error;
@@ -164,7 +205,7 @@ export class DatabaseAdaptor {
       logger.info({ total, page: query.page }, "Contracts queried");
 
       return {
-        contracts: contracts as Contract[],
+        contracts: contracts.map(convertContract),
         total,
         page: query.page,
         limit: query.limit,
@@ -190,7 +231,7 @@ export class DatabaseAdaptor {
         { artifactId: artifact.id, type: artifact.type },
         "Artifact created"
       );
-      return artifact as Artifact;
+      return convertArtifact(artifact);
     } catch (error) {
       logger.error({ error }, "Failed to create artifact");
       throw error;
@@ -208,7 +249,7 @@ export class DatabaseAdaptor {
           type: type as any, // Cast to Prisma's ArtifactType enum
         },
       });
-      return artifact as Artifact | null;
+      return artifact ? convertArtifact(artifact) : null;
     } catch (error) {
       logger.error({ error, contractId, type }, "Failed to get artifact");
       throw error;
@@ -221,7 +262,7 @@ export class DatabaseAdaptor {
         where: { contractId },
         orderBy: { createdAt: "desc" },
       });
-      return artifacts as Artifact[];
+      return artifacts.map(convertArtifact);
     } catch (error) {
       logger.error({ error, contractId }, "Failed to get artifacts");
       throw error;

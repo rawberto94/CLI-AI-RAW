@@ -18,11 +18,11 @@ export * from "./enhanced-savings-opportunities.service";
 
 // Performance optimization services
 export * from "./smart-cache.service";
-export * from "./hybrid-artifact-storage.service";
+// export * from "./hybrid-artifact-storage.service"; // Temporarily disabled due to Prisma schema issues
 export * from "./file-integrity.service";
-export * from "./processing-job.service";
-export * from "./enhanced-artifact.service";
+// export * from "./processing-job.service"; // Temporarily disabled due to Prisma schema issues
+// export * from "./enhanced-artifact.service"; // Temporarily disabled due to Prisma schema issues
 
 // Integration services
-export * from "./rag-integration.service";
-export * from "./unified-orchestration.service";
+// export * from "./rag-integration.service"; // RAG services temporarily disabled due to missing dependencies
+// export * from "./unified-orchestration.service"; // Empty file - temporarily disabled

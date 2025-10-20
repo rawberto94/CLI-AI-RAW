@@ -269,7 +269,12 @@ export class ContractService {
       return {
         success: true,
         data: {
-          contract: result.contract as Contract,
+          contract: {
+            ...result.contract,
+            totalValue: result.contract.totalValue 
+              ? Number(result.contract.totalValue) 
+              : null,
+          } as Contract,
           jobId: result.job.id,
         },
       };

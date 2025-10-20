@@ -586,7 +586,12 @@ export class ContractIndexingService {
           : undefined;
 
         return {
-          contract: contract as Contract,
+          contract: {
+            ...contract,
+            totalValue: contract.totalValue 
+              ? Number(contract.totalValue) 
+              : null,
+          } as Contract,
           artifacts,
           score: 1.0,
           highlights: [],
