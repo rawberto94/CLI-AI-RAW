@@ -193,7 +193,6 @@ export class ContractService {
         const contractData: any = {
           ...contractDataWithoutPath,
           checksum,
-          checksumAlgorithm: "sha256",
           fileSize: BigInt(data.fileSize || fileMetadata.size || 0),
           mimeType: data.mimeType || fileMetadata.mimeType,
           status: "PROCESSING", // Use valid status from enum
