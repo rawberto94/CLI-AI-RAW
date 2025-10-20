@@ -1,0 +1,66 @@
+// Cost Savings Opportunities Schema Extension
+// Add this to your main schema.prisma file
+
+model CostSavingsOpportunity {
+  id                          String   @id @default(uuid())
+  artifactId                  String
+  contractId                  String
+  tenantId                    String
+  
+  // Opportunity details
+  category                    String   // rate_optimization, payment_terms, volume_discount, supplier_consolidation, contract_optimization
+  title                       String
+  description                 String?  @db.Text
+  
+  // Savings potential
+  potentialSavingsAmount      Decimal  @db.Decimal(15, 2)
+  potentialSavingsCurrency    String   @default("USD") @db.VarChar(3)
+  potentialSavingsPercentage  Decimal? @db.Decimal(5, 2)
+  timeframe                   String?  @db.VarChar(20) // monthly, quarterly, annual
+  
+  // Assessment
+  confidence                  String   @db.VarChar(20) // low, medium, high
+  effort                      String   @db.VarChar(20) // low, medium, high
+  priority                    Int      @default(3) // 1-5
+  
+  // Implementation details
+  actionItems                 Json?    @default("[]")
+  implementationTimeline      String?  @db.VarChar(100)
+  risks                       Json?    @default("[]")
+  
+  // Tracking
+  status                      String   @default("identified") @db.VarChar(20) // identified, in_progress, implemented, rejected
+  implementedAt               DateTime?
+  actualSavings               Decimal? @db.Decimal(15, 2)
+  notes                       String?  @db.Text
+  
+  // Metadata
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  createdBy                   String?
+  updatedBy                   String?
+  
+  // Relations (add these to your existing models)
+  // artifact  Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  // contract  Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  // tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([contractId])
+  @@index([artifactId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([category])
+  @@index([confidence])
+  @@index([potentialSavingsAmount(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("cost_savings_opportunities")
+}
+
+// Add these fields to your existing Artifact model:
+// model Artifact {
+//   ...existing fields...
+//   costSavingsData   Json?
+//   costSavingsTotal  Decimal? @db.Decimal(15, 2)
+//   costSavingsCount  Int?     @default(0)
+//   costSavings       CostSavingsOpportunity[]
+// }

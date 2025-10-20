@@ -142,27 +142,25 @@ async function extractTextFromFile(filePath: string, mimeType: string): Promise<
     }
     
     if (mimeType === 'application/pdf') {
-      // For now, return mock text - in production, use pdf-parse or similar
-      return `MOCK PDF CONTENT: This is a sample contract text extracted from ${filePath}. 
-      
-      AGREEMENT
-      
-      This Service Agreement ("Agreement") is entered into on [DATE] between Company A ("Client") and Company B ("Service Provider").
-      
-      1. SERVICES
-      Service Provider agrees to provide consulting services as described in Exhibit A.
-      
-      2. PAYMENT TERMS
-      Client agrees to pay $50,000 within 30 days of invoice receipt.
-      
-      3. TERM
-      This Agreement shall commence on [START_DATE] and continue for 12 months.
-      
-      4. TERMINATION
-      Either party may terminate with 30 days written notice.
-      
-      5. LIABILITY
-      Service Provider's liability shall not exceed the total amount paid under this Agreement.`;
+      try {
+        // Try to use pdf-parse for real PDF extraction
+        const pdfParse = await import('pdf-parse/lib/pdf-parse.js');
+        const dataBuffer = await readFile(filePath);
+        const data = await pdfParse.default(dataBuffer);
+        
+        console.log(`✅ Extracted ${data.text.length} characters from PDF`);
+        console.log(`📄 PDF has ${data.numpages} pages`);
+        
+        if (data.text && data.text.length > 100) {
+          return data.text;
+        } else {
+          console.warn('⚠️  PDF text extraction returned minimal content, using fallback');
+          return generateFallbackPDFContent(filePath);
+        }
+      } catch (pdfError) {
+        console.warn('⚠️  pdf-parse not available or failed, using fallback:', pdfError);
+        return generateFallbackPDFContent(filePath);
+      }
     }
     
     // For other formats, return mock content
@@ -172,6 +170,55 @@ async function extractTextFromFile(filePath: string, mimeType: string): Promise<
     console.error('Text extraction failed:', error);
     return `FALLBACK CONTENT: Unable to extract text from ${filePath}`;
   }
+}
+
+/**
+ * Generate fallback PDF content when pdf-parse is not available
+ */
+function generateFallbackPDFContent(filePath: string): string {
+  return `SAMPLE CONTRACT CONTENT (PDF Parser Not Available)
+
+This is a sample contract text. To extract real PDF content, install pdf-parse:
+npm install pdf-parse
+
+SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is entered into on January 1, 2024 between:
+- Company A ("Client") 
+- Company B ("Service Provider")
+
+1. SERVICES
+Service Provider agrees to provide professional consulting services as described in Exhibit A.
+
+2. PAYMENT TERMS
+Client agrees to pay $50,000 USD within 30 days of invoice receipt.
+Payment schedule: Monthly invoicing on the 1st of each month.
+
+3. TERM
+This Agreement shall commence on January 1, 2024 and continue for 12 months.
+Automatic renewal unless either party provides 60 days written notice.
+
+4. TERMINATION
+Either party may terminate with 30 days written notice.
+Client may terminate immediately for cause with written notice.
+
+5. LIABILITY
+Service Provider's liability shall not exceed the total amount paid under this Agreement.
+Neither party shall be liable for indirect, incidental, or consequential damages.
+
+6. CONFIDENTIALITY
+Both parties agree to maintain confidentiality of proprietary information.
+Confidentiality obligations survive termination for 3 years.
+
+7. INTELLECTUAL PROPERTY
+All work product created shall be owned by Client upon full payment.
+Service Provider retains rights to pre-existing materials and methodologies.
+
+8. GOVERNING LAW
+This Agreement shall be governed by the laws of [State/Country].
+Disputes shall be resolved through binding arbitration.
+
+File: ${filePath}`;
 }
 
 /**

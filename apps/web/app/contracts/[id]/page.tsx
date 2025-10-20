@@ -43,11 +43,23 @@ export default function ContractDetailPage() {
     try {
       setLoading(true);
       
-      // In production, this would fetch from API
-      // const response = await fetch(`/api/contracts/${contractId}`);
-      // const data = await response.json();
+      // Fetch real contract data from API
+      const response = await fetch(`/api/contracts/${contractId}/details`);
       
-      // Mock data for demonstration
+      if (!response.ok) {
+        console.warn('Failed to fetch contract, using mock data');
+        throw new Error('Failed to fetch contract');
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setContract(result.data);
+        return; // Exit early if we have real data
+      }
+      
+      // Fallback to mock data if no real data available
+      console.log('No real data available, using mock data');
       const mockData: ContractData = {
         id: contractId,
         name: 'Professional Services Agreement - Acme Corp',
@@ -244,6 +256,8 @@ export default function ContractDetailPage() {
       setContract(mockData);
     } catch (error) {
       console.error('Failed to load contract:', error);
+      // Set null to show "not found" message
+      setContract(null);
     } finally {
       setLoading(false);
     }

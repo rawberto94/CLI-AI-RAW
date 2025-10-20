@@ -24,51 +24,169 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (contractId) {
-      // Get cost savings for specific contract
-      // This would fetch artifacts from database and analyze
-      return NextResponse.json({
-        success: true,
-        contractId,
-        message: 'Contract-specific cost savings analysis would be returned here',
-        // In production, this would call:
-        // const artifacts = await getContractArtifacts(contractId);
-        // const analysis = await costSavingsAnalyzerService.analyzeCostSavings(artifacts);
-        analysis: {
-          totalPotentialSavings: {
-            amount: 0,
-            currency: 'USD',
-            percentage: 0
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+
+    try {
+      if (contractId) {
+        // Get cost savings for specific contract
+        const opportunities = await prisma.costSavingsOpportunity.findMany({
+          where: {
+            contractId,
+            tenantId,
+            status: 'identified'
           },
-          opportunities: [],
-          quickWins: [],
-          strategicInitiatives: [],
-          summary: {
-            opportunityCount: 0,
-            averageSavingsPerOpportunity: 0,
-            highConfidenceOpportunities: 0
+          include: {
+            contract: {
+              select: { name: true }
+            }
+          },
+          orderBy: {
+            potentialSavingsAmount: 'desc'
           }
+        });
+
+        const totalSavings = opportunities.reduce(
+          (sum, opp) => sum + Number(opp.potentialSavingsAmount),
+          0
+        );
+
+        const quickWins = opportunities.filter(
+          opp => opp.confidence === 'high' && opp.effort === 'low'
+        );
+
+        const strategicInitiatives = opportunities.filter(
+          opp => Number(opp.potentialSavingsAmount) > 50000
+        );
+
+        return NextResponse.json({
+          success: true,
+          contractId,
+          data: {
+            totalPotentialSavings: {
+              amount: totalSavings,
+              currency: 'USD',
+              percentage: 0 // Calculate based on contract value if available
+            },
+            opportunities: opportunities.map(opp => ({
+              id: opp.id,
+              category: opp.category,
+              title: opp.title,
+              description: opp.description,
+              potentialSavings: {
+                amount: Number(opp.potentialSavingsAmount),
+                currency: opp.potentialSavingsCurrency,
+                percentage: Number(opp.potentialSavingsPercentage || 0),
+                timeframe: opp.timeframe
+              },
+              confidence: opp.confidence,
+              effort: opp.effort,
+              priority: opp.priority,
+              actionItems: opp.actionItems,
+              implementationTimeline: opp.implementationTimeline,
+              risks: opp.risks,
+              status: opp.status
+            })),
+            quickWins: quickWins.map(opp => ({
+              id: opp.id,
+              title: opp.title,
+              amount: Number(opp.potentialSavingsAmount),
+              confidence: opp.confidence
+            })),
+            strategicInitiatives: strategicInitiatives.map(opp => ({
+              id: opp.id,
+              title: opp.title,
+              amount: Number(opp.potentialSavingsAmount),
+              effort: opp.effort
+            })),
+            summary: {
+              opportunityCount: opportunities.length,
+              averageSavingsPerOpportunity: opportunities.length > 0 ? totalSavings / opportunities.length : 0,
+              highConfidenceOpportunities: opportunities.filter(o => o.confidence === 'high').length
+            }
+          }
+        });
+      }
+
+      // Get aggregated cost savings across all contracts
+      const opportunities = await prisma.costSavingsOpportunity.findMany({
+        where: {
+          tenantId,
+          status: 'identified'
+        },
+        include: {
+          contract: {
+            select: { name: true, id: true }
+          }
+        },
+        orderBy: {
+          potentialSavingsAmount: 'desc'
         }
       });
-    }
 
-    // Get aggregated cost savings across all contracts
-    return NextResponse.json({
-      success: true,
-      tenantId,
-      message: 'Aggregated cost savings analysis would be returned here',
-      aggregated: {
-        totalContracts: 0,
-        totalPotentialSavings: {
-          amount: 0,
-          currency: 'USD'
-        },
-        totalOpportunities: 0,
-        totalQuickWins: 0,
-        totalStrategicInitiatives: 0,
-        byCategory: {}
-      }
-    });
+      const totalSavings = opportunities.reduce(
+        (sum, opp) => sum + Number(opp.potentialSavingsAmount),
+        0
+      );
+
+      const quickWins = opportunities.filter(
+        opp => opp.confidence === 'high' && opp.effort === 'low'
+      );
+
+      const strategicInitiatives = opportunities.filter(
+        opp => Number(opp.potentialSavingsAmount) > 50000
+      );
+
+      // Group by category
+      const byCategory: Record<string, number> = {};
+      opportunities.forEach(opp => {
+        byCategory[opp.category] = (byCategory[opp.category] || 0) + Number(opp.potentialSavingsAmount);
+      });
+
+      // Get unique contracts
+      const uniqueContracts = new Set(opportunities.map(o => o.contractId));
+
+      return NextResponse.json({
+        success: true,
+        tenantId,
+        data: {
+          totalContracts: uniqueContracts.size,
+          totalPotentialSavings: totalSavings,
+          currency: 'USD',
+          totalOpportunities: opportunities.length,
+          quickWinsCount: quickWins.length,
+          strategicInitiativesCount: strategicInitiatives.length,
+          byCategory,
+          topOpportunities: opportunities.slice(0, 5).map(opp => ({
+            id: opp.id,
+            title: opp.title,
+            amount: Number(opp.potentialSavingsAmount),
+            confidence: opp.confidence,
+            contractName: opp.contract.name,
+            contractId: opp.contractId
+          })),
+          opportunities: opportunities.map(opp => ({
+            id: opp.id,
+            category: opp.category,
+            title: opp.title,
+            description: opp.description,
+            potentialSavings: {
+              amount: Number(opp.potentialSavingsAmount),
+              currency: opp.potentialSavingsCurrency,
+              percentage: Number(opp.potentialSavingsPercentage || 0),
+              timeframe: opp.timeframe
+            },
+            confidence: opp.confidence,
+            effort: opp.effort,
+            priority: opp.priority,
+            contractName: opp.contract.name,
+            contractId: opp.contractId
+          }))
+        }
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
   } catch (error) {
     console.error('Cost savings analysis error:', error);
     

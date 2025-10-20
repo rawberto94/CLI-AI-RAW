@@ -4,7 +4,25 @@ Enterprise contract management and intelligence platform with advanced RAG, anal
 
 ---
 
-## ⚡ Quick Start
+## ⚡ **NEW: One-Command Complete Setup!**
+
+### Run This Once and You're Done:
+
+```powershell
+# Windows (PowerShell)
+.\setup-complete.ps1
+
+# Mac/Linux (Bash)
+chmod +x setup-complete.sh && ./setup-complete.sh
+```
+
+**What it does**: Installs everything, configures database, sets up AI, and starts the server!
+
+**See**: `START_HERE.md` for details
+
+---
+
+## ⚡ Quick Start (Alternative)
 
 ### Automated Setup (Recommended)
 

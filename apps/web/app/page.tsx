@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { CostSavingsDashboardWidget } from "@/components/dashboard/CostSavingsDashboardWidget";
 import {
   Grid,
   StatusIndicator,
@@ -165,6 +166,11 @@ export default function DashboardPage() {
           </div>
         }
       >
+        {/* Cost Savings Widget - Full Width */}
+        <div className="mb-6">
+          <CostSavingsDashboardWidget />
+        </div>
+
         {/* Key Metrics */}
         <Grid cols={4} gap="md">
           <Card>
