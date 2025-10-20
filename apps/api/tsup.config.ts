@@ -46,6 +46,11 @@ export default defineConfig({
     "ajv",
     "dotenv",
     "@anthropic-ai/sdk",
+    // Langchain packages (used by agents workspace package)
+    "langchain",
+    "@langchain/core",
+    "@langchain/openai",
+    "@langchain/community",
   ],
   noExternal: [
     "zod", // Bundle zod to avoid module resolution issues
