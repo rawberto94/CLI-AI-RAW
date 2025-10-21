@@ -44,6 +44,8 @@ import EnhancedSavingsCalculator from '@/components/use-cases/rate-benchmarking/
 import MarketIntelligenceEngine from '@/components/use-cases/rate-benchmarking/MarketIntelligenceEngine'
 import { allClients, allRateCardRoles } from '@/lib/use-cases/multi-client-rate-data'
 import { formatCHF } from '@/lib/use-cases/rate-normalizer'
+import { DataModeToggle, DataModeBanner } from '@/components/ui/data-mode-toggle'
+import { useRateBenchmarkingData } from '@/hooks/useRateBenchmarkingData'
 
 type SortField = 'role' | 'supplier' | 'country' | 'service' | 'rate' | 'variance' | 'standardizedRole'
 type SortDirection = 'asc' | 'desc'
@@ -608,6 +610,7 @@ export default function RateBenchmarkingPage() {
               <p className="text-gray-600 mt-1">Manage and compare rates across multiple clients</p>
             </div>
             <div className="flex items-center gap-3">
+              <DataModeToggle showLabel={true} showStats={true} />
               <Link href="/import/rate-cards">
                 <Button variant="outline" className="flex items-center gap-2">
                   <Upload className="w-4 h-4" />
@@ -631,6 +634,9 @@ export default function RateBenchmarkingPage() {
               </Badge>
             </div>
           </div>
+
+          {/* Data Mode Banner */}
+          <DataModeBanner />
 
           <ClientSelector
             clients={allClients}
