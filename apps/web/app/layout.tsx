@@ -4,6 +4,7 @@ import { HealthBanner } from "./health-banner";
 import MainNavigation from "@/components/layout/MainNavigation";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { EnhancedDataModeToggle } from "@/components/ui/enhanced-data-mode-toggle";
+import { ChatAssistant } from "@/components/ai/ChatAssistant";
 
 export const metadata = {
   title: "Contract Intelligence Platform",
@@ -28,6 +29,8 @@ export default function RootLayout({
             </div>
             {children}
           </div>
+          {/* AI Chat Assistant - Available everywhere */}
+          <ChatAssistant />
         </DataModeProvider>
       </body>
     </html>
