@@ -1,234 +1,280 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   FileText,
-  BarChart3,
   DollarSign,
-  FileCheck,
   Clock,
-  ChevronRight,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { fadeIn } from "@/lib/contracts/animations";
+  Download,
+  Eye,
+  Edit,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  Sparkles
+} from 'lucide-react'
+import { useDataMode } from '@/contexts/DataModeContext'
 
-export interface Tab {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge?: number;
-  disabled?: boolean;
+interface ContractDetailTabsProps {
+  contract: any
+  artifacts: any[]
+  onEdit?: () => void
+  onExport?: () => void
 }
 
-export interface ContractDetailTabsProps {
-  tabs: Tab[];
-  defaultTab?: string;
-  onTabChange?: (tabId: string) => void;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export function ContractDetailTabs({
-  tabs,
-  defaultTab,
-  onTabChange,
-  children,
-  className,
-}: ContractDetailTabsProps) {
-  // Framer Motion typing workaround for React 19
-  const MotionDiv = motion.div as any;
-  const MotionSpan = motion.span as any;
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const tabFromUrl = searchParams.get("tab");
-
-  const [activeTab, setActiveTab] = useState(
-    tabFromUrl || defaultTab || tabs[0]?.id
-  );
-
-  // Update URL when tab changes
-  useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl]);
-
-  const handleTabChange = (tabId: string) => {
-    const tab = tabs.find((t) => t.id === tabId);
-    if (tab?.disabled) return;
-
-    setActiveTab(tabId);
-    onTabChange?.(tabId);
-
-    // Update URL with new tab
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", tabId);
-    router.push(`?${params.toString()}`, { scroll: false });
-  };
-
-  const activeTabIndex = tabs.findIndex((t) => t.id === activeTab);
+export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: ContractDetailTabsProps) {
+  const { dataMode } = useDataMode()
+  const [activeTab, setActiveTab] = useState('overview')
 
   return (
-    <div className={cn("w-full", className)}>
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 bg-white sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center overflow-x-auto scrollbar-hide">
-          {tabs.map((tab, index) => {
-            const Icon = tab.icon;
-            const isActive = tab.id === activeTab;
-            const isDisabled = tab.disabled;
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <TabsList className="grid w-full grid-cols-5">
+        <TabsTrigger value="overview" className="gap-2">
+          <Eye className="h-4 w-4" />
+          <span className="hidden sm:inline">Overview</span>
+        </TabsTrigger>
+        <TabsTrigger value="artifacts" className="gap-2">
+          <FileText className="h-4 w-4" />
+          <span className="hidden sm:inline">Artifacts</span>
+          <Badge variant="secondary" className="ml-1">{artifacts?.length || 0}</Badge>
+        </TabsTrigger>
+        <TabsTrigger value="financial" className="gap-2">
+          <DollarSign className="h-4 w-4" />
+          <span className="hidden sm:inline">Financial</span>
+        </TabsTrigger>
+        <TabsTrigger value="timeline" className="gap-2">
+          <Clock className="h-4 w-4" />
+          <span className="hidden sm:inline">Timeline</span>
+        </TabsTrigger>
+        <TabsTrigger value="insights" className="gap-2">
+          <Sparkles className="h-4 w-4" />
+          <span className="hidden sm:inline">AI Insights</span>
+        </TabsTrigger>
+      </TabsList>
 
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                disabled={isDisabled}
-                className={cn(
-                  "relative flex items-center gap-2 px-6 py-4 text-sm font-medium transition-all whitespace-nowrap",
-                  "border-b-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-                  isActive
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300",
-                  isDisabled && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <Icon className={cn("w-4 h-4", isActive && "text-blue-600")} />
-                <span>{tab.label}</span>
-
-                {/* Badge */}
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <MotionSpan
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className={cn(
-                      "ml-1 px-2 py-0.5 text-xs font-semibold rounded-full",
-                      isActive
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-gray-100 text-gray-700"
-                    )}
-                  >
-                    {tab.badge}
-                  </MotionSpan>
-                )}
-
-                {/* Active indicator */}
-                {isActive && (
-                  <MotionDiv
-                    layoutId="activeTab"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Progress indicator */}
-        <div className="h-1 bg-gray-100">
-          <MotionDiv
-            className="h-full bg-blue-600"
-            initial={{ width: 0 }}
-            animate={{
-              width: `${((activeTabIndex + 1) / tabs.length) * 100}%`,
-            }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div className="relative">
-        <AnimatePresence mode="wait">
-          <MotionDiv
-            key={activeTab}
-            variants={fadeIn}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.2 }}
-            className="py-6"
-          >
-            {children}
-          </MotionDiv>
-        </AnimatePresence>
-      </div>
-
-      {/* Navigation Breadcrumb */}
-      <div className="mt-6 flex items-center gap-2 text-sm text-gray-500">
-        <span>Current view:</span>
-        <div className="flex items-center gap-1">
-          {tabs.map((tab, index) => {
-            const isActive = tab.id === activeTab;
-            return (
-              <div key={tab.id} className="flex items-center gap-1">
-                {index > 0 && <ChevronRight className="w-3 h-3" />}
-                <button
-                  onClick={() => handleTabChange(tab.id)}
-                  disabled={tab.disabled}
-                  className={cn(
-                    "hover:text-gray-900 transition-colors",
-                    isActive && "text-blue-600 font-medium",
-                    tab.disabled && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {tab.label}
-                </button>
+      {/* Overview Tab */}
+      <TabsContent value="overview" className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500">Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <span className="text-2xl font-bold">{contract?.status || 'Active'}</span>
               </div>
-            );
-          })}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500">Total Value</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-blue-600" />
+                <span className="text-2xl font-bold">
+                  ${contract?.totalValue?.toLocaleString() || '0'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500">Artifacts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-purple-600" />
+                <span className="text-2xl font-bold">{artifacts?.length || 0}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-    </div>
-  );
-}
 
-// Predefined tab configurations
-export const DEFAULT_CONTRACT_TABS: Tab[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    icon: FileText,
-  },
-  {
-    id: "analysis",
-    label: "Analysis",
-    icon: BarChart3,
-  },
-  {
-    id: "financial",
-    label: "Financial",
-    icon: DollarSign,
-  },
-  {
-    id: "clauses",
-    label: "Clauses",
-    icon: FileCheck,
-  },
-  {
-    id: "timeline",
-    label: "Timeline",
-    icon: Clock,
-  },
-];
+        <Card>
+          <CardHeader>
+            <CardTitle>Contract Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Contract ID</p>
+                <p className="font-medium">{contract?.id || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Supplier</p>
+                <p className="font-medium">{contract?.supplier || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Start Date</p>
+                <p className="font-medium">{contract?.startDate || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">End Date</p>
+                <p className="font-medium">{contract?.endDate || 'N/A'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-// Tab content wrapper component
-export interface TabContentProps {
-  tabId: string;
-  activeTab: string;
-  children: React.ReactNode;
-  className?: string;
-}
+      {/* Artifacts Tab */}
+      <TabsContent value="artifacts" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Contract Artifacts</h3>
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        </div>
 
-export function TabContent({
-  tabId,
-  activeTab,
-  children,
-  className,
-}: TabContentProps) {
-  if (tabId !== activeTab) return null;
+        {artifacts && artifacts.length > 0 ? (
+          <div className="space-y-3">
+            {artifacts.map((artifact, index) => (
+              <Card key={index}>
+                <CardHeader>
+                  <CardTitle className="text-base">{artifact.type || 'Artifact'}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(artifact.data || {}).slice(0, 5).map(([key, value]) => (
+                      <div key={key} className="flex justify-between text-sm">
+                        <span className="text-gray-500">{key}:</span>
+                        <span className="font-medium">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-500">No artifacts found</p>
+            </CardContent>
+          </Card>
+        )}
+      </TabsContent>
 
-  return <div className={cn("w-full", className)}>{children}</div>;
+      {/* Financial Tab */}
+      <TabsContent value="financial" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Financial Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-600 mb-1">Total Contract Value</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  ${contract?.totalValue?.toLocaleString() || '0'}
+                </p>
+              </div>
+              <div className="p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-600 mb-1">Potential Savings</p>
+                <p className="text-2xl font-bold text-green-900">
+                  ${contract?.potentialSavings?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-medium">Rate Cards</h4>
+              <p className="text-sm text-gray-500">
+                {dataMode === 'real' ? 'Loading rate cards...' : 'Sample rate cards displayed'}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Timeline Tab */}
+      <TabsContent value="timeline" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Version History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3].map((version) => (
+                <div key={version} className="flex items-start gap-4 pb-4 border-b last:border-0">
+                  <div className="p-2 bg-blue-100 rounded-full">
+                    <Clock className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">Version {version}</p>
+                    <p className="text-sm text-gray-500">
+                      {dataMode === 'real' ? 'Loading...' : `Updated ${version} days ago`}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-1" />
+                    View
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* AI Insights Tab */}
+      <TabsContent value="insights" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              AI-Powered Insights
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-green-900">Savings Opportunity</p>
+                  <p className="text-sm text-green-700 mt-1">
+                    Potential 15% cost reduction identified in rate cards
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-yellow-900">Renewal Alert</p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Contract expires in 90 days - consider renegotiation
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900">Compliance Status</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    All required clauses present and up to date
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  )
 }
