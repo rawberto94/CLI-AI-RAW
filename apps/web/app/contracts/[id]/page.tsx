@@ -8,6 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ArtifactDisplay, ArtifactData } from '@/components/contracts/ArtifactDisplay';
 import { CostSavingsCard, CostSavingsAnalysis } from '@/components/contracts/CostSavingsCard';
+import { ArtifactEditor } from '@/components/contracts/ArtifactEditor';
+import { RateCardEditor } from '@/components/contracts/RateCardEditor';
+import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor';
+import { VersionHistoryPanel } from '@/components/contracts/VersionHistoryPanel';
 import { 
   FileText, 
   DollarSign, 
@@ -15,7 +19,10 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
-  Download
+  Download,
+  Edit,
+  History,
+  Tags
 } from 'lucide-react';
 
 interface ContractData {
@@ -30,10 +37,16 @@ interface ContractData {
 export default function ContractDetailPage() {
   const params = useParams();
   const contractId = params.id as string;
+  const tenantId = 'default-tenant'; // TODO: Get from auth context
+  const userId = 'current-user'; // TODO: Get from auth context
   
   const [contract, setContract] = useState<ContractData | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [editingArtifactId, setEditingArtifactId] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+  const [showMetadataEditor, setShowMetadataEditor] = useState(false);
 
   useEffect(() => {
     loadContractData();
@@ -299,6 +312,84 @@ export default function ContractDetailPage() {
     }
   };
 
+  const handleArtifactSave = async (artifactId: string, updates: any) => {
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/artifacts/${artifactId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updates,
+          userId,
+          tenantId,
+          reason: 'User edit from contract page'
+        })
+      });
+
+      if (response.ok) {
+        await loadContractData();
+        setEditingArtifactId(null);
+        alert('✅ Artifact saved successfully!');
+      } else {
+        const error = await response.json();
+        alert(`❌ Failed to save: ${error.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to save artifact:', error);
+      alert('❌ Failed to save artifact');
+    }
+  };
+
+  const handleMetadataSave = async (metadata: any) => {
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/metadata`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updates: metadata,
+          userId,
+          tenantId
+        })
+      });
+
+      if (response.ok) {
+        await loadContractData();
+        setShowMetadataEditor(false);
+        alert('✅ Metadata saved successfully!');
+      } else {
+        const error = await response.json();
+        alert(`❌ Failed to save: ${error.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to save metadata:', error);
+      alert('❌ Failed to save metadata');
+    }
+  };
+
+  const handleVersionRevert = async (artifactId: string, version: number) => {
+    try {
+      const response = await fetch(
+        `/api/contracts/${contractId}/artifacts/${artifactId}/revert/${version}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, tenantId })
+        }
+      );
+
+      if (response.ok) {
+        await loadContractData();
+        setShowVersionHistory(false);
+        alert(`✅ Reverted to version ${version}!`);
+      } else {
+        const error = await response.json();
+        alert(`❌ Failed to revert: ${error.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to revert:', error);
+      alert('❌ Failed to revert to previous version');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto py-8">
@@ -415,10 +506,14 @@ export default function ContractDetailPage() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="artifacts" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="artifacts">
             <FileText className="h-4 w-4 mr-2" />
             Artifacts
+          </TabsTrigger>
+          <TabsTrigger value="metadata">
+            <Tags className="h-4 w-4 mr-2" />
+            Metadata
           </TabsTrigger>
           <TabsTrigger value="savings">
             <DollarSign className="h-4 w-4 mr-2" />
@@ -430,12 +525,109 @@ export default function ContractDetailPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="artifacts" className="mt-6">
+        <TabsContent value="artifacts" className="mt-6 space-y-4">
           {contract.artifacts && contract.artifacts.length > 0 ? (
-            <ArtifactDisplay
-              artifacts={contract.artifacts}
-              onRegenerate={handleRegenerate}
-            />
+            contract.artifacts.map((artifact, index) => {
+              const artifactId = `artifact-${index}`;
+              const isEditing = editingArtifactId === artifactId;
+              const isRateCard = artifact.type === 'RATES';
+
+              return (
+                <Card key={artifactId}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          {artifact.type}
+                          <Badge variant="outline" className="ml-2">
+                            {Math.round((artifact.confidence || 0) * 100)}% confidence
+                          </Badge>
+                        </CardTitle>
+                        <CardDescription>
+                          Extracted via {artifact.method} • {artifact.completeness}% complete
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedArtifactId(artifactId);
+                            setShowVersionHistory(true);
+                          }}
+                        >
+                          <History className="h-4 w-4 mr-2" />
+                          History
+                        </Button>
+                        {!isEditing && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setEditingArtifactId(artifactId)}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRegenerate(artifact.type)}
+                          disabled={regenerating === artifact.type}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${regenerating === artifact.type ? 'animate-spin' : ''}`} />
+                          Regenerate
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isEditing ? (
+                      isRateCard ? (
+                        <RateCardEditor
+                          artifact={{
+                            id: artifactId,
+                            contractId,
+                            type: 'rate_card',
+                            data: artifact.data,
+                            confidence: artifact.confidence || 0,
+                            extractedAt: new Date().toISOString(),
+                            isEdited: false,
+                            editCount: 0
+                          }}
+                          contractId={contractId}
+                          onUpdate={() => {
+                            loadContractData();
+                            setEditingArtifactId(null);
+                          }}
+                        />
+                      ) : (
+                        <ArtifactEditor
+                          artifact={{
+                            id: artifactId,
+                            contractId,
+                            type: artifact.type.toLowerCase() as any,
+                            data: artifact.data,
+                            confidence: artifact.confidence || 0,
+                            extractedAt: new Date().toISOString(),
+                            isEdited: false,
+                            editCount: 0
+                          }}
+                          contractId={contractId}
+                          onSave={(updates) => handleArtifactSave(artifactId, updates)}
+                        />
+                      )
+                    ) : (
+                      <div className="space-y-2">
+                        <pre className="bg-gray-50 p-4 rounded-lg overflow-auto max-h-96">
+                          {JSON.stringify(artifact.data, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           ) : (
             <Card>
               <CardContent className="py-8 text-center text-gray-500">
@@ -443,6 +635,33 @@ export default function ContractDetailPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="metadata" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Contract Metadata</CardTitle>
+              <CardDescription>
+                Manage tags, custom fields, and contract metadata
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EnhancedMetadataEditor
+                contractId={contractId}
+                tenantId={tenantId}
+                initialMetadata={{
+                  tags: ['professional-services', 'software-development'],
+                  customFields: {
+                    projectCode: 'PROJ-2025-001',
+                    department: 'Engineering',
+                    costCenter: 'CC-1234'
+                  },
+                  dataQualityScore: avgCompleteness / 100
+                }}
+                onSave={() => handleMetadataSave({})}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="savings" className="mt-6">
@@ -486,6 +705,36 @@ export default function ContractDetailPage() {
               <RefreshCw className="h-12 w-12 animate-spin text-blue-500 mx-auto mb-4" />
               <p className="text-lg font-semibold">Regenerating {regenerating}...</p>
               <p className="text-sm text-gray-600 mt-2">This may take a few moments</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Version History Modal */}
+      {showVersionHistory && selectedArtifactId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Version History</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowVersionHistory(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <VersionHistoryPanel
+                artifactId={selectedArtifactId}
+                contractId={contractId}
+                onRevert={(version) => {
+                  handleVersionRevert(selectedArtifactId, version);
+                }}
+                onClose={() => setShowVersionHistory(false)}
+              />
             </CardContent>
           </Card>
         </div>
