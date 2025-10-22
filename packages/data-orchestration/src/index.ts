@@ -4,6 +4,7 @@ export * from "./dal";
 export * from "./services";
 export * from "./events";
 export * from "./lineage";
+export * from "./providers/data-provider-factory";
 
 // Re-export commonly used items
 export {

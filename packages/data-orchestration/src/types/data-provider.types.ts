@@ -34,3 +34,9 @@ export interface DataProviderResult<T> {
   data: T;
   metadata: DataSourceMetadata;
 }
+
+export const DataMode = {
+  REAL: 'real' as DataMode,
+  MOCK: 'mock' as DataMode,
+  AUTO: 'auto' as DataMode,
+};

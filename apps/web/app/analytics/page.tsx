@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import React from 'react'
 import { AnalyticsHub } from '@/components/analytics/AnalyticsHub'
 import { Card, CardContent } from '@/components/ui/card'

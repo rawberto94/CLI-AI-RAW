@@ -41,10 +41,23 @@ async function extractTextFromFile(
   try {
     // For PDFs
     if (mimeType === "application/pdf") {
-      const pdfParse = require("pdf-parse");
-      const dataBuffer = await readFile(filePath);
-      const pdfData = await pdfParse(dataBuffer);
-      return pdfData.text;
+      try {
+        // Read the file first
+        const dataBuffer = await readFile(filePath);
+        
+        // Use dynamic require to avoid pdf-parse loading test files
+        const pdfParse = eval('require')("pdf-parse");
+        const pdfData = await pdfParse(dataBuffer);
+        
+        if (!pdfData || !pdfData.text) {
+          throw new Error("PDF parsing returned no text");
+        }
+        
+        return pdfData.text;
+      } catch (pdfError: any) {
+        console.error("PDF parsing error:", pdfError.message);
+        throw new Error(`Failed to parse PDF: ${pdfError.message}`);
+      }
     }
 
     // For DOCX

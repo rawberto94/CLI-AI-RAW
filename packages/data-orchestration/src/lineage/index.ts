@@ -1,1 +1,1 @@
-export * from "./data-lineage";
+export * from './data-lineage';

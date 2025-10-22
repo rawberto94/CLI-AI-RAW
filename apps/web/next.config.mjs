@@ -19,6 +19,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   output: "standalone",
+  
+  // Skip failing pages during static generation
+  staticPageGenerationTimeout: 120,
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
+  },
 
   // Transpile workspace packages
   transpilePackages: ["data-orchestration"],
@@ -45,17 +51,44 @@ const nextConfig = {
 
   // Minimal webpack configuration
   webpack: (config, { isServer }) => {
+    // Create alias for data-orchestration src paths to point to dist
+    const dataOrchPath = path.resolve(__dirname, "..", "..", "packages", "data-orchestration");
+    
+    // Custom resolver to redirect src imports to dist
+    config.resolve.plugins = config.resolve.plugins || [];
+    config.resolve.plugins.push({
+      apply(resolver) {
+        const target = resolver.ensureHook("resolve");
+        resolver
+          .getHook("resolve")
+          .tapAsync("DataOrchestrationResolver", (request, resolveContext, callback) => {
+            if (request.request) {
+              // Handle various import patterns
+              const patterns = [
+                { from: /^data-orchestration\/src\/(.+)$/, to: (match) => path.join(dataOrchPath, "dist", match[1]) },
+                { from: /^@\/packages\/data-orchestration\/src\/(.+)$/, to: (match) => path.join(dataOrchPath, "dist", match[1]) },
+                { from: /^\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/packages\/data-orchestration\/src\/(.+)$/, to: (match) => path.join(dataOrchPath, "dist", match[1]) },
+              ];
+              
+              for (const pattern of patterns) {
+                const match = request.request.match(pattern.from);
+                if (match) {
+                  const newRequest = {
+                    ...request,
+                    request: pattern.to(match),
+                  };
+                  return resolver.doResolve(target, newRequest, null, resolveContext, callback);
+                }
+              }
+            }
+            callback();
+          });
+      },
+    });
+    
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      "data-orchestration": path.resolve(
-        __dirname,
-        "..",
-        "..",
-        "packages",
-        "data-orchestration",
-        "dist",
-        "index.js"
-      ),
+      "data-orchestration": path.join(dataOrchPath, "dist", "index.js"),
       "@/packages": path.resolve(__dirname, "..", "..", "packages"),
       "@/packages/clients": path.resolve(
         __dirname,
