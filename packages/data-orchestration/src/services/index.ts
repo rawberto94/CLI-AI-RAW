@@ -43,3 +43,5 @@ export * from './analytical-sync.service';
 export * from './editable-artifact.service';
 export * from './artifact-change-propagation.service';
 export * from './metadata-editor.service';
+export * from './rate-card-benchmarking.service';
+export * from './baseline-management.service';

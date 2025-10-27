@@ -1,10 +1,19 @@
 /**
  * Real LLM-Powered Artifact Generation Service
- * Phase 2: Replaces mock artifacts with actual OpenAI analysis
+ * Phase 3: Enhanced with advanced prompt engineering
+ * - Chain-of-Thought reasoning
+ * - Structured extraction methodology
+ * - Self-verification steps
+ * - Comprehensive validation
  */
 
 import { PrismaClient, ArtifactType } from "@prisma/client";
 import { readFile } from "fs/promises";
+import { 
+  getEnhancedPrompt, 
+  validateExtractedData,
+  type EnhancedPromptConfig 
+} from './enhanced-prompts';
 
 // Dynamic import for OpenAI to avoid build issues
 let OpenAI: any = null;
@@ -23,6 +32,21 @@ async function getOpenAI() {
 }
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+// Models that support JSON mode
+const JSON_MODE_SUPPORTED_MODELS = [
+  "gpt-4o",
+  "gpt-4o-mini", 
+  "gpt-4o-2024-08-06",
+  "gpt-4-turbo",
+  "gpt-4-turbo-preview",
+  "gpt-3.5-turbo-1106",
+  "gpt-3.5-turbo-0125"
+];
+
+const supportsJsonMode = () => {
+  return JSON_MODE_SUPPORTED_MODELS.some(model => MODEL.includes(model));
+};
 
 interface ArtifactGenerationResult {
   type: ArtifactType;
@@ -84,52 +108,44 @@ async function extractTextFromFile(
 }
 
 /**
- * Generate OVERVIEW artifact using LLM
+ * Generate OVERVIEW artifact using enhanced prompts
  */
 async function generateOverviewArtifact(
   text: string
 ): Promise<ArtifactGenerationResult> {
   const startTime = Date.now();
+  const promptConfig = getEnhancedPrompt('OVERVIEW');
+  
+  if (!promptConfig) {
+    throw new Error('OVERVIEW prompt configuration not found');
+  }
 
   const OpenAIClass = await getOpenAI();
   const openai = new OpenAIClass({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const prompt = `Analyze this contract and extract key information.
-
-Contract Text:
-${text.substring(0, 8000)}
-
-Extract and return JSON with:
-1. summary: A concise 2-3 sentence summary of the contract
-2. contractType: The type of contract (e.g., "MSA", "SOW", "NDA", "SLA", "Employment")
-3. parties: Array of involved parties with their roles
-4. effectiveDate: Effective date if mentioned (ISO format or null)
-5. expirationDate: Expiration date if mentioned (ISO format or null)
-6. keyTerms: Array of important terms/obligations (max 5)
-7. jurisdiction: Legal jurisdiction if mentioned
-
-Return ONLY valid JSON, no markdown or explanation.`;
-
   const response = await openai.chat.completions.create({
     model: MODEL,
     messages: [
       {
         role: "system",
-        content:
-          "You are a legal contract analyst. Extract structured information from contracts. Always return valid JSON.",
+        content: promptConfig.systemPrompt,
       },
       {
         role: "user",
-        content: prompt,
+        content: promptConfig.userPrompt(text),
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.2,
+    ...(supportsJsonMode() ? { response_format: { type: "json_object" } } : {}),
+    temperature: promptConfig.temperature,
   });
 
   const data = JSON.parse(response.choices[0].message.content || "{}");
+  
+  // Validate extracted data
+  const validation = validateExtractedData('OVERVIEW', data);
+  
   const processingTime = Date.now() - startTime;
 
   return {
@@ -139,66 +155,58 @@ Return ONLY valid JSON, no markdown or explanation.`;
       generatedAt: new Date().toISOString(),
       model: MODEL,
       tokensUsed: response.usage?.total_tokens || 0,
+      validation: {
+        isValid: validation.isValid,
+        errors: validation.errors,
+        warnings: validation.warnings
+      }
     },
-    confidence: 0.92,
+    confidence: validation.isValid ? (data.confidenceScore || 0.92) : 0.75,
     processingTime,
   };
 }
 
 /**
- * Generate CLAUSES artifact using LLM
+ * Generate CLAUSES artifact using enhanced prompts
  */
 async function generateClausesArtifact(
   text: string
 ): Promise<ArtifactGenerationResult> {
   const startTime = Date.now();
+  const promptConfig = getEnhancedPrompt('CLAUSES');
+  
+  if (!promptConfig) {
+    throw new Error('CLAUSES prompt configuration not found');
+  }
 
   const OpenAIClass = await getOpenAI();
   const openai = new OpenAIClass({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const prompt = `Extract and classify contract clauses from this text.
-
-Contract Text:
-${text.substring(0, 10000)}
-
-Identify up to 10 important clauses and return JSON with array of:
-{
-  "clauses": [
-    {
-      "type": "payment|termination|liability|confidentiality|intellectual_property|indemnification|other",
-      "title": "Brief clause title",
-      "content": "Clause text (max 200 chars)",
-      "riskLevel": "low|medium|high",
-      "pageReference": "estimated page number or section",
-      "summary": "1-sentence summary"
-    }
-  ]
-}
-
-Return ONLY valid JSON.`;
-
   const response = await openai.chat.completions.create({
     model: MODEL,
     messages: [
       {
         role: "system",
-        content:
-          "You are a contract clause analyst. Extract and classify contract clauses with risk assessment.",
+        content: promptConfig.systemPrompt,
       },
       {
         role: "user",
-        content: prompt,
+        content: promptConfig.userPrompt(text),
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.3,
+    ...(supportsJsonMode() ? { response_format: { type: "json_object" } } : {}),
+    temperature: promptConfig.temperature,
   });
 
   const data = JSON.parse(
     response.choices[0].message.content || '{"clauses":[]}'
   );
+  
+  // Validate extracted data
+  const validation = validateExtractedData('CLAUSES', data);
+  
   const processingTime = Date.now() - startTime;
 
   return {
@@ -208,72 +216,56 @@ Return ONLY valid JSON.`;
       generatedAt: new Date().toISOString(),
       model: MODEL,
       tokensUsed: response.usage?.total_tokens || 0,
+      validation: {
+        isValid: validation.isValid,
+        errors: validation.errors,
+        warnings: validation.warnings
+      }
     },
-    confidence: 0.88,
+    confidence: validation.isValid ? 0.88 : 0.70,
     processingTime,
   };
 }
 
 /**
- * Generate FINANCIAL artifact using LLM
+ * Generate FINANCIAL artifact using enhanced prompts
  */
 async function generateFinancialArtifact(
   text: string
 ): Promise<ArtifactGenerationResult> {
   const startTime = Date.now();
+  const promptConfig = getEnhancedPrompt('FINANCIAL');
+  
+  if (!promptConfig) {
+    throw new Error('FINANCIAL prompt configuration not found');
+  }
 
   const OpenAIClass = await getOpenAI();
   const openai = new OpenAIClass({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const prompt = `Extract financial information from this contract.
-
-Contract Text:
-${text.substring(0, 10000)}
-
-Return JSON with:
-{
-  "totalValue": {
-    "amount": number or null,
-    "currency": "USD|EUR|GBP|etc" or null,
-    "confidence": "high|medium|low"
-  },
-  "paymentTerms": "Description of payment terms",
-  "paymentSchedule": "When payments are due",
-  "rates": [
-    {
-      "role": "Role/service name",
-      "rate": number,
-      "unit": "hourly|daily|monthly|fixed",
-      "currency": "USD|EUR|etc"
-    }
-  ],
-  "discounts": "Any discount terms",
-  "penalties": "Late payment or other penalties",
-  "financialRisks": ["List of identified financial risks"]
-}
-
-Return ONLY valid JSON. Use null for missing values.`;
-
   const response = await openai.chat.completions.create({
     model: MODEL,
     messages: [
       {
         role: "system",
-        content:
-          "You are a financial contract analyst. Extract all financial terms, costs, and payment information.",
+        content: promptConfig.systemPrompt,
       },
       {
         role: "user",
-        content: prompt,
+        content: promptConfig.userPrompt(text),
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.2,
+    ...(supportsJsonMode() ? { response_format: { type: "json_object" } } : {}),
+    temperature: promptConfig.temperature,
   });
 
   const data = JSON.parse(response.choices[0].message.content || "{}");
+  
+  // Validate extracted data
+  const validation = validateExtractedData('FINANCIAL', data);
+  
   const processingTime = Date.now() - startTime;
 
   return {
@@ -283,67 +275,56 @@ Return ONLY valid JSON. Use null for missing values.`;
       generatedAt: new Date().toISOString(),
       model: MODEL,
       tokensUsed: response.usage?.total_tokens || 0,
+      validation: {
+        isValid: validation.isValid,
+        errors: validation.errors,
+        warnings: validation.warnings
+      }
     },
-    confidence: 0.85,
+    confidence: validation.isValid ? 0.85 : 0.65,
     processingTime,
   };
 }
 
 /**
- * Generate RISK artifact using LLM
+ * Generate RISK artifact using enhanced prompts
  */
 async function generateRiskArtifact(
   text: string
 ): Promise<ArtifactGenerationResult> {
   const startTime = Date.now();
+  const promptConfig = getEnhancedPrompt('RISK');
+  
+  if (!promptConfig) {
+    throw new Error('RISK prompt configuration not found');
+  }
 
   const OpenAIClass = await getOpenAI();
   const openai = new OpenAIClass({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const prompt = `Analyze risks in this contract.
-
-Contract Text:
-${text.substring(0, 10000)}
-
-Return JSON with:
-{
-  "overallRiskScore": number (1-10, where 10 is highest risk),
-  "riskLevel": "low|medium|high|critical",
-  "identifiedRisks": [
-    {
-      "category": "legal|financial|operational|compliance|reputation",
-      "description": "Risk description",
-      "severity": "low|medium|high|critical",
-      "likelihood": "low|medium|high",
-      "mitigation": "Suggested mitigation strategy"
-    }
-  ],
-  "redFlags": ["List of critical issues"],
-  "recommendations": ["List of risk mitigation recommendations"]
-}
-
-Return ONLY valid JSON.`;
-
   const response = await openai.chat.completions.create({
     model: MODEL,
     messages: [
       {
         role: "system",
-        content:
-          "You are a contract risk analyst. Identify and assess all potential risks in contracts.",
+        content: promptConfig.systemPrompt,
       },
       {
         role: "user",
-        content: prompt,
+        content: promptConfig.userPrompt(text),
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.3,
+    ...(supportsJsonMode() ? { response_format: { type: "json_object" } } : {}),
+    temperature: promptConfig.temperature,
   });
 
   const data = JSON.parse(response.choices[0].message.content || "{}");
+  
+  // Validate extracted data
+  const validation = validateExtractedData('RISK', data);
+  
   const processingTime = Date.now() - startTime;
 
   return {
@@ -353,71 +334,56 @@ Return ONLY valid JSON.`;
       generatedAt: new Date().toISOString(),
       model: MODEL,
       tokensUsed: response.usage?.total_tokens || 0,
+      validation: {
+        isValid: validation.isValid,
+        errors: validation.errors,
+        warnings: validation.warnings
+      }
     },
-    confidence: 0.87,
+    confidence: validation.isValid ? 0.87 : 0.70,
     processingTime,
   };
 }
 
 /**
- * Generate COMPLIANCE artifact using LLM
+ * Generate COMPLIANCE artifact using enhanced prompts
  */
 async function generateComplianceArtifact(
   text: string
 ): Promise<ArtifactGenerationResult> {
   const startTime = Date.now();
+  const promptConfig = getEnhancedPrompt('COMPLIANCE');
+  
+  if (!promptConfig) {
+    throw new Error('COMPLIANCE prompt configuration not found');
+  }
 
   const OpenAIClass = await getOpenAI();
   const openai = new OpenAIClass({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  const prompt = `Analyze compliance aspects of this contract.
-
-Contract Text:
-${text.substring(0, 10000)}
-
-Return JSON with:
-{
-  "complianceScore": number (1-10, where 10 is fully compliant),
-  "applicableRegulations": ["List of relevant regulations/standards"],
-  "complianceIssues": [
-    {
-      "regulation": "Regulation name",
-      "issue": "Description of issue",
-      "severity": "low|medium|high|critical",
-      "recommendation": "How to address"
-    }
-  ],
-  "dataProtection": {
-    "hasDataClauses": boolean,
-    "gdprCompliant": "yes|no|partial|unknown",
-    "dataRetention": "Description if found"
-  },
-  "missingClauses": ["Important clauses that should be included"],
-  "recommendations": ["Compliance improvement recommendations"]
-}
-
-Return ONLY valid JSON.`;
-
   const response = await openai.chat.completions.create({
     model: MODEL,
     messages: [
       {
         role: "system",
-        content:
-          "You are a compliance officer. Analyze contracts for regulatory compliance and identify gaps.",
+        content: promptConfig.systemPrompt,
       },
       {
         role: "user",
-        content: prompt,
+        content: promptConfig.userPrompt(text),
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.2,
+    ...(supportsJsonMode() ? { response_format: { type: "json_object" } } : {}),
+    temperature: promptConfig.temperature,
   });
 
   const data = JSON.parse(response.choices[0].message.content || "{}");
+  
+  // Validate extracted data
+  const validation = validateExtractedData('COMPLIANCE', data);
+  
   const processingTime = Date.now() - startTime;
 
   return {
@@ -427,8 +393,13 @@ Return ONLY valid JSON.`;
       generatedAt: new Date().toISOString(),
       model: MODEL,
       tokensUsed: response.usage?.total_tokens || 0,
+      validation: {
+        isValid: validation.isValid,
+        errors: validation.errors,
+        warnings: validation.warnings
+      }
     },
-    confidence: 0.83,
+    confidence: validation.isValid ? 0.83 : 0.65,
     processingTime,
   };
 }
@@ -457,6 +428,28 @@ export async function generateRealArtifacts(
     }
 
     console.log(`✅ Extracted ${extractedText.length} characters`);
+
+    // Step 1.5: Generate RAG embeddings for semantic search
+    console.log(`🔍 Generating RAG embeddings for semantic search...`);
+    try {
+      // Dynamically import RAG client
+      const { chunkText, embedChunks } = await import('@/packages/clients/rag');
+      
+      // Chunk the text
+      const chunks = chunkText(extractedText);
+      console.log(`  📦 Created ${chunks.length} text chunks`);
+      
+      // Generate and save embeddings
+      await embedChunks(contractId, tenantId, chunks, {
+        apiKey: process.env.OPENAI_API_KEY,
+        model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small'
+      });
+      
+      console.log(`  ✅ Generated embeddings for ${chunks.length} chunks`);
+    } catch (ragError) {
+      console.error(`⚠️ RAG embedding generation failed (non-fatal):`, ragError);
+      // Don't fail the whole process if RAG fails
+    }
 
     // Step 2: Generate artifacts in parallel for speed
     console.log(`🧠 Generating artifacts with ${MODEL}...`);
@@ -511,8 +504,95 @@ export async function generateRealArtifacts(
     console.log(
       `💰 Estimated cost: $${((totalTokens * 0.00015) / 1000).toFixed(4)}`
     );
+
+    // Step 4: Extract and save rate cards from financial artifact
+    console.log(`💳 Extracting rate cards from financial artifact...`);
+    try {
+      // First, save the extracted text to the contract for rate card extraction
+      await prisma.contract.update({
+        where: { id: contractId },
+        data: { rawText: extractedText },
+      });
+
+      const { processContractForRateCards } = await import('./rate-card-extraction');
+      const rateCardResult = await processContractForRateCards(contractId, tenantId);
+      
+      if (rateCardResult.success && rateCardResult.count > 0) {
+        console.log(`  ✅ Extracted ${rateCardResult.count} rate cards`);
+        
+        // Step 5: Trigger benchmarking for extracted rate cards
+        console.log(`📊 Triggering benchmark calculation for rate cards...`);
+        try {
+          const { triggerRateCardBenchmarking } = await import('./rate-card-benchmarking-trigger');
+          await triggerRateCardBenchmarking(contractId, tenantId);
+          console.log(`  ✅ Benchmark calculation initiated`);
+        } catch (benchmarkError) {
+          console.error(`⚠️ Benchmark calculation failed (non-fatal):`, benchmarkError);
+        }
+      } else {
+        console.log(`  ℹ️ No rate cards found in contract`);
+      }
+    } catch (rateCardError) {
+      console.error(`⚠️ Rate card extraction failed (non-fatal):`, rateCardError);
+      // Don't fail the whole process if rate card extraction fails
+    }
+
+    // Update contract status to COMPLETED
+    await prisma.contract.update({
+      where: { id: contractId },
+      data: {
+        status: "COMPLETED",
+        processedAt: new Date(),
+        lastAnalyzedAt: new Date(),
+      },
+    });
+
+    console.log(`✅ Contract ${contractId} marked as COMPLETED`);
   } catch (error) {
     console.error(`❌ Real artifact generation failed:`, error);
+    
+    // Mark contract as FAILED
+    try {
+      await prisma.contract.update({
+        where: { id: contractId },
+        data: {
+          status: "FAILED",
+        },
+      });
+    } catch (updateError) {
+      console.error("Failed to update contract status:", updateError);
+    }
+    
     throw error;
+  }
+}
+
+/**
+ * Generate a single artifact from raw text (used by regeneration and improvement flows)
+ */
+export async function generateRealArtifact(rawText: string, artifactType: string) {
+  switch (artifactType) {
+    case 'OVERVIEW': {
+      const res = await generateOverviewArtifact(rawText);
+      return res.data;
+    }
+    case 'CLAUSES': {
+      const res = await generateClausesArtifact(rawText);
+      return res.data;
+    }
+    case 'FINANCIAL': {
+      const res = await generateFinancialArtifact(rawText);
+      return res.data;
+    }
+    case 'RISK': {
+      const res = await generateRiskArtifact(rawText);
+      return res.data;
+    }
+    case 'COMPLIANCE': {
+      const res = await generateComplianceArtifact(rawText);
+      return res.data;
+    }
+    default:
+      throw new Error(`Unsupported artifact type: ${artifactType}`);
   }
 }

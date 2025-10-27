@@ -1,0 +1,47 @@
+/**
+ * POST /api/baselines/bulk-compare
+ * 
+ * Compare all rate card entries against baselines
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { BaselineManagementService } from 'data-orchestration';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export async function POST(req: NextRequest) {
+  try {
+    const tenantId = 'demo'; // TODO: Get from auth session
+    const body = await req.json();
+
+    const {
+      minVariancePercentage = 5,
+      baselineTypes,
+      categoryL1,
+      categoryL2,
+    } = body;
+
+    const service = new BaselineManagementService(prisma);
+    const result = await service.bulkCompareAgainstBaselines(tenantId, {
+      minVariancePercentage,
+      baselineTypes,
+      categoryL1,
+      categoryL2,
+    });
+
+    return NextResponse.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Bulk baseline comparison error:', error);
+    return NextResponse.json(
+      {
+        error: 'Failed to perform bulk baseline comparison',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}

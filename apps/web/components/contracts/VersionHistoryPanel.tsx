@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { History, RotateCcw, Eye, Loader2, AlertCircle } from 'lucide-react';
+import { History, RotateCcw, Eye, Loader2, AlertCircle, Sparkles, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface VersionHistoryPanelProps {
@@ -153,14 +154,47 @@ export function VersionHistoryPanel({
                   <span className="font-medium">Edited at:</span>{' '}
                   {new Date(selectedVersion.editedAt).toLocaleString()}
                 </div>
-                <div>
+                <div className="flex items-center gap-2">
                   <span className="font-medium">Change type:</span>{' '}
-                  {selectedVersion.changeType}
+                  {(selectedVersion.reason && selectedVersion.reason.includes('AI Improvement')) || 
+                   selectedVersion.changeType === 'ai_improvement' ? (
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      AI Improvement
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">{selectedVersion.changeType}</Badge>
+                  )}
                 </div>
                 {selectedVersion.reason && (
-                  <div>
-                    <span className="font-medium">Reason:</span>{' '}
-                    {selectedVersion.reason}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
+                    <span className="font-medium text-blue-900">
+                      {selectedVersion.reason.includes('AI Improvement') ? 'Improvement Request:' : 'Reason:'}
+                    </span>
+                    <p className="text-blue-800 mt-1">{selectedVersion.reason}</p>
+                  </div>
+                )}
+                {selectedVersion.previousConfidence !== undefined && selectedVersion.newConfidence !== undefined && (
+                  <div className="flex items-center gap-4 text-sm bg-gray-50 p-3 rounded-lg">
+                    <div>
+                      <span className="text-gray-500">Previous Confidence:</span>
+                      <span className="ml-2 font-semibold text-gray-700">
+                        {Math.round(selectedVersion.previousConfidence * 100)}%
+                      </span>
+                    </div>
+                    <div className="flex items-center">
+                      {selectedVersion.newConfidence > selectedVersion.previousConfidence ? (
+                        <TrendingUp className="h-4 w-4 text-green-600 mx-2" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-red-600 mx-2" />
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-gray-500">New Confidence:</span>
+                      <span className="ml-2 font-semibold text-gray-700">
+                        {Math.round(selectedVersion.newConfidence * 100)}%
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -228,6 +262,13 @@ export function VersionHistoryPanel({
                           <span className="font-semibold">
                             Version {version.version}
                           </span>
+                          {((version.reason && version.reason.includes('AI Improvement')) || 
+                            version.changeType === 'ai_improvement') && (
+                            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                              <Sparkles className="h-3 w-3 mr-1" />
+                              AI Improved
+                            </Badge>
+                          )}
                           <span className="text-sm text-gray-500">
                             {formatDistanceToNow(new Date(version.editedAt), {
                               addSuffix: true,
@@ -238,13 +279,28 @@ export function VersionHistoryPanel({
                           Edited by {version.editedBy}
                         </div>
                         {version.reason && (
-                          <div className="text-sm text-gray-500 mt-1">
-                            {version.reason}
+                          <div className="text-sm bg-blue-50 text-blue-800 mt-2 p-2 rounded border border-blue-200">
+                            {version.reason.includes('AI Improvement') ? '🤖' : '📝'} {version.reason}
                           </div>
                         )}
-                        <div className="text-xs text-gray-400 mt-2">
-                          {version.changes?.length || 0} changes •{' '}
-                          {version.changeType}
+                        <div className="text-xs text-gray-400 mt-2 flex items-center gap-3">
+                          <span>{version.changes?.length || 0} changes</span>
+                          <span>•</span>
+                          <span>{version.changeType}</span>
+                          {version.previousConfidence !== undefined && version.newConfidence !== undefined && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                Confidence: {Math.round(version.previousConfidence * 100)}%
+                                {version.newConfidence > version.previousConfidence ? (
+                                  <TrendingUp className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <TrendingDown className="h-3 w-3 text-red-600" />
+                                )}
+                                {Math.round(version.newConfidence * 100)}%
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">

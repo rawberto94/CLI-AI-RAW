@@ -31,8 +31,63 @@ export default function ContractDetailPage() {
           headers: { 'x-data-mode': dataMode }
         })
         const data = await response.json()
-        setContract(data.contract)
-        setArtifacts(data.artifacts || [])
+        
+        // Set contract data
+        setContract({
+          id: data.id,
+          name: data.filename,
+          status: data.status,
+          supplier: data.extractedData?.overview?.parties?.find((p: any) => p.role === 'provider')?.name || 'N/A',
+          totalValue: data.extractedData?.financial?.totalValue || 0,
+          potentialSavings: 0,
+          startDate: data.extractedData?.overview?.startDate || 'N/A',
+          endDate: data.extractedData?.overview?.endDate || 'N/A'
+        })
+        
+        // Transform extracted data into artifacts array
+        const artifactsArray = []
+        if (data.extractedData?.overview) {
+          artifactsArray.push({
+            type: 'overview',
+            data: data.extractedData.overview,
+            confidence: data.extractedData.overview.confidence || 0.95,
+            model: data.extractedData.overview.model
+          })
+        }
+        if (data.extractedData?.clauses) {
+          artifactsArray.push({
+            type: 'clauses',
+            data: data.extractedData.clauses,
+            confidence: data.extractedData.clauses.confidence || 0.88,
+            model: data.extractedData.clauses.model
+          })
+        }
+        if (data.extractedData?.financial) {
+          artifactsArray.push({
+            type: 'financial',
+            data: data.extractedData.financial,
+            confidence: data.extractedData.financial.confidence || 0.85,
+            model: data.extractedData.financial.model
+          })
+        }
+        if (data.extractedData?.risk) {
+          artifactsArray.push({
+            type: 'risk',
+            data: data.extractedData.risk,
+            confidence: data.extractedData.risk.confidence || 0.87,
+            model: data.extractedData.risk.model
+          })
+        }
+        if (data.extractedData?.compliance) {
+          artifactsArray.push({
+            type: 'compliance',
+            data: data.extractedData.compliance,
+            confidence: data.extractedData.compliance.confidence || 0.83,
+            model: data.extractedData.compliance.model
+          })
+        }
+        
+        setArtifacts(artifactsArray)
       } else {
         // Mock/AI data
         setContract({

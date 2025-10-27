@@ -4,7 +4,8 @@
  */
 
 import { PrismaClient } from "@prisma/client";
-import { generateRealArtifacts } from "./real-artifact-generator";
+import { spawn } from "child_process";
+import { join } from "path";
 
 const prisma = new PrismaClient();
 
@@ -23,16 +24,19 @@ export async function triggerArtifactGeneration(options: TriggerOptions) {
   console.log(`   File: ${filePath}`);
   console.log(`   Type: ${mimeType}`);
   
-  try {
-    // Call the real artifact generator
-    await generateRealArtifacts(contractId, tenantId, filePath, mimeType, prisma);
-    
-    console.log(`✅ Artifact generation completed for contract: ${contractId}`);
-    return { success: true, contractId };
-  } catch (error) {
-    console.error(`❌ Artifact generation failed for contract ${contractId}:`, error);
-    throw error;
-  }
+  // Spawn a separate Node process to avoid blocking/crashing the main server
+  const workerScript = join(process.cwd(), '../../scripts/generate-artifacts-worker.mjs');
+  const worker = spawn('npx', ['tsx', workerScript, contractId, tenantId, filePath, mimeType], {
+    detached: true,
+    stdio: 'inherit'
+  });
+  
+  worker.unref(); // Allow parent to exit independently
+  
+  console.log(`✅ Artifact generation worker spawned for contract: ${contractId}`);
+  
+  // Return immediately so upload response is not blocked
+  return { success: true, contractId, status: 'processing' };
 }
 
 export async function triggerProcessing(contractId: string, options?: any) {

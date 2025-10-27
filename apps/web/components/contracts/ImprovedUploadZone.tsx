@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
 import {
   Upload,
   CheckCircle,
@@ -30,6 +31,7 @@ interface UploadFile {
   contractId?: string
   error?: string
   processingStage?: string
+  showArtifacts?: boolean
 }
 
 export function ImprovedUploadZone() {
@@ -95,35 +97,15 @@ export function ImprovedUploadZone() {
 
       const { contractId } = await uploadResponse.json()
 
-      // Update to processing
+      // Update to processing with artifact viewer enabled
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'processing', progress: 60, contractId, processingStage: 'Extracting text...' }
+          ? { ...f, status: 'processing', progress: 60, contractId, processingStage: 'Processing with AI...', showArtifacts: true }
           : f
       ))
 
-      // Simulate processing stages
-      const stages = [
-        { progress: 70, stage: 'Analyzing structure...' },
-        { progress: 80, stage: 'Extracting artifacts...' },
-        { progress: 90, stage: 'Generating insights...' }
-      ]
-
-      for (const { progress, stage } of stages) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setFiles(prev => prev.map(f =>
-          f.id === uploadFile.id
-            ? { ...f, progress, processingStage: stage }
-            : f
-        ))
-      }
-
-      // Complete
-      setFiles(prev => prev.map(f =>
-        f.id === uploadFile.id
-          ? { ...f, status: 'completed', progress: 100, processingStage: 'Complete!' }
-          : f
-      ))
+      // Note: Real-time SSE will handle the rest of the progress updates
+      // The RealtimeArtifactViewer component will show live artifact generation
 
     } catch (error) {
       setFiles(prev => prev.map(f =>
@@ -381,6 +363,22 @@ export function ImprovedUploadZone() {
                   <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
                     <CheckCircle className="h-4 w-4" />
                     <span>Contract processed successfully!</span>
+                  </div>
+                )}
+
+                {/* Real-time Artifact Viewer */}
+                {uploadFile.contractId && uploadFile.status === 'processing' && uploadFile.showArtifacts && (
+                  <div className="mt-4 pt-4 border-t">
+                    <RealtimeArtifactViewer
+                      contractId={uploadFile.contractId}
+                      onComplete={() => {
+                        setFiles(prev => prev.map(f =>
+                          f.id === uploadFile.id
+                            ? { ...f, status: 'completed', progress: 100 }
+                            : f
+                        ))
+                      }}
+                    />
                   </div>
                 )}
               </div>

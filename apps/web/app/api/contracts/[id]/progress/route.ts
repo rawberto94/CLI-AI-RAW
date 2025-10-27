@@ -1,0 +1,74 @@
+/**
+ * Server-Sent Events API for Real-Time Artifact Progress
+ * GET /api/contracts/[id]/progress
+ */
+
+import { NextRequest } from 'next/server'
+import { progressTracker } from '@/lib/progress-tracker'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const contractId = params.id
+
+  // Create SSE response
+  const encoder = new TextEncoder()
+  
+  const stream = new ReadableStream({
+    start(controller) {
+      // Send initial connection message
+      const data = JSON.stringify({
+        type: 'connected',
+        contractId,
+        timestamp: new Date().toISOString()
+      })
+      controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+
+      // Subscribe to progress events
+      const unsubscribe = progressTracker.subscribe(contractId, (event) => {
+        try {
+          const data = JSON.stringify(event)
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+
+          // Close connection after completion or failure
+          if (event.stage === 'completed' || event.stage === 'failed') {
+            setTimeout(() => {
+              controller.close()
+            }, 1000)
+          }
+        } catch (error) {
+          console.error('Error sending SSE:', error)
+        }
+      })
+
+      // Heartbeat to keep connection alive
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: heartbeat\n\n`))
+        } catch (error) {
+          clearInterval(heartbeat)
+        }
+      }, 15000)
+
+      // Cleanup on close
+      request.signal.addEventListener('abort', () => {
+        clearInterval(heartbeat)
+        unsubscribe()
+        controller.close()
+      })
+    }
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no' // Disable nginx buffering
+    }
+  })
+}

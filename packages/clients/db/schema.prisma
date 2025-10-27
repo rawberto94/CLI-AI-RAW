@@ -205,11 +205,19 @@ model Contract {
   tags               Json?                    @default("[]")
   textVector         Unsupported("tsvector")?
   viewCount          Int                      @default(0)
+  
+  // Procurement Classification
+  procurementCategoryId String?
+  categoryL1         String?
+  categoryL2         String?
+  spendType          String?                  @default("INDIRECT")
+  
   artifacts          Artifact[]
   clauses            Clause[]
   client             Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
   supplier           Party?                   @relation("SupplierContracts", fields: [supplierId], references: [id])
   tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  procurementCategory ProcurementCategory?    @relation("ContractProcurementCategory", fields: [procurementCategoryId], references: [id])
   contractArtifacts  ContractArtifact[]
   contractEmbeddings ContractEmbedding[]
   contractMetadata   ContractMetadata?
@@ -221,6 +229,7 @@ model Contract {
   runs               Run[]
   templateAnalysis   TemplateAnalysis[]
   costSavings        CostSavingsOpportunity[]
+  rateCardEntries    RateCardEntry[]
 
   @@index([tenantId])
   @@index([status])
@@ -232,10 +241,14 @@ model Contract {
   @@index([clientName])
   @@index([supplierName])
   @@index([category])
+  @@index([procurementCategoryId])
+  @@index([categoryL1])
+  @@index([categoryL2])
   @@index([tenantId, status])
   @@index([tenantId, contractType])
   @@index([tenantId, clientName])
   @@index([tenantId, supplierName])
+  @@index([tenantId, categoryL1, categoryL2])
 }
 
 model ContractMetadata {
@@ -968,6 +981,90 @@ enum DataQualityLevel {
   LOW
 }
 
+enum RateCardSource {
+  PDF_EXTRACTION
+  MANUAL
+  CSV_UPLOAD
+  API
+  EMAIL
+}
+
+enum SavingsCategory {
+  RATE_REDUCTION
+  SUPPLIER_SWITCH
+  VOLUME_DISCOUNT
+  TERM_RENEGOTIATION
+  GEOGRAPHIC_ARBITRAGE
+  SKILL_OPTIMIZATION
+}
+
+enum EffortLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum OpportunityStatus {
+  IDENTIFIED
+  UNDER_REVIEW
+  APPROVED
+  IN_PROGRESS
+  IMPLEMENTED
+  REJECTED
+  EXPIRED
+}
+
+enum ComparisonType {
+  SUPPLIER_VS_SUPPLIER
+  YEAR_OVER_YEAR
+  ROLE_VS_ROLE
+  REGION_VS_REGION
+  CUSTOM
+}
+
+enum SpendType {
+  DIRECT
+  INDIRECT
+  CAPEX
+  OPEX
+}
+
+enum BaselineType {
+  TARGET_RATE           // Internal target rate set by procurement
+  MARKET_BENCHMARK      // External market benchmark data
+  HISTORICAL_BEST       // Best rate achieved historically
+  COMPETITIVE_BID       // From competitive bidding process
+  NEGOTIATED_CAP        // Negotiated maximum rate
+  INDUSTRY_STANDARD     // Industry standard rates
+  REGULATORY_LIMIT      // Regulatory or compliance limit
+  CUSTOM               // Custom baseline
+}
+
+enum BaselineSource {
+  INTERNAL              // Internal data/analysis
+  EXTERNAL_PROVIDER     // Third-party data provider
+  COMPETITIVE_BID       // Bid process
+  MARKET_RESEARCH       // Market research
+  HISTORICAL_DATA       // Company historical data
+  INDUSTRY_REPORT       // Industry report/study
+  MANUAL_ENTRY          // Manual entry by user
+  IMPORTED_FILE         // CSV/Excel import
+}
+
+enum ApprovalStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
 
 // ============================================================================
 // UX Quick Wins Models
@@ -1122,5 +1219,625 @@ model CostSavingsOpportunity {
   @@index([potentialSavingsAmount(sort: Desc)])
   @@index([tenantId, status])
   @@map("cost_savings_opportunities")
+}
+
+// ============================================================================
+// Rate Card Benchmarking Models
+// ============================================================================
+
+model RateCardSupplier {
+  id                    String              @id @default(cuid())
+  tenantId              String
+  
+  name                  String
+  legalName             String?
+  tier                  SupplierTier
+  country               String
+  region                String
+  
+  // Performance Metrics
+  averageRate           Decimal?            @db.Decimal(10, 2)
+  competitivenessScore  Decimal?            @db.Decimal(5, 2)
+  reliabilityScore      Decimal?            @db.Decimal(5, 2)
+  savingsPotential      Decimal?            @db.Decimal(10, 2)
+  
+  // Statistics
+  totalContracts        Int                 @default(0)
+  totalRateCards        Int                 @default(0)
+  activeRates           Int                 @default(0)
+  
+  // Contract Terms
+  typicalPaymentTerms   String?
+  typicalContractLength String?
+  volumeDiscounts       Json?
+  
+  metadata              Json?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  rateCards             RateCardEntry[]
+  benchmarks            SupplierBenchmark[]
+  
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([competitivenessScore])
+  @@map("rate_card_suppliers")
+}
+
+model RateCardEntry {
+  id                      String                    @id @default(cuid())
+  tenantId                String
+  
+  // Source Information
+  source                  RateCardSource
+  contractId              String?
+  importJobId             String?
+  enteredBy               String?
+  
+  // Supplier Information
+  supplierId              String
+  supplierName            String
+  supplierTier            SupplierTier
+  supplierCountry         String
+  supplierRegion          String
+  
+  // Role Information
+  roleOriginal            String
+  roleStandardized        String
+  roleCategory            String
+  seniority               SeniorityLevel
+  lineOfService           String
+  subCategory             String?
+  
+  // Rate Information
+  dailyRate               Decimal                   @db.Decimal(10, 2)
+  currency                String
+  dailyRateUSD            Decimal                   @db.Decimal(10, 2)
+  dailyRateCHF            Decimal                   @db.Decimal(10, 2)
+  
+  // Geographic Information
+  country                 String
+  region                  String
+  city                    String?
+  remoteAllowed           Boolean                   @default(false)
+  
+  // Contract Context
+  contractType            String?
+  effectiveDate           DateTime
+  expiryDate              DateTime?
+  contractValue           Decimal?                  @db.Decimal(15, 2)
+  volumeCommitted         Int?
+  
+  // Benchmarking Fields (Auto-calculated)
+  marketRateAverage       Decimal?                  @db.Decimal(10, 2)
+  marketRateMedian        Decimal?                  @db.Decimal(10, 2)
+  marketRateP25           Decimal?                  @db.Decimal(10, 2)
+  marketRateP75           Decimal?                  @db.Decimal(10, 2)
+  marketRateP90           Decimal?                  @db.Decimal(10, 2)
+  
+  percentileRank          Int?
+  savingsAmount           Decimal?                  @db.Decimal(10, 2)
+  savingsPercentage       Decimal?                  @db.Decimal(5, 2)
+  
+  isNegotiated            Boolean                   @default(false)
+  negotiationNotes        String?
+  
+  // Quality & Validation
+  confidence              Decimal                   @db.Decimal(3, 2)
+  dataQuality             DataQualityLevel
+  validatedBy             String?
+  validatedAt             DateTime?
+  
+  // Additional Information
+  additionalInfo          Json?
+  skills                  Json?                     @default("[]")
+  certifications          Json?                     @default("[]")
+  minimumCommitment       Json?
+  
+  // Metadata
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  lastBenchmarkedAt       DateTime?
+  
+  // Relations
+  contract                Contract?                 @relation(fields: [contractId], references: [id])
+  supplier                RateCardSupplier          @relation(fields: [supplierId], references: [id])
+  benchmarkSnapshots      BenchmarkSnapshot[]
+  savingsOpportunities    RateSavingsOpportunity[]
+  comparisonsAsTarget     RateComparison[]
+  baselineComparisons     BaselineComparison[]
+  
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([roleStandardized])
+  @@index([country])
+  @@index([lineOfService])
+  @@index([seniority])
+  @@index([effectiveDate])
+  @@index([tenantId, roleStandardized, country])
+  @@index([tenantId, supplierId])
+  @@index([dailyRateUSD])
+  @@map("rate_card_entries")
+}
+
+model BenchmarkSnapshot {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  rateCardEntryId       String
+  
+  // Snapshot Metadata
+  snapshotDate          DateTime          @default(now())
+  periodStart           DateTime
+  periodEnd             DateTime
+  
+  // Benchmark Cohort Definition
+  cohortDefinition      Json
+  cohortSize            Int
+  
+  // Statistical Analysis
+  average               Decimal           @db.Decimal(10, 2)
+  median                Decimal           @db.Decimal(10, 2)
+  mode                  Decimal?          @db.Decimal(10, 2)
+  standardDeviation     Decimal           @db.Decimal(10, 2)
+  
+  percentile25          Decimal           @db.Decimal(10, 2)
+  percentile50          Decimal           @db.Decimal(10, 2)
+  percentile75          Decimal           @db.Decimal(10, 2)
+  percentile90          Decimal           @db.Decimal(10, 2)
+  percentile95          Decimal           @db.Decimal(10, 2)
+  
+  min                   Decimal           @db.Decimal(10, 2)
+  max                   Decimal           @db.Decimal(10, 2)
+  
+  // Position Analysis
+  positionInMarket      String
+  percentileRank        Int
+  
+  // Savings Analysis
+  potentialSavings      Decimal?          @db.Decimal(10, 2)
+  savingsToMedian       Decimal?          @db.Decimal(10, 2)
+  savingsToP25          Decimal?          @db.Decimal(10, 2)
+  
+  // Market Intelligence
+  marketTrend           String?
+  trendPercentage       Decimal?          @db.Decimal(5, 2)
+  
+  competitorCount       Int
+  competitorAverage     Decimal?          @db.Decimal(10, 2)
+  
+  rateCardEntry         RateCardEntry     @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([rateCardEntryId])
+  @@index([snapshotDate])
+  @@map("benchmark_snapshots")
+}
+
+model MarketRateIntelligence {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  
+  // Market Segment
+  roleStandardized      String
+  seniority             SeniorityLevel
+  lineOfService         String
+  country               String
+  region                String
+  
+  // Time Period
+  periodStart           DateTime
+  periodEnd             DateTime
+  
+  // Aggregated Statistics
+  sampleSize            Int
+  averageRate           Decimal           @db.Decimal(10, 2)
+  medianRate            Decimal           @db.Decimal(10, 2)
+  p25Rate               Decimal           @db.Decimal(10, 2)
+  p75Rate               Decimal           @db.Decimal(10, 2)
+  minRate               Decimal           @db.Decimal(10, 2)
+  maxRate               Decimal           @db.Decimal(10, 2)
+  
+  // Supplier Breakdown
+  supplierDistribution  Json
+  topSuppliers          Json
+  
+  // Trend Analysis
+  trendDirection        String
+  monthOverMonth        Decimal?          @db.Decimal(5, 2)
+  yearOverYear          Decimal?          @db.Decimal(5, 2)
+  
+  // Insights
+  insights              Json
+  
+  calculatedAt          DateTime          @default(now())
+  
+  @@unique([tenantId, roleStandardized, seniority, country, periodStart])
+  @@index([tenantId])
+  @@index([roleStandardized])
+  @@index([country])
+  @@index([periodStart])
+  @@map("market_rate_intelligence")
+}
+
+model RateSavingsOpportunity {
+  id                    String              @id @default(cuid())
+  tenantId              String
+  rateCardEntryId       String
+  
+  // Opportunity Details
+  title                 String
+  description           String
+  category              SavingsCategory
+  
+  // Financial Impact
+  currentAnnualCost     Decimal             @db.Decimal(15, 2)
+  projectedAnnualCost   Decimal             @db.Decimal(15, 2)
+  annualSavings         Decimal             @db.Decimal(15, 2)
+  savingsPercentage     Decimal             @db.Decimal(5, 2)
+  
+  // Effort & Risk
+  effort                EffortLevel
+  risk                  RiskLevel
+  confidence            Decimal             @db.Decimal(3, 2)
+  
+  // Recommendations
+  recommendedAction     String
+  alternativeSuppliers  Json?
+  negotiationPoints     Json?
+  
+  // Timeline
+  implementationTime    String?
+  expectedRealization   DateTime?
+  
+  // Status
+  status                OpportunityStatus   @default(IDENTIFIED)
+  assignedTo            String?
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  implementedAt         DateTime?
+  
+  actualSavings         Decimal?            @db.Decimal(15, 2)
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  rateCardEntry         RateCardEntry       @relation(fields: [rateCardEntryId], references: [id])
+  
+  @@index([tenantId])
+  @@index([status])
+  @@index([annualSavings(sort: Desc)])
+  @@index([category])
+  @@map("rate_savings_opportunities")
+}
+
+model RateComparison {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  
+  // Comparison Metadata
+  comparisonName        String
+  comparisonType        ComparisonType
+  createdBy             String
+  
+  // Target Rate
+  targetRateId          String
+  
+  // Comparison Rates
+  comparisonRates       Json
+  
+  // Analysis Results
+  results               Json
+  summary               String
+  recommendations       Json?
+  
+  // Sharing
+  isShared              Boolean           @default(false)
+  sharedWith            Json?
+  
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  targetRate            RateCardEntry     @relation(fields: [targetRateId], references: [id])
+  
+  @@index([tenantId])
+  @@index([createdBy])
+  @@map("rate_comparisons")
+}
+
+model SupplierBenchmark {
+  id                      String              @id @default(cuid())
+  tenantId                String
+  supplierId              String
+  
+  // Time Period
+  periodStart             DateTime
+  periodEnd               DateTime
+  
+  // Rate Competitiveness
+  averageRate             Decimal             @db.Decimal(10, 2)
+  medianRate              Decimal             @db.Decimal(10, 2)
+  marketAverage           Decimal             @db.Decimal(10, 2)
+  competitivenessScore    Decimal             @db.Decimal(5, 2)
+  
+  // Volume & Coverage
+  totalRoles              Int
+  totalContracts          Int
+  geographicCoverage      Json
+  serviceLineCoverage     Json
+  
+  // Quality Metrics
+  dataQualityScore        Decimal             @db.Decimal(5, 2)
+  responseTime            Int?
+  negotiationFlexibility  Decimal?            @db.Decimal(3, 2)
+  
+  // Financial
+  totalAnnualValue        Decimal             @db.Decimal(15, 2)
+  potentialSavings        Decimal             @db.Decimal(15, 2)
+  
+  // Rankings
+  costRank                Int?
+  qualityRank             Int?
+  overallRank             Int?
+  
+  calculatedAt            DateTime            @default(now())
+  
+  supplier                RateCardSupplier    @relation(fields: [supplierId], references: [id])
+  
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([periodStart])
+  @@map("supplier_benchmarks")
+}
+
+// ============================================================================
+// Procurement Taxonomy Models
+// ============================================================================
+
+model ProcurementCategory {
+  id                    String                    @id @default(cuid())
+  tenantId              String
+  
+  // Category Hierarchy
+  categoryL1            String
+  categoryL2            String
+  categoryL3            String?
+  categoryPath          String                    // Full path: L1/L2/L3
+  
+  // Category Details
+  displayName           String
+  description           String?
+  icon                  String?
+  color                 String?
+  
+  // Spend Category Classification
+  isDirectSpend         Boolean                   @default(false)
+  isIndirectSpend       Boolean                   @default(true)
+  spendType             SpendType                 @default(INDIRECT)
+  
+  // Benchmarking Configuration
+  enableBenchmarking    Boolean                   @default(true)
+  defaultCurrency       String                    @default("USD")
+  typicalPricingModel   String?                   // e.g., "per unit", "daily rate", "monthly fee"
+  
+  // Keywords for auto-classification
+  keywords              String[]                  @default([])
+  aiClassificationPrompt String?
+  
+  // Metadata
+  isActive              Boolean                   @default(true)
+  sortOrder             Int                       @default(0)
+  
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  createdBy             String?
+  
+  // Relations
+  rateCardBaselines     RateCardBaseline[]
+  contracts             Contract[]                @relation("ContractProcurementCategory")
+  
+  @@unique([tenantId, categoryL1, categoryL2])
+  @@index([tenantId])
+  @@index([categoryL1])
+  @@index([categoryL2])
+  @@index([spendType])
+  @@index([isActive])
+  @@index([tenantId, categoryL1, categoryL2])
+  @@map("procurement_categories")
+}
+
+// ============================================================================
+// Baseline & Target Rate Models
+// ============================================================================
+
+model RateCardBaseline {
+  id                      String                  @id @default(cuid())
+  tenantId                String
+  
+  // Baseline Identification
+  baselineName            String
+  baselineType            BaselineType
+  description             String?
+  
+  // Category Association
+  procurementCategoryId   String?
+  categoryL1              String?
+  categoryL2              String?
+  
+  // Role & Service Definition
+  roleStandardized        String
+  roleCategory            String?
+  seniority               SeniorityLevel?
+  lineOfService           String?
+  
+  // Geographic Scope
+  country                 String?
+  region                  String?
+  isGlobal                Boolean                 @default(false)
+  
+  // Baseline Rate
+  targetRate              Decimal                 @db.Decimal(10, 2)
+  currency                String
+  targetRateUSD           Decimal                 @db.Decimal(10, 2)
+  rateUnit                String                  @default("daily") // daily, hourly, monthly, annual
+  
+  // Range & Tolerance
+  minimumRate             Decimal?                @db.Decimal(10, 2)
+  maximumRate             Decimal?                @db.Decimal(10, 2)
+  tolerancePercentage     Decimal?                @db.Decimal(5, 2)
+  
+  // Baseline Source
+  source                  BaselineSource
+  sourceDetails           String?
+  importJobId             String?
+  contractId              String?                 // Reference contract if based on historical best
+  
+  // Validity Period
+  effectiveDate           DateTime
+  expiryDate              DateTime?
+  isActive                Boolean                 @default(true)
+  
+  // Approval & Governance
+  approvalStatus          ApprovalStatus          @default(PENDING)
+  approvedBy              String?
+  approvedAt              DateTime?
+  reviewedBy              String?
+  reviewedAt              DateTime?
+  
+  // Usage Statistics
+  appliedCount            Int                     @default(0)
+  savingsRealized         Decimal?                @db.Decimal(15, 2)
+  lastAppliedAt           DateTime?
+  
+  // Metadata
+  tags                    String[]                @default([])
+  notes                   String?
+  metadata                Json?
+  
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  createdBy               String?
+  updatedBy               String?
+  
+  // Relations
+  category                ProcurementCategory?    @relation(fields: [procurementCategoryId], references: [id])
+  baselineComparisons     BaselineComparison[]
+  
+  @@unique([tenantId, baselineName])
+  @@index([tenantId])
+  @@index([baselineType])
+  @@index([roleStandardized])
+  @@index([country])
+  @@index([isActive])
+  @@index([effectiveDate])
+  @@index([approvalStatus])
+  @@index([tenantId, roleStandardized, country])
+  @@index([tenantId, categoryL1, categoryL2])
+  @@map("rate_card_baselines")
+}
+
+model BaselineComparison {
+  id                      String                  @id @default(cuid())
+  tenantId                String
+  
+  // Comparison Identification
+  comparisonName          String
+  comparisonDate          DateTime                @default(now())
+  
+  // Baseline Reference
+  baselineId              String
+  
+  // Rate Card Reference
+  rateCardEntryId         String?
+  
+  // Or Manual Entry
+  actualRate              Decimal?                @db.Decimal(10, 2)
+  actualRateSource        String?
+  
+  // Comparison Results
+  variance                Decimal                 @db.Decimal(10, 2) // Positive = over baseline, Negative = under
+  variancePercentage      Decimal                 @db.Decimal(5, 2)
+  isWithinTolerance       Boolean
+  
+  // Savings Calculation
+  potentialSavings        Decimal?                @db.Decimal(10, 2)
+  annualSavingsImpact     Decimal?                @db.Decimal(15, 2)
+  volumeImpacted          Int?
+  
+  // Analysis
+  riskLevel               RiskLevel               @default(MEDIUM)
+  recommendation          String?
+  actionRequired          Boolean                 @default(false)
+  priority                Int                     @default(3)
+  
+  // Status Tracking
+  status                  OpportunityStatus       @default(IDENTIFIED)
+  assignedTo              String?
+  dueDate                 DateTime?
+  completedAt             DateTime?
+  
+  // Notes
+  notes                   String?
+  internalNotes           String?
+  
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  createdBy               String?
+  
+  // Relations
+  baseline                RateCardBaseline        @relation(fields: [baselineId], references: [id])
+  rateCardEntry           RateCardEntry?          @relation(fields: [rateCardEntryId], references: [id])
+  
+  @@index([tenantId])
+  @@index([baselineId])
+  @@index([rateCardEntryId])
+  @@index([status])
+  @@index([comparisonDate])
+  @@index([variance(sort: Desc)])
+  @@index([potentialSavings(sort: Desc)])
+  @@map("baseline_comparisons")
+}
+
+// ============================================================================
+// Bulk Import & Data Management
+// ============================================================================
+
+model BaselineImportJob {
+  id                    String                @id @default(cuid())
+  tenantId              String
+  
+  // Import Details
+  jobName               String
+  importType            String                // csv, excel, api, manual
+  fileName              String?
+  fileSize              BigInt?
+  filePath              String?
+  
+  // Processing Status
+  status                JobStatus
+  progress              Int                   @default(0)
+  totalRows             Int?
+  processedRows         Int                   @default(0)
+  successfulRows        Int                   @default(0)
+  failedRows            Int                   @default(0)
+  
+  // Results
+  importedBaselines     Int                   @default(0)
+  errors                Json?
+  warnings              Json?
+  summary               String?
+  
+  // Metadata
+  startedAt             DateTime              @default(now())
+  completedAt           DateTime?
+  startedBy             String?
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("baseline_import_jobs")
 }
 

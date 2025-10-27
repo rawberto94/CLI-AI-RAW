@@ -18,6 +18,8 @@ import {
   Sparkles, Zap, Target, Clock, Users, Shield
 } from 'lucide-react';
 
+import { ArtifactViewer } from '@/components/contracts/ArtifactViewer';
+
 interface ContractData {
   id: string;
   name: string;
@@ -413,26 +415,14 @@ export default function StateOfTheArtContractPage() {
                                   initial={{ opacity: 0 }}
                                   animate={{ opacity: 1 }}
                                   exit={{ opacity: 0 }}
-                                  className="space-y-4"
                                 >
-                                  {/* Beautiful Data Display */}
-                                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
-                                    <pre className="text-sm overflow-auto max-h-96 text-gray-700">
-                                      {JSON.stringify(artifact.data, null, 2)}
-                                    </pre>
-                                  </div>
-                                  
-                                  {/* Processing Stats */}
-                                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                                    <div className="flex items-center gap-1">
-                                      <Clock className="h-4 w-4" />
-                                      {artifact.processingTime}ms
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <Sparkles className="h-4 w-4" />
-                                      AI-powered
-                                    </div>
-                                  </div>
+                                  {/* Beautiful Artifact Display */}
+                                  <ArtifactViewer
+                                    type={artifact.type}
+                                    data={artifact.data}
+                                    confidence={artifact.confidence}
+                                    processingTime={artifact.processingTime}
+                                  />
                                 </motion.div>
                               )}
                             </AnimatePresence>

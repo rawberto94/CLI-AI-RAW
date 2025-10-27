@@ -1,6 +1,6 @@
 /**
  * Contract Processing Retry API
- * POST /api/contracts/:id/retry - Retry failed processing job
+ * POST /api/contracts/:id/retry - Retry failed processing job and regenerate artifacts
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -9,6 +9,10 @@ import {
   ensureProcessingJob,
   retryProcessingJob,
 } from "@/lib/contract-processing";
+import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export async function POST(
   _request: NextRequest,
@@ -27,24 +31,39 @@ export async function POST(
 
     const tenantId = "demo"; // TODO: Get from auth session
     
-    // Get contract using real service
-    const result = await contractService.getContract(contractId, tenantId);
-    if (!result.success || !result.data) {
+    // Get contract from database
+    const contract = await prisma.contract.findFirst({
+      where: {
+        id: contractId,
+        tenantId: tenantId
+      }
+    });
+
+    if (!contract) {
       return NextResponse.json(
         { error: "No contract found for this ID" },
         { status: 404 }
       );
     }
 
+    // Trigger artifact generation
+    await triggerArtifactGeneration({
+      contractId: contract.id,
+      tenantId: contract.tenantId,
+      filePath: contract.storagePath,
+      mimeType: contract.mimeType,
+      useQueue: false
+    });
+
     ensureProcessingJob(contractId);
     const job = retryProcessingJob(contractId);
 
     return NextResponse.json(
       {
-        message: "Processing retry initiated",
+        message: "AI analysis started - artifacts will be generated shortly",
         contractId,
         jobId: job.id,
-        status: job.status,
+        status: "PROCESSING",
         progress: job.progress,
       },
       { status: 200 }
@@ -53,7 +72,7 @@ export async function POST(
     console.error("Error retrying contract processing:", error);
     return NextResponse.json(
       {
-        error: "Failed to retry contract processing",
+        error: "Failed to start AI analysis",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }

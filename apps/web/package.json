@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "next dev -H 0.0.0.0 -p 3005",
     "dev:next": "next dev -H 0.0.0.0 -p 3005",
     "build": "next build",
     "build:analyze": "ANALYZE=true next build",

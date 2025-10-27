@@ -1,0 +1,386 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useArtifactStream, type ArtifactUpdate } from '@/hooks/useArtifactStream';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { 
+  FileText, 
+  DollarSign, 
+  FileCheck, 
+  TrendingUp, 
+  Shield, 
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Wifi,
+  WifiOff,
+  Sparkles,
+  RefreshCw
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface RealtimeArtifactViewerProps {
+  contractId: string;
+  tenantId?: string;
+  onComplete?: () => void;
+}
+
+const artifactIcons: Record<string, React.ReactNode> = {
+  OVERVIEW: <FileText className="h-5 w-5" />,
+  FINANCIAL: <DollarSign className="h-5 w-5" />,
+  CLAUSES: <FileCheck className="h-5 w-5" />,
+  RATES: <TrendingUp className="h-5 w-5" />,
+  COMPLIANCE: <Shield className="h-5 w-5" />,
+  RISK: <AlertTriangle className="h-5 w-5" />
+};
+
+const artifactLabels: Record<string, string> = {
+  OVERVIEW: 'Overview',
+  FINANCIAL: 'Financial Analysis',
+  CLAUSES: 'Key Clauses',
+  RATES: 'Rate Cards',
+  COMPLIANCE: 'Compliance Check',
+  RISK: 'Risk Assessment'
+};
+
+const artifactOrder = ['OVERVIEW', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'RATES'];
+
+const stageLabels: Record<string, string> = {
+  'TEXT_EXTRACTION': 'Extracting text from document...',
+  'RAG_INDEXING': 'Generating semantic embeddings...',
+  'ARTIFACT_GENERATION': 'Generating AI artifacts...',
+  'RATE_CARD_EXTRACTION': 'Extracting rate cards...',
+  'METADATA_INITIALIZATION': 'Initializing metadata...',
+  'COMPLETED': 'Processing complete!'
+};
+
+export function RealtimeArtifactViewer({ 
+  contractId, 
+  tenantId = 'demo',
+  onComplete
+}: RealtimeArtifactViewerProps) {
+  const {
+    artifacts,
+    isConnected,
+    isComplete,
+    contractStatus,
+    processingStage,
+    error,
+    reconnect
+  } = useArtifactStream({
+    contractId,
+    tenantId,
+    onComplete: () => {
+      if (onComplete) onComplete();
+    },
+    enabled: true
+  });
+
+  const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
+  const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());
+
+  // Animate new artifacts
+  useEffect(() => {
+    artifacts.forEach(artifact => {
+      if (artifact.status === 'COMPLETED' && !animatingArtifacts.has(artifact.id)) {
+        setAnimatingArtifacts(prev => new Set(prev).add(artifact.id));
+        setTimeout(() => {
+          setAnimatingArtifacts(prev => {
+            const next = new Set(prev);
+            next.delete(artifact.id);
+            return next;
+          });
+        }, 1000);
+      }
+    });
+  }, [artifacts]);
+
+  const handleRetry = async (artifactId: string) => {
+    setRetryingArtifacts(prev => new Set(prev).add(artifactId));
+    
+    try {
+      const response = await fetch(
+        `/api/contracts/${contractId}/artifacts/${artifactId}/regenerate`,
+        {
+          method: 'POST',
+          headers: {
+            'x-tenant-id': tenantId,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Regeneration failed');
+      }
+
+      // Artifact will update via SSE stream
+    } catch (error) {
+      console.error('Failed to retry artifact:', error);
+    } finally {
+      setTimeout(() => {
+        setRetryingArtifacts(prev => {
+          const next = new Set(prev);
+          next.delete(artifactId);
+          return next;
+        });
+      }, 2000);
+    }
+  };
+
+  const sortedArtifacts = [...artifacts].sort((a, b) => {
+    const aIndex = artifactOrder.indexOf(a.type);
+    const bIndex = artifactOrder.indexOf(b.type);
+    return aIndex - bIndex;
+  });
+
+  const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
+  const totalCount = 6; // Expected number of artifacts
+  const progressPercent = (completedCount / totalCount) * 100;
+
+  return (
+    <div className="space-y-6">
+      {/* Connection Status */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isConnected ? (
+            <>
+              <Wifi className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-600 font-medium">Live Updates Connected</span>
+            </>
+          ) : isComplete ? (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-blue-600" />
+              <span className="text-sm text-blue-600 font-medium">Processing Complete</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-4 w-4 text-gray-400" />
+              <span className="text-sm text-gray-400">Connecting...</span>
+            </>
+          )}
+        </div>
+        
+        {!isComplete && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Clock className="h-4 w-4" />
+            <span>{completedCount} of {totalCount} artifacts</span>
+          </div>
+        )}
+      </div>
+
+      {/* Progress Bar */}
+      {!isComplete && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">
+                    {processingStage ? stageLabels[processingStage] : 'Processing contract...'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {contractStatus === 'PROCESSING' ? 'Analyzing document with AI' : contractStatus}
+                  </p>
+                </div>
+                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              </div>
+              <Progress value={progressPercent} className="h-2" />
+              <p className="text-xs text-gray-500 text-right">
+                {Math.round(progressPercent)}% complete
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Processing Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Artifacts Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sortedArtifacts.map((artifact) => {
+          const isAnimating = animatingArtifacts.has(artifact.id);
+          const isRetrying = retryingArtifacts.has(artifact.id);
+          const isCompleted = artifact.status === 'COMPLETED';
+          const isProcessing = artifact.status === 'PROCESSING' || isRetrying;
+          const isFailed = artifact.status === 'FAILED';
+
+          return (
+            <Card 
+              key={artifact.id}
+              className={cn(
+                "transition-all duration-500",
+                isAnimating && "scale-105 shadow-lg border-blue-500",
+                isCompleted && "hover:shadow-md",
+                isFailed && "border-red-300 bg-red-50"
+              )}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      isCompleted && "bg-green-100 text-green-700",
+                      isProcessing && "bg-blue-100 text-blue-700 animate-pulse",
+                      isFailed && "bg-red-100 text-red-700",
+                      !isCompleted && !isProcessing && !isFailed && "bg-gray-100 text-gray-400"
+                    )}>
+                      {artifactIcons[artifact.type]}
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm font-semibold">
+                        {artifactLabels[artifact.type] || artifact.type}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {artifact.metadata?.description || 'AI-generated insights'}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  
+                  {isAnimating && (
+                    <Sparkles className="h-4 w-4 text-blue-600 animate-pulse" />
+                  )}
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                <div className="space-y-3">
+                  {/* Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <Badge 
+                      variant={
+                        isCompleted ? "default" : 
+                        isProcessing ? "secondary" : 
+                        isFailed ? "destructive" : 
+                        "outline"
+                      }
+                      className={cn(
+                        "text-xs",
+                        isProcessing && "animate-pulse"
+                      )}
+                    >
+                      {isCompleted && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                      {isProcessing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                      {isFailed && <AlertTriangle className="h-3 w-3 mr-1" />}
+                      {artifact.status}
+                    </Badge>
+                    
+                    {isCompleted && artifact.contentLength > 0 && (
+                      <span className="text-xs text-gray-500">
+                        {(artifact.contentLength / 1024).toFixed(1)}KB
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Content Preview */}
+                  {isCompleted && artifact.hasContent && (
+                    <div className="space-y-2">
+                      <div className="h-20 bg-gray-50 rounded-md p-2 overflow-hidden">
+                        <p className="text-xs text-gray-600 line-clamp-4">
+                          {artifact.metadata?.preview || 'Content ready to view'}
+                        </p>
+                      </div>
+                      <button 
+                        className="text-xs text-blue-600 hover:underline font-medium"
+                        onClick={() => {
+                          // Navigate to detailed view
+                          window.location.href = `/contracts/${contractId}?artifact=${artifact.type}`;
+                        }}
+                      >
+                        View Details →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Processing State */}
+                  {isProcessing && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Generating with AI...</span>
+                    </div>
+                  )}
+
+                  {/* Waiting State */}
+                  {!isCompleted && !isProcessing && !isFailed && (
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
+                      <Clock className="h-3 w-3" />
+                      <span>Waiting in queue...</span>
+                    </div>
+                  )}
+
+                  {/* Failed State */}
+                  {isFailed && !isRetrying && (
+                    <div className="space-y-2">
+                      <div className="text-xs text-red-600">
+                        <p>Generation failed. Please retry.</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRetry(artifact.id)}
+                        className="w-full text-xs"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Retry Generation
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Metadata Info */}
+                  {artifact.metadata && (
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t">
+                      {artifact.metadata.confidence && (
+                        <div>
+                          <span className="text-gray-500">Confidence:</span>
+                          <span className="ml-1 font-medium">
+                            {Math.round(artifact.metadata.confidence * 100)}%
+                          </span>
+                        </div>
+                      )}
+                      {artifact.metadata.processingTime && (
+                        <div>
+                          <span className="text-gray-500">Time:</span>
+                          <span className="ml-1 font-medium">
+                            {(artifact.metadata.processingTime / 1000).toFixed(1)}s
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Completion Summary */}
+      {isComplete && (
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-6 w-6 text-green-600" />
+              <div>
+                <p className="font-semibold text-green-900">All artifacts generated successfully!</p>
+                <p className="text-sm text-green-700">
+                  {completedCount} artifacts are ready to view
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
