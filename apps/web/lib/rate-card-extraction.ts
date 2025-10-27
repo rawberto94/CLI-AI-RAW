@@ -34,48 +34,76 @@ export async function extractRateCardsFromContract(
   contractId: string
 ): Promise<RateCardExtractionResult> {
   try {
-    const prompt = `You are an expert at extracting rate card information from contracts.
+    const prompt = `You are an expert at extracting rate card information from contracts and statements of work.
 
-Analyze the following contract text and extract ALL rate information including:
-- Role/position names
-- Seniority levels (Junior, Mid, Senior, Principal, Partner)
-- Daily rates (or convert hourly/monthly to daily)
-- Currency
-- Location/country
-- Line of service (e.g., Technology, Consulting, Advisory)
-- Required skills
-- Any additional relevant information
+TASK: Analyze the contract text and extract ALL rate information with high precision.
 
-Contract Text:
+EXTRACT THE FOLLOWING:
+1. Role/Position Names (as written in contract)
+2. Seniority Levels (Junior, Mid-Level, Senior, Principal, Partner, Director, Manager)
+3. Rates (hourly, daily, monthly, or annual)
+4. Currency
+5. Location/Country/Region
+6. Line of Service (Technology, Consulting, Advisory, Finance, Legal, etc.)
+7. Required Skills/Certifications
+8. Minimum commitment (hours/days)
+9. Volume discounts or tiered pricing
+10. Contract dates (effective and expiry)
+
+CONTRACT TEXT:
 ${contractText}
 
-Return a JSON object with this structure:
+RATE CONVERSION RULES:
+- Hourly → Daily: multiply by 8
+- Monthly → Daily: divide by 22
+- Annual → Daily: divide by 260
+- Always preserve original rate and period in additionalInfo
+
+SENIORITY MAPPING:
+- Junior/Jr/Entry/Associate → JUNIOR
+- Mid/Intermediate/Consultant → MID
+- Senior/Sr/Lead → SENIOR
+- Principal/Staff/Expert → PRINCIPAL
+- Partner/Director/VP → PARTNER
+
+CONFIDENCE SCORING:
+- 0.9-1.0: Explicit rate table with clear role and rate
+- 0.7-0.9: Rate mentioned in text with clear context
+- 0.5-0.7: Rate inferred from context or ranges
+- <0.5: Uncertain or estimated
+
+RETURN JSON:
 {
   "rates": [
     {
-      "role": "Software Engineer",
+      "role": "Senior Software Engineer",
       "seniority": "SENIOR",
       "dailyRate": 1200,
       "currency": "USD",
       "location": "United States",
       "lineOfService": "Technology Consulting",
-      "skills": ["Java", "Spring Boot"],
-      "additionalInfo": {},
+      "skills": ["Java", "Spring Boot", "AWS"],
+      "additionalInfo": {
+        "originalRate": 150,
+        "originalPeriod": "hourly",
+        "minimumHours": 40,
+        "volumeDiscount": "10% for >500 hours"
+      },
       "confidence": 0.95
     }
   ],
-  "supplierName": "Acme Consulting",
+  "supplierName": "Acme Consulting LLC",
   "effectiveDate": "2025-01-01",
   "expiryDate": "2025-12-31",
   "overallConfidence": 0.92
 }
 
-Important:
-- Convert all rates to daily rates (assume 8 hours/day, 22 days/month)
-- Standardize seniority to: JUNIOR, MID, SENIOR, PRINCIPAL, or PARTNER
-- Include confidence score (0-1) for each rate
-- Extract supplier name from the contract
-- If no rates found, return empty rates array`;
+IMPORTANT:
+- Extract EVERY rate mentioned, even if in different formats
+- Look for rate tables, appendices, schedules, and inline mentions
+- If supplier name not found, use "Unknown Supplier"
+- If dates not found, leave as null
+- Return empty rates array if no rates found`;
 
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',

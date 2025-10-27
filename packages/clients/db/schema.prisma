@@ -1841,3 +1841,46 @@ model BaselineImportJob {
   @@map("baseline_import_jobs")
 }
 
+
+// ============================================================================
+// Role Standardization & Taxonomy
+// ============================================================================
+
+model RoleTaxonomy {
+  id                  String      @id @default(cuid())
+  standardizedName    String      @unique @map("standardized_name")
+  category            String
+  subCategory         String?     @map("sub_category")
+  aliases             String[]    @default([])
+  keywords            String[]    @default([])
+  industry            String?
+  lineOfService       String?     @map("line_of_service")
+  seniorityLevel      String?     @map("seniority_level")
+  usageCount          Int         @default(0) @map("usage_count")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([usageCount(sort: Desc)])
+  @@index([standardizedName])
+  @@map("role_taxonomy")
+}
+
+model RoleMapping {
+  id                  String      @id @default(cuid())
+  tenantId            String      @map("tenant_id")
+  originalRole        String      @map("original_role")
+  standardizedRole    String      @map("standardized_role")
+  confidence          Decimal     @default(0.70) @db.Decimal(3, 2)
+  source              String      // AI, USER_CORRECTION, MANUAL
+  userId              String?     @map("user_id")
+  context             Json        @default("{}")
+  createdAt           DateTime    @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([originalRole])
+  @@index([standardizedRole])
+  @@index([source])
+  @@index([tenantId, originalRole])
+  @@map("role_mappings")
+}

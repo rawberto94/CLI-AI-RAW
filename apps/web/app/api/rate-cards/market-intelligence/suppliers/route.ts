@@ -1,0 +1,40 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import prisma from '@/lib/prisma';
+import { MarketIntelligenceService } from '@/../../packages/data-orchestration/src/services';
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const searchParams = request.nextUrl.searchParams;
+    const country = searchParams.get('country') || undefined;
+    const lineOfService = searchParams.get('lineOfService') || undefined;
+    const roleCategory = searchParams.get('roleCategory') || undefined;
+    const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
+
+    const marketIntelService = new MarketIntelligenceService(prisma);
+
+    const rankings = await marketIntelService.getSupplierRanking(
+      session.user.tenantId || 'default',
+      {
+        country,
+        lineOfService,
+        roleCategory,
+        periodMonths,
+      }
+    );
+
+    return NextResponse.json(rankings);
+  } catch (error: any) {
+    console.error('Error fetching supplier rankings:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch supplier rankings' },
+      { status: 500 }
+    );
+  }
+}

@@ -14,17 +14,22 @@ import {
   Settings,
   Upload,
   Activity,
-  Shield,
-  Zap,
-  Brain,
   TrendingUp,
-  Network,
+  Users,
+  DollarSign,
+  Calendar,
+  Briefcase,
+  FileBarChart,
   Menu,
   X,
   ChevronDown,
-  Sparkles
+  ChevronRight,
+  Import,
+  CreditCard,
+  Target,
+  Shield,
+  AlertTriangle
 } from 'lucide-react'
-import { AIBadge } from '@/components/ui/design-system'
 
 interface NavigationItem {
   name: string
@@ -32,8 +37,6 @@ interface NavigationItem {
   icon: React.ComponentType<{ className?: string }>
   badge?: string
   description?: string
-  isNew?: boolean
-  isAI?: boolean
   children?: NavigationItem[]
 }
 
@@ -45,26 +48,10 @@ const navigationItems: NavigationItem[] = [
     description: 'Overview and key metrics'
   },
   {
-    name: 'Use Cases',
-    href: '/use-cases',
-    icon: TrendingUp,
-    badge: '7',
-    description: 'Production-ready use cases',
-    isNew: true
-  },
-  {
-    name: 'Pilot Demo',
-    href: '/pilot-demo',
-    icon: Sparkles,
-    description: 'Before vs After transformation',
-    isNew: true,
-    badge: 'Demo'
-  },
-  {
     name: 'Contracts',
     href: '/contracts',
     icon: FileText,
-    description: 'Manage and analyze contracts',
+    description: 'Manage contracts',
     children: [
       {
         name: 'All Contracts',
@@ -73,86 +60,23 @@ const navigationItems: NavigationItem[] = [
         description: 'View all contracts'
       },
       {
-        name: 'Upload Contract',
-        href: '/contracts/upload',
+        name: 'Upload',
+        href: '/upload',
         icon: Upload,
         description: 'Upload new contract'
       },
       {
-        name: 'Processing Status',
+        name: 'Processing',
         href: '/processing-status',
         icon: Activity,
-        description: 'Monitor processing jobs',
-        badge: 'Live'
-      }
-    ]
-  },
-  {
-    name: 'AI Intelligence',
-    href: '/ai-intelligence',
-    icon: Brain,
-    isAI: true,
-    description: 'AI-powered contract analysis',
-    children: [
-      {
-        name: 'Integration Demo',
-        href: '/integration-demo',
-        icon: Network,
-        description: 'Next-gen integration layer',
-        isNew: true,
-        isAI: true,
+        description: 'Monitor processing',
         badge: 'Live'
       },
       {
-        name: 'Pilot Demo',
-        href: '/pilot-demo',
-        icon: Sparkles,
-        description: 'Before vs After transformation',
-        isNew: true,
-        isAI: true
-      },
-      {
-        name: 'CTO Demo',
-        href: '/futuristic-contracts',
-        icon: Zap,
-        description: 'Executive AI demonstration',
-        isNew: true,
-        isAI: true
-      },
-      {
-        name: 'BPO Revolution',
-        href: '/bpo-demo',
-        icon: TrendingUp,
-        description: 'Procurement intelligence',
-        isNew: true,
-        isAI: true
-      },
-      {
-        name: 'Cross-Contract Analysis',
-        href: '/cross-contract-analysis',
-        icon: BarChart3,
-        description: 'Relationship discovery',
-        isAI: true
-      }
-    ]
-  },
-  {
-    name: 'Search & Discovery',
-    href: '/search',
-    icon: Search,
-    description: 'Semantic contract search',
-    children: [
-      {
-        name: 'Contract Search',
-        href: '/search',
-        icon: Search,
-        description: 'Find contracts quickly'
-      },
-      {
-        name: 'Advanced Filters',
-        href: '/search/advanced',
-        icon: Settings,
-        description: 'Detailed search options'
+        name: 'Jobs',
+        href: '/jobs',
+        icon: Briefcase,
+        description: 'Processing jobs'
       }
     ]
   },
@@ -160,255 +84,321 @@ const navigationItems: NavigationItem[] = [
     name: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
-    description: 'Business insights and reports',
+    description: 'Insights and reports',
     children: [
       {
-        name: 'Portfolio Overview',
-        href: '/analytics/portfolio',
+        name: 'Overview',
+        href: '/analytics',
         icon: BarChart3,
-        description: 'Contract portfolio metrics'
+        description: 'Analytics hub'
       },
       {
-        name: 'Risk Analysis',
-        href: '/analytics/risk',
-        icon: Shield,
-        description: 'Risk assessment reports'
+        name: 'Artifacts',
+        href: '/analytics/artifacts',
+        icon: FileBarChart,
+        description: 'Artifact analytics'
       },
       {
-        name: 'Compliance Reports',
-        href: '/analytics/compliance',
-        icon: Shield,
-        description: 'Compliance monitoring'
+        name: 'Cost Savings',
+        href: '/analytics/savings',
+        icon: DollarSign,
+        description: 'Savings opportunities'
+      },
+      {
+        name: 'Renewals',
+        href: '/analytics/renewals',
+        icon: Calendar,
+        description: 'Contract renewals'
+      },
+      {
+        name: 'Suppliers',
+        href: '/analytics/suppliers',
+        icon: Users,
+        description: 'Supplier analytics'
+      },
+      {
+        name: 'Negotiation',
+        href: '/analytics/negotiation',
+        icon: TrendingUp,
+        description: 'Negotiation prep'
+      },
+      {
+        name: 'Procurement',
+        href: '/analytics/procurement',
+        icon: Briefcase,
+        description: 'Procurement intelligence'
       }
     ]
   },
   {
-    name: 'System',
-    href: '/system',
-    icon: Settings,
-    description: 'System administration',
+    name: 'Tools',
+    href: '/search',
+    icon: Search,
+    description: 'Search and tools',
     children: [
       {
-        name: 'Processing Status',
-        href: '/processing-status',
-        icon: Activity,
-        description: 'Monitor system health',
-        badge: 'Live'
+        name: 'Search',
+        href: '/search',
+        icon: Search,
+        description: 'Find contracts'
       },
       {
-        name: 'API Documentation',
-        href: '/api-docs',
-        icon: FileText,
-        description: 'API reference'
+        name: 'Import',
+        href: '/import',
+        icon: Import,
+        description: 'Import data'
       },
       {
-        name: 'Settings',
-        href: '/settings',
-        icon: Settings,
-        description: 'System configuration'
+        name: 'Rate Cards',
+        href: '/rate-cards/dashboard',
+        icon: CreditCard,
+        description: 'Rate card management',
+        children: [
+          {
+            name: 'Dashboard',
+            href: '/rate-cards/dashboard',
+            icon: LayoutDashboard,
+            description: 'Executive dashboard'
+          },
+          {
+            name: 'All Entries',
+            href: '/rate-cards/entries',
+            icon: FileText,
+            description: 'View all rate cards'
+          },
+          {
+            name: 'Upload CSV',
+            href: '/rate-cards/upload',
+            icon: Upload,
+            description: 'Bulk import rates'
+          },
+          {
+            name: 'Benchmarking',
+            href: '/rate-cards/benchmarking',
+            icon: Target,
+            description: 'Rate benchmarks'
+          },
+          {
+            name: 'Suppliers',
+            href: '/rate-cards/suppliers',
+            icon: Users,
+            description: 'Supplier scorecards'
+          },
+          {
+            name: 'Opportunities',
+            href: '/rate-cards/opportunities',
+            icon: TrendingUp,
+            description: 'Savings opportunities'
+          },
+          {
+            name: 'Market Intelligence',
+            href: '/rate-cards/market-intelligence',
+            icon: BarChart3,
+            description: 'Market insights'
+          },
+          {
+            name: 'Baselines',
+            href: '/rate-cards/baselines',
+            icon: Target,
+            description: 'Target rates'
+          }
+        ]
       }
     ]
+  },
+  {
+    name: 'Compliance',
+    href: '/compliance',
+    icon: Shield,
+    description: 'Compliance tracking'
+  },
+  {
+    name: 'Risk',
+    href: '/risk',
+    icon: AlertTriangle,
+    description: 'Risk management'
+  },
+  {
+    name: 'Settings',
+    href: '/settings',
+    icon: Settings,
+    description: 'System settings'
   }
 ]
 
 export default function MainNavigation() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
   const pathname = usePathname()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
 
-  const toggleExpanded = (itemName: string) => {
-    const newExpanded = new Set(expandedItems)
-    if (newExpanded.has(itemName)) {
-      newExpanded.delete(itemName)
-    } else {
-      newExpanded.add(itemName)
-    }
-    setExpandedItems(newExpanded)
+  const toggleExpanded = (name: string) => {
+    setExpandedItems(prev =>
+      prev.includes(name)
+        ? prev.filter(item => item !== name)
+        : [...prev, name]
+    )
   }
 
   const isActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/'
-    }
+    if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
 
-  const NavItem: React.FC<{ 
-    item: NavigationItem
-    level?: number
-    isMobile?: boolean
-  }> = ({ item, level = 0, isMobile = false }) => {
-    const hasChildren = item.children != null && item.children.length > 0
-    const isExpanded = expandedItems.has(item.name)
-    const active = isActive(item.href)
-
-    return (
-      <div className={cn('space-y-1', level > 0 && 'ml-4')}>
-        <div className="flex items-center">
-          <Link
-            href={item.href}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground',
-              active && 'bg-accent text-accent-foreground',
-              level > 0 && 'text-sm',
-              'flex-1'
-            )}
-            onClick={() => isMobile && setIsMobileMenuOpen(false)}
-          >
-            <item.icon className={cn('h-4 w-4', (item.isAI ?? false) && 'text-blue-600')} />
-            <span className="flex-1">{item.name}</span>
-            
-            {item.isNew === true && (
-              <Badge variant="secondary" className="text-xs">
-                New
-              </Badge>
-            )}
-            
-            {item.isAI === true && (
-              <AIBadge>AI</AIBadge>
-            )}
-            
-            {item.badge != null && item.isNew !== true && item.isAI !== true && (
-              <Badge variant="outline" className="text-xs">
-                {item.badge}
-              </Badge>
-            )}
-          </Link>
-          
-          {hasChildren && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => toggleExpanded(item.name)}
-            >
-              <ChevronDown 
-                className={cn(
-                  'h-4 w-4 transition-transform',
-                  isExpanded && 'rotate-180'
-                )}
-              />
-            </Button>
-          )}
-        </div>
-
-        {hasChildren && isExpanded && (
-          <div className="space-y-1">
-            {item.children!.map((child) => (
-              <NavItem 
-                key={child.name} 
-                item={child} 
-                level={level + 1}
-                isMobile={isMobile}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    )
+  const isChildActive = (children?: NavigationItem[]) => {
+    return children?.some(child => isActive(child.href))
   }
 
   return (
     <>
-      {/* Desktop Navigation */}
-      <nav className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:bg-background">
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Logo */}
-          <div className="flex items-center h-16 px-4 border-b">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold">Contract Intelligence</h1>
-                <p className="text-xs text-muted-foreground">AI-Powered Platform</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation Items */}
-          <div className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
-            {navigationItems.map((item) => (
-              <NavItem key={item.name} item={item} />
-            ))}
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Activity className="h-4 w-4 text-green-500" />
-              <span>System Online</span>
-            </div>
-          </div>
+      {/* Mobile Menu Button */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="h-6 w-6 text-blue-600" />
+          <span className="font-semibold text-gray-900">Contract Intelligence</span>
         </div>
-      </nav>
-
-      {/* Mobile Navigation */}
-      <div className="lg:hidden">
-        {/* Mobile Header */}
-        <div className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between h-16 px-4 border-b bg-background">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-lg font-semibold">Contract Intelligence</h1>
-          </div>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </Button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" suppressHydrationWarning>
-            <div className="fixed inset-0 bg-black/20" onClick={() => setIsMobileMenuOpen(false)} />
-            <div className="fixed top-0 left-0 bottom-0 w-64 bg-background border-r shadow-lg" suppressHydrationWarning>
-              <div className="flex flex-col h-full">
-                {/* Mobile Header */}
-                <div className="flex items-center justify-between h-16 px-4 border-b">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                      <Sparkles className="h-5 w-5 text-white" />
-                    </div>
-                    <h1 className="text-lg font-semibold">Contract Intelligence</h1>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <X className="h-6 w-6" />
-                  </Button>
-                </div>
-
-                {/* Mobile Navigation Items */}
-                <div className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
-                  {navigationItems.map((item) => (
-                    <NavItem key={item.name} item={item} isMobile />
-                  ))}
-                </div>
-
-                {/* Mobile Footer */}
-                <div className="p-4 border-t">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Activity className="h-4 w-4 text-green-500" />
-                    <span>System Online</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? (
+            <X className="h-5 w-5" />
+          ) : (
+            <Menu className="h-5 w-5" />
+          )}
+        </Button>
       </div>
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed top-0 left-0 z-40 h-screen transition-transform bg-white border-r border-gray-200',
+          'lg:translate-x-0 w-64',
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
+        {/* Logo */}
+        <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-200">
+          <FileText className="h-6 w-6 text-blue-600" />
+          <span className="font-semibold text-gray-900">Contract Intelligence</span>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+          {navigationItems.map((item) => {
+            const hasChildren = item.children && item.children.length > 0
+            const isExpanded = expandedItems.includes(item.name)
+            const isItemActive = isActive(item.href)
+            const hasActiveChild = isChildActive(item.children)
+
+            return (
+              <div key={item.name}>
+                {hasChildren ? (
+                  <>
+                    <button
+                      onClick={() => toggleExpanded(item.name)}
+                      className={cn(
+                        'w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        (isItemActive || hasActiveChild)
+                          ? 'bg-blue-50 text-blue-700'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <span>{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {item.badge && (
+                          <Badge variant="secondary" className="text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Children */}
+                    {isExpanded && (
+                      <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 pl-4">
+                        {item.children.map((child) => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
+                              isActive(child.href)
+                                ? 'bg-blue-50 text-blue-700 font-medium'
+                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            )}
+                          >
+                            <child.icon className="h-4 w-4 flex-shrink-0" />
+                            <span>{child.name}</span>
+                            {child.badge && (
+                              <Badge variant="secondary" className="ml-auto text-xs">
+                                {child.badge}
+                              </Badge>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      isItemActive
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    )}
+                  >
+                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <span>{item.name}</span>
+                    {item.badge && (
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Link>
+                )}
+              </div>
+            )
+          })}
+        </nav>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 p-4">
+          <div className="text-xs text-gray-500 space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Version</span>
+              <span className="font-medium">2.0.0</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Status</span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 bg-green-500 rounded-full"></span>
+                <span className="font-medium text-green-600">Online</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
     </>
   )
 }

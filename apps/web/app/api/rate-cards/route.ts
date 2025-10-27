@@ -1,140 +1,84 @@
-import { NextRequest, NextResponse } from "next/server";
-import { rateCardManagementService } from "@/lib/data-orchestration";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { RateCardEntryService } from '@/packages/data-orchestration/src/services/rate-card-entry.service';
 
+const rateCardService = new RateCardEntryService(prisma);
+
+/**
+ * GET /api/rate-cards
+ * List rate card entries with filtering and pagination
+ */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const supplier = searchParams.get("supplier");
-    const includeAnalytics = searchParams.get("analytics") === "true";
-    const tenantId = "demo"; // TODO: Get from auth session
+    const searchParams = request.nextUrl.searchParams;
+    
+    // TODO: Get tenantId from session/auth
+    const tenantId = searchParams.get('tenantId') || 'default-tenant';
 
-    // Get rate cards using real service
-    const result = await rateCardManagementService.getRateCards(tenantId, {
-      supplierName: supplier || undefined,
-    });
-
-    if (!result.success || !result.data) {
-      return NextResponse.json(
-        { error: "Failed to fetch rate cards" },
-        { status: 500 }
-      );
-    }
-
-    const rateCards = result.data;
-
-    let response: any = {
-      rateCards,
-      total: rateCards.length,
+    // Parse filters
+    const filters = {
+      supplierId: searchParams.get('supplierId') || undefined,
+      supplierName: searchParams.get('supplierName') || undefined,
+      roleStandardized: searchParams.get('roleStandardized') || undefined,
+      seniority: searchParams.get('seniority') as any || undefined,
+      lineOfService: searchParams.get('lineOfService') || undefined,
+      country: searchParams.get('country') || undefined,
+      region: searchParams.get('region') || undefined,
+      minRate: searchParams.get('minRate') ? parseFloat(searchParams.get('minRate')!) : undefined,
+      maxRate: searchParams.get('maxRate') ? parseFloat(searchParams.get('maxRate')!) : undefined,
+      effectiveDateFrom: searchParams.get('effectiveDateFrom') ? new Date(searchParams.get('effectiveDateFrom')!) : undefined,
+      effectiveDateTo: searchParams.get('effectiveDateTo') ? new Date(searchParams.get('effectiveDateTo')!) : undefined,
+      source: searchParams.get('source') as any || undefined,
     };
 
-    if (includeAnalytics && rateCards.length > 0) {
-      // Calculate analytics from real data
-      const totalRoles = rateCards.reduce(
-        (sum: number, rc: any) => sum + (rc.roles?.length || 0),
-        0
-      );
-      const avgConfidence =
-        rateCards.reduce(
-          (sum: number, rc: any) => sum + (rc.dataQuality?.score || 0),
-          0
-        ) / rateCards.length;
+    // Parse pagination
+    const pagination = {
+      page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
+      pageSize: searchParams.get('pageSize') ? parseInt(searchParams.get('pageSize')!) : 50,
+      sortBy: searchParams.get('sortBy') || 'createdAt',
+      sortOrder: (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc',
+    };
 
-      response.analytics = {
-        totalSavingsOpportunity: 0, // TODO: Calculate from benchmarking
-        topOpportunities: [], // TODO: Get from benchmarking service
-        avgConfidence,
-        categoriesAnalyzed: totalRoles,
-        lastUpdated: new Date().toISOString(),
-      };
-    }
+    const result = await rateCardService.listEntries(tenantId, filters, pagination);
 
-    return NextResponse.json(response);
+    return NextResponse.json(result);
   } catch (error) {
-    console.error("Rate cards API error:", error);
+    console.error('Error listing rate cards:', error);
     return NextResponse.json(
-      { error: "Failed to fetch rate cards" },
+      { error: 'Failed to list rate cards', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
 }
 
+/**
+ * POST /api/rate-cards
+ * Create a new rate card entry
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const tenantId = "demo"; // TODO: Get from auth session
+    
+    // TODO: Get tenantId and userId from session/auth
+    const tenantId = body.tenantId || 'default-tenant';
+    const userId = body.userId || 'system';
 
-    // Check if this is a manual entry or contract extraction
-    if (body.supplierName && body.roles) {
-      // Manual rate card entry
-      const { supplierName, clientName, currency, validFrom, validTo, roles } =
-        body;
-
-      // Validate required fields
-      if (!supplierName || !roles || roles.length === 0) {
-        return NextResponse.json(
-          { error: "Supplier name and at least one role are required" },
-          { status: 400 }
-        );
-      }
-
-      // Validate roles
-      for (const role of roles) {
-        if (!role.role || !role.level || !role.location || !role.dailyRate) {
-          return NextResponse.json(
-            {
-              error:
-                "All role fields (role, level, location, dailyRate) are required",
-            },
-            { status: 400 }
-          );
-        }
-      }
-
-      // Create rate card using real service
-      const result = await rateCardManagementService.createRateCard(tenantId, {
-        supplierName,
-        effectiveDate: validFrom ? new Date(validFrom) : new Date(),
-        expiryDate: validTo ? new Date(validTo) : undefined,
-        currency: currency || "CHF",
-        roles: roles.map((role: any) => ({
-          roleName: role.role,
-          level: role.level,
-          location: role.location,
-          dailyRate: role.dailyRate,
-          hourlyRate: role.dailyRate / 8, // Assuming 8 hour day
-        })),
-      });
-
-      if (!result.success || !result.data) {
-        return NextResponse.json(
-          { error: "Failed to create rate card" },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        rateCard: result.data,
-        message: "Rate card created successfully",
-      });
-    } else {
-      // Contract extraction - use rate card intelligence service
-      const { contractId, supplier } = body;
-
-      // TODO: Implement real contract extraction using AI service
-      // For now, return a placeholder response
-      return NextResponse.json({
-        success: true,
-        message: "Rate card extraction from contract is not yet implemented",
-        contractId,
-        supplier,
-      });
+    // Convert date strings to Date objects
+    if (body.effectiveDate) {
+      body.effectiveDate = new Date(body.effectiveDate);
     }
+    if (body.expiryDate) {
+      body.expiryDate = new Date(body.expiryDate);
+    }
+
+    const entry = await rateCardService.createEntry(body, tenantId, userId);
+
+    return NextResponse.json(entry, { status: 201 });
   } catch (error) {
-    console.error("Rate card API error:", error);
+    console.error('Error creating rate card:', error);
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { error: 'Failed to create rate card', details: error instanceof Error ? error.message : String(error) },
+      { status: 400 }
     );
   }
 }

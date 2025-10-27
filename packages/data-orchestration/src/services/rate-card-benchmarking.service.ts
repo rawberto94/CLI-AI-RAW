@@ -120,6 +120,61 @@ export interface SavingsOpportunity {
   negotiationPoints?: string[];
 }
 
+export interface BestRateCriteria {
+  roleStandardized: string;
+  seniority: string;
+  country: string;
+  lineOfService?: string;
+  tenantId?: string;
+}
+
+export interface BestRateResult {
+  bestRate: number;
+  bestRateEntry: {
+    id: string;
+    supplierName: string;
+    supplierId: string;
+    effectiveDate: Date;
+    expiryDate?: Date | null;
+    roleOriginal: string;
+    country: string;
+    region: string;
+    lineOfService: string;
+  };
+  cohortSize: number;
+  confidence: number;
+  averageRate: number;
+  medianRate: number;
+  savingsVsAverage: number;
+  savingsVsMedian: number;
+}
+
+export interface SavingsVsBestResult {
+  currentRate: number;
+  bestRate: number;
+  dailySavings: number;
+  savingsPercentage: number;
+  annualSavings?: number;
+  recommendation: string;
+  bestRateSupplier: string;
+  bestRateEffectiveDate: Date;
+  confidence: number;
+}
+
+export interface BestRateChange {
+  roleStandardized: string;
+  seniority: string;
+  country: string;
+  lineOfService: string;
+  previousBestRate: number;
+  newBestRate: number;
+  changeAmount: number;
+  changePercentage: number;
+  newBestSupplier: string;
+  detectedAt: Date;
+  affectedRateCards: number;
+}
+
 // ============================================================================
 // Rate Card Benchmarking Engine
 // ============================================================================
@@ -980,6 +1035,271 @@ export class RateCardBenchmarkingEngine {
         },
       });
     }
+  }
+
+  // ==========================================================================
+  // Best Rate Tracking
+  // ==========================================================================
+
+  /**
+   * Get the best (lowest) rate for a specific role-geography-seniority combination
+   */
+  async getBestRate(criteria: BestRateCriteria): Promise<BestRateResult> {
+    const periodStart = subMonths(new Date(), 12); // Look at last 12 months
+
+    const where: Prisma.RateCardEntryWhereInput = {
+      roleStandardized: criteria.roleStandardized,
+      seniority: criteria.seniority as any,
+      country: criteria.country,
+      effectiveDate: { gte: periodStart },
+    };
+
+    if (criteria.lineOfService) {
+      where.lineOfService = criteria.lineOfService;
+    }
+
+    if (criteria.tenantId) {
+      where.tenantId = criteria.tenantId;
+    }
+
+    // Get all matching rates
+    const allRates = await this.prisma.rateCardEntry.findMany({
+      where,
+      select: {
+        id: true,
+        dailyRateUSD: true,
+        supplierName: true,
+        supplierId: true,
+        effectiveDate: true,
+        expiryDate: true,
+        roleOriginal: true,
+        country: true,
+        region: true,
+        lineOfService: true,
+      },
+      orderBy: { dailyRateUSD: 'asc' },
+    });
+
+    if (allRates.length === 0) {
+      throw new Error('No rates found matching criteria');
+    }
+
+    // Get the best (lowest) rate
+    const bestRateEntry = allRates[0];
+    const bestRate = Number(bestRateEntry.dailyRateUSD);
+
+    // Calculate statistics for the cohort
+    const rateValues = allRates.map(r => Number(r.dailyRateUSD));
+    const averageRate = rateValues.reduce((sum, val) => sum + val, 0) / rateValues.length;
+    const sortedRates = [...rateValues].sort((a, b) => a - b);
+    const medianRate = this.percentile(sortedRates, 50);
+
+    // Calculate confidence based on cohort size
+    const confidence = Math.min(allRates.length / 20, 1); // Max confidence at 20+ data points
+
+    return {
+      bestRate,
+      bestRateEntry: {
+        id: bestRateEntry.id,
+        supplierName: bestRateEntry.supplierName,
+        supplierId: bestRateEntry.supplierId,
+        effectiveDate: bestRateEntry.effectiveDate,
+        expiryDate: bestRateEntry.expiryDate,
+        roleOriginal: bestRateEntry.roleOriginal,
+        country: bestRateEntry.country,
+        region: bestRateEntry.region,
+        lineOfService: bestRateEntry.lineOfService,
+      },
+      cohortSize: allRates.length,
+      confidence,
+      averageRate,
+      medianRate,
+      savingsVsAverage: averageRate - bestRate,
+      savingsVsMedian: medianRate - bestRate,
+    };
+  }
+
+  /**
+   * Calculate savings vs best rate for a specific rate card entry
+   */
+  async calculateSavingsVsBest(rateCardEntryId: string): Promise<SavingsVsBestResult> {
+    // Get the rate card entry
+    const rateCard = await this.prisma.rateCardEntry.findUnique({
+      where: { id: rateCardEntryId },
+    });
+
+    if (!rateCard) {
+      throw new Error(`Rate card entry not found: ${rateCardEntryId}`);
+    }
+
+    // Get best rate for this combination
+    const bestRateResult = await this.getBestRate({
+      roleStandardized: rateCard.roleStandardized,
+      seniority: rateCard.seniority,
+      country: rateCard.country,
+      lineOfService: rateCard.lineOfService,
+      tenantId: rateCard.tenantId,
+    });
+
+    const currentRate = Number(rateCard.dailyRateUSD);
+    const bestRate = bestRateResult.bestRate;
+    const dailySavings = Math.max(0, currentRate - bestRate);
+    const savingsPercentage = bestRate > 0 ? (dailySavings / bestRate) * 100 : 0;
+
+    // Calculate annual savings if volume is known
+    const annualSavings = rateCard.volumeCommitted 
+      ? dailySavings * rateCard.volumeCommitted 
+      : undefined;
+
+    // Generate recommendation
+    let recommendation: string;
+    if (dailySavings === 0) {
+      recommendation = `This is the best rate in the market! No savings opportunity identified.`;
+    } else if (savingsPercentage < 5) {
+      recommendation = `Rate is competitive (within 5% of best rate). Minor savings potential of ${dailySavings.toFixed(0)}/day.`;
+    } else if (savingsPercentage < 15) {
+      recommendation = `Moderate savings opportunity. Target rate of ${bestRate.toFixed(0)}/day could save ${dailySavings.toFixed(0)}/day (${savingsPercentage.toFixed(1)}%).`;
+    } else {
+      recommendation = `Significant savings opportunity! Best market rate is ${bestRate.toFixed(0)}/day vs current ${currentRate.toFixed(0)}/day. Potential savings: ${dailySavings.toFixed(0)}/day (${savingsPercentage.toFixed(1)}%).`;
+    }
+
+    return {
+      currentRate,
+      bestRate,
+      dailySavings,
+      savingsPercentage,
+      annualSavings,
+      recommendation,
+      bestRateSupplier: bestRateResult.bestRateEntry.supplierName,
+      bestRateEffectiveDate: bestRateResult.bestRateEntry.effectiveDate,
+      confidence: bestRateResult.confidence,
+    };
+  }
+
+  /**
+   * Track best rate changes over time
+   * Detects when a new best rate appears for any role-geography combination
+   */
+  async trackBestRateChanges(tenantId: string): Promise<BestRateChange[]> {
+    const changes: BestRateChange[] = [];
+
+    // Get all unique role-geography-seniority combinations for the tenant
+    const uniqueCombinations = await this.prisma.rateCardEntry.findMany({
+      where: { tenantId },
+      distinct: ['roleStandardized', 'seniority', 'country', 'lineOfService'],
+      select: {
+        roleStandardized: true,
+        seniority: true,
+        country: true,
+        lineOfService: true,
+      },
+    });
+
+    for (const combo of uniqueCombinations) {
+      try {
+        // Get current best rate
+        const currentBest = await this.getBestRate({
+          roleStandardized: combo.roleStandardized,
+          seniority: combo.seniority,
+          country: combo.country,
+          lineOfService: combo.lineOfService,
+          tenantId,
+        });
+
+        // Get best rate from 30 days ago
+        const thirtyDaysAgo = subMonths(new Date(), 1);
+        const previousRates = await this.prisma.rateCardEntry.findMany({
+          where: {
+            tenantId,
+            roleStandardized: combo.roleStandardized,
+            seniority: combo.seniority as any,
+            country: combo.country,
+            lineOfService: combo.lineOfService,
+            effectiveDate: { lte: thirtyDaysAgo },
+          },
+          select: { dailyRateUSD: true },
+          orderBy: { dailyRateUSD: 'asc' },
+          take: 1,
+        });
+
+        if (previousRates.length > 0) {
+          const previousBestRate = Number(previousRates[0].dailyRateUSD);
+          const changeAmount = currentBest.bestRate - previousBestRate;
+          const changePercentage = (changeAmount / previousBestRate) * 100;
+
+          // Only report if there's a significant change (>2%)
+          if (Math.abs(changePercentage) > 2) {
+            // Count affected rate cards
+            const affectedCount = await this.prisma.rateCardEntry.count({
+              where: {
+                tenantId,
+                roleStandardized: combo.roleStandardized,
+                seniority: combo.seniority as any,
+                country: combo.country,
+                lineOfService: combo.lineOfService,
+                dailyRateUSD: { gt: currentBest.bestRate },
+              },
+            });
+
+            changes.push({
+              roleStandardized: combo.roleStandardized,
+              seniority: combo.seniority,
+              country: combo.country,
+              lineOfService: combo.lineOfService,
+              previousBestRate,
+              newBestRate: currentBest.bestRate,
+              changeAmount,
+              changePercentage,
+              newBestSupplier: currentBest.bestRateEntry.supplierName,
+              detectedAt: new Date(),
+              affectedRateCards: affectedCount,
+            });
+          }
+        }
+      } catch (error) {
+        // Skip combinations with insufficient data
+        console.error(`Error tracking best rate for ${combo.roleStandardized}:`, error);
+      }
+    }
+
+    return changes;
+  }
+
+  /**
+   * Get all best rates for a tenant (one per unique combination)
+   */
+  async getAllBestRates(tenantId: string): Promise<BestRateResult[]> {
+    // Get all unique role-geography-seniority combinations
+    const uniqueCombinations = await this.prisma.rateCardEntry.findMany({
+      where: { tenantId },
+      distinct: ['roleStandardized', 'seniority', 'country', 'lineOfService'],
+      select: {
+        roleStandardized: true,
+        seniority: true,
+        country: true,
+        lineOfService: true,
+      },
+    });
+
+    const bestRates: BestRateResult[] = [];
+
+    for (const combo of uniqueCombinations) {
+      try {
+        const bestRate = await this.getBestRate({
+          roleStandardized: combo.roleStandardized,
+          seniority: combo.seniority,
+          country: combo.country,
+          lineOfService: combo.lineOfService,
+          tenantId,
+        });
+        bestRates.push(bestRate);
+      } catch (error) {
+        // Skip combinations with no data
+        console.error(`Error getting best rate for ${combo.roleStandardized}:`, error);
+      }
+    }
+
+    return bestRates;
   }
 
   // ==========================================================================
