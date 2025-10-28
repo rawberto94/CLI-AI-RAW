@@ -45,13 +45,13 @@ const navigationItems: NavigationItem[] = [
     name: 'Dashboard',
     href: '/',
     icon: LayoutDashboard,
-    description: 'Overview and key metrics'
+    description: 'Executive overview'
   },
   {
     name: 'Contracts',
     href: '/contracts',
     icon: FileText,
-    description: 'Manage contracts',
+    description: 'Contract management',
     children: [
       {
         name: 'All Contracts',
@@ -73,10 +73,60 @@ const navigationItems: NavigationItem[] = [
         badge: 'Live'
       },
       {
-        name: 'Jobs',
-        href: '/jobs',
+        name: 'Bulk Operations',
+        href: '/contracts/bulk',
         icon: Briefcase,
-        description: 'Processing jobs'
+        description: 'Bulk actions'
+      }
+    ]
+  },
+  {
+    name: 'Rate Cards',
+    href: '/rate-cards',
+    icon: CreditCard,
+    description: 'Rate benchmarking & analysis',
+    children: [
+      {
+        name: 'Dashboard',
+        href: '/rate-cards/dashboard',
+        icon: LayoutDashboard,
+        description: 'Executive dashboard'
+      },
+      {
+        name: 'All Entries',
+        href: '/rate-cards/entries',
+        icon: FileText,
+        description: 'View all rate cards'
+      },
+      {
+        name: 'Benchmarking',
+        href: '/rate-cards/benchmarking',
+        icon: Target,
+        description: 'Rate benchmarks'
+      },
+      {
+        name: 'Suppliers',
+        href: '/rate-cards/suppliers',
+        icon: Users,
+        description: 'Supplier scorecards'
+      },
+      {
+        name: 'Opportunities',
+        href: '/rate-cards/opportunities',
+        icon: TrendingUp,
+        description: 'Savings opportunities'
+      },
+      {
+        name: 'Market Intelligence',
+        href: '/rate-cards/market-intelligence',
+        icon: BarChart3,
+        description: 'Market insights'
+      },
+      {
+        name: 'Baselines',
+        href: '/rate-cards/baselines',
+        icon: Target,
+        description: 'Target rates'
       }
     ]
   },
@@ -84,7 +134,7 @@ const navigationItems: NavigationItem[] = [
     name: 'Analytics',
     href: '/analytics',
     icon: BarChart3,
-    description: 'Insights and reports',
+    description: 'Business intelligence',
     children: [
       {
         name: 'Overview',
@@ -93,10 +143,10 @@ const navigationItems: NavigationItem[] = [
         description: 'Analytics hub'
       },
       {
-        name: 'Artifacts',
-        href: '/analytics/artifacts',
-        icon: FileBarChart,
-        description: 'Artifact analytics'
+        name: 'Procurement Intelligence',
+        href: '/analytics/procurement',
+        icon: Briefcase,
+        description: 'Procurement insights'
       },
       {
         name: 'Cost Savings',
@@ -105,124 +155,36 @@ const navigationItems: NavigationItem[] = [
         description: 'Savings opportunities'
       },
       {
-        name: 'Renewals',
+        name: 'Renewals Radar',
         href: '/analytics/renewals',
         icon: Calendar,
         description: 'Contract renewals'
       },
       {
-        name: 'Suppliers',
+        name: 'Supplier Performance',
         href: '/analytics/suppliers',
         icon: Users,
         description: 'Supplier analytics'
       },
       {
-        name: 'Negotiation',
+        name: 'Negotiation Prep',
         href: '/analytics/negotiation',
         icon: TrendingUp,
-        description: 'Negotiation prep'
-      },
-      {
-        name: 'Procurement',
-        href: '/analytics/procurement',
-        icon: Briefcase,
-        description: 'Procurement intelligence'
+        description: 'Negotiation insights'
       }
     ]
   },
   {
-    name: 'Tools',
+    name: 'Search',
     href: '/search',
     icon: Search,
-    description: 'Search and tools',
-    children: [
-      {
-        name: 'Search',
-        href: '/search',
-        icon: Search,
-        description: 'Find contracts'
-      },
-      {
-        name: 'Import',
-        href: '/import',
-        icon: Import,
-        description: 'Import data'
-      },
-      {
-        name: 'Rate Cards',
-        href: '/rate-cards/dashboard',
-        icon: CreditCard,
-        description: 'Rate card management',
-        children: [
-          {
-            name: 'Dashboard',
-            href: '/rate-cards/dashboard',
-            icon: LayoutDashboard,
-            description: 'Executive dashboard'
-          },
-          {
-            name: 'All Entries',
-            href: '/rate-cards/entries',
-            icon: FileText,
-            description: 'View all rate cards'
-          },
-          {
-            name: 'Upload CSV',
-            href: '/rate-cards/upload',
-            icon: Upload,
-            description: 'Bulk import rates'
-          },
-          {
-            name: 'Benchmarking',
-            href: '/rate-cards/benchmarking',
-            icon: Target,
-            description: 'Rate benchmarks'
-          },
-          {
-            name: 'Suppliers',
-            href: '/rate-cards/suppliers',
-            icon: Users,
-            description: 'Supplier scorecards'
-          },
-          {
-            name: 'Opportunities',
-            href: '/rate-cards/opportunities',
-            icon: TrendingUp,
-            description: 'Savings opportunities'
-          },
-          {
-            name: 'Market Intelligence',
-            href: '/rate-cards/market-intelligence',
-            icon: BarChart3,
-            description: 'Market insights'
-          },
-          {
-            name: 'Baselines',
-            href: '/rate-cards/baselines',
-            icon: Target,
-            description: 'Target rates'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    name: 'Compliance',
-    href: '/compliance',
-    icon: Shield,
-    description: 'Compliance tracking'
-  },
-  {
-    name: 'Risk',
-    href: '/risk',
-    icon: AlertTriangle,
-    description: 'Risk management'
+    description: 'Find anything'
   },
   {
     name: 'Settings',
     href: '/settings',
     icon: Settings,
-    description: 'System settings'
+    description: 'Configuration'
   }
 ]
 
