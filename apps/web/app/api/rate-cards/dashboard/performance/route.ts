@@ -7,15 +7,14 @@ export async function GET(request: NextRequest) {
     const tenantId = searchParams.get('tenantId') || 'default-tenant';
 
     // Get all benchmarks for performance calculations
-    // @ts-ignore - Model will be added to schema
-    const benchmarks = await prisma.benchmarkSnapshot?.findMany({
+    const benchmarks = await prisma.benchmarkSnapshot.findMany({
       where: { tenantId },
       select: {
         rateValue: true,
         marketMedian: true,
         percentileRank: true,
       },
-    }) || [];
+    });
 
     const totalRates = benchmarks.length;
 
@@ -32,34 +31,31 @@ export async function GET(request: NextRequest) {
     const percentTopQuartile = totalRates > 0 ? (topQuartile / totalRates) * 100 : 0;
 
     // Get negotiated rates
-    // @ts-ignore - Model will be added to schema
-    const negotiatedRates = await prisma.rateCardEntry?.count({
+    const negotiatedRates = await prisma.rateCardEntry.count({
       where: {
         tenantId,
         isNegotiated: true,
       },
-    }) || 0;
+    });
 
-    // @ts-ignore - Model will be added to schema
-    const totalRateCards = await prisma.rateCardEntry?.count({
+    const totalRateCards = await prisma.rateCardEntry.count({
       where: { tenantId },
-    }) || 0;
+    });
 
     const percentNegotiated = totalRateCards > 0 
       ? (negotiatedRates / totalRateCards) * 100 
       : 0;
 
     // Calculate average savings per rate
-    // @ts-ignore - Model will be added to schema
-    const opportunities = await prisma.rateSavingsOpportunity?.findMany({
+    const opportunities = await prisma.rateSavingsOpportunity.findMany({
       where: { tenantId },
       select: {
         annualSavingsPotential: true,
       },
-    }) || [];
+    });
 
     const totalSavings = opportunities.reduce(
-      (sum, opp) => sum + (opp.annualSavingsPotential || 0),
+      (sum, opp) => sum + Number(opp.annualSavingsPotential || 0),
       0
     );
 

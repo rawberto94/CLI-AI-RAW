@@ -272,7 +272,7 @@ export default function MainNavigation() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-40 h-screen transition-transform bg-white border-r border-gray-200',
+          'fixed top-0 left-0 z-50 h-screen transition-transform bg-white border-r border-gray-200 shadow-lg',
           'lg:translate-x-0 w-64',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}

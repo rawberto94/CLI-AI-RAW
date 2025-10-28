@@ -20,13 +20,13 @@ interface BenchmarkCohortCriteria {
 }
 
 interface CohortInformationProps {
-  cohortDefinition: BenchmarkCohortCriteria;
-  sampleSize: number;
-  competitorCount: number;
-  periodStart: Date;
-  periodEnd: Date;
-  confidence: number;
-  calculatedAt: Date;
+  cohortDefinition?: BenchmarkCohortCriteria;
+  sampleSize?: number;
+  competitorCount?: number;
+  periodStart?: Date;
+  periodEnd?: Date;
+  confidence?: number;
+  calculatedAt?: Date;
 }
 
 // ============================================================================
@@ -209,15 +209,31 @@ function MetricCard({
 // Main Cohort Information Component
 // ============================================================================
 
-export function CohortInformation({
-  cohortDefinition,
-  sampleSize,
-  competitorCount,
-  periodStart,
-  periodEnd,
-  confidence,
-  calculatedAt,
-}: CohortInformationProps) {
+// Mock/Default data
+const defaultCohortDefinition: BenchmarkCohortCriteria = {
+  roleStandardized: 'Senior Software Developer',
+  seniority: 'SENIOR',
+  country: 'United States',
+  region: 'North America',
+  lineOfService: 'Technology Consulting',
+  supplierTier: 'TIER_1',
+  periodMonths: 12,
+};
+
+const defaultPeriodStart = new Date('2024-10-28');
+const defaultPeriodEnd = new Date('2025-10-28');
+
+export function CohortInformation(props: CohortInformationProps = {}) {
+  const {
+    cohortDefinition = defaultCohortDefinition,
+    sampleSize = 45,
+    competitorCount = 12,
+    periodStart = defaultPeriodStart,
+    periodEnd = defaultPeriodEnd,
+    confidence = 0.85,
+    calculatedAt = new Date(),
+  } = props || {};
+  
   const confidenceInfo = getConfidenceLevel(confidence);
   const sampleQuality = getSampleSizeQuality(sampleSize);
   const insights = getDataQualityInsights(sampleSize, competitorCount, confidence);

@@ -19,9 +19,9 @@ interface TrendAnalysis {
 }
 
 interface TrendVisualizationProps {
-  trendAnalysis: TrendAnalysis;
-  currentRate: number;
-  roleStandardized: string;
+  trendAnalysis?: TrendAnalysis;
+  currentRate?: number;
+  roleStandardized?: string;
   historicalData?: Array<{
     date: Date;
     averageRate: number;
@@ -286,12 +286,32 @@ function SimpleHistoricalChart({
 // Main Trend Visualization Component
 // ============================================================================
 
-export function TrendVisualization({
-  trendAnalysis,
-  currentRate,
-  roleStandardized,
-  historicalData,
-}: TrendVisualizationProps) {
+// Mock/Default data
+const defaultTrendAnalysis: TrendAnalysis = {
+  direction: 'INCREASING',
+  monthOverMonth: 2.3,
+  quarterOverQuarter: 5.8,
+  yearOverYear: 12.4,
+  confidence: 0.85,
+  dataPoints: 24,
+};
+
+const defaultHistoricalData = [
+  { date: new Date('2024-01-01'), averageRate: 750, sampleSize: 42 },
+  { date: new Date('2024-04-01'), averageRate: 780, sampleSize: 45 },
+  { date: new Date('2024-07-01'), averageRate: 805, sampleSize: 48 },
+  { date: new Date('2024-10-01'), averageRate: 825, sampleSize: 45 },
+  { date: new Date('2025-01-01'), averageRate: 850, sampleSize: 43 },
+];
+
+export function TrendVisualization(props: TrendVisualizationProps = {}) {
+  const {
+    trendAnalysis = defaultTrendAnalysis,
+    currentRate = 920,
+    roleStandardized = 'Senior Software Developer',
+    historicalData = defaultHistoricalData,
+  } = props || {};
+  
   const TrendIcon = getTrendIcon(trendAnalysis.direction);
   const forecast = generateForecast(currentRate, trendAnalysis);
 

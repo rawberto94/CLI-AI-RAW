@@ -34,10 +34,10 @@ interface MarketPosition {
 }
 
 interface BenchmarkCardProps {
-  statistics: BenchmarkStatistics;
-  marketPosition: MarketPosition;
-  competitorCount: number;
-  calculatedAt: Date;
+  statistics?: BenchmarkStatistics;
+  marketPosition?: MarketPosition;
+  competitorCount?: number;
+  calculatedAt?: Date;
 }
 
 // ============================================================================
@@ -176,13 +176,40 @@ function PercentileDistributionChart({
 // Main Benchmark Card Component
 // ============================================================================
 
-export function BenchmarkCard({
-  statistics,
-  marketPosition,
-  competitorCount,
-  calculatedAt,
-}: BenchmarkCardProps) {
-  const isLowConfidence = statistics.sampleSize < 10;
+// Mock/Default data for when no props are provided
+const defaultStatistics: BenchmarkStatistics = {
+  sampleSize: 45,
+  mean: 850,
+  median: 825,
+  mode: 800,
+  standardDeviation: 125,
+  min: 550,
+  max: 1200,
+  p10: 650,
+  p25: 725,
+  p50: 825,
+  p75: 950,
+  p90: 1050,
+  p95: 1125,
+};
+
+const defaultMarketPosition: MarketPosition = {
+  rate: 920,
+  percentileRank: 68,
+  position: 'ABOVE_AVERAGE',
+  deviation: 95,
+  deviationPercent: 11.5,
+};
+
+export function BenchmarkCard(props: BenchmarkCardProps = {}) {
+  const {
+    statistics = defaultStatistics,
+    marketPosition = defaultMarketPosition,
+    competitorCount = 45,
+    calculatedAt = new Date(),
+  } = props || {};
+  
+  const isLowConfidence = statistics?.sampleSize < 10;
 
   return (
     <Card className="w-full">

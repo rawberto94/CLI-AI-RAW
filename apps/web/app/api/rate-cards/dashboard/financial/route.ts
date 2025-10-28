@@ -7,58 +7,55 @@ export async function GET(request: NextRequest) {
     const tenantId = searchParams.get('tenantId') || 'default-tenant';
 
     // Calculate total annual spend on rates
-    // @ts-ignore - Model will be added to schema
-    const rateCards = await prisma.rateCardEntry?.findMany({
+    const rateCards = await prisma.rateCardEntry.findMany({
       where: { tenantId },
       select: {
         dailyRateUSD: true,
         volumeCommitted: true,
       },
-    }) || [];
+    });
 
     const totalAnnualSpend = rateCards.reduce((sum, rate) => {
       const volume = rate.volumeCommitted || 0;
-      const dailyRate = rate.dailyRateUSD || 0;
+      const dailyRate = Number(rate.dailyRateUSD || 0);
       // Assuming 220 working days per year
       return sum + (dailyRate * volume * 220);
     }, 0);
 
     // Get total savings identified from opportunities
-    // @ts-ignore - Model will be added to schema
-    const opportunities = await prisma.rateSavingsOpportunity?.findMany({
+    const opportunities = await prisma.rateSavingsOpportunity.findMany({
       where: { tenantId },
       select: {
         annualSavingsPotential: true,
         status: true,
         actualSavingsRealized: true,
       },
-    }) || [];
+    });
 
     const totalSavingsIdentified = opportunities.reduce(
-      (sum, opp) => sum + (opp.annualSavingsPotential || 0),
+      (sum, opp) => sum + Number(opp.annualSavingsPotential || 0),
       0
     );
 
     const totalSavingsRealized = opportunities.reduce(
-      (sum, opp) => sum + (opp.actualSavingsRealized || 0),
+      (sum, opp) => sum + Number(opp.actualSavingsRealized || 0),
       0
     );
 
     // Calculate average rate vs market
-    // @ts-ignore - Model will be added to schema
-    const benchmarks = await prisma.benchmarkSnapshot?.findMany({
+    const benchmarks = await prisma.benchmarkSnapshot.findMany({
       where: { tenantId },
       select: {
         rateValue: true,
         marketMedian: true,
       },
-    }) || [];
+    });
 
     let avgRateVsMarket = 0;
     if (benchmarks.length > 0) {
       const totalDiff = benchmarks.reduce((sum, b) => {
         if (b.marketMedian && b.rateValue) {
-          const diff = ((b.rateValue - b.marketMedian) / b.marketMedian) * 100;
+          const diff = ((Number(b.rateValue) - Number(b.marketMedian)) / Number(b.marketMedian)) * 100;
           return sum + diff;
         }
         return sum;

@@ -7,8 +7,7 @@ export async function GET(request: NextRequest) {
     const tenantId = searchParams.get('tenantId') || 'default-tenant';
 
     // Get rate inflation by role category
-    // @ts-ignore - Model will be added to schema
-    const ratesByCategory = await prisma.rateCardEntry?.findMany({
+    const ratesByCategory = await prisma.rateCardEntry.findMany({
       where: { tenantId },
       select: {
         roleCategory: true,
@@ -16,7 +15,7 @@ export async function GET(request: NextRequest) {
         effectiveDate: true,
       },
       orderBy: { effectiveDate: 'asc' },
-    }) || [];
+    });
 
     // Group by role category and calculate trends
     const categoryTrends: Record<string, any> = {};
@@ -66,28 +65,27 @@ export async function GET(request: NextRequest) {
     });
 
     // Get supplier competitiveness trends
-    // @ts-ignore - Model will be added to schema
-    const supplierBenchmarks = await prisma.supplierBenchmark?.findMany({
+    const supplierBenchmarks = await prisma.supplierBenchmark.findMany({
       where: { tenantId },
       select: {
-        supplierName: true,
+        supplierId: true,
         competitivenessScore: true,
-        avgRateVsMarket: true,
+        averageRate: true,
+        marketAverage: true,
       },
       orderBy: { competitivenessScore: 'desc' },
       take: 10,
-    }) || [];
+    });
 
     // Get savings pipeline (opportunities by status)
-    // @ts-ignore - Model will be added to schema
-    const savingsPipeline = await prisma.rateSavingsOpportunity?.groupBy({
+    const savingsPipeline = await prisma.rateSavingsOpportunity.groupBy({
       by: ['status'],
       where: { tenantId },
       _sum: {
         annualSavingsPotential: true,
       },
       _count: true,
-    }) || [];
+    });
 
     return NextResponse.json({
       rateInflationByCategory,

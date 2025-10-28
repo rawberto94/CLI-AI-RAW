@@ -87,7 +87,7 @@ export default function ProcurementAnalyticsHub() {
       description: 'Market rate benchmarking and competitive analysis',
       icon: BarChart3,
       color: 'from-blue-500 to-indigo-600',
-      route: '/analytics/rate-intelligence',
+      route: '/rate-cards/benchmarking',
       features: [
         'Market benchmarks',
         'Rate trends',

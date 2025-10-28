@@ -34,10 +34,10 @@ interface BestRateComparison {
 }
 
 interface SavingsAnalysisSectionProps {
-  savingsAnalysis: SavingsAnalysis;
+  savingsAnalysis?: SavingsAnalysis;
   bestRateComparison?: BestRateComparison;
   volumeCommitted?: number;
-  roleStandardized: string;
+  roleStandardized?: string;
 }
 
 // ============================================================================
@@ -200,12 +200,39 @@ function SavingsCard({
 // Main Savings Analysis Section Component
 // ============================================================================
 
-export function SavingsAnalysisSection({
-  savingsAnalysis,
-  bestRateComparison,
-  volumeCommitted,
-  roleStandardized,
-}: SavingsAnalysisSectionProps) {
+// Mock/Default data
+const defaultSavingsAnalysis: SavingsAnalysis = {
+  currentRate: 920,
+  marketMedian: 825,
+  marketP25: 725,
+  marketP10: 650,
+  savingsToMedian: 95,
+  savingsToP25: 195,
+  savingsToP10: 270,
+  savingsPercentToMedian: 11.5,
+  savingsPercentToP25: 26.9,
+  savingsPercentToP10: 41.5,
+  annualSavings: 20900,
+  isAboveMarket: true,
+};
+
+const defaultBestRateComparison: BestRateComparison = {
+  bestRate: 650,
+  bestRateSupplier: 'TechStaff Solutions',
+  dailySavings: 270,
+  savingsPercentage: 41.5,
+  annualSavings: 59400,
+  recommendation: 'Consider negotiating with TechStaff Solutions for significant cost reduction',
+};
+
+export function SavingsAnalysisSection(props: SavingsAnalysisSectionProps = {}) {
+  const {
+    savingsAnalysis = defaultSavingsAnalysis,
+    bestRateComparison = defaultBestRateComparison,
+    volumeCommitted = 1,
+    roleStandardized = 'Senior Software Developer',
+  } = props || {};
+  
   const recommendations = generateRecommendations(
     savingsAnalysis,
     bestRateComparison,

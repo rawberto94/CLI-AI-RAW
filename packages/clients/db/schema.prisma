@@ -1375,6 +1375,10 @@ model BenchmarkSnapshot {
   cohortDefinition      Json
   cohortSize            Int
   
+  // Rate Values (for direct comparison in API routes)
+  rateValue             Decimal           @db.Decimal(10, 2)
+  marketMedian          Decimal           @db.Decimal(10, 2)
+  
   // Statistical Analysis
   average               Decimal           @db.Decimal(10, 2)
   median                Decimal           @db.Decimal(10, 2)
@@ -1461,52 +1465,52 @@ model MarketRateIntelligence {
 }
 
 model RateSavingsOpportunity {
-  id                    String              @id @default(cuid())
-  tenantId              String
-  rateCardEntryId       String
+  id                      String              @id @default(cuid())
+  tenantId                String
+  rateCardEntryId         String
   
   // Opportunity Details
-  title                 String
-  description           String
-  category              SavingsCategory
+  title                   String
+  description             String
+  category                SavingsCategory
   
   // Financial Impact
-  currentAnnualCost     Decimal             @db.Decimal(15, 2)
-  projectedAnnualCost   Decimal             @db.Decimal(15, 2)
-  annualSavings         Decimal             @db.Decimal(15, 2)
-  savingsPercentage     Decimal             @db.Decimal(5, 2)
+  currentAnnualCost       Decimal             @db.Decimal(15, 2)
+  projectedAnnualCost     Decimal             @db.Decimal(15, 2)
+  annualSavingsPotential  Decimal             @db.Decimal(15, 2)
+  savingsPercentage       Decimal             @db.Decimal(5, 2)
   
   // Effort & Risk
-  effort                EffortLevel
-  risk                  RiskLevel
-  confidence            Decimal             @db.Decimal(3, 2)
+  effort                  EffortLevel
+  risk                    RiskLevel
+  confidence              Decimal             @db.Decimal(3, 2)
   
   // Recommendations
-  recommendedAction     String
-  alternativeSuppliers  Json?
-  negotiationPoints     Json?
+  recommendedAction       String
+  alternativeSuppliers    Json?
+  negotiationPoints       Json?
   
   // Timeline
-  implementationTime    String?
-  expectedRealization   DateTime?
+  implementationTime      String?
+  expectedRealization     DateTime?
   
   // Status
-  status                OpportunityStatus   @default(IDENTIFIED)
-  assignedTo            String?
-  reviewedBy            String?
-  reviewedAt            DateTime?
-  implementedAt         DateTime?
+  status                  OpportunityStatus   @default(IDENTIFIED)
+  assignedTo              String?
+  reviewedBy              String?
+  reviewedAt              DateTime?
+  implementedAt           DateTime?
   
-  actualSavings         Decimal?            @db.Decimal(15, 2)
+  actualSavingsRealized   Decimal?            @db.Decimal(15, 2)
   
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
   
-  rateCardEntry         RateCardEntry       @relation(fields: [rateCardEntryId], references: [id])
+  rateCardEntry           RateCardEntry       @relation(fields: [rateCardEntryId], references: [id])
   
   @@index([tenantId])
   @@index([status])
-  @@index([annualSavings(sort: Desc)])
+  @@index([annualSavingsPotential(sort: Desc)])
   @@index([category])
   @@map("rate_savings_opportunities")
 }
