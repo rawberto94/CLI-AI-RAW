@@ -1,0 +1,846 @@
+openapi: 3.0.3
+info:
+  title: Rate Card Benchmarking API
+  description: |
+    Comprehensive REST API for Rate Card Benchmarking Engine with advanced analytics,
+    predictive forecasting, AI insights, and supplier intelligence.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: api-support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+  - url: https://staging-api.example.com/v1
+    description: Staging server
+  - url: http://localhost:3000/api
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Rate Cards
+    description: Rate card management and CRUD operations
+  - name: Benchmarking
+    description: Market benchmarking and analysis
+  - name: Forecasting
+    description: Predictive analytics and rate forecasting
+  - name: AI Insights
+    description: AI-powered insights and recommendations
+  - name: Clustering
+    description: Intelligent rate card clustering
+  - name: Suppliers
+    description: Supplier intelligence and analytics
+  - name: Currency
+    description: Multi-currency support and PPP adjustments
+  - name: Opportunities
+    description: Savings opportunities and recommendations
+  - name: Segments
+    description: Custom segments and advanced filtering
+  - name: Reports
+    description: Automated reporting and alerts
+
+paths:
+  /rate-cards:
+    get:
+      tags:
+        - Rate Cards
+      summary: List rate cards
+      description: Retrieve a paginated list of rate cards with optional filtering
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: roleStandardized
+          in: query
+          schema:
+            type: string
+        - name: country
+          in: query
+          schema:
+            type: string
+        - name: seniority
+          in: query
+          schema:
+            type: string
+            enum: [JUNIOR, MID, SENIOR, PRINCIPAL, PARTNER]
+        - name: supplierId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RateCard'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    post:
+      tags:
+        - Rate Cards
+      summary: Create rate card
+      description: Create a new rate card entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateCardCreate'
+      responses:
+        '201':
+          description: Rate card created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateCard'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /rate-cards/{id}:
+    get:
+      tags:
+        - Rate Cards
+      summary: Get rate card by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateCard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags:
+        - Rate Cards
+      summary: Update rate card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RateCardUpdate'
+      responses:
+        '200':
+          description: Rate card updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateCard'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags:
+        - Rate Cards
+      summary: Delete rate card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Rate card deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rate-cards/{id}/benchmark:
+    get:
+      tags:
+        - Benchmarking
+      summary: Get benchmark for rate card
+      description: Calculate market benchmark for a specific rate card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Benchmark calculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Benchmark'
+
+  /rate-cards/forecasts:
+    get:
+      tags:
+        - Forecasting
+      summary: Get rate forecasts
+      description: Retrieve predictive forecasts for rate cards
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: riskLevel
+          in: query
+          schema:
+            type: string
+            enum: [low, medium, high]
+      responses:
+        '200':
+          description: Forecasts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Forecast'
+
+  /rate-cards/{id}/forecast:
+    post:
+      tags:
+        - Forecasting
+      summary: Generate forecast for rate card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Forecast generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Forecast'
+
+  /rate-cards/{id}/insights:
+    get:
+      tags:
+        - AI Insights
+      summary: Get AI insights for rate card
+      description: Generate AI-powered insights and recommendations
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Insights generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIInsights'
+
+  /rate-cards/strategic-recommendations:
+    get:
+      tags:
+        - AI Insights
+      summary: Get strategic recommendations
+      description: Get high-level strategic recommendations across all rate cards
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Recommendations generated successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StrategicRecommendation'
+
+  /rate-cards/cluster:
+    post:
+      tags:
+        - Clustering
+      summary: Cluster rate cards
+      description: Perform intelligent clustering on rate cards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                clusterCount:
+                  type: integer
+                  default: 5
+      responses:
+        '200':
+          description: Clustering completed successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cluster'
+
+  /rate-cards/clusters:
+    get:
+      tags:
+        - Clustering
+      summary: List clusters
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Clusters retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Cluster'
+
+  /rate-cards/suppliers/{id}/intelligence:
+    get:
+      tags:
+        - Suppliers
+      summary: Get supplier intelligence
+      description: Retrieve comprehensive supplier intelligence and scoring
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Supplier intelligence retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupplierIntelligence'
+
+  /rate-cards/currency/exchange-rate:
+    get:
+      tags:
+        - Currency
+      summary: Get exchange rate
+      description: Get current or historical exchange rate
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Exchange rate retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRate'
+
+  /rate-cards/currency/ppp-adjust:
+    post:
+      tags:
+        - Currency
+      summary: Adjust rate for PPP
+      description: Adjust rate for purchasing power parity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rate:
+                  type: number
+                fromCountry:
+                  type: string
+                toCountry:
+                  type: string
+      responses:
+        '200':
+          description: Rate adjusted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PPPAdjustedRate'
+
+  /rate-cards/opportunities:
+    get:
+      tags:
+        - Opportunities
+      summary: List savings opportunities
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Opportunities retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavingsOpportunity'
+
+  /rate-cards/segments:
+    get:
+      tags:
+        - Segments
+      summary: List saved segments
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Segments retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Segment'
+    
+    post:
+      tags:
+        - Segments
+      summary: Create segment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SegmentCreate'
+      responses:
+        '201':
+          description: Segment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+
+  /rate-cards/reports/schedule:
+    post:
+      tags:
+        - Reports
+      summary: Schedule report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScheduledReportCreate'
+      responses:
+        '201':
+          description: Report scheduled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledReport'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RateCard:
+      type: object
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        supplierId:
+          type: string
+        supplierName:
+          type: string
+        roleStandardized:
+          type: string
+        seniority:
+          type: string
+        country:
+          type: string
+        dailyRate:
+          type: number
+        currency:
+          type: string
+        effectiveDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+
+    RateCardCreate:
+      type: object
+      required:
+        - tenantId
+        - supplierId
+        - roleStandardized
+        - seniority
+        - country
+        - dailyRate
+        - currency
+      properties:
+        tenantId:
+          type: string
+        supplierId:
+          type: string
+        roleStandardized:
+          type: string
+        seniority:
+          type: string
+        country:
+          type: string
+        dailyRate:
+          type: number
+        currency:
+          type: string
+        effectiveDate:
+          type: string
+          format: date
+
+    RateCardUpdate:
+      type: object
+      properties:
+        dailyRate:
+          type: number
+        effectiveDate:
+          type: string
+          format: date
+
+    Benchmark:
+      type: object
+      properties:
+        rateCardId:
+          type: string
+        median:
+          type: number
+        mean:
+          type: number
+        p25:
+          type: number
+        p75:
+          type: number
+        percentileRank:
+          type: integer
+        cohortSize:
+          type: integer
+        savingsPotential:
+          type: number
+
+    Forecast:
+      type: object
+      properties:
+        rateCardId:
+          type: string
+        currentRate:
+          type: number
+        threeMonthRate:
+          type: number
+        sixMonthRate:
+          type: number
+        twelveMonthRate:
+          type: number
+        trendDirection:
+          type: string
+        riskLevel:
+          type: string
+        confidence:
+          type: number
+
+    AIInsights:
+      type: object
+      properties:
+        summary:
+          type: string
+        marketPosition:
+          type: string
+        keyFindings:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+
+    StrategicRecommendation:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        impact:
+          type: string
+        priority:
+          type: integer
+        actionItems:
+          type: array
+          items:
+            type: string
+
+    Cluster:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        memberCount:
+          type: integer
+        avgRate:
+          type: number
+        consolidationSavings:
+          type: number
+        characteristics:
+          type: object
+
+    SupplierIntelligence:
+      type: object
+      properties:
+        supplierId:
+          type: string
+        overallScore:
+          type: number
+        priceCompetitiveness:
+          type: number
+        geographicCoverage:
+          type: number
+        rateStability:
+          type: number
+        ranking:
+          type: integer
+        trend:
+          type: string
+
+    ExchangeRate:
+      type: object
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        rate:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+
+    PPPAdjustedRate:
+      type: object
+      properties:
+        originalRate:
+          type: number
+        pppAdjustedRate:
+          type: number
+        pppFactor:
+          type: number
+        adjustmentPercentage:
+          type: number
+
+    SavingsOpportunity:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+        annualSavingsPotential:
+          type: number
+        effort:
+          type: string
+        risk:
+          type: string
+        status:
+          type: string
+
+    Segment:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        filters:
+          type: object
+        shared:
+          type: boolean
+
+    SegmentCreate:
+      type: object
+      required:
+        - tenantId
+        - name
+        - filters
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        filters:
+          type: object
+
+    ScheduledReport:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        frequency:
+          type: string
+        recipients:
+          type: array
+          items:
+            type: string
+        nextRun:
+          type: string
+          format: date-time
+
+    ScheduledReportCreate:
+      type: object
+      required:
+        - tenantId
+        - name
+        - type
+        - frequency
+        - recipients
+      properties:
+        tenantId:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        frequency:
+          type: string
+        recipients:
+          type: array
+          items:
+            type: string
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/feedback/LoadingButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -433,9 +434,13 @@ export function BaselineEntryForm({
             Cancel
           </Button>
         )}
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : mode === 'edit' ? 'Update Baseline' : 'Create Baseline'}
-        </Button>
+        <LoadingButton 
+          type="submit" 
+          loading={isSubmitting}
+          loadingText="Saving..."
+        >
+          {mode === 'edit' ? 'Update Baseline' : 'Create Baseline'}
+        </LoadingButton>
       </div>
     </form>
   );

@@ -1,19 +1,24 @@
 /**
  * Virtual List Component
- * Optimizes rendering of large lists by only rendering visible items
+ * Implements virtual scrolling for large data sets
+ * Requirements: 4.3
  */
 
 'use client';
 
-import { useEffect, useRef, useState, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
-interface VirtualListProps<T> {
+export interface VirtualListProps<T> {
   items: T[];
   itemHeight: number;
   containerHeight: number;
-  renderItem: (item: T, index: number) => ReactNode;
+  renderItem: (item: T, index: number) => React.ReactNode;
   overscan?: number;
   className?: string;
+  onScroll?: (scrollTop: number) => void;
+  loading?: boolean;
+  loadingComponent?: React.ReactNode;
+  emptyComponent?: React.ReactNode;
 }
 
 export function VirtualList<T>({
@@ -23,6 +28,10 @@ export function VirtualList<T>({
   renderItem,
   overscan = 3,
   className = '',
+  onScroll,
+  loading = false,
+  loadingComponent,
+  emptyComponent,
 }: VirtualListProps<T>) {
   const [scrollTop, setScrollTop] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -34,9 +43,22 @@ export function VirtualList<T>({
   const visibleItems = items.slice(startIndex, endIndex);
   const offsetY = startIndex * itemHeight;
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  };
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const newScrollTop = e.currentTarget.scrollTop;
+      setScrollTop(newScrollTop);
+      onScroll?.(newScrollTop);
+    },
+    [onScroll]
+  );
+
+  if (loading && loadingComponent) {
+    return <div className={className}>{loadingComponent}</div>;
+  }
+
+  if (items.length === 0 && emptyComponent) {
+    return <div className={className}>{emptyComponent}</div>;
+  }
 
   return (
     <div
@@ -58,70 +80,197 @@ export function VirtualList<T>({
   );
 }
 
-interface VirtualGridProps<T> {
+/**
+ * Infinite scroll component
+ */
+export interface InfiniteScrollProps<T> {
   items: T[];
-  itemWidth: number;
-  itemHeight: number;
-  containerWidth: number;
-  containerHeight: number;
-  renderItem: (item: T, index: number) => ReactNode;
-  gap?: number;
+  renderItem: (item: T, index: number) => React.ReactNode;
+  hasMore: boolean;
+  loadMore: () => void;
+  loading?: boolean;
+  threshold?: number;
   className?: string;
+  loadingComponent?: React.ReactNode;
+  endComponent?: React.ReactNode;
 }
 
-export function VirtualGrid<T>({
+export function InfiniteScroll<T>({
   items,
-  itemWidth,
-  itemHeight,
-  containerWidth,
-  containerHeight,
   renderItem,
-  gap = 16,
+  hasMore,
+  loadMore,
+  loading = false,
+  threshold = 200,
   className = '',
-}: VirtualGridProps<T>) {
-  const [scrollTop, setScrollTop] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
+  loadingComponent,
+  endComponent,
+}: InfiniteScrollProps<T>) {
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const columns = Math.floor(containerWidth / (itemWidth + gap));
-  const rows = Math.ceil(items.length / columns);
-  const totalHeight = rows * (itemHeight + gap);
-  
-  const visibleRows = Math.ceil(containerHeight / (itemHeight + gap));
-  const startRow = Math.max(0, Math.floor(scrollTop / (itemHeight + gap)) - 1);
-  const endRow = Math.min(rows, startRow + visibleRows + 2);
-  
-  const startIndex = startRow * columns;
-  const endIndex = Math.min(items.length, endRow * columns);
-  const visibleItems = items.slice(startIndex, endIndex);
-  const offsetY = startRow * (itemHeight + gap);
+  useEffect(() => {
+    if (loading || !hasMore) return;
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  };
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        rootMargin: `${threshold}px`,
+      }
+    );
+
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [loading, hasMore, loadMore, threshold]);
 
   return (
-    <div
-      ref={containerRef}
-      className={`overflow-auto ${className}`}
-      style={{ height: containerHeight }}
-      onScroll={handleScroll}
-    >
-      <div style={{ height: totalHeight, position: 'relative' }}>
-        <div
-          style={{
-            transform: `translateY(${offsetY}px)`,
-            display: 'grid',
-            gridTemplateColumns: `repeat(${columns}, ${itemWidth}px)`,
-            gap: `${gap}px`,
-          }}
-        >
-          {visibleItems.map((item, index) => (
-            <div key={startIndex + index}>
-              {renderItem(item, startIndex + index)}
-            </div>
-          ))}
+    <div className={className}>
+      {items.map((item, index) => (
+        <div key={index}>{renderItem(item, index)}</div>
+      ))}
+
+      {hasMore && (
+        <div ref={loadMoreRef} className="py-4">
+          {loading && (loadingComponent || <DefaultLoadingComponent />)}
         </div>
-      </div>
+      )}
+
+      {!hasMore && endComponent}
     </div>
   );
+}
+
+/**
+ * Default loading component
+ */
+function DefaultLoadingComponent() {
+  return (
+    <div className="flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+    </div>
+  );
+}
+
+/**
+ * Hook for managing pagination state
+ */
+export function usePagination(initialPage: number = 1, initialPageSize: number = 20) {
+  const [page, setPage] = useState(initialPage);
+  const [pageSize, setPageSize] = useState(initialPageSize);
+
+  const reset = useCallback(() => {
+    setPage(1);
+  }, []);
+
+  const nextPage = useCallback(() => {
+    setPage((prev) => prev + 1);
+  }, []);
+
+  const prevPage = useCallback(() => {
+    setPage((prev) => Math.max(1, prev - 1));
+  }, []);
+
+  const goToPage = useCallback((newPage: number) => {
+    setPage(Math.max(1, newPage));
+  }, []);
+
+  const changePageSize = useCallback((newPageSize: number) => {
+    setPageSize(newPageSize);
+    setPage(1); // Reset to first page when changing page size
+  }, []);
+
+  return {
+    page,
+    pageSize,
+    setPage: goToPage,
+    setPageSize: changePageSize,
+    nextPage,
+    prevPage,
+    reset,
+  };
+}
+
+/**
+ * Hook for infinite scroll
+ */
+export function useInfiniteScroll<T>(
+  fetchFn: (page: number) => Promise<{ data: T[]; hasMore: boolean }>,
+  initialPage: number = 1
+) {
+  const [items, setItems] = useState<T[]>([]);
+  const [page, setPage] = useState(initialPage);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await fetchFn(page);
+      setItems((prev) => [...prev, ...result.data]);
+      setHasMore(result.hasMore);
+      setPage((prev) => prev + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to load more'));
+    } finally {
+      setLoading(false);
+    }
+  }, [page, loading, hasMore, fetchFn]);
+
+  const reset = useCallback(() => {
+    setItems([]);
+    setPage(initialPage);
+    setHasMore(true);
+    setError(null);
+  }, [initialPage]);
+
+  return {
+    items,
+    hasMore,
+    loading,
+    error,
+    loadMore,
+    reset,
+  };
+}
+
+/**
+ * Hook for virtual scrolling
+ */
+export function useVirtualScroll(
+  totalItems: number,
+  itemHeight: number,
+  containerHeight: number,
+  overscan: number = 3
+) {
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const visibleCount = Math.ceil(containerHeight / itemHeight);
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+  const endIndex = Math.min(totalItems, startIndex + visibleCount + overscan * 2);
+
+  return {
+    scrollTop,
+    setScrollTop,
+    startIndex,
+    endIndex,
+    visibleCount,
+    offsetY: startIndex * itemHeight,
+    totalHeight: totalItems * itemHeight,
+  };
 }

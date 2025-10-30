@@ -51,6 +51,21 @@ export enum Events {
   
   // Analytics Events
   ANALYTICS_UPDATED = 'analytics:updated',
+  
+  // Rate Card Events
+  RATE_CARD_CREATED = 'ratecard:created',
+  RATE_CARD_UPDATED = 'ratecard:updated',
+  RATE_CARD_DELETED = 'ratecard:deleted',
+  RATE_CARD_IMPORTED = 'ratecard:imported',
+  
+  // Benchmark Events
+  BENCHMARK_CALCULATED = 'benchmark:calculated',
+  BENCHMARK_INVALIDATED = 'benchmark:invalidated',
+  BENCHMARK_RECALCULATING = 'benchmark:recalculating',
+  
+  // Market Events
+  MARKET_SHIFT_DETECTED = 'market:shift:detected',
+  BEST_RATE_CHANGED = 'market:bestrate:changed',
 }
 
 class EventBus extends EventEmitter {

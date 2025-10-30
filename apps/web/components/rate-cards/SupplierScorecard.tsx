@@ -21,6 +21,14 @@ import {
   Award,
   RefreshCw,
   AlertCircle,
+  Target,
+  Users,
+  Activity,
+  Zap,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  ArrowRight,
 } from 'lucide-react';
 import {
   LineChart,
@@ -32,6 +40,12 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  Legend,
 } from 'recharts';
 
 interface SupplierScorecardProps {
@@ -80,15 +94,110 @@ interface StabilityData {
   volatility: number;
 }
 
+interface SupplierIntelligence {
+  supplierId: string;
+  competitiveness: {
+    supplierId: string;
+    supplierName: string;
+    overallScore: number;
+    dimensions: {
+      priceCompetitiveness: number;
+      geographicCoverage: number;
+      rateStability: number;
+      growthTrajectory: number;
+    };
+    ranking: number;
+    trend: 'improving' | 'declining' | 'stable';
+    calculatedAt: string;
+  };
+  trends: {
+    supplierId: string;
+    supplierName: string;
+    overallTrend: 'improving' | 'declining' | 'stable';
+    trendStrength: number;
+    avgRateChange: number;
+    rateChangeVelocity: number;
+    recentRateChanges: Array<{
+      date: string;
+      avgRate: number;
+      changePercent: number;
+      changeType: 'increase' | 'decrease' | 'stable';
+      magnitude: 'minor' | 'moderate' | 'significant' | 'major';
+    }>;
+    competitivenessChange: number;
+    marketShareTrend: 'growing' | 'shrinking' | 'stable';
+    patterns: Array<{
+      type: string;
+      description: string;
+      confidence: number;
+      detectedAt: string;
+      affectedPeriods: number;
+    }>;
+    periodsAnalyzed: number;
+  };
+  rateIncreaseAnalysis: {
+    hasAboveMarketIncreases: boolean;
+    aboveMarketPeriods: number;
+    avgMarketIncrease: number;
+    avgSupplierIncrease: number;
+    excessIncrease: number;
+    severity: 'low' | 'medium' | 'high';
+    recommendation: string;
+  };
+  alternatives: {
+    currentSupplierId: string;
+    currentSupplierName: string;
+    recommendations: Array<{
+      supplierId: string;
+      supplierName: string;
+      supplierTier: string;
+      competitivenessScore: number;
+      ranking: number;
+      rateDifference: number;
+      rateDifferenceUSD: number;
+      geographicCoverage: number;
+      roleCoverage: number;
+      coverageGaps: string[];
+      switchingRecommendation: 'highly_recommended' | 'recommended' | 'consider' | 'not_recommended';
+      switchingScore: number;
+      estimatedSavings: number;
+      riskFactors: Array<{
+        type: string;
+        severity: 'low' | 'medium' | 'high';
+        description: string;
+        impact: string;
+      }>;
+      riskLevel: 'low' | 'medium' | 'high';
+      strengths: string[];
+      metrics: {
+        avgRate: number;
+        currentSupplierAvgRate: number;
+        rateStability: number;
+        marketPosition: number;
+        trendDirection: 'improving' | 'declining' | 'stable';
+      };
+      similarityToCurrentSupplier: number;
+    }>;
+    summary: {
+      totalAlternatives: number;
+      highlyRecommended: number;
+      averagePotentialSavings: number;
+    };
+  } | null;
+  generatedAt: string;
+}
+
 export function SupplierScorecard({
   supplierId,
   periodMonths = 12,
 }: SupplierScorecardProps) {
   const [scorecard, setScorecard] = useState<ScorecardData | null>(null);
   const [stability, setStability] = useState<StabilityData | null>(null);
+  const [intelligence, setIntelligence] = useState<SupplierIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAlternatives, setShowAlternatives] = useState(false);
 
   const fetchScorecard = async (forceRefresh = false) => {
     try {
@@ -99,22 +208,34 @@ export function SupplierScorecard({
       }
       setError(null);
 
-      const url = `/api/rate-cards/suppliers/${supplierId}/scorecard?periodMonths=${periodMonths}`;
-      const response = forceRefresh
-        ? await fetch(url, {
+      // Fetch scorecard data
+      const scorecardUrl = `/api/rate-cards/suppliers/${supplierId}/scorecard?periodMonths=${periodMonths}`;
+      const scorecardResponse = forceRefresh
+        ? await fetch(scorecardUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ periodMonths }),
           })
-        : await fetch(url);
+        : await fetch(scorecardUrl);
 
-      if (!response.ok) {
+      if (!scorecardResponse.ok) {
         throw new Error('Failed to fetch scorecard');
       }
 
-      const data = await response.json();
-      setScorecard(data.scorecard);
-      setStability(data.stability);
+      const scorecardData = await scorecardResponse.json();
+      setScorecard(scorecardData.scorecard);
+      setStability(scorecardData.stability);
+
+      // Fetch intelligence data
+      const intelligenceUrl = `/api/rate-cards/suppliers/${supplierId}/intelligence?monthsBack=${periodMonths}`;
+      const intelligenceResponse = await fetch(intelligenceUrl);
+
+      if (intelligenceResponse.ok) {
+        const intelligenceData = await intelligenceResponse.json();
+        setIntelligence(intelligenceData);
+      } else {
+        console.warn('Failed to fetch intelligence data');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -166,6 +287,95 @@ export function SupplierScorecard({
       return <TrendingDown className="h-4 w-4 text-green-600" />;
     return <Minus className="h-4 w-4 text-gray-600" />;
   };
+
+  const getRecommendationBadge = (recommendation: string) => {
+    switch (recommendation) {
+      case 'highly_recommended':
+        return <Badge className="bg-green-600">Highly Recommended</Badge>;
+      case 'recommended':
+        return <Badge className="bg-blue-600">Recommended</Badge>;
+      case 'consider':
+        return <Badge className="bg-yellow-600">Consider</Badge>;
+      case 'not_recommended':
+        return <Badge variant="destructive">Not Recommended</Badge>;
+      default:
+        return <Badge variant="secondary">{recommendation}</Badge>;
+    }
+  };
+
+  const getRiskBadge = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'low':
+        return <Badge className="bg-green-600">Low Risk</Badge>;
+      case 'medium':
+        return <Badge className="bg-yellow-600">Medium Risk</Badge>;
+      case 'high':
+        return <Badge variant="destructive">High Risk</Badge>;
+      default:
+        return <Badge variant="secondary">{riskLevel}</Badge>;
+    }
+  };
+
+  const getTrendBadge = (trend: string) => {
+    switch (trend) {
+      case 'improving':
+        return (
+          <Badge className="bg-green-600">
+            <TrendingUp className="h-3 w-3 mr-1" />
+            Improving
+          </Badge>
+        );
+      case 'declining':
+        return (
+          <Badge variant="destructive">
+            <TrendingDown className="h-3 w-3 mr-1" />
+            Declining
+          </Badge>
+        );
+      case 'stable':
+        return (
+          <Badge variant="secondary">
+            <Minus className="h-3 w-3 mr-1" />
+            Stable
+          </Badge>
+        );
+      default:
+        return <Badge variant="secondary">{trend}</Badge>;
+    }
+  };
+
+  // Prepare radar chart data
+  const radarData = intelligence?.competitiveness
+    ? [
+        {
+          dimension: 'Price',
+          score: intelligence.competitiveness.dimensions.priceCompetitiveness,
+          fullMark: 100,
+        },
+        {
+          dimension: 'Coverage',
+          score: intelligence.competitiveness.dimensions.geographicCoverage,
+          fullMark: 100,
+        },
+        {
+          dimension: 'Stability',
+          score: intelligence.competitiveness.dimensions.rateStability,
+          fullMark: 100,
+        },
+        {
+          dimension: 'Growth',
+          score: intelligence.competitiveness.dimensions.growthTrajectory,
+          fullMark: 100,
+        },
+      ]
+    : [];
+
+  // Prepare historical trend data
+  const historicalTrendData = intelligence?.trends?.recentRateChanges?.map((change) => ({
+    date: new Date(change.date).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+    rate: change.avgRate,
+    change: change.changePercent,
+  })) || [];
 
   return (
     <div className="space-y-6">
@@ -508,6 +718,454 @@ export function SupplierScorecard({
           </div>
         </CardContent>
       </Card>
+
+      {/* Intelligence Data Section */}
+      {intelligence && (
+        <>
+          {/* Multi-Factor Competitiveness Radar Chart */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Multi-Factor Competitiveness Analysis
+                  </CardTitle>
+                  <CardDescription>
+                    Comprehensive scoring across key performance dimensions
+                  </CardDescription>
+                </div>
+                <div className="text-right">
+                  {getTrendBadge(intelligence.competitiveness.trend)}
+                  <p className="text-sm text-gray-600 mt-1">
+                    Rank #{intelligence.competitiveness.ranking}
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Radar Chart */}
+                <div>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid />
+                      <PolarAngleAxis dataKey="dimension" />
+                      <PolarRadiusAxis angle={90} domain={[0, 100]} />
+                      <Radar
+                        name="Score"
+                        dataKey="score"
+                        stroke="#3b82f6"
+                        fill="#3b82f6"
+                        fillOpacity={0.6}
+                      />
+                      <Tooltip />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Dimension Scores */}
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm font-medium">Price Competitiveness</span>
+                      </div>
+                      <span className="text-sm font-bold">
+                        {intelligence.competitiveness.dimensions.priceCompetitiveness.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full"
+                        style={{
+                          width: `${intelligence.competitiveness.dimensions.priceCompetitiveness}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm font-medium">Geographic Coverage</span>
+                      </div>
+                      <span className="text-sm font-bold">
+                        {intelligence.competitiveness.dimensions.geographicCoverage.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-green-600 h-2 rounded-full"
+                        style={{
+                          width: `${intelligence.competitiveness.dimensions.geographicCoverage}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm font-medium">Rate Stability</span>
+                      </div>
+                      <span className="text-sm font-bold">
+                        {intelligence.competitiveness.dimensions.rateStability.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-purple-600 h-2 rounded-full"
+                        style={{
+                          width: `${intelligence.competitiveness.dimensions.rateStability}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-gray-600" />
+                        <span className="text-sm font-medium">Growth Trajectory</span>
+                      </div>
+                      <span className="text-sm font-bold">
+                        {intelligence.competitiveness.dimensions.growthTrajectory.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-orange-600 h-2 rounded-full"
+                        style={{
+                          width: `${intelligence.competitiveness.dimensions.growthTrajectory}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Overall Score</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {intelligence.competitiveness.overallScore.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Historical Trends */}
+          {historicalTrendData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Historical Performance Trends
+                </CardTitle>
+                <CardDescription>
+                  Rate changes and patterns over the past {intelligence.trends.periodsAnalyzed} periods
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Trend Summary */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Overall Trend</p>
+                      <div className="flex items-center gap-2">
+                        {getTrendBadge(intelligence.trends.overallTrend)}
+                        <span className="text-sm text-gray-600">
+                          ({intelligence.trends.trendStrength.toFixed(0)}% strength)
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Avg Rate Change</p>
+                      <p className={`text-xl font-bold ${
+                        intelligence.trends.avgRateChange < 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {intelligence.trends.avgRateChange > 0 ? '+' : ''}
+                        {intelligence.trends.avgRateChange.toFixed(2)}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Market Share</p>
+                      <div className="flex items-center gap-2">
+                        {intelligence.trends.marketShareTrend === 'growing' && (
+                          <Badge className="bg-green-600">Growing</Badge>
+                        )}
+                        {intelligence.trends.marketShareTrend === 'shrinking' && (
+                          <Badge variant="destructive">Shrinking</Badge>
+                        )}
+                        {intelligence.trends.marketShareTrend === 'stable' && (
+                          <Badge variant="secondary">Stable</Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Historical Chart */}
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={historicalTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis yAxisId="left" />
+                      <YAxis yAxisId="right" orientation="right" />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="rate"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        name="Avg Rate ($)"
+                        dot={{ r: 4 }}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="change"
+                        stroke="#f59e0b"
+                        strokeWidth={2}
+                        name="Change (%)"
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+
+                  {/* Detected Patterns */}
+                  {intelligence.trends.patterns.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-3">Detected Patterns</h4>
+                      <div className="space-y-2">
+                        {intelligence.trends.patterns.map((pattern, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg"
+                          >
+                            <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{pattern.description}</p>
+                              <p className="text-xs text-gray-600 mt-1">
+                                Confidence: {pattern.confidence.toFixed(0)}% • 
+                                Affected {pattern.affectedPeriods} periods
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rate Increase Analysis */}
+                  {intelligence.rateIncreaseAnalysis.hasAboveMarketIncreases && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-red-900 mb-2">
+                            Above-Market Rate Increases Detected
+                          </h4>
+                          <p className="text-sm text-red-800 mb-3">
+                            {intelligence.rateIncreaseAnalysis.recommendation}
+                          </p>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="text-red-700">Supplier Increase</p>
+                              <p className="font-bold text-red-900">
+                                +{intelligence.rateIncreaseAnalysis.avgSupplierIncrease.toFixed(2)}%
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-red-700">Market Increase</p>
+                              <p className="font-bold text-red-900">
+                                +{intelligence.rateIncreaseAnalysis.avgMarketIncrease.toFixed(2)}%
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <Badge variant="destructive">
+                          {intelligence.rateIncreaseAnalysis.severity.toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Alternative Suppliers */}
+          {intelligence.alternatives && intelligence.alternatives.recommendations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Alternative Supplier Recommendations
+                    </CardTitle>
+                    <CardDescription>
+                      {intelligence.alternatives.summary.totalAlternatives} alternatives analyzed •{' '}
+                      {intelligence.alternatives.summary.highlyRecommended} highly recommended
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAlternatives(!showAlternatives)}
+                  >
+                    {showAlternatives ? 'Hide' : 'Show'} Details
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Summary */}
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Best Alternative</p>
+                      <p className="text-lg font-bold">
+                        {intelligence.alternatives.recommendations[0]?.supplierName || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Potential Savings</p>
+                      <p className="text-lg font-bold text-green-600">
+                        ${intelligence.alternatives.recommendations[0]?.estimatedSavings.toLocaleString() || 0}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Switching Score</p>
+                      <p className="text-lg font-bold text-blue-600">
+                        {intelligence.alternatives.recommendations[0]?.switchingScore.toFixed(1) || 0}/100
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detailed Recommendations */}
+                {showAlternatives && (
+                  <div className="space-y-4">
+                    {intelligence.alternatives.recommendations.slice(0, 5).map((alt, idx) => (
+                      <div
+                        key={alt.supplierId}
+                        className="p-4 border rounded-lg hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-semibold text-lg">{alt.supplierName}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="secondary">{alt.supplierTier}</Badge>
+                              {getRecommendationBadge(alt.switchingRecommendation)}
+                              {getRiskBadge(alt.riskLevel)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-600">Rank #{alt.ranking}</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {alt.switchingScore.toFixed(1)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                          <div>
+                            <p className="text-xs text-gray-600">Rate Difference</p>
+                            <p className={`text-sm font-bold ${
+                              alt.rateDifference < 0 ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {alt.rateDifference > 0 ? '+' : ''}
+                              {alt.rateDifference.toFixed(1)}%
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600">Est. Savings</p>
+                            <p className="text-sm font-bold text-green-600">
+                              ${alt.estimatedSavings.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600">Geo Coverage</p>
+                            <p className="text-sm font-bold">
+                              {alt.geographicCoverage.toFixed(0)}%
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600">Role Coverage</p>
+                            <p className="text-sm font-bold">
+                              {alt.roleCoverage.toFixed(0)}%
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Strengths */}
+                        {alt.strengths.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-2">Strengths</p>
+                            <div className="flex flex-wrap gap-2">
+                              {alt.strengths.map((strength, sIdx) => (
+                                <div
+                                  key={sIdx}
+                                  className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 rounded"
+                                >
+                                  <CheckCircle className="h-3 w-3" />
+                                  {strength}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Risk Factors */}
+                        {alt.riskFactors.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-2">Risk Factors</p>
+                            <div className="space-y-1">
+                              {alt.riskFactors.map((risk, rIdx) => (
+                                <div
+                                  key={rIdx}
+                                  className="flex items-start gap-2 text-xs bg-yellow-50 text-yellow-800 px-2 py-1 rounded"
+                                >
+                                  <XCircle className="h-3 w-3 mt-0.5" />
+                                  <div>
+                                    <p className="font-medium">{risk.description}</p>
+                                    <p className="text-yellow-700">{risk.impact}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Coverage Gaps */}
+                        {alt.coverageGaps.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-700 mb-2">Coverage Gaps</p>
+                            <div className="space-y-1">
+                              {alt.coverageGaps.map((gap, gIdx) => (
+                                <p key={gIdx} className="text-xs text-gray-600">
+                                  • {gap}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }

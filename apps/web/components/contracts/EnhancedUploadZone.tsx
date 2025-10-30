@@ -6,11 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
-import { EnhancedCard, MetricCard } from '@/components/ui/enhanced-card'
-import { LoadingState, ProgressIndicator } from '@/components/ui/loading-states'
-import { ScoreGauge, DataPoint } from '@/components/ui/data-visualization'
-import { InfoCallout, StatusIndicator } from '@/components/ui/interactive-elements'
-import { MultiStageProgress } from '@/components/progress/MultiStageProgress'
+import { ProgressBar } from '@/components/feedback/ProgressBar'
 import {
     Upload,
     CheckCircle,
@@ -30,6 +26,11 @@ import {
     AlertCircle,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { MetricCard } from '../shared/AIComponents'
+import { MetricCard } from '../shared/AIComponents'
+import { MetricCard } from '../shared/AIComponents'
+import { MetricCard } from '../shared/AIComponents'
+import { StatusIndicator } from '../ui/design-system'
 
 interface UploadFile {
     id: string
@@ -600,26 +601,32 @@ export default function EnhancedUploadZone({
                                                 {/* Enhanced Progress with Steps */}
                                                 {(file.status === 'uploading' || file.status === 'processing') && (
                                                     <div className="mb-4">
-                                                        <div className="flex items-center justify-between text-sm mb-2">
-                                                            <span className="text-gray-700 font-medium">
-                                                                {file.status === 'uploading' ? 'Uploading file...' : 'AI Analysis in progress...'}
-                                                            </span>
-                                                            <span className="text-blue-600 font-bold">{file.progress}%</span>
-                                                        </div>
-                                                        <Progress value={file.progress} className="h-3 bg-gray-100" />
+                                                        <ProgressBar
+                                                            progress={file.progress}
+                                                            label={file.status === 'uploading' ? 'Uploading file...' : 'AI Analysis in progress...'}
+                                                            variant={file.progress > 90 ? 'success' : 'default'}
+                                                            showPercentage={true}
+                                                            size="md"
+                                                        />
 
-                                                        {/* Processing steps */}
+                                                        {/* Processing steps indicator */}
                                                         {file.status === 'processing' && (
-                                                            <div className="mt-3">
-                                                                <ProgressIndicator
-                                                                    steps={[
-                                                                        { label: 'Upload', status: 'completed' },
-                                                                        { label: 'Extract', status: file.progress > 40 ? 'completed' : 'active' },
-                                                                        { label: 'Analyze', status: file.progress > 70 ? 'active' : 'pending' },
-                                                                        { label: 'Complete', status: file.progress > 95 ? 'active' : 'pending' }
-                                                                    ]}
-                                                                    className="text-xs"
-                                                                />
+                                                            <div className="mt-3 flex items-center gap-2 text-xs text-gray-600">
+                                                                <span className={file.progress > 20 ? 'text-green-600 font-medium' : ''}>
+                                                                    ✓ Upload
+                                                                </span>
+                                                                <span className="text-gray-300">→</span>
+                                                                <span className={file.progress > 40 ? 'text-green-600 font-medium' : file.progress > 20 ? 'text-blue-600 font-medium' : ''}>
+                                                                    {file.progress > 40 ? '✓' : file.progress > 20 ? '⋯' : '○'} Extract
+                                                                </span>
+                                                                <span className="text-gray-300">→</span>
+                                                                <span className={file.progress > 70 ? 'text-green-600 font-medium' : file.progress > 40 ? 'text-blue-600 font-medium' : ''}>
+                                                                    {file.progress > 70 ? '✓' : file.progress > 40 ? '⋯' : '○'} Analyze
+                                                                </span>
+                                                                <span className="text-gray-300">→</span>
+                                                                <span className={file.progress > 95 ? 'text-green-600 font-medium' : file.progress > 70 ? 'text-blue-600 font-medium' : ''}>
+                                                                    {file.progress > 95 ? '✓' : file.progress > 70 ? '⋯' : '○'} Complete
+                                                                </span>
                                                             </div>
                                                         )}
                                                     </div>

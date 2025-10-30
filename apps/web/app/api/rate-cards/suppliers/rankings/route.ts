@@ -1,8 +1,20 @@
+/**
+ * Supplier Rankings API Endpoint
+ * 
+ * GET /api/rate-cards/suppliers/rankings
+ * 
+ * Returns ranked list of suppliers based on multi-factor competitiveness scores.
+ * Includes overall scores, dimension breakdowns, and ranking positions.
+ * 
+ * Requirements: 4.1
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { SupplierBenchmarkService } from '@packages/data-orchestration/src/services';
+import { SupplierBenchmarkService } from '@/packages/data-orchestration/src/services/supplier-benchmark.service';
+import { supplierIntelligenceService } from '@/packages/data-orchestration/src/services/supplier-intelligence.service';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,15 +25,30 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
+    const useIntelligence = searchParams.get('useIntelligence') !== 'false';
 
-    const benchmarkService = new SupplierBenchmarkService(prisma);
+    // Get rankings using intelligence service if requested
+    let rankings;
+    
+    if (useIntelligence) {
+      // Use the new supplier intelligence service for comprehensive scoring
+      rankings = await supplierIntelligenceService.getAllSupplierScores(
+        session.user.tenantId
+      );
+    } else {
+      // Fall back to legacy benchmark service
+      const benchmarkService = new SupplierBenchmarkService(prisma);
+      rankings = await benchmarkService.rankSuppliers(
+        session.user.tenantId,
+        periodMonths
+      );
+    }
 
-    const rankings = await benchmarkService.rankSuppliers(
-      session.user.tenantId,
-      periodMonths
-    );
-
-    return NextResponse.json({ rankings });
+    return NextResponse.json({ 
+      rankings,
+      count: rankings.length,
+      generatedAt: new Date().toISOString()
+    });
   } catch (error: any) {
     console.error('Error fetching supplier rankings:', error);
     return NextResponse.json(

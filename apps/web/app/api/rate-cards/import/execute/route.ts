@@ -170,6 +170,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ Import complete: ${results.imported} imported, ${results.failed} failed`);
 
+    // Emit event for bulk import
+    if (results.imported > 0) {
+      const { rateCardEvents } = await import('@/../../packages/data-orchestration/src/services/event-integration.helper');
+      await rateCardEvents.imported(results.imported, tenantId, 'CSV_IMPORT');
+    }
+
     return NextResponse.json({
       success: true,
       imported: results.imported,

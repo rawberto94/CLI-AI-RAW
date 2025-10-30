@@ -12,10 +12,22 @@ import { ManualRateCardInput } from '@/components/rate-cards/ManualRateCardInput
 import { BulkCSVUpload } from '@/components/rate-cards/BulkCSVUpload';
 import { ExtractFromContracts } from '@/components/rate-cards/ExtractFromContracts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InteractiveBoxPlot } from '@/components/rate-cards/InteractiveBoxPlot';
+import { TimeSeriesChart } from '@/components/rate-cards/TimeSeriesChart';
+import { GeographicHeatMap } from '@/components/rate-cards/GeographicHeatMap';
+import { ComparisonBarChart } from '@/components/rate-cards/ComparisonBarChart';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 
 export default function RateBenchmarkingPage() {
   const [filters, setFilters] = useState<FilterCriteria>({});
   const [refreshKey, setRefreshKey] = useState(0);
+  const [clientFilter, setClientFilter] = useState('');
+  const [showBaselineOnly, setShowBaselineOnly] = useState(false);
+  const [showNegotiatedOnly, setShowNegotiatedOnly] = useState(false);
 
   console.log('🔵 RateBenchmarkingPage rendering - buttons should be visible');
 
@@ -58,6 +70,64 @@ export default function RateBenchmarkingPage() {
         </div>
       </div>
 
+      {/* Client & Status Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Client & Status Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="clientFilter">Filter by Client</Label>
+              <Input
+                id="clientFilter"
+                placeholder="Enter client name..."
+                value={clientFilter}
+                onChange={(e) => setClientFilter(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center space-x-2 pt-8">
+              <Checkbox
+                id="baselineOnly"
+                checked={showBaselineOnly}
+                onCheckedChange={(checked) => setShowBaselineOnly(checked as boolean)}
+              />
+              <Label htmlFor="baselineOnly" className="cursor-pointer">
+                <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                  ⭐ Baseline Only
+                </Badge>
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2 pt-8">
+              <Checkbox
+                id="negotiatedOnly"
+                checked={showNegotiatedOnly}
+                onCheckedChange={(checked) => setShowNegotiatedOnly(checked as boolean)}
+              />
+              <Label htmlFor="negotiatedOnly" className="cursor-pointer">
+                <Badge variant="secondary" className="bg-green-100 text-green-700">
+                  ✓ Negotiated Only
+                </Badge>
+              </Label>
+            </div>
+          </div>
+          {(clientFilter || showBaselineOnly || showNegotiatedOnly) && (
+            <div className="flex items-center gap-2 pt-2">
+              <span className="text-sm text-muted-foreground">Active filters:</span>
+              {clientFilter && (
+                <Badge variant="outline">Client: {clientFilter}</Badge>
+              )}
+              {showBaselineOnly && (
+                <Badge variant="outline">Baseline Only</Badge>
+              )}
+              {showNegotiatedOnly && (
+                <Badge variant="outline">Negotiated Only</Badge>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Advanced Filters */}
       <AdvancedFilters 
         onFilterChange={handleFilterChange}
@@ -75,8 +145,36 @@ export default function RateBenchmarkingPage() {
           <div className="grid gap-6">
             <BenchmarkCard />
             <SavingsAnalysisSection />
+            
+            {/* Baseline Comparison View */}
+            {showBaselineOnly && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Baseline Comparison</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ComparisonBarChart />
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Comparing baseline rates vs actual rates vs market benchmarks
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
             <TrendVisualization />
             <CohortInformation />
+            
+            {/* Geographic Heat Map */}
+            {clientFilter && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Geographic Distribution - {clientFilter}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <GeographicHeatMap />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 

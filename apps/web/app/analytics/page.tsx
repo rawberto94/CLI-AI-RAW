@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { AnalyticsHub } from '@/components/analytics/AnalyticsHub'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,8 +16,31 @@ import {
   Briefcase,
   ArrowRight
 } from 'lucide-react'
+import { useRealTimeEvents } from '@/contexts/RealTimeContext'
 
 export default function ImprovedAnalyticsPage() {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Real-time updates for analytics
+  useRealTimeEvents({
+    'contract:completed': (data) => {
+      console.log('[Analytics] Contract completed, refreshing analytics:', data);
+      setRefreshKey(prev => prev + 1); // Trigger refresh
+    },
+    'artifact:generated': (data) => {
+      console.log('[Analytics] Artifact generated, refreshing analytics:', data);
+      setRefreshKey(prev => prev + 1);
+    },
+    'ratecard:created': (data) => {
+      console.log('[Analytics] Rate card created, refreshing analytics:', data);
+      setRefreshKey(prev => prev + 1);
+    },
+    'ratecard:updated': (data) => {
+      console.log('[Analytics] Rate card updated, refreshing analytics:', data);
+      setRefreshKey(prev => prev + 1);
+    },
+  });
+
   const analyticsPages = [
     {
       title: 'Artifacts',
@@ -72,7 +95,7 @@ export default function ImprovedAnalyticsPage() {
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-8">
       {/* Main Analytics Hub */}
-      <AnalyticsHub />
+      <AnalyticsHub key={refreshKey} />
 
       {/* Detailed Analytics Links */}
       <div>

@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
+import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 
 // Mock data - in real app this would come from API
 const dashboardData = {
@@ -107,6 +108,7 @@ const dashboardData = {
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     // Load user preferences to get role
@@ -130,6 +132,25 @@ export default function DashboardPage() {
     }, 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  // Real-time updates for dashboard
+  useRealTimeEvents({
+    'contract:created': (data) => {
+      console.log('[Dashboard] New contract created:', data);
+      setRefreshKey(prev => prev + 1);
+    },
+    'contract:completed': (data) => {
+      console.log('[Dashboard] Contract completed:', data);
+      setRefreshKey(prev => prev + 1);
+    },
+    'job:progress': (data) => {
+      console.log('[Dashboard] Job progress update:', data);
+      setRefreshKey(prev => prev + 1);
+    },
+    'notification': (data) => {
+      console.log('[Dashboard] Notification received:', data);
+    },
+  });
 
   if (loading) {
     return (

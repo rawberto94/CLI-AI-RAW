@@ -63,6 +63,7 @@ import {
 } from "@/lib/contracts/view-preferences";
 import { ComparisonSelector } from "@/components/contracts/ComparisonSelector";
 import { ComparisonView } from "@/components/contracts/ComparisonView";
+import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 
 export default function ContractsPage() {
   const router = useRouter();
@@ -129,6 +130,28 @@ export default function ContractsPage() {
   useEffect(() => {
     fetchContracts();
   }, []);
+
+  // Real-time updates for contracts
+  useRealTimeEvents({
+    'contract:created': (data) => {
+      console.log('[Contracts] New contract created:', data);
+      fetchContracts(); // Refresh the list
+    },
+    'contract:updated': (data) => {
+      console.log('[Contracts] Contract updated:', data);
+      // Update specific contract in the list
+      setContracts(prev => prev.map(c => 
+        c.id === data.contractId ? { ...c, ...data.updates } : c
+      ));
+    },
+    'contract:completed': (data) => {
+      console.log('[Contracts] Contract processing completed:', data);
+      // Update contract status
+      setContracts(prev => prev.map(c => 
+        c.id === data.contractId ? { ...c, status: 'completed' } : c
+      ));
+    },
+  });
 
   // Step 1: Load default filter on mount
   useEffect(() => {

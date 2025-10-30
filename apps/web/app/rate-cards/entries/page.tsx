@@ -1,16 +1,83 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
-import { RateCardFilters } from '@/components/rate-cards/RateCardFilters';
+import { EnhancedRateCardFilters } from '@/components/rate-cards/EnhancedRateCardFilters';
+import { RateCardTable } from '@/components/rate-cards/RateCardTable';
+import { BulkEditModal } from '@/components/rate-cards/BulkEditModal';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload } from 'lucide-react';
 import Link from 'next/link';
-
-export const metadata: Metadata = {
-  title: 'Rate Card Entries | Procurement Intelligence',
-  description: 'View and manage all rate card entries',
-};
+import { useRouter } from 'next/navigation';
 
 export default function RateCardEntriesPage() {
+  const router = useRouter();
+  const [rateCards, setRateCards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({});
+  const [matchCount, setMatchCount] = useState(0);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchRateCards();
+  }, [filters]);
+
+  const fetchRateCards = async () => {
+    try {
+      setLoading(true);
+      
+      // Build query string from filters
+      const params = new URLSearchParams();
+      if (filters.clientName) params.append('clientName', filters.clientName);
+      if (filters.supplierName) params.append('supplierName', filters.supplierName);
+      if (filters.role) params.append('roleStandardized', filters.role);
+      if (filters.seniority) params.append('seniority', filters.seniority);
+      if (filters.country) params.append('country', filters.country);
+      if (filters.isBaseline !== undefined) params.append('isBaseline', String(filters.isBaseline));
+      if (filters.isNegotiated !== undefined) params.append('isNegotiated', String(filters.isNegotiated));
+      
+      const response = await fetch(`/api/rate-cards?${params.toString()}`);
+      const data = await response.json();
+      
+      setRateCards(data.data || []);
+      setMatchCount(data.total || 0);
+    } catch (error) {
+      console.error('Error fetching rate cards:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/rate-cards/${id}`);
+  };
+
+  const handleView = (id: string) => {
+    router.push(`/rate-cards/${id}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this rate card?')) return;
+    
+    try {
+      await fetch(`/api/rate-cards/${id}`, { method: 'DELETE' });
+      fetchRateCards();
+    } catch (error) {
+      console.error('Error deleting rate card:', error);
+    }
+  };
+
+  const handleBulkEdit = async (ids: string[]) => {
+    setSelectedIds(ids);
+    setBulkEditOpen(true);
+  };
+
+  const handleBulkEditSuccess = () => {
+    fetchRateCards();
+    setSelectedIds([]);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <RateCardBreadcrumbs />
@@ -36,12 +103,29 @@ export default function RateCardEntriesPage() {
         </div>
       </div>
 
-      <RateCardFilters />
+      <EnhancedRateCardFilters 
+        onFilterChange={setFilters}
+        matchCount={matchCount}
+      />
 
-      <div className="text-center py-12 text-muted-foreground">
-        <p>Rate card entries list will be displayed here</p>
-        <p className="text-sm mt-2">This component will show filtered rate cards with pagination</p>
-      </div>
+      <RateCardTable
+        data={rateCards}
+        onEdit={handleEdit}
+        onView={handleView}
+        onDelete={handleDelete}
+        onBulkEdit={handleBulkEdit}
+        loading={loading}
+        showClientColumn={true}
+        showBaselineColumn={true}
+        showNegotiatedColumn={true}
+      />
+
+      <BulkEditModal
+        open={bulkEditOpen}
+        onClose={() => setBulkEditOpen(false)}
+        selectedIds={selectedIds}
+        onSuccess={handleBulkEditSuccess}
+      />
     </div>
   );
 }

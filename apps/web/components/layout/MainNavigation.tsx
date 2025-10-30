@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator'
 import { 
   LayoutDashboard,
   FileText,
@@ -218,17 +219,20 @@ export default function MainNavigation() {
           <FileText className="h-6 w-6 text-blue-600" />
           <span className="font-semibold text-gray-900">Contract Intelligence</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          {isMobileMenuOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <CompactConnectionStatus />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Sidebar */}
@@ -338,17 +342,14 @@ export default function MainNavigation() {
 
         {/* Footer */}
         <div className="border-t border-gray-200 p-4">
-          <div className="text-xs text-gray-500 space-y-1">
+          <div className="text-xs text-gray-500 space-y-2">
             <div className="flex items-center justify-between">
               <span>Version</span>
               <span className="font-medium">2.0.0</span>
             </div>
             <div className="flex items-center justify-between">
-              <span>Status</span>
-              <span className="flex items-center gap-1">
-                <span className="h-2 w-2 bg-green-500 rounded-full"></span>
-                <span className="font-medium text-green-600">Online</span>
-              </span>
+              <span>Real-time</span>
+              <CompactConnectionStatus />
             </div>
           </div>
         </div>

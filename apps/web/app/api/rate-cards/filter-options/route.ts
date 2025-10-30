@@ -20,6 +20,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get unique clients
+    const clients = await prisma.$queryRaw<Array<{ clientName: string }>>`
+      SELECT DISTINCT "clientName"
+      FROM "rate_card_entries"
+      WHERE "tenantId" = ${session.user.tenantId}
+        AND "clientName" IS NOT NULL
+      ORDER BY "clientName"
+    `;
+
     // Get unique suppliers
     const suppliers = await prisma.$queryRaw<Array<{ supplierName: string }>>`
       SELECT DISTINCT "supplierName"
@@ -45,6 +54,7 @@ export async function GET(request: NextRequest) {
     `;
 
     return NextResponse.json({
+      clients: clients.map(c => c.clientName),
       suppliers: suppliers.map(s => s.supplierName),
       linesOfService: linesOfService.map(l => l.lineOfService),
       countries: countries.map(c => c.country),

@@ -1,17 +1,79 @@
-import { Metadata } from 'next';
+'use client';
+
+import { useState, useEffect } from 'react';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { DashboardKPICards } from '@/components/rate-cards/DashboardKPICards';
 import { FinancialMetricsCards } from '@/components/rate-cards/FinancialMetricsCards';
 import { PerformanceIndicators } from '@/components/rate-cards/PerformanceIndicators';
 import { TopOpportunitiesWidget } from '@/components/rate-cards/TopOpportunitiesWidget';
 import { DashboardTrendCharts } from '@/components/rate-cards/DashboardTrendCharts';
-
-export const metadata: Metadata = {
-  title: 'Rate Card Dashboard | Procurement Intelligence',
-  description: 'Executive dashboard for rate card benchmarking and procurement analytics',
-};
+import { ClientOverviewWidget } from '@/components/rate-cards/ClientOverviewWidget';
+import { BaselineTrackingWidget } from '@/components/rate-cards/BaselineTrackingWidget';
+import { NegotiationStatusWidget } from '@/components/rate-cards/NegotiationStatusWidget';
+import { useRouter } from 'next/navigation';
+import { useRealTimeEvents } from '@/contexts/RealTimeContext';
 
 export default function RateCardDashboardPage() {
+  const router = useRouter();
+  const [clientMetrics, setClientMetrics] = useState(null);
+  const [baselineMetrics, setBaselineMetrics] = useState(null);
+  const [negotiationMetrics, setNegotiationMetrics] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardMetrics();
+  }, []);
+
+  // Real-time updates for rate cards
+  useRealTimeEvents({
+    'ratecard:created': (data) => {
+      console.log('[RateCards] New rate card created:', data);
+      fetchDashboardMetrics(); // Refresh metrics
+    },
+    'ratecard:updated': (data) => {
+      console.log('[RateCards] Rate card updated:', data);
+      fetchDashboardMetrics(); // Refresh metrics
+    },
+    'ratecard:imported': (data) => {
+      console.log('[RateCards] Rate cards imported:', data);
+      fetchDashboardMetrics(); // Refresh metrics
+    },
+    'benchmark:calculated': (data) => {
+      console.log('[RateCards] Benchmark calculated:', data);
+      fetchDashboardMetrics(); // Refresh metrics
+    },
+    'benchmark:invalidated': (data) => {
+      console.log('[RateCards] Benchmark invalidated:', data);
+      fetchDashboardMetrics(); // Refresh metrics
+    },
+  });
+
+  const fetchDashboardMetrics = async () => {
+    try {
+      setLoading(true);
+      
+      const [clientRes, baselineRes, negotiationRes] = await Promise.all([
+        fetch('/api/rate-cards/dashboard/client-metrics'),
+        fetch('/api/rate-cards/dashboard/baseline-metrics'),
+        fetch('/api/rate-cards/dashboard/negotiation-metrics'),
+      ]);
+
+      const [clientData, baselineData, negotiationData] = await Promise.all([
+        clientRes.json(),
+        baselineRes.json(),
+        negotiationRes.json(),
+      ]);
+
+      setClientMetrics(clientData);
+      setBaselineMetrics(baselineData);
+      setNegotiationMetrics(negotiationData);
+    } catch (error) {
+      console.error('Error fetching dashboard metrics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <RateCardBreadcrumbs />
@@ -24,6 +86,26 @@ export default function RateCardDashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Client, Baseline, and Negotiation Widgets */}
+      <section>
+        <h2 className="text-lg font-semibold mb-4">Client & Negotiation Overview</h2>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {clientMetrics && (
+            <ClientOverviewWidget metrics={clientMetrics} loading={loading} />
+          )}
+          {baselineMetrics && (
+            <BaselineTrackingWidget metrics={baselineMetrics} loading={loading} />
+          )}
+          {negotiationMetrics && (
+            <NegotiationStatusWidget 
+              metrics={negotiationMetrics} 
+              loading={loading}
+              onViewOpportunities={() => router.push('/rate-cards/opportunities')}
+            />
+          )}
+        </div>
+      </section>
 
       {/* KPI Cards */}
       <section>

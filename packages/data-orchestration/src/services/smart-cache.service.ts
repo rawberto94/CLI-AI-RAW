@@ -1,7 +1,10 @@
 /**
  * Smart Cache Service
  * Provides intelligent caching with TTL and invalidation strategies
+ * Now integrated with memory manager for optimized memory usage
  */
+
+import { memoryManager } from './memory-manager.service';
 
 interface CacheEntry<T> {
   data: T;
@@ -13,6 +16,7 @@ class SmartCacheService {
   private static instance: SmartCacheService;
   private cache: Map<string, CacheEntry<any>>;
   private defaultTTL: number = 300000; // 5 minutes
+  private useMemoryManager: boolean = true;
 
   private constructor() {
     this.cache = new Map();
@@ -31,6 +35,15 @@ class SmartCacheService {
    * Get value from cache
    */
   async get<T>(key: string): Promise<T | null> {
+    // Try memory manager first if enabled
+    if (this.useMemoryManager) {
+      const value = memoryManager.get<T>(key);
+      if (value !== undefined) {
+        return value;
+      }
+    }
+
+    // Fallback to local cache
     const entry = this.cache.get(key);
     
     if (!entry) {
@@ -50,10 +63,23 @@ class SmartCacheService {
    * Set value in cache
    */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const effectiveTTL = ttl || this.defaultTTL;
+
+    // Try memory manager first if enabled
+    if (this.useMemoryManager) {
+      const success = memoryManager.set(key, value, effectiveTTL);
+      if (success) {
+        return;
+      }
+      // If memory manager fails, fall back to local cache
+      console.warn(`[SmartCache] Memory manager full, using local cache for ${key}`);
+    }
+
+    // Fallback to local cache
     this.cache.set(key, {
       data: value,
       timestamp: Date.now(),
-      ttl: ttl || this.defaultTTL,
+      ttl: effectiveTTL,
     });
   }
 
@@ -61,6 +87,9 @@ class SmartCacheService {
    * Delete value from cache
    */
   async delete(key: string): Promise<void> {
+    if (this.useMemoryManager) {
+      memoryManager.delete(key);
+    }
     this.cache.delete(key);
   }
 
@@ -77,13 +106,21 @@ class SmartCacheService {
       }
     }
 
-    keysToDelete.forEach(key => this.cache.delete(key));
+    keysToDelete.forEach(key => {
+      if (this.useMemoryManager) {
+        memoryManager.delete(key);
+      }
+      this.cache.delete(key);
+    });
   }
 
   /**
    * Clear all cache
    */
   async clear(): Promise<void> {
+    if (this.useMemoryManager) {
+      memoryManager.clear();
+    }
     this.cache.clear();
   }
 
@@ -91,9 +128,14 @@ class SmartCacheService {
    * Get cache stats
    */
   getStats() {
+    const memStats = this.useMemoryManager ? memoryManager.getStats() : null;
+    
     return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys()),
+      localCache: {
+        size: this.cache.size,
+        keys: Array.from(this.cache.keys()),
+      },
+      memoryManager: memStats,
     };
   }
 

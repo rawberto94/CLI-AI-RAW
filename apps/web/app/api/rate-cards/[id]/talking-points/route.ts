@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { NegotiationAssistantService } from '@/packages/data-orchestration/src/services/negotiation-assistant.service';
-
-const negotiationService = new NegotiationAssistantService(prisma);
+import { negotiationAssistantEnhancedService } from '@/packages/data-orchestration/src/services/negotiation-assistant-enhanced.service';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const rateCardId = params.id;
+    const { searchParams } = new URL(request.url);
+    const tenantId = searchParams.get('tenantId');
 
-    const talkingPoints = await negotiationService.getTalkingPoints(rateCardId);
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Missing tenantId' },
+        { status: 400 }
+      );
+    }
+
+    const talkingPoints = await negotiationAssistantEnhancedService.generateEnhancedTalkingPoints(
+      params.id,
+      tenantId
+    );
 
     return NextResponse.json({
       success: true,

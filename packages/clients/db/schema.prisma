@@ -99,6 +99,7 @@ model User {
   backgroundJobs       BackgroundJob[]
   helpAnalytics        HelpAnalytics[]
   widgetAnalytics      WidgetAnalytics[]
+  rateCardSegments     RateCardSegment[]
 
   @@index([email])
   @@index([tenantId])
@@ -1258,11 +1259,53 @@ model RateCardSupplier {
   
   rateCards             RateCardEntry[]
   benchmarks            SupplierBenchmark[]
+  scores                SupplierScore[]
   
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([competitivenessScore])
   @@map("rate_card_suppliers")
+}
+
+model SupplierScore {
+  id                    String              @id @default(cuid())
+  supplierId            String
+  tenantId              String
+  
+  // Overall Score
+  overallScore          Decimal             @db.Decimal(5, 2)
+  
+  // Multi-Factor Scores
+  priceCompetitiveness  Decimal             @db.Decimal(5, 2)
+  geographicCoverage    Decimal             @db.Decimal(5, 2)
+  rateStability         Decimal             @db.Decimal(5, 2)
+  growthTrajectory      Decimal             @db.Decimal(5, 2)
+  
+  // Ranking
+  ranking               Int
+  totalSuppliers        Int
+  
+  // Trend Analysis
+  trend                 String              // improving, declining, stable
+  previousScore         Decimal?            @db.Decimal(5, 2)
+  scoreChange           Decimal?            @db.Decimal(5, 2)
+  
+  // Calculation Metadata
+  calculationDate       DateTime            @default(now())
+  dataPointsUsed        Int
+  confidenceLevel       Decimal             @db.Decimal(5, 2)
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  
+  // Relations
+  supplier              RateCardSupplier    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  @@index([supplierId, calculationDate])
+  @@index([tenantId, overallScore])
+  @@index([tenantId, calculationDate])
+  @@index([ranking])
+  @@map("supplier_scores")
 }
 
 model RateCardEntry {
@@ -1320,8 +1363,24 @@ model RateCardEntry {
   savingsAmount           Decimal?                  @db.Decimal(10, 2)
   savingsPercentage       Decimal?                  @db.Decimal(5, 2)
   
+  // Client/Tenant Information
+  clientName              String?
+  clientId                String?
+  
+  // Baseline & Negotiation Status
+  isBaseline              Boolean                   @default(false)
+  baselineType            String?
   isNegotiated            Boolean                   @default(false)
+  negotiationDate         DateTime?
+  negotiatedBy            String?
   negotiationNotes        String?
+  msaReference            String?
+  
+  // Editability & Audit
+  isEditable              Boolean                   @default(true)
+  editedBy                String?
+  editedAt                DateTime?
+  editHistory             Json?                     @default("[]")
   
   // Quality & Validation
   confidence              Decimal                   @db.Decimal(3, 2)
@@ -1347,6 +1406,8 @@ model RateCardEntry {
   savingsOpportunities    RateSavingsOpportunity[]
   comparisonsAsTarget     RateComparison[]
   baselineComparisons     BaselineComparison[]
+  forecasts               RateForecast[]
+  outlierFlag             OutlierFlag?
   
   @@index([tenantId])
   @@index([supplierId])
@@ -1358,6 +1419,13 @@ model RateCardEntry {
   @@index([tenantId, roleStandardized, country])
   @@index([tenantId, supplierId])
   @@index([dailyRateUSD])
+  @@index([clientName])
+  @@index([clientId])
+  @@index([isBaseline])
+  @@index([isNegotiated])
+  @@index([tenantId, clientName])
+  @@index([isBaseline, isNegotiated])
+  @@index([tenantId, clientName, isBaseline, isNegotiated])
   @@map("rate_card_entries")
 }
 
@@ -1887,4 +1955,451 @@ model RoleMapping {
   @@index([source])
   @@index([tenantId, originalRole])
   @@map("role_mappings")
+}
+
+
+// =============================================================================
+// Predictive Analytics Models
+// =============================================================================
+
+model RateForecast {
+  id              String   @id @default(cuid())
+  rateCardEntryId String   @map("rate_card_entry_id")
+  tenantId        String   @map("tenant_id")
+  
+  // Current State
+  currentRate     Decimal  @db.Decimal(10, 2) @map("current_rate")
+  forecastDate    DateTime @default(now()) @map("forecast_date")
+  
+  // Predictions
+  threeMonthRate  Decimal  @db.Decimal(10, 2) @map("three_month_rate")
+  threeMonthConfidence Decimal @db.Decimal(5, 2) @map("three_month_confidence")
+  threeMonthLower Decimal  @db.Decimal(10, 2) @map("three_month_lower")
+  threeMonthUpper Decimal  @db.Decimal(10, 2) @map("three_month_upper")
+  
+  sixMonthRate    Decimal  @db.Decimal(10, 2) @map("six_month_rate")
+  sixMonthConfidence Decimal @db.Decimal(5, 2) @map("six_month_confidence")
+  sixMonthLower   Decimal  @db.Decimal(10, 2) @map("six_month_lower")
+  sixMonthUpper   Decimal  @db.Decimal(10, 2) @map("six_month_upper")
+  
+  twelveMonthRate Decimal  @db.Decimal(10, 2) @map("twelve_month_rate")
+  twelveMonthConfidence Decimal @db.Decimal(5, 2) @map("twelve_month_confidence")
+  twelveMonthLower Decimal @db.Decimal(10, 2) @map("twelve_month_lower")
+  twelveMonthUpper Decimal @db.Decimal(10, 2) @map("twelve_month_upper")
+  
+  // Trend Analysis
+  trendDirection  String   @map("trend_direction") // increasing, decreasing, stable
+  trendCoefficient Decimal @db.Decimal(10, 6) @map("trend_coefficient")
+  riskLevel       String   @map("risk_level") // low, medium, high
+  
+  // Model Metadata
+  confidence      Decimal  @db.Decimal(5, 2)
+  historicalDataPoints Int @map("historical_data_points")
+  modelVersion    String   @map("model_version")
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  rateCardEntry   RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+  
+  @@index([rateCardEntryId])
+  @@index([tenantId, forecastDate])
+  @@index([riskLevel])
+  @@index([trendDirection])
+  @@map("rate_forecasts")
+}
+
+// =============================================================================
+// Data Quality & Outlier Detection Models
+// =============================================================================
+
+model OutlierFlag {
+  id                  String   @id @default(cuid())
+  rateCardEntryId     String   @unique @map("rate_card_entry_id")
+  tenantId            String   @map("tenant_id")
+  
+  // Outlier Detection
+  outlierType         String   @map("outlier_type") // HIGH, LOW
+  deviationSigma      Decimal  @db.Decimal(10, 4) @map("deviation_sigma")
+  marketMean          Decimal  @db.Decimal(10, 2) @map("market_mean")
+  marketMedian        Decimal  @db.Decimal(10, 2) @map("market_median")
+  standardDeviation   Decimal  @db.Decimal(10, 2) @map("standard_deviation")
+  severity            String   // EXTREME, MODERATE, MILD
+  
+  // Review Status
+  reviewStatus        String   @default("PENDING") @map("review_status") // PENDING, REVIEWED, RESOLVED, DISMISSED
+  reviewedBy          String?  @map("reviewed_by")
+  reviewedAt          DateTime? @map("reviewed_at")
+  reviewAction        String?  @map("review_action")
+  reviewNotes         String?  @map("review_notes")
+  
+  // Resolution
+  resolvedBy          String?  @map("resolved_by")
+  resolvedAt          DateTime? @map("resolved_at")
+  resolution          String?
+  
+  // Timestamps
+  detectedAt          DateTime @default(now()) @map("detected_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  rateCardEntry       RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+  reviewActions       OutlierReviewAction[]
+  
+  @@index([tenantId])
+  @@index([reviewStatus])
+  @@index([severity])
+  @@index([deviationSigma(sort: Desc)])
+  @@index([tenantId, reviewStatus])
+  @@map("outlier_flags")
+}
+
+model OutlierReviewAction {
+  id                  String   @id @default(cuid())
+  rateCardEntryId     String   @map("rate_card_entry_id")
+  outlierFlagId       String?  @map("outlier_flag_id")
+  
+  // Review Details
+  reviewedBy          String   @map("reviewed_by")
+  reviewedAt          DateTime @default(now()) @map("reviewed_at")
+  action              String   // CORRECT_DATA, ACCEPT_AS_VALID, MARK_INACTIVE, MERGE_DUPLICATE, INVESTIGATE_FURTHER
+  notes               String?
+  
+  // Relations
+  outlierFlag         OutlierFlag? @relation(fields: [outlierFlagId], references: [id])
+  
+  @@index([rateCardEntryId])
+  @@index([outlierFlagId])
+  @@index([reviewedAt])
+  @@map("outlier_review_actions")
+}
+
+model DuplicateResolution {
+  id                  String   @id @default(cuid())
+  duplicateGroupId    String   @map("duplicate_group_id")
+  
+  // Resolution Details
+  action              String   // MERGED, DELETED, KEPT_SEPARATE
+  resolvedBy          String   @map("resolved_by")
+  resolvedAt          DateTime @default(now()) @map("resolved_at")
+  notes               String?
+  
+  // Merge/Delete Details
+  mergedIntoId        String?  @map("merged_into_id")
+  deletedIds          String[] @default([]) @map("deleted_ids")
+  
+  @@index([duplicateGroupId])
+  @@index([resolvedAt])
+  @@map("duplicate_resolutions")
+}
+
+// =============================================================================
+// Clustering & Consolidation Models
+// =============================================================================
+
+model RateCardCluster {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  
+  // Cluster Identification
+  name                  String
+  clusterType           String   @default("K_MEANS") @map("cluster_type") // K_MEANS, HIERARCHICAL, DBSCAN
+  
+  // Cluster Characteristics
+  memberCount           Int      @map("member_count")
+  avgRate               Decimal  @db.Decimal(10, 2) @map("avg_rate")
+  minRate               Decimal  @db.Decimal(10, 2) @map("min_rate")
+  maxRate               Decimal  @db.Decimal(10, 2) @map("max_rate")
+  
+  // Cluster Metadata
+  characteristics       Json     // Common roles, geographies, etc.
+  centroid              Json     // Normalized feature centroid
+  
+  // Consolidation Analysis
+  consolidationSavings  Decimal  @db.Decimal(15, 2) @map("consolidation_savings")
+  supplierCount         Int      @map("supplier_count")
+  
+  // Timestamps
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  members               ClusterMember[]
+  
+  @@index([tenantId])
+  @@index([consolidationSavings(sort: Desc)])
+  @@index([createdAt])
+  @@map("rate_card_clusters")
+}
+
+model ClusterMember {
+  id              String   @id @default(cuid())
+  clusterId       String   @map("cluster_id")
+  rateCardEntryId String   @map("rate_card_entry_id")
+  
+  // Membership Details
+  similarityScore Decimal  @db.Decimal(5, 2) @map("similarity_score") // 0-100
+  distanceToCentroid Decimal @db.Decimal(10, 6) @map("distance_to_centroid")
+  
+  // Timestamps
+  assignedAt      DateTime @default(now()) @map("assigned_at")
+  
+  // Relations
+  cluster         RateCardCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  
+  @@unique([clusterId, rateCardEntryId])
+  @@index([clusterId])
+  @@index([rateCardEntryId])
+  @@map("cluster_members")
+}
+
+model ConsolidationOpportunity {
+  id                      String   @id @default(cuid())
+  tenantId                String   @map("tenant_id")
+  clusterId               String   @map("cluster_id")
+  
+  // Opportunity Details
+  opportunityName         String   @map("opportunity_name")
+  description             String?
+  
+  // Supplier Analysis
+  currentSupplierCount    Int      @map("current_supplier_count")
+  recommendedSupplierId   String   @map("recommended_supplier_id")
+  recommendedSupplierName String   @map("recommended_supplier_name")
+  suppliersToConsolidate  String[] @default([]) @map("suppliers_to_consolidate")
+  
+  // Financial Impact
+  currentAnnualCost       Decimal  @db.Decimal(15, 2) @map("current_annual_cost")
+  projectedAnnualCost     Decimal  @db.Decimal(15, 2) @map("projected_annual_cost")
+  annualSavings           Decimal  @db.Decimal(15, 2) @map("annual_savings")
+  savingsPercentage       Decimal  @db.Decimal(5, 2) @map("savings_percentage")
+  
+  // Volume Analysis
+  totalVolume             Int      @map("total_volume")
+  volumeBySupplier        Json     @map("volume_by_supplier")
+  
+  // Risk & Implementation
+  riskLevel               String   @map("risk_level") // LOW, MEDIUM, HIGH
+  riskFactors             String[] @default([]) @map("risk_factors")
+  implementationComplexity String  @map("implementation_complexity") // LOW, MEDIUM, HIGH
+  estimatedTimeframe      String   @map("estimated_timeframe")
+  actionItems             String[] @default([]) @map("action_items")
+  
+  // Quality Metrics
+  confidence              Decimal  @db.Decimal(5, 2)
+  dataQuality             Decimal  @db.Decimal(5, 2) @map("data_quality")
+  
+  // Status Tracking
+  status                  String   @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
+  assignedTo              String?  @map("assigned_to")
+  reviewedBy              String?  @map("reviewed_by")
+  reviewedAt              DateTime? @map("reviewed_at")
+  implementedAt           DateTime? @map("implemented_at")
+  
+  // Timestamps
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([status])
+  @@index([annualSavings(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("consolidation_opportunities")
+}
+
+model GeographicArbitrageOpportunity {
+  id                      String   @id @default(cuid())
+  tenantId                String   @map("tenant_id")
+  clusterId               String   @map("cluster_id")
+  
+  // Geographic Details
+  sourceCountry           String   @map("source_country")
+  sourceRegion            String   @map("source_region")
+  targetCountry           String   @map("target_country")
+  targetRegion            String   @map("target_region")
+  
+  // Rate Analysis
+  currentAverageRate      Decimal  @db.Decimal(10, 2) @map("current_average_rate")
+  targetAverageRate       Decimal  @db.Decimal(10, 2) @map("target_average_rate")
+  rateDifference          Decimal  @db.Decimal(10, 2) @map("rate_difference")
+  savingsPercentage       Decimal  @db.Decimal(5, 2) @map("savings_percentage")
+  
+  // Financial Impact
+  annualSavingsPotential  Decimal  @db.Decimal(15, 2) @map("annual_savings_potential")
+  affectedRoles           Int      @map("affected_roles")
+  estimatedFTEs           Int      @map("estimated_ftes")
+  
+  // Quality & Risk
+  qualityDifference       String   @map("quality_difference") // SAME, BETTER, WORSE
+  riskLevel               String   @map("risk_level") // LOW, MEDIUM, HIGH
+  riskFactors             String[] @default([]) @map("risk_factors")
+  feasibility             String   // HIGH, MEDIUM, LOW
+  
+  // Implementation
+  considerations          String[] @default([])
+  recommendations         String[] @default([])
+  
+  // Quality Metrics
+  confidence              Decimal  @db.Decimal(5, 2)
+  sourceSampleSize        Int      @map("source_sample_size")
+  targetSampleSize        Int      @map("target_sample_size")
+  
+  // Status Tracking
+  status                  String   @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
+  assignedTo              String?  @map("assigned_to")
+  reviewedBy              String?  @map("reviewed_by")
+  reviewedAt              DateTime? @map("reviewed_at")
+  implementedAt           DateTime? @map("implemented_at")
+  
+  // Timestamps
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  
+  @@index([tenantId])
+  @@index([clusterId])
+  @@index([status])
+  @@index([annualSavingsPotential(sort: Desc)])
+  @@index([sourceCountry])
+  @@index([targetCountry])
+  @@index([tenantId, status])
+  @@map("geographic_arbitrage_opportunities")
+}
+
+// =============================================================================
+// Advanced Filtering & Segmentation Models
+// =============================================================================
+
+model RateCardSegment {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  userId      String   @map("user_id")
+  
+  // Segment Details
+  name        String
+  description String?
+  
+  // Filter Definition
+  filters     Json     // Complex filter definition with boolean logic
+  
+  // Sharing
+  shared      Boolean  @default(false)
+  
+  // Usage Tracking
+  usageCount  Int      @default(0) @map("usage_count")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, shared])
+  @@index([usageCount(sort: Desc)])
+  @@map("rate_card_segments")
+}
+
+// =============================================================================
+// Alerts & Notifications Models
+// =============================================================================
+
+model RateCardAlert {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  userId      String?  @map("user_id")
+  
+  // Alert Details
+  type        String   // rate_increase, market_shift, opportunity, quality_issue, supplier_alert
+  severity    String   // low, medium, high, critical
+  title       String
+  description String
+  data        Json     @default("{}")
+  
+  // Status
+  read        Boolean  @default(false)
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@index([tenantId, read, createdAt])
+  @@index([userId, read])
+  @@index([type])
+  @@index([severity])
+  @@index([tenantId, type, read])
+  @@map("rate_card_alerts")
+}
+
+model ScheduledReport {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  userId      String   @map("user_id")
+  
+  // Report Details
+  name        String
+  type        String   // executive, detailed, opportunities, suppliers
+  frequency   String   // daily, weekly, monthly
+  recipients  Json     // Array of email addresses
+  filters     Json     @default("{}")
+  
+  // Schedule
+  lastRun     DateTime? @map("last_run")
+  nextRun     DateTime  @map("next_run")
+  enabled     Boolean   @default(true)
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@index([tenantId, enabled, nextRun])
+  @@index([userId])
+  @@index([type])
+  @@index([nextRun])
+  @@map("scheduled_reports")
+}
+
+// =============================================================================
+// Multi-Currency Advanced Support Models
+// =============================================================================
+
+model ExchangeRate {
+  id            String   @id @default(cuid())
+  fromCurrency  String   @map("from_currency")
+  toCurrency    String   @map("to_currency")
+  rate          Decimal  @db.Decimal(10, 6)
+  timestamp     DateTime @default(now())
+  source        String   @default("exchangerate-api.io")
+  
+  @@index([fromCurrency, toCurrency, timestamp])
+  @@index([timestamp])
+  @@map("exchange_rates")
+}
+
+model CurrencyVolatilityAlert {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  currency        String
+  baseCurrency    String   @map("base_currency")
+  changePercent   Decimal  @db.Decimal(5, 2) @map("change_percent")
+  previousRate    Decimal  @db.Decimal(10, 6) @map("previous_rate")
+  currentRate     Decimal  @db.Decimal(10, 6) @map("current_rate")
+  affectedRates   Int      @default(0) @map("affected_rates")
+  
+  // Status
+  acknowledged    Boolean  @default(false)
+  acknowledgedBy  String?  @map("acknowledged_by")
+  acknowledgedAt  DateTime? @map("acknowledged_at")
+  
+  // Timestamps
+  detectedAt      DateTime @default(now()) @map("detected_at")
+  
+  @@index([tenantId, acknowledged])
+  @@index([currency])
+  @@index([detectedAt])
+  @@index([changePercent(sort: Desc)])
+  @@map("currency_volatility_alerts")
 }

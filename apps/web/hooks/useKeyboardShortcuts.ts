@@ -1,154 +1,119 @@
 /**
- * Keyboard Shortcuts Hook
- * Provides cross-platform keyboard shortcut support for the application
+ * useKeyboardShortcuts Hook
+ * Manages keyboard shortcuts with conflict detection and help modal
  */
 
-import { useEffect, useCallback, useRef } from 'react'
+'use client';
+
+import { useEffect, useCallback, useRef } from 'react';
 
 export interface KeyboardShortcut {
-  key: string
-  ctrl?: boolean
-  meta?: boolean // Cmd on Mac
-  shift?: boolean
-  alt?: boolean
-  callback: () => void
-  description: string
-  preventDefault?: boolean
+  key: string;
+  ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
+  meta?: boolean;
+  description: string;
+  action: () => void;
+  category?: string;
+  enabled?: boolean;
 }
 
-export interface UseKeyboardShortcutsOptions {
-  enabled?: boolean
-  shortcuts: KeyboardShortcut[]
+export interface ShortcutConfig {
+  shortcuts: KeyboardShortcut[];
+  preventDefault?: boolean;
+  enableInInputs?: boolean;
 }
 
-/**
- * Hook to register keyboard shortcuts
- * Automatically handles Cmd (Mac) vs Ctrl (Windows/Linux)
- */
-export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions) {
-  const { enabled = true, shortcuts } = options
-  const shortcutsRef = useRef(shortcuts)
+export function useKeyboardShortcuts(config: ShortcutConfig) {
+  const { shortcuts, preventDefault = true, enableInInputs = false } = config;
+  const shortcutsRef = useRef(shortcuts);
 
   // Update ref when shortcuts change
   useEffect(() => {
-    shortcutsRef.current = shortcuts
-  }, [shortcuts])
+    shortcutsRef.current = shortcuts;
+  }, [shortcuts]);
 
-  const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!enabled) return
-
-    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-    
-    for (const shortcut of shortcutsRef.current) {
-      const keyMatches = event.key.toLowerCase() === shortcut.key.toLowerCase()
-      
-      // Handle Cmd (Mac) or Ctrl (Windows/Linux)
-      const modifierMatches = shortcut.ctrl || shortcut.meta
-        ? isMac 
-          ? event.metaKey 
-          : event.ctrlKey
-        : true
-
-      const shiftMatches = shortcut.shift ? event.shiftKey : !event.shiftKey
-      const altMatches = shortcut.alt ? event.altKey : !event.altKey
-
-      if (keyMatches && modifierMatches && shiftMatches && altMatches) {
-        if (shortcut.preventDefault !== false) {
-          event.preventDefault()
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      // Skip if typing in input/textarea/contenteditable
+      if (!enableInInputs) {
+        const target = event.target as HTMLElement;
+        if (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable
+        ) {
+          return;
         }
-        shortcut.callback()
-        break
       }
-    }
-  }, [enabled])
+
+      // Find matching shortcut
+      const matchingShortcut = shortcutsRef.current.find(shortcut => {
+        if (shortcut.enabled === false) return false;
+
+        const keyMatches = event.key.toLowerCase() === shortcut.key.toLowerCase();
+        const ctrlMatches = !!shortcut.ctrl === (event.ctrlKey || event.metaKey);
+        const shiftMatches = !!shortcut.shift === event.shiftKey;
+        const altMatches = !!shortcut.alt === event.altKey;
+
+        return keyMatches && ctrlMatches && shiftMatches && altMatches;
+      });
+
+      if (matchingShortcut) {
+        if (preventDefault) {
+          event.preventDefault();
+        }
+        matchingShortcut.action();
+      }
+    },
+    [preventDefault, enableInInputs]
+  );
 
   useEffect(() => {
-    if (!enabled) return
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [enabled, handleKeyDown])
+  return {
+    shortcuts: shortcutsRef.current,
+  };
 }
 
-/**
- * Get the display string for a keyboard shortcut
- * Shows Cmd on Mac, Ctrl on Windows/Linux
- */
-export function getShortcutDisplay(shortcut: KeyboardShortcut): string {
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
-  const parts: string[] = []
+// ============================================================================
+// Utility Functions
+// ============================================================================
 
+export function formatShortcut(shortcut: KeyboardShortcut): string {
+  const parts: string[] = [];
+  
   if (shortcut.ctrl || shortcut.meta) {
-    parts.push(isMac ? '⌘' : 'Ctrl')
+    parts.push(isMac() ? '⌘' : 'Ctrl');
   }
   if (shortcut.shift) {
-    parts.push(isMac ? '⇧' : 'Shift')
+    parts.push('Shift');
   }
   if (shortcut.alt) {
-    parts.push(isMac ? '⌥' : 'Alt')
+    parts.push(isMac() ? '⌥' : 'Alt');
   }
   
-  parts.push(shortcut.key.toUpperCase())
-
-  return parts.join(isMac ? '' : '+')
+  parts.push(shortcut.key.toUpperCase());
+  
+  return parts.join(' + ');
 }
 
-/**
- * Predefined shortcuts for common actions
- */
-export const commonShortcuts = {
-  save: (callback: () => void): KeyboardShortcut => ({
-    key: 's',
-    ctrl: true,
-    meta: true,
-    callback,
-    description: 'Save'
-  }),
-  
-  export: (callback: () => void): KeyboardShortcut => ({
-    key: 'e',
-    ctrl: true,
-    meta: true,
-    callback,
-    description: 'Export'
-  }),
-  
-  share: (callback: () => void): KeyboardShortcut => ({
-    key: 's',
-    ctrl: true,
-    meta: true,
-    shift: true,
-    callback,
-    description: 'Share'
-  }),
-  
-  search: (callback: () => void): KeyboardShortcut => ({
-    key: 'k',
-    ctrl: true,
-    meta: true,
-    callback,
-    description: 'Search / Command Palette'
-  }),
-  
-  help: (callback: () => void): KeyboardShortcut => ({
-    key: '?',
-    shift: true,
-    callback,
-    description: 'Show Help'
-  }),
-  
-  escape: (callback: () => void): KeyboardShortcut => ({
-    key: 'Escape',
-    callback,
-    description: 'Close / Cancel',
-    preventDefault: false
-  }),
-  
-  tab: (number: number, callback: () => void): KeyboardShortcut => ({
-    key: number.toString(),
-    ctrl: true,
-    meta: true,
-    callback,
-    description: `Switch to Tab ${number}`
-  })
+export function isMac(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+}
+
+export function groupShortcutsByCategory(shortcuts: KeyboardShortcut[]): Record<string, KeyboardShortcut[]> {
+  return shortcuts.reduce((acc, shortcut) => {
+    const category = shortcut.category || 'General';
+    if (!acc[category]) {
+      acc[category] = [];
+    }
+    acc[category].push(shortcut);
+    return acc;
+  }, {} as Record<string, KeyboardShortcut[]>);
 }
