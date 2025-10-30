@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { DashboardKPICards } from '@/components/rate-cards/DashboardKPICards';
 import { FinancialMetricsCards } from '@/components/rate-cards/FinancialMetricsCards';
@@ -12,6 +12,8 @@ import { BaselineTrackingWidget } from '@/components/rate-cards/BaselineTracking
 import { NegotiationStatusWidget } from '@/components/rate-cards/NegotiationStatusWidget';
 import { useRouter } from 'next/navigation';
 import { useRealTimeEvents } from '@/contexts/RealTimeContext';
+import { Button } from '@/components/ui/button';
+import { Upload, Plus } from 'lucide-react';
 
 export default function RateCardDashboardPage() {
   const router = useRouter();
@@ -25,28 +27,30 @@ export default function RateCardDashboardPage() {
   }, []);
 
   // Real-time updates for rate cards
-  useRealTimeEvents({
-    'ratecard:created': (data) => {
+  const eventHandlers = useMemo(() => ({
+    'ratecard:created': (data: any) => {
       console.log('[RateCards] New rate card created:', data);
       fetchDashboardMetrics(); // Refresh metrics
     },
-    'ratecard:updated': (data) => {
+    'ratecard:updated': (data: any) => {
       console.log('[RateCards] Rate card updated:', data);
       fetchDashboardMetrics(); // Refresh metrics
     },
-    'ratecard:imported': (data) => {
+    'ratecard:imported': (data: any) => {
       console.log('[RateCards] Rate cards imported:', data);
       fetchDashboardMetrics(); // Refresh metrics
     },
-    'benchmark:calculated': (data) => {
+    'benchmark:calculated': (data: any) => {
       console.log('[RateCards] Benchmark calculated:', data);
       fetchDashboardMetrics(); // Refresh metrics
     },
-    'benchmark:invalidated': (data) => {
+    'benchmark:invalidated': (data: any) => {
       console.log('[RateCards] Benchmark invalidated:', data);
       fetchDashboardMetrics(); // Refresh metrics
     },
-  });
+  }), []);
+
+  useRealTimeEvents(eventHandlers);
 
   const fetchDashboardMetrics = async () => {
     try {
@@ -84,6 +88,16 @@ export default function RateCardDashboardPage() {
           <p className="text-muted-foreground">
             Monitor portfolio health and identify savings opportunities
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => router.push('/rate-cards/import')} variant="outline">
+            <Upload className="h-4 w-4 mr-2" />
+            Import Rate Cards
+          </Button>
+          <Button onClick={() => router.push('/rate-cards/create')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Rate Card
+          </Button>
         </div>
       </div>
 

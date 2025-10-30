@@ -41,6 +41,6 @@ export function DashboardSkeleton() {
   );
 }
 
-export function ContractListSkeleton() {
-  return <TableSkeleton rows={10} />;
+export function ContractListSkeleton({ count = 10 }: { count?: number }) {
+  return <TableSkeleton rows={count} />;
 }

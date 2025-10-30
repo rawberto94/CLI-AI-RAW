@@ -153,7 +153,7 @@ export default function RateBenchmarkingPage() {
                   <CardTitle>Baseline Comparison</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ComparisonBarChart />
+                  <ComparisonBarChart data={[]} />
                   <p className="text-sm text-muted-foreground mt-4">
                     Comparing baseline rates vs actual rates vs market benchmarks
                   </p>
@@ -171,7 +171,7 @@ export default function RateBenchmarkingPage() {
                   <CardTitle>Geographic Distribution - {clientFilter}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <GeographicHeatMap />
+                  <GeographicHeatMap data={[]} />
                 </CardContent>
               </Card>
             )}

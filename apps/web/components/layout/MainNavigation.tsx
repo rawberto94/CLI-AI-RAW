@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator'
 import { 
   LayoutDashboard,
@@ -212,7 +213,7 @@ export default function MainNavigation() {
   }
 
   return (
-    <>
+    <TooltipProvider>
       {/* Mobile Menu Button */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -262,6 +263,7 @@ export default function MainNavigation() {
                 {hasChildren ? (
                   <>
                     <button
+                      data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}-button`}
                       onClick={() => toggleExpanded(item.name)}
                       className={cn(
                         'w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -317,6 +319,7 @@ export default function MainNavigation() {
                   </>
                 ) : (
                   <Link
+                    data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}-link`}
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
@@ -362,6 +365,6 @@ export default function MainNavigation() {
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
-    </>
+    </TooltipProvider>
   )
 }

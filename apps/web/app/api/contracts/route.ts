@@ -13,6 +13,121 @@ import { applyRateLimit, EndpointRateLimits } from "@/lib/middleware/rate-limit.
 
 export const dynamic = "force-dynamic";
 
+// Mock contracts data
+function returnMockContracts(searchParams: URLSearchParams) {
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = Number(searchParams.get("limit")) || 20;
+  
+  const mockContracts = [
+    {
+      id: "mock-1",
+      filename: "accenture-it-services-2024.pdf",
+      originalName: "IT Services Agreement - Accenture",
+      status: "COMPLETED",
+      fileSize: "125000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2024-01-15").toISOString(),
+      contractType: "IT Services",
+    },
+    {
+      id: "mock-2",
+      filename: "thoughtworks-msa-2024.pdf",
+      originalName: "Software Development MSA - Thoughtworks",
+      status: "COMPLETED",
+      fileSize: "98000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2024-03-01").toISOString(),
+      contractType: "Software Development",
+    },
+    {
+      id: "mock-3",
+      filename: "aws-enterprise-agreement.pdf",
+      originalName: "Cloud Infrastructure - AWS",
+      status: "COMPLETED",
+      fileSize: "215000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2023-06-01").toISOString(),
+      contractType: "Cloud Services",
+    },
+    {
+      id: "mock-4",
+      filename: "infosys-data-analytics-sow.pdf",
+      originalName: "Data Analytics Platform - Infosys",
+      status: "PROCESSING",
+      fileSize: "87000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2023-09-15").toISOString(),
+      contractType: "Data & Analytics",
+    },
+    {
+      id: "mock-5",
+      filename: "deloitte-security-assessment.pdf",
+      originalName: "Cybersecurity Assessment - Deloitte",
+      status: "UPLOADED",
+      fileSize: "76000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2024-10-01").toISOString(),
+      contractType: "Security",
+    },
+    {
+      id: "mock-6",
+      filename: "sap-erp-implementation.pdf",
+      originalName: "ERP Implementation - SAP",
+      status: "COMPLETED",
+      fileSize: "342000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2024-02-01").toISOString(),
+      contractType: "Enterprise Software",
+    },
+    {
+      id: "mock-7",
+      filename: "capgemini-mobile-dev.pdf",
+      originalName: "Mobile App Development - Capgemini",
+      status: "COMPLETED",
+      fileSize: "112000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2024-04-15").toISOString(),
+      contractType: "Mobile Development",
+    },
+    {
+      id: "mock-8",
+      filename: "cisco-network-services.pdf",
+      originalName: "Network Infrastructure - Cisco Services",
+      status: "COMPLETED",
+      fileSize: "156000",
+      mimeType: "application/pdf",
+      uploadedAt: new Date("2023-08-01").toISOString(),
+      contractType: "Networking",
+    },
+  ];
+  
+  const total = mockContracts.length;
+  const totalPages = Math.ceil(total / limit);
+  const start = (page - 1) * limit;
+  const end = start + limit;
+  const paginatedContracts = mockContracts.slice(start, end);
+  
+  return NextResponse.json({
+    success: true,
+    data: {
+      contracts: paginatedContracts,
+      pagination: {
+        total,
+        limit,
+        page,
+        totalPages,
+        hasMore: page < totalPages,
+        hasPrevious: page > 1,
+      },
+      meta: {
+        responseTime: "5ms",
+        cached: false,
+        source: "mock-data",
+      },
+    },
+  });
+}
+
 async function handler(request: NextRequest) {
   // Apply rate limiting
   const rateLimitResponse = await applyRateLimit(request, EndpointRateLimits.contracts);
@@ -23,6 +138,14 @@ async function handler(request: NextRequest) {
   const startTime = Date.now();
 
   const { searchParams } = new URL(request.url);
+
+  // Check data mode from header
+  const dataMode = request.headers.get('x-data-mode') || 'real';
+  
+  // If mock mode, return mock data
+  if (dataMode === 'mock') {
+    return returnMockContracts(searchParams);
+  }
 
   // Parse query parameters
   const tenantId = searchParams.get("tenantId") || "demo";

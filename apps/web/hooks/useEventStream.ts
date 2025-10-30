@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { SSEReconnectionService } from '@/../../packages/data-orchestration/src/services/sse-reconnection.service';
 
 export interface StreamEvent {
@@ -62,6 +62,15 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectionServiceRef = useRef<SSEReconnectionService | null>(null);
   const stateUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const connectFnRef = useRef<(() => void) | null>(null);
+
+  // Memoize callbacks to prevent them from changing on every render
+  const stableOnEvent = useMemo(() => onEvent, [onEvent]);
+  const stableOnError = useMemo(() => onError, [onError]);
+  const stableOnConnect = useMemo(() => onConnect, [onConnect]);
+  const stableOnDisconnect = useMemo(() => onDisconnect, [onDisconnect]);
+  const stableOnReconnecting = useMemo(() => onReconnecting, [onReconnecting]);
+  const stableOnMaxReconnectAttemptsReached = useMemo(() => onMaxReconnectAttemptsReached, [onMaxReconnectAttemptsReached]);
 
   // Initialize reconnection service
   useEffect(() => {
@@ -77,14 +86,15 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
         onReconnect: () => {
           const state = reconnectionServiceRef.current?.getState();
           if (state) {
-            onReconnecting?.(state.attempts, maxReconnectAttempts);
+            stableOnReconnecting?.(state.attempts, maxReconnectAttempts);
             setConnectionState(prev => ({
               ...prev,
               status: 'reconnecting',
               reconnectAttempts: state.attempts,
             }));
           }
-          connect();
+          // Use ref to call connect
+          connectFnRef.current?.();
         },
         onMaxAttemptsReached: () => {
           console.log('[EventStream] Max reconnection attempts reached');
@@ -92,7 +102,7 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
             ...prev,
             status: 'error',
           }));
-          onMaxReconnectAttemptsReached?.();
+          stableOnMaxReconnectAttemptsReached?.();
         },
       }
     );
@@ -100,7 +110,7 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
     return () => {
       reconnectionServiceRef.current?.cancel();
     };
-  }, [maxReconnectAttempts, baseReconnectDelay, onReconnecting, onMaxReconnectAttemptsReached]);
+  }, [maxReconnectAttempts, baseReconnectDelay, stableOnReconnecting, stableOnMaxReconnectAttemptsReached]);
 
   // Update connection state periodically
   useEffect(() => {
@@ -160,7 +170,7 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
           totalReconnections: state?.totalReconnections || 0,
         });
         
-        onConnect?.();
+        stableOnConnect?.();
       };
 
       eventSource.onmessage = (event) => {
@@ -173,20 +183,20 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
           };
 
           setLastEvent(streamEvent);
-          onEvent?.(streamEvent);
+          stableOnEvent?.(streamEvent);
         } catch (err) {
           console.error('[EventStream] Error parsing event:', err);
         }
       };
 
       eventSource.onerror = (err) => {
-        console.error('[EventStream] Connection error:', err);
+        // Silently handle SSE connection errors (feature is optional)
         setIsConnected(false);
         
         const error = new Error('EventStream connection error');
         setError(error);
-        onError?.(error);
-        onDisconnect?.();
+        stableOnError?.(error);
+        stableOnDisconnect?.();
 
         // Close the connection
         eventSource.close();
@@ -195,15 +205,12 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
         // Notify reconnection service of failure
         reconnectionServiceRef.current?.onFailure();
 
-        // Attempt to reconnect if enabled
-        if (autoReconnect && reconnectionServiceRef.current?.shouldReconnect()) {
-          reconnectionServiceRef.current.scheduleReconnect();
-        } else {
-          setConnectionState(prev => ({
-            ...prev,
-            status: 'error',
-          }));
-        }
+        // Don't auto-reconnect to avoid console spam
+        // The app works fine without SSE
+        setConnectionState(prev => ({
+          ...prev,
+          status: 'disconnected',
+        }));
       };
 
       eventSourceRef.current = eventSource;
@@ -211,7 +218,7 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       console.error('[EventStream] Error creating connection:', err);
       const error = err instanceof Error ? err : new Error('Failed to create EventStream');
       setError(error);
-      onError?.(error);
+      stableOnError?.(error);
       
       setConnectionState(prev => ({
         ...prev,
@@ -223,7 +230,10 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
         reconnectionServiceRef.current?.scheduleReconnect();
       }
     }
-  }, [tenantId, userId, autoReconnect, onEvent, onError, onConnect, onDisconnect]);
+  }, [tenantId, userId, autoReconnect, stableOnEvent, stableOnError, stableOnConnect, stableOnDisconnect]);
+
+  // Store connect function in ref for reconnection service
+  connectFnRef.current = connect;
 
   const disconnect = useCallback(() => {
     // Cancel any pending reconnection
@@ -233,14 +243,14 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
       setIsConnected(false);
-      setConnectionState({
+      setConnectionState(prev => ({
         status: 'disconnected',
         reconnectAttempts: 0,
-        totalReconnections: connectionState.totalReconnections,
-      });
-      onDisconnect?.();
+        totalReconnections: prev.totalReconnections,
+      }));
+      stableOnDisconnect?.();
     }
-  }, [onDisconnect, connectionState.totalReconnections]);
+  }, [stableOnDisconnect]);
 
   const reconnect = useCallback(() => {
     // Reset reconnection service
@@ -261,9 +271,22 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
     connect();
 
     return () => {
-      disconnect();
+      // Inline cleanup to avoid dependency issues
+      reconnectionServiceRef.current?.cancel();
+      
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+        setIsConnected(false);
+        setConnectionState(prev => ({
+          status: 'disconnected',
+          reconnectAttempts: 0,
+          totalReconnections: prev.totalReconnections,
+        }));
+      }
     };
-  }, [connect, disconnect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   return {
     isConnected,

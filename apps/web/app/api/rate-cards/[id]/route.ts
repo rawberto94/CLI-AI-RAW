@@ -15,6 +15,135 @@ export async function GET(
   try {
     const { id } = params;
     
+    // Check data mode from header
+    const dataMode = request.headers.get('x-data-mode') || 'real';
+    
+    // If mock mode, return mock data
+    if (dataMode === 'mock') {
+      const mockRateCards = [
+        {
+          id: "rate-acc-se1",
+          rateCardId: "card-acc-001",
+          originalRoleName: "Senior Software Engineer",
+          roleStandardized: "Software Engineer",
+          roleCategory: "Technology",
+          seniority: "SENIOR",
+          serviceLine: "Technology",
+          lineOfService: "Technology",
+          country: "United States",
+          dailyRate: 1200,
+          currency: "USD",
+          supplierId: "sup-acc",
+          supplierName: "Accenture",
+          effectiveDate: "2024-01-01",
+          expiryDate: "2025-12-31",
+          isBaseline: true,
+          isNegotiated: true,
+          isEditable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "rate-acc-arch1",
+          rateCardId: "card-acc-001",
+          originalRoleName: "Principal Architect",
+          roleStandardized: "Solution Architect",
+          roleCategory: "Technology",
+          seniority: "PRINCIPAL",
+          serviceLine: "Technology",
+          lineOfService: "Technology",
+          country: "United States",
+          dailyRate: 1800,
+          currency: "USD",
+          supplierId: "sup-acc",
+          supplierName: "Accenture",
+          effectiveDate: "2024-01-01",
+          expiryDate: "2025-12-31",
+          isBaseline: true,
+          isNegotiated: false,
+          isEditable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "rate-acc-ds1",
+          rateCardId: "card-acc-001",
+          originalRoleName: "Data Scientist",
+          roleStandardized: "Data Scientist",
+          roleCategory: "Data",
+          seniority: "SENIOR",
+          serviceLine: "Data & Analytics",
+          lineOfService: "Data & Analytics",
+          country: "United States",
+          dailyRate: 1400,
+          currency: "USD",
+          supplierId: "sup-acc",
+          supplierName: "Accenture",
+          effectiveDate: "2024-01-01",
+          expiryDate: "2025-12-31",
+          isBaseline: false,
+          isNegotiated: true,
+          isEditable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "rate-acc-devops1",
+          rateCardId: "card-acc-001",
+          originalRoleName: "DevOps Engineer",
+          roleStandardized: "DevOps Engineer",
+          roleCategory: "Technology",
+          seniority: "MID",
+          serviceLine: "Technology",
+          lineOfService: "Technology",
+          country: "United States",
+          dailyRate: 1000,
+          currency: "USD",
+          supplierId: "sup-acc",
+          supplierName: "Accenture",
+          effectiveDate: "2024-01-01",
+          expiryDate: "2025-12-31",
+          isBaseline: false,
+          isNegotiated: false,
+          isEditable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: "rate-tw-fs1",
+          rateCardId: "card-tw-001",
+          originalRoleName: "Full Stack Developer",
+          roleStandardized: "Software Engineer",
+          roleCategory: "Technology",
+          seniority: "SENIOR",
+          serviceLine: "Technology",
+          lineOfService: "Technology",
+          country: "United States",
+          dailyRate: 950,
+          currency: "USD",
+          supplierId: "sup-tw",
+          supplierName: "Thoughtworks",
+          effectiveDate: "2024-01-01",
+          expiryDate: "2025-12-31",
+          isBaseline: true,
+          isNegotiated: true,
+          isEditable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      
+      const mockEntry = mockRateCards.find(rc => rc.id === id);
+      if (!mockEntry) {
+        return NextResponse.json(
+          { error: 'Rate card not found' },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json(mockEntry);
+    }
+    
     // TODO: Get tenantId from session/auth
     const tenantId = request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
 

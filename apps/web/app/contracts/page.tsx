@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +48,7 @@ import {
 } from "@/lib/contracts/filter-utils";
 import { BulkActionsToolbar } from "@/components/contracts/BulkActionsToolbar";
 import { SavedFiltersPanel } from "@/components/contracts/SavedFiltersPanel";
+import { useDataMode } from "@/contexts/DataModeContext";
 import { getContractTags, getTagById, getTagColor } from "@/lib/contracts/tags";
 import { getDefaultFilter } from "@/lib/contracts/saved-filters";
 import { TableView } from "@/components/contracts/TableView";
@@ -64,9 +65,11 @@ import {
 import { ComparisonSelector } from "@/components/contracts/ComparisonSelector";
 import { ComparisonView } from "@/components/contracts/ComparisonView";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
-export default function ContractsPage() {
+function ContractsPageContent() {
   const router = useRouter();
+  const { dataMode } = useDataMode();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,31 +130,65 @@ export default function ContractsPage() {
 
   const isSelected = (id: string) => selectedIds.has(id);
 
+  const fetchContracts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/contracts/list", {
+        headers: {
+          'x-data-mode': dataMode,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch contracts: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setContracts(data.data?.contracts || []);
+      } else {
+        throw new Error(data.error || "Failed to load contracts");
+      }
+    } catch (err) {
+      console.error("Error fetching contracts:", err);
+      setError(err instanceof Error ? err.message : "Failed to load contracts");
+    } finally {
+      setLoading(false);
+    }
+  }, [dataMode]);
+
   useEffect(() => {
     fetchContracts();
-  }, []);
+  }, [fetchContracts]);
 
   // Real-time updates for contracts
-  useRealTimeEvents({
-    'contract:created': (data) => {
+  const eventHandlers = useMemo(() => ({
+    'contract:created': (data: any) => {
       console.log('[Contracts] New contract created:', data);
       fetchContracts(); // Refresh the list
     },
-    'contract:updated': (data) => {
+    'contract:updated': (data: any) => {
       console.log('[Contracts] Contract updated:', data);
       // Update specific contract in the list
       setContracts(prev => prev.map(c => 
         c.id === data.contractId ? { ...c, ...data.updates } : c
       ));
     },
-    'contract:completed': (data) => {
+    'contract:completed': (data: any) => {
       console.log('[Contracts] Contract processing completed:', data);
       // Update contract status
       setContracts(prev => prev.map(c => 
         c.id === data.contractId ? { ...c, status: 'completed' } : c
       ));
     },
-  });
+  }), [fetchContracts]);
+
+  useRealTimeEvents(eventHandlers);
 
   // Step 1: Load default filter on mount
   useEffect(() => {
@@ -185,34 +222,6 @@ export default function ContractsPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [filteredContracts]);
-
-  const fetchContracts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/contracts/list");
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch contracts: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setContracts(data.data?.contracts || []);
-      } else {
-        throw new Error(data.error || "Failed to load contracts");
-      }
-    } catch (err) {
-      console.error("Error fetching contracts:", err);
-      setError(err instanceof Error ? err.message : "Failed to load contracts");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleResetFilters = () => {
     setFilters(getDefaultFilters());
@@ -791,5 +800,13 @@ function ContractCard({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ContractsPageWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <ContractsPageContent />
+    </ErrorBoundary>
   );
 }

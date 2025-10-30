@@ -10,12 +10,6 @@ import { useRealTime } from '@/contexts/RealTimeContext';
 import { Wifi, WifiOff, Loader2, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 export interface ConnectionStatusIndicatorProps {
   showLabel?: boolean;
@@ -82,40 +76,23 @@ export function ConnectionStatusIndicator({
   // Badge variant
   if (variant === 'badge') {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
-              variant="outline"
-              className={`${getStatusBgColor()} ${getStatusColor()} border-current cursor-help`}
-            >
-              {getStatusIcon()}
-              {showLabel && <span className="ml-2">{getStatusText()}</span>}
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{getTooltipContent()}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Badge
+        variant="outline"
+        className={`${getStatusBgColor()} ${getStatusColor()} border-current cursor-help`}
+        title={getTooltipContent()}
+      >
+        {getStatusIcon()}
+        {showLabel && <span className="ml-2">{getStatusText()}</span>}
+      </Badge>
     );
   }
 
   // Icon only variant
   if (variant === 'icon') {
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className={`${getStatusColor()} cursor-help`}>
-              {getStatusIcon()}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{getTooltipContent()}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <div className={`${getStatusColor()} cursor-help`} title={getTooltipContent()}>
+        {getStatusIcon()}
+      </div>
     );
   }
 
@@ -139,16 +116,9 @@ export function ConnectionStatusIndicator({
       )}
 
       {error && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <AlertCircle className="h-4 w-4 text-red-600 cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs">{error.message}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <div className="cursor-help" title={error.message}>
+          <AlertCircle className="h-4 w-4 text-red-600" />
+        </div>
       )}
     </div>
   );

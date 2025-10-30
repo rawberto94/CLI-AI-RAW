@@ -33,7 +33,7 @@ test.describe('Benchmarking Flow', () => {
     ];
     
     for (const card of testRateCards) {
-      await request.post('http://localhost:3000/api/rate-cards', {
+      await request.post('http://localhost:3005/api/rate-cards', {
         headers: { 
           'x-tenant-id': testTenantId,
           'Content-Type': 'application/json'
@@ -51,36 +51,36 @@ test.describe('Benchmarking Flow', () => {
     await expect(page).toHaveURL(/\/rate-cards\/benchmarking/);
     
     // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
-    // Step 2: Apply filters
-    // Filter by role
-    const roleFilter = page.locator('input[name="role"], select[name="role"], [data-testid="role-filter"]').first();
-    if (await roleFilter.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await roleFilter.fill('Software Engineer');
-      await page.waitForTimeout(500); // Wait for filter to apply
-    }
-
+    // Step 2: Verify page title and description
+    await expect(page.getByRole('heading', { name: 'Rate Benchmarking' })).toBeVisible({ timeout: 10000 });
+    
     // Step 3: Verify benchmark statistics are displayed
-    // Look for statistical measures
-    const benchmarkStats = page.locator('[data-testid="benchmark-stats"], .benchmark-card, .statistics');
-    await expect(benchmarkStats.first()).toBeVisible({ timeout: 10000 }).catch(async () => {
-      // If specific test ID not found, look for common statistical terms
-      const statsText = page.locator('text=/median|mean|average|percentile|p50|p75|p90/i').first();
-      await expect(statsText).toBeVisible({ timeout: 5000 });
-    });
+    // Look for the Market Benchmark card (use exact match to avoid duplicates)
+    await expect(page.getByText('Market Benchmark', { exact: true })).toBeVisible({ timeout: 10000 });
+    
+    // Look for statistical measures (median, mean, percentile, etc.)
+    await expect(page.getByText(/median|mean|percentile/i).first()).toBeVisible({ timeout: 5000 });
 
     // Step 4: Verify numerical values are displayed
-    // Look for rate values (numbers with currency symbols or decimal points)
-    const rateValues = page.locator('text=/\\$\\d+|\\d+\\.\\d+|\\d+\\s*(USD|EUR|GBP)/i').first();
-    await expect(rateValues).toBeVisible({ timeout: 5000 });
+    // Look for rate values with $ symbol
+    await expect(page.getByText(/\$\d+/).first()).toBeVisible({ timeout: 5000 });
 
-    // Step 5: Verify chart or visualization
-    const chart = page.locator('canvas, svg, [data-testid="benchmark-chart"], .chart').first();
-    await expect(chart).toBeVisible({ timeout: 5000 }).catch(() => {
-      // Charts might not be present in all implementations
-      console.log('Chart visualization not found, but that may be expected');
-    });
+    // Step 5: Verify savings analysis section
+    await expect(page.getByText('Savings Analysis')).toBeVisible({ timeout: 5000 });
+
+    // Step 6: Optionally test client filter
+    try {
+      const clientFilter = page.locator('#clientFilter');
+      if (await clientFilter.isVisible({ timeout: 2000 })) {
+        await clientFilter.fill('Test Client', { timeout: 3000 });
+        await page.waitForTimeout(500);
+      }
+    } catch (error) {
+      // Filter not available or not visible - that's okay
+      console.log('Client filter not available, skipping');
+    }
   });
 
   test('should identify savings opportunities', async ({ page }) => {
@@ -223,7 +223,7 @@ test.describe('Benchmarking Flow', () => {
 
   test('should calculate percentile rankings', async ({ page, request }) => {
     // Get benchmark data via API
-    const benchmarkResponse = await request.get('http://localhost:3000/api/rate-cards/best-rates', {
+    const benchmarkResponse = await request.get('http://localhost:3005/api/rate-cards/best-rates', {
       headers: { 'x-tenant-id': testTenantId },
       params: { role: 'Software Engineer' }
     });

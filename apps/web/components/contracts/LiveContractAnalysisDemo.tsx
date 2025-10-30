@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Upload,
   CheckCircle,
@@ -24,6 +25,8 @@ export const LiveContractAnalysisDemo = () => {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [contractId, setContractId] = useState<string | null>(null);
+  const router = useRouter();
 
   const analysisStages = [
     {
@@ -213,12 +216,20 @@ export const LiveContractAnalysisDemo = () => {
       });
 
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse
-          .json()
-          .catch(() => ({ error: "Upload failed" }));
+        console.error("Upload response status:", uploadResponse.status, uploadResponse.statusText);
+        const responseText = await uploadResponse.text();
+        console.error("Upload response text:", responseText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { error: responseText || "Upload failed" };
+        }
+        
         console.error("Upload error:", errorData);
         throw new Error(
-          errorData.error || errorData.details || "Upload failed"
+          errorData.error || errorData.details || errorData.message || "Upload failed"
         );
       }
 
@@ -230,6 +241,7 @@ export const LiveContractAnalysisDemo = () => {
       }
 
       const contractId = uploadResult.contractId;
+      setContractId(contractId);
       console.log("Contract uploaded successfully:", contractId);
 
       // Since artifacts are created immediately, simulate the analysis stages
@@ -290,14 +302,22 @@ export const LiveContractAnalysisDemo = () => {
       }
     } catch (error) {
       console.error("Analysis failed:", error);
+      console.error("Error type:", typeof error);
+      console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
       setAnalysisStage("complete");
       setAnalysisProgress(0);
       setIsAnalyzing(false);
-      alert(
-        `Upload failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }. Please try again.`
-      );
+      
+      let errorMessage = "Unknown error";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      } else if (error && typeof error === "object") {
+        errorMessage = JSON.stringify(error);
+      }
+      
+      alert(`Upload failed: ${errorMessage}. Please try again.`);
       return;
     }
 
@@ -484,16 +504,27 @@ export const LiveContractAnalysisDemo = () => {
       {/* Analysis Results */}
       {analysisResults && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-              Analysis Complete!
-            </h3>
-            <Button onClick={resetDemo} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Try Another Contract
-            </Button>
-          </div>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                Analysis Complete!
+              </h3>
+              <div className="flex items-center gap-2">
+                {contractId && (
+                  <Button
+                    onClick={() => router.push(`/contracts/${contractId}#artifacts`)}
+                    variant="secondary"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Open Artifacts
+                  </Button>
+                )}
+                <Button onClick={resetDemo} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Another Contract
+                </Button>
+              </div>
+            </div>
 
           {/* Results Tabs - Same as Pilot Demo */}
           <Tabs defaultValue="financial" className="w-full">
@@ -740,67 +771,175 @@ export const LiveContractAnalysisDemo = () => {
             <TabsContent value="rates" className="mt-4">
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-2xl font-bold mb-4">
-                    📊 Rate Benchmarking
-                  </h3>
-                  <p className="text-gray-600 mb-4">
-                    Annual Savings Opportunity:{" "}
-                    <span className="text-green-600 font-bold">$62,400</span>
-                  </p>
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border p-3 text-left">Role</th>
-                        <th className="border p-3">Your Rate</th>
-                        <th className="border p-3">Market Rate</th>
-                        <th className="border p-3">Variance</th>
-                        <th className="border p-3">Savings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        {
-                          role: "Senior Consultant",
-                          rate: 175,
-                          market: 165,
-                          variance: "+6.1%",
-                          savings: "$20,800",
-                        },
-                        {
-                          role: "Project Manager",
-                          rate: 150,
-                          market: 145,
-                          variance: "+3.4%",
-                          savings: "$10,400",
-                        },
-                        {
-                          role: "Technical Architect",
-                          rate: 195,
-                          market: 185,
-                          variance: "+5.4%",
-                          savings: "$20,800",
-                        },
-                      ].map((role, idx) => (
-                        <tr key={idx}>
-                          <td className="border p-3 font-medium">
-                            {role.role}
-                          </td>
-                          <td className="border p-3 text-center">
-                            ${role.rate}/hr
-                          </td>
-                          <td className="border p-3 text-center">
-                            ${role.market}/hr
-                          </td>
-                          <td className="border p-3 text-center text-red-600 font-semibold">
-                            {role.variance}
-                          </td>
-                          <td className="border p-3 text-center text-green-600 font-semibold">
-                            {role.savings}
-                          </td>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-2xl font-bold mb-2">
+                        📊 Rate Benchmarking
+                      </h3>
+                      <p className="text-gray-600">
+                        Annual Savings Opportunity:{" "}
+                        <span className="text-green-600 font-bold">$62,400</span>
+                      </p>
+                    </div>
+                    {contractId && (
+                      <Button
+                        onClick={() => router.push(`/contracts/${contractId}#artifacts`)}
+                        variant="outline"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Open Artifacts
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="rounded-md border mt-6">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                            Supplier
+                          </th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                            Role
+                          </th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                            Seniority
+                          </th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                            Line of Service
+                          </th>
+                          <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
+                            Country
+                          </th>
+                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
+                            Your Rate
+                          </th>
+                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
+                            Market Rate
+                          </th>
+                          <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
+                            Negotiated
+                          </th>
+                          <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
+                            Baseline Rate
+                          </th>
+                          <th className="h-12 px-4 text-center align-middle font-medium text-muted-foreground">
+                            Variance
+                          </th>
+                          <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
+                            Savings
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {[
+                          {
+                            supplier: "Accenture",
+                            role: "Senior Consultant",
+                            seniority: "Senior",
+                            lineOfService: "Strategy",
+                            country: "United States",
+                            yourRate: 1400,
+                            marketRate: 1320,
+                            isNegotiated: true,
+                            isBaseline: false,
+                            variance: "+6.1%",
+                            savings: "$20,800",
+                          },
+                          {
+                            supplier: "Deloitte",
+                            role: "Project Manager",
+                            seniority: "Mid-Level",
+                            lineOfService: "Operations",
+                            country: "United States",
+                            yourRate: 1200,
+                            marketRate: 1160,
+                            isNegotiated: true,
+                            isBaseline: true,
+                            variance: "+3.4%",
+                            savings: "$10,400",
+                          },
+                          {
+                            supplier: "KPMG",
+                            role: "Technical Architect",
+                            seniority: "Senior",
+                            lineOfService: "Technology",
+                            country: "United States",
+                            yourRate: 1560,
+                            marketRate: 1480,
+                            isNegotiated: false,
+                            isBaseline: true,
+                            variance: "+5.4%",
+                            savings: "$20,800",
+                          },
+                          {
+                            supplier: "PwC",
+                            role: "Business Analyst",
+                            seniority: "Junior",
+                            lineOfService: "Advisory",
+                            country: "United States",
+                            yourRate: 960,
+                            marketRate: 920,
+                            isNegotiated: true,
+                            isBaseline: false,
+                            variance: "+4.3%",
+                            savings: "$10,400",
+                          },
+                        ].map((rate, idx) => (
+                          <tr key={idx} className="border-b transition-colors hover:bg-muted/50">
+                            <td className="p-4 align-middle font-medium">
+                              {rate.supplier}
+                            </td>
+                            <td className="p-4 align-middle">
+                              {rate.role}
+                            </td>
+                            <td className="p-4 align-middle">
+                              {rate.seniority}
+                            </td>
+                            <td className="p-4 align-middle">
+                              {rate.lineOfService}
+                            </td>
+                            <td className="p-4 align-middle">
+                              {rate.country}
+                            </td>
+                            <td className="p-4 align-middle text-right font-medium">
+                              ${rate.yourRate.toLocaleString()}
+                            </td>
+                            <td className="p-4 align-middle text-right font-medium">
+                              ${rate.marketRate.toLocaleString()}
+                            </td>
+                            <td className="p-4 align-middle text-center">
+                              {rate.isNegotiated ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-green-100 text-green-700 hover:bg-green-200"
+                                >
+                                  Yes
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">No</span>
+                              )}
+                            </td>
+                            <td className="p-4 align-middle text-center">
+                              {rate.isBaseline ? (
+                                <div className="flex items-center justify-center">
+                                  <span className="text-green-600 text-xl">✓</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </td>
+                            <td className="p-4 align-middle text-center text-red-600 font-semibold">
+                              {rate.variance}
+                            </td>
+                            <td className="p-4 align-middle text-right text-green-600 font-semibold">
+                              {rate.savings}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

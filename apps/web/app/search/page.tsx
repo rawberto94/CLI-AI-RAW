@@ -5,7 +5,9 @@ import { SmartSearch } from '@/components/search/SmartSearch'
 import { Card, CardContent } from '@/components/ui/card'
 import { Sparkles, Zap, Target } from 'lucide-react'
 
-export default function ImprovedSearchPage() {
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+
+function SearchPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
       {/* Header */}
@@ -71,4 +73,12 @@ export default function ImprovedSearchPage() {
       <SmartSearch />
     </div>
   )
+}
+
+export default function SearchPageWithErrorBoundary() {
+  return (
+    <ErrorBoundary>
+      <SearchPage />
+    </ErrorBoundary>
+  );
 }

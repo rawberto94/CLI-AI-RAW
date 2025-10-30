@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -134,23 +134,25 @@ export default function DashboardPage() {
   }, []);
 
   // Real-time updates for dashboard
-  useRealTimeEvents({
-    'contract:created': (data) => {
+  const eventHandlers = useMemo(() => ({
+    'contract:created': (data: any) => {
       console.log('[Dashboard] New contract created:', data);
       setRefreshKey(prev => prev + 1);
     },
-    'contract:completed': (data) => {
+    'contract:completed': (data: any) => {
       console.log('[Dashboard] Contract completed:', data);
       setRefreshKey(prev => prev + 1);
     },
-    'job:progress': (data) => {
+    'job:progress': (data: any) => {
       console.log('[Dashboard] Job progress update:', data);
       setRefreshKey(prev => prev + 1);
     },
-    'notification': (data) => {
+    'notification': (data: any) => {
       console.log('[Dashboard] Notification received:', data);
     },
-  });
+  }), []);
+
+  useRealTimeEvents(eventHandlers);
 
   if (loading) {
     return (

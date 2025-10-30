@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { AnalyticsHub } from '@/components/analytics/AnalyticsHub'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,24 +22,26 @@ export default function ImprovedAnalyticsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Real-time updates for analytics
-  useRealTimeEvents({
-    'contract:completed': (data) => {
+  const eventHandlers = useMemo(() => ({
+    'contract:completed': (data: any) => {
       console.log('[Analytics] Contract completed, refreshing analytics:', data);
       setRefreshKey(prev => prev + 1); // Trigger refresh
     },
-    'artifact:generated': (data) => {
+    'artifact:generated': (data: any) => {
       console.log('[Analytics] Artifact generated, refreshing analytics:', data);
       setRefreshKey(prev => prev + 1);
     },
-    'ratecard:created': (data) => {
+    'ratecard:created': (data: any) => {
       console.log('[Analytics] Rate card created, refreshing analytics:', data);
       setRefreshKey(prev => prev + 1);
     },
-    'ratecard:updated': (data) => {
+    'ratecard:updated': (data: any) => {
       console.log('[Analytics] Rate card updated, refreshing analytics:', data);
       setRefreshKey(prev => prev + 1);
     },
-  });
+  }), []);
+
+  useRealTimeEvents(eventHandlers);
 
   const analyticsPages = [
     {

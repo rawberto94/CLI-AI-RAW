@@ -27,6 +27,7 @@ interface RateCardEntry {
   supplierName: string;
   role: string;
   seniority: string;
+  lineOfService: string;
   country: string;
   dailyRate: number;
   currency: string;
@@ -192,6 +193,12 @@ export function RateCardTable({
               </TableHead>
               <TableHead
                 className="cursor-pointer"
+                onClick={() => handleSort('lineOfService')}
+              >
+                Line of Service
+              </TableHead>
+              <TableHead
+                className="cursor-pointer"
                 onClick={() => handleSort('country')}
               >
                 Country
@@ -202,8 +209,11 @@ export function RateCardTable({
               >
                 Daily Rate
               </TableHead>
-              {(showBaselineColumn || showNegotiatedColumn) && (
-                <TableHead>Status</TableHead>
+              {showNegotiatedColumn && (
+                <TableHead className="text-center">Negotiated</TableHead>
+              )}
+              {showBaselineColumn && (
+                <TableHead className="text-center">Baseline Rate</TableHead>
               )}
               <TableHead className="w-24">Actions</TableHead>
             </TableRow>
@@ -237,32 +247,35 @@ export function RateCardTable({
                 </TableCell>
                 <TableCell>{item.role}</TableCell>
                 <TableCell>{item.seniority}</TableCell>
+                <TableCell>{item.lineOfService || '-'}</TableCell>
                 <TableCell>{item.country}</TableCell>
                 <TableCell className="text-right font-medium">
                   {formatCurrency(item.dailyRate, item.currency)}
                 </TableCell>
-                {(showBaselineColumn || showNegotiatedColumn) && (
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {showBaselineColumn && item.isBaseline && (
-                        <Badge
-                          variant="secondary"
-                          className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
-                          title={item.baselineType || 'Baseline'}
-                        >
-                          ⭐ Baseline
-                        </Badge>
-                      )}
-                      {showNegotiatedColumn && item.isNegotiated && (
-                        <Badge
-                          variant="secondary"
-                          className="bg-green-100 text-green-700 hover:bg-green-200"
-                          title={item.msaReference || 'Negotiated'}
-                        >
-                          ✓ Negotiated
-                        </Badge>
-                      )}
-                    </div>
+                {showNegotiatedColumn && (
+                  <TableCell className="text-center">
+                    {item.isNegotiated ? (
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-100 text-green-700 hover:bg-green-200"
+                        title={item.msaReference || 'Negotiated'}
+                      >
+                        Yes
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No</span>
+                    )}
+                  </TableCell>
+                )}
+                {showBaselineColumn && (
+                  <TableCell className="text-center">
+                    {item.isBaseline ? (
+                      <div className="flex items-center justify-center">
+                        <span className="text-green-600 text-xl" title={item.baselineType || 'Baseline Rate'}>✓</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
                   </TableCell>
                 )}
                 <TableCell>

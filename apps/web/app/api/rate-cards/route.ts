@@ -6,14 +6,236 @@ import { AdvancedFilterService } from '@/packages/data-orchestration/src/service
 const rateCardService = new RateCardEntryService(prisma);
 const advancedFilterService = new AdvancedFilterService(prisma);
 
+// Mock rate cards data
+function returnMockRateCards(searchParams: URLSearchParams) {
+  const page = Number(searchParams.get("page")) || 1;
+  const pageSize = Number(searchParams.get("pageSize")) || 50;
+  
+  const mockRateCards = [
+    {
+      id: "rate-acc-se1",
+      rateCardId: "card-acc-001",
+      originalRoleName: "Senior Software Engineer",
+      standardizedRole: "Software Engineer",
+      roleCategory: "Technology",
+      seniorityLevel: "SENIOR",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 1200,
+      currency: "USD",
+      supplierId: "sup-acc",
+      supplierName: "Accenture",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: true,
+      isNegotiated: true,
+    },
+    {
+      id: "rate-acc-arch1",
+      rateCardId: "card-acc-001",
+      originalRoleName: "Principal Architect",
+      standardizedRole: "Solution Architect",
+      roleCategory: "Technology",
+      seniorityLevel: "PRINCIPAL",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 1800,
+      currency: "USD",
+      supplierId: "sup-acc",
+      supplierName: "Accenture",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: true,
+      isNegotiated: false,
+    },
+    {
+      id: "rate-acc-ds1",
+      rateCardId: "card-acc-001",
+      originalRoleName: "Data Scientist",
+      standardizedRole: "Data Scientist",
+      roleCategory: "Data",
+      seniorityLevel: "SENIOR",
+      serviceLine: "Data & Analytics",
+      lineOfService: "Data & Analytics",
+      country: "United States",
+      dailyRate: 1400,
+      currency: "USD",
+      supplierId: "sup-acc",
+      supplierName: "Accenture",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: false,
+      isNegotiated: true,
+    },
+    {
+      id: "rate-acc-devops1",
+      rateCardId: "card-acc-001",
+      originalRoleName: "DevOps Engineer",
+      standardizedRole: "DevOps Engineer",
+      roleCategory: "Technology",
+      seniorityLevel: "MID",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 1000,
+      currency: "USD",
+      supplierId: "sup-acc",
+      supplierName: "Accenture",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: false,
+      isNegotiated: false,
+    },
+    {
+      id: "rate-tw-fs1",
+      rateCardId: "card-tw-001",
+      originalRoleName: "Full Stack Developer",
+      standardizedRole: "Software Engineer",
+      roleCategory: "Technology",
+      seniorityLevel: "SENIOR",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 950,
+      currency: "USD",
+      supplierId: "sup-tw",
+      supplierName: "Thoughtworks",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: true,
+      isNegotiated: true,
+    },
+    {
+      id: "rate-tw-tl1",
+      rateCardId: "card-tw-001",
+      originalRoleName: "Tech Lead",
+      standardizedRole: "Technical Lead",
+      roleCategory: "Technology",
+      seniorityLevel: "SENIOR",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 1300,
+      currency: "USD",
+      supplierId: "sup-tw",
+      supplierName: "Thoughtworks",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: false,
+      isNegotiated: true,
+    },
+    {
+      id: "rate-inf-dev1",
+      rateCardId: "card-inf-001",
+      originalRoleName: "Senior Developer",
+      standardizedRole: "Software Engineer",
+      roleCategory: "Technology",
+      seniorityLevel: "SENIOR",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "India",
+      dailyRate: 650,
+      currency: "USD",
+      supplierId: "sup-inf",
+      supplierName: "Infosys",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: false,
+      isNegotiated: false,
+    },
+    {
+      id: "rate-inf-arch1",
+      rateCardId: "card-inf-001",
+      originalRoleName: "Solution Architect",
+      standardizedRole: "Solution Architect",
+      roleCategory: "Technology",
+      seniorityLevel: "PRINCIPAL",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "India",
+      dailyRate: 850,
+      currency: "USD",
+      supplierId: "sup-inf",
+      supplierName: "Infosys",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: true,
+      isNegotiated: false,
+    },
+    {
+      id: "rate-del-dev1",
+      rateCardId: "card-del-001",
+      originalRoleName: "Senior Developer",
+      standardizedRole: "Software Engineer",
+      roleCategory: "Technology",
+      seniorityLevel: "SENIOR",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 1150,
+      currency: "USD",
+      supplierId: "sup-del",
+      supplierName: "Deloitte",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: false,
+      isNegotiated: true,
+    },
+    {
+      id: "rate-del-arch1",
+      rateCardId: "card-del-001",
+      originalRoleName: "Lead Architect",
+      standardizedRole: "Solution Architect",
+      roleCategory: "Technology",
+      seniorityLevel: "PRINCIPAL",
+      serviceLine: "Technology",
+      lineOfService: "Technology",
+      country: "United States",
+      dailyRate: 1650,
+      currency: "USD",
+      supplierId: "sup-del",
+      supplierName: "Deloitte",
+      effectiveDate: "2024-01-01",
+      expiryDate: "2025-12-31",
+      isBaseline: true,
+      isNegotiated: true,
+    },
+  ];
+  
+  const total = mockRateCards.length;
+  const totalPages = Math.ceil(total / pageSize);
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize;
+  const paginatedData = mockRateCards.slice(start, end);
+  
+  return NextResponse.json({
+    data: paginatedData,
+    total,
+    page,
+    pageSize,
+    totalPages,
+  });
+}
+
 /**
  * GET /api/rate-cards
  * List rate card entries with filtering and pagination
  * Supports both simple filters and advanced filter objects
+ * Supports mock data mode via x-data-mode header
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+    
+    // Check data mode from header
+    const dataMode = request.headers.get('x-data-mode') || 'real';
+    
+    // If mock mode, return mock data
+    if (dataMode === 'mock') {
+      return returnMockRateCards(searchParams);
+    }
     
     // TODO: Get tenantId from session/auth
     const tenantId = searchParams.get('tenantId') || 'default-tenant';

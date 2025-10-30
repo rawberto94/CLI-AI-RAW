@@ -306,6 +306,9 @@ export class RateCardEntryService {
       effectiveDateFrom?: Date;
       effectiveDateTo?: Date;
       source?: RateCardSource;
+      clientName?: string;
+      isBaseline?: boolean;
+      isNegotiated?: boolean;
     } = {},
     pagination: {
       page?: number;
@@ -333,6 +336,11 @@ export class RateCardEntryService {
     if (filters.country) where.country = filters.country;
     if (filters.region) where.region = filters.region;
     if (filters.source) where.source = filters.source;
+    if (filters.clientName) {
+      where.clientName = { contains: filters.clientName, mode: 'insensitive' };
+    }
+    if (filters.isBaseline !== undefined) where.isBaseline = filters.isBaseline;
+    if (filters.isNegotiated !== undefined) where.isNegotiated = filters.isNegotiated;
 
     if (filters.minRate !== undefined || filters.maxRate !== undefined) {
       where.dailyRateUSD = {};

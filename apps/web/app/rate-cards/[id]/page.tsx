@@ -10,10 +10,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, History, FileText } from 'lucide-react';
+import { useDataMode } from '@/contexts/DataModeContext';
 
 export default function RateCardDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { dataMode } = useDataMode();
   const [rateCard, setRateCard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
@@ -22,12 +24,16 @@ export default function RateCardDetailPage() {
     if (params.id) {
       fetchRateCard();
     }
-  }, [params.id]);
+  }, [params.id, dataMode]);
 
   const fetchRateCard = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/rate-cards/${params.id}`);
+      const response = await fetch(`/api/rate-cards/${params.id}`, {
+        headers: {
+          'x-data-mode': dataMode,
+        },
+      });
       const data = await response.json();
       setRateCard(data);
     } catch (error) {
@@ -41,7 +47,10 @@ export default function RateCardDetailPage() {
     try {
       const response = await fetch(`/api/rate-cards/${params.id}/edit`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-data-mode': dataMode,
+        },
         body: JSON.stringify(updatedData),
       });
 

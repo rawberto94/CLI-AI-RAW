@@ -18,7 +18,7 @@ export function EmptyState({ title, description, icon, action }: EmptyStateProps
   );
 }
 
-export function NoContracts() {
+export function NoContracts({ onUpload }: { onUpload?: () => void } = {}) {
   return (
     <EmptyState
       title="No contracts found"
@@ -27,7 +27,7 @@ export function NoContracts() {
   );
 }
 
-export function NoResults() {
+export function NoResults({ onClearFilters }: { onClearFilters?: () => void } = {}) {
   return (
     <EmptyState
       title="No results found"
@@ -36,10 +36,10 @@ export function NoResults() {
   );
 }
 
-export function NoContractsEmptyState() {
-  return <NoContracts />;
+export function NoContractsEmptyState({ onUpload }: { onUpload?: () => void } = {}) {
+  return <NoContracts onUpload={onUpload} />;
 }
 
-export function NoFilterResultsEmptyState() {
-  return <NoResults />;
+export function NoFilterResultsEmptyState({ onClearFilters }: { onClearFilters?: () => void } = {}) {
+  return <NoResults onClearFilters={onClearFilters} />;
 }

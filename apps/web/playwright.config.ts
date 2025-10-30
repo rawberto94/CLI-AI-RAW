@@ -2,14 +2,14 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  fullyParallel: false, // Run tests serially to avoid race conditions
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1, // Single worker to ensure stable execution
   reporter: process.env.CI ? 'list' : 'html',
   timeout: 30_000,
   use: {
-    baseURL: 'http://localhost:3002',
+    baseURL: 'http://localhost:3005',
     headless: true,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -21,18 +21,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: [
-    {
-      command: 'cd ../api && pnpm dev',
-      port: 3001,
-      timeout: 120 * 1000,
-      reuseExistingServer: !process.env.CI,
-    },
-    {
-      command: 'pnpm dev',
-      port: 3002,
-      timeout: 120 * 1000,
-      reuseExistingServer: !process.env.CI,
-    },
-  ],
+  // webServer: {
+  //   command: 'pnpm dev',
+  //   port: 3005,
+  //   timeout: 120 * 1000,
+  //   reuseExistingServer: !process.env.CI, // Reuse existing server in dev, start new in CI
+  //   stdout: 'pipe', // Capture output
+  //   stderr: 'pipe',
+  // },
 });

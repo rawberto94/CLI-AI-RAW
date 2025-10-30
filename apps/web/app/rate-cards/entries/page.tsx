@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Plus, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useDataMode } from '@/contexts/DataModeContext';
 
 export default function RateCardEntriesPage() {
   const router = useRouter();
+  const { dataMode } = useDataMode();
   const [rateCards, setRateCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({});
@@ -21,7 +23,7 @@ export default function RateCardEntriesPage() {
 
   useEffect(() => {
     fetchRateCards();
-  }, [filters]);
+  }, [filters, dataMode]);
 
   const fetchRateCards = async () => {
     try {
@@ -37,10 +39,32 @@ export default function RateCardEntriesPage() {
       if (filters.isBaseline !== undefined) params.append('isBaseline', String(filters.isBaseline));
       if (filters.isNegotiated !== undefined) params.append('isNegotiated', String(filters.isNegotiated));
       
-      const response = await fetch(`/api/rate-cards?${params.toString()}`);
+      const response = await fetch(`/api/rate-cards?${params.toString()}`, {
+        headers: {
+          'x-data-mode': dataMode,
+        },
+      });
       const data = await response.json();
       
-      setRateCards(data.data || []);
+      // Map database fields to component interface
+      const mappedData = (data.data || data.entries || []).map((entry: any) => ({
+        id: entry.id,
+        clientName: entry.clientName,
+        supplierName: entry.supplierName,
+        role: entry.roleStandardized || entry.standardizedRole,
+        seniority: entry.seniority || entry.seniorityLevel,
+        lineOfService: entry.lineOfService || entry.serviceLine,
+        country: entry.country,
+        dailyRate: Number(entry.dailyRate || entry.dailyRateUSD),
+        currency: entry.currency || 'USD',
+        isBaseline: entry.isBaseline || false,
+        baselineType: entry.baselineType,
+        isNegotiated: entry.isNegotiated || false,
+        msaReference: entry.msaReference,
+        createdAt: entry.createdAt,
+      }));
+      
+      setRateCards(mappedData);
       setMatchCount(data.total || 0);
     } catch (error) {
       console.error('Error fetching rate cards:', error);

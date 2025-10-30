@@ -10,6 +10,24 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await request.json();
+    
+    // Check data mode from header
+    const dataMode = request.headers.get('x-data-mode') || 'real';
+    
+    // If mock mode, return success without updating database
+    if (dataMode === 'mock') {
+      return NextResponse.json({
+        success: true,
+        message: 'Mock mode - changes not persisted',
+        rateCard: {
+          id,
+          ...body,
+          editedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      });
+    }
+    
     const {
       clientName,
       clientId,

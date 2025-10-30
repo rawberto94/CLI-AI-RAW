@@ -53,10 +53,16 @@ export function SmartSearch() {
   const [recentSearches, setRecentSearches] = useState<string[]>([])
 
   useEffect(() => {
-    // Load recent searches from localStorage
-    const saved = localStorage.getItem('recentSearches')
-    if (saved) {
-      setRecentSearches(JSON.parse(saved))
+    // Load recent searches from localStorage (client-side only)
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('recentSearches')
+        if (saved) {
+          setRecentSearches(JSON.parse(saved))
+        }
+      } catch (error) {
+        console.error('Error loading recent searches:', error)
+      }
     }
   }, [])
 
@@ -68,7 +74,13 @@ export function SmartSearch() {
     // Save to recent searches
     const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5)
     setRecentSearches(updated)
-    localStorage.setItem('recentSearches', JSON.stringify(updated))
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('recentSearches', JSON.stringify(updated))
+      } catch (error) {
+        console.error('Error saving recent searches:', error)
+      }
+    }
 
     try {
       if (isRealData) {

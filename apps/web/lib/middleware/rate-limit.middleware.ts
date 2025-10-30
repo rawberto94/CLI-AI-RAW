@@ -5,7 +5,75 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withRateLimit, RateLimitConfigs } from '../../../packages/data-orchestration/src/middleware/rate-limiter';
+// TEMPORARILY DISABLED: Import issue with workspace packages
+// import { withRateLimit, RateLimitConfigs } from 'data-orchestration/src/middleware/rate-limiter';
+
+// Simple in-memory rate limiter for now
+interface RateLimitConfig {
+  windowMs: number;
+  maxRequests: number;
+  message?: string;
+}
+
+const store: Record<string, { count: number; resetTime: number }> = {};
+
+function simpleRateLimit(key: string, config: RateLimitConfig): { allowed: boolean; remaining: number; resetTime: number } {
+  const now = Date.now();
+  const entry = store[key];
+
+  if (!entry || now >= entry.resetTime) {
+    store[key] = { count: 1, resetTime: now + config.windowMs };
+    return { allowed: true, remaining: config.maxRequests - 1, resetTime: now + config.windowMs };
+  }
+
+  entry.count++;
+  if (entry.count > config.maxRequests) {
+    return { allowed: false, remaining: 0, resetTime: entry.resetTime };
+  }
+
+  return { allowed: true, remaining: config.maxRequests - entry.count, resetTime: entry.resetTime };
+}
+
+function getIdentifier(request: NextRequest): string {
+  const tenantId = request.nextUrl.searchParams.get('tenantId') || request.headers.get('X-Tenant-ID');
+  if (tenantId) return `tenant:${tenantId}`;
+  
+  const forwarded = request.headers.get('x-forwarded-for');
+  const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown';
+  return `ip:${ip}`;
+}
+
+export const RateLimitConfigs = {
+  standard: { windowMs: 60000, maxRequests: 100 },
+  strict: { windowMs: 60000, maxRequests: 10 },
+  generous: { windowMs: 60000, maxRequests: 200 },
+  hourly: { windowMs: 3600000, maxRequests: 1000 },
+  daily: { windowMs: 86400000, maxRequests: 10000 },
+};
+
+export async function withRateLimit(
+  request: NextRequest,
+  config: RateLimitConfig = RateLimitConfigs.standard
+): Promise<NextResponse | null> {
+  const identifier = getIdentifier(request);
+  const result = simpleRateLimit(identifier, config);
+
+  const headers = new Headers();
+  headers.set('X-RateLimit-Limit', config.maxRequests.toString());
+  headers.set('X-RateLimit-Remaining', result.remaining.toString());
+  headers.set('X-RateLimit-Reset', new Date(result.resetTime).toISOString());
+
+  if (!result.allowed) {
+    const retryAfter = Math.ceil((result.resetTime - Date.now()) / 1000);
+    headers.set('Retry-After', retryAfter.toString());
+    return NextResponse.json(
+      { error: 'Too Many Requests', message: config.message || 'Rate limit exceeded', retryAfter },
+      { status: 429, headers }
+    );
+  }
+
+  return null;
+}
 
 // =========================================================================
 // RATE LIMIT CONFIGURATIONS
