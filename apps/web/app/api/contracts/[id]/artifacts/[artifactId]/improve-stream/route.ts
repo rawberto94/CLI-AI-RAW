@@ -130,7 +130,7 @@ export async function POST(
         const newConfidence = validation?.confidence || 0;
 
         // Update artifact with enhanced metadata
-        const { editableArtifactService } = await import('data-orchestration/src/services/editable-artifact.service');
+        const { editableArtifactService } = await import('data-orchestration/services');
         await editableArtifactService.updateArtifact(
           artifact.id,
           {
