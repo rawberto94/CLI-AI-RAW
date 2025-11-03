@@ -5,7 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { dataSanitizationService } from '../../../packages/data-orchestration/src/services/data-sanitization.service';
+import { dataSanitizationService } from 'data-orchestration/services';
 
 // =========================================================================
 // TYPES

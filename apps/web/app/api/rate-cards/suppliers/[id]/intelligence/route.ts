@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { supplierIntelligenceService } from 'data-orchestration/services';
 import { supplierTrendAnalyzerService } from 'data-orchestration/services';

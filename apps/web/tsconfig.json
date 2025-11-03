@@ -58,7 +58,12 @@
   ],
   "exclude": [
     "node_modules",
-    "../sharepoint-app_disabled"
+    "../sharepoint-app_disabled",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/__tests__/**"
   ]
 }
 

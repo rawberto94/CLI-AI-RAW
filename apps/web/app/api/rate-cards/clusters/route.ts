@@ -60,12 +60,12 @@ export async function GET(request: NextRequest) {
     );
 
     const totalConsolidationSavings = consolidationOpportunities.reduce(
-      (sum, opp) => sum + parseFloat(opp.annualSavingsPotential.toString()),
+      (sum, opp) => sum + parseFloat((opp.annualSavings || opp.annualSavingsPotential || 0).toString()),
       0
     );
 
     const totalArbitrageSavings = arbitrageOpportunities.reduce(
-      (sum, opp) => sum + parseFloat(opp.annualSavingsPotential.toString()),
+      (sum, opp) => sum + parseFloat((opp.annualSavingsPotential || opp.annualSavings || 0).toString()),
       0
     );
 

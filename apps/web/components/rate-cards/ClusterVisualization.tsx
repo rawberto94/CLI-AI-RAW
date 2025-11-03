@@ -194,7 +194,7 @@ export function ClusterVisualization({
                       {consolidation && (
                         <Badge variant="outline" className="bg-green-50">
                           <TrendingDown className="w-3 h-3 mr-1" />
-                          ${Math.round(consolidation.annualSavingsPotential).toLocaleString()}/yr
+                          ${Math.round(consolidation.annualSavings).toLocaleString()}/yr
                         </Badge>
                       )}
                     </div>
@@ -268,7 +268,7 @@ export function ClusterVisualization({
                           <div>
                             <div className="text-xs text-gray-500">Annual Savings</div>
                             <div className="text-lg font-bold text-green-600">
-                              ${Math.round(consolidation.annualSavingsPotential).toLocaleString()}
+                              ${Math.round(consolidation.annualSavings).toLocaleString()}
                             </div>
                           </div>
                           <div>
@@ -316,7 +316,7 @@ export function ClusterVisualization({
                               </div>
                               <div className="text-right">
                                 <div className="text-sm font-bold text-green-600">
-                                  ${Math.round(opp.annualSavingsPotential).toLocaleString()}
+                                  ${Math.round(opp.annualSavings).toLocaleString()}
                                 </div>
                                 <Badge className={getRiskColor(opp.riskLevel)} variant="outline">
                                   {opp.riskLevel}
