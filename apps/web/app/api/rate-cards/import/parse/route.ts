@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { csvImportService } from '@/packages/data-orchestration/src/services/csv-import.service';
+import { csvImportService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {

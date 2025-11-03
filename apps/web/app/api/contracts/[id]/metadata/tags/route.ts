@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { metadataEditorService } from 'data-orchestration/src/services/metadata-editor.service';
+import { metadataEditorService } from 'data-orchestration/services';
 
 /**
  * POST /api/contracts/[id]/metadata/tags
  * Add tags to a contract
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const { tags, tenantId, userId } = body;

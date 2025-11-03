@@ -7,8 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { PerformanceOptimizationService } from 'data-orchestration/src/services/performance-optimization.service';
-import { QueryOptimizerService } from 'data-orchestration/src/services/query-optimizer.service';
+import { PerformanceOptimizationService } from 'data-orchestration/services';
+import { QueryOptimizerService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

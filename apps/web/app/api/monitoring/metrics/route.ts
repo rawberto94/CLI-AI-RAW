@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { monitoringService } from '@/packages/data-orchestration/src/services/monitoring.service';
+import { monitoringService } from 'data-orchestration/services';
 
 /**
  * GET /api/monitoring/metrics

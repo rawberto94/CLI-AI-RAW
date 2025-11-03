@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { editableArtifactService } from 'data-orchestration/src/services/editable-artifact.service';
+import { editableArtifactService } from 'data-orchestration/services';
 
 /**
  * POST /api/contracts/[id]/artifacts/bulk-update
@@ -7,9 +7,10 @@ import { editableArtifactService } from 'data-orchestration/src/services/editabl
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await params; // Consume params even though we don't use id in this route
     const body = await request.json();
     const { updates, userId } = body;
 

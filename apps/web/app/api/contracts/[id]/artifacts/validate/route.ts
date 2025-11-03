@@ -5,16 +5,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { artifactValidationService } from '@/packages/data-orchestration/src/services/artifact-validation.service';
+import { artifactValidationService } from 'data-orchestration/services';
 
 /**
  * POST /api/contracts/[id]/artifacts/validate
  * Validate all artifacts or specific artifact type
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const contractId = params.id;
     const body = await request.json();

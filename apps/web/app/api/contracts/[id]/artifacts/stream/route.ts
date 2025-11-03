@@ -7,10 +7,8 @@ import prisma from '@/packages/clients/db';
  * Server-Sent Events (SSE) endpoint for streaming artifact generation progress
  * Returns real-time updates as artifacts are generated
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const contractId = params.id;
   const tenantId = request.headers.get('x-tenant-id') || 'demo';
 

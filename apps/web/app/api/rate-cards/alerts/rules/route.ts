@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { alertManagementService } from '@/packages/data-orchestration/src/services/alert-management.service';
+import { alertManagementService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {

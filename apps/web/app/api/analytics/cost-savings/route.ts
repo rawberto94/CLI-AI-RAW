@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { costSavingsAnalyzerService } from '@/packages/data-orchestration/src/services/cost-savings-analyzer.service';
+import { costSavingsAnalyzerService } from 'data-orchestration/services';
 
 /**
  * GET /api/analytics/cost-savings

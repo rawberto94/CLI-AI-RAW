@@ -5,10 +5,8 @@ import { prisma } from '@/lib/prisma';
  * POST /api/rate-cards/comparisons/[id]/share
  * Share a comparison with team members
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const { isShared, shareWithUserIds } = body;

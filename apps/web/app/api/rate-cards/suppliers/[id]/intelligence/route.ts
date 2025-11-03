@@ -15,14 +15,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { supplierIntelligenceService } from '@/packages/data-orchestration/src/services/supplier-intelligence.service';
-import { supplierTrendAnalyzerService } from '@/packages/data-orchestration/src/services/supplier-trend-analyzer.service';
-import { supplierRecommenderService } from '@/packages/data-orchestration/src/services/supplier-recommender.service';
+import { supplierIntelligenceService } from 'data-orchestration/services';
+import { supplierTrendAnalyzerService } from 'data-orchestration/services';
+import { supplierRecommenderService } from 'data-orchestration/services';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {

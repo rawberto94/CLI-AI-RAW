@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from 'data-orchestration/src/services/rate-card-benchmarking.service';
+import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -13,10 +13,8 @@ const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
  * POST /api/benchmarking/opportunities/:rateCardId
  * Detect savings opportunities for a specific rate card
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { rateCardId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
+  const params = await props.params;
   try {
     const { rateCardId } = params;
 

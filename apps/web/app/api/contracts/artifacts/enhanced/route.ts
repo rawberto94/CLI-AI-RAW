@@ -9,12 +9,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { parallelArtifactGeneratorService } from '@/packages/data-orchestration/src/services/parallel-artifact-generator.service';
-import { confidenceScoringService } from '@/packages/data-orchestration/src/services/confidence-scoring.service';
-import { artifactVersioningService } from '@/packages/data-orchestration/src/services/artifact-versioning.service';
-import { aiArtifactGeneratorService } from '@/packages/data-orchestration/src/services/ai-artifact-generator.service';
-import { dataSanitizationService } from '@/packages/data-orchestration/src/services/data-sanitization.service';
-import { auditTrailService } from '@/packages/data-orchestration/src/services/audit-trail.service';
+import { parallelArtifactGeneratorService } from 'data-orchestration/services';
+import { confidenceScoringService } from 'data-orchestration/services';
+import { artifactVersioningService } from 'data-orchestration/services';
+import { aiArtifactGeneratorService } from 'data-orchestration/services';
+import { dataSanitizationService } from 'data-orchestration/services';
+import { auditTrailService } from 'data-orchestration/services';
 
 /**
  * POST /api/contracts/artifacts/enhanced

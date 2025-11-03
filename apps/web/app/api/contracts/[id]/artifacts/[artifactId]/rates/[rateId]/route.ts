@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { editableArtifactService } from 'data-orchestration/src/services/editable-artifact.service';
+import { editableArtifactService } from 'data-orchestration/services';
 
 /**
  * PUT /api/contracts/[id]/artifacts/[artifactId]/rates/[rateId]
@@ -7,8 +7,9 @@ import { editableArtifactService } from 'data-orchestration/src/services/editabl
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string; rateId: string } }
+  props: { params: Promise<{ id: string; artifactId: string; rateId: string }> }
 ) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const { updates, userId } = body;
@@ -52,8 +53,9 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string; rateId: string } }
+  props: { params: Promise<{ id: string; artifactId: string; rateId: string }> }
 ) {
+  const params = await props.params;
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');

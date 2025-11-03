@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { alertingService } from '@/packages/data-orchestration/src/services/alerting.service';
+import { alertingService } from 'data-orchestration/services';
 
 /**
  * POST /api/monitoring/alerts/[id]/acknowledge
  * Acknowledge an alert
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const alertId = params.id;
     const success = alertingService.acknowledgeAlert(alertId);

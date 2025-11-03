@@ -13,8 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { SupplierBenchmarkService } from '@/packages/data-orchestration/src/services/supplier-benchmark.service';
-import { supplierIntelligenceService } from '@/packages/data-orchestration/src/services/supplier-intelligence.service';
+import { SupplierBenchmarkService } from 'data-orchestration/services';
+import { supplierIntelligenceService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

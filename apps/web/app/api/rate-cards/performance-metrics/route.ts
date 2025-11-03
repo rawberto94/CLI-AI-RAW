@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { multiLevelCache } from '@/../../packages/data-orchestration/src/services/multi-level-cache.service';
+import { multiLevelCache } from 'data-orchestration/services';
 import { poolMonitor } from '@/../../packages/data-orchestration/src/config/database-pool.config';
 
 export async function GET(request: NextRequest) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { SavingsOpportunityService } from '@/../../packages/data-orchestration/src/services/savings-opportunity.service';
+import { SavingsOpportunityService } from 'data-orchestration/services';
 
 const prisma = new PrismaClient();
 

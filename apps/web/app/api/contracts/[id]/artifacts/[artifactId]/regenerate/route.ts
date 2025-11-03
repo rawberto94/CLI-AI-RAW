@@ -10,8 +10,9 @@ import { generateRealArtifact } from '@/lib/real-artifact-generator';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string } }
+  props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
+  const params = await props.params;
   try {
     const contractId = params.id;
     const artifactId = params.artifactId;
@@ -162,8 +163,9 @@ async function regenerateArtifactAsync(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string } }
+  props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
+  const params = await props.params;
   try {
     const artifactId = params.artifactId;
 

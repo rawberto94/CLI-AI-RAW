@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDataProviderFactory } from '../../../../../packages/data-orchestration/src/providers/data-provider-factory';
-import { DataMode } from '../../../../../packages/data-orchestration/src/types/data-provider.types';
+import { getDataProviderFactory } from 'data-orchestration';
+import { DataMode } from 'data-orchestration/types';
 
 /**
  * Supplier Analytics API Endpoints

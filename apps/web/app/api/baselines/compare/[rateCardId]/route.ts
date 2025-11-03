@@ -10,10 +10,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { rateCardId: string } }
-) {
+export async function GET(req: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
+  const params = await props.params;
   try {
 
     const { rateCardId } = params;

@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { BenchmarkNotificationService } from '@/../../packages/data-orchestration/src/services/benchmark-notification.service';
+import { BenchmarkNotificationService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

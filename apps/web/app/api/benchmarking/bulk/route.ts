@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from 'data-orchestration/src/services/rate-card-benchmarking.service';
+import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 

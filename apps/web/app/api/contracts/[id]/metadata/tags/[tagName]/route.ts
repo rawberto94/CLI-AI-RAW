@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { metadataEditorService } from 'data-orchestration/src/services/metadata-editor.service';
+import { metadataEditorService } from 'data-orchestration/services';
 
 /**
  * DELETE /api/contracts/[id]/metadata/tags/[tagName]
@@ -7,8 +7,9 @@ import { metadataEditorService } from 'data-orchestration/src/services/metadata-
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string; tagName: string } }
+  props: { params: Promise<{ id: string; tagName: string }> }
 ) {
+  const params = await props.params;
   try {
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get('tenantId');

@@ -13,10 +13,8 @@ import { prisma } from '@/lib/prisma';
  * DELETE /api/rate-cards/filters/[id]
  * Delete a saved filter
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -54,10 +52,8 @@ export async function DELETE(
  * PATCH /api/rate-cards/filters/[id]
  * Update a saved filter
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {

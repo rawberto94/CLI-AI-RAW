@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
-import { RealTimeBenchmarkService } from '@/../../packages/data-orchestration/src/services/real-time-benchmark.service';
+import { RealTimeBenchmarkService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {

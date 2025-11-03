@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { complianceReportingService } from '@/../../packages/data-orchestration/src/services/compliance-reporting.service';
+import { complianceReportingService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

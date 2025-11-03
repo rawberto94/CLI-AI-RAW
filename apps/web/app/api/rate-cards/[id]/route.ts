@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardEntryService } from '@/packages/data-orchestration/src/services/rate-card-entry.service';
+import { RateCardEntryService } from 'data-orchestration/services';
 
 const rateCardService = new RateCardEntryService(prisma);
 
@@ -8,10 +8,8 @@ const rateCardService = new RateCardEntryService(prisma);
  * GET /api/rate-cards/[id]
  * Get a single rate card entry by ID
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { id } = params;
     
@@ -163,10 +161,8 @@ export async function GET(
  * PUT /api/rate-cards/[id]
  * Update a rate card entry
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { id } = params;
     const body = await request.json();
@@ -198,10 +194,8 @@ export async function PUT(
  * DELETE /api/rate-cards/[id]
  * Delete a rate card entry
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const { id } = params;
     

@@ -9,15 +9,13 @@ import { progressTracker } from '@/lib/progress-tracker'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const contractId = params.id
 
   // Create SSE response
   const encoder = new TextEncoder()
-  
+
   const stream = new ReadableStream({
     start(controller) {
       // Send initial connection message

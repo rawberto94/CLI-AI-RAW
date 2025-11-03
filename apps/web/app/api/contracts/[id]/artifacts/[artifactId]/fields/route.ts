@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { editableArtifactService } from 'data-orchestration/src/services/editable-artifact.service';
+import { editableArtifactService } from 'data-orchestration/services';
 
 /**
  * PATCH /api/contracts/[id]/artifacts/[artifactId]/fields
@@ -7,8 +7,9 @@ import { editableArtifactService } from 'data-orchestration/src/services/editabl
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string } }
+  props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const { fieldPath, value, userId } = body;

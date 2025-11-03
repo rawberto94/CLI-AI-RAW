@@ -39,10 +39,8 @@ interface SaveRateCardRequest {
   };
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { contractId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
+  const params = await props.params;
   try {
     const { contractId } = params;
     const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';

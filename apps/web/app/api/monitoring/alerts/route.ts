@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { alertingService } from '@/packages/data-orchestration/src/services/alerting.service';
+import { alertingService } from 'data-orchestration/services';
 
 /**
  * GET /api/monitoring/alerts

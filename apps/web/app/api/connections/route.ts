@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sseConnectionManager } from '@/../../packages/data-orchestration/src/services/sse-connection-manager.service';
+import { sseConnectionManager } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

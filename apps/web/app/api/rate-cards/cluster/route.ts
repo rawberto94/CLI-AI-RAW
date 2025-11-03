@@ -6,9 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { rateCardClusteringService } from '@/../../packages/data-orchestration/src/services/rate-card-clustering.service';
-import { consolidationOpportunityService } from '@/../../packages/data-orchestration/src/services/consolidation-opportunity.service';
-import { geographicArbitrageService } from '@/../../packages/data-orchestration/src/services/geographic-arbitrage.service';
+import { rateCardClusteringService } from 'data-orchestration/services';
+import { consolidationOpportunityService } from 'data-orchestration/services';
+import { geographicArbitrageService } from 'data-orchestration/services';
 
 const prisma = new PrismaClient();
 

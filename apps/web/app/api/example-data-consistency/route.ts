@@ -26,10 +26,8 @@ const updateContractSchema = z.object({
   version: z.number().int().positive()
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const contractId = params.id;
     const body = await request.json();
@@ -155,10 +153,8 @@ export async function PATCH(
 }
 
 // GET endpoint to retrieve audit trail
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const contractId = params.id;
     const { searchParams } = new URL(request.url);

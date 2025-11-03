@@ -19,7 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { supplierAlertService } from '@/packages/data-orchestration/src/services/supplier-alert.service';
+import { supplierAlertService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { AnomalyExplainerService } from '@/../../packages/data-orchestration/src/services';
+import { AnomalyExplainerService } from 'data-orchestration/services';
 
 const prisma = new PrismaClient();
 

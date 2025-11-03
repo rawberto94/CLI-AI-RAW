@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
-import { editableArtifactService } from 'data-orchestration/src/services/editable-artifact.service';
+import { editableArtifactService } from 'data-orchestration/services';
 import { dbAdaptor } from 'data-orchestration/src/dal/database.adaptor';
 
 // Improve an artifact using a user-supplied refinement prompt
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string } }
+  props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const { userPrompt, userId } = body;

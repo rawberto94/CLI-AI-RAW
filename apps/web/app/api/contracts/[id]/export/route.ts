@@ -3,10 +3,8 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const format = request.nextUrl.searchParams.get('format') || 'json'
     const dataMode = request.headers.get('x-data-mode') || 'real'

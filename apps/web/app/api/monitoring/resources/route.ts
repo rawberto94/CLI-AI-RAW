@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { resourceMonitor } from '@/../../packages/data-orchestration/src/services/resource-monitor.service';
+import { resourceMonitor } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

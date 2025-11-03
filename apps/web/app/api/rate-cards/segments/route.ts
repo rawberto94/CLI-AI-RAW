@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { SegmentManagementService } from '@/packages/data-orchestration/src/services/segment-management.service';
+import { SegmentManagementService } from 'data-orchestration/services';
 
 const segmentService = new SegmentManagementService(prisma);
 

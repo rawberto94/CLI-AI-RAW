@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { roleStandardizationService } from '@/packages/data-orchestration/src/services/role-standardization.service';
+import { roleStandardizationService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {

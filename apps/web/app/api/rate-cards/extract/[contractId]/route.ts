@@ -6,13 +6,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { rateCardExtractionService } from '@/packages/data-orchestration/src/services/rate-card-extraction.service';
-import { roleStandardizationService } from '@/packages/data-orchestration/src/services/role-standardization.service';
+import { rateCardExtractionService } from 'data-orchestration/services';
+import { roleStandardizationService } from 'data-orchestration/services';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { contractId: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
+  const params = await props.params;
   try {
     const { contractId } = params;
 
@@ -150,10 +148,8 @@ export async function POST(
  * GET /api/rate-cards/extract/[contractId]
  * Check if rate cards have already been extracted for this contract
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { contractId: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
+  const params = await props.params;
   try {
     const { contractId } = params;
     const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';

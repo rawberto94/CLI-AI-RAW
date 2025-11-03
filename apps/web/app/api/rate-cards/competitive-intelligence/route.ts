@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { CompetitiveIntelligenceService } from '@/packages/data-orchestration/src/services/competitive-intelligence.service';
+import { CompetitiveIntelligenceService } from 'data-orchestration/services';
 
 const competitiveIntelligenceService = new CompetitiveIntelligenceService(prisma);
 

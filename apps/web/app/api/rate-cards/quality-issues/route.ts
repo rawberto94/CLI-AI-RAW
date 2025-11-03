@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { DataQualityScorerService } from '@/packages/data-orchestration/src/services/data-quality-scorer.service';
+import { DataQualityScorerService } from 'data-orchestration/services';
 
 const prisma = new PrismaClient();
 

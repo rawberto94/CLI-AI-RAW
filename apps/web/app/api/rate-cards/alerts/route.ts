@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { notificationService } from '@/packages/data-orchestration/src/services/notification.service';
+import { notificationService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

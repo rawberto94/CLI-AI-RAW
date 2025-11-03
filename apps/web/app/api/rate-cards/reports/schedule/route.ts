@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { automatedReportingService } from '@/packages/data-orchestration/src/services/automated-reporting.service';
+import { automatedReportingService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {

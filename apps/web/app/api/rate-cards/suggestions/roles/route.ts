@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardEntryService } from '@/packages/data-orchestration/src/services/rate-card-entry.service';
+import { RateCardEntryService } from 'data-orchestration/services';
 
 const rateCardService = new RateCardEntryService(prisma);
 

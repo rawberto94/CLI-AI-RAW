@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { memoryManager } from '@/../../packages/data-orchestration/src/services/memory-manager.service';
+import { memoryManager } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

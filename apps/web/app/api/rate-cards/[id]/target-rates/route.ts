@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { NegotiationAssistantService } from '@/packages/data-orchestration/src/services/negotiation-assistant.service';
+import { NegotiationAssistantService } from 'data-orchestration/services';
 
 const negotiationService = new NegotiationAssistantService(prisma);
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const rateCardId = params.id;
 

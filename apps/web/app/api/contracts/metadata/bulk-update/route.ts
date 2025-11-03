@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { metadataEditorService } from 'data-orchestration/src/services/metadata-editor.service';
+import { metadataEditorService } from 'data-orchestration/services';
 
 /**
  * POST /api/contracts/metadata/bulk-update

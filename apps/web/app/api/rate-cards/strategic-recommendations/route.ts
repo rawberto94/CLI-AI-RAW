@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
-import { StrategicRecommendationsService } from '@/packages/data-orchestration/src/services/strategic-recommendations.service';
+import { StrategicRecommendationsService } from 'data-orchestration/services';
 
 const prisma = new PrismaClient();
 

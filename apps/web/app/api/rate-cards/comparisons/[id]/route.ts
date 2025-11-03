@@ -5,10 +5,8 @@ import { prisma } from '@/lib/prisma';
  * GET /api/rate-cards/comparisons/[id]
  * Get a specific comparison
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const comparison = await prisma.rateComparison.findUnique({
       where: { id: params.id },
@@ -43,10 +41,8 @@ export async function GET(
  * PATCH /api/rate-cards/comparisons/[id]
  * Update a comparison
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const body = await request.json();
     const { name, description, isShared } = body;
@@ -81,10 +77,8 @@ export async function PATCH(
  * DELETE /api/rate-cards/comparisons/[id]
  * Delete a comparison
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     await prisma.rateComparison.delete({
       where: { id: params.id },

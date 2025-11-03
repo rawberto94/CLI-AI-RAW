@@ -5,16 +5,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { aiArtifactGeneratorService } from '@/packages/data-orchestration/src/services/ai-artifact-generator.service';
+import { aiArtifactGeneratorService } from 'data-orchestration/services';
 
 /**
  * POST /api/contracts/[id]/artifacts/regenerate
  * Regenerate specific artifact type
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const contractId = params.id;
     const body = await request.json();

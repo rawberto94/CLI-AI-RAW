@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from '@/packages/data-orchestration/src/services/rate-card-benchmarking.service';
+import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/best-rates

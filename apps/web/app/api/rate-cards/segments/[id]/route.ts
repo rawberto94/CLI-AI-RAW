@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { SegmentManagementService } from '@/packages/data-orchestration/src/services/segment-management.service';
+import { SegmentManagementService } from 'data-orchestration/services';
 
 const segmentService = new SegmentManagementService(prisma);
 
@@ -8,10 +8,8 @@ const segmentService = new SegmentManagementService(prisma);
  * GET /api/rate-cards/segments/[id]
  * Get a specific segment
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const searchParams = request.nextUrl.searchParams;
     
@@ -34,10 +32,8 @@ export async function GET(
  * PATCH /api/rate-cards/segments/[id]
  * Update a segment
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const body = await request.json();
     
@@ -71,10 +67,8 @@ export async function PATCH(
  * DELETE /api/rate-cards/segments/[id]
  * Delete a segment
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const searchParams = request.nextUrl.searchParams;
     

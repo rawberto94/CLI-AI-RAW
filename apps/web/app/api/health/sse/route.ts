@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { healthCheckService } from '@/../../packages/data-orchestration/src/services/health-check.service';
+import { healthCheckService } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

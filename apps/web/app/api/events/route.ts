@@ -5,8 +5,8 @@
 
 import { NextRequest } from 'next/server';
 import { eventBus, Events } from '@/../../packages/data-orchestration/src/events/event-bus';
-import { healthCheckService } from '@/../../packages/data-orchestration/src/services/health-check.service';
-import { sseConnectionManager } from '@/../../packages/data-orchestration/src/services/sse-connection-manager.service';
+import { healthCheckService } from 'data-orchestration/services';
+import { sseConnectionManager } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

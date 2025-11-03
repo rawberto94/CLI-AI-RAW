@@ -10,8 +10,9 @@ import { dbAdaptor } from 'data-orchestration/src/dal/database.adaptor';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; artifactId: string } }
+  props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
+  const params = await props.params;
   const body = await request.json();
   const { userPrompt, userId } = body;
 
@@ -24,7 +25,7 @@ export async function POST(
 
   const client = dbAdaptor.getClient();
   const artifact = await client.artifact.findUnique({ where: { id: params.artifactId } });
-  
+
   if (!artifact) {
     return new Response(
       JSON.stringify({ error: 'Artifact not found' }),
@@ -41,7 +42,7 @@ export async function POST(
 
   const contract = await client.contract.findUnique({ where: { id: params.id } });
   const rawText = contract?.rawText || '';
-  
+
   if (!rawText) {
     return new Response(
       JSON.stringify({ error: 'No rawText available' }),

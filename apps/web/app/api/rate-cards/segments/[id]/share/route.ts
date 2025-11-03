@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { SegmentManagementService } from '@/packages/data-orchestration/src/services/segment-management.service';
+import { SegmentManagementService } from 'data-orchestration/services';
 
 const segmentService = new SegmentManagementService(prisma);
 
@@ -8,10 +8,8 @@ const segmentService = new SegmentManagementService(prisma);
  * POST /api/rate-cards/segments/[id]/share
  * Share a segment with team members
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const body = await request.json();
     
@@ -35,10 +33,8 @@ export async function POST(
  * DELETE /api/rate-cards/segments/[id]/share
  * Unshare a segment
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const searchParams = request.nextUrl.searchParams;
     
