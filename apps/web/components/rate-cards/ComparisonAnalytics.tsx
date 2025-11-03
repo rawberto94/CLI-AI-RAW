@@ -233,7 +233,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
     );
   }
 
-  const totalPotentialSavings = savingsAnalysis.reduce((sum, s) => sum + s.annualSavings, 0);
+  const totalPotentialSavings = savingsAnalysis.reduce((sum, s) => sum + s.annualSavingsPotential, 0);
   const avgSavingsPercentage = savingsAnalysis.length > 0
     ? savingsAnalysis.reduce((sum, s) => sum + s.savingsPercentage, 0) / savingsAnalysis.length
     : 0;
@@ -324,7 +324,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
                         ${analysis.dailySavings.toLocaleString()}/day
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        ${analysis.annualSavings.toLocaleString()}/year potential
+                        ${analysis.annualSavingsPotential.toLocaleString()}/year potential
                       </p>
                       <Badge variant="outline" className="mt-1">
                         +{analysis.savingsPercentage.toFixed(1)}% vs best
@@ -415,7 +415,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
                     <div>
                       <p className="text-sm text-muted-foreground">Annual Savings</p>
                       <p className="text-xl font-bold text-green-600">
-                        ${rec.annualSavings.toLocaleString()}
+                        ${rec.annualSavingsPotential.toLocaleString()}
                       </p>
                     </div>
                   </div>

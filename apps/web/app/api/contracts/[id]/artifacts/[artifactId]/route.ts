@@ -10,7 +10,7 @@ export async function GET(
 ) {
   const params = await props.params;
   try {
-    const { dbAdaptor } = await import('data-orchestration/src/dal/database.adaptor');
+    const { dbAdaptor } = await import('data-orchestration');
     
     const artifact = await dbAdaptor.getClient().artifact.findUnique({
       where: { id: params.artifactId },
@@ -74,8 +74,7 @@ export async function PUT(
     }
 
     // Update the artifact using the service
-    const { EditableArtifactService } = await import('data-orchestration/src/services/editable-artifact.service');
-    const editableArtifactService = EditableArtifactService.getInstance();
+    const { editableArtifactService } = await import('data-orchestration/services');
     const updatedArtifact = await editableArtifactService.updateArtifact(
       params.artifactId,
       updates,
@@ -106,7 +105,7 @@ export async function DELETE(
 ) {
   const params = await props.params;
   try {
-    const { dbAdaptor } = await import('data-orchestration/src/dal/database.adaptor');
+    const { dbAdaptor } = await import('data-orchestration');
     
     await dbAdaptor.getClient().artifact.delete({
       where: { id: params.artifactId },

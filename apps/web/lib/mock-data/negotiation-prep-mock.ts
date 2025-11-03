@@ -3,6 +3,6 @@ export const negotiationPrepMock = {
   totalValue: 0,
 };
 
-export function generateNegotiationPrepMock() {
+export function generateNegotiationPrepMock(params?: any) {
   return negotiationPrepMock;
 }

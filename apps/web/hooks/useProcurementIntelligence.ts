@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 
+// Re-export DataMode type for convenience (and the runtime const if needed)
+export type { DataMode } from 'data-orchestration/types';
+export { DataMode as DataModeConst } from 'data-orchestration/types';
+
 interface ProcurementIntelligence {
   loading: boolean;
   error: Error | null;
@@ -16,7 +20,13 @@ export function useProcurementIntelligence() {
   return state;
 }
 
-export function useNegotiationPrep() {
+interface NegotiationPrepFilters {
+  contractId?: string;
+  supplierId?: string;
+  category?: string;
+}
+
+export function useNegotiationPrep(filters?: NegotiationPrepFilters, mode: DataMode = 'real') {
   const [state, setState] = useState({
     loading: false,
     error: null,
@@ -39,16 +49,21 @@ export function useNegotiationPrep() {
       historicalPerformance: []
     },
     metadata: {
-      source: 'mock',
+      source: mode === 'mock' ? 'mock' : 'real',
       lastUpdated: new Date().toISOString()
     },
-    refetch: undefined as any
+    refetch: () => {}
   });
 
   return state;
 }
 
-export function useRenewalRadar() {
+interface RenewalRadarFilters {
+  daysAhead?: number;
+  minValue?: number;
+}
+
+export function useRenewalRadar(filters?: RenewalRadarFilters, mode: DataMode = 'real') {
   return { 
     loading: false, 
     error: null, 
@@ -66,14 +81,19 @@ export function useRenewalRadar() {
       actionItems: []
     },
     metadata: {
-      source: 'mock',
+      source: mode === 'mock' ? 'mock' : 'real',
       lastUpdated: new Date().toISOString()
     },
-    refetch: undefined as any
+    refetch: () => {}
   };
 }
 
-export function useSavingsPipeline() {
+interface SavingsPipelineFilters {
+  status?: string;
+  category?: string;
+}
+
+export function useSavingsPipeline(filters?: SavingsPipelineFilters, mode: DataMode = 'real') {
   return { 
     loading: false, 
     error: null, 
@@ -91,14 +111,19 @@ export function useSavingsPipeline() {
       trends: []
     },
     metadata: {
-      source: 'mock',
+      source: mode === 'mock' ? 'mock' : 'real',
       lastUpdated: new Date().toISOString()
     },
-    refetch: undefined as any
+    refetch: () => {}
   };
 }
 
-export function useSupplierAnalytics() {
+interface SupplierAnalyticsFilters {
+  supplierId?: string;
+  category?: string;
+}
+
+export function useSupplierAnalytics(filters?: SupplierAnalyticsFilters, mode: DataMode = 'real') {
   return { 
     loading: false, 
     error: null, 
@@ -125,9 +150,9 @@ export function useSupplierAnalytics() {
       trends: []
     },
     metadata: {
-      source: 'mock',
+      source: mode === 'mock' ? 'mock' : 'real',
       lastUpdated: new Date().toISOString()
     },
-    refetch: undefined as any
+    refetch: () => {}
   };
 }

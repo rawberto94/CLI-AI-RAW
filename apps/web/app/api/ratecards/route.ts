@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
     const tenantId = "demo"; // TODO: Get from auth session
 
     // Create rate card using real service
-    const result = await rateCardManagementService.createRateCard(tenantId, {
+    const result = await rateCardManagementService.createRateCard({
+      tenantId,
       supplierName: body.supplierName,
       effectiveDate: body.effectiveDate
         ? new Date(body.effectiveDate)

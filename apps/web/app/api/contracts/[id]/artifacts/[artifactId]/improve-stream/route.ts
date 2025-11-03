@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
-import { dbAdaptor } from 'data-orchestration/src/dal/database.adaptor';
+import { dbAdaptor } from 'data-orchestration';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/improve-stream

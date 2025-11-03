@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
               suppliersToConsolidate: consolidationOpp.suppliersToConsolidate,
               currentAnnualCost: consolidationOpp.currentAnnualCost,
               projectedAnnualCost: consolidationOpp.projectedAnnualCost,
-              annualSavings: consolidationOpp.annualSavings,
+              annualSavings: consolidationOpp.annualSavingsPotential,
               savingsPercentage: consolidationOpp.savingsPercentage,
               totalVolume: consolidationOpp.totalVolume,
               volumeBySupplier: consolidationOpp.volumeBySupplier as any,

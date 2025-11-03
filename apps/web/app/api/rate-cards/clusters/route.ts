@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     );
 
     const totalConsolidationSavings = consolidationOpportunities.reduce(
-      (sum, opp) => sum + parseFloat(opp.annualSavings.toString()),
+      (sum, opp) => sum + parseFloat(opp.annualSavingsPotential.toString()),
       0
     );
 

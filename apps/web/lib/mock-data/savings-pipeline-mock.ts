@@ -3,6 +3,6 @@ export const savingsPipelineMock = {
   totalPotentialSavings: 0,
 };
 
-export function generateSavingsPipelineMock() {
+export function generateSavingsPipelineMock(params?: any) {
   return savingsPipelineMock;
 }

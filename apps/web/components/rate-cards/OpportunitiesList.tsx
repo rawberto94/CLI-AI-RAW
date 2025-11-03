@@ -266,7 +266,7 @@ export function OpportunitiesList() {
                           <div>
                             <div className="text-gray-500">Annual Savings</div>
                             <div className="font-semibold text-green-600">
-                              {formatCurrency(opp.annualSavings)}
+                              {formatCurrency(opp.annualSavingsPotential)}
                             </div>
                           </div>
                           <div>

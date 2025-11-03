@@ -481,11 +481,11 @@ export async function getSavingsOpportunities(req: NextRequest) {
     // Calculate summary stats
     const summary = {
       total: opportunities.length,
-      totalSavings: opportunities.reduce((sum, o) => sum + Number(o.annualSavings), 0),
+      totalSavings: opportunities.reduce((sum, o) => sum + Number(o.annualSavingsPotential), 0),
       byStatus: groupBy(opportunities, 'status'),
       byCategory: groupBy(opportunities, 'category'),
       avgSavings: opportunities.length > 0 
-        ? opportunities.reduce((sum, o) => sum + Number(o.annualSavings), 0) / opportunities.length 
+        ? opportunities.reduce((sum, o) => sum + Number(o.annualSavingsPotential), 0) / opportunities.length 
         : 0,
     };
 

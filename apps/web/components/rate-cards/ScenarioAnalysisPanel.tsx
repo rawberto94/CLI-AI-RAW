@@ -137,7 +137,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
               <div className="text-right">
                 <div className="text-2xl font-bold">${scenario.targetRate}</div>
                 <div className="text-sm text-green-600 font-semibold">
-                  ${scenario.annualSavings.toLocaleString()}/year
+                  ${scenario.annualSavingsPotential.toLocaleString()}/year
                 </div>
               </div>
             </div>

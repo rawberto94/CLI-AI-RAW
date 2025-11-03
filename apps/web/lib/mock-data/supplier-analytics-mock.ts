@@ -4,6 +4,6 @@ export const supplierAnalyticsMock = {
   avgResponseTime: 0,
 };
 
-export function generateSupplierAnalyticsMock() {
+export function generateSupplierAnalyticsMock(params?: any) {
   return supplierAnalyticsMock;
 }

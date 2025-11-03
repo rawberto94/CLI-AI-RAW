@@ -4,6 +4,6 @@ export const renewalRadarMock = {
   avgDaysToRenewal: 0,
 };
 
-export function generateRenewalRadarMock() {
+export function generateRenewalRadarMock(params?: any) {
   return renewalRadarMock;
 }

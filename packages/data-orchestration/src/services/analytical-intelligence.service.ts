@@ -175,6 +175,88 @@ class AnalyticalIntelligenceService {
       executionTime: 0,
     };
   }
+
+  /**
+   * Get compliance engine (stub)
+   */
+  getComplianceEngine() {
+    return {
+      scanContract: async (contractId: string) => ({
+        contractId,
+        findings: [],
+        riskLevel: 'low' as const,
+        score: 100,
+      }),
+      getReport: async (filters: any) => ({
+        contracts: [],
+        summary: { total: 0, compliant: 0, nonCompliant: 0 },
+      }),
+    };
+  }
+
+  /**
+   * Get NLQ (Natural Language Query) engine (stub)
+   */
+  getNLQEngine() {
+    return {
+      query: async (query: string, context?: any) => ({
+        results: [],
+        interpretation: query,
+        confidence: 0,
+      }),
+    };
+  }
+
+  /**
+   * Get rate card engine (stub)
+   */
+  getRateCardEngine() {
+    return {
+      getBenchmarks: async (params: any) => ({
+        benchmarks: [],
+        summary: { average: 0, median: 0, count: 0 },
+      }),
+    };
+  }
+
+  /**
+   * Get renewal engine (stub)
+   */
+  getRenewalEngine() {
+    return {
+      getUpcoming: async (params: any) => ({
+        renewals: [],
+        summary: { count: 0, totalValue: 0 },
+      }),
+    };
+  }
+
+  /**
+   * Get spend engine (stub)
+   */
+  getSpendEngine() {
+    return {
+      analyze: async (params: any) => ({
+        totalSpend: 0,
+        byCategory: {},
+        bySupplier: {},
+        trends: [],
+      }),
+    };
+  }
+
+  /**
+   * Get supplier engine (stub)
+   */
+  getSupplierEngine() {
+    return {
+      getSnapshot: async (supplierId: string, params?: any) => ({
+        supplierId,
+        name: 'Unknown',
+        metrics: {},
+      }),
+    };
+  }
 }
 
 export const analyticalIntelligenceService = AnalyticalIntelligenceService.getInstance();

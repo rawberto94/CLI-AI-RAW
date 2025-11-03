@@ -131,7 +131,7 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
             <div>
               <div className="text-sm text-gray-500 mb-1">Annual Savings</div>
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(opportunity.annualSavings)}
+                {formatCurrency(opportunity.annualSavingsPotential)}
               </div>
               <div className="text-sm text-gray-500 mt-1">
                 {opportunity.savingsPercentage.toFixed(1)}% reduction

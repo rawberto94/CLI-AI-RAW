@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
 import { editableArtifactService } from 'data-orchestration/services';
-import { dbAdaptor } from 'data-orchestration/src/dal/database.adaptor';
+import { dbAdaptor } from 'data-orchestration';
 
 // Improve an artifact using a user-supplied refinement prompt
 export async function POST(

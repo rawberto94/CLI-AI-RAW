@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (minSavings) {
-      where.annualSavings = { gte: parseFloat(minSavings) };
+      where.annualSavingsPotential = { gte: parseFloat(minSavings) };
     }
 
     const opportunities = await prisma.rateSavingsOpportunity.findMany({
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const summary = {
       totalOpportunities: opportunities.length,
       totalSavings: opportunities.reduce(
-        (sum, opp) => sum + parseFloat(opp.annualSavings.toString()),
+        (sum, opp) => sum + parseFloat(opp.annualSavingsPotential.toString()),
         0
       ),
       byStatus: opportunities.reduce((acc, opp) => {
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
         ...opp,
         currentAnnualCost: parseFloat(opp.currentAnnualCost.toString()),
         projectedAnnualCost: parseFloat(opp.projectedAnnualCost.toString()),
-        annualSavings: parseFloat(opp.annualSavings.toString()),
+        annualSavings: parseFloat(opp.annualSavingsPotential.toString()),
         savingsPercentage: parseFloat(opp.savingsPercentage.toString()),
         confidence: parseFloat(opp.confidence.toString()),
         actualSavings: opp.actualSavings ? parseFloat(opp.actualSavings.toString()) : null,
