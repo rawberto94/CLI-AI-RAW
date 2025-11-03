@@ -22,6 +22,7 @@ import {
   Table,
   Grid,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -597,6 +598,7 @@ function ContractCard({
   isSelected,
   onToggleSelection,
 }: ContractCardProps) {
+  const router = useRouter();
   const statusDisplay = getStatusDisplay(contract.status);
   const summary = getContractSummary(contract);
   const contractTags = getContractTags(contract.id);
@@ -614,8 +616,25 @@ function ContractCard({
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking checkbox, buttons, or links
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'BUTTON' ||
+      target.closest('button') ||
+      target.closest('a')
+    ) {
+      return;
+    }
+    router.push(`/contracts/${contract.id}?tab=artifacts`);
+  };
+
   return (
-    <div className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all bg-white">
+    <div 
+      className="border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all bg-white cursor-pointer group"
+      onClick={handleCardClick}
+    >
       <div className="flex items-start gap-4">
         {/* Step 1: Checkbox */}
         {onToggleSelection && (
@@ -632,7 +651,7 @@ function ContractCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             {getStatusIcon()}
-            <h3 className="text-lg font-semibold text-gray-900 truncate">
+            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
               {contract.filename ||
                 contract.originalName ||
                 "Untitled Contract"}
@@ -715,48 +734,91 @@ function ContractCard({
 
           {/* Additional Info */}
           {contract.status === "completed" && (
-            <div className="mt-3 flex items-center gap-4 text-sm">
-              {summary.riskScore !== undefined && (
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">
-                    Risk:{" "}
-                    <span
-                      className={`font-medium ${
-                        summary.riskScore >= 80
-                          ? "text-red-600"
-                          : summary.riskScore >= 50
-                          ? "text-yellow-600"
-                          : "text-green-600"
-                      }`}
-                    >
-                      {summary.riskScore}
+            <>
+              <div className="mt-3 flex items-center gap-4 text-sm flex-wrap">
+                {summary.riskScore !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-gray-500" />
+                    <span className="text-gray-600">
+                      Risk:{" "}
+                      <span
+                        className={`font-medium ${
+                          summary.riskScore >= 80
+                            ? "text-red-600"
+                            : summary.riskScore >= 50
+                            ? "text-yellow-600"
+                            : "text-green-600"
+                        }`}
+                      >
+                        {summary.riskScore}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              )}
-              {summary.complianceScore !== undefined && (
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">
-                    Compliance:{" "}
-                    <span
-                      className={`font-medium ${
-                        summary.complianceScore >= 90
-                          ? "text-green-600"
-                          : summary.complianceScore >= 70
-                          ? "text-blue-600"
-                          : summary.complianceScore >= 50
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {summary.complianceScore}
+                  </div>
+                )}
+                {summary.complianceScore !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-gray-500" />
+                    <span className="text-gray-600">
+                      Compliance:{" "}
+                      <span
+                        className={`font-medium ${
+                          summary.complianceScore >= 90
+                            ? "text-green-600"
+                            : summary.complianceScore >= 70
+                            ? "text-blue-600"
+                            : summary.complianceScore >= 50
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {summary.complianceScore}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Quick Access Artifact Pills */}
+              <div className="mt-3 flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 font-medium">Quick access:</span>
+                <Link 
+                  href={`/contracts/${contract.id}?tab=artifacts`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Badge 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors text-xs"
+                  >
+                    <FileText className="w-3 h-3 mr-1" />
+                    Artifacts
+                  </Badge>
+                </Link>
+                <Link 
+                  href={`/contracts/${contract.id}?tab=financial`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Badge 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-green-50 hover:border-green-300 transition-colors text-xs"
+                  >
+                    <DollarSign className="w-3 h-3 mr-1" />
+                    Financial
+                  </Badge>
+                </Link>
+                <Link 
+                  href={`/contracts/${contract.id}?tab=insights`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Badge 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-amber-50 hover:border-amber-300 transition-colors text-xs"
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    AI Insights
+                  </Badge>
+                </Link>
+              </div>
+            </>
           )}
 
           {/* Processing Progress */}

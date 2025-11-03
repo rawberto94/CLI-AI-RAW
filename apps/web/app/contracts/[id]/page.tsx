@@ -1,36 +1,51 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import React, { useEffect, useState, useCallback } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { ContractDetailTabs } from '@/components/contracts/ContractDetailTabs'
 import { ExportMenu } from '@/components/contracts/ExportMenu'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
+import type { Contract, Artifact, OverviewData, FinancialData } from '@/types/artifacts'
+import { logError, logInfo } from '@/lib/logger'
+import { SkeletonContractOverview, SkeletonArtifactList } from '@/components/ui/skeleton'
 
 export default function ContractDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { dataMode, isRealData } = useDataMode()
-  const [contract, setContract] = useState<any>(null)
-  const [artifacts, setArtifacts] = useState<any[]>([])
+  const [contract, setContract] = useState<Contract | null>(null)
+  const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Get initial tab from URL params
+  const initialTab = searchParams.get('tab') || undefined
 
-  useEffect(() => {
-    loadContract()
-  }, [params.id, dataMode])
-
-  const loadContract = async () => {
+  const loadContract = useCallback(async () => {
     setLoading(true)
+    setError(null)
+    
     try {
       if (isRealData) {
         // Load real data
         const response = await fetch(`/api/contracts/${params.id}`, {
           headers: { 'x-data-mode': dataMode }
         })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load contract: ${response.status} ${response.statusText}`)
+        }
+        
         const data = await response.json()
+        
+        if (!data.success && data.error) {
+          throw new Error(data.error)
+        }
         
         // Set contract data
         setContract({
@@ -87,12 +102,13 @@ export default function ContractDetailPage() {
           })
         }
         
-        setArtifacts(artifactsArray)
+        setArtifacts(artifactsArray as Artifact[])
       } else {
         // Mock/AI data
+        const contractId = Array.isArray(params.id) ? params.id[0] : params.id
         setContract({
-          id: params.id,
-          name: `Contract ${params.id}`,
+          id: contractId,
+          name: `Contract ${contractId}`,
           status: 'Active',
           supplier: 'Acme Corp',
           totalValue: 1250000,
@@ -101,23 +117,69 @@ export default function ContractDetailPage() {
           endDate: '2025-12-31'
         })
         setArtifacts([
-          { type: 'Rate Card', data: { role: 'Developer', rate: 150, currency: 'USD' } },
-          { type: 'Terms', data: { paymentTerms: 'Net 30', renewalNotice: '90 days' } }
+          { type: 'overview', data: { summary: 'Mock contract overview' } as OverviewData },
+          { type: 'financial', data: { totalValue: 1250000, currency: 'USD' } as FinancialData }
         ])
       }
-    } catch (error) {
-      console.error('Failed to load contract:', error)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load contract'
+      setError(errorMessage)
+      logError('Failed to load contract', err, { contractId: params.id })
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, dataMode, isRealData])
 
-  if (loading) {
+  useEffect(() => {
+    loadContract()
+  }, [loadContract])
+
+  // Error state
+  if (error) {
     return (
       <div className="container mx-auto p-6 max-w-7xl">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+        <div className="flex flex-col items-center justify-center py-12">
+          <AlertCircle className="h-16 w-16 text-red-500 mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Error Loading Contract
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
+            {error}
+          </p>
+          <div className="flex gap-3">
+            <Button onClick={loadContract} variant="default">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+            <Link href="/contracts">
+              <Button variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Contracts
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 max-w-7xl space-y-6">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href="/contracts">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </Link>
+          <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+        <SkeletonContractOverview />
+        <div className="mt-8">
+          <div className="h-10 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-4 animate-pulse"></div>
+          <SkeletonArtifactList count={3} />
         </div>
       </div>
     )
@@ -158,6 +220,7 @@ export default function ContractDetailPage() {
       <ContractDetailTabs
         contract={contract}
         artifacts={artifacts}
+        initialTab={initialTab}
         onEdit={() => router.push(`/contracts/${params.id}/edit`)}
         onExport={() => {}}
       />

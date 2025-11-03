@@ -21,9 +21,9 @@ type ProviderType =
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const module = searchParams.get('module') as ProviderType | null;
+    const moduleName = searchParams.get('module') as ProviderType | null;
     
-    if (!module) {
+    if (!moduleName) {
       return NextResponse.json(
         { 
           success: false, 
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate module
+    // Validate moduleName
     const validModules: ProviderType[] = [
       'rate-benchmarking',
       'supplier-analytics',
@@ -49,11 +49,11 @@ export async function GET(request: NextRequest) {
       'renewal-radar'
     ];
 
-    if (!validModules.includes(module)) {
+    if (!validModules.includes(moduleName)) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Invalid module: ${module}`,
+          error: `Invalid moduleName: ${moduleName}`,
           availableModules: validModules
         },
         { status: 400 }
@@ -67,18 +67,18 @@ export async function GET(request: NextRequest) {
     // Build params object from all query parameters
     const params: any = {};
     searchParams.forEach((value, key) => {
-      if (key !== 'module' && key !== 'mode') {
+      if (key !== 'moduleName' && key !== 'mode') {
         params[key] = value;
       }
     });
 
-    // Get data based on module and mode
+    // Get data based on moduleName and mode
     let data: any;
     let source: string;
     
     if (mode === 'mock') {
       // Use mock data
-      switch (module) {
+      switch (moduleName) {
         case 'supplier-analytics':
           data = generateSupplierAnalyticsMock(params);
           source = 'mock-data-generator';
@@ -102,12 +102,12 @@ export async function GET(request: NextRequest) {
           source = 'mock-data-file';
           break;
         default:
-          throw new Error(`Mock data not implemented for module: ${module}`);
+          throw new Error(`Mock data not implemented for moduleName: ${moduleName}`);
       }
     } else {
       // Real data mode - return mock for now with a note
       // TODO: Implement real data providers
-      switch (module) {
+      switch (moduleName) {
         case 'supplier-analytics':
           data = generateSupplierAnalyticsMock(params);
           source = 'mock-fallback';
@@ -130,13 +130,13 @@ export async function GET(request: NextRequest) {
           source = 'mock-fallback';
           break;
         default:
-          throw new Error(`Real data not implemented for module: ${module}`);
+          throw new Error(`Real data not implemented for moduleName: ${moduleName}`);
       }
     }
 
     return NextResponse.json({
       success: true,
-      module,
+      moduleName,
       data,
       metadata: {
         source,
@@ -186,9 +186,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'get-metadata') {
-      const { module, mode } = body;
+      const { moduleName, mode } = body;
       
-      if (!module) {
+      if (!moduleName) {
         return NextResponse.json(
           { success: false, error: 'Module parameter is required' },
           { status: 400 }
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
         recordCount: 0,
         confidence: mode === 'mock' ? 0.75 : 0.95,
-        description: `${module} data provider`
+        description: `${moduleName} data provider`
       };
 
       return NextResponse.json({

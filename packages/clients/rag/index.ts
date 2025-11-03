@@ -1,12 +1,20 @@
 // Minimal RAG utilities: chunking, embedding via OpenAI, and retrieval via Prisma with pgvector.
 
-let db: any;
-try {
-  const mod = require('clients-db');
-  db = mod.default || mod;
-} catch {
-  const mod = require('../db');
-  db = mod.default || mod;
+let db: any = null;
+function getDB() {
+  if (db) return db;
+  try {
+    const mod = require('clients-db');
+    db = mod.default || mod;
+  } catch {
+    try {
+      const mod = require('../db');
+      db = mod.default || mod;
+    } catch (e: any) {
+      console.error('Failed to load DB client:', e.message);
+    }
+  }
+  return db;
 }
 
 let OpenAIClientCtor: any;
@@ -36,39 +44,98 @@ export function chunkText(text: string, size = 1200, overlap = 150): Chunk[] {
 }
 
 export async function embedChunks(docId: string, tenantId: string, chunks: Chunk[], opts?: { model?: string; apiKey?: string }) {
+  console.log(`  📊 embedChunks called with ${chunks.length} chunks`);
   const apiKey = opts?.apiKey || process.env['OPENAI_API_KEY'];
   const model = opts?.model || process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small';
-  if (!apiKey || !OpenAIClientCtor) return chunks; // silently skip in demo
-  // const client = new OpenAIClientCtor(apiKey); // unused variable
+  console.log(`  🔑 API key present: ${!!apiKey}, Model: ${model}`);
+  
+  if (!apiKey || !OpenAIClientCtor) {
+    console.log('  ⏭️  No API key or OpenAI client, skipping embeddings');
+    return chunks; // silently skip in demo
+  }
+  
   // The OpenAI client in this repo exposes chat only; call embeddings via openai SDK directly if available
   let openai: any = null;
   try {
+    console.log('  🔌 Initializing OpenAI client...');
     openai = new (require('openai').OpenAI)({ apiKey });
-  } catch {}
-  if (!openai) return chunks; // can't embed without SDK
+    console.log('  ✅ OpenAI client initialized');
+  } catch (e: any) {
+    console.log('  ❌ Failed to initialize OpenAI:', e.message);
+  }
+  
+  if (!openai) {
+    console.log('  ⏭️  No OpenAI client, skipping embeddings');
+    return chunks; // can't embed without SDK
+  }
+  
   // Impose a hard cap on total chunks to embed in one go
   const MAX_CHUNKS = Number(process.env['RAG_MAX_CHUNKS'] || 256);
   const toEmbed = chunks.slice(0, MAX_CHUNKS);
+  console.log(`  🎯 Will embed ${toEmbed.length} chunks (max: ${MAX_CHUNKS})`);
+  
   // Batch to smaller groups to limit payload/response size
   const BATCH = Number(process.env['RAG_EMBED_BATCH'] || 32);
+  console.log(`  📦 Using batch size: ${BATCH}`);
+  
   for (let start = 0; start < toEmbed.length; start += BATCH) {
     const batch = toEmbed.slice(start, start + BATCH);
     const texts = batch.map(c => c.text);
-    const res = await openai.embeddings.create({ model, input: texts });
-    const vectors = res.data.map((d: any) => d.embedding as number[]);
-    for (let i = 0; i < batch.length; i++) {
-      if (batch[i]) batch[i].embedding = vectors[i];
+    console.log(`  🌐 Calling OpenAI embeddings API for batch ${start / BATCH + 1}/${Math.ceil(toEmbed.length / BATCH)} (${batch.length} chunks)...`);
+    
+    try {
+      const res = await openai.embeddings.create({ model, input: texts });
+      console.log(`  ✅ Received ${res.data.length} embeddings from OpenAI`);
+      
+      const vectors = res.data.map((d: any) => d.embedding as number[]);
+      for (let i = 0; i < batch.length; i++) {
+        if (batch[i]) batch[i].embedding = vectors[i];
+      }
+    } catch (e: any) {
+      console.error(`  ❌ OpenAI API error:`, e.message);
+      throw e;
     }
   }
-  // persist
+  
+  console.log(`  ✅ All batches completed, proceeding to persistence...`);
+  // persist - use ContractEmbedding table with vector type (not Embedding with Json)
   try {
-    // const { Prisma } = require('@prisma/client'); // unused variable
+    console.log('  🔄 Starting embedding persistence...');
     const { pgvector } = require('pgvector/utils');
-    for (const c of toEmbed) {
-      await db.embedding.create({ data: { contractId: docId, tenantId, chunkIndex: c.index, text: c.text, embedding: pgvector.toSql(c.embedding) } });
+    console.log('  ✅ pgvector loaded');
+    
+    // Use createMany for batch insert (much faster than loop)
+    const embeddingsToCreate = toEmbed
+      .filter(c => c.embedding && c.embedding.length > 0)
+      .map(c => ({
+        contractId: docId,
+        chunkIndex: c.index,
+        chunkText: c.text,
+        embedding: pgvector.toSql(c.embedding)
+      }));
+    
+    console.log(`  💾 Preparing to persist ${embeddingsToCreate.length} embeddings...`);
+    
+    if (embeddingsToCreate.length > 0) {
+      // Delete existing embeddings for this contract first (to handle re-processing)
+      console.log('  🗑️  Deleting existing embeddings...');
+      const dbClient = getDB();
+      if (!dbClient) throw new Error('Database client not available');
+      
+      await dbClient.contractEmbedding.deleteMany({ where: { contractId: docId } });
+      
+      // Batch insert all embeddings at once
+      console.log('  📝 Inserting new embeddings...');
+      await dbClient.contractEmbedding.createMany({ 
+        data: embeddingsToCreate,
+        skipDuplicates: true 
+      });
+      console.log(`  ✅ Persisted ${embeddingsToCreate.length} embeddings to ContractEmbedding table`);
     }
-  } catch (e) {
-    console.error('RAG embed persistence error', e);
+  } catch (e: any) {
+    console.error('  ❌ RAG embed persistence error:', e.message);
+    console.error('  Stack:', e.stack);
+    // Don't throw - allow artifact generation to continue without RAG
   }
   return toEmbed;
 }
@@ -81,14 +148,17 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
   if (!openai) return [] as Array<{ text: string; score: number; chunkIndex: number }>;
   const qvec = (await openai.embeddings.create({ model, input: query })).data[0].embedding as number[];
   
-  let rows: Array<{ chunkIndex: number; text: string; score: number }>
+  let rows: Array<{ chunkIndex: number; chunkText: string; score: number }>
   try {
-    // Use cosine distance (1 - cosine_similarity) for search; can also use l2_distance <-> or inner_product <#>
+    // Use cosine distance (1 - cosine_similarity) for search with ContractEmbedding table
     const vectorQuery = `[${qvec.join(',')}]`;
-    rows = await db.$queryRaw`
-      SELECT "chunkIndex", "text", 1 - ("embedding" <=> ${vectorQuery}::vector) as score
-      FROM "Embedding"
-      WHERE "contractId" = ${docId} AND "tenantId" = ${tenantId}
+    const dbClient = getDB();
+    if (!dbClient) throw new Error('Database client not available');
+    
+    rows = await dbClient.$queryRaw`
+      SELECT "chunkIndex", "chunkText", 1 - ("embedding" <=> ${vectorQuery}::vector) as score
+      FROM "ContractEmbedding"
+      WHERE "contractId" = ${docId}
       ORDER BY score DESC
       LIMIT ${k};
     `;
@@ -96,12 +166,19 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
     console.error('RAG retrieval error', e);
     rows = [] as any;
   }
-  return rows;
+  return rows.map(r => ({ ...r, text: r.chunkText }));
 }
 
 export async function getDocChunks(docId: string, tenantId: string, k = 50) {
   try {
-    return await db.embedding.findMany({ where: { contractId: docId, tenantId }, orderBy: { chunkIndex: 'asc' }, take: k });
+    const dbClient = getDB();
+    if (!dbClient) return [];
+    
+    return await dbClient.contractEmbedding.findMany({ 
+      where: { contractId: docId }, 
+      orderBy: { chunkIndex: 'asc' }, 
+      take: k 
+    });
   } catch {
     return [];
   }

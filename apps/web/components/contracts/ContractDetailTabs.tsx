@@ -20,41 +20,212 @@ import {
   Shield,
   FileCheck,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Copy,
+  Check,
+  Keyboard,
+  History as HistoryIcon
 } from 'lucide-react'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/components/ui/toast-provider'
+import type { Contract, Artifact } from '@/types/artifacts'
+import { logError, logUserAction, logPerformance } from '@/lib/logger'
+import {
+  OverviewRenderer,
+  ClausesRenderer,
+  FinancialRenderer,
+  RiskRenderer,
+  ComplianceRenderer
+} from '@/components/contracts/artifact-renderers'
+import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
+import { KeyboardShortcutsHelp } from '@/components/contracts/KeyboardShortcutsHelp'
+import { ArtifactEditor } from '@/components/contracts/ArtifactEditor'
+import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor'
+import { ArtifactHistory } from '@/components/contracts/ArtifactHistory'
 
 interface ContractDetailTabsProps {
-  contract: any
-  artifacts: any[]
+  contract: Contract | null
+  artifacts: Artifact[]
+  initialTab?: string
   onEdit?: () => void
   onExport?: () => void
 }
 
-export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: ContractDetailTabsProps) {
+export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, onExport }: ContractDetailTabsProps) {
   const { dataMode } = useDataMode()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const toast = useToast()
+  const [activeTab, setActiveTab] = useState(initialTab || 'overview')
   const [analyzing, setAnalyzing] = useState(false)
+  const [copiedArtifactId, setCopiedArtifactId] = useState<string | null>(null)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const [editingArtifactId, setEditingArtifactId] = useState<string | null>(null)
+  const [editingArtifact, setEditingArtifact] = useState<Artifact | null>(null)
+  const [showMetadataEditor, setShowMetadataEditor] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyArtifact, setHistoryArtifact] = useState<{ id: string; type: string } | null>(null)
+
+  // Define tab order for navigation
+  const tabs = ['overview', 'artifacts', 'export']
 
   const handleAnalyzeWithAI = async () => {
     setAnalyzing(true)
+    const startTime = performance.now()
+    
     try {
+      logUserAction('contract-analyze-start', undefined, { contractId: contract?.id })
+      
       const response = await fetch(`/api/contracts/${contract?.id}/retry`, {
         method: 'POST'
       })
+      
       if (response.ok) {
+        const duration = performance.now() - startTime
+        logPerformance('contract-analysis-request', duration, { contractId: contract?.id })
+        
+        toast.success('Analysis Started', 'AI is analyzing the contract. This may take a few moments.')
         setTimeout(() => {
           window.location.reload()
         }, 2000)
+      } else {
+        throw new Error('Analysis failed')
       }
     } catch (error) {
-      console.error('Analysis failed:', error)
+      logError('Contract analysis failed', error, { contractId: contract?.id })
+      toast.error('Analysis Failed', 'Unable to analyze contract. Please try again.')
     } finally {
       setAnalyzing(false)
     }
   }
+
+  const handleCopyArtifact = async (artifactType: string, artifactData: unknown) => {
+    try {
+      const jsonString = JSON.stringify(artifactData, null, 2)
+      await navigator.clipboard.writeText(jsonString)
+      
+      logUserAction('artifact-copy', undefined, { artifactType, contractId: contract?.id })
+      
+      setCopiedArtifactId(artifactType)
+      toast.success('Copied to Clipboard', `${artifactType.toUpperCase()} artifact data copied successfully.`)
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => setCopiedArtifactId(null), 2000)
+    } catch (error) {
+      logError('Artifact copy failed', error, { artifactType })
+      toast.error('Copy Failed', 'Failed to copy artifact data to clipboard.')
+    }
+  }
+  
+  const handleNextTab = () => {
+    const currentIndex = tabs.indexOf(activeTab)
+    const nextIndex = (currentIndex + 1) % tabs.length
+    setActiveTab(tabs[nextIndex])
+    logUserAction('tab-navigation', undefined, { from: activeTab, to: tabs[nextIndex], method: 'keyboard' })
+  }
+
+  const handlePrevTab = () => {
+    const currentIndex = tabs.indexOf(activeTab)
+    const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length
+    setActiveTab(tabs[prevIndex])
+    logUserAction('tab-navigation', undefined, { from: activeTab, to: tabs[prevIndex], method: 'keyboard' })
+  }
+
+  const handleCopyCurrentArtifact = () => {
+    if (artifacts && artifacts.length > 0) {
+      const firstArtifact = artifacts[0]
+      handleCopyArtifact(firstArtifact.type || 'unknown', firstArtifact.data)
+    }
+  }
+
+  const handleEditArtifact = (artifact: Artifact) => {
+    setEditingArtifact(artifact)
+    setEditingArtifactId(artifact.id || null)
+    logUserAction('artifact-edit-start', undefined, { artifactType: artifact.type, contractId: contract?.id })
+  }
+
+  const handleSaveArtifact = async (updatedArtifact: Artifact) => {
+    try {
+      // The ArtifactEditor component handles the API call internally
+      // After successful save, refresh the page or update local state
+      toast.success('Artifact Updated', 'Changes have been saved successfully.')
+      setEditingArtifactId(null)
+      setEditingArtifact(null)
+      
+      // Reload the page to get fresh data
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } catch (error) {
+      logError('Artifact save failed', error, { artifactId: updatedArtifact.id })
+      toast.error('Save Failed', 'Unable to save artifact changes.')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingArtifactId(null)
+    setEditingArtifact(null)
+  }
+
+  const handleViewHistory = (artifact: Artifact) => {
+    if (artifact.id) {
+      setHistoryArtifact({ id: artifact.id, type: artifact.type })
+      setShowHistory(true)
+      logUserAction('artifact-history-view', undefined, { artifactType: artifact.type, contractId: contract?.id })
+    } else {
+      toast.error('History Unavailable', 'This artifact does not have a database ID.')
+    }
+  }
+
+  // Keyboard shortcuts configuration
+  const shortcuts: KeyboardShortcut[] = [
+    {
+      key: 'k',
+      ctrl: true,
+      description: 'Analyze with AI',
+      action: handleAnalyzeWithAI,
+      category: 'Actions',
+      enabled: !analyzing
+    },
+    {
+      key: 'c',
+      ctrl: true,
+      description: 'Copy first artifact',
+      action: handleCopyCurrentArtifact,
+      category: 'Actions',
+      enabled: artifacts && artifacts.length > 0
+    },
+    {
+      key: 'ArrowRight',
+      ctrl: true,
+      description: 'Next tab',
+      action: handleNextTab,
+      category: 'Navigation'
+    },
+    {
+      key: 'ArrowLeft',
+      ctrl: true,
+      description: 'Previous tab',
+      action: handlePrevTab,
+      category: 'Navigation'
+    },
+    {
+      key: '?',
+      description: 'Toggle shortcuts help',
+      action: () => setShowShortcutsHelp(prev => !prev),
+      category: 'Help'
+    },
+    {
+      key: 'Escape',
+      description: 'Close dialogs',
+      action: () => setShowShortcutsHelp(false),
+      category: 'Help',
+      enabled: showShortcutsHelp
+    }
+  ]
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts({ shortcuts })
 
   const getArtifactIcon = (type: string) => {
     switch (type?.toLowerCase()) {
@@ -73,7 +244,29 @@ export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: Co
     }
   }
 
+  // Type guard functions for safe property access
+  const isOverviewData = (data: unknown): data is import('@/types/artifacts').OverviewData => {
+    return typeof data === 'object' && data !== null && ('summary' in data || 'parties' in data)
+  }
+
+  const isClausesData = (data: unknown): data is import('@/types/artifacts').ClausesData => {
+    return typeof data === 'object' && data !== null && 'clauses' in data
+  }
+
+  const isFinancialData = (data: unknown): data is import('@/types/artifacts').FinancialData => {
+    return typeof data === 'object' && data !== null && ('totalValue' in data || 'financial' in data)
+  }
+
+  const isRiskData = (data: unknown): data is import('@/types/artifacts').RiskData => {
+    return typeof data === 'object' && data !== null && 'risks' in data
+  }
+
+  const isComplianceData = (data: unknown): data is import('@/types/artifacts').ComplianceData => {
+    return typeof data === 'object' && data !== null && ('compliance' in data || ('summary' in data && typeof (data as any).compliance !== 'undefined'))
+  }
+
   return (
+    <>
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-5">
         <TabsTrigger value="overview" className="gap-2">
@@ -101,6 +294,40 @@ export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: Co
 
       {/* Overview Tab */}
       <TabsContent value="overview" className="space-y-4">
+        <div className="flex justify-end mb-4">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowMetadataEditor(!showMetadataEditor)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            {showMetadataEditor ? 'Cancel' : 'Edit Metadata'}
+          </Button>
+        </div>
+
+        {showMetadataEditor && contract && (
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle>Edit Contract Metadata</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EnhancedMetadataEditor
+                contractId={contract.id}
+                tenantId="demo-tenant"
+                initialMetadata={{
+                  tags: [],
+                  customFields: {}
+                }}
+                onSave={() => {
+                  toast.success('Metadata Updated', 'Contract metadata has been saved.')
+                  setShowMetadataEditor(false)
+                  setTimeout(() => window.location.reload(), 1000)
+                }}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-3">
@@ -176,6 +403,15 @@ export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: Co
             <p className="text-sm text-muted-foreground">AI-extracted insights and analysis</p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowShortcutsHelp(true)}
+              className="gap-2"
+            >
+              <Keyboard className="h-4 w-4" />
+              Shortcuts
+            </Button>
             <Button 
               variant="default" 
               size="sm" 
@@ -203,233 +439,101 @@ export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: Co
         </div>
 
         {artifacts && artifacts.length > 0 ? (
-          <div className="grid gap-4">
+          <div className="grid gap-6 max-w-6xl">
             {artifacts.map((artifact, index) => {
               const artifactType = artifact.type?.toLowerCase() || 'unknown'
               const artifactData = artifact.data || {}
               
               return (
-                <Card key={index} className="overflow-hidden hover:shadow-md transition-shadow">
-                  <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                <Card key={index} className="overflow-hidden hover:shadow-lg transition-all duration-300 border-2">
+                  <CardHeader className="bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-850 dark:to-gray-800 border-b-2">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {getArtifactIcon(artifactType)}
+                      <div className="flex items-center gap-4">
+                        <div className="p-3 rounded-xl bg-white dark:bg-gray-900 shadow-md">
+                          {getArtifactIcon(artifactType)}
+                        </div>
                         <div>
-                          <CardTitle className="text-lg capitalize">{artifactType}</CardTitle>
+                          <CardTitle className="text-2xl font-bold capitalize tracking-tight">
+                            {artifactType}
+                          </CardTitle>
                           {artifact.confidence && (
-                            <CardDescription className="text-xs mt-1">
-                              Confidence: {(artifact.confidence * 100).toFixed(0)}%
+                            <CardDescription className="text-sm mt-1.5 font-medium">
+                              Confidence: <span className="text-green-600 dark:text-green-400 font-bold">
+                                {(artifact.confidence * 100).toFixed(0)}%
+                              </span>
                             </CardDescription>
                           )}
                         </div>
                       </div>
-                      {artifact.model && (
-                        <Badge variant="outline" className="text-xs">
-                          {artifact.model}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {artifact.model && (
+                          <Badge variant="outline" className="text-xs font-mono px-3 py-1">
+                            {artifact.model}
+                          </Badge>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEditArtifact(artifact)}
+                          className="gap-2"
+                          aria-label={`Edit ${artifactType} artifact`}
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewHistory(artifact)}
+                          className="gap-2"
+                          aria-label={`View ${artifactType} edit history`}
+                          disabled={!artifact.id}
+                        >
+                          <HistoryIcon className="h-4 w-4" />
+                          History
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleCopyArtifact(artifactType, artifactData)}
+                          className="gap-2"
+                          aria-label={`Copy ${artifactType} artifact data`}
+                        >
+                          {copiedArtifactId === artifactType ? (
+                            <>
+                              <Check className="h-4 w-4 text-green-600" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4" />
+                              Copy
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      {artifactType === 'overview' && (
-                        <div className="space-y-3">
-                          {artifactData.summary && (
-                            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <h4 className="font-semibold text-sm text-blue-900 dark:text-blue-100 mb-2">Summary</h4>
-                              <p className="text-sm text-blue-800 dark:text-blue-200">{artifactData.summary}</p>
-                            </div>
-                          )}
-                          {artifactData.parties && artifactData.parties.length > 0 && (
-                            <div>
-                              <h4 className="font-semibold text-sm mb-2">Parties</h4>
-                              <div className="grid grid-cols-2 gap-2">
-                                {artifactData.parties.map((party: any, i: number) => (
-                                  <div key={i} className="p-3 bg-gray-50 dark:bg-gray-800 rounded border">
-                                    <p className="font-medium">{party.name}</p>
-                                    <p className="text-xs text-muted-foreground capitalize">{party.role}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {artifactData.contractType && (
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Contract Type</p>
-                                <p className="font-medium">{artifactData.contractType}</p>
-                              </div>
-                              {artifactData.totalValue && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground">Total Value</p>
-                                  <p className="font-medium">${artifactData.totalValue.toLocaleString()}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                  <CardContent className="pt-8 pb-6 px-8">
+                    <div className="space-y-6" style={{ lineHeight: '1.7' }}>
+                      {artifactType === 'overview' && isOverviewData(artifactData) && (
+                        <OverviewRenderer data={artifactData} />
                       )}
 
-                      {artifactType === 'clauses' && (
-                        <div className="space-y-2">
-                          {artifactData.clauses && artifactData.clauses.length > 0 ? (
-                            artifactData.clauses.map((clause: any, i: number) => (
-                              <div key={i} className="p-4 bg-gray-50 dark:bg-gray-800 rounded border hover:border-purple-300 transition-colors">
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold text-sm mb-1">{clause.name || clause.category || 'Clause'}</h4>
-                                  </div>
-                                  {clause.relevance && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {Math.round(clause.relevance * 100)}% relevant
-                                    </Badge>
-                                  )}
-                                </div>
-                                <p className="text-sm text-muted-foreground">{clause.excerpt || clause.text || 'No description available'}</p>
-                                {clause.location && (
-                                  <p className="text-xs text-muted-foreground mt-2">Section: {clause.location}</p>
-                                )}
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No clauses extracted</p>
-                          )}
-                        </div>
+                      {artifactType === 'clauses' && isClausesData(artifactData) && (
+                        <ClausesRenderer data={artifactData} />
                       )}
 
-                      {artifactType === 'financial' && (
-                        <div className="space-y-3">
-                          {(() => {
-                            const finData = artifactData.financial || artifactData;
-                            return (
-                              <>
-                                <div className="grid grid-cols-2 gap-4">
-                                  {finData.totalValue && (
-                                    <div className="p-4 bg-green-50 dark:bg-green-950 rounded border border-green-200 dark:border-green-800">
-                                      <p className="text-xs text-green-600 dark:text-green-400 mb-1">Total Value</p>
-                                      <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                                        ${finData.totalValue.toLocaleString()}
-                                      </p>
-                                    </div>
-                                  )}
-                                  {finData.currency && (
-                                    <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800">
-                                      <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Currency</p>
-                                      <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{finData.currency}</p>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                {finData.paymentTerms && finData.paymentTerms.length > 0 && (
-                                  <div className="p-4 bg-purple-50 dark:bg-purple-950 rounded border border-purple-200 dark:border-purple-800">
-                                    <h4 className="font-semibold text-sm mb-2 text-purple-900 dark:text-purple-100">Payment Terms</h4>
-                                    <ul className="space-y-1">
-                                      {finData.paymentTerms.map((term: string, i: number) => (
-                                        <li key={i} className="text-sm text-purple-800 dark:text-purple-200">• {term}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                                
-                                {finData.paymentSchedule && finData.paymentSchedule.length > 0 && (
-                                  <div>
-                                    <h4 className="font-semibold text-sm mb-2">Payment Schedule</h4>
-                                    <div className="space-y-2">
-                                      {finData.paymentSchedule.map((payment: any, i: number) => (
-                                        <div key={i} className="p-3 bg-gray-50 dark:bg-gray-800 rounded border flex justify-between items-center">
-                                          <span className="font-medium">{payment.milestone}</span>
-                                          <span className="text-green-600 dark:text-green-400 font-bold">
-                                            ${payment.amount.toLocaleString()}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {finData.rateCards && finData.rateCards.length > 0 && (
-                                  <div>
-                                    <h4 className="font-semibold text-sm mb-2">Rate Cards</h4>
-                                    <div className="space-y-2">
-                                      {finData.rateCards.map((card: any, i: number) => (
-                                        <div key={i} className="p-3 bg-gray-50 dark:bg-gray-800 rounded border flex justify-between">
-                                          <span className="font-medium">{card.role || card.title}</span>
-                                          <span className="text-green-600 font-bold">${card.rate}/hr</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
+                      {artifactType === 'financial' && isFinancialData(artifactData) && (
+                        <FinancialRenderer data={artifactData} />
                       )}
 
-                      {artifactType === 'risk' && (
-                        <div className="space-y-2">
-                          {artifactData.risks && artifactData.risks.length > 0 ? (
-                            artifactData.risks.map((risk: any, i: number) => (
-                              <div key={i} className={`p-4 rounded border ${
-                                risk.severity?.toLowerCase() === 'high' ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800' :
-                                risk.severity?.toLowerCase() === 'medium' ? 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800' :
-                                'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                              }`}>
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                  <h4 className="font-semibold text-sm">{risk.title || risk.category || 'Risk'}</h4>
-                                  <Badge variant={risk.severity?.toLowerCase() === 'high' ? 'destructive' : 'secondary'} className="text-xs capitalize">
-                                    {risk.severity}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mb-2">{risk.rationale || risk.description}</p>
-                                {risk.mitigation && (
-                                  <div className="mt-2 pt-2 border-t border-dashed">
-                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Mitigation:</p>
-                                    <p className="text-xs text-muted-foreground">{risk.mitigation}</p>
-                                  </div>
-                                )}
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">No risks identified</p>
-                          )}
-                        </div>
+                      {artifactType === 'risk' && isRiskData(artifactData) && (
+                        <RiskRenderer data={artifactData} />
                       )}
 
-                      {artifactType === 'compliance' && (
-                        <div className="space-y-3">
-                          {artifactData.summary && (
-                            <div className="p-4 bg-indigo-50 dark:bg-indigo-950 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                              <h4 className="font-semibold text-sm text-indigo-900 dark:text-indigo-100 mb-2">Summary</h4>
-                              <p className="text-sm text-indigo-800 dark:text-indigo-200">{artifactData.summary}</p>
-                            </div>
-                          )}
-                          {artifactData.compliance && artifactData.compliance.length > 0 && (
-                            <div className="space-y-2">
-                              {artifactData.compliance.map((item: any, i: number) => (
-                                <div key={i} className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded border">
-                                  {item.present ? (
-                                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                                  ) : (
-                                    <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                                  )}
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <p className="font-semibold text-sm">{item.standard || item.requirement}</p>
-                                      <Badge variant={item.present ? 'default' : 'secondary'} className="text-xs">
-                                        {item.present ? 'Compliant' : 'Not Found'}
-                                      </Badge>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mb-1">{item.notes || item.details}</p>
-                                    {item.excerpt && (
-                                      <p className="text-xs italic text-muted-foreground mt-2 pl-3 border-l-2">"{item.excerpt}"</p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                      {artifactType === 'compliance' && isComplianceData(artifactData) && (
+                        <ComplianceRenderer data={artifactData} />
                       )}
                     </div>
                   </CardContent>
@@ -578,5 +682,34 @@ export function ContractDetailTabs({ contract, artifacts, onEdit, onExport }: Co
         </Card>
       </TabsContent>
     </Tabs>
+
+    {/* Keyboard Shortcuts Help Dialog */}
+    <KeyboardShortcutsHelp
+      open={showShortcutsHelp}
+      onOpenChange={setShowShortcutsHelp}
+      shortcuts={shortcuts}
+    />
+
+    {/* Artifact Editor Dialog */}
+    {editingArtifact && contract && (
+      <ArtifactEditor
+        artifact={editingArtifact}
+        contractId={contract.id}
+        onSave={handleSaveArtifact}
+        onCancel={handleCancelEdit}
+      />
+    )}
+
+    {/* Artifact History Dialog */}
+    {showHistory && historyArtifact && contract && (
+      <ArtifactHistory
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        contractId={contract.id}
+        artifactId={historyArtifact.id || ''}
+        artifactType={historyArtifact.type}
+      />
+    )}
+  </>
   )
 }

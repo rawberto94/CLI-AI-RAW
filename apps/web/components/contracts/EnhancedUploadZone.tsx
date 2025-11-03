@@ -27,9 +27,6 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { MetricCard } from '../shared/AIComponents'
-import { MetricCard } from '../shared/AIComponents'
-import { MetricCard } from '../shared/AIComponents'
-import { MetricCard } from '../shared/AIComponents'
 import { StatusIndicator } from '../ui/design-system'
 
 interface UploadFile {
@@ -381,7 +378,7 @@ export default function EnhancedUploadZone({
     return (
         <div className={`space-y-6 ${className}`}>
             {/* Upload Dropzone */}
-            <EnhancedCard variant="gradient" className="shadow-2xl border-0 overflow-hidden">
+            <Card className="shadow-2xl border-0 overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white border-0">
                     <CardTitle className="flex items-center gap-3 text-xl">
                         <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -515,9 +512,10 @@ export default function EnhancedUploadZone({
                         </div>
                     </div>
                 </CardContent>
-            </EnhancedCard>
+            </Card>
 
             {/* Multi-Stage Progress Tracker */}
+            {/* TODO: Implement MultiStageProgress component
             {showDetailedProgress && currentProcessingFile && (
                 <MultiStageProgress
                     stages={getProgressStages(currentProcessingFile)}
@@ -528,10 +526,11 @@ export default function EnhancedUploadZone({
                     }}
                 />
             )}
+            */}
 
             {/* Upload Progress */}
             {files.length > 0 && (
-                <EnhancedCard variant="elevated" className="shadow-2xl border-0">
+                <Card className="shadow-2xl border-0">
                     <CardHeader className="bg-gradient-to-r from-indigo-50 via-blue-50 to-purple-50 border-b border-indigo-100">
                         <CardTitle className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -559,7 +558,7 @@ export default function EnhancedUploadZone({
                     <CardContent className="p-6">
                         <div className="space-y-6">
                             {files.map((file) => (
-                                <EnhancedCard
+                                <Card
                                     key={file.id}
                                     variant="interactive"
                                     hover
@@ -740,13 +739,10 @@ export default function EnhancedUploadZone({
 
                                                 {/* Enhanced Error Message */}
                                                 {file.status === 'error' && file.error && (
-                                                    <InfoCallout
-                                                        type="error"
-                                                        title="Processing Failed"
-                                                        className="mb-3"
-                                                    >
-                                                        {file.error}
-                                                    </InfoCallout>
+                                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-3">
+                                                        <p className="text-sm font-medium text-red-900">Processing Failed</p>
+                                                        <p className="text-sm text-red-700">{file.error}</p>
+                                                    </div>
                                                 )}
                                             </div>
 
@@ -786,16 +782,16 @@ export default function EnhancedUploadZone({
                                             </div>
                                         </div>
                                     </CardContent>
-                                </EnhancedCard>
+                                </Card>
                             ))}
                         </div>
                     </CardContent>
-                </EnhancedCard>
+                </Card>
             )}
 
             {/* Enhanced Upload Summary */}
             {files.length > 0 && (
-                <EnhancedCard
+                <Card
                     variant="gradient"
                     className="shadow-xl border-0 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50"
                 >
@@ -818,38 +814,30 @@ export default function EnhancedUploadZone({
                                 </div>
 
                                 <div className="grid grid-cols-3 gap-4">
-                                    <DataPoint
-                                        label="Completed"
-                                        value={files.filter(f => f.status === 'completed').length}
-                                        icon={<CheckCircle className="w-5 h-5" />}
-                                        color="green"
-                                        size="sm"
-                                    />
-                                    <DataPoint
-                                        label="Processing"
-                                        value={files.filter(f => f.status === 'processing' || f.status === 'uploading').length}
-                                        icon={<Loader2 className="w-5 h-5" />}
-                                        color="blue"
-                                        size="sm"
-                                    />
-                                    <DataPoint
-                                        label="Failed"
-                                        value={files.filter(f => f.status === 'error').length}
-                                        icon={<AlertCircle className="w-5 h-5" />}
-                                        color="red"
-                                        size="sm"
-                                    />
+                                    <div className="flex flex-col items-center p-3 bg-green-50 rounded-lg">
+                                        <CheckCircle className="w-5 h-5 text-green-600 mb-1" />
+                                        <div className="text-2xl font-bold text-green-900">{files.filter(f => f.status === 'completed').length}</div>
+                                        <div className="text-xs text-green-700">Completed</div>
+                                    </div>
+                                    <div className="flex flex-col items-center p-3 bg-blue-50 rounded-lg">
+                                        <Loader2 className="w-5 h-5 text-blue-600 mb-1" />
+                                        <div className="text-2xl font-bold text-blue-900">{files.filter(f => f.status === 'processing' || f.status === 'uploading').length}</div>
+                                        <div className="text-xs text-blue-700">Processing</div>
+                                    </div>
+                                    <div className="flex flex-col items-center p-3 bg-red-50 rounded-lg">
+                                        <AlertCircle className="w-5 h-5 text-red-600 mb-1" />
+                                        <div className="text-2xl font-bold text-red-900">{files.filter(f => f.status === 'error').length}</div>
+                                        <div className="text-xs text-red-700">Failed</div>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Success Rate Gauge */}
                             <div className="flex items-center justify-center">
-                                <ScoreGauge
-                                    score={Math.round((files.filter(f => f.status === 'completed').length / files.length) * 100)}
-                                    label="Success Rate"
-                                    size="md"
-                                    colorScheme="performance"
-                                />
+                                <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
+                                    <div className="text-4xl font-bold text-indigo-900">{Math.round((files.filter(f => f.status === 'completed').length / files.length) * 100)}%</div>
+                                    <div className="text-sm text-indigo-700">Success Rate</div>
+                                </div>
                             </div>
                         </div>
 
@@ -875,7 +863,7 @@ export default function EnhancedUploadZone({
                             </div>
                         )}
                     </CardContent>
-                </EnhancedCard>
+                </Card>
             )}
         </div>
     )

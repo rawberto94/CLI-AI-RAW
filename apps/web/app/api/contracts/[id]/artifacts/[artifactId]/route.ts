@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { editableArtifactService } from 'data-orchestration/src/services/editable-artifact.service';
 
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]
@@ -72,7 +71,9 @@ export async function PUT(
       );
     }
 
-    // Update the artifact
+    // Update the artifact using the service
+    const { EditableArtifactService } = await import('data-orchestration/src/services/editable-artifact.service');
+    const editableArtifactService = EditableArtifactService.getInstance();
     const updatedArtifact = await editableArtifactService.updateArtifact(
       params.artifactId,
       updates,

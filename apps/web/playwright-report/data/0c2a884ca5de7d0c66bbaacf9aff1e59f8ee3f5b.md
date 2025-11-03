@@ -1,0 +1,239 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - text: "Tenant:"
+      - strong [ref=e5]: —
+    - generic [ref=e6]:
+      - text: "API:"
+      - strong [ref=e7]: ok
+    - generic [ref=e8]:
+      - text: "Web:"
+      - strong [ref=e9]: ok
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e12]
+      - generic [ref=e15]: Contract Intelligence
+    - navigation [ref=e16]:
+      - link "Dashboard" [ref=e18] [cursor=pointer]:
+        - /url: /
+        - img [ref=e19]
+        - generic [ref=e24]: Dashboard
+      - button "Contracts" [ref=e26] [cursor=pointer]:
+        - generic [ref=e27]:
+          - img [ref=e28]
+          - generic [ref=e31]: Contracts
+        - img [ref=e33]
+      - button "Rate Cards" [ref=e36] [cursor=pointer]:
+        - generic [ref=e37]:
+          - img [ref=e38]
+          - generic [ref=e40]: Rate Cards
+        - img [ref=e42]
+      - generic [ref=e44]:
+        - button "Analytics" [ref=e45] [cursor=pointer]:
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - generic [ref=e49]: Analytics
+          - img [ref=e51]
+        - generic [ref=e53]:
+          - link "Overview" [active] [ref=e54] [cursor=pointer]:
+            - /url: /analytics
+            - img [ref=e55]
+            - generic [ref=e57]: Overview
+          - link "Procurement Intelligence" [ref=e58] [cursor=pointer]:
+            - /url: /analytics/procurement
+            - img [ref=e59]
+            - generic [ref=e62]: Procurement Intelligence
+          - link "Cost Savings" [ref=e63] [cursor=pointer]:
+            - /url: /analytics/savings
+            - img [ref=e64]
+            - generic [ref=e66]: Cost Savings
+          - link "Renewals Radar" [ref=e67] [cursor=pointer]:
+            - /url: /analytics/renewals
+            - img [ref=e68]
+            - generic [ref=e70]: Renewals Radar
+          - link "Supplier Performance" [ref=e71] [cursor=pointer]:
+            - /url: /analytics/suppliers
+            - img [ref=e72]
+            - generic [ref=e77]: Supplier Performance
+          - link "Negotiation Prep" [ref=e78] [cursor=pointer]:
+            - /url: /analytics/negotiation
+            - img [ref=e79]
+            - generic [ref=e82]: Negotiation Prep
+      - link "Search" [ref=e84] [cursor=pointer]:
+        - /url: /search
+        - img [ref=e85]
+        - generic [ref=e88]: Search
+      - link "Settings" [ref=e90] [cursor=pointer]:
+        - /url: /settings
+        - img [ref=e91]
+        - generic [ref=e94]: Settings
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - generic [ref=e98]: Version
+        - generic [ref=e99]: 2.0.0
+      - generic [ref=e100]:
+        - generic [ref=e101]: Real-time
+        - generic "Real-time updates are active" [ref=e102]:
+          - img [ref=e103]
+  - generic [ref=e107]:
+    - button "Real Data real" [ref=e109] [cursor=pointer]:
+      - img
+      - generic [ref=e110]: Real Data
+      - generic [ref=e111]: real
+    - generic [ref=e112]:
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - heading "Analytics Dashboard" [level=2] [ref=e116]
+            - paragraph [ref=e117]: Real-time insights and metrics
+          - generic [ref=e118]:
+            - button "Filters" [ref=e119] [cursor=pointer]:
+              - img
+              - text: Filters
+            - button "Refresh" [disabled]:
+              - img
+              - text: Refresh
+            - button "Export" [ref=e120] [cursor=pointer]:
+              - img
+              - text: Export
+        - generic [ref=e121]:
+          - img [ref=e122]
+          - generic [ref=e124]:
+            - text: Showing
+            - strong [ref=e125]: real
+            - text: data
+        - generic [ref=e126]:
+          - generic [ref=e129]:
+            - generic [ref=e130]:
+              - paragraph [ref=e131]: Total Contracts
+              - paragraph [ref=e132]: "0"
+              - generic [ref=e133]:
+                - img [ref=e134]
+                - generic [ref=e137]: +12% from last month
+            - img [ref=e139]
+          - generic [ref=e144]:
+            - generic [ref=e145]:
+              - paragraph [ref=e146]: Total Value
+              - paragraph [ref=e147]: $0.0M
+              - generic [ref=e148]:
+                - img [ref=e149]
+                - generic [ref=e152]: +8% from last month
+            - img [ref=e154]
+          - generic [ref=e158]:
+            - generic [ref=e159]:
+              - paragraph [ref=e160]: Potential Savings
+              - paragraph [ref=e161]: $0.0M
+              - generic [ref=e162]:
+                - img [ref=e163]
+                - generic [ref=e166]: 15% of total value
+            - img [ref=e168]
+          - generic [ref=e173]:
+            - generic [ref=e174]:
+              - paragraph [ref=e175]: Active Suppliers
+              - paragraph [ref=e176]: "0"
+              - generic [ref=e177]:
+                - img [ref=e178]
+                - generic [ref=e181]: +5 this quarter
+            - img [ref=e183]
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - paragraph [ref=e192]: Upcoming Renewals
+              - paragraph [ref=e193]: "0"
+              - generic [ref=e195]: Next 90 days
+            - img [ref=e197]
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - paragraph [ref=e203]: Artifacts Processed
+              - paragraph [ref=e204]: "0"
+              - generic [ref=e205]:
+                - img [ref=e206]
+                - generic [ref=e209]: +234 this week
+            - img [ref=e211]
+        - generic [ref=e213]:
+          - generic [ref=e214]:
+            - generic [ref=e216]: Contract Value Trend
+            - generic [ref=e219]:
+              - img [ref=e220]
+              - paragraph [ref=e222]: Chart visualization
+              - paragraph [ref=e223]: Line chart showing value over time
+          - generic [ref=e224]:
+            - generic [ref=e226]: Top Suppliers by Value
+            - generic [ref=e229]:
+              - img [ref=e230]
+              - paragraph [ref=e235]: Chart visualization
+              - paragraph [ref=e236]: Bar chart showing top suppliers
+        - generic [ref=e237]:
+          - generic [ref=e239]: Quick Actions
+          - generic [ref=e241]:
+            - button "View Artifacts" [ref=e242] [cursor=pointer]:
+              - img
+              - generic [ref=e243]: View Artifacts
+            - button "Cost Savings" [ref=e244] [cursor=pointer]:
+              - img
+              - generic [ref=e245]: Cost Savings
+            - button "Renewals" [ref=e246] [cursor=pointer]:
+              - img
+              - generic [ref=e247]: Renewals
+            - button "Suppliers" [ref=e248] [cursor=pointer]:
+              - img
+              - generic [ref=e249]: Suppliers
+      - generic [ref=e250]:
+        - heading "Detailed Analytics" [level=3] [ref=e251]
+        - generic [ref=e252]:
+          - link "Artifacts Artifact extraction analytics" [ref=e253] [cursor=pointer]:
+            - /url: /analytics/artifacts
+            - generic [ref=e256]:
+              - generic [ref=e257]:
+                - img [ref=e259]
+                - heading "Artifacts" [level=4] [ref=e262]
+                - paragraph [ref=e263]: Artifact extraction analytics
+              - img [ref=e264]
+          - link "Cost Savings Savings opportunities" [ref=e266] [cursor=pointer]:
+            - /url: /analytics/savings
+            - generic [ref=e269]:
+              - generic [ref=e270]:
+                - img [ref=e272]
+                - heading "Cost Savings" [level=4] [ref=e274]
+                - paragraph [ref=e275]: Savings opportunities
+              - img [ref=e276]
+          - link "Renewals Contract renewals" [ref=e278] [cursor=pointer]:
+            - /url: /analytics/renewals
+            - generic [ref=e281]:
+              - generic [ref=e282]:
+                - img [ref=e284]
+                - heading "Renewals" [level=4] [ref=e286]
+                - paragraph [ref=e287]: Contract renewals
+              - img [ref=e288]
+          - link "Suppliers Supplier analytics" [ref=e290] [cursor=pointer]:
+            - /url: /analytics/suppliers
+            - generic [ref=e293]:
+              - generic [ref=e294]:
+                - img [ref=e296]
+                - heading "Suppliers" [level=4] [ref=e301]
+                - paragraph [ref=e302]: Supplier analytics
+              - img [ref=e303]
+          - link "Negotiation Negotiation prep" [ref=e305] [cursor=pointer]:
+            - /url: /analytics/negotiation
+            - generic [ref=e308]:
+              - generic [ref=e309]:
+                - img [ref=e311]
+                - heading "Negotiation" [level=4] [ref=e314]
+                - paragraph [ref=e315]: Negotiation prep
+              - img [ref=e316]
+          - link "Procurement Procurement intelligence" [ref=e318] [cursor=pointer]:
+            - /url: /analytics/procurement
+            - generic [ref=e321]:
+              - generic [ref=e322]:
+                - img [ref=e324]
+                - heading "Procurement" [level=4] [ref=e327]
+                - paragraph [ref=e328]: Procurement intelligence
+              - img [ref=e329]
+  - button [ref=e331] [cursor=pointer]:
+    - img
+  - button "Open Next.js Dev Tools" [ref=e337] [cursor=pointer]:
+    - img [ref=e338]
+  - alert [ref=e341]
+```

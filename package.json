@@ -32,6 +32,27 @@
   "pnpm": {
     "overrides": {
       "zod": "3.22.4"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "@sentry/cli",
+      "@vercel/speed-insights",
+      "aws-sdk",
+      "bcrypt",
+      "core-js",
+      "es5-ext",
+      "esbuild",
+      "fsevents",
+      "keytar",
+      "msgpackr-extract",
+      "node-sass",
+      "prisma",
+      "protobufjs",
+      "puppeteer",
+      "sharp",
+      "tesseract.js",
+      "unrs-resolver"
+    ]
   }
 }

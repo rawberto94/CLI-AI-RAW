@@ -21,8 +21,8 @@ let OpenAI: any = null;
 async function getOpenAI() {
   if (!OpenAI) {
     try {
-      const module = await import("openai");
-      OpenAI = module.default;
+      const openaiModule = await import("openai");
+      OpenAI = openaiModule.default;
     } catch (error) {
       console.error("Failed to import OpenAI:", error);
       throw new Error("OpenAI SDK not available. Run: pnpm add openai");
@@ -430,26 +430,8 @@ export async function generateRealArtifacts(
     console.log(`✅ Extracted ${extractedText.length} characters`);
 
     // Step 1.5: Generate RAG embeddings for semantic search
-    console.log(`🔍 Generating RAG embeddings for semantic search...`);
-    try {
-      // Dynamically import RAG client
-      const { chunkText, embedChunks } = await import('@/packages/clients/rag');
-      
-      // Chunk the text
-      const chunks = chunkText(extractedText);
-      console.log(`  📦 Created ${chunks.length} text chunks`);
-      
-      // Generate and save embeddings
-      await embedChunks(contractId, tenantId, chunks, {
-        apiKey: process.env.OPENAI_API_KEY,
-        model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small'
-      });
-      
-      console.log(`  ✅ Generated embeddings for ${chunks.length} chunks`);
-    } catch (ragError) {
-      console.error(`⚠️ RAG embedding generation failed (non-fatal):`, ragError);
-      // Don't fail the whole process if RAG fails
-    }
+    // TODO: RAG has module loading issues in worker context - will fix in separate task
+    console.log(`⏭️  Skipping RAG embeddings (will implement in background worker later)...`);
 
     // Step 2: Generate artifacts in parallel for speed
     console.log(`🧠 Generating artifacts with ${MODEL}...`);

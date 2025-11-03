@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation';
 export default function ImportRedirect() {
   const router = useRouter();
 
-  useEffect() => {
+  useEffect(() => {
     router.replace('/rate-cards/dashboard');
   }, [router]);
 
