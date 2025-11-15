@@ -106,7 +106,7 @@ export class StrategicRecommendationsService {
     const rateCards = await this.prisma.rateCardEntry.findMany({
       where: { tenantId },
       include: {
-        benchmarkSnapshot: {
+        benchmarkSnapshots: {
           take: 1,
           orderBy: { snapshotDate: 'desc' },
         },

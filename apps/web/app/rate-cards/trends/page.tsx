@@ -20,7 +20,7 @@ export default async function EmergingTrendsPage() {
     <div className="container mx-auto py-6">
       <Suspense fallback={<div>Loading emerging trends...</div>}>
         <EmergingTrendsPanel 
-          tenantId={session.user.tenantId || 'default'} 
+          tenantId={(session.user as any).tenantId || 'default'} 
           autoRefresh={true}
           refreshInterval={300000}
         />

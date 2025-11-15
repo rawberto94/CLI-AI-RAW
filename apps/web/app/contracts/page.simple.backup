@@ -1,0 +1,170 @@
+'use client'
+
+import React, { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { FileText, Upload, Eye, CheckCircle, AlertTriangle } from 'lucide-react'
+import Link from 'next/link'
+
+// Mock contract data for testing
+const mockContracts = [
+  {
+    id: '1',
+    name: 'Statement of Work Corporate (repaired)',
+    status: 'completed',
+    supplier: 'Corporate Services Ltd',
+    totalValue: 150000,
+    uploadDate: '2024-01-15',
+  },
+  {
+    id: '2', 
+    name: 'Service Agreement Tech Solutions',
+    status: 'processing',
+    supplier: 'Tech Solutions Inc',
+    totalValue: 75000,
+    uploadDate: '2024-01-20',
+  },
+  {
+    id: '3',
+    name: 'Consulting Contract Marketing',
+    status: 'completed',
+    supplier: 'Marketing Experts LLC',
+    totalValue: 45000,
+    uploadDate: '2024-01-10',
+  }
+]
+
+export default function ContractsPageSimple() {
+  const [contracts] = useState(mockContracts)
+
+  return (
+    <div className="container mx-auto p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <FileText className="w-6 h-6" />
+            Contracts
+          </h1>
+          <p className="text-gray-600">Manage and analyze your contract portfolio</p>
+        </div>
+        <Link href="/contracts/upload">
+          <Button className="flex items-center gap-2">
+            <Upload className="w-4 h-4" />
+            Upload Contract
+          </Button>
+        </Link>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Contracts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{contracts.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Completed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {contracts.filter(c => c.status === 'completed').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Processing</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {contracts.filter(c => c.status === 'processing').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${contracts.reduce((sum, c) => sum + c.totalValue, 0).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Contracts List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Contracts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {contracts.map((contract) => (
+              <div
+                key={contract.id}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+              >
+                <div className="flex items-center gap-4">
+                  <FileText className="w-8 h-8 text-blue-600" />
+                  <div>
+                    <h3 className="font-semibold">{contract.name}</h3>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span>{contract.supplier}</span>
+                      <span>•</span>
+                      <span>${contract.totalValue.toLocaleString()}</span>
+                      <span>•</span>
+                      <span>{contract.uploadDate}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge
+                    variant={contract.status === 'completed' ? 'default' : 'secondary'}
+                    className="flex items-center gap-1"
+                  >
+                    {contract.status === 'completed' ? (
+                      <CheckCircle className="w-3 h-3" />
+                    ) : (
+                      <AlertTriangle className="w-3 h-3" />
+                    )}
+                    {contract.status}
+                  </Badge>
+                  <Link href={`/contracts/${contract.id}`}>
+                    <Button variant="outline" size="sm">
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Empty State for Testing */}
+      {contracts.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-12">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No contracts found</h3>
+            <p className="text-gray-600 mb-4">Get started by uploading your first contract</p>
+            <Link href="/contracts/upload">
+              <Button>
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Contract
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}

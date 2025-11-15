@@ -342,3 +342,6 @@ export function BenchmarkCard(props: BenchmarkCardProps = {}) {
     </Card>
   );
 }
+
+// Auto-generated default export
+export default BenchmarkCard;

@@ -184,7 +184,7 @@ Respond in JSON format:
         if (aiMatch && (fuzzyMatch.confidence < 0.8 || aiMatch.confidence > fuzzyMatch.confidence)) {
           return {
             ...aiMatch,
-            method: 'ai',
+            method: 'ai' as any,
             alternatives: [
               { field: fuzzyMatch.targetField, confidence: fuzzyMatch.confidence },
               ...(fuzzyMatch.alternatives || []),

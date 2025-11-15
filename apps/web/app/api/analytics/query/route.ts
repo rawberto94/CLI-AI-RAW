@@ -46,9 +46,7 @@ export async function GET(request: NextRequest) {
         if (!query) {
           return NextResponse.json({ error: 'Query required' }, { status: 400 });
         }
-        const searchResults = await nlqEngine.searchContracts(query, {
-          tenantId: 'default'
-        });
+        const searchResults = await nlqEngine.searchContracts(query);
         return NextResponse.json(searchResults);
 
       case 'suggestions':

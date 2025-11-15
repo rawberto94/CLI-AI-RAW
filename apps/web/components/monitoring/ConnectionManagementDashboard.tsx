@@ -407,3 +407,6 @@ export function ConnectionManagementDashboard() {
     </div>
   );
 }
+
+// Auto-generated default export
+export default ConnectionManagementDashboard;

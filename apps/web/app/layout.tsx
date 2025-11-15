@@ -5,6 +5,7 @@ import MainNavigation from "@/components/layout/MainNavigation";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { EnhancedDataModeToggle } from "@/components/ui/enhanced-data-mode-toggle";
 import { ChatAssistant } from "@/components/ai/ChatAssistant";
+import { AIChatbot } from "@/components/AIChatbot";
 import { DataModeBanner } from "@/components/ui/data-mode-banner";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
@@ -40,6 +41,8 @@ export default function RootLayout({
                 </div>
                 {/* AI Chat Assistant - Available everywhere */}
                 <ChatAssistant />
+                {/* Enhanced AI Chatbot - Context-aware assistance */}
+                <AIChatbot context="global" />
               </RealTimeProvider>
             </ToastProvider>
           </DataModeProvider>

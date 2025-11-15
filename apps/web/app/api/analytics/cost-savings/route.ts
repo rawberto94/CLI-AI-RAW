@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
           },
           include: {
             contract: {
-              select: { name: true }
+              select: { id: true, fileName: true }
             }
           },
           orderBy: {
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         },
         include: {
           contract: {
-            select: { name: true, id: true }
+            select: { id: true, fileName: true }
           }
         },
         orderBy: {
@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
             title: opp.title,
             amount: Number(opp.potentialSavingsAmount),
             confidence: opp.confidence,
-            contractName: opp.contract.name,
+            contractName: opp.contract?.fileName || 'Unknown',
             contractId: opp.contractId
           })),
           opportunities: opportunities.map(opp => ({
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
             confidence: opp.confidence,
             effort: opp.effort,
             priority: opp.priority,
-            contractName: opp.contract.name,
+            contractName: opp.contract?.fileName || 'Unknown',
             contractId: opp.contractId
           }))
         }

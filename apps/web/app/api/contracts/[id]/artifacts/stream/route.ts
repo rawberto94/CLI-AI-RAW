@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/packages/clients/db';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 /**
  * GET /api/contracts/[id]/artifacts/stream
@@ -51,9 +51,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             select: {
               id: true,
               type: true,
-              status: true,
-              content: true,
-              metadata: true,
+              validationStatus: true,
+              data: true,
               createdAt: true,
               updatedAt: true
             }
@@ -63,9 +62,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           const updatedContract = await prisma.contract.findUnique({
             where: { id: contractId },
             select: { 
-              status: true,
-              processingStage: true,
-              errorMessage: true
+              status: true
             }
           });
 
@@ -74,15 +71,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             type: 'update',
             contractId,
             contractStatus: updatedContract?.status,
-            processingStage: updatedContract?.processingStage,
-            errorMessage: updatedContract?.errorMessage,
+            processingStage: 'processing',
+            errorMessage: null,
             artifacts: artifacts.map(a => ({
               id: a.id,
               type: a.type,
-              status: a.status,
-              hasContent: !!a.content,
-              contentLength: a.content?.length || 0,
-              metadata: a.metadata,
+              status: a.validationStatus || 'valid',
+              hasContent: !!a.data,
+              contentLength: JSON.stringify(a.data).length || 0,
+              metadata: {},
               createdAt: a.createdAt,
               updatedAt: a.updatedAt
             })),

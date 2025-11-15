@@ -22,29 +22,30 @@ export async function POST(
     if (artifact.contractId !== params.id) return NextResponse.json({ error: 'Artifact does not belong to contract' }, { status: 403 });
 
     const contract = await client.contract.findUnique({ where: { id: params.id } });
-    const rawText = contract?.rawText || artifact.data?.text || '';
+    const artifactData = artifact.data as any;
+    const rawText = contract?.rawText || artifactData?.text || '';
     if (!rawText) return NextResponse.json({ error: 'No rawText available to improve from' }, { status: 400 });
 
   const promptConfig = getEnhancedPrompt(artifact.type);
     if (!promptConfig) return NextResponse.json({ error: 'No prompt config for artifact type' }, { status: 400 });
 
   // Mark artifact as processing so UI/SSE show progress
-  await client.artifact.update({ where: { id: artifact.id }, data: { status: 'PROCESSING', metadata: { ...(artifact.metadata || {}), improvingAt: new Date().toISOString() } } });
+  await client.artifact.update({ where: { id: artifact.id }, data: { validationStatus: 'PROCESSING', lastEditedAt: new Date() } });
 
   // Build messages
     const OpenAIClass = (await import('openai')).default;
-    const openai = new OpenAIClass({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAIClass({ apiKey: process.env['OPENAI_API_KEY'] });
 
     const userContent = promptConfig.userPrompt(rawText, `REFINEMENT_INSTRUCTIONS: ${userPrompt}`);
 
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      model: process.env['OPENAI_MODEL'] || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: promptConfig.systemPrompt },
         { role: 'user', content: userContent }
       ],
       temperature: promptConfig.temperature,
-      ...(Array.isArray(process.env.JSON_MODE) || true ? { response_format: { type: 'json_object' } } : {}),
+      ...(Array.isArray(process.env['JSON_MODE']) || true ? { response_format: { type: 'json_object' } } : {}),
     });
 
     const resultData = JSON.parse(response.choices[0].message.content || '{}');

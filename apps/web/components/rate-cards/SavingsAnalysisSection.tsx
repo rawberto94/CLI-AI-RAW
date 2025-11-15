@@ -21,6 +21,7 @@ interface SavingsAnalysis {
   savingsPercentToP25: number;
   savingsPercentToP10: number;
   annualSavings?: number;
+  annualSavingsPotential?: number;
   isAboveMarket: boolean;
 }
 
@@ -314,7 +315,7 @@ export function SavingsAnalysisSection(props: SavingsAnalysisSectionProps = {}) 
               currentRate={savingsAnalysis.currentRate}
               dailySavings={bestRateComparison.dailySavings}
               savingsPercent={bestRateComparison.savingsPercentage}
-              annualSavings={bestRateComparison.annualSavingsPotential}
+              annualSavings={(bestRateComparison as any).annualSavingsPotential || 0}
               icon={Target}
               variant="best"
             />

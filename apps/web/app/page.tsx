@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CostSavingsDashboardWidget } from "@/components/dashboard/CostSavingsDashboardWidget";
+import { LazyCostSavingsDashboardWidget as CostSavingsDashboardWidget } from "@/components/lazy";
 import {
   Grid,
   StatusIndicator,
@@ -34,7 +34,8 @@ import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 
 // Mock data - in real app this would come from API
-const dashboardData = {
+// Moved outside component to prevent recreation on every render
+const getDashboardData = () => ({
   overview: {
     totalContracts: 1247,
     totalValue: 45600000,
@@ -103,33 +104,17 @@ const dashboardData = {
       color: "yellow",
     },
   ],
-};
+});
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    // Load user preferences to get role
-    async function loadUserData() {
-      try {
-        const response = await fetch("/api/user/preferences");
-        if (response.ok) {
-          const { data } = await response.json();
-          setUserRole(data?.role || null);
-        }
-      } catch (error) {
-        console.error("Failed to load user preferences:", error);
-      }
-    }
-
-    loadUserData();
-
     // Simulate loading data
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 1500);
+    }, 800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -172,21 +157,14 @@ export default function DashboardPage() {
 
       <DashboardLayout
         title="Dashboard"
-        description="Overview of your contract intelligence platform"
+        description="Contract lifecycle management overview"
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+          <Button size="sm" asChild>
+            <Link href="/dashboard">
               <BarChart3 className="h-4 w-4 mr-2" />
-              Reports
-            </Button>
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              AI Insights
-            </Button>
-          </div>
+              View Analytics
+            </Link>
+          </Button>
         }
       >
         {/* Cost Savings Widget - Full Width */}
@@ -267,49 +245,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* AI Features Showcase */}
-            <Card className="bg-gradient-to-br from-blue-50 to-purple-50 border-blue-200">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Brain className="h-5 w-5 text-blue-600" />
-                    <CardTitle>AI Intelligence Hub</CardTitle>
-                    <AIBadge>Powered by AI</AIBadge>
-                  </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/futuristic-contracts">
-                      Explore AI Features
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 bg-white/50 rounded-lg">
-                    <Zap className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                    <h4 className="font-semibold">Real-Time Processing</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Instant contract analysis
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-white/50 rounded-lg">
-                    <BarChart3 className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                    <h4 className="font-semibold">Cross-Contract Insights</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Discover relationships
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-white/50 rounded-lg">
-                    <TrendingUp className="h-8 w-8 text-indigo-600 mx-auto mb-2" />
-                    <h4 className="font-semibold">BPO Intelligence</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Procurement optimization
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
             {/* Quick Stats */}
             <Card>
@@ -351,29 +286,29 @@ export default function DashboardPage() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Button variant="outline" className="h-20 flex-col" asChild>
-                    <Link href="/contracts/upload">
-                      <FileText className="h-6 w-6 mb-2" />
-                      Upload Contract
+                <div className="grid grid-cols-2 gap-4">
+                  <Button variant="outline" className="h-24 flex-col" asChild>
+                    <Link href="/upload">
+                      <Upload className="h-8 w-8 mb-2 text-blue-600" />
+                      <span className="font-semibold">Upload Contract</span>
                     </Link>
                   </Button>
-                  <Button variant="outline" className="h-20 flex-col" asChild>
+                  <Button variant="outline" className="h-24 flex-col" asChild>
                     <Link href="/search">
-                      <BarChart3 className="h-6 w-6 mb-2" />
-                      Search Contracts
+                      <Search className="h-8 w-8 mb-2 text-purple-600" />
+                      <span className="font-semibold">Search Contracts</span>
                     </Link>
                   </Button>
-                  <Button variant="outline" className="h-20 flex-col" asChild>
-                    <Link href="/analytics">
-                      <TrendingUp className="h-6 w-6 mb-2" />
-                      View Analytics
+                  <Button variant="outline" className="h-24 flex-col" asChild>
+                    <Link href="/dashboard">
+                      <BarChart3 className="h-8 w-8 mb-2 text-green-600" />
+                      <span className="font-semibold">View Analytics</span>
                     </Link>
                   </Button>
-                  <Button variant="outline" className="h-20 flex-col" asChild>
-                    <Link href="/processing-status">
-                      <Activity className="h-6 w-6 mb-2" />
-                      System Status
+                  <Button variant="outline" className="h-24 flex-col" asChild>
+                    <Link href="/contracts">
+                      <FileText className="h-8 w-8 mb-2 text-orange-600" />
+                      <span className="font-semibold">All Contracts</span>
                     </Link>
                   </Button>
                 </div>
@@ -453,77 +388,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Demo Links */}
-            <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-600" />
-                  AI Demonstrations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  asChild
-                >
-                  <Link href="/integration-demo">
-                    <Network className="h-4 w-4 mr-2" />
-                    Integration Demo
-                    <Badge
-                      variant="secondary"
-                      className="ml-auto bg-blue-100 text-blue-800"
-                    >
-                      Live
-                    </Badge>
-                  </Link>
-                </Button>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  asChild
-                >
-                  <Link href="/futuristic-contracts">
-                    <Brain className="h-4 w-4 mr-2" />
-                    CTO Executive Demo
-                    <Badge variant="secondary" className="ml-auto">
-                      New
-                    </Badge>
-                  </Link>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  asChild
-                >
-                  <Link href="/bpo-demo">
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    BPO Revolution
-                    <Badge variant="secondary" className="ml-auto">
-                      Hot
-                    </Badge>
-                  </Link>
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  asChild
-                >
-                  <Link href="/cross-contract-analysis">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Cross-Contract Analysis
-                    <AIBadge>AI</AIBadge>
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </DashboardLayout>

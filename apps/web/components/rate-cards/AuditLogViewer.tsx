@@ -22,10 +22,12 @@ interface AuditLog {
 }
 
 interface AuditLogViewerProps {
-  tenantId: string;
+  tenantId?: string;
+  entityType?: string;
+  entityId?: string;
 }
 
-export function AuditLogViewer({ tenantId }: AuditLogViewerProps) {
+export function AuditLogViewer({ tenantId, entityType: initialEntityType, entityId }: AuditLogViewerProps) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -33,7 +35,7 @@ export function AuditLogViewer({ tenantId }: AuditLogViewerProps) {
     endDate: '',
     userId: '',
     action: '',
-    entityType: '',
+    entityType: initialEntityType || '',
     search: '',
   });
   const [pagination, setPagination] = useState({

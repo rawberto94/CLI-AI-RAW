@@ -89,7 +89,7 @@ export class DatabaseAdaptor {
         data: {
           ...data,
           fileSize: BigInt(data.fileSize),
-        },
+        } as any, // Type assertion to handle Prisma's complex union types
       });
       logger.info({ contractId: contract.id }, "Contract created");
       return convertContract(contract);
@@ -225,7 +225,7 @@ export class DatabaseAdaptor {
   async createArtifact(data: CreateArtifactDTO): Promise<Artifact> {
     try {
       const artifact = await this.prisma.artifact.create({
-        data,
+        data: data as any, // Type assertion to handle Prisma's complex union types
       });
       logger.info(
         { artifactId: artifact.id, type: artifact.type },

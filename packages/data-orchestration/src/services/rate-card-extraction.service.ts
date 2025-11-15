@@ -4,7 +4,7 @@
  */
 
 import { ChatOpenAI } from '@langchain/openai';
-import { SystemMessage, HumanMessage } from 'langchain/schema';
+import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 
 export interface ExtractedRate {
   roleOriginal: string;

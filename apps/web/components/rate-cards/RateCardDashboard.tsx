@@ -294,7 +294,7 @@ export function RateCardDashboard() {
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <div className="text-lg font-bold text-orange-600">
-                      ${(opp.annualSavingsPotential / 1000).toFixed(0)}K
+                      ${((opp as any).annualSavingsPotential / 1000).toFixed(0)}K
                       <span className="text-xs text-gray-600">/year</span>
                     </div>
                     <div className="text-xs text-gray-600">

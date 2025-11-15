@@ -243,3 +243,6 @@ export function ValidationReview({
     </div>
   );
 }
+
+// Auto-generated default export
+export default ValidationReview;

@@ -47,14 +47,16 @@ export async function GET(
     const responseTime = Date.now() - startTime;
 
     // Transform artifacts for UI compatibility
-    const transformedArtifacts = result.data.map((artifact) => ({
-      id: artifact.id,
-      type: artifact.type,
-      data: artifact.data,
-      metadata: artifact.metadata,
-      createdAt: artifact.createdAt,
-      updatedAt: artifact.updatedAt,
-    }));
+    const transformedArtifacts = result.data.map((artifact: any) => {
+        const artifactData = artifact.data as any || {};
+        return {
+          id: artifact.id,
+          type: artifact.type,
+          data: artifact.data,
+          confidence: Number(artifact.confidence || 0),
+          completeness: artifactData.completeness || 0,
+        };
+    });
 
     return NextResponse.json(
       {

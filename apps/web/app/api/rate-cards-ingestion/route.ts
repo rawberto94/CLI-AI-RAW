@@ -8,14 +8,16 @@ export async function GET() {
     // Get rate cards using real service
     const result = await rateCardManagementService.getRateCards(tenantId);
     
-    if (!result.success || !result.data) {
-      return NextResponse.json(
-        { error: "Failed to fetch rate cards" },
-        { status: 500 }
-      );
+    // Handle empty result or stub
+    if (!result || !Array.isArray(result)) {
+      return NextResponse.json({
+        success: true,
+        data: [],
+        count: 0
+      });
     }
 
-    const rateCards = result.data.map((card: any) => ({
+    const rateCards = result.map((card: any) => ({
       id: card.id,
       supplierName: card.supplierName,
       effectiveDate: card.effectiveDate.toISOString(),

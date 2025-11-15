@@ -20,7 +20,7 @@ export default function RateCardUploadPage() {
       </div>
 
       <div className="max-w-4xl">
-        <CSVImportModal />
+        <CSVImportModal isOpen={true} onClose={() => {}} />
       </div>
     </div>
   );

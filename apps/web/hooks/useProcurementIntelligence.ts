@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 
-// Re-export DataMode type for convenience (and the runtime const if needed)
-export type { DataMode } from 'data-orchestration/types';
-export { DataMode as DataModeConst } from 'data-orchestration/types';
+// DataMode type definition
+export type DataMode = 'real' | 'mock' | 'auto';
 
 interface ProcurementIntelligence {
   loading: boolean;
@@ -61,6 +60,8 @@ export function useNegotiationPrep(filters?: NegotiationPrepFilters, mode: DataM
 interface RenewalRadarFilters {
   daysAhead?: number;
   minValue?: number;
+  timeframe?: string;
+  riskLevel?: string;
 }
 
 export function useRenewalRadar(filters?: RenewalRadarFilters, mode: DataMode = 'real') {
@@ -91,6 +92,7 @@ export function useRenewalRadar(filters?: RenewalRadarFilters, mode: DataMode = 
 interface SavingsPipelineFilters {
   status?: string;
   category?: string;
+  timeframe?: string;
 }
 
 export function useSavingsPipeline(filters?: SavingsPipelineFilters, mode: DataMode = 'real') {
@@ -121,6 +123,8 @@ export function useSavingsPipeline(filters?: SavingsPipelineFilters, mode: DataM
 interface SupplierAnalyticsFilters {
   supplierId?: string;
   category?: string;
+  timeframe?: string;
+  metrics?: string[];
 }
 
 export function useSupplierAnalytics(filters?: SupplierAnalyticsFilters, mode: DataMode = 'real') {

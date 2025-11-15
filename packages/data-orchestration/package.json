@@ -12,19 +12,21 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@langchain/community": "^0.0.25",
-    "@langchain/openai": "^0.0.19",
+    "@langchain/community": "^0.3.57",
+    "@langchain/core": "^0.3.79",
+    "@langchain/openai": "^0.3.14",
     "@prisma/client": "^5.22.0",
     "chromadb": "^1.7.3",
     "clients-db": "workspace:*",
     "clients-storage": "workspace:*",
     "ioredis": "^5.3.0",
-    "langchain": "^0.1.0",
+    "langchain": "^0.3.36",
+    "langsmith": "^0.3.78",
     "pino": "^8.21.0",
     "pino-pretty": "^13.1.2",
     "redis": "^4.6.0",
     "schemas": "workspace:*",
-    "zod": "^4.1.11"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

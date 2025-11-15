@@ -138,17 +138,18 @@ export class ValidationService {
           success: true,
           data: result.data,
         };
-      } else {
-        const zodErrors = result.error.issues;
-        logger.warn({ errors: zodErrors }, 'Validation failed');
-        return {
-          success: false,
-          errors: zodErrors.map((err: any) => ({
-            path: err.path.join('.'),
-            message: err.message,
-          })),
-        };
       }
+      
+      // Type guard ensures result.error exists here
+      const zodErrors = result.error.issues;
+      logger.warn({ errors: zodErrors }, 'Validation failed');
+      return {
+        success: false,
+        errors: zodErrors.map((err: any) => ({
+          path: err.path.join('.'),
+          message: err.message,
+        })),
+      };
     } catch (error) {
       logger.error({ error }, 'Validation error');
       return {

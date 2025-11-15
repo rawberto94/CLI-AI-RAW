@@ -6,7 +6,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { SSEReconnectionService } from '@/../../packages/data-orchestration/src/services/sse-reconnection.service';
 
 export interface StreamEvent {
   type: string;
@@ -35,13 +34,104 @@ export interface UseEventStreamOptions {
   onMaxReconnectAttemptsReached?: () => void;
 }
 
+// Simple reconnection manager
+class SimpleReconnectionManager {
+  private attempts = 0;
+  private maxAttempts: number;
+  private baseDelay: number;
+  private maxDelay: number;
+  private timeoutId: NodeJS.Timeout | null = null;
+  private isCancelled = false;
+
+  constructor(
+    options: {
+      maxAttempts: number;
+      baseDelay: number;
+      maxDelay?: number;
+    },
+    callbacks: {
+      onReconnect: () => void;
+      onMaxAttemptsReached: () => void;
+    }
+  ) {
+    this.maxAttempts = options.maxAttempts;
+    this.baseDelay = options.baseDelay;
+    this.maxDelay = options.maxDelay || 30000;
+    this.onReconnect = callbacks.onReconnect;
+    this.onMaxAttemptsReached = callbacks.onMaxAttemptsReached;
+  }
+
+  private onReconnect: () => void;
+  private onMaxAttemptsReached: () => void;
+
+  shouldReconnect(): boolean {
+    return !this.isCancelled && this.attempts < this.maxAttempts;
+  }
+
+  scheduleReconnect(): void {
+    if (!this.shouldReconnect()) {
+      this.onMaxAttemptsReached();
+      return;
+    }
+
+    this.attempts++;
+    const delay = Math.min(this.baseDelay * Math.pow(2, this.attempts - 1), this.maxDelay);
+    
+    console.log(`[EventStream] Scheduling reconnect attempt ${this.attempts}/${this.maxAttempts} in ${delay}ms`);
+    
+    this.timeoutId = setTimeout(() => {
+      if (!this.isCancelled) {
+        this.onReconnect();
+      }
+    }, delay);
+  }
+
+  onSuccess(): void {
+    this.attempts = 0;
+    this.cancel();
+  }
+
+  onFailure(): void {
+    if (this.shouldReconnect()) {
+      this.scheduleReconnect();
+    } else {
+      this.onMaxAttemptsReached();
+    }
+  }
+
+  cancel(): void {
+    this.isCancelled = true;
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
+    }
+  }
+
+  reset(): void {
+    this.attempts = 0;
+    this.isCancelled = false;
+    this.cancel();
+  }
+
+  getState() {
+    return {
+      attempts: this.attempts,
+      totalReconnections: this.attempts,
+    };
+  }
+
+  getTimeUntilNextAttempt(): number | null {
+    return null; // Simplified - we won't track exact time
+  }
+}
+
 export function useEventStream(options: UseEventStreamOptions = {}) {
   const {
     tenantId = 'demo',
     userId,
     autoReconnect = true,
-    maxReconnectAttempts = 10,
-    baseReconnectDelay = 1000,
+    maxReconnectAttempts = 5, // Reduced for better UX
+    baseReconnectDelay = 2000, // Increased base delay
     onEvent,
     onError,
     onConnect,
@@ -60,9 +150,9 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
   });
   
   const eventSourceRef = useRef<EventSource | null>(null);
-  const reconnectionServiceRef = useRef<SSEReconnectionService | null>(null);
-  const stateUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectionManagerRef = useRef<SimpleReconnectionManager | null>(null);
   const connectFnRef = useRef<(() => void) | null>(null);
+  const isConnectingRef = useRef(false);
 
   // Memoize callbacks to prevent them from changing on every render
   const stableOnEvent = useMemo(() => onEvent, [onEvent]);
@@ -72,19 +162,17 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
   const stableOnReconnecting = useMemo(() => onReconnecting, [onReconnecting]);
   const stableOnMaxReconnectAttemptsReached = useMemo(() => onMaxReconnectAttemptsReached, [onMaxReconnectAttemptsReached]);
 
-  // Initialize reconnection service
+  // Initialize reconnection manager
   useEffect(() => {
-    reconnectionServiceRef.current = new SSEReconnectionService(
+    reconnectionManagerRef.current = new SimpleReconnectionManager(
       {
         maxAttempts: maxReconnectAttempts,
         baseDelay: baseReconnectDelay,
         maxDelay: 30000,
-        jitterRange: 1000,
-        backoffMultiplier: 2,
       },
       {
         onReconnect: () => {
-          const state = reconnectionServiceRef.current?.getState();
+          const state = reconnectionManagerRef.current?.getState();
           if (state) {
             stableOnReconnecting?.(state.attempts, maxReconnectAttempts);
             setConnectionState(prev => ({
@@ -108,42 +196,18 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
     );
 
     return () => {
-      reconnectionServiceRef.current?.cancel();
+      reconnectionManagerRef.current?.cancel();
     };
   }, [maxReconnectAttempts, baseReconnectDelay, stableOnReconnecting, stableOnMaxReconnectAttemptsReached]);
 
-  // Update connection state periodically
-  useEffect(() => {
-    if (connectionState.status === 'reconnecting') {
-      stateUpdateIntervalRef.current = setInterval(() => {
-        const timeUntil = reconnectionServiceRef.current?.getTimeUntilNextAttempt();
-        if (timeUntil !== null && timeUntil !== undefined) {
-          setConnectionState(prev => ({
-            ...prev,
-            nextReconnectIn: Math.ceil(timeUntil / 1000), // Convert to seconds
-          }));
-        }
-      }, 100);
-    } else {
-      if (stateUpdateIntervalRef.current) {
-        clearInterval(stateUpdateIntervalRef.current);
-        stateUpdateIntervalRef.current = null;
-      }
-    }
-
-    return () => {
-      if (stateUpdateIntervalRef.current) {
-        clearInterval(stateUpdateIntervalRef.current);
-      }
-    };
-  }, [connectionState.status]);
-
   const connect = useCallback(() => {
-    if (eventSourceRef.current) {
-      return; // Already connected
+    // Prevent multiple simultaneous connection attempts
+    if (eventSourceRef.current || isConnectingRef.current) {
+      return;
     }
 
     try {
+      isConnectingRef.current = true;
       setConnectionState(prev => ({
         ...prev,
         status: 'connecting',
@@ -153,17 +217,20 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       if (userId) params.append('userId', userId);
 
       const url = `/api/events?${params.toString()}`;
+      console.log('[EventStream] Connecting to:', url);
+      
       const eventSource = new EventSource(url);
 
       eventSource.onopen = () => {
-        console.log('[EventStream] Connected');
+        console.log('[EventStream] Connected successfully');
+        isConnectingRef.current = false;
         setIsConnected(true);
         setError(null);
         
-        // Reset reconnection service on successful connection
-        reconnectionServiceRef.current?.onSuccess();
+        // Reset reconnection manager on successful connection
+        reconnectionManagerRef.current?.onSuccess();
         
-        const state = reconnectionServiceRef.current?.getState();
+        const state = reconnectionManagerRef.current?.getState();
         setConnectionState({
           status: 'connected',
           reconnectAttempts: 0,
@@ -190,23 +257,26 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       };
 
       eventSource.onerror = (err) => {
-        // Silently handle SSE connection errors (feature is optional)
+        console.warn('[EventStream] Connection error (this is optional functionality)');
+        isConnectingRef.current = false;
         setIsConnected(false);
         
-        const error = new Error('EventStream connection error');
+        const error = new Error('EventStream connection failed - feature disabled');
         setError(error);
-        stableOnError?.(error);
+        
+        // Only log detailed errors in development
+        if (process.env.NODE_ENV === 'development') {
+          stableOnError?.(error);
+        }
+        
         stableOnDisconnect?.();
 
         // Close the connection
         eventSource.close();
         eventSourceRef.current = null;
 
-        // Notify reconnection service of failure
-        reconnectionServiceRef.current?.onFailure();
-
-        // Don't auto-reconnect to avoid console spam
-        // The app works fine without SSE
+        // Don't auto-reconnect for optional SSE feature
+        // The app works perfectly without real-time updates
         setConnectionState(prev => ({
           ...prev,
           status: 'disconnected',
@@ -215,29 +285,29 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
 
       eventSourceRef.current = eventSource;
     } catch (err) {
-      console.error('[EventStream] Error creating connection:', err);
+      console.warn('[EventStream] Failed to create connection (feature disabled):', err);
+      isConnectingRef.current = false;
+      
       const error = err instanceof Error ? err : new Error('Failed to create EventStream');
       setError(error);
-      stableOnError?.(error);
+      
+      if (process.env.NODE_ENV === 'development') {
+        stableOnError?.(error);
+      }
       
       setConnectionState(prev => ({
         ...prev,
-        status: 'error',
+        status: 'disconnected',
       }));
-
-      // Attempt to reconnect if enabled
-      if (autoReconnect && reconnectionServiceRef.current?.shouldReconnect()) {
-        reconnectionServiceRef.current?.scheduleReconnect();
-      }
     }
-  }, [tenantId, userId, autoReconnect, stableOnEvent, stableOnError, stableOnConnect, stableOnDisconnect]);
+  }, [tenantId, userId, stableOnEvent, stableOnError, stableOnConnect, stableOnDisconnect]);
 
-  // Store connect function in ref for reconnection service
+  // Store connect function in ref for reconnection manager
   connectFnRef.current = connect;
 
   const disconnect = useCallback(() => {
     // Cancel any pending reconnection
-    reconnectionServiceRef.current?.cancel();
+    reconnectionManagerRef.current?.cancel();
 
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
@@ -250,11 +320,13 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       }));
       stableOnDisconnect?.();
     }
+    
+    isConnectingRef.current = false;
   }, [stableOnDisconnect]);
 
   const reconnect = useCallback(() => {
-    // Reset reconnection service
-    reconnectionServiceRef.current?.reset();
+    // Reset reconnection manager
+    reconnectionManagerRef.current?.reset();
     
     // Disconnect first
     if (eventSourceRef.current) {
@@ -262,17 +334,24 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       eventSourceRef.current = null;
       setIsConnected(false);
     }
+    
+    isConnectingRef.current = false;
 
     // Then connect
     connect();
   }, [connect]);
 
   useEffect(() => {
-    connect();
+    // Only try to connect in development or if explicitly enabled
+    if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_SSE === 'true') {
+      connect();
+    } else {
+      console.log('[EventStream] SSE disabled in production');
+    }
 
     return () => {
-      // Inline cleanup to avoid dependency issues
-      reconnectionServiceRef.current?.cancel();
+      // Cleanup
+      reconnectionManagerRef.current?.cancel();
       
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -284,6 +363,8 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
           totalReconnections: prev.totalReconnections,
         }));
       }
+      
+      isConnectingRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount

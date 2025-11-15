@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -29,20 +29,35 @@ import {
 import { useDataMode } from '@/contexts/DataModeContext'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/toast-provider'
-import type { Contract, Artifact } from '@/types/artifacts'
+import type { Contract, Artifact, OverviewData, ClausesData, FinancialData, RiskData, ComplianceData } from '@/types/artifacts'
 import { logError, logUserAction, logPerformance } from '@/lib/logger'
-import {
-  OverviewRenderer,
-  ClausesRenderer,
-  FinancialRenderer,
-  RiskRenderer,
-  ComplianceRenderer
-} from '@/components/contracts/artifact-renderers'
+import { EnhancedArtifactViewer } from '@/components/contracts/EnhancedArtifactViewer'
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsHelp } from '@/components/contracts/KeyboardShortcutsHelp'
 import { ArtifactEditor } from '@/components/contracts/ArtifactEditor'
 import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor'
 import { ArtifactHistory } from '@/components/contracts/ArtifactHistory'
+
+// Type guards for artifact data
+const isOverviewData = (data: unknown): data is OverviewData => {
+  return typeof data === 'object' && data !== null && ('summary' in data || 'parties' in data)
+}
+
+const isClausesData = (data: unknown): data is ClausesData => {
+  return typeof data === 'object' && data !== null && 'clauses' in data
+}
+
+const isFinancialData = (data: unknown): data is FinancialData => {
+  return typeof data === 'object' && data !== null && ('totalValue' in data || 'financial' in data)
+}
+
+const isRiskData = (data: unknown): data is RiskData => {
+  return typeof data === 'object' && data !== null && 'risks' in data
+}
+
+const isComplianceData = (data: unknown): data is ComplianceData => {
+  return typeof data === 'object' && data !== null && ('compliance' in data || ('summary' in data && typeof (data as any).compliance !== 'undefined'))
+}
 
 interface ContractDetailTabsProps {
   contract: Contract | null
@@ -65,46 +80,94 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
   const [showMetadataEditor, setShowMetadataEditor] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [historyArtifact, setHistoryArtifact] = useState<{ id: string; type: string } | null>(null)
+  const [rateCards, setRateCards] = useState<any[]>([]);
+  const [loadingRateCards, setLoadingRateCards] = useState(false);
+
+  // Extract overview data from artifacts to populate missing contract fields
+  const overviewArtifact = artifacts?.find(a => a.type === 'overview');
+  const overviewData = overviewArtifact?.data as any;
+  
+  // Merge contract data with overview artifact data
+  const enrichedContract = {
+    ...contract,
+    startDate: contract?.startDate || overviewData?.contractDate || overviewData?.effectiveDate || 'N/A',
+    endDate: contract?.endDate || overviewData?.expiryDate || overviewData?.endDate || 'N/A',
+    totalValue: contract?.totalValue || overviewData?.totalValue || overviewData?.contractValue || 0,
+    supplier: contract?.supplier || overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || 'N/A',
+  };
 
   // Define tab order for navigation
-  const tabs = ['overview', 'artifacts', 'export']
+  const tabs = ['overview', 'artifacts', 'export'];
+
+  // Fetch rate cards when Financial tab is active
+  useEffect(() => {
+    if (activeTab === 'financial' && contract?.id && dataMode === 'real') {
+      const fetchRateCards = async () => {
+        setLoadingRateCards(true)
+        try {
+          const response = await fetch(`/api/rate-cards?contractId=${contract.id}&tenantId=demo`)
+          if (response.ok) {
+            const data = await response.json()
+            console.log('Rate cards response:', { 
+              entries: data.entries?.length, 
+              data: data.data?.length,
+              total: data.total,
+              originalTotal: data.originalTotal 
+            })
+            setRateCards(data.entries || data.data || [])
+          } else {
+            console.error('Failed to fetch rate cards:', response.status, response.statusText)
+          }
+        } catch (error) {
+          console.error('Failed to fetch rate cards:', error)
+        } finally {
+          setLoadingRateCards(false)
+        }
+      }
+      fetchRateCards()
+    }
+  }, [activeTab, contract?.id, dataMode]);
 
   const handleAnalyzeWithAI = async () => {
-    setAnalyzing(true)
-    const startTime = performance.now()
+    setAnalyzing(true);
+    const startTime = performance.now();
     
     try {
-      logUserAction('contract-analyze-start', undefined, { contractId: contract?.id })
+      logUserAction('contract-analyze-start', undefined, { contractId: contract?.id });
       
-      const response = await fetch(`/api/contracts/${contract?.id}/retry`, {
-        method: 'POST'
-      })
+      const response = await fetch(`/api/contracts/${contract?.id}/artifacts/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       
       if (response.ok) {
-        const duration = performance.now() - startTime
-        logPerformance('contract-analysis-request', duration, { contractId: contract?.id })
+        const duration = performance.now() - startTime;
+        logPerformance('contract-analysis-request', duration, { contractId: contract?.id });
         
-        toast.success('Analysis Started', 'AI is analyzing the contract. This may take a few moments.')
+        toast.success('Analysis Started', 'AI is regenerating artifacts for the contract. This may take a few moments.');
         setTimeout(() => {
-          window.location.reload()
-        }, 2000)
+          window.location.reload();
+        }, 2000);
       } else {
-        throw new Error('Analysis failed')
+        const error = await response.json();
+        throw new Error(error.error || 'Analysis failed');
       }
     } catch (error) {
-      logError('Contract analysis failed', error, { contractId: contract?.id })
-      toast.error('Analysis Failed', 'Unable to analyze contract. Please try again.')
+      logError('Contract analysis failed', error, { contractId: contract?.id });
+      toast.error('Analysis Failed', error instanceof Error ? error.message : 'Unable to analyze contract. Please try again.');
     } finally {
-      setAnalyzing(false)
+      setAnalyzing(false);
     }
   }
 
   const handleCopyArtifact = async (artifactType: string, artifactData: unknown) => {
     try {
-      const jsonString = JSON.stringify(artifactData, null, 2)
-      await navigator.clipboard.writeText(jsonString)
+      const jsonString = JSON.stringify(artifactData, null, 2);
+      await navigator.clipboard.writeText(jsonString);
       
-      logUserAction('artifact-copy', undefined, { artifactType, contractId: contract?.id })
+      logUserAction('artifact-copy', undefined, { artifactType, contractId: contract?.id });
       
       setCopiedArtifactId(artifactType)
       toast.success('Copied to Clipboard', `${artifactType.toUpperCase()} artifact data copied successfully.`)
@@ -244,27 +307,6 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
     }
   }
 
-  // Type guard functions for safe property access
-  const isOverviewData = (data: unknown): data is import('@/types/artifacts').OverviewData => {
-    return typeof data === 'object' && data !== null && ('summary' in data || 'parties' in data)
-  }
-
-  const isClausesData = (data: unknown): data is import('@/types/artifacts').ClausesData => {
-    return typeof data === 'object' && data !== null && 'clauses' in data
-  }
-
-  const isFinancialData = (data: unknown): data is import('@/types/artifacts').FinancialData => {
-    return typeof data === 'object' && data !== null && ('totalValue' in data || 'financial' in data)
-  }
-
-  const isRiskData = (data: unknown): data is import('@/types/artifacts').RiskData => {
-    return typeof data === 'object' && data !== null && 'risks' in data
-  }
-
-  const isComplianceData = (data: unknown): data is import('@/types/artifacts').ComplianceData => {
-    return typeof data === 'object' && data !== null && ('compliance' in data || ('summary' in data && typeof (data as any).compliance !== 'undefined'))
-  }
-
   return (
     <>
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -336,7 +378,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
             <CardContent>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="text-2xl font-bold">{contract?.status || 'Active'}</span>
+                <span className="text-2xl font-bold">{enrichedContract?.status || 'completed'}</span>
               </div>
             </CardContent>
           </Card>
@@ -349,7 +391,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               <div className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5 text-blue-600" />
                 <span className="text-2xl font-bold">
-                  ${contract?.totalValue?.toLocaleString() || '0'}
+                  ${enrichedContract?.totalValue?.toLocaleString() || '0'}
                 </span>
               </div>
             </CardContent>
@@ -372,23 +414,23 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
           <CardHeader>
             <CardTitle>Contract Details</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+                    <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Contract ID</p>
-                <p className="font-medium">{contract?.id || 'N/A'}</p>
+                <p className="font-medium">{enrichedContract?.id || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Supplier</p>
-                <p className="font-medium">{contract?.supplier || 'N/A'}</p>
+                <p className="font-medium">{enrichedContract?.supplier || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Start Date</p>
-                <p className="font-medium">{contract?.startDate || 'N/A'}</p>
+                <p className="font-medium">{enrichedContract?.startDate || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">End Date</p>
-                <p className="font-medium">{contract?.endDate || 'N/A'}</p>
+                <p className="font-medium">{enrichedContract?.endDate || 'N/A'}</p>
               </div>
             </div>
           </CardContent>
@@ -515,27 +557,12 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
                     </div>
                   </CardHeader>
                   <CardContent className="pt-8 pb-6 px-8">
-                    <div className="space-y-6" style={{ lineHeight: '1.7' }}>
-                      {artifactType === 'overview' && isOverviewData(artifactData) && (
-                        <OverviewRenderer data={artifactData} />
-                      )}
-
-                      {artifactType === 'clauses' && isClausesData(artifactData) && (
-                        <ClausesRenderer data={artifactData} />
-                      )}
-
-                      {artifactType === 'financial' && isFinancialData(artifactData) && (
-                        <FinancialRenderer data={artifactData} />
-                      )}
-
-                      {artifactType === 'risk' && isRiskData(artifactData) && (
-                        <RiskRenderer data={artifactData} />
-                      )}
-
-                      {artifactType === 'compliance' && isComplianceData(artifactData) && (
-                        <ComplianceRenderer data={artifactData} />
-                      )}
-                    </div>
+                    <EnhancedArtifactViewer
+                      type={artifactType}
+                      data={artifactData}
+                      confidence={artifact.confidence}
+                      onExport={() => handleCopyArtifact(artifactType, artifactData)}
+                    />
                   </CardContent>
                 </Card>
               )
@@ -595,9 +622,60 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
 
             <div className="space-y-2">
               <h4 className="font-medium">Rate Cards</h4>
-              <p className="text-sm text-gray-500">
-                {dataMode === 'real' ? 'Loading rate cards...' : 'Sample rate cards displayed'}
-              </p>
+              {loadingRateCards ? (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading rate cards...
+                </div>
+              ) : rateCards.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600 mb-3">
+                    {rateCards.length} rate card{rateCards.length !== 1 ? 's' : ''} extracted from this contract
+                  </p>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Role</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Seniority</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-700">Daily Rate</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Supplier</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rateCards.map((card, idx) => (
+                          <tr key={card.id || idx} className="border-t hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-gray-900">{card.roleStandardized || card.roleOriginal}</div>
+                              {card.roleOriginal !== card.roleStandardized && (
+                                <div className="text-xs text-gray-500">Original: {card.roleOriginal}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant={
+                                card.seniority === 'SENIOR' ? 'default' :
+                                card.seniority === 'PRINCIPAL' ? 'secondary' : 'outline'
+                              }>
+                                {card.seniority}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-right font-medium">
+                              {card.currency} {card.dailyRate?.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">
+                              {card.supplierName || 'N/A'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {dataMode === 'real' ? 'No rate cards found for this contract' : 'Sample rate cards displayed'}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -710,6 +788,6 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
         artifactType={historyArtifact.type}
       />
     )}
-  </>
-  )
+    </>
+  );
 }

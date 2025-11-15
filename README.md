@@ -23,6 +23,7 @@ chmod +x setup-complete.sh && ./setup-complete.sh
 ---
 
 ## ⚡ Quick Start (Alternative)
+This repository uses pnpm as its package manager. If you don't have pnpm installed, see https://pnpm.io/installation. Use `pnpm install` at the repo root to install dependencies.
 
 ### Automated Setup (Recommended)
 
@@ -125,13 +126,13 @@ All migrations are in `packages/data-orchestration/prisma/migrations/`
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run specific tests
-npm test -- rag-integration.test.ts
+pnpm test -- rag-integration.test.ts
 
 # Run smoke tests
-node scripts/smoke-test.mjs
+pnpm exec node scripts/smoke-test.mjs
 ```
 
 ---
@@ -140,17 +141,17 @@ node scripts/smoke-test.mjs
 
 ### Start Development Server
 ```bash
-npm run dev
+pnpm run -w dev
 ```
 
 ### Build for Production
 ```bash
-npm run build
+pnpm run -w build
 ```
 
 ### Run Production Build
 ```bash
-npm start
+pnpm run -w start
 ```
 
 ---

@@ -1,21 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { BenchmarkCard } from '@/components/rate-cards/BenchmarkCard';
 import { SavingsAnalysisSection } from '@/components/rate-cards/SavingsAnalysisSection';
 import { TrendVisualization } from '@/components/rate-cards/TrendVisualization';
 import { CohortInformation } from '@/components/rate-cards/CohortInformation';
 import { AdvancedFilters, FilterCriteria } from '@/components/rate-cards/AdvancedFilters';
-import { RateCardDataRepository } from '@/components/rate-cards/RateCardDataRepository';
-import { ManualRateCardInput } from '@/components/rate-cards/ManualRateCardInput';
-import { BulkCSVUpload } from '@/components/rate-cards/BulkCSVUpload';
-import { ExtractFromContracts } from '@/components/rate-cards/ExtractFromContracts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { InteractiveBoxPlot } from '@/components/rate-cards/InteractiveBoxPlot';
-import { TimeSeriesChart } from '@/components/rate-cards/TimeSeriesChart';
-import { GeographicHeatMap } from '@/components/rate-cards/GeographicHeatMap';
-import { ComparisonBarChart } from '@/components/rate-cards/ComparisonBarChart';
+
+// Lazy load heavy components for better performance
+import {
+  LazyInteractiveBoxPlot as InteractiveBoxPlot,
+  LazyTimeSeriesChart as TimeSeriesChart,
+  LazyGeographicHeatMap as GeographicHeatMap,
+  LazyComparisonBarChart as ComparisonBarChart,
+  LazyRateCardDataRepository as RateCardDataRepository,
+  LazyManualRateCardInput as ManualRateCardInput,
+  LazyBulkCSVUpload as BulkCSVUpload,
+  LazyExtractFromContracts as ExtractFromContracts,
+} from '@/components/lazy';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -31,22 +35,22 @@ export default function RateBenchmarkingPage() {
 
   console.log('🔵 RateBenchmarkingPage rendering - buttons should be visible');
 
-  const handleFilterChange = (newFilters: FilterCriteria) => {
+  const handleFilterChange = useCallback((newFilters: FilterCriteria) => {
     setFilters(newFilters);
     console.log('Filters applied:', newFilters);
     // TODO: Fetch data from API with filters
-  };
+  }, []);
 
-  const handleFilterReset = () => {
+  const handleFilterReset = useCallback(() => {
     setFilters({});
     console.log('Filters reset');
     // TODO: Fetch data from API without filters
-  };
+  }, []);
 
-  const handleDataRefresh = () => {
+  const handleDataRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
     console.log('Data refreshed');
-  };
+  }, []);
 
   return (
     <div className="container mx-auto p-6 space-y-6">

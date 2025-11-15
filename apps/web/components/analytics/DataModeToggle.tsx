@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Database, TestTube, AlertCircle, CheckCircle } from 'lucide-react';
 
-export type DataMode = 'real' | 'mock' | 'fallback';
+export type DataMode = 'real' | 'mock' | 'auto' | 'fallback';
 
 interface DataModeToggleProps {
   currentMode: DataMode;

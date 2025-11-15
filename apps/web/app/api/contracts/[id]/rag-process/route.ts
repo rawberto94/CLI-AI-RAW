@@ -53,7 +53,7 @@ export async function POST(
     console.log(`📄 Contract found: ${contract.fileName} (${contract.rawText.length} chars)`)
 
     // Import RAG utilities
-    const { chunkText, embedChunks } = await import('@/packages/clients/rag')
+    const { chunkText, embedChunks } = await import('clients-rag')
     
     // Chunk the text
     const chunks = chunkText(contract.rawText)
@@ -73,8 +73,8 @@ export async function POST(
     // Generate embeddings
     console.log(`🧠 Generating embeddings...`)
     const embeddedChunks = await embedChunks(contractId, tenantId, chunks, {
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small'
+      apiKey: process.env['OPENAI_API_KEY'],
+      model: process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small'
     })
 
     const embeddingsGenerated = embeddedChunks.filter(c => c.embedding).length
@@ -90,7 +90,7 @@ export async function POST(
       embeddingsGenerated,
       processingTime,
       averageChunkSize: Math.round(contract.rawText.length / chunks.length),
-      model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small'
+      model: process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small'
     })
 
   } catch (error) {

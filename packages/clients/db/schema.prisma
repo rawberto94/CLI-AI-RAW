@@ -78,28 +78,28 @@ model TenantUsage {
 }
 
 model User {
-  id                   String                 @id @default(cuid())
-  email                String                 @unique
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  avatar               String?
-  emailVerified        Boolean                @default(false)
-  firstName            String?
-  lastLoginAt          DateTime?
-  lastName             String?
-  passwordHash         String
-  status               UserStatus             @default(ACTIVE)
-  tenantId             String
-  auditLogs            AuditLog[]
-  tenant               Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  roles                UserRole[]
-  sessions             UserSession[]
-  preferences          UserPreferences?
-  onboardingAnalytics  OnboardingAnalytics[]
-  backgroundJobs       BackgroundJob[]
-  helpAnalytics        HelpAnalytics[]
-  widgetAnalytics      WidgetAnalytics[]
-  rateCardSegments     RateCardSegment[]
+  id                  String                @id @default(cuid())
+  email               String                @unique
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  avatar              String?
+  emailVerified       Boolean               @default(false)
+  firstName           String?
+  lastLoginAt         DateTime?
+  lastName            String?
+  passwordHash        String
+  status              UserStatus            @default(ACTIVE)
+  tenantId            String
+  auditLogs           AuditLog[]
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roles               UserRole[]
+  sessions            UserSession[]
+  preferences         UserPreferences?
+  onboardingAnalytics OnboardingAnalytics[]
+  backgroundJobs      BackgroundJob[]
+  helpAnalytics       HelpAnalytics[]
+  widgetAnalytics     WidgetAnalytics[]
+  rateCardSegments    RateCardSegment[]
 
   @@index([email])
   @@index([tenantId])
@@ -166,71 +166,71 @@ model UserSession {
 }
 
 model Contract {
-  id                 String                   @id @default(cuid())
-  tenantId           String
-  storagePath        String?
-  createdAt          DateTime                 @default(now())
-  updatedAt          DateTime                 @updatedAt
-  checksum           String?
-  mimeType           String                   @map("contentType")
-  contractType       String?
-  effectiveDate      DateTime?
-  expirationDate     DateTime?
-  fileName           String                   @map("filename")
-  jurisdiction       String?
-  lastAnalyzedAt     DateTime?
-  originalName       String?
-  processedAt        DateTime?
-  searchMetadata     Json?                    @default("{}")
-  fileSize           BigInt                   @map("size")
-  storageProvider    String?                  @default("local")
-  uploadedBy         String?
-  status             ContractStatus           @default(PROCESSING)
-  uploadedAt         DateTime                 @default(now())
-  rawText            String?
-  startDate          DateTime?
-  endDate            DateTime?
-  totalValue         Decimal?                 @db.Decimal(15, 2)
-  currency           String?
-  clientId           String?
-  supplierId         String?
-  category           String?
-  clientName         String?
-  contractTitle      String?
-  description        String?
-  keywords           Json?
-  lastViewedAt       DateTime?
-  lastViewedBy       String?
-  searchableText     String?
-  supplierName       String?
-  tags               Json?                    @default("[]")
-  textVector         Unsupported("tsvector")?
-  viewCount          Int                      @default(0)
-  
+  id              String                   @id @default(cuid())
+  tenantId        String
+  storagePath     String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  checksum        String?
+  mimeType        String                   @map("contentType")
+  contractType    String?
+  effectiveDate   DateTime?
+  expirationDate  DateTime?
+  fileName        String                   @map("filename")
+  jurisdiction    String?
+  lastAnalyzedAt  DateTime?
+  originalName    String?
+  processedAt     DateTime?
+  searchMetadata  Json?                    @default("{}")
+  fileSize        BigInt                   @map("size")
+  storageProvider String?                  @default("local")
+  uploadedBy      String?
+  status          ContractStatus           @default(PROCESSING)
+  uploadedAt      DateTime                 @default(now())
+  rawText         String?
+  startDate       DateTime?
+  endDate         DateTime?
+  totalValue      Decimal?                 @db.Decimal(15, 2)
+  currency        String?
+  clientId        String?
+  supplierId      String?
+  category        String?
+  clientName      String?
+  contractTitle   String?
+  description     String?
+  keywords        Json?
+  lastViewedAt    DateTime?
+  lastViewedBy    String?
+  searchableText  String?
+  supplierName    String?
+  tags            Json?                    @default("[]")
+  textVector      Unsupported("tsvector")?
+  viewCount       Int                      @default(0)
+
   // Procurement Classification
   procurementCategoryId String?
-  categoryL1         String?
-  categoryL2         String?
-  spendType          String?                  @default("INDIRECT")
-  
-  artifacts          Artifact[]
-  clauses            Clause[]
-  client             Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
-  supplier           Party?                   @relation("SupplierContracts", fields: [supplierId], references: [id])
-  tenant             Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  procurementCategory ProcurementCategory?    @relation("ContractProcurementCategory", fields: [procurementCategoryId], references: [id])
-  contractArtifacts  ContractArtifact[]
-  contractEmbeddings ContractEmbedding[]
-  contractMetadata   ContractMetadata?
-  versions           ContractVersion[]
-  embeddings         Embedding[]
-  financialAnalysis  FinancialAnalysis[]
-  overviewAnalysis   OverviewAnalysis[]
-  processingJobs     ProcessingJob[]
-  runs               Run[]
-  templateAnalysis   TemplateAnalysis[]
-  costSavings        CostSavingsOpportunity[]
-  rateCardEntries    RateCardEntry[]
+  categoryL1            String?
+  categoryL2            String?
+  spendType             String? @default("INDIRECT")
+
+  artifacts           Artifact[]
+  clauses             Clause[]
+  client              Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
+  supplier            Party?                   @relation("SupplierContracts", fields: [supplierId], references: [id])
+  tenant              Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  procurementCategory ProcurementCategory?     @relation("ContractProcurementCategory", fields: [procurementCategoryId], references: [id])
+  contractArtifacts   ContractArtifact[]
+  contractEmbeddings  ContractEmbedding[]
+  contractMetadata    ContractMetadata?
+  versions            ContractVersion[]
+  embeddings          Embedding[]
+  financialAnalysis   FinancialAnalysis[]
+  overviewAnalysis    OverviewAnalysis[]
+  processingJobs      ProcessingJob[]
+  runs                Run[]
+  templateAnalysis    TemplateAnalysis[]
+  costSavings         CostSavingsOpportunity[]
+  rateCardEntries     RateCardEntry[]
 
   @@index([tenantId])
   @@index([status])
@@ -253,34 +253,34 @@ model Contract {
 }
 
 model ContractMetadata {
-  id                  String    @id @default(cuid())
-  contractId          String    @unique
-  tenantId            String
-  categoryId          String?
-  tags                String[]
-  systemFields        Json      @default("{}")
-  customFields        Json      @default("{}")
-  lastUpdated         DateTime  @default(now())
-  updatedBy           String
-  createdAt           DateTime  @default(now())
-  
-  // Enhanced fields for artifact repository
-  artifactSummary     Json?     @default("{}")
-  searchKeywords      String[]  @default([])
-  relatedContracts    String[]  @default([])
-  dataQualityScore    Int?      @default(0)
-  indexedAt           DateTime?
-  ragSyncedAt         DateTime?
-  analyticsUpdatedAt  DateTime?
-  
-  contract            Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  contractId   String   @unique
+  tenantId     String
+  categoryId   String?
+  tags         String[]
+  systemFields Json     @default("{}")
+  customFields Json     @default("{}")
+  lastUpdated  DateTime @default(now())
+  updatedBy    String
+  createdAt    DateTime @default(now())
 
-  @@map("contract_metadata")
+  // Enhanced fields for artifact repository
+  artifactSummary    Json?     @default("{}")
+  searchKeywords     String[]  @default([])
+  relatedContracts   String[]  @default([])
+  dataQualityScore   Int?      @default(0)
+  indexedAt          DateTime?
+  ragSyncedAt        DateTime?
+  analyticsUpdatedAt DateTime?
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
   @@index([tenantId])
   @@index([categoryId])
   @@index([tags])
   @@index([dataQualityScore])
   @@index([indexedAt])
+  @@map("contract_metadata")
 }
 
 model TaxonomyCategory {
@@ -300,11 +300,11 @@ model TaxonomyCategory {
   parent      TaxonomyCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    TaxonomyCategory[] @relation("CategoryHierarchy")
 
-  @@map("taxonomy_categories")
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([parentId])
   @@index([path])
+  @@map("taxonomy_categories")
 }
 
 model Party {
@@ -430,38 +430,38 @@ model ContractVersion {
 }
 
 model Artifact {
-  id              String         @id @default(cuid())
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id              String       @id @default(cuid())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   contractId      String
   tenantId        String
   type            ArtifactType
   data            Json
-  schemaVersion   String         @default("v1")
+  schemaVersion   String       @default("v1")
   hash            String?
   location        String?
-  confidence      Decimal?       @db.Decimal(3, 2)
+  confidence      Decimal?     @db.Decimal(3, 2)
   processingTime  Int?
   size            Int?
-  storageProvider String?        @default("database")
-  
+  storageProvider String?      @default("database")
+
   // Editability fields
-  isEdited        Boolean        @default(false)
-  editCount       Int            @default(0)
-  lastEditedBy    String?
-  lastEditedAt    DateTime?
-  validationStatus String?       @default("valid")
-  validationIssues Json?         @default("[]")
-  
+  isEdited         Boolean   @default(false)
+  editCount        Int       @default(0)
+  lastEditedBy     String?
+  lastEditedAt     DateTime?
+  validationStatus String?   @default("valid")
+  validationIssues Json?     @default("[]")
+
   // Integration tracking
-  consumedBy       String[]      @default([])
-  lastPropagatedAt DateTime?
-  propagationStatus String?      @default("synced")
-  
+  consumedBy        String[]  @default([])
+  lastPropagatedAt  DateTime?
+  propagationStatus String?   @default("synced")
+
   // Relations
-  contract        Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  editHistory     ArtifactEdit[]
-  costSavings     CostSavingsOpportunity[]
+  contract    Contract                 @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  editHistory ArtifactEdit[]
+  costSavings CostSavingsOpportunity[]
 
   @@unique([contractId, type])
   @@index([contractId])
@@ -477,19 +477,19 @@ model Artifact {
 }
 
 model ArtifactEdit {
-  id                  String   @id @default(cuid())
-  artifactId          String
-  version             Int
-  editedBy            String
-  editedAt            DateTime @default(now())
-  changeType          String
-  changes             Json
-  reason              String?
-  affectedEngines     String[] @default([])
-  propagationResults  Json?    @default("[]")
-  
-  artifact            Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
-  
+  id                 String   @id @default(cuid())
+  artifactId         String
+  version            Int
+  editedBy           String
+  editedAt           DateTime @default(now())
+  changeType         String
+  changes            Json
+  reason             String?
+  affectedEngines    String[] @default([])
+  propagationResults Json?    @default("[]")
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+
   @@unique([artifactId, version])
   @@index([artifactId])
   @@index([editedAt])
@@ -1037,25 +1037,25 @@ enum SpendType {
 }
 
 enum BaselineType {
-  TARGET_RATE           // Internal target rate set by procurement
-  MARKET_BENCHMARK      // External market benchmark data
-  HISTORICAL_BEST       // Best rate achieved historically
-  COMPETITIVE_BID       // From competitive bidding process
-  NEGOTIATED_CAP        // Negotiated maximum rate
-  INDUSTRY_STANDARD     // Industry standard rates
-  REGULATORY_LIMIT      // Regulatory or compliance limit
-  CUSTOM               // Custom baseline
+  TARGET_RATE // Internal target rate set by procurement
+  MARKET_BENCHMARK // External market benchmark data
+  HISTORICAL_BEST // Best rate achieved historically
+  COMPETITIVE_BID // From competitive bidding process
+  NEGOTIATED_CAP // Negotiated maximum rate
+  INDUSTRY_STANDARD // Industry standard rates
+  REGULATORY_LIMIT // Regulatory or compliance limit
+  CUSTOM // Custom baseline
 }
 
 enum BaselineSource {
-  INTERNAL              // Internal data/analysis
-  EXTERNAL_PROVIDER     // Third-party data provider
-  COMPETITIVE_BID       // Bid process
-  MARKET_RESEARCH       // Market research
-  HISTORICAL_DATA       // Company historical data
-  INDUSTRY_REPORT       // Industry report/study
-  MANUAL_ENTRY          // Manual entry by user
-  IMPORTED_FILE         // CSV/Excel import
+  INTERNAL // Internal data/analysis
+  EXTERNAL_PROVIDER // Third-party data provider
+  COMPETITIVE_BID // Bid process
+  MARKET_RESEARCH // Market research
+  HISTORICAL_DATA // Company historical data
+  INDUSTRY_REPORT // Industry report/study
+  MANUAL_ENTRY // Manual entry by user
+  IMPORTED_FILE // CSV/Excel import
 }
 
 enum ApprovalStatus {
@@ -1065,7 +1065,6 @@ enum ApprovalStatus {
   REJECTED
   EXPIRED
 }
-
 
 // ============================================================================
 // UX Quick Wins Models
@@ -1176,41 +1175,41 @@ model WidgetAnalytics {
 }
 
 model CostSavingsOpportunity {
-  id                          String    @id @default(uuid())
-  artifactId                  String
-  contractId                  String
-  tenantId                    String
-  
-  category                    String
-  title                       String
-  description                 String?   @db.Text
-  
-  potentialSavingsAmount      Decimal   @db.Decimal(15, 2)
-  potentialSavingsCurrency    String    @default("USD") @db.VarChar(3)
-  potentialSavingsPercentage  Decimal?  @db.Decimal(5, 2)
-  timeframe                   String?   @db.VarChar(20)
-  
-  confidence                  String    @db.VarChar(20)
-  effort                      String    @db.VarChar(20)
-  priority                    Int       @default(3)
-  
-  actionItems                 Json?     @default("[]")
-  implementationTimeline      String?   @db.VarChar(100)
-  risks                       Json?     @default("[]")
-  
-  status                      String    @default("identified") @db.VarChar(20)
-  implementedAt               DateTime?
-  actualSavings               Decimal?  @db.Decimal(15, 2)
-  notes                       String?   @db.Text
-  
-  createdAt                   DateTime  @default(now())
-  updatedAt                   DateTime  @updatedAt
-  createdBy                   String?
-  updatedBy                   String?
-  
-  artifact  Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
-  contract  Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  
+  id         String @id @default(uuid())
+  artifactId String
+  contractId String
+  tenantId   String
+
+  category    String
+  title       String
+  description String? @db.Text
+
+  potentialSavingsAmount     Decimal  @db.Decimal(15, 2)
+  potentialSavingsCurrency   String   @default("USD") @db.VarChar(3)
+  potentialSavingsPercentage Decimal? @db.Decimal(5, 2)
+  timeframe                  String?  @db.VarChar(20)
+
+  confidence String @db.VarChar(20)
+  effort     String @db.VarChar(20)
+  priority   Int    @default(3)
+
+  actionItems            Json?   @default("[]")
+  implementationTimeline String? @db.VarChar(100)
+  risks                  Json?   @default("[]")
+
+  status        String    @default("identified") @db.VarChar(20)
+  implementedAt DateTime?
+  actualSavings Decimal?  @db.Decimal(15, 2)
+  notes         String?   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  artifact Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
   @@index([artifactId])
   @@index([contractId])
   @@index([tenantId])
@@ -1227,40 +1226,40 @@ model CostSavingsOpportunity {
 // ============================================================================
 
 model RateCardSupplier {
-  id                    String              @id @default(cuid())
-  tenantId              String
-  
-  name                  String
-  legalName             String?
-  tier                  SupplierTier
-  country               String
-  region                String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
+  name      String
+  legalName String?
+  tier      SupplierTier
+  country   String
+  region    String
+
   // Performance Metrics
-  averageRate           Decimal?            @db.Decimal(10, 2)
-  competitivenessScore  Decimal?            @db.Decimal(5, 2)
-  reliabilityScore      Decimal?            @db.Decimal(5, 2)
-  savingsPotential      Decimal?            @db.Decimal(10, 2)
-  
+  averageRate          Decimal? @db.Decimal(10, 2)
+  competitivenessScore Decimal? @db.Decimal(5, 2)
+  reliabilityScore     Decimal? @db.Decimal(5, 2)
+  savingsPotential     Decimal? @db.Decimal(10, 2)
+
   // Statistics
-  totalContracts        Int                 @default(0)
-  totalRateCards        Int                 @default(0)
-  activeRates           Int                 @default(0)
-  
+  totalContracts Int @default(0)
+  totalRateCards Int @default(0)
+  activeRates    Int @default(0)
+
   // Contract Terms
   typicalPaymentTerms   String?
   typicalContractLength String?
   volumeDiscounts       Json?
-  
-  metadata              Json?
-  
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  
-  rateCards             RateCardEntry[]
-  benchmarks            SupplierBenchmark[]
-  scores                SupplierScore[]
-  
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rateCards  RateCardEntry[]
+  benchmarks SupplierBenchmark[]
+  scores     SupplierScore[]
+
   @@unique([tenantId, name])
   @@index([tenantId])
   @@index([competitivenessScore])
@@ -1268,39 +1267,39 @@ model RateCardSupplier {
 }
 
 model SupplierScore {
-  id                    String              @id @default(cuid())
-  supplierId            String
-  tenantId              String
-  
+  id         String @id @default(cuid())
+  supplierId String
+  tenantId   String
+
   // Overall Score
-  overallScore          Decimal             @db.Decimal(5, 2)
-  
+  overallScore Decimal @db.Decimal(5, 2)
+
   // Multi-Factor Scores
-  priceCompetitiveness  Decimal             @db.Decimal(5, 2)
-  geographicCoverage    Decimal             @db.Decimal(5, 2)
-  rateStability         Decimal             @db.Decimal(5, 2)
-  growthTrajectory      Decimal             @db.Decimal(5, 2)
-  
+  priceCompetitiveness Decimal @db.Decimal(5, 2)
+  geographicCoverage   Decimal @db.Decimal(5, 2)
+  rateStability        Decimal @db.Decimal(5, 2)
+  growthTrajectory     Decimal @db.Decimal(5, 2)
+
   // Ranking
-  ranking               Int
-  totalSuppliers        Int
-  
+  ranking        Int
+  totalSuppliers Int
+
   // Trend Analysis
-  trend                 String              // improving, declining, stable
-  previousScore         Decimal?            @db.Decimal(5, 2)
-  scoreChange           Decimal?            @db.Decimal(5, 2)
-  
+  trend         String // improving, declining, stable
+  previousScore Decimal? @db.Decimal(5, 2)
+  scoreChange   Decimal? @db.Decimal(5, 2)
+
   // Calculation Metadata
-  calculationDate       DateTime            @default(now())
-  dataPointsUsed        Int
-  confidenceLevel       Decimal             @db.Decimal(5, 2)
-  
+  calculationDate DateTime @default(now())
+  dataPointsUsed  Int
+  confidenceLevel Decimal  @db.Decimal(5, 2)
+
   // Timestamps
-  createdAt             DateTime            @default(now())
-  
+  createdAt DateTime @default(now())
+
   // Relations
-  supplier              RateCardSupplier    @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
+  supplier RateCardSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
   @@index([supplierId, calculationDate])
   @@index([tenantId, overallScore])
   @@index([tenantId, calculationDate])
@@ -1309,106 +1308,106 @@ model SupplierScore {
 }
 
 model RateCardEntry {
-  id                      String                    @id @default(cuid())
-  tenantId                String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Source Information
-  source                  RateCardSource
-  contractId              String?
-  importJobId             String?
-  enteredBy               String?
-  
+  source      RateCardSource
+  contractId  String?
+  importJobId String?
+  enteredBy   String?
+
   // Supplier Information
-  supplierId              String
-  supplierName            String
-  supplierTier            SupplierTier
-  supplierCountry         String
-  supplierRegion          String
-  
+  supplierId      String
+  supplierName    String
+  supplierTier    SupplierTier
+  supplierCountry String
+  supplierRegion  String
+
   // Role Information
-  roleOriginal            String
-  roleStandardized        String
-  roleCategory            String
-  seniority               SeniorityLevel
-  lineOfService           String
-  subCategory             String?
-  
+  roleOriginal     String
+  roleStandardized String
+  roleCategory     String
+  seniority        SeniorityLevel
+  lineOfService    String
+  subCategory      String?
+
   // Rate Information
-  dailyRate               Decimal                   @db.Decimal(10, 2)
-  currency                String
-  dailyRateUSD            Decimal                   @db.Decimal(10, 2)
-  dailyRateCHF            Decimal                   @db.Decimal(10, 2)
-  
+  dailyRate    Decimal @db.Decimal(10, 2)
+  currency     String
+  dailyRateUSD Decimal @db.Decimal(10, 2)
+  dailyRateCHF Decimal @db.Decimal(10, 2)
+
   // Geographic Information
-  country                 String
-  region                  String
-  city                    String?
-  remoteAllowed           Boolean                   @default(false)
-  
+  country       String
+  region        String
+  city          String?
+  remoteAllowed Boolean @default(false)
+
   // Contract Context
-  contractType            String?
-  effectiveDate           DateTime
-  expiryDate              DateTime?
-  contractValue           Decimal?                  @db.Decimal(15, 2)
-  volumeCommitted         Int?
-  
+  contractType    String?
+  effectiveDate   DateTime
+  expiryDate      DateTime?
+  contractValue   Decimal?  @db.Decimal(15, 2)
+  volumeCommitted Int?
+
   // Benchmarking Fields (Auto-calculated)
-  marketRateAverage       Decimal?                  @db.Decimal(10, 2)
-  marketRateMedian        Decimal?                  @db.Decimal(10, 2)
-  marketRateP25           Decimal?                  @db.Decimal(10, 2)
-  marketRateP75           Decimal?                  @db.Decimal(10, 2)
-  marketRateP90           Decimal?                  @db.Decimal(10, 2)
-  
-  percentileRank          Int?
-  savingsAmount           Decimal?                  @db.Decimal(10, 2)
-  savingsPercentage       Decimal?                  @db.Decimal(5, 2)
-  
+  marketRateAverage Decimal? @db.Decimal(10, 2)
+  marketRateMedian  Decimal? @db.Decimal(10, 2)
+  marketRateP25     Decimal? @db.Decimal(10, 2)
+  marketRateP75     Decimal? @db.Decimal(10, 2)
+  marketRateP90     Decimal? @db.Decimal(10, 2)
+
+  percentileRank    Int?
+  savingsAmount     Decimal? @db.Decimal(10, 2)
+  savingsPercentage Decimal? @db.Decimal(5, 2)
+
   // Client/Tenant Information
-  clientName              String?
-  clientId                String?
-  
+  clientName String?
+  clientId   String?
+
   // Baseline & Negotiation Status
-  isBaseline              Boolean                   @default(false)
-  baselineType            String?
-  isNegotiated            Boolean                   @default(false)
-  negotiationDate         DateTime?
-  negotiatedBy            String?
-  negotiationNotes        String?
-  msaReference            String?
-  
+  isBaseline       Boolean   @default(false)
+  baselineType     String?
+  isNegotiated     Boolean   @default(false)
+  negotiationDate  DateTime?
+  negotiatedBy     String?
+  negotiationNotes String?
+  msaReference     String?
+
   // Editability & Audit
-  isEditable              Boolean                   @default(true)
-  editedBy                String?
-  editedAt                DateTime?
-  editHistory             Json?                     @default("[]")
-  
+  isEditable  Boolean   @default(true)
+  editedBy    String?
+  editedAt    DateTime?
+  editHistory Json?     @default("[]")
+
   // Quality & Validation
-  confidence              Decimal                   @db.Decimal(3, 2)
-  dataQuality             DataQualityLevel
-  validatedBy             String?
-  validatedAt             DateTime?
-  
+  confidence  Decimal          @db.Decimal(3, 2)
+  dataQuality DataQualityLevel
+  validatedBy String?
+  validatedAt DateTime?
+
   // Additional Information
-  additionalInfo          Json?
-  skills                  Json?                     @default("[]")
-  certifications          Json?                     @default("[]")
-  minimumCommitment       Json?
-  
+  additionalInfo    Json?
+  skills            Json? @default("[]")
+  certifications    Json? @default("[]")
+  minimumCommitment Json?
+
   // Metadata
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
-  lastBenchmarkedAt       DateTime?
-  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastBenchmarkedAt DateTime?
+
   // Relations
-  contract                Contract?                 @relation(fields: [contractId], references: [id])
-  supplier                RateCardSupplier          @relation(fields: [supplierId], references: [id])
-  benchmarkSnapshots      BenchmarkSnapshot[]
-  savingsOpportunities    RateSavingsOpportunity[]
-  comparisonsAsTarget     RateComparison[]
-  baselineComparisons     BaselineComparison[]
-  forecasts               RateForecast[]
-  outlierFlag             OutlierFlag?
-  
+  contract             Contract?                @relation(fields: [contractId], references: [id])
+  supplier             RateCardSupplier         @relation(fields: [supplierId], references: [id])
+  benchmarkSnapshots   BenchmarkSnapshot[]
+  savingsOpportunities RateSavingsOpportunity[]
+  comparisonsAsTarget  RateComparison[]
+  baselineComparisons  BaselineComparison[]
+  forecasts            RateForecast[]
+  outlierFlag          OutlierFlag?
+
   @@index([tenantId])
   @@index([supplierId])
   @@index([roleStandardized])
@@ -1430,56 +1429,56 @@ model RateCardEntry {
 }
 
 model BenchmarkSnapshot {
-  id                    String            @id @default(cuid())
-  tenantId              String
-  rateCardEntryId       String
-  
+  id              String @id @default(cuid())
+  tenantId        String
+  rateCardEntryId String
+
   // Snapshot Metadata
-  snapshotDate          DateTime          @default(now())
-  periodStart           DateTime
-  periodEnd             DateTime
-  
+  snapshotDate DateTime @default(now())
+  periodStart  DateTime
+  periodEnd    DateTime
+
   // Benchmark Cohort Definition
-  cohortDefinition      Json
-  cohortSize            Int
-  
+  cohortDefinition Json
+  cohortSize       Int
+
   // Rate Values (for direct comparison in API routes)
-  rateValue             Decimal           @db.Decimal(10, 2)
-  marketMedian          Decimal           @db.Decimal(10, 2)
-  
+  rateValue    Decimal @db.Decimal(10, 2)
+  marketMedian Decimal @db.Decimal(10, 2)
+
   // Statistical Analysis
-  average               Decimal           @db.Decimal(10, 2)
-  median                Decimal           @db.Decimal(10, 2)
-  mode                  Decimal?          @db.Decimal(10, 2)
-  standardDeviation     Decimal           @db.Decimal(10, 2)
-  
-  percentile25          Decimal           @db.Decimal(10, 2)
-  percentile50          Decimal           @db.Decimal(10, 2)
-  percentile75          Decimal           @db.Decimal(10, 2)
-  percentile90          Decimal           @db.Decimal(10, 2)
-  percentile95          Decimal           @db.Decimal(10, 2)
-  
-  min                   Decimal           @db.Decimal(10, 2)
-  max                   Decimal           @db.Decimal(10, 2)
-  
+  average           Decimal  @db.Decimal(10, 2)
+  median            Decimal  @db.Decimal(10, 2)
+  mode              Decimal? @db.Decimal(10, 2)
+  standardDeviation Decimal  @db.Decimal(10, 2)
+
+  percentile25 Decimal @db.Decimal(10, 2)
+  percentile50 Decimal @db.Decimal(10, 2)
+  percentile75 Decimal @db.Decimal(10, 2)
+  percentile90 Decimal @db.Decimal(10, 2)
+  percentile95 Decimal @db.Decimal(10, 2)
+
+  min Decimal @db.Decimal(10, 2)
+  max Decimal @db.Decimal(10, 2)
+
   // Position Analysis
-  positionInMarket      String
-  percentileRank        Int
-  
+  positionInMarket String
+  percentileRank   Int
+
   // Savings Analysis
-  potentialSavings      Decimal?          @db.Decimal(10, 2)
-  savingsToMedian       Decimal?          @db.Decimal(10, 2)
-  savingsToP25          Decimal?          @db.Decimal(10, 2)
-  
+  potentialSavings Decimal? @db.Decimal(10, 2)
+  savingsToMedian  Decimal? @db.Decimal(10, 2)
+  savingsToP25     Decimal? @db.Decimal(10, 2)
+
   // Market Intelligence
-  marketTrend           String?
-  trendPercentage       Decimal?          @db.Decimal(5, 2)
-  
-  competitorCount       Int
-  competitorAverage     Decimal?          @db.Decimal(10, 2)
-  
-  rateCardEntry         RateCardEntry     @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
-  
+  marketTrend     String?
+  trendPercentage Decimal? @db.Decimal(5, 2)
+
+  competitorCount   Int
+  competitorAverage Decimal? @db.Decimal(10, 2)
+
+  rateCardEntry RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+
   @@index([tenantId])
   @@index([rateCardEntryId])
   @@index([snapshotDate])
@@ -1487,43 +1486,43 @@ model BenchmarkSnapshot {
 }
 
 model MarketRateIntelligence {
-  id                    String            @id @default(cuid())
-  tenantId              String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Market Segment
-  roleStandardized      String
-  seniority             SeniorityLevel
-  lineOfService         String
-  country               String
-  region                String
-  
+  roleStandardized String
+  seniority        SeniorityLevel
+  lineOfService    String
+  country          String
+  region           String
+
   // Time Period
-  periodStart           DateTime
-  periodEnd             DateTime
-  
+  periodStart DateTime
+  periodEnd   DateTime
+
   // Aggregated Statistics
-  sampleSize            Int
-  averageRate           Decimal           @db.Decimal(10, 2)
-  medianRate            Decimal           @db.Decimal(10, 2)
-  p25Rate               Decimal           @db.Decimal(10, 2)
-  p75Rate               Decimal           @db.Decimal(10, 2)
-  minRate               Decimal           @db.Decimal(10, 2)
-  maxRate               Decimal           @db.Decimal(10, 2)
-  
+  sampleSize  Int
+  averageRate Decimal @db.Decimal(10, 2)
+  medianRate  Decimal @db.Decimal(10, 2)
+  p25Rate     Decimal @db.Decimal(10, 2)
+  p75Rate     Decimal @db.Decimal(10, 2)
+  minRate     Decimal @db.Decimal(10, 2)
+  maxRate     Decimal @db.Decimal(10, 2)
+
   // Supplier Breakdown
-  supplierDistribution  Json
-  topSuppliers          Json
-  
+  supplierDistribution Json
+  topSuppliers         Json
+
   // Trend Analysis
-  trendDirection        String
-  monthOverMonth        Decimal?          @db.Decimal(5, 2)
-  yearOverYear          Decimal?          @db.Decimal(5, 2)
-  
+  trendDirection String
+  monthOverMonth Decimal? @db.Decimal(5, 2)
+  yearOverYear   Decimal? @db.Decimal(5, 2)
+
   // Insights
-  insights              Json
-  
-  calculatedAt          DateTime          @default(now())
-  
+  insights Json
+
+  calculatedAt DateTime @default(now())
+
   @@unique([tenantId, roleStandardized, seniority, country, periodStart])
   @@index([tenantId])
   @@index([roleStandardized])
@@ -1533,49 +1532,49 @@ model MarketRateIntelligence {
 }
 
 model RateSavingsOpportunity {
-  id                      String              @id @default(cuid())
-  tenantId                String
-  rateCardEntryId         String
-  
+  id              String @id @default(cuid())
+  tenantId        String
+  rateCardEntryId String
+
   // Opportunity Details
-  title                   String
-  description             String
-  category                SavingsCategory
-  
+  title       String
+  description String
+  category    SavingsCategory
+
   // Financial Impact
-  currentAnnualCost       Decimal             @db.Decimal(15, 2)
-  projectedAnnualCost     Decimal             @db.Decimal(15, 2)
-  annualSavingsPotential  Decimal             @db.Decimal(15, 2)
-  savingsPercentage       Decimal             @db.Decimal(5, 2)
-  
+  currentAnnualCost      Decimal @db.Decimal(15, 2)
+  projectedAnnualCost    Decimal @db.Decimal(15, 2)
+  annualSavingsPotential Decimal @db.Decimal(15, 2)
+  savingsPercentage      Decimal @db.Decimal(5, 2)
+
   // Effort & Risk
-  effort                  EffortLevel
-  risk                    RiskLevel
-  confidence              Decimal             @db.Decimal(3, 2)
-  
+  effort     EffortLevel
+  risk       RiskLevel
+  confidence Decimal     @db.Decimal(3, 2)
+
   // Recommendations
-  recommendedAction       String
-  alternativeSuppliers    Json?
-  negotiationPoints       Json?
-  
+  recommendedAction    String
+  alternativeSuppliers Json?
+  negotiationPoints    Json?
+
   // Timeline
-  implementationTime      String?
-  expectedRealization     DateTime?
-  
+  implementationTime  String?
+  expectedRealization DateTime?
+
   // Status
-  status                  OpportunityStatus   @default(IDENTIFIED)
-  assignedTo              String?
-  reviewedBy              String?
-  reviewedAt              DateTime?
-  implementedAt           DateTime?
-  
-  actualSavingsRealized   Decimal?            @db.Decimal(15, 2)
-  
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
-  
-  rateCardEntry           RateCardEntry       @relation(fields: [rateCardEntryId], references: [id])
-  
+  status        OpportunityStatus @default(IDENTIFIED)
+  assignedTo    String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  implementedAt DateTime?
+
+  actualSavingsRealized Decimal? @db.Decimal(15, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rateCardEntry RateCardEntry @relation(fields: [rateCardEntryId], references: [id])
+
   @@index([tenantId])
   @@index([status])
   @@index([annualSavingsPotential(sort: Desc)])
@@ -1584,78 +1583,78 @@ model RateSavingsOpportunity {
 }
 
 model RateComparison {
-  id                    String            @id @default(cuid())
-  tenantId              String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Comparison Metadata
-  comparisonName        String
-  comparisonType        ComparisonType
-  createdBy             String
-  
+  comparisonName String
+  comparisonType ComparisonType
+  createdBy      String
+
   // Target Rate
-  targetRateId          String
-  
+  targetRateId String
+
   // Comparison Rates
-  comparisonRates       Json
-  
+  comparisonRates Json
+
   // Analysis Results
-  results               Json
-  summary               String
-  recommendations       Json?
-  
+  results         Json
+  summary         String
+  recommendations Json?
+
   // Sharing
-  isShared              Boolean           @default(false)
-  sharedWith            Json?
-  
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  
-  targetRate            RateCardEntry     @relation(fields: [targetRateId], references: [id])
-  
+  isShared   Boolean @default(false)
+  sharedWith Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  targetRate RateCardEntry @relation(fields: [targetRateId], references: [id])
+
   @@index([tenantId])
   @@index([createdBy])
   @@map("rate_comparisons")
 }
 
 model SupplierBenchmark {
-  id                      String              @id @default(cuid())
-  tenantId                String
-  supplierId              String
-  
+  id         String @id @default(cuid())
+  tenantId   String
+  supplierId String
+
   // Time Period
-  periodStart             DateTime
-  periodEnd               DateTime
-  
+  periodStart DateTime
+  periodEnd   DateTime
+
   // Rate Competitiveness
-  averageRate             Decimal             @db.Decimal(10, 2)
-  medianRate              Decimal             @db.Decimal(10, 2)
-  marketAverage           Decimal             @db.Decimal(10, 2)
-  competitivenessScore    Decimal             @db.Decimal(5, 2)
-  
+  averageRate          Decimal @db.Decimal(10, 2)
+  medianRate           Decimal @db.Decimal(10, 2)
+  marketAverage        Decimal @db.Decimal(10, 2)
+  competitivenessScore Decimal @db.Decimal(5, 2)
+
   // Volume & Coverage
-  totalRoles              Int
-  totalContracts          Int
-  geographicCoverage      Json
-  serviceLineCoverage     Json
-  
+  totalRoles          Int
+  totalContracts      Int
+  geographicCoverage  Json
+  serviceLineCoverage Json
+
   // Quality Metrics
-  dataQualityScore        Decimal             @db.Decimal(5, 2)
-  responseTime            Int?
-  negotiationFlexibility  Decimal?            @db.Decimal(3, 2)
-  
+  dataQualityScore       Decimal  @db.Decimal(5, 2)
+  responseTime           Int?
+  negotiationFlexibility Decimal? @db.Decimal(3, 2)
+
   // Financial
-  totalAnnualValue        Decimal             @db.Decimal(15, 2)
-  potentialSavings        Decimal             @db.Decimal(15, 2)
-  
+  totalAnnualValue Decimal @db.Decimal(15, 2)
+  potentialSavings Decimal @db.Decimal(15, 2)
+
   // Rankings
-  costRank                Int?
-  qualityRank             Int?
-  overallRank             Int?
-  
-  calculatedAt            DateTime            @default(now())
-  
-  supplier                RateCardSupplier    @relation(fields: [supplierId], references: [id])
-  
+  costRank    Int?
+  qualityRank Int?
+  overallRank Int?
+
+  calculatedAt DateTime @default(now())
+
+  supplier RateCardSupplier @relation(fields: [supplierId], references: [id])
+
   @@index([tenantId])
   @@index([supplierId])
   @@index([periodStart])
@@ -1667,47 +1666,47 @@ model SupplierBenchmark {
 // ============================================================================
 
 model ProcurementCategory {
-  id                    String                    @id @default(cuid())
-  tenantId              String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Category Hierarchy
-  categoryL1            String
-  categoryL2            String
-  categoryL3            String?
-  categoryPath          String                    // Full path: L1/L2/L3
-  
+  categoryL1   String
+  categoryL2   String
+  categoryL3   String?
+  categoryPath String // Full path: L1/L2/L3
+
   // Category Details
-  displayName           String
-  description           String?
-  icon                  String?
-  color                 String?
-  
+  displayName String
+  description String?
+  icon        String?
+  color       String?
+
   // Spend Category Classification
-  isDirectSpend         Boolean                   @default(false)
-  isIndirectSpend       Boolean                   @default(true)
-  spendType             SpendType                 @default(INDIRECT)
-  
+  isDirectSpend   Boolean   @default(false)
+  isIndirectSpend Boolean   @default(true)
+  spendType       SpendType @default(INDIRECT)
+
   // Benchmarking Configuration
-  enableBenchmarking    Boolean                   @default(true)
-  defaultCurrency       String                    @default("USD")
-  typicalPricingModel   String?                   // e.g., "per unit", "daily rate", "monthly fee"
-  
+  enableBenchmarking  Boolean @default(true)
+  defaultCurrency     String  @default("USD")
+  typicalPricingModel String? // e.g., "per unit", "daily rate", "monthly fee"
+
   // Keywords for auto-classification
-  keywords              String[]                  @default([])
+  keywords               String[] @default([])
   aiClassificationPrompt String?
-  
+
   // Metadata
-  isActive              Boolean                   @default(true)
-  sortOrder             Int                       @default(0)
-  
-  createdAt             DateTime                  @default(now())
-  updatedAt             DateTime                  @updatedAt
-  createdBy             String?
-  
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
   // Relations
-  rateCardBaselines     RateCardBaseline[]
-  contracts             Contract[]                @relation("ContractProcurementCategory")
-  
+  rateCardBaselines RateCardBaseline[]
+  contracts         Contract[]         @relation("ContractProcurementCategory")
+
   @@unique([tenantId, categoryL1, categoryL2])
   @@index([tenantId])
   @@index([categoryL1])
@@ -1723,78 +1722,78 @@ model ProcurementCategory {
 // ============================================================================
 
 model RateCardBaseline {
-  id                      String                  @id @default(cuid())
-  tenantId                String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Baseline Identification
-  baselineName            String
-  baselineType            BaselineType
-  description             String?
-  
+  baselineName String
+  baselineType BaselineType
+  description  String?
+
   // Category Association
-  procurementCategoryId   String?
-  categoryL1              String?
-  categoryL2              String?
-  
+  procurementCategoryId String?
+  categoryL1            String?
+  categoryL2            String?
+
   // Role & Service Definition
-  roleStandardized        String
-  roleCategory            String?
-  seniority               SeniorityLevel?
-  lineOfService           String?
-  
+  roleStandardized String
+  roleCategory     String?
+  seniority        SeniorityLevel?
+  lineOfService    String?
+
   // Geographic Scope
-  country                 String?
-  region                  String?
-  isGlobal                Boolean                 @default(false)
-  
+  country  String?
+  region   String?
+  isGlobal Boolean @default(false)
+
   // Baseline Rate
-  targetRate              Decimal                 @db.Decimal(10, 2)
-  currency                String
-  targetRateUSD           Decimal                 @db.Decimal(10, 2)
-  rateUnit                String                  @default("daily") // daily, hourly, monthly, annual
-  
+  targetRate    Decimal @db.Decimal(10, 2)
+  currency      String
+  targetRateUSD Decimal @db.Decimal(10, 2)
+  rateUnit      String  @default("daily") // daily, hourly, monthly, annual
+
   // Range & Tolerance
-  minimumRate             Decimal?                @db.Decimal(10, 2)
-  maximumRate             Decimal?                @db.Decimal(10, 2)
-  tolerancePercentage     Decimal?                @db.Decimal(5, 2)
-  
+  minimumRate         Decimal? @db.Decimal(10, 2)
+  maximumRate         Decimal? @db.Decimal(10, 2)
+  tolerancePercentage Decimal? @db.Decimal(5, 2)
+
   // Baseline Source
-  source                  BaselineSource
-  sourceDetails           String?
-  importJobId             String?
-  contractId              String?                 // Reference contract if based on historical best
-  
+  source        BaselineSource
+  sourceDetails String?
+  importJobId   String?
+  contractId    String? // Reference contract if based on historical best
+
   // Validity Period
-  effectiveDate           DateTime
-  expiryDate              DateTime?
-  isActive                Boolean                 @default(true)
-  
+  effectiveDate DateTime
+  expiryDate    DateTime?
+  isActive      Boolean   @default(true)
+
   // Approval & Governance
-  approvalStatus          ApprovalStatus          @default(PENDING)
-  approvedBy              String?
-  approvedAt              DateTime?
-  reviewedBy              String?
-  reviewedAt              DateTime?
-  
+  approvalStatus ApprovalStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+
   // Usage Statistics
-  appliedCount            Int                     @default(0)
-  savingsRealized         Decimal?                @db.Decimal(15, 2)
-  lastAppliedAt           DateTime?
-  
+  appliedCount    Int       @default(0)
+  savingsRealized Decimal?  @db.Decimal(15, 2)
+  lastAppliedAt   DateTime?
+
   // Metadata
-  tags                    String[]                @default([])
-  notes                   String?
-  metadata                Json?
-  
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  createdBy               String?
-  updatedBy               String?
-  
+  tags     String[] @default([])
+  notes    String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
   // Relations
-  category                ProcurementCategory?    @relation(fields: [procurementCategoryId], references: [id])
-  baselineComparisons     BaselineComparison[]
-  
+  category            ProcurementCategory? @relation(fields: [procurementCategoryId], references: [id])
+  baselineComparisons BaselineComparison[]
+
   @@unique([tenantId, baselineName])
   @@index([tenantId])
   @@index([baselineType])
@@ -1809,57 +1808,57 @@ model RateCardBaseline {
 }
 
 model BaselineComparison {
-  id                      String                  @id @default(cuid())
-  tenantId                String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Comparison Identification
-  comparisonName          String
-  comparisonDate          DateTime                @default(now())
-  
+  comparisonName String
+  comparisonDate DateTime @default(now())
+
   // Baseline Reference
-  baselineId              String
-  
+  baselineId String
+
   // Rate Card Reference
-  rateCardEntryId         String?
-  
+  rateCardEntryId String?
+
   // Or Manual Entry
-  actualRate              Decimal?                @db.Decimal(10, 2)
-  actualRateSource        String?
-  
+  actualRate       Decimal? @db.Decimal(10, 2)
+  actualRateSource String?
+
   // Comparison Results
-  variance                Decimal                 @db.Decimal(10, 2) // Positive = over baseline, Negative = under
-  variancePercentage      Decimal                 @db.Decimal(5, 2)
-  isWithinTolerance       Boolean
-  
+  variance           Decimal @db.Decimal(10, 2) // Positive = over baseline, Negative = under
+  variancePercentage Decimal @db.Decimal(5, 2)
+  isWithinTolerance  Boolean
+
   // Savings Calculation
-  potentialSavings        Decimal?                @db.Decimal(10, 2)
-  annualSavingsImpact     Decimal?                @db.Decimal(15, 2)
-  volumeImpacted          Int?
-  
+  potentialSavings    Decimal? @db.Decimal(10, 2)
+  annualSavingsImpact Decimal? @db.Decimal(15, 2)
+  volumeImpacted      Int?
+
   // Analysis
-  riskLevel               RiskLevel               @default(MEDIUM)
-  recommendation          String?
-  actionRequired          Boolean                 @default(false)
-  priority                Int                     @default(3)
-  
+  riskLevel      RiskLevel @default(MEDIUM)
+  recommendation String?
+  actionRequired Boolean   @default(false)
+  priority       Int       @default(3)
+
   // Status Tracking
-  status                  OpportunityStatus       @default(IDENTIFIED)
-  assignedTo              String?
-  dueDate                 DateTime?
-  completedAt             DateTime?
-  
+  status      OpportunityStatus @default(IDENTIFIED)
+  assignedTo  String?
+  dueDate     DateTime?
+  completedAt DateTime?
+
   // Notes
-  notes                   String?
-  internalNotes           String?
-  
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
-  createdBy               String?
-  
+  notes         String?
+  internalNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
   // Relations
-  baseline                RateCardBaseline        @relation(fields: [baselineId], references: [id])
-  rateCardEntry           RateCardEntry?          @relation(fields: [rateCardEntryId], references: [id])
-  
+  baseline      RateCardBaseline @relation(fields: [baselineId], references: [id])
+  rateCardEntry RateCardEntry?   @relation(fields: [rateCardEntryId], references: [id])
+
   @@index([tenantId])
   @@index([baselineId])
   @@index([rateCardEntryId])
@@ -1875,62 +1874,61 @@ model BaselineComparison {
 // ============================================================================
 
 model BaselineImportJob {
-  id                    String                @id @default(cuid())
-  tenantId              String
-  
+  id       String @id @default(cuid())
+  tenantId String
+
   // Import Details
-  jobName               String
-  importType            String                // csv, excel, api, manual
-  fileName              String?
-  fileSize              BigInt?
-  filePath              String?
-  
+  jobName    String
+  importType String // csv, excel, api, manual
+  fileName   String?
+  fileSize   BigInt?
+  filePath   String?
+
   // Processing Status
-  status                JobStatus
-  progress              Int                   @default(0)
-  totalRows             Int?
-  processedRows         Int                   @default(0)
-  successfulRows        Int                   @default(0)
-  failedRows            Int                   @default(0)
-  
+  status         JobStatus
+  progress       Int       @default(0)
+  totalRows      Int?
+  processedRows  Int       @default(0)
+  successfulRows Int       @default(0)
+  failedRows     Int       @default(0)
+
   // Results
-  importedBaselines     Int                   @default(0)
-  errors                Json?
-  warnings              Json?
-  summary               String?
-  
+  importedBaselines Int     @default(0)
+  errors            Json?
+  warnings          Json?
+  summary           String?
+
   // Metadata
-  startedAt             DateTime              @default(now())
-  completedAt           DateTime?
-  startedBy             String?
-  
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  startedBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([tenantId])
   @@index([status])
   @@index([startedAt])
   @@map("baseline_import_jobs")
 }
 
-
 // ============================================================================
 // Role Standardization & Taxonomy
 // ============================================================================
 
 model RoleTaxonomy {
-  id                  String      @id @default(cuid())
-  standardizedName    String      @unique @map("standardized_name")
-  category            String
-  subCategory         String?     @map("sub_category")
-  aliases             String[]    @default([])
-  keywords            String[]    @default([])
-  industry            String?
-  lineOfService       String?     @map("line_of_service")
-  seniorityLevel      String?     @map("seniority_level")
-  usageCount          Int         @default(0) @map("usage_count")
-  createdAt           DateTime    @default(now()) @map("created_at")
-  updatedAt           DateTime    @updatedAt @map("updated_at")
+  id               String   @id @default(cuid())
+  standardizedName String   @unique @map("standardized_name")
+  category         String
+  subCategory      String?  @map("sub_category")
+  aliases          String[] @default([])
+  keywords         String[] @default([])
+  industry         String?
+  lineOfService    String?  @map("line_of_service")
+  seniorityLevel   String?  @map("seniority_level")
+  usageCount       Int      @default(0) @map("usage_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@index([category])
   @@index([usageCount(sort: Desc)])
@@ -1939,15 +1937,15 @@ model RoleTaxonomy {
 }
 
 model RoleMapping {
-  id                  String      @id @default(cuid())
-  tenantId            String      @map("tenant_id")
-  originalRole        String      @map("original_role")
-  standardizedRole    String      @map("standardized_role")
-  confidence          Decimal     @default(0.70) @db.Decimal(3, 2)
-  source              String      // AI, USER_CORRECTION, MANUAL
-  userId              String?     @map("user_id")
-  context             Json        @default("{}")
-  createdAt           DateTime    @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  originalRole     String   @map("original_role")
+  standardizedRole String   @map("standardized_role")
+  confidence       Decimal  @default(0.70) @db.Decimal(3, 2)
+  source           String // AI, USER_CORRECTION, MANUAL
+  userId           String?  @map("user_id")
+  context          Json     @default("{}")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   @@index([tenantId])
   @@index([originalRole])
@@ -1957,53 +1955,52 @@ model RoleMapping {
   @@map("role_mappings")
 }
 
-
 // =============================================================================
 // Predictive Analytics Models
 // =============================================================================
 
 model RateForecast {
-  id              String   @id @default(cuid())
-  rateCardEntryId String   @map("rate_card_entry_id")
-  tenantId        String   @map("tenant_id")
-  
+  id              String @id @default(cuid())
+  rateCardEntryId String @map("rate_card_entry_id")
+  tenantId        String @map("tenant_id")
+
   // Current State
-  currentRate     Decimal  @db.Decimal(10, 2) @map("current_rate")
-  forecastDate    DateTime @default(now()) @map("forecast_date")
-  
+  currentRate  Decimal  @map("current_rate") @db.Decimal(10, 2)
+  forecastDate DateTime @default(now()) @map("forecast_date")
+
   // Predictions
-  threeMonthRate  Decimal  @db.Decimal(10, 2) @map("three_month_rate")
-  threeMonthConfidence Decimal @db.Decimal(5, 2) @map("three_month_confidence")
-  threeMonthLower Decimal  @db.Decimal(10, 2) @map("three_month_lower")
-  threeMonthUpper Decimal  @db.Decimal(10, 2) @map("three_month_upper")
-  
-  sixMonthRate    Decimal  @db.Decimal(10, 2) @map("six_month_rate")
-  sixMonthConfidence Decimal @db.Decimal(5, 2) @map("six_month_confidence")
-  sixMonthLower   Decimal  @db.Decimal(10, 2) @map("six_month_lower")
-  sixMonthUpper   Decimal  @db.Decimal(10, 2) @map("six_month_upper")
-  
-  twelveMonthRate Decimal  @db.Decimal(10, 2) @map("twelve_month_rate")
-  twelveMonthConfidence Decimal @db.Decimal(5, 2) @map("twelve_month_confidence")
-  twelveMonthLower Decimal @db.Decimal(10, 2) @map("twelve_month_lower")
-  twelveMonthUpper Decimal @db.Decimal(10, 2) @map("twelve_month_upper")
-  
+  threeMonthRate       Decimal @map("three_month_rate") @db.Decimal(10, 2)
+  threeMonthConfidence Decimal @map("three_month_confidence") @db.Decimal(5, 2)
+  threeMonthLower      Decimal @map("three_month_lower") @db.Decimal(10, 2)
+  threeMonthUpper      Decimal @map("three_month_upper") @db.Decimal(10, 2)
+
+  sixMonthRate       Decimal @map("six_month_rate") @db.Decimal(10, 2)
+  sixMonthConfidence Decimal @map("six_month_confidence") @db.Decimal(5, 2)
+  sixMonthLower      Decimal @map("six_month_lower") @db.Decimal(10, 2)
+  sixMonthUpper      Decimal @map("six_month_upper") @db.Decimal(10, 2)
+
+  twelveMonthRate       Decimal @map("twelve_month_rate") @db.Decimal(10, 2)
+  twelveMonthConfidence Decimal @map("twelve_month_confidence") @db.Decimal(5, 2)
+  twelveMonthLower      Decimal @map("twelve_month_lower") @db.Decimal(10, 2)
+  twelveMonthUpper      Decimal @map("twelve_month_upper") @db.Decimal(10, 2)
+
   // Trend Analysis
-  trendDirection  String   @map("trend_direction") // increasing, decreasing, stable
-  trendCoefficient Decimal @db.Decimal(10, 6) @map("trend_coefficient")
-  riskLevel       String   @map("risk_level") // low, medium, high
-  
+  trendDirection   String  @map("trend_direction") // increasing, decreasing, stable
+  trendCoefficient Decimal @map("trend_coefficient") @db.Decimal(10, 6)
+  riskLevel        String  @map("risk_level") // low, medium, high
+
   // Model Metadata
-  confidence      Decimal  @db.Decimal(5, 2)
-  historicalDataPoints Int @map("historical_data_points")
-  modelVersion    String   @map("model_version")
-  
+  confidence           Decimal @db.Decimal(5, 2)
+  historicalDataPoints Int     @map("historical_data_points")
+  modelVersion         String  @map("model_version")
+
   // Timestamps
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  rateCardEntry   RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
-  
+  rateCardEntry RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+
   @@index([rateCardEntryId])
   @@index([tenantId, forecastDate])
   @@index([riskLevel])
@@ -2016,38 +2013,38 @@ model RateForecast {
 // =============================================================================
 
 model OutlierFlag {
-  id                  String   @id @default(cuid())
-  rateCardEntryId     String   @unique @map("rate_card_entry_id")
-  tenantId            String   @map("tenant_id")
-  
+  id              String @id @default(cuid())
+  rateCardEntryId String @unique @map("rate_card_entry_id")
+  tenantId        String @map("tenant_id")
+
   // Outlier Detection
-  outlierType         String   @map("outlier_type") // HIGH, LOW
-  deviationSigma      Decimal  @db.Decimal(10, 4) @map("deviation_sigma")
-  marketMean          Decimal  @db.Decimal(10, 2) @map("market_mean")
-  marketMedian        Decimal  @db.Decimal(10, 2) @map("market_median")
-  standardDeviation   Decimal  @db.Decimal(10, 2) @map("standard_deviation")
-  severity            String   // EXTREME, MODERATE, MILD
-  
+  outlierType       String  @map("outlier_type") // HIGH, LOW
+  deviationSigma    Decimal @map("deviation_sigma") @db.Decimal(10, 4)
+  marketMean        Decimal @map("market_mean") @db.Decimal(10, 2)
+  marketMedian      Decimal @map("market_median") @db.Decimal(10, 2)
+  standardDeviation Decimal @map("standard_deviation") @db.Decimal(10, 2)
+  severity          String // EXTREME, MODERATE, MILD
+
   // Review Status
-  reviewStatus        String   @default("PENDING") @map("review_status") // PENDING, REVIEWED, RESOLVED, DISMISSED
-  reviewedBy          String?  @map("reviewed_by")
-  reviewedAt          DateTime? @map("reviewed_at")
-  reviewAction        String?  @map("review_action")
-  reviewNotes         String?  @map("review_notes")
-  
+  reviewStatus String    @default("PENDING") @map("review_status") // PENDING, REVIEWED, RESOLVED, DISMISSED
+  reviewedBy   String?   @map("reviewed_by")
+  reviewedAt   DateTime? @map("reviewed_at")
+  reviewAction String?   @map("review_action")
+  reviewNotes  String?   @map("review_notes")
+
   // Resolution
-  resolvedBy          String?  @map("resolved_by")
-  resolvedAt          DateTime? @map("resolved_at")
-  resolution          String?
-  
+  resolvedBy String?   @map("resolved_by")
+  resolvedAt DateTime? @map("resolved_at")
+  resolution String?
+
   // Timestamps
-  detectedAt          DateTime @default(now()) @map("detected_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-  
+  detectedAt DateTime @default(now()) @map("detected_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
   // Relations
-  rateCardEntry       RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
-  reviewActions       OutlierReviewAction[]
-  
+  rateCardEntry RateCardEntry         @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
+  reviewActions OutlierReviewAction[]
+
   @@index([tenantId])
   @@index([reviewStatus])
   @@index([severity])
@@ -2057,19 +2054,19 @@ model OutlierFlag {
 }
 
 model OutlierReviewAction {
-  id                  String   @id @default(cuid())
-  rateCardEntryId     String   @map("rate_card_entry_id")
-  outlierFlagId       String?  @map("outlier_flag_id")
-  
+  id              String  @id @default(cuid())
+  rateCardEntryId String  @map("rate_card_entry_id")
+  outlierFlagId   String? @map("outlier_flag_id")
+
   // Review Details
-  reviewedBy          String   @map("reviewed_by")
-  reviewedAt          DateTime @default(now()) @map("reviewed_at")
-  action              String   // CORRECT_DATA, ACCEPT_AS_VALID, MARK_INACTIVE, MERGE_DUPLICATE, INVESTIGATE_FURTHER
-  notes               String?
-  
+  reviewedBy String   @map("reviewed_by")
+  reviewedAt DateTime @default(now()) @map("reviewed_at")
+  action     String // CORRECT_DATA, ACCEPT_AS_VALID, MARK_INACTIVE, MERGE_DUPLICATE, INVESTIGATE_FURTHER
+  notes      String?
+
   // Relations
-  outlierFlag         OutlierFlag? @relation(fields: [outlierFlagId], references: [id])
-  
+  outlierFlag OutlierFlag? @relation(fields: [outlierFlagId], references: [id])
+
   @@index([rateCardEntryId])
   @@index([outlierFlagId])
   @@index([reviewedAt])
@@ -2077,19 +2074,19 @@ model OutlierReviewAction {
 }
 
 model DuplicateResolution {
-  id                  String   @id @default(cuid())
-  duplicateGroupId    String   @map("duplicate_group_id")
-  
+  id               String @id @default(cuid())
+  duplicateGroupId String @map("duplicate_group_id")
+
   // Resolution Details
-  action              String   // MERGED, DELETED, KEPT_SEPARATE
-  resolvedBy          String   @map("resolved_by")
-  resolvedAt          DateTime @default(now()) @map("resolved_at")
-  notes               String?
-  
+  action     String // MERGED, DELETED, KEPT_SEPARATE
+  resolvedBy String   @map("resolved_by")
+  resolvedAt DateTime @default(now()) @map("resolved_at")
+  notes      String?
+
   // Merge/Delete Details
-  mergedIntoId        String?  @map("merged_into_id")
-  deletedIds          String[] @default([]) @map("deleted_ids")
-  
+  mergedIntoId String?  @map("merged_into_id")
+  deletedIds   String[] @default([]) @map("deleted_ids")
+
   @@index([duplicateGroupId])
   @@index([resolvedAt])
   @@map("duplicate_resolutions")
@@ -2100,34 +2097,34 @@ model DuplicateResolution {
 // =============================================================================
 
 model RateCardCluster {
-  id                    String   @id @default(cuid())
-  tenantId              String   @map("tenant_id")
-  
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+
   // Cluster Identification
-  name                  String
-  clusterType           String   @default("K_MEANS") @map("cluster_type") // K_MEANS, HIERARCHICAL, DBSCAN
-  
+  name        String
+  clusterType String @default("K_MEANS") @map("cluster_type") // K_MEANS, HIERARCHICAL, DBSCAN
+
   // Cluster Characteristics
-  memberCount           Int      @map("member_count")
-  avgRate               Decimal  @db.Decimal(10, 2) @map("avg_rate")
-  minRate               Decimal  @db.Decimal(10, 2) @map("min_rate")
-  maxRate               Decimal  @db.Decimal(10, 2) @map("max_rate")
-  
+  memberCount Int     @map("member_count")
+  avgRate     Decimal @map("avg_rate") @db.Decimal(10, 2)
+  minRate     Decimal @map("min_rate") @db.Decimal(10, 2)
+  maxRate     Decimal @map("max_rate") @db.Decimal(10, 2)
+
   // Cluster Metadata
-  characteristics       Json     // Common roles, geographies, etc.
-  centroid              Json     // Normalized feature centroid
-  
+  characteristics Json // Common roles, geographies, etc.
+  centroid        Json // Normalized feature centroid
+
   // Consolidation Analysis
-  consolidationSavings  Decimal  @db.Decimal(15, 2) @map("consolidation_savings")
-  supplierCount         Int      @map("supplier_count")
-  
+  consolidationSavings Decimal @map("consolidation_savings") @db.Decimal(15, 2)
+  supplierCount        Int     @map("supplier_count")
+
   // Timestamps
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  members               ClusterMember[]
-  
+  members ClusterMember[]
+
   @@index([tenantId])
   @@index([consolidationSavings(sort: Desc)])
   @@index([createdAt])
@@ -2135,20 +2132,20 @@ model RateCardCluster {
 }
 
 model ClusterMember {
-  id              String   @id @default(cuid())
-  clusterId       String   @map("cluster_id")
-  rateCardEntryId String   @map("rate_card_entry_id")
-  
+  id              String @id @default(cuid())
+  clusterId       String @map("cluster_id")
+  rateCardEntryId String @map("rate_card_entry_id")
+
   // Membership Details
-  similarityScore Decimal  @db.Decimal(5, 2) @map("similarity_score") // 0-100
-  distanceToCentroid Decimal @db.Decimal(10, 6) @map("distance_to_centroid")
-  
+  similarityScore    Decimal @map("similarity_score") @db.Decimal(5, 2) // 0-100
+  distanceToCentroid Decimal @map("distance_to_centroid") @db.Decimal(10, 6)
+
   // Timestamps
-  assignedAt      DateTime @default(now()) @map("assigned_at")
-  
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
   // Relations
-  cluster         RateCardCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
-  
+  cluster RateCardCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
   @@unique([clusterId, rateCardEntryId])
   @@index([clusterId])
   @@index([rateCardEntryId])
@@ -2156,52 +2153,53 @@ model ClusterMember {
 }
 
 model ConsolidationOpportunity {
-  id                      String   @id @default(cuid())
-  tenantId                String   @map("tenant_id")
-  clusterId               String   @map("cluster_id")
-  
+  id        String @id @default(cuid())
+  tenantId  String @map("tenant_id")
+  clusterId String @map("cluster_id")
+
   // Opportunity Details
-  opportunityName         String   @map("opportunity_name")
-  description             String?
-  
+  opportunityName String  @map("opportunity_name")
+  description     String?
+
   // Supplier Analysis
   currentSupplierCount    Int      @map("current_supplier_count")
   recommendedSupplierId   String   @map("recommended_supplier_id")
   recommendedSupplierName String   @map("recommended_supplier_name")
   suppliersToConsolidate  String[] @default([]) @map("suppliers_to_consolidate")
-  
+
   // Financial Impact
-  currentAnnualCost       Decimal  @db.Decimal(15, 2) @map("current_annual_cost")
-  projectedAnnualCost     Decimal  @db.Decimal(15, 2) @map("projected_annual_cost")
-  annualSavings           Decimal  @db.Decimal(15, 2) @map("annual_savings")
-  savingsPercentage       Decimal  @db.Decimal(5, 2) @map("savings_percentage")
-  
+  currentAnnualCost      Decimal @map("current_annual_cost") @db.Decimal(15, 2)
+  projectedAnnualCost    Decimal @map("projected_annual_cost") @db.Decimal(15, 2)
+  annualSavings          Decimal @map("annual_savings") @db.Decimal(15, 2)
+  annualSavingsPotential Decimal @map("annual_savings_potential") @db.Decimal(15, 2)
+  savingsPercentage      Decimal @map("savings_percentage") @db.Decimal(5, 2)
+
   // Volume Analysis
-  totalVolume             Int      @map("total_volume")
-  volumeBySupplier        Json     @map("volume_by_supplier")
-  
+  totalVolume      Int  @map("total_volume")
+  volumeBySupplier Json @map("volume_by_supplier")
+
   // Risk & Implementation
-  riskLevel               String   @map("risk_level") // LOW, MEDIUM, HIGH
-  riskFactors             String[] @default([]) @map("risk_factors")
-  implementationComplexity String  @map("implementation_complexity") // LOW, MEDIUM, HIGH
-  estimatedTimeframe      String   @map("estimated_timeframe")
-  actionItems             String[] @default([]) @map("action_items")
-  
+  riskLevel                String   @map("risk_level") // LOW, MEDIUM, HIGH
+  riskFactors              String[] @default([]) @map("risk_factors")
+  implementationComplexity String   @map("implementation_complexity") // LOW, MEDIUM, HIGH
+  estimatedTimeframe       String   @map("estimated_timeframe")
+  actionItems              String[] @default([]) @map("action_items")
+
   // Quality Metrics
-  confidence              Decimal  @db.Decimal(5, 2)
-  dataQuality             Decimal  @db.Decimal(5, 2) @map("data_quality")
-  
+  confidence  Decimal @db.Decimal(5, 2)
+  dataQuality Decimal @map("data_quality") @db.Decimal(5, 2)
+
   // Status Tracking
-  status                  String   @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
-  assignedTo              String?  @map("assigned_to")
-  reviewedBy              String?  @map("reviewed_by")
-  reviewedAt              DateTime? @map("reviewed_at")
-  implementedAt           DateTime? @map("implemented_at")
-  
+  status        String    @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
+  assignedTo    String?   @map("assigned_to")
+  reviewedBy    String?   @map("reviewed_by")
+  reviewedAt    DateTime? @map("reviewed_at")
+  implementedAt DateTime? @map("implemented_at")
+
   // Timestamps
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([tenantId])
   @@index([clusterId])
   @@index([status])
@@ -2211,53 +2209,53 @@ model ConsolidationOpportunity {
 }
 
 model GeographicArbitrageOpportunity {
-  id                      String   @id @default(cuid())
-  tenantId                String   @map("tenant_id")
-  clusterId               String   @map("cluster_id")
-  
+  id        String @id @default(cuid())
+  tenantId  String @map("tenant_id")
+  clusterId String @map("cluster_id")
+
   // Geographic Details
-  sourceCountry           String   @map("source_country")
-  sourceRegion            String   @map("source_region")
-  targetCountry           String   @map("target_country")
-  targetRegion            String   @map("target_region")
-  
+  sourceCountry String @map("source_country")
+  sourceRegion  String @map("source_region")
+  targetCountry String @map("target_country")
+  targetRegion  String @map("target_region")
+
   // Rate Analysis
-  currentAverageRate      Decimal  @db.Decimal(10, 2) @map("current_average_rate")
-  targetAverageRate       Decimal  @db.Decimal(10, 2) @map("target_average_rate")
-  rateDifference          Decimal  @db.Decimal(10, 2) @map("rate_difference")
-  savingsPercentage       Decimal  @db.Decimal(5, 2) @map("savings_percentage")
-  
+  currentAverageRate Decimal @map("current_average_rate") @db.Decimal(10, 2)
+  targetAverageRate  Decimal @map("target_average_rate") @db.Decimal(10, 2)
+  rateDifference     Decimal @map("rate_difference") @db.Decimal(10, 2)
+  savingsPercentage  Decimal @map("savings_percentage") @db.Decimal(5, 2)
+
   // Financial Impact
-  annualSavingsPotential  Decimal  @db.Decimal(15, 2) @map("annual_savings_potential")
-  affectedRoles           Int      @map("affected_roles")
-  estimatedFTEs           Int      @map("estimated_ftes")
-  
+  annualSavingsPotential Decimal @map("annual_savings_potential") @db.Decimal(15, 2)
+  affectedRoles          Int     @map("affected_roles")
+  estimatedFTEs          Int     @map("estimated_ftes")
+
   // Quality & Risk
-  qualityDifference       String   @map("quality_difference") // SAME, BETTER, WORSE
-  riskLevel               String   @map("risk_level") // LOW, MEDIUM, HIGH
-  riskFactors             String[] @default([]) @map("risk_factors")
-  feasibility             String   // HIGH, MEDIUM, LOW
-  
+  qualityDifference String   @map("quality_difference") // SAME, BETTER, WORSE
+  riskLevel         String   @map("risk_level") // LOW, MEDIUM, HIGH
+  riskFactors       String[] @default([]) @map("risk_factors")
+  feasibility       String // HIGH, MEDIUM, LOW
+
   // Implementation
-  considerations          String[] @default([])
-  recommendations         String[] @default([])
-  
+  considerations  String[] @default([])
+  recommendations String[] @default([])
+
   // Quality Metrics
-  confidence              Decimal  @db.Decimal(5, 2)
-  sourceSampleSize        Int      @map("source_sample_size")
-  targetSampleSize        Int      @map("target_sample_size")
-  
+  confidence       Decimal @db.Decimal(5, 2)
+  sourceSampleSize Int     @map("source_sample_size")
+  targetSampleSize Int     @map("target_sample_size")
+
   // Status Tracking
-  status                  String   @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
-  assignedTo              String?  @map("assigned_to")
-  reviewedBy              String?  @map("reviewed_by")
-  reviewedAt              DateTime? @map("reviewed_at")
-  implementedAt           DateTime? @map("implemented_at")
-  
+  status        String    @default("IDENTIFIED") // IDENTIFIED, UNDER_REVIEW, APPROVED, IN_PROGRESS, IMPLEMENTED, REJECTED
+  assignedTo    String?   @map("assigned_to")
+  reviewedBy    String?   @map("reviewed_by")
+  reviewedAt    DateTime? @map("reviewed_at")
+  implementedAt DateTime? @map("implemented_at")
+
   // Timestamps
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([tenantId])
   @@index([clusterId])
   @@index([status])
@@ -2273,30 +2271,30 @@ model GeographicArbitrageOpportunity {
 // =============================================================================
 
 model RateCardSegment {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  userId      String   @map("user_id")
-  
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
   // Segment Details
   name        String
   description String?
-  
+
   // Filter Definition
-  filters     Json     // Complex filter definition with boolean logic
-  
+  filters Json // Complex filter definition with boolean logic
+
   // Sharing
-  shared      Boolean  @default(false)
-  
+  shared Boolean @default(false)
+
   // Usage Tracking
-  usageCount  Int      @default(0) @map("usage_count")
-  
+  usageCount Int @default(0) @map("usage_count")
+
   // Timestamps
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([tenantId])
   @@index([userId])
   @@index([tenantId, shared])
@@ -2309,23 +2307,23 @@ model RateCardSegment {
 // =============================================================================
 
 model RateCardAlert {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  userId      String?  @map("user_id")
-  
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  userId   String? @map("user_id")
+
   // Alert Details
-  type        String   // rate_increase, market_shift, opportunity, quality_issue, supplier_alert
-  severity    String   // low, medium, high, critical
+  type        String // rate_increase, market_shift, opportunity, quality_issue, supplier_alert
+  severity    String // low, medium, high, critical
   title       String
   description String
-  data        Json     @default("{}")
-  
+  data        Json   @default("{}")
+
   // Status
-  read        Boolean  @default(false)
-  
+  read Boolean @default(false)
+
   // Timestamps
-  createdAt   DateTime @default(now()) @map("created_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+
   @@index([tenantId, read, createdAt])
   @@index([userId, read])
   @@index([type])
@@ -2335,26 +2333,26 @@ model RateCardAlert {
 }
 
 model ScheduledReport {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  userId      String   @map("user_id")
-  
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
   // Report Details
-  name        String
-  type        String   // executive, detailed, opportunities, suppliers
-  frequency   String   // daily, weekly, monthly
-  recipients  Json     // Array of email addresses
-  filters     Json     @default("{}")
-  
+  name       String
+  type       String // executive, detailed, opportunities, suppliers
+  frequency  String // daily, weekly, monthly
+  recipients Json // Array of email addresses
+  filters    Json   @default("{}")
+
   // Schedule
-  lastRun     DateTime? @map("last_run")
-  nextRun     DateTime  @map("next_run")
-  enabled     Boolean   @default(true)
-  
+  lastRun DateTime? @map("last_run")
+  nextRun DateTime  @map("next_run")
+  enabled Boolean   @default(true)
+
   // Timestamps
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   @@index([tenantId, enabled, nextRun])
   @@index([userId])
   @@index([type])
@@ -2367,39 +2365,134 @@ model ScheduledReport {
 // =============================================================================
 
 model ExchangeRate {
-  id            String   @id @default(cuid())
-  fromCurrency  String   @map("from_currency")
-  toCurrency    String   @map("to_currency")
-  rate          Decimal  @db.Decimal(10, 6)
-  timestamp     DateTime @default(now())
-  source        String   @default("exchangerate-api.io")
-  
+  id           String   @id @default(cuid())
+  fromCurrency String   @map("from_currency")
+  toCurrency   String   @map("to_currency")
+  rate         Decimal  @db.Decimal(10, 6)
+  timestamp    DateTime @default(now())
+  source       String   @default("exchangerate-api.io")
+
   @@index([fromCurrency, toCurrency, timestamp])
   @@index([timestamp])
   @@map("exchange_rates")
 }
 
 model CurrencyVolatilityAlert {
-  id              String   @id @default(cuid())
-  tenantId        String   @map("tenant_id")
-  currency        String
-  baseCurrency    String   @map("base_currency")
-  changePercent   Decimal  @db.Decimal(5, 2) @map("change_percent")
-  previousRate    Decimal  @db.Decimal(10, 6) @map("previous_rate")
-  currentRate     Decimal  @db.Decimal(10, 6) @map("current_rate")
-  affectedRates   Int      @default(0) @map("affected_rates")
-  
+  id            String  @id @default(cuid())
+  tenantId      String  @map("tenant_id")
+  currency      String
+  baseCurrency  String  @map("base_currency")
+  changePercent Decimal @map("change_percent") @db.Decimal(5, 2)
+  previousRate  Decimal @map("previous_rate") @db.Decimal(10, 6)
+  currentRate   Decimal @map("current_rate") @db.Decimal(10, 6)
+  affectedRates Int     @default(0) @map("affected_rates")
+
   // Status
-  acknowledged    Boolean  @default(false)
-  acknowledgedBy  String?  @map("acknowledged_by")
-  acknowledgedAt  DateTime? @map("acknowledged_at")
-  
+  acknowledged   Boolean   @default(false)
+  acknowledgedBy String?   @map("acknowledged_by")
+  acknowledgedAt DateTime? @map("acknowledged_at")
+
   // Timestamps
-  detectedAt      DateTime @default(now()) @map("detected_at")
-  
+  detectedAt DateTime @default(now()) @map("detected_at")
+
   @@index([tenantId, acknowledged])
   @@index([currency])
   @@index([detectedAt])
   @@index([changePercent(sort: Desc)])
   @@map("currency_volatility_alerts")
+}
+
+model NegotiationScenario {
+  id          String  @id @default(cuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String?
+
+  // Scenario parameters
+  targetRate        Decimal @map("target_rate") @db.Decimal(10, 2)
+  currentRate       Decimal @map("current_rate") @db.Decimal(10, 2)
+  savings           Decimal @db.Decimal(15, 2)
+  savingsPercentage Decimal @map("savings_percentage") @db.Decimal(5, 2)
+
+  // Volume and cost
+  annualVolume Int     @map("annual_volume")
+  annualCost   Decimal @map("annual_cost") @db.Decimal(15, 2)
+
+  // Associated data
+  rateCardId String? @map("rate_card_id")
+  supplierId String? @map("supplier_id")
+
+  // Status
+  status    String @default("DRAFT") // DRAFT, ACTIVE, IMPLEMENTED, REJECTED
+  createdBy String @map("created_by")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([rateCardId])
+  @@map("negotiation_scenarios")
+}
+
+// Contract Collaboration Models
+
+model ContractComment {
+  id          String   @id @default(cuid())
+  contractId  String   @map("contract_id")
+  tenantId    String   @map("tenant_id")
+  userId      String   @map("user_id")
+  parentId    String?  @map("parent_id")
+  
+  // Comment content
+  content     String   @db.Text
+  mentions    String[] // Array of user IDs mentioned with @
+  
+  // Status
+  isResolved  Boolean  @default(false) @map("is_resolved")
+  resolvedBy  String?  @map("resolved_by")
+  resolvedAt  DateTime? @map("resolved_at")
+  
+  // Engagement
+  reactions   Json     @default("[]") // Array of { emoji, userId, userName }
+  likes       Int      @default(0)
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  parent      ContractComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     ContractComment[] @relation("CommentReplies")
+  
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@map("contract_comments")
+}
+
+model ContractActivity {
+  id          String   @id @default(cuid())
+  contractId  String   @map("contract_id")
+  tenantId    String   @map("tenant_id")
+  userId      String   @map("user_id")
+  
+  // Activity details
+  type        String   // upload, edit, comment, approval, rejection, share, download, workflow, metadata
+  action      String   // Human-readable action description
+  details     String?  @db.Text
+  metadata    Json?    // Type-specific data
+  
+  // Timestamps
+  timestamp   DateTime @default(now())
+  
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([type])
+  @@index([timestamp(sort: Desc)])
+  @@map("contract_activities")
 }

@@ -75,13 +75,13 @@ export class ArtifactChangePropagationService {
       await this.propagateArtifactChange(payload.data);
     });
 
-    // Listen for bulk updates
-    eventBus.on(Events.ARTIFACT_BULK_UPDATED, async (payload) => {
+    // Listen for bulk updates (using ARTIFACT_UPDATED)
+    eventBus.on(Events.ARTIFACT_UPDATED, async (payload) => {
       await this.propagateArtifactChange(payload.data);
     });
 
     // Listen for rate card updates
-    eventBus.on(Events.RATE_CARD_ENTRY_UPDATED, async (payload) => {
+    eventBus.on(Events.RATE_CARD_UPDATED, async (payload) => {
       await this.propagateArtifactChange(payload.data);
     });
 
@@ -99,7 +99,7 @@ export class ArtifactChangePropagationService {
       );
 
       // Publish propagation started event
-      await eventBus.publish(Events.ARTIFACT_PROPAGATION_STARTED, {
+      await eventBus.publish(Events.PROPAGATION_STARTED, {
         artifactId: event.artifactId,
         contractId: event.contractId,
         tenantId: event.tenantId,
@@ -130,7 +130,7 @@ export class ArtifactChangePropagationService {
       await this.logPropagation(event, propagationResults);
 
       // 7. Publish completion event
-      await eventBus.publish(Events.ARTIFACT_PROPAGATION_COMPLETED, {
+      await eventBus.publish(Events.PROPAGATION_COMPLETED, {
         artifactId: event.artifactId,
         contractId: event.contractId,
         tenantId: event.tenantId,
@@ -147,7 +147,7 @@ export class ArtifactChangePropagationService {
       logger.error({ error, event }, 'Artifact change propagation failed');
       
       // Publish failure event
-      await eventBus.publish(Events.ARTIFACT_PROPAGATION_FAILED, {
+      await eventBus.publish(Events.PROCESSING_FAILED, {
         artifactId: event.artifactId,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -373,7 +373,7 @@ export class ArtifactChangePropagationService {
           where: { id: latestEdit.id },
           data: {
             affectedEngines: results.map(r => r.engine),
-            propagationResults: results,
+            propagationResults: results as any, // Cast to any to handle Prisma JSON type
           },
         });
       }

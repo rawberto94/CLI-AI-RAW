@@ -116,11 +116,117 @@ export const contractService = {
       };
     }
   },
-};
 
-/**
- * Artifact Service Wrapper
- */
+  async queryContracts(query: any) {
+    try {
+      const { tenantId, searchQuery, filters, limit = 20, offset = 0 } = query;
+
+      const where: any = { tenantId };
+      
+      if (filters) {
+        if (filters.contractType) where.contractType = filters.contractType;
+        if (filters.status) where.status = filters.status;
+        if (filters.clientId) where.clientId = filters.clientId;
+        if (filters.supplierId) where.supplierId = filters.supplierId;
+        if (filters.startDate || filters.endDate) {
+          where.effectiveDate = {};
+          if (filters.startDate) where.effectiveDate.gte = filters.startDate;
+          if (filters.endDate) where.effectiveDate.lte = filters.endDate;
+        }
+      }
+
+      if (searchQuery) {
+        where.OR = [
+          { fileName: { contains: searchQuery, mode: 'insensitive' } },
+          { contractType: { contains: searchQuery, mode: 'insensitive' } },
+        ];
+      }
+
+      const contracts = await prisma.contract.findMany({
+        where,
+        take: limit,
+        skip: offset,
+        orderBy: { createdAt: "desc" },
+      });
+
+      const total = await prisma.contract.count({ where });
+
+      return {
+        success: true,
+        data: contracts,
+        pagination: {
+          total,
+          limit,
+          offset,
+          hasMore: offset + limit < total,
+        },
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "QUERY_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: [],
+      };
+    }
+  },
+
+  async createContract(data: any) {
+    try {
+      const contract = await prisma.contract.create({
+        data: {
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        data: contract,
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "CREATE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: null,
+      };
+    }
+  },
+
+  async deleteContract(contractId: string, tenantId: string) {
+    try {
+      await prisma.contract.delete({
+        where: { 
+          id: contractId,
+          tenantId: tenantId 
+        },
+      });
+
+      return {
+        success: true,
+        data: { deleted: true },
+        error: null,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: "DELETE_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+        data: null,
+      };
+    }
+  },
+};
 export const artifactService = {
   async getContractArtifacts(contractId: string, tenantId: string) {
     try {
@@ -256,6 +362,31 @@ export const taxonomyService = {
         { id: "4", name: "Consulting", slug: "consulting" },
         { id: "5", name: "Other", slug: "other" },
       ],
+      error: null,
+    };
+  },
+  async getContractMetadata(contractId: string, tenantId: string) {
+    return {
+      success: true,
+      data: {
+        contractId,
+        tenantId,
+        metadata: {},
+        tags: [],
+        customFields: {},
+      },
+      error: null,
+    };
+  },
+  async updateContractMetadata(contractId: string, tenantId: string, metadata: any) {
+    return {
+      success: true,
+      data: {
+        contractId,
+        tenantId,
+        metadata,
+        updatedAt: new Date().toISOString(),
+      },
       error: null,
     };
   },

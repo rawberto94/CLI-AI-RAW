@@ -48,7 +48,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
     const rateCard = await prisma.rateCardEntry.findUnique({
       where: { id: rateCardId },
       include: {
-        benchmarkSnapshot: {
+        benchmarkSnapshots: {
           take: 1,
           orderBy: { snapshotDate: 'desc' },
         },
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
       );
     }
 
-    const benchmark = rateCard.benchmarkSnapshot[0];
+    const benchmark = rateCard.benchmarkSnapshots[0];
 
     if (!benchmark) {
       // No benchmark exists, calculate one

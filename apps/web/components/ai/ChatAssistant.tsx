@@ -295,3 +295,6 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
     </Card>
   )
 }
+
+// Auto-generated default export
+export default ChatAssistant;

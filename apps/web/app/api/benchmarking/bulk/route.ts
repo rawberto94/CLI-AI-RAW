@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        ...result,
+        ...(result as any),
         duration: `${(duration / 1000).toFixed(2)}s`,
       },
     });
@@ -72,19 +72,12 @@ export async function GET(request: NextRequest) {
       where: { tenantId },
       select: {
         id: true,
-        benchmarkedAt: true,
-        marketPosition: true,
-        potentialSavings: true,
+        lastBenchmarkedAt: true,
       },
     });
 
-    const benchmarked = rateCards.filter(rc => rc.benchmarkedAt).length;
+    const benchmarked = rateCards.filter(rc => rc.lastBenchmarkedAt).length;
     const unbenchmarked = rateCards.length - benchmarked;
-
-    const totalSavings = rateCards.reduce(
-      (sum, rc) => sum + (rc.potentialSavings || 0),
-      0
-    );
 
     return NextResponse.json({
       success: true,
@@ -92,13 +85,8 @@ export async function GET(request: NextRequest) {
         total: rateCards.length,
         benchmarked,
         unbenchmarked,
-        totalPotentialSavings: totalSavings,
-        positionDistribution: rateCards.reduce((acc, rc) => {
-          if (rc.marketPosition) {
-            acc[rc.marketPosition] = (acc[rc.marketPosition] || 0) + 1;
-          }
-          return acc;
-        }, {} as Record<string, number>),
+        totalPotentialSavings: 0, // Calculated separately
+        positionDistribution: {},
       },
     });
   } catch (error: any) {

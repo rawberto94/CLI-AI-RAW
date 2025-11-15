@@ -33,7 +33,7 @@ export const paginationSchema = z.object({
 // CONTRACT SCHEMAS
 // =========================================================================
 
-export const createContractSchema = z.object({
+const baseContractSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
   supplierId: uuidSchema,
   startDate: dateSchema,
@@ -43,7 +43,9 @@ export const createContractSchema = z.object({
   status: z.enum(['draft', 'active', 'expired', 'terminated']).default('draft'),
   description: z.string().max(2000, 'Description too long').optional(),
   tenantId: uuidSchema,
-}).refine(
+});
+
+export const createContractSchema = baseContractSchema.refine(
   (data) => new Date(data.endDate) > new Date(data.startDate),
   {
     message: 'End date must be after start date',
@@ -51,7 +53,7 @@ export const createContractSchema = z.object({
   }
 );
 
-export const updateContractSchema = createContractSchema.partial().extend({
+export const updateContractSchema = baseContractSchema.partial().extend({
   id: uuidSchema,
 });
 
@@ -68,7 +70,7 @@ export const contractQuerySchema = z.object({
 // RATE CARD SCHEMAS
 // =========================================================================
 
-export const createRateCardSchema = z.object({
+const baseRateCardSchema = z.object({
   role: z.string().min(1, 'Role is required').max(100, 'Role too long'),
   rate: positiveNumberSchema,
   currency: z.string().length(3, 'Currency must be 3-letter code'),
@@ -80,7 +82,9 @@ export const createRateCardSchema = z.object({
   effectiveDate: dateSchema,
   expiryDate: dateSchema.optional(),
   tenantId: uuidSchema,
-}).refine(
+});
+
+export const createRateCardSchema = baseRateCardSchema.refine(
   (data) => !data.expiryDate || new Date(data.expiryDate) > new Date(data.effectiveDate),
   {
     message: 'Expiry date must be after effective date',
@@ -88,7 +92,7 @@ export const createRateCardSchema = z.object({
   }
 );
 
-export const updateRateCardSchema = createRateCardSchema.partial().extend({
+export const updateRateCardSchema = baseRateCardSchema.partial().extend({
   id: uuidSchema,
 });
 

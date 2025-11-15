@@ -1,71 +1,109 @@
 /**
- * Contract Processing Status API
- * GET /api/contracts/:id/status - Get current processing status and progress
+ * Contract Status API
+ * GET /api/contracts/[id]/status
+ * 
+ * Returns real-time status of contract processing for the ArtifactGenerationTracker component.
+ * Polls this endpoint to track upload → OCR → artifact generation progress.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import {
-  ensureProcessingJob,
-  getProcessingJob,
-} from "@/lib/contract-processing";
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params;
-    const contractId = params?.id;
+    const contractId = params.id;
 
     if (!contractId) {
       return NextResponse.json(
-        { error: "Contract ID is required" },
+        { error: 'Contract ID is required' },
         { status: 400 }
       );
     }
 
-    const job = getProcessingJob(contractId) ?? ensureProcessingJob(contractId);
-
-    const now = Date.now();
-    const startedAtMs = job.startedAt?.getTime?.() ?? now;
-    const completedAtMs = job.completedAt?.getTime?.();
-    const duration = completedAtMs
-      ? completedAtMs - startedAtMs
-      : Math.max(0, now - startedAtMs);
-
-    const estimatedTimeRemaining =
-      job.status === "PROCESSING"
-        ? Math.max(
-            0,
-            Math.round(((100 - job.progress) / Math.max(job.progress, 1)) * 300)
-          )
-        : 0;
-
-    return NextResponse.json(
-      {
-        contractId: job.contractId,
-        jobId: job.id,
-        status: job.status,
-        progress: job.progress,
-        currentStep: job.currentStep,
-        error: job.error,
-        startedAt: job.startedAt,
-        completedAt: job.completedAt,
-        duration,
-        estimatedTimeRemaining,
-        isProcessing: job.status === "PROCESSING",
-        isCompleted: job.status === "COMPLETED",
-        isFailed: job.status === "FAILED",
-        canRetry: job.status === "FAILED" || job.status === "COMPLETED",
+    // Fetch contract with artifacts
+    const contract = await prisma.contract.findUnique({
+      where: { id: contractId },
+      include: {
+        artifacts: {
+          select: {
+            type: true,
+            confidence: true,
+          },
+        },
       },
-      { status: 200 }
-    );
+    });
+
+    if (!contract) {
+      return NextResponse.json(
+        { error: 'Contract not found' },
+        { status: 404 }
+      );
+    }
+
+    // Count artifacts by type
+    const artifactTypes = contract.artifacts.map(a => a.type.toLowerCase());
+    const hasOverview = artifactTypes.includes('overview');
+    const hasFinancial = artifactTypes.includes('financial');
+    const hasRisk = artifactTypes.includes('risk');
+    const hasCompliance = artifactTypes.includes('compliance');
+    const hasClauses = artifactTypes.includes('clauses');
+
+    const artifactsGenerated = contract.artifacts.length;
+    const totalArtifacts = 5;
+
+    // Determine current processing step
+    let currentStep: 'upload' | 'ocr' | 'artifacts' | 'complete' = 'upload';
+    let progress = 0;
+
+    if (contract.status === 'UPLOADED') {
+      currentStep = 'upload';
+      progress = 25;
+    } else if (contract.status === 'PROCESSING') {
+      if (artifactsGenerated === 0) {
+        currentStep = 'ocr';
+        progress = 50;
+      } else {
+        currentStep = 'artifacts';
+        // Progress from 50% to 90% based on artifacts generated
+        progress = 50 + (artifactsGenerated / totalArtifacts) * 40;
+      }
+    } else if (contract.status === 'COMPLETED') {
+      currentStep = 'complete';
+      progress = 100;
+    } else if (contract.status === 'FAILED') {
+      progress = 0;
+    }
+
+    return NextResponse.json({
+      contractId: contract.id,
+      status: contract.status,
+      currentStep,
+      progress: Math.round(progress),
+      fileName: contract.fileName,
+      fileSize: Number(contract.fileSize),
+      mimeType: contract.mimeType,
+      artifactsGenerated,
+      totalArtifacts,
+      artifactTypes,
+      hasOverview,
+      hasFinancial,
+      hasRisk,
+      hasCompliance,
+      hasClauses,
+      createdAt: contract.createdAt,
+      updatedAt: contract.updatedAt,
+      error: contract.status === 'FAILED' ? 'Processing failed' : null,
+    });
   } catch (error) {
-    console.error("Error fetching contract status:", error);
+    console.error('Error fetching contract status:', error);
     return NextResponse.json(
       {
-        error: "Failed to fetch contract status",
-        details: error instanceof Error ? error.message : "Unknown error",
+        error: 'Failed to fetch contract status',
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     );

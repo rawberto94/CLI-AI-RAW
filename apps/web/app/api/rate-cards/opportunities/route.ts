@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { SavingsOpportunityService } from 'data-orchestration/services';
+import { withCache, CacheKeys } from '@/lib/cache';
 
 const prisma = new PrismaClient();
 
@@ -28,19 +29,29 @@ export async function GET(request: NextRequest) {
       where.annualSavingsPotential = { gte: parseFloat(minSavings) };
     }
 
-    const opportunities = await prisma.rateSavingsOpportunity.findMany({
-      where,
-      include: {
-        rateCardEntry: {
-          include: {
-            supplier: true,
+    // Cache key based on filters
+    const cacheKey = CacheKeys.rateCardOpportunities();
+    const filters = { tenantId, status, category, minSavings, sortBy, sortOrder };
+    const fullCacheKey = `${cacheKey}:${JSON.stringify(filters)}`;
+
+    // Wrap expensive database query with caching (10 minutes)
+    const opportunities = await withCache(
+      fullCacheKey,
+      async () => prisma.rateSavingsOpportunity.findMany({
+        where,
+        include: {
+          rateCardEntry: {
+            include: {
+              supplier: true,
+            },
           },
         },
-      },
-      orderBy: {
-        [sortBy]: sortOrder,
-      },
-    });
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+      }),
+      { ttl: 600 } // Cache for 10 minutes
+    );
 
     // Calculate summary statistics
     const summary = {
@@ -68,7 +79,7 @@ export async function GET(request: NextRequest) {
         annualSavings: parseFloat(opp.annualSavingsPotential.toString()),
         savingsPercentage: parseFloat(opp.savingsPercentage.toString()),
         confidence: parseFloat(opp.confidence.toString()),
-        actualSavings: opp.actualSavings ? parseFloat(opp.actualSavings.toString()) : null,
+        actualSavings: (opp as any).actualSavings ? parseFloat((opp as any).actualSavings.toString()) : null,
       })),
       summary,
     });

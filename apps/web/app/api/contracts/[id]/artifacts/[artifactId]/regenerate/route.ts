@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/packages/clients/db';
-import { generateRealArtifact } from '@/lib/real-artifact-generator';
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { chunkText, embedChunks } from "clients-rag";
+import { AIArtifactGeneratorService } from "data-orchestration/services";
+
+const aiArtifactGenerator = AIArtifactGeneratorService.getInstance();
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/regenerate
@@ -66,13 +69,8 @@ export async function POST(
     await prisma.artifact.update({
       where: { id: artifactId },
       data: {
-        status: 'PROCESSING',
-        content: null,
-        metadata: {
-          ...((artifact.metadata as any) || {}),
-          regeneratedAt: new Date().toISOString(),
-          previousStatus: artifact.status
-        }
+        validationStatus: 'PROCESSING',
+        lastEditedAt: new Date()
       }
     });
 
@@ -114,23 +112,29 @@ async function regenerateArtifactAsync(
 
     const startTime = Date.now();
 
-    // Generate new artifact content using the same generator
-    const newContent = await generateRealArtifact(rawText, artifactType);
+    // Generate new artifact content using AI generator
+    const generateResult = await (aiArtifactGenerator.generateArtifact as any)(
+      contractId,
+      tenantId,
+      artifactType,
+      { rawText }
+    ) as any; // Cast result to any for flexible shape handling
 
+    if (!generateResult.success || !generateResult.artifact) {
+      throw new Error(generateResult.error || 'Failed to generate artifact');
+    }
+
+    const newContent = generateResult.artifact.data;
     const processingTime = Date.now() - startTime;
 
     // Update artifact with new content
     await prisma.artifact.update({
       where: { id: artifactId },
       data: {
-        status: 'COMPLETED',
-        content: typeof newContent === 'string' ? newContent : JSON.stringify(newContent),
-        metadata: {
-          regenerated: true,
-          regeneratedAt: new Date().toISOString(),
-          processingTime,
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
-        },
+        validationStatus: 'COMPLETED',
+        data: typeof newContent === 'string' ? JSON.parse(newContent) : newContent,
+        processingTime,
+        lastEditedAt: new Date(),
         updatedAt: new Date()
       }
     });
@@ -144,18 +148,18 @@ async function regenerateArtifactAsync(
     await prisma.artifact.update({
       where: { id: artifactId },
       data: {
-        status: 'FAILED',
-        metadata: {
+        validationStatus: 'FAILED',
+        validationIssues: [{
           error: error instanceof Error ? error.message : 'Unknown error',
           failedAt: new Date().toISOString()
-        }
+        }],
+        lastEditedAt: new Date()
       }
     });
   } finally {
     await prisma.$disconnect();
   }
 }
-
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]/regenerate
  * 
@@ -174,8 +178,8 @@ export async function GET(
       select: {
         id: true,
         type: true,
-        status: true,
-        metadata: true,
+        validationStatus: true,
+        data: true,
         updatedAt: true
       }
     });
@@ -190,8 +194,8 @@ export async function GET(
     return NextResponse.json({
       artifactId: artifact.id,
       type: artifact.type,
-      status: artifact.status,
-      metadata: artifact.metadata,
+      status: artifact.validationStatus,
+      data: artifact.data,
       updatedAt: artifact.updatedAt
     });
 

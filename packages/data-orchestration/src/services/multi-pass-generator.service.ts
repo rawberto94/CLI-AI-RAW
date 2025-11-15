@@ -190,7 +190,7 @@ export class MultiPassGeneratorService {
     const data = this.extractWithRules(artifactType, contractText, improvements);
 
     // Validate to get completeness
-    const validation = artifactValidationService.validateArtifact(artifactType, data);
+    const validation = await artifactValidationService.validateArtifact(artifactType, data);
 
     return {
       passNumber: 1,
@@ -271,13 +271,13 @@ export class MultiPassGeneratorService {
     const improvements: string[] = [];
 
     // Validate current data
-    const validation = artifactValidationService.validateArtifact(artifactType, pass2Data);
+    const validation = await artifactValidationService.validateArtifact(artifactType, pass2Data);
 
     let finalData = pass2Data;
 
     // Auto-fix issues
     if (!validation.valid && validation.canAutoFix) {
-      const fixResult = artifactValidationService.autoFix(pass2Data, validation.issues);
+      const fixResult = await artifactValidationService.autoFix(pass2Data, validation.issues);
       if (fixResult.fixed) {
         finalData = fixResult.artifact;
         improvements.push(`Auto-fixed ${fixResult.changes.length} issues`);
@@ -307,7 +307,7 @@ export class MultiPassGeneratorService {
     }
 
     // Final validation
-    const finalValidation = artifactValidationService.validateArtifact(artifactType, finalData);
+    const finalValidation = await artifactValidationService.validateArtifact(artifactType, finalData);
 
     return {
       passNumber: 3,

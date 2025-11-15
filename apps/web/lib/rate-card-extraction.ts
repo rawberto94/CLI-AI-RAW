@@ -3,8 +3,10 @@
  * Extracts rate cards using AI and saves them to the database
  */
 
-import { openai } from '@/lib/openai-client';
-import { prisma } from '@/packages/clients/db';
+import OpenAI from 'openai';
+import { prisma } from '@/lib/prisma';
+
+const openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] || '' });
 
 interface ExtractedRate {
   role: string;

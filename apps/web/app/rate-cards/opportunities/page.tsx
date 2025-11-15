@@ -86,7 +86,7 @@ export default function OpportunitiesPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Rate cards that exceed their baseline thresholds, indicating potential for cost reduction
               </p>
-              <OpportunitiesList filter={{ type: 'above-baseline', client: clientFilter }} />
+              <OpportunitiesList />
             </CardContent>
           </Card>
         </TabsContent>
@@ -103,7 +103,7 @@ export default function OpportunitiesPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Rates significantly above market median that present negotiation opportunities
               </p>
-              <OpportunitiesList filter={{ type: 'negotiation', client: clientFilter }} />
+              <OpportunitiesList />
             </CardContent>
           </Card>
         </TabsContent>
@@ -120,7 +120,7 @@ export default function OpportunitiesPage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Upcoming MSA renewals in the next 90 days that require attention
               </p>
-              <OpportunitiesList filter={{ type: 'msa-renewal', client: clientFilter }} />
+              <OpportunitiesList />
             </CardContent>
           </Card>
         </TabsContent>

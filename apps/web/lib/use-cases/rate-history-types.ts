@@ -70,9 +70,15 @@ export interface NegotiationScenario {
   name: string;
   description: string;
   targetRate: number;
+  currentRate?: number;
+  savings: number;
+  savingsPercentage?: number;
+  annualVolume?: number;
+  annualCost?: number;
   probability: number; // 0-1
   expectedSavings: number;
   riskLevel: "low" | "medium" | "high";
   strategy: string;
   keyTalkingPoints: string[];
+  notes?: string;
 }

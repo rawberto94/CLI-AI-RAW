@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { unlink } from "fs/promises";
 import { PrismaClient } from "@prisma/client";
 import { existsSync } from "fs";
 import { readFile, writeFile } from "fs/promises";

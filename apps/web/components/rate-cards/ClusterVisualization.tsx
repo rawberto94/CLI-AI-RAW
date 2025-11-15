@@ -316,7 +316,7 @@ export function ClusterVisualization({
                               </div>
                               <div className="text-right">
                                 <div className="text-sm font-bold text-green-600">
-                                  ${Math.round(opp.annualSavings).toLocaleString()}
+                                  ${Math.round((opp as any).annualSavings || 0).toLocaleString()}
                                 </div>
                                 <Badge className={getRiskColor(opp.riskLevel)} variant="outline">
                                   {opp.riskLevel}

@@ -14,6 +14,7 @@ interface Opportunity {
   currentAnnualCost: number;
   projectedAnnualCost: number;
   annualSavings: number;
+  annualSavingsPotential: number;
   savingsPercentage: number;
   effort: string;
   risk: string;

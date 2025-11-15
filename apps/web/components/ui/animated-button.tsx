@@ -52,6 +52,7 @@ export function AnimatedButton({
 
   return (
     <motion.button
+      {...(props as any)}
       whileHover={!isDisabled ? { scale: 1.02 } : {}}
       whileTap={!isDisabled ? { scale: 0.98 } : {}}
       transition={{
@@ -67,7 +68,6 @@ export function AnimatedButton({
         ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
         ${className}
       `}
-      {...props}
     >
       {loading && (
         <motion.div
@@ -122,6 +122,7 @@ export function IconButton({
 
   return (
     <motion.button
+      {...(props as any)}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
       transition={{
@@ -155,10 +156,11 @@ export function ButtonGroup({ children, className = '' }: { children: React.Reac
         
         const isFirst = index === 0;
         const isLast = index === React.Children.count(children) - 1;
+        const childProps = child.props as any;
         
         return React.cloneElement(child, {
           className: `
-            ${child.props.className || ''}
+            ${childProps.className || ''}
             ${!isFirst ? '-ml-px' : ''}
             ${!isFirst && !isLast ? 'rounded-none' : ''}
             ${isFirst ? 'rounded-r-none' : ''}

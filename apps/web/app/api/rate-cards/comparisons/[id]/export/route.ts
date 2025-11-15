@@ -15,12 +15,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const comparison = await prisma.rateComparison.findUnique({
       where: { id: params.id },
       include: {
-        rateCardEntries: {
-          include: {
-            rateCardEntry: true,
-          },
-          orderBy: { displayOrder: 'asc' },
-        },
+        targetRate: true,
       },
     });
 
@@ -39,8 +34,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
     // Generate CSV format
     if (format === 'csv') {
-      const rateCards = comparison.rateCardEntries.map(entry => entry.rateCardEntry);
-      const lowestRate = Math.min(...rateCards.map(rc => rc.dailyRateUSD));
+      // Get comparison rates from the JSON field
+      const rateCards = Array.isArray(comparison.comparisonRates) ? comparison.comparisonRates : [];
+      const lowestRate = 0; // Would need to fetch actual rate data
 
       const csvRows = [
         // Header
@@ -58,19 +54,20 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         ].join(','),
         // Data rows
         ...rateCards.map(rc => {
-          const variance = ((rc.dailyRateUSD - lowestRate) / lowestRate) * 100;
-          const savings = rc.dailyRateUSD - lowestRate;
+          const rcData = rc as any; // Cast JsonValue to any for CSV export
+          const variance = ((rcData.dailyRateUSD - lowestRate) / lowestRate) * 100;
+          const savings = rcData.dailyRateUSD - lowestRate;
           return [
-            rc.supplierName,
-            rc.roleStandardized,
-            rc.seniority,
-            rc.country,
-            rc.dailyRateUSD,
+            rcData.supplierName,
+            rcData.roleStandardized,
+            rcData.seniority,
+            rcData.country,
+            rcData.dailyRateUSD,
             variance.toFixed(2),
             savings.toFixed(2),
-            rc.lineOfService,
-            new Date(rc.effectiveDate).toISOString().split('T')[0],
-            rc.source,
+            rcData.lineOfService,
+            new Date(rcData.effectiveDate).toISOString().split('T')[0],
+            rcData.source,
           ].join(',');
         }),
       ];

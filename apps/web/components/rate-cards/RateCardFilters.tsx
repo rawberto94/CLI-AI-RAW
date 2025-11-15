@@ -291,7 +291,6 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
                   mode="single"
                   selected={filters.dateFrom}
                   onSelect={(date) => updateFilter('dateFrom', date)}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
@@ -308,7 +307,6 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
                   mode="single"
                   selected={filters.dateTo}
                   onSelect={(date) => updateFilter('dateTo', date)}
-                  initialFocus
                 />
               </PopoverContent>
             </Popover>
@@ -448,3 +446,6 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
     </Card>
   );
 }
+
+// Auto-generated default export
+export default RateCardFilters;

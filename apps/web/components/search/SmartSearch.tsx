@@ -363,3 +363,6 @@ export function SmartSearch() {
     </div>
   )
 }
+
+// Auto-generated default export
+export default SmartSearch;

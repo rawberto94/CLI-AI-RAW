@@ -392,12 +392,11 @@ export default function EnhancedUploadZone({
                         </div>
                         <div className="ml-auto">
                             <StatusIndicator
-                                status="online"
-                                label="AI Ready"
-                                showPulse
-                                size="md"
+                                status="success"
                                 className="text-white"
-                            />
+                            >
+                                AI Ready
+                            </StatusIndicator>
                         </div>
                     </CardTitle>
                 </CardHeader>
@@ -560,9 +559,7 @@ export default function EnhancedUploadZone({
                             {files.map((file) => (
                                 <Card
                                     key={file.id}
-                                    variant="interactive"
-                                    hover
-                                    className="overflow-hidden"
+                                    className="overflow-hidden hover:shadow-lg transition-shadow"
                                 >
                                     <CardContent className="p-0">
                                         <div className="flex items-center gap-4 p-4">
@@ -792,7 +789,6 @@ export default function EnhancedUploadZone({
             {/* Enhanced Upload Summary */}
             {files.length > 0 && (
                 <Card
-                    variant="gradient"
                     className="shadow-xl border-0 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50"
                 >
                     <CardContent className="p-6">

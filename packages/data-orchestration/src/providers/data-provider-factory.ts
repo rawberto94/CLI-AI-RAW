@@ -1,32 +1,36 @@
-import { DataProvider, DataProviderType } from '../types/data-provider.types';
+import { DataSourceMetadata, DataProviderResult } from '../types/data-provider.types';
 
 class DataProviderFactory {
-  createProvider(type: DataProviderType): DataProvider {
+  createProvider(type: string) {
     return {
       name: type,
-      fetch: async (query: any) => {
+      fetch: async (query: any): Promise<DataProviderResult<any>> => {
         return { 
           data: [], 
-          success: true,
           metadata: {
-            source: type,
+            source: 'mock',
             timestamp: new Date().toISOString(),
             count: 0,
-          },
+            mode: 'live',
+            lastUpdated: new Date().toISOString(),
+            confidence: 1.0,
+          } as DataSourceMetadata,
         };
       },
     };
   }
 
-  async getData(type: string, query: any, mode: any) {
+  async getData(type: string, query: any, mode: any): Promise<DataProviderResult<any>> {
     return { 
       data: [], 
-      success: true,
       metadata: {
-        source: type,
+        source: 'mock',
         timestamp: new Date().toISOString(),
         count: 0,
-      },
+        mode: mode || 'live',
+        lastUpdated: new Date().toISOString(),
+        confidence: 1.0,
+      } as DataSourceMetadata,
     };
   }
 }

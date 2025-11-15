@@ -16,7 +16,15 @@ export default function RateCardEntriesPage() {
   const { dataMode } = useDataMode();
   const [rateCards, setRateCards] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState<{
+    clientName?: string;
+    supplierName?: string;
+    role?: string;
+    seniority?: string;
+    country?: string;
+    isBaseline?: boolean;
+    isNegotiated?: boolean;
+  }>({});
   const [matchCount, setMatchCount] = useState(0);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

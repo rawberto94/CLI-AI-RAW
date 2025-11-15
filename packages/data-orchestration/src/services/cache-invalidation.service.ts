@@ -3,8 +3,17 @@
  * Tag-based cache invalidation with intelligent dependency tracking
  */
 
-import { multiLevelCacheService } from './multi-level-cache.service';
+import { MultiLevelCacheService } from './multi-level-cache.service';
 import { eventBus, Events } from '../events/event-bus';
+
+// Lazy singleton - instantiate only when Redis is configured
+let multiLevelCacheService: MultiLevelCacheService | null = null;
+const getMultiLevelCache = () => {
+  if (!multiLevelCacheService && process.env['REDIS_URL']) {
+    multiLevelCacheService = new MultiLevelCacheService();
+  }
+  return multiLevelCacheService;
+};
 
 export interface CacheTag {
   key: string;
@@ -25,7 +34,7 @@ export class CacheInvalidationService {
    */
   async setWithTags(key: string, value: any, tags: string[], ttl?: number): Promise<void> {
     // Store in cache
-    await multiLevelCacheService.set(key, value, ttl);
+    await getMultiLevelCache()?.set(key, value, ttl);
 
     // Register tags
     this.registerTags(key, tags);
@@ -82,7 +91,7 @@ export class CacheInvalidationService {
    */
   private async invalidateKey(key: string): Promise<void> {
     // Remove from cache
-    await multiLevelCacheService.delete(key);
+    await getMultiLevelCache()?.delete(key);
 
     // Clean up tag registry
     const tags = this.keyTags.get(key);
@@ -104,7 +113,7 @@ export class CacheInvalidationService {
    * Invalidate all cache
    */
   async invalidateAll(): Promise<void> {
-    await multiLevelCacheService.clear();
+    await getMultiLevelCache()?.clear();
     this.tagRegistry.clear();
     this.keyTags.clear();
     console.log('[CacheInvalidation] Cleared all cache');
@@ -120,7 +129,7 @@ export class CacheInvalidationService {
     ttl?: number
   ): Promise<any> {
     // Try to get from cache
-    const cached = await multiLevelCacheService.get(key);
+    const cached = await getMultiLevelCache()?.get(key);
     if (cached !== null) {
       return cached;
     }

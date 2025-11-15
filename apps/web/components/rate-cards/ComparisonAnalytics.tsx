@@ -43,6 +43,7 @@ interface SavingsAnalysis {
   bestRate: number;
   dailySavings: number;
   annualSavings: number;
+  annualSavingsPotential: number;
   savingsPercentage: number;
   volumeCommitted?: number;
 }
@@ -63,6 +64,7 @@ interface SwitchingRecommendation {
   toSupplier: string;
   potentialSavings: number;
   annualSavings: number;
+  annualSavingsPotential: number;
   confidence: 'HIGH' | 'MEDIUM' | 'LOW';
   risks: string[];
   benefits: string[];
@@ -102,8 +104,9 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
           bestRate,
           dailySavings,
           annualSavings,
+          annualSavingsPotential: annualSavings,
           savingsPercentage,
-          volumeCommitted: rc.volumeCommitted,
+          volumeCommitted: rc.volumeCommitted || 220,
         };
       });
       setSavingsAnalysis(savings);
@@ -187,6 +190,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
             toSupplier: bestRateCard.supplierName,
             potentialSavings: savings,
             annualSavings,
+            annualSavingsPotential: annualSavings,
             confidence,
             risks,
             benefits,

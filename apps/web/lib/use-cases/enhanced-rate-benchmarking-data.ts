@@ -466,8 +466,13 @@ export function generateRateData(): RoleRate[] {
               supplierId: supplier.id,
               hourlyRate,
               dailyRate: hourlyRate * 8,
-              effectiveDate: new Date('2024-01-01')
-            })
+              effectiveDate: new Date('2024-01-01'),
+              chainIQBenchmark: 0,
+              chainIQPercentile: 0,
+              industryAverage: 0,
+              totalAnnualCost: 0,
+              variance: 0,
+            } as any)
           })
         })
       })
@@ -628,10 +633,10 @@ function generateTrends(currentRate: number): BenchmarkStatistics['trends'] {
     const increase = (currentRate - rate) / (months.length - index) + (Math.random() - 0.5) * 2
     rate += increase
 
-    const prevRate = ((trends[index - 1]?.value) != null) || rate - 1
+    const prevRate = (trends[index - 1]?.value as number) || (rate - 1)
     const direction: 'up' | 'down' | 'stable' = 
-      rate > prevRate + 1 ? 'up' :
-      rate < prevRate - 1 ? 'down' : 'stable'
+      rate > (prevRate as number) + 1 ? 'up' :
+      rate < (prevRate as number) - 1 ? 'down' : 'stable'
 
     trends.push({
       month,

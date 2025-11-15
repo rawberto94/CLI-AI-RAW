@@ -98,19 +98,19 @@ export function FinancialTabContent({
                   </tr>
                 </thead>
                 <tbody>
-                  {financial.rateCards[0]?.rates?.map(
+                  {financial.rateCards.map(
                     (rate: any, idx: number) => (
                       <tr key={idx} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4">{rate.role}</td>
-                        <td className="py-3 px-4">{rate.level}</td>
+                        <td className="py-3 px-4">{rate.role || rate.roleTitle}</td>
+                        <td className="py-3 px-4">{rate.level || rate.seniority}</td>
                         <td className="py-3 px-4 text-right font-medium">
-                          ${rate.hourlyRate}/hr
+                          ${rate.hourlyRate || rate.dailyRate || rate.rate}/hr
                         </td>
                         <td className="py-3 px-4 text-right text-gray-600">
-                          ${rate.marketBenchmark}/hr
+                          ${rate.marketBenchmark || rate.benchmarkRate || 'N/A'}
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <VarianceBadge variance={rate.variance} />
+                          <VarianceBadge variance={rate.variance || 0} />
                         </td>
                       </tr>
                     )
@@ -119,7 +119,7 @@ export function FinancialTabContent({
               </table>
             </div>
 
-            {financial.rateCards[0]?.insights && (
+            {financial.insights && (
               <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
@@ -128,11 +128,11 @@ export function FinancialTabContent({
                       AI Insight
                     </h4>
                     <p className="text-sm text-blue-800">
-                      {financial.rateCards[0].insights.recommendation}
+                      {financial.insights.recommendation}
                     </p>
                     <div className="mt-2 text-sm text-blue-700">
                       <strong>Potential Savings:</strong>{" "}
-                      {financial.rateCards[0].insights.totalAnnualSavings}
+                      {financial.insights.totalAnnualSavings}
                     </div>
                   </div>
                 </div>

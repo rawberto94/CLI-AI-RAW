@@ -11,14 +11,15 @@ export async function GET(request: NextRequest) {
     // Get rate cards using real service
     const result = await rateCardManagementService.getRateCards(tenantId);
 
-    if (!result.success || !result.data) {
+    // Check if result is an array or an object with success/data
+    const rateCards = Array.isArray(result) ? result : (result as any).success && (result as any).data ? (result as any).data : [];
+
+    if (!Array.isArray(rateCards)) {
       return NextResponse.json(
         { error: "Failed to fetch rate cards" },
         { status: 500 }
       );
     }
-
-    const rateCards = result.data;
 
     // Paginate results
     const startIndex = (page - 1) * limit;

@@ -351,7 +351,8 @@ export class PDFExportService {
         this.pdf.setTextColor(255, 255, 255)
         this.pdf.setFont('helvetica', 'bold')
       } else {
-        this.pdf.setFillColor(rowIndex % 2 === 0 ? 245 : 255)
+        const fillColor = rowIndex % 2 === 0 ? 245 : 255;
+        this.pdf.setFillColor(fillColor, fillColor, fillColor)
         this.pdf.setTextColor(0, 0, 0)
         this.pdf.setFont('helvetica', 'normal')
       }

@@ -363,7 +363,7 @@ export class InputValidationService {
       const schema = condition(data) ? trueSchema : falseSchema;
       const result = schema.safeParse(data);
 
-      if (!result.success) {
+      if (!result.success && 'error' in result) {
         result.error.issues.forEach((issue) => {
           ctx.addIssue(issue);
         });

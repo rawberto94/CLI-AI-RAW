@@ -12,7 +12,7 @@ export function DataModeBanner() {
   }
 
   const isMock = dataMode === 'mock'
-  const isAI = dataMode === 'ai'
+  const isAI = (dataMode as any) === 'ai'
 
   return (
     <div

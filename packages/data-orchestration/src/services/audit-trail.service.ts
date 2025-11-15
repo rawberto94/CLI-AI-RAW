@@ -242,6 +242,39 @@ export class AuditTrailService {
     }
   }
 
+  /**
+   * Log generic activity
+   */
+  async logActivity(
+    tenantId: string,
+    action: string,
+    resource: string,
+    resourceId: string,
+    metadata?: any,
+    context?: Partial<AuditContext>
+  ): Promise<void> {
+    try {
+      await this.createAuditLog({
+        tenantId,
+        action: action as any,
+        resource,
+        resourceId,
+        resourceType: resource,
+        metadata,
+        userId: context?.userId || 'system',
+        userName: context?.userName || 'System',
+        ipAddress: context?.ipAddress || '0.0.0.0',
+        userAgent: context?.userAgent || 'system',
+        correlationId: context?.correlationId,
+        reason: context?.reason,
+      });
+
+      logger.debug({ action, resource, resourceId }, 'Activity logged');
+    } catch (error) {
+      logger.error({ error, action, resource }, 'Failed to log activity');
+    }
+  }
+
   // =========================================================================
   // AUDIT LOG CREATION
   // =========================================================================

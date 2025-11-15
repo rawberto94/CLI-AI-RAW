@@ -1,4 +1,4 @@
-import { Redis } from 'ioredis';
+import Redis from 'ioredis';
 
 // In-memory cache (L1)
 class MemoryCache {
@@ -43,7 +43,7 @@ class MemoryCache {
 
 // Redis cache (L2)
 class RedisCache {
-  private client: Redis | null = null;
+  private client: typeof Redis.prototype | null = null;
   private connected: boolean = false;
 
   constructor() {

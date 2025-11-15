@@ -73,9 +73,12 @@ interface MetricCardProps {
   icon: React.ReactNode;
   trend?: 'up' | 'down' | 'neutral';
   description?: string;
+  subtitle?: string;
+  color?: string;
+  size?: string;
 }
 
-export function MetricCard({ title, value, change, icon, trend = 'neutral', description }: MetricCardProps) {
+export function MetricCard({ title, value, change, icon, trend = 'neutral', description, subtitle, color, size }: MetricCardProps) {
   const trendColor = {
     up: 'text-green-600',
     down: 'text-red-600',

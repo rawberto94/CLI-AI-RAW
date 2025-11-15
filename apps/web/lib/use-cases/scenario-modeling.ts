@@ -47,14 +47,19 @@ export class ScenarioModeler {
     return {
       id: `scenario-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: config.name,
+      description: config.notes || '',
       targetRate: config.targetRate,
       probability: config.probability,
       annualVolume: config.annualVolume,
       annualCost,
       savings: Math.round(savings),
       savingsPercentage: Math.round(savingsPercentage * 100) / 100,
-      notes: config.notes
-    }
+      notes: config.notes,
+      expectedSavings: Math.round(savings * config.probability),
+      riskLevel: config.probability > 0.7 ? 'low' : config.probability > 0.4 ? 'medium' : 'high',
+      strategy: '',
+      keyTalkingPoints: [],
+    } as NegotiationScenario;
   }
   
   // Compare multiple scenarios

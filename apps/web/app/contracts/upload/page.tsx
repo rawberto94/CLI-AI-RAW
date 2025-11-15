@@ -1,500 +1,687 @@
-"use client";
+'use client'
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useUploadManager } from "@/lib/contracts/upload-manager";
-import { API_BASE_URL } from "../../../lib/config";
-import { tenantHeaders, getTenantId } from "../../../lib/tenant";
+import React, { useState, useCallback } from 'react'
+import { useDropzone } from 'react-dropzone'
+import { useRouter } from 'next/navigation'
+import { useDataMode } from '@/contexts/DataModeContext'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
 import {
-  ArrowLeft,
-  FileText,
-  Upload as UploadIcon,
-  Info,
+  Upload,
   CheckCircle,
-  AlertCircle,
+  AlertTriangle,
+  Loader2,
+  X,
+  Eye,
+  FileText,
   Sparkles,
   Zap,
   Shield,
+  Clock,
   Brain,
-} from "lucide-react";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { fadeIn } from "@/lib/contracts/animations";
-import { LiveContractAnalysisDemo } from "@/components/contracts/LiveContractAnalysisDemo";
+  TrendingUp,
+  FileCheck,
+  Target,
+  ArrowRight,
+  Info,
+  ChevronRight
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
-const MotionDiv = motion.div as any;
+interface UploadFile {
+  id: string
+  file: File
+  status: 'pending' | 'uploading' | 'processing' | 'completed' | 'error'
+  progress: number
+  contractId?: string
+  error?: string
+  processingStage?: string
+  showArtifacts?: boolean
+}
 
-export default function ContractsUploadPage() {
-  const [tenantId, setTenantId] = useState<string | undefined>();
-  const [apiHealthy, setApiHealthy] = useState<boolean | null>(null);
-  const [packs, setPacks] = useState<Array<{ id: string; name?: string }>>([]);
-  const [clientId, setClientId] = useState("");
-  const [supplierId, setSupplierId] = useState("");
-  const [policyPack, setPolicyPack] = useState("");
-  const [error, setError] = useState<string>("");
-  const [tip, setTip] = useState<string>("");
-  const [useModernUpload, setUseModernUpload] = useState(true);
+export default function UploadPage() {
+  const router = useRouter()
+  const { dataMode, isRealData, isMockData, isAIGenerated } = useDataMode()
+  const [files, setFiles] = useState<UploadFile[]>([])
+  const [isUploading, setIsUploading] = useState(false)
 
-  // Modern upload manager
-  const {
-    files,
-    progress,
-    addFiles,
-    startUpload,
-    cancelUpload,
-    cancelAllUploads,
-    removeFile,
-    retryFile,
-    clear,
-  } = useUploadManager({
-    maxConcurrentUploads: 3,
-    maxRetries: 3,
-    onAllComplete: (results) => {
-      const successCount = results.filter((r) => r.status === "success").length;
-      const failedCount = results.filter((r) => r.status === "error").length;
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const newFiles: UploadFile[] = acceptedFiles.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
+      file,
+      status: 'pending',
+      progress: 0
+    }))
+    setFiles(prev => [...prev, ...newFiles])
+  }, [])
 
-      if (successCount > 0 && failedCount === 0) {
-        setTip(
-          `Successfully uploaded ${successCount} contract${
-            successCount !== 1 ? "s" : ""
-          }`
-        );
-      } else if (failedCount > 0 && successCount === 0) {
-        setError(
-          `Failed to upload ${failedCount} contract${
-            failedCount !== 1 ? "s" : ""
-          }`
-        );
-      } else if (successCount > 0 && failedCount > 0) {
-        setTip(
-          `Uploaded ${successCount} contract${
-            successCount !== 1 ? "s" : ""
-          }, ${failedCount} failed`
-        );
-      }
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
     },
-    onError: (errorMessage) => {
-      setError(errorMessage);
-    },
-  });
+    multiple: true,
+    maxSize: 50 * 1024 * 1024 // 50MB
+  })
 
-  useEffect(() => {
-    setTenantId(getTenantId());
-  }, []);
+  const uploadFile = async (uploadFile: UploadFile) => {
+    const formData = new FormData()
+    formData.append('file', uploadFile.file)
+    formData.append('dataMode', dataMode)
 
-  const checkHealth = () => {
-    const fetchHealth = async () => {
-      try {
-        // Try both health endpoints
-        let res = await fetch("/api/healthz");
-        if (!res.ok) {
-          res = await fetch("/api/health");
-        }
-        setApiHealthy(res.ok);
-      } catch (error) {
-        console.error("Health check failed:", error);
-        setApiHealthy(false);
+    try {
+      // Update to uploading
+      setFiles(prev => prev.map(f =>
+        f.id === uploadFile.id
+          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...' }
+          : f
+      ))
+
+      // Simulate upload progress
+      for (let i = 10; i <= 50; i += 10) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+        setFiles(prev => prev.map(f =>
+          f.id === uploadFile.id ? { ...f, progress: i } : f
+        ))
       }
-    };
-    fetchHealth();
-  };
 
-  const loadPacks = () => {
-    const fetchPacks = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/policies/packs`, {
-          headers: tenantHeaders(),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setPacks(Array.isArray(data.packs) ? data.packs : []);
-          if (data.packs && data.packs.length > 0 && !policyPack)
-            setPolicyPack(data.packs[0].id);
+      // Upload file
+      const uploadResponse = await fetch('/api/contracts/upload', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'x-data-mode': dataMode
         }
-      } catch {}
-    };
-    void fetchPacks();
-  };
+      })
 
-  useEffect(() => {
-    checkHealth();
-    loadPacks();
-  }, []);
+      if (!uploadResponse.ok) {
+        throw new Error('Upload failed')
+      }
 
-  const handleUploadComplete = (
-    results: Array<{ name: string; docId: string }>
-  ) => {
-    setError("");
-    setTip(
-      `Successfully uploaded ${results.length} contract${
-        results.length !== 1 ? "s" : ""
-      }`
-    );
-  };
+      const { contractId } = await uploadResponse.json()
 
-  const handleUploadError = (errorMessage: string) => {
-    setError(errorMessage);
-    setTip(
-      "Upload failed to reach the backend. Verify API on http://localhost:3001/healthz and try again."
-    );
-  };
+      // Update to processing with artifact viewer enabled
+      setFiles(prev => prev.map(f =>
+        f.id === uploadFile.id
+          ? { ...f, status: 'processing', progress: 60, contractId, processingStage: 'Processing with AI...', showArtifacts: true }
+          : f
+      ))
 
-  const handleModernFilesAdded = (newFiles: File[]) => {
-    console.log("Files added:", newFiles.length);
-    addFiles(newFiles);
-  };
+      // Note: Real-time SSE will handle the rest of the progress updates
+      // The RealtimeArtifactViewer component will show live artifact generation
 
-  const handleModernUploadStart = () => {
-    console.log("Starting upload...");
-    startUpload();
-  };
+    } catch (error) {
+      setFiles(prev => prev.map(f =>
+        f.id === uploadFile.id
+          ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' }
+          : f
+      ))
+    }
+  }
 
-  const isUploadComplete =
-    progress.totalFiles > 0 && progress.completedFiles === progress.totalFiles;
-  const hasSuccessFiles =
-    files.filter((f) => f.status === "success").length > 0;
-  const hasErrorFiles = files.filter((f) => f.status === "error").length > 0;
+  const handleUploadAll = async () => {
+    setIsUploading(true)
+    const pendingFiles = files.filter(f => f.status === 'pending')
+    
+    // Upload files sequentially (or in parallel batches)
+    for (const file of pendingFiles) {
+      await uploadFile(file)
+    }
+    
+    setIsUploading(false)
+  }
+
+  const removeFile = (id: string) => {
+    setFiles(prev => prev.filter(f => f.id !== id))
+  }
+
+  const clearCompleted = () => {
+    setFiles(prev => prev.filter(f => f.status !== 'completed'))
+  }
+
+  const viewContract = (contractId: string) => {
+    router.push(`/contracts/${contractId}`)
+  }
+
+  const completedCount = files.filter(f => f.status === 'completed').length
+  const errorCount = files.filter(f => f.status === 'error').length
+  const pendingCount = files.filter(f => f.status === 'pending').length
+  const processingCount = files.filter(f => f.status === 'processing').length
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Header with Navigation */}
-        <MotionDiv
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
-          <div>
-            <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
-              <Link
-                href="/contracts"
-                className="hover:text-gray-700 flex items-center gap-1 transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Contracts
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Hero Header */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 shadow-2xl">
+          <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]"></div>
+          <div className="relative px-8 py-12 md:px-12 md:py-16">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="p-4 bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg">
+                <Upload className="h-10 w-10 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+                  Upload Contracts
+                </h1>
+                <p className="text-blue-100 text-lg">
+                  AI-powered contract analysis in seconds
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Badge className="bg-white/20 text-white border-white/30 px-4 py-2 text-sm font-medium backdrop-blur-sm">
+                <Sparkles className="h-4 w-4 mr-2" />
+                Using {dataMode} mode
+              </Badge>
+              {isMockData && (
+                <Badge className="bg-yellow-500/20 text-yellow-100 border-yellow-300/30 px-4 py-2 text-sm backdrop-blur-sm">
+                  <Info className="h-4 w-4 mr-2" />
+                  Simulated uploads
+                </Badge>
+              )}
+              {isAIGenerated && (
+                <Badge className="bg-purple-500/20 text-purple-100 border-purple-300/30 px-4 py-2 text-sm backdrop-blur-sm">
+                  <Brain className="h-4 w-4 mr-2" />
+                  AI-generated processing
+                </Badge>
+              )}
+              <Link href="/contracts">
+                <Button variant="ghost" className="text-white hover:bg-white/20 ml-auto">
+                  View All Contracts
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
               </Link>
-              <span>/</span>
-              <span className="text-gray-900 font-medium">Upload</span>
-            </nav>
-            <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-xl">
-                <UploadIcon className="w-8 h-8 text-white" />
-              </div>
-              Upload Contracts
-            </h1>
-            <p className="text-gray-600 mt-2 text-lg">
-              Upload and process new contract documents with AI-powered analysis
-            </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/contracts">
-              <Button variant="outline" size="lg" className="shadow-sm">
-                <FileText className="w-4 h-4 mr-2" />
-                View All Contracts
-              </Button>
-            </Link>
-          </div>
-        </MotionDiv>
+        </div>
 
-        {/* Feature Highlights */}
-        <MotionDiv
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Zap className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Fast Processing</h3>
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Feature 1 */}
+          <div className="group relative">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+            <Card className="relative bg-white shadow-xl border-0">
+              <CardContent className="p-6">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg w-fit mb-4">
+                  <Zap className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2">Lightning Fast</h3>
                 <p className="text-sm text-gray-600">
-                  AI-powered analysis in seconds
+                  AI-powered extraction processes contracts in seconds, not hours
                 </p>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Shield className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">Secure Upload</h3>
-                <p className="text-sm text-gray-600">
-                  Enterprise-grade encryption
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  Smart Extraction
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Automatic data extraction
-                </p>
-              </div>
-            </div>
-          </div>
-        </MotionDiv>
 
-        {/* Main Upload Card - Live Contract Analysis Demo */}
-        <MotionDiv
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="shadow-lg border-gray-200">
-            <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-gray-50">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-3 text-2xl">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Brain className="w-6 h-6 text-blue-600" />
+          {/* Feature 2 */}
+          <div className="group relative">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+            <Card className="relative bg-white shadow-xl border-0">
+              <CardContent className="p-6">
+                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg w-fit mb-4">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2">Secure Storage</h3>
+                <p className="text-sm text-gray-600">
+                  Bank-grade encryption with full compliance and data protection
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="group relative">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+            <Card className="relative bg-white shadow-xl border-0">
+              <CardContent className="p-6">
+                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg w-fit mb-4">
+                  <Brain className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2">AI Analysis</h3>
+                <p className="text-sm text-gray-600">
+                  Advanced GPT-4 models extract clauses, risks, and insights
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Feature 4 */}
+          <div className="group relative">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+            <Card className="relative bg-white shadow-xl border-0">
+              <CardContent className="p-6">
+                <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl shadow-lg w-fit mb-4">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2">Real-time Status</h3>
+                <p className="text-sm text-gray-600">
+                  Watch AI generate artifacts live with instant progress updates
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Upload Zone */}
+        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-8">
+            <div
+              {...getRootProps()}
+              className={cn(
+                'relative border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all duration-300',
+                isDragActive
+                  ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 scale-[1.02]'
+                  : 'border-gray-300 hover:border-blue-400 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30 hover:scale-[1.01]'
+              )}
+            >
+              <input {...getInputProps()} />
+              <div className="relative">
+                {isDragActive ? (
+                  <>
+                    <div className="p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full w-fit mx-auto mb-6 shadow-xl animate-bounce">
+                      <Upload className="h-12 w-12 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600 mb-2">
+                      Drop your files here!
+                    </p>
+                    <p className="text-gray-600">
+                      Release to start uploading
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full w-fit mx-auto mb-6 shadow-xl">
+                      <Upload className="h-12 w-12 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-gray-900 mb-3">
+                      Drag & drop contracts here
+                    </p>
+                    <p className="text-gray-600 mb-6 text-lg">
+                      or click to browse your files
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
+                      <Badge variant="outline" className="text-sm px-4 py-2">
+                        <FileText className="h-4 w-4 mr-2" />
+                        PDF
+                      </Badge>
+                      <Badge variant="outline" className="text-sm px-4 py-2">
+                        <FileText className="h-4 w-4 mr-2" />
+                        DOC
+                      </Badge>
+                      <Badge variant="outline" className="text-sm px-4 py-2">
+                        <FileText className="h-4 w-4 mr-2" />
+                        DOCX
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Maximum file size: 50MB per file • Upload multiple files at once
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats Bar */}
+        {files.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="shadow-lg border-0 bg-white">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <FileText className="h-5 w-5 text-gray-600" />
                   </div>
-                  AI Contract Analysis
-                </CardTitle>
-                {/* System Status Badge */}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">API Status:</span>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5 ${
-                      apiHealthy === null
-                        ? "bg-gray-100 text-gray-600"
-                        : apiHealthy
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {apiHealthy ? (
-                      <CheckCircle className="w-3 h-3" />
-                    ) : (
-                      <AlertCircle className="w-3 h-3" />
-                    )}
-                    {apiHealthy === null
-                      ? "Checking..."
-                      : apiHealthy
-                      ? "Healthy"
-                      : "Unreachable"}
-                  </span>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{files.length}</p>
+                    <p className="text-sm text-gray-600">Total Files</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg border-0 bg-white">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                    <p className="text-sm text-gray-600">Completed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg border-0 bg-white">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Loader2 className="h-5 w-5 text-purple-600 animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-purple-600">{processingCount}</p>
+                    <p className="text-sm text-gray-600">Processing</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg border-0 bg-white">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-red-600">{errorCount}</p>
+                    <p className="text-sm text-gray-600">Errors</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* File Queue */}
+        {files.length > 0 && (
+          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Upload Queue</h2>
+                  <p className="text-gray-600 mt-1">{files.length} file(s) in queue</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {completedCount > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={clearCompleted}
+                      className="hover:bg-gray-100"
+                    >
+                      Clear Completed
+                    </Button>
+                  )}
+                  {pendingCount > 0 && (
+                    <Button
+                      onClick={handleUploadAll}
+                      disabled={isUploading}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-5 w-5 mr-2" />
+                          Upload All ({pendingCount})
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-8">
-              {/* Live Contract Analysis Demo Component */}
-              <LiveContractAnalysisDemo />
+
+              <div className="space-y-4">
+                {files.map(uploadFile => (
+                  <div
+                    key={uploadFile.id}
+                    className="border-2 border-gray-200 rounded-xl p-6 space-y-4 hover:border-blue-300 transition-colors bg-white shadow-sm"
+                  >
+                    {/* File Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                          <FileText className="h-6 w-6 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-900 text-lg truncate">
+                            {uploadFile.file.name}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <p className="text-sm text-gray-500">
+                              {(uploadFile.file.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                            {uploadFile.processingStage && (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <p className="text-sm text-gray-600">
+                                  {uploadFile.processingStage}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {uploadFile.status === 'completed' && uploadFile.contractId && (
+                          <>
+                            <Button
+                              onClick={() => viewContract(uploadFile.contractId!)}
+                              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-md"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Contract
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeFile(uploadFile.id)}
+                              className="hover:bg-red-50 hover:text-red-600"
+                            >
+                              <X className="h-5 w-5" />
+                            </Button>
+                          </>
+                        )}
+                        {(uploadFile.status === 'pending' || uploadFile.status === 'error') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeFile(uploadFile.id)}
+                            className="hover:bg-red-50 hover:text-red-600"
+                          >
+                            <X className="h-5 w-5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="flex items-center gap-2">
+                      {uploadFile.status === 'pending' && (
+                        <Badge className="bg-gray-100 text-gray-700 px-4 py-2 text-sm font-medium">
+                          <Clock className="h-4 w-4 mr-2" />
+                          Pending
+                        </Badge>
+                      )}
+                      {uploadFile.status === 'uploading' && (
+                        <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 text-sm font-medium shadow-md">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading {uploadFile.progress}%
+                        </Badge>
+                      )}
+                      {uploadFile.status === 'processing' && (
+                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 text-sm font-medium shadow-md">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing with AI
+                        </Badge>
+                      )}
+                      {uploadFile.status === 'completed' && (
+                        <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 text-sm font-medium shadow-md">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Completed Successfully
+                        </Badge>
+                      )}
+                      {uploadFile.status === 'error' && (
+                        <Badge className="bg-gradient-to-r from-red-500 to-pink-600 text-white px-4 py-2 text-sm font-medium shadow-md">
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          Upload Failed
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Progress Bar */}
+                    {(uploadFile.status === 'uploading' || uploadFile.status === 'processing') && (
+                      <div className="space-y-2">
+                        <Progress 
+                          value={uploadFile.progress} 
+                          className="h-3 bg-gray-200"
+                        />
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">
+                            {uploadFile.status === 'uploading' ? 'Uploading file...' : 'Analyzing with AI...'}
+                          </span>
+                          <span className="font-semibold text-gray-900">
+                            {uploadFile.progress}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error Message */}
+                    {uploadFile.status === 'error' && uploadFile.error && (
+                      <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                          <div>
+                            <p className="font-semibold text-red-900">Upload Failed</p>
+                            <p className="text-sm text-red-700 mt-1">{uploadFile.error}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Success Message */}
+                    {uploadFile.status === 'completed' && (
+                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Processing Complete!</p>
+                            <p className="text-sm text-green-700 mt-1">
+                              Contract analyzed successfully with AI-powered insights
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewContract(uploadFile.contractId!)}
+                            className="text-green-700 hover:text-green-800 hover:bg-green-100"
+                          >
+                            View Details
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Real-time Artifact Viewer */}
+                    {uploadFile.contractId && uploadFile.status === 'processing' && uploadFile.showArtifacts && (
+                      <div className="mt-6 p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border-2 border-purple-200">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Sparkles className="h-5 w-5 text-purple-600" />
+                          <h3 className="font-semibold text-purple-900">Live AI Processing</h3>
+                        </div>
+                        <RealtimeArtifactViewer
+                          contractId={uploadFile.contractId}
+                          onComplete={() => {
+                            setFiles(prev => prev.map(f =>
+                              f.id === uploadFile.id
+                                ? { ...f, status: 'completed', progress: 100 }
+                                : f
+                            ))
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-        </MotionDiv>
+        )}
 
         {/* Help Section */}
-        <MotionDiv
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.3 }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-        >
-          {/* Upload Guidelines */}
-          <Card className="shadow-md border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-100">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Info className="w-5 h-5 text-blue-600" />
-                Upload Guidelines
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    Supported File Types
-                  </h4>
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2 text-sm text-gray-700">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>PDF documents (.pdf)</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-gray-700">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>Microsoft Word (.doc, .docx)</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-gray-700">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <span>Plain text files (.txt)</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-blue-600" />
-                    File Requirements
-                  </h4>
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2 text-sm text-gray-700">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                      <span>
-                        Maximum file size: <strong>100MB</strong>
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-gray-700">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                      <span>
-                        Maximum files per upload: <strong>15</strong>
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-gray-700">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                      <span>Text must be readable (not scanned images)</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tips & Best Practices */}
-          <Card className="shadow-md border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-white border-b border-gray-100">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                Tips & Best Practices
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                  <div className="flex gap-3">
-                    <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-900 mb-1">
-                        Text-Based Documents
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        For best results, ensure your contracts are text-based
-                        PDFs or Word documents. Scanned documents may require
-                        OCR processing which can take longer.
-                      </p>
-                    </div>
+        {files.length === 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+              <CardContent className="p-8">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                    <Sparkles className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-gray-900 text-lg">Quick Tips</h3>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <ChevronRight className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <span>Upload multiple contracts at once for batch processing</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <ChevronRight className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <span>Watch AI generate insights in real-time during upload</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <ChevronRight className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <span>View and analyze contracts immediately after processing</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <ChevronRight className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <span>Switch data modes to test with mock or AI-generated data</span>
+                      </li>
+                    </ul>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="p-4 bg-green-50 rounded-xl border border-green-100">
-                  <div className="flex gap-3">
-                    <Zap className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-green-900 mb-1">
-                        Batch Processing
-                      </p>
-                      <p className="text-sm text-green-700">
-                        Upload multiple contracts at once to save time. Our
-                        system processes up to 3 files simultaneously for faster
-                        results.
-                      </p>
-                    </div>
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+              <CardContent className="p-8">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                    <Target className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-gray-900 text-lg">What Gets Extracted</h3>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>Overview:</strong> Parties, dates, and executive summary</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>Clauses:</strong> All contract clauses with obligations</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>Financial:</strong> Payment terms, rates, and schedules</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>Risk Analysis:</strong> Risk factors with severity levels</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>Compliance:</strong> Regulatory requirements and gaps</span>
+                      </li>
+                    </ul>
                   </div>
                 </div>
-
-                <div className="p-4 bg-purple-50 rounded-xl border border-purple-100">
-                  <div className="flex gap-3">
-                    <Shield className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-purple-900 mb-1">
-                        Data Security
-                      </p>
-                      <p className="text-sm text-purple-700">
-                        All uploads are encrypted in transit and at rest. Your
-                        contract data is processed securely and never shared
-                        with third parties.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </MotionDiv>
-
-        {/* Additional Options */}
-        <MotionDiv
-          variants={fadeIn}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.4 }}
-        >
-          <Card className="shadow-md border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
-              <CardTitle className="text-lg">
-                Additional Upload Options
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <p className="text-sm text-gray-600">
-                  Connect to external sources for seamless contract import
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-auto py-4 flex-col items-start gap-2 hover:border-blue-500 hover:bg-blue-50 transition-all"
-                    onClick={() =>
-                      alert("SharePoint connector integration coming soon!")
-                    }
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      <span className="font-semibold">
-                        Connect to SharePoint
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 text-left">
-                      Import contracts directly from SharePoint
-                    </span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="lg"
-                    className="h-auto py-4 flex-col items-start gap-2 hover:border-blue-500 hover:bg-blue-50 transition-all"
-                    onClick={() =>
-                      alert("Bulk upload from folder coming soon!")
-                    }
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <UploadIcon className="w-5 h-5 text-blue-600" />
-                      <span className="font-semibold">
-                        Bulk Upload from Folder
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 text-left">
-                      Upload entire folders of contracts at once
-                    </span>
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500 text-center pt-2">
-                  Additional upload methods and integrations will be available
-                  soon
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </MotionDiv>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
-  );
+  )
 }

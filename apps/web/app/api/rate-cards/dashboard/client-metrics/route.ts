@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         return {
           name: client.clientName,
           rateCardCount: Number(client.count),
-          totalSpend: (avgRate._avg.dailyRate || 0) * Number(client.count) * 220, // Estimated annual spend
+          totalSpend: (Number(avgRate._avg.dailyRate) || 0) * Number(client.count) * 220, // Estimated annual spend
         };
       })
     );

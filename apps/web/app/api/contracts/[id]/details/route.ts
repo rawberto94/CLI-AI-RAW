@@ -42,15 +42,15 @@ export async function GET(
 
     // Transform artifacts to frontend format
     const transformedArtifacts = contract.artifacts.map(artifact => {
-      const metadata = artifact.metadata as any || {};
+      const artifactData = artifact.data as any || {};
       return {
         type: artifact.type,
         data: artifact.data,
         confidence: Number(artifact.confidence || 0),
-        completeness: metadata.completeness || 0,
-        method: metadata.method || 'ai',
-        processingTime: metadata.processingTime || 0,
-        validationResults: metadata.validationResults
+        completeness: artifactData.completeness || 0,
+        method: artifactData.method || 'ai',
+        processingTime: artifactData.processingTime || 0,
+        validationResults: artifactData.validationResults
       };
     });
 
@@ -123,7 +123,7 @@ export async function GET(
     // Return data in frontend format
     const responseData = {
       id: contract.id,
-      name: contract.name || contract.fileName || 'Untitled Contract',
+      name: contract.fileName || 'Untitled Contract',
       status: contract.status?.toLowerCase() || 'active',
       uploadedAt: contract.createdAt.toISOString(),
       artifacts: transformedArtifacts,

@@ -36,7 +36,7 @@ import {
   Tag,
   Settings
 } from 'lucide-react'
-import ContractMetadataEditor from '@/components/contracts/ContractMetadataEditor'
+import { ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
 import Link from 'next/link'
 
 interface EnhancedContractData {

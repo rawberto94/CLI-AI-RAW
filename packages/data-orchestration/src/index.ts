@@ -1,38 +1,17 @@
 // Main exports
 export * from "./types";
 export * from "./dal";
-export * from "./services";
-export * from "./events";
 export * from "./lineage";
 export * from "./providers/data-provider-factory";
 
-// Re-export commonly used items
-export {
-  dbAdaptor as DatabaseAdaptor,
-  cacheAdaptor as CacheAdaptor,
-} from "./dal";
+// Export service classes
+export * from "./services";
 
-export {
-  contractService as ContractService,
-  artifactService as ArtifactService,
-  rateCardIntelligenceService as RateCardIntelligenceService,
-  dataStandardizationService as DataStandardizationService,
-  rateCardManagementService as RateCardManagementService,
-  enhancedSavingsOpportunitiesService as EnhancedSavingsOpportunitiesService,
-} from "./services";
+// Export event system
+export * from "./events";
 
-// Export types
+// Export type aliases for commonly used services
 export type { 
   EnhancedSavingsOpportunity,
   SavingsAnalysisResult 
 } from "./services/enhanced-savings-opportunities.service";
-
-export {
-  eventBus as EventBus,
-  Events,
-  intelligenceProcessor as IntelligenceProcessor,
-} from "./events";
-
-export {
-  dataLineageTracker as DataLineageTracker,
-} from "./lineage";

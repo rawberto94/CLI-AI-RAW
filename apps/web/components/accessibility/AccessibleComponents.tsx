@@ -241,7 +241,7 @@ export function AccessibleFormField({
         ].filter(Boolean).join(' ') || undefined,
         'aria-invalid': error ? 'true' : undefined,
         'aria-required': required,
-      })}
+      } as any)}
 
       {error && (
         <p id={errorId} className="text-sm text-red-600" role="alert">

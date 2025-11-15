@@ -17,13 +17,15 @@ import { formatDistanceToNow } from 'date-fns';
 interface VersionHistoryPanelProps {
   artifactId: string;
   contractId: string;
-  onRevert?: () => void;
+  onRevert?: (version: any) => void | Promise<void>;
+  onClose?: () => void;
 }
 
 export function VersionHistoryPanel({
   artifactId,
   contractId,
   onRevert,
+  onClose,
 }: VersionHistoryPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [versions, setVersions] = useState<any[]>([]);
@@ -86,7 +88,7 @@ export function VersionHistoryPanel({
 
       setIsOpen(false);
       if (onRevert) {
-        onRevert();
+        await onRevert(version);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to revert');

@@ -49,9 +49,9 @@ export default function ArtifactsAnalyticsPage() {
   }, []);
 
   const loadMetrics = async () => {
+    setLoading(true);
     try {
-      // Get tenant ID from environment or session
-      const tenantId = process.env.NEXT_PUBLIC_TENANT_ID || 'default-tenant';
+      const tenantId = process.env['NEXT_PUBLIC_TENANT_ID'] || 'demo';
       
       const response = await fetch(`/api/analytics/artifacts?tenantId=${tenantId}`);
       

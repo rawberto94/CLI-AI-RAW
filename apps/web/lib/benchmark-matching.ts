@@ -79,10 +79,10 @@ export class BenchmarkMatchingService {
     const key = this.createBenchmarkKey(criteria.role, criteria.level, criteria.geography, criteria.industry);
     const matches = this.benchmarkDatabase.get(key) || [];
     
-    return matches
-      .filter(match => this.isStrictMatch(match, criteria))
-      .map(match => ({ ...match, matchType: 'exact' as const, confidence: match.confidence * 1.0 }))
-      .sort((a, b) => b.confidence - a.confidence);
+    return (matches as any)
+      .filter((match: any) => this.isStrictMatch(match, criteria))
+      .map((match: any) => ({ ...match, matchType: 'exact' as const, confidence: match.confidence * 1.0 }))
+      .sort((a: any, b: any) => b.confidence - a.confidence);
   }
 
   /**
@@ -309,6 +309,7 @@ export class BenchmarkMatchingService {
       level: 'Mid',
       geography: 'Global',
       industry: 'Technology',
+      companySize: 'Medium',
       medianRate: 120,
       percentile25: 100,
       percentile75: 140,
@@ -336,7 +337,8 @@ export class BenchmarkMatchingService {
         sampleSize: 250,
         lastUpdated: new Date('2024-01-01'),
         confidence: 0.9,
-        matchType: 'exact'
+        matchType: 'exact',
+        companySize: 'Medium'
       },
       {
         role: 'Senior Consultant',
@@ -349,7 +351,8 @@ export class BenchmarkMatchingService {
         sampleSize: 180,
         lastUpdated: new Date('2024-01-01'),
         confidence: 0.85,
-        matchType: 'exact'
+        matchType: 'exact',
+        companySize: 'Medium'
       },
       // Project Manager benchmarks
       {
@@ -363,7 +366,8 @@ export class BenchmarkMatchingService {
         sampleSize: 300,
         lastUpdated: new Date('2024-01-01'),
         confidence: 0.9,
-        matchType: 'exact'
+        matchType: 'exact',
+        companySize: 'Medium'
       },
       // Developer benchmarks
       {
@@ -377,7 +381,8 @@ export class BenchmarkMatchingService {
         sampleSize: 400,
         lastUpdated: new Date('2024-01-01'),
         confidence: 0.95,
-        matchType: 'exact'
+        matchType: 'exact',
+        companySize: 'Medium'
       },
       {
         role: 'Developer',
@@ -390,7 +395,8 @@ export class BenchmarkMatchingService {
         sampleSize: 500,
         lastUpdated: new Date('2024-01-01'),
         confidence: 0.9,
-        matchType: 'exact'
+        matchType: 'exact',
+        companySize: 'Medium'
       }
     ];
 

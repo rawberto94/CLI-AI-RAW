@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'schedule-alerts':
-        if (!renewalData) {
-          return NextResponse.json({ error: 'Renewal data required' }, { status: 400 });
+        if (!renewalData || !contractId) {
+          return NextResponse.json({ error: 'Contract ID and renewal data required' }, { status: 400 });
         }
-        await renewalEngine.scheduleAlerts(renewalData);
+        await renewalEngine.scheduleAlerts(contractId, renewalData);
         return NextResponse.json({ success: true });
 
       case 'trigger-rfx':

@@ -16,6 +16,26 @@ export function KeyboardShortcutsExample() {
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState('Sample content');
 
+  // Define handlers first
+  const handleSave = () => {
+    feedback.showSuccess('Saved', 'Your changes have been saved successfully');
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    feedback.showInfo('Cancelled', 'Changes discarded');
+    setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    feedback.showWarning('Delete', 'Are you sure you want to delete this?');
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    feedback.showSuccess('Copied', 'Content copied to clipboard');
+  };
+
   // Define page-specific shortcuts
   usePageShortcuts([
     createSaveShortcut(() => {
@@ -53,25 +73,6 @@ export function KeyboardShortcutsExample() {
       category: 'Actions',
     },
   ]);
-
-  const handleSave = () => {
-    feedback.showSuccess('Saved', 'Your changes have been saved successfully');
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    feedback.showInfo('Cancelled', 'Changes discarded');
-    setIsEditing(false);
-  };
-
-  const handleDelete = () => {
-    feedback.showWarning('Delete', 'Are you sure you want to delete this?');
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(content);
-    feedback.showSuccess('Copied', 'Content copied to clipboard');
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-8 space-y-6">

@@ -45,7 +45,7 @@ export class QueryOptimizerService {
     }
 
     if (filters.seniority) {
-      where.seniority = filters.seniority;
+      where.seniority = filters.seniority as any;
     }
 
     if (filters.lineOfService) {
@@ -117,7 +117,7 @@ export class QueryOptimizerService {
     const where: Prisma.RateCardEntryWhereInput = {
       tenantId: criteria.tenantId,
       roleStandardized: criteria.roleStandardized,
-      seniority: criteria.seniority,
+      seniority: criteria.seniority as any,
       country: criteria.country,
     };
 

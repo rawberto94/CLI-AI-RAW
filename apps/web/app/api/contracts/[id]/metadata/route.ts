@@ -31,7 +31,7 @@ export async function GET(
     if (!metadataResult.success) {
       return NextResponse.json({
         success: false,
-        error: metadataResult.error?.message || "Failed to get contract metadata"
+        error: metadataResult.error || "Failed to get contract metadata"
       }, { status: 500 });
     }
 
@@ -62,6 +62,7 @@ export async function PUT(
     const contractId = params.id;
     const tenantId = request.headers.get("x-tenant-id") || "demo";
     const body = await request.json();
+    const metadata = body.metadata || body;
 
     if (!contractId) {
       return NextResponse.json({
@@ -70,18 +71,17 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Update contract metadata
+    // Update metadata
     const updateResult = await taxonomyService.updateContractMetadata(
       contractId,
       tenantId,
-      body,
-      "user" // In production, get from auth
+      metadata
     );
 
     if (!updateResult.success) {
       return NextResponse.json({
         success: false,
-        error: updateResult.error?.message || "Failed to update contract metadata"
+        error: updateResult.error || "Failed to update metadata"
       }, { status: 500 });
     }
 

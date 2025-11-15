@@ -4,7 +4,7 @@
  */
 
 import { ChatOpenAI } from '@langchain/openai';
-import { SystemMessage, HumanMessage } from 'langchain/schema';
+import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

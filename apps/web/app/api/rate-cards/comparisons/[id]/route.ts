@@ -11,12 +11,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const comparison = await prisma.rateComparison.findUnique({
       where: { id: params.id },
       include: {
-        rateCardEntries: {
-          include: {
-            rateCardEntry: true,
-          },
-          orderBy: { displayOrder: 'asc' },
-        },
+        targetRate: true,
       },
     });
 
@@ -55,11 +50,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
         ...(isShared !== undefined && { isShared }),
       },
       include: {
-        rateCardEntries: {
-          include: {
-            rateCardEntry: true,
-          },
-        },
+        targetRate: true,
       },
     });
 

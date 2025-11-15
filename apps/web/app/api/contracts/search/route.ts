@@ -132,10 +132,11 @@ async function performRealSearch(
     };
   }
 
-  const contracts = result.data.contracts;
+  const contracts = Array.isArray(result.data) ? result.data : (result.data as any).contracts || [];
+  const totalCount = (result as any).pagination?.total || contracts.length;
   const normalizedQuery = query.toLowerCase();
 
-  const results: HybridSearchResult[] = contracts.map((contract, index) => {
+  const results: HybridSearchResult[] = contracts.map((contract: any, index: number) => {
     const scoreBase = 0.92 - index * 0.05;
     const score = Math.max(0.4, Math.min(0.95, scoreBase));
     const keywordScore = mode === "semantic" ? score * 0.6 : score;
@@ -174,14 +175,14 @@ async function performRealSearch(
 
   return {
     results,
-    total: result.data.total,
+    total: totalCount,
     query,
     executionTime: Math.round(80 + Math.random() * 120),
     searchStrategy: {
       mode,
-      keywordResults: result.data.total,
-      semanticResults: mode === "semantic" ? result.data.total : 0,
-      mergedResults: result.data.total,
+      keywordResults: totalCount,
+      semanticResults: mode === "semantic" ? totalCount : 0,
+      mergedResults: totalCount,
     },
   };
 }

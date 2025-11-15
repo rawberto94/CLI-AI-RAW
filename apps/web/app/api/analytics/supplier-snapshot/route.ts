@@ -20,17 +20,15 @@ export async function GET(request: NextRequest) {
 
       case 'external-data':
         const externalData = await supplierEngine.integrateExternalData(supplierId);
-        return NextResponse.json(externalData);
+        return NextResponse.json({ data: externalData });
 
       case 'metrics':
-        const profileForMetrics = await supplierEngine.aggregateSupplierData(supplierId);
-        const metrics = await supplierEngine.calculateSupplierMetrics(profileForMetrics);
-        return NextResponse.json(metrics);
+        const metrics = await supplierEngine.calculateSupplierMetrics(supplierId);
+        return NextResponse.json({ data: metrics });
 
       case 'summary':
-        const profileForSummary = await supplierEngine.aggregateSupplierData(supplierId);
-        const summary = await supplierEngine.generateExecutiveSummary(profileForSummary);
-        return NextResponse.json(summary);
+        const summary = await supplierEngine.generateExecutiveSummary(supplierId);
+        return NextResponse.json({ data: summary });
 
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

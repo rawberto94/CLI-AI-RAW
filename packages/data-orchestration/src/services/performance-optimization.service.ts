@@ -143,7 +143,7 @@ export class PerformanceOptimizationService {
       },
       include: {
         supplier: true,
-        benchmarkSnapshot: {
+        benchmarkSnapshots: {
           orderBy: { calculatedAt: 'desc' },
           take: 1,
         },

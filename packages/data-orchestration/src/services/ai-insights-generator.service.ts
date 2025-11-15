@@ -343,7 +343,7 @@ export class AIInsightsGeneratorService {
           supplierName: { not: baseContext.supplierName },
         },
         include: {
-          benchmarkSnapshot: {
+          benchmarkSnapshots: {
             take: 1,
             orderBy: { snapshotDate: 'desc' },
           },
@@ -353,11 +353,11 @@ export class AIInsightsGeneratorService {
       });
 
       const competitorData: CompetitorRateData[] = competitorRates
-        .filter(rc => rc.benchmarkSnapshot.length > 0)
+        .filter(rc => rc.benchmarkSnapshots.length > 0)
         .map(rc => ({
           supplierName: rc.supplierName,
           rate: Number(rc.dailyRateUSD),
-          percentileRank: rc.benchmarkSnapshot[0].percentileRank,
+          percentileRank: rc.benchmarkSnapshots[0].percentileRank,
         }));
 
       return {
@@ -576,7 +576,7 @@ export class AIInsightsGeneratorService {
     const rateCards = await this.prisma.rateCardEntry.findMany({
       where: { tenantId },
       include: {
-        benchmarkSnapshot: {
+        benchmarkSnapshots: {
           take: 1,
           orderBy: { snapshotDate: 'desc' },
         },

@@ -544,3 +544,6 @@ export function MonitoringDashboard({ refreshInterval = 5000 }: { refreshInterva
     </div>
   );
 }
+
+// Auto-generated default export
+export default MonitoringDashboard;

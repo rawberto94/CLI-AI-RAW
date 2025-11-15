@@ -43,7 +43,7 @@ export function ColumnMappingInterface({
         sourceColumn,
         targetField,
         confidence: 1.0,
-        method: 'manual',
+        method: 'manual' as 'exact' | 'pattern' | 'fuzzy' | 'synonym',
       });
     }
 
@@ -235,3 +235,5 @@ export function ColumnMappingInterface({
     </div>
   );
 }
+
+export default ColumnMappingInterface;

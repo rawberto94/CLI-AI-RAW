@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo, memo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -47,132 +47,55 @@ const navigationItems: NavigationItem[] = [
     name: 'Dashboard',
     href: '/',
     icon: LayoutDashboard,
-    description: 'Executive overview'
+    description: 'Overview & insights'
   },
   {
     name: 'Contracts',
     href: '/contracts',
     icon: FileText,
-    description: 'Contract management',
-    children: [
-      {
-        name: 'All Contracts',
-        href: '/contracts',
-        icon: FileText,
-        description: 'View all contracts'
-      },
-      {
-        name: 'Upload',
-        href: '/upload',
-        icon: Upload,
-        description: 'Upload new contract'
-      },
-      {
-        name: 'Processing',
-        href: '/processing-status',
-        icon: Activity,
-        description: 'Monitor processing',
-        badge: 'Live'
-      },
-      {
-        name: 'Bulk Operations',
-        href: '/contracts/bulk',
-        icon: Briefcase,
-        description: 'Bulk actions'
-      }
-    ]
+    description: 'Manage contracts'
+  },
+  {
+    name: 'Upload',
+    href: '/upload',
+    icon: Upload,
+    description: 'Upload contracts'
+  },
+  {
+    name: 'Analytics',
+    href: '/dashboard',
+    icon: BarChart3,
+    description: 'Analytics & reports'
   },
   {
     name: 'Rate Cards',
     href: '/rate-cards',
     icon: CreditCard,
-    description: 'Rate benchmarking & analysis',
+    description: 'Rate benchmarking',
     children: [
       {
         name: 'Dashboard',
         href: '/rate-cards/dashboard',
         icon: LayoutDashboard,
-        description: 'Executive dashboard'
+        description: 'Overview'
       },
       {
         name: 'All Entries',
         href: '/rate-cards/entries',
         icon: FileText,
-        description: 'View all rate cards'
+        description: 'Browse entries'
       },
       {
         name: 'Benchmarking',
         href: '/rate-cards/benchmarking',
         icon: Target,
-        description: 'Rate benchmarks'
-      },
-      {
-        name: 'Suppliers',
-        href: '/rate-cards/suppliers',
-        icon: Users,
-        description: 'Supplier scorecards'
+        description: 'Compare rates'
       },
       {
         name: 'Opportunities',
         href: '/rate-cards/opportunities',
         icon: TrendingUp,
-        description: 'Savings opportunities'
-      },
-      {
-        name: 'Market Intelligence',
-        href: '/rate-cards/market-intelligence',
-        icon: BarChart3,
-        description: 'Market insights'
-      },
-      {
-        name: 'Baselines',
-        href: '/rate-cards/baselines',
-        icon: Target,
-        description: 'Target rates'
-      }
-    ]
-  },
-  {
-    name: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
-    description: 'Business intelligence',
-    children: [
-      {
-        name: 'Overview',
-        href: '/analytics',
-        icon: BarChart3,
-        description: 'Analytics hub'
-      },
-      {
-        name: 'Procurement Intelligence',
-        href: '/analytics/procurement',
-        icon: Briefcase,
-        description: 'Procurement insights'
-      },
-      {
-        name: 'Cost Savings',
-        href: '/analytics/savings',
-        icon: DollarSign,
-        description: 'Savings opportunities'
-      },
-      {
-        name: 'Renewals Radar',
-        href: '/analytics/renewals',
-        icon: Calendar,
-        description: 'Contract renewals'
-      },
-      {
-        name: 'Supplier Performance',
-        href: '/analytics/suppliers',
-        icon: Users,
-        description: 'Supplier analytics'
-      },
-      {
-        name: 'Negotiation Prep',
-        href: '/analytics/negotiation',
-        icon: TrendingUp,
-        description: 'Negotiation insights'
+        description: 'Savings potential'
       }
     ]
   },
@@ -180,17 +103,17 @@ const navigationItems: NavigationItem[] = [
     name: 'Search',
     href: '/search',
     icon: Search,
-    description: 'Find anything'
+    description: 'Find contracts'
   },
   {
-    name: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    description: 'Configuration'
+    name: 'Templates',
+    href: '/templates',
+    icon: FileText,
+    description: 'Contract templates'
   }
 ]
 
-export default function MainNavigation() {
+function MainNavigation() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [expandedItems, setExpandedItems] = useState<string[]>([])
@@ -368,3 +291,6 @@ export default function MainNavigation() {
     </TooltipProvider>
   )
 }
+
+// Export memoized component for better performance
+export default memo(MainNavigation)

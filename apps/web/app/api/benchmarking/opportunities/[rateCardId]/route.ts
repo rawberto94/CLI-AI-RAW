@@ -49,25 +49,18 @@ export async function GET(request: NextRequest) {
     const minSavings = searchParams.get('minSavings');
 
     const where: any = {};
-    if (tenantId) where.rateCard = { tenantId };
+    if (tenantId) where.tenantId = tenantId;
     if (status) where.status = status;
-    if (minSavings) where.estimatedSavings = { gte: parseFloat(minSavings) };
+    if (minSavings) where.annualSavingsPotential = { gte: parseFloat(minSavings) };
 
     const opportunities = await prisma.rateSavingsOpportunity.findMany({
       where,
-      include: {
-        rateCard: {
-          include: {
-            supplier: true,
-          },
-        },
-      },
-      orderBy: { estimatedSavings: 'desc' },
+      orderBy: { annualSavingsPotential: 'desc' },
       take: 100,
     });
 
     const totalSavings = opportunities.reduce(
-      (sum, opp) => sum + (opp.estimatedSavings || 0),
+      (sum, opp) => sum + Number(opp.annualSavingsPotential || 0),
       0
     );
 

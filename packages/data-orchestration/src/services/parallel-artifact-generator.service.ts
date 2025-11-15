@@ -217,7 +217,7 @@ export class ParallelArtifactGeneratorService {
       }
     }
 
-    const consistencyResult = artifactValidationService.validateConsistency(artifactDataMap);
+    const consistencyResult = await artifactValidationService.validateConsistency(artifactDataMap);
     
     if (!consistencyResult.consistent) {
       logger.warn(

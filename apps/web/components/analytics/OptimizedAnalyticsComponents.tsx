@@ -589,3 +589,15 @@ export function QuickStatsGrid({ stats }: {
     </div>
   )
 }
+
+// Default export for lazy loading
+export default { 
+  SavingsOpportunityCard,
+  RenewalAlertCard,
+  ComplianceIssueCard,
+  SupplierPerformanceCard,
+  QuerySuggestions,
+  ActionCenter,
+  SmartInsightsPanel,
+  QuickStatsGrid
+};

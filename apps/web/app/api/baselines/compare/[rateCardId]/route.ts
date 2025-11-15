@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ rateCardI
       comparisons,
       summary: {
         totalBaselines: comparisons.length,
-        maxSavingsOpportunity: Math.max(...comparisons.map(c => c.savingsOpportunity), 0),
+        maxSavingsOpportunity: Math.max(...comparisons.map(c => (c as any).savingsOpportunity || 0), 0),
         aboveBaseline: comparisons.filter(c => c.status === 'ABOVE_BASELINE').length,
         atBaseline: comparisons.filter(c => c.status === 'AT_BASELINE').length,
         belowBaseline: comparisons.filter(c => c.status === 'BELOW_BASELINE').length,

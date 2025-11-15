@@ -609,6 +609,34 @@ export class ConfidenceScoringService {
     ARTIFACT_SCHEMAS[schema.type] = schema;
     logger.info({ type: schema.type }, 'Custom artifact schema registered');
   }
+
+  /**
+   * Get artifact confidence score
+   */
+  async getArtifactConfidence(artifactId: string, tenantId: string): Promise<number> {
+    try {
+      const artifact = await (dbAdaptor.getClient() as any).artifact?.findFirst({
+        where: { id: artifactId, tenantId },
+      });
+
+      if (!artifact) {
+        logger.warn({ artifactId }, 'Artifact not found for confidence calculation');
+        return 0.5;
+      }
+
+      const confidenceScore = this.calculateConfidence(
+        artifact.type,
+        artifact.data,
+        artifact.confidence,
+        'ai'
+      );
+
+      return confidenceScore.overall;
+    } catch (error) {
+      logger.error({ error, artifactId }, 'Failed to get artifact confidence');
+      return 0.5;
+    }
+  }
 }
 
 export const confidenceScoringService = ConfidenceScoringService.getInstance();

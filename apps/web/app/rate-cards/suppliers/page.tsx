@@ -22,7 +22,7 @@ export default function SuppliersPage() {
 
       <div className="space-y-6">
         <SupplierRankings />
-        <SupplierComparisonView />
+        <SupplierComparisonView supplierIds={[]} />
       </div>
     </div>
   );

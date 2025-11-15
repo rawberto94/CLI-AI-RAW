@@ -103,6 +103,7 @@ export function FormField({
 
         {/* Input Field */}
         <motion.input
+          {...(props as any)}
           variants={displayError ? shakeVariants : {}}
           animate={displayError && hasInteracted ? 'shake' : ''}
           type={actualType}

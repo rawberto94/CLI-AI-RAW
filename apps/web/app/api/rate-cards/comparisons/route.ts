@@ -20,20 +20,7 @@ export async function GET(request: NextRequest) {
       where,
       orderBy: { createdAt: 'desc' },
       include: {
-        rateCardEntries: {
-          include: {
-            rateCardEntry: {
-              select: {
-                id: true,
-                supplierName: true,
-                roleStandardized: true,
-                seniority: true,
-                dailyRateUSD: true,
-                country: true,
-              },
-            },
-          },
-        },
+        targetRate: true,
       },
     });
 
@@ -67,23 +54,16 @@ export async function POST(request: NextRequest) {
     const comparison = await prisma.rateComparison.create({
       data: {
         tenantId: tenantId || 'default-tenant',
-        userId: userId || 'system',
-        name,
-        description,
+        comparisonName: name,
         comparisonType: comparisonType || 'CUSTOM',
-        rateCardEntries: {
-          create: rateCardIds.map((rateCardId: string, index: number) => ({
-            rateCardEntryId: rateCardId,
-            displayOrder: index,
-          })),
-        },
+        createdBy: userId || 'system',
+        targetRateId: rateCardIds[0],
+        comparisonRates: rateCardIds.slice(1),
+        results: {},
+        summary: description || '',
       },
       include: {
-        rateCardEntries: {
-          include: {
-            rateCardEntry: true,
-          },
-        },
+        targetRate: true,
       },
     });
 

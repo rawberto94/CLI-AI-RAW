@@ -46,17 +46,17 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'calculate-benchmarks':
-        if (!rates || !cohort) {
-          return NextResponse.json({ error: 'Rates and cohort required' }, { status: 400 });
+        if (!rates) {
+          return NextResponse.json({ error: 'Rates required' }, { status: 400 });
         }
-        const benchmarkResult = await rateCardEngine.calculateBenchmarks(rates, cohort);
+        const benchmarkResult = await rateCardEngine.calculateBenchmarks(rates);
         return NextResponse.json(benchmarkResult);
 
       case 'estimate-savings':
-        if (!currentRates || !benchmarks) {
-          return NextResponse.json({ error: 'Current rates and benchmarks required' }, { status: 400 });
+        if (!currentRates) {
+          return NextResponse.json({ error: 'Current rates required' }, { status: 400 });
         }
-        const savingsResult = await rateCardEngine.estimateSavings(currentRates, benchmarks);
+        const savingsResult = await rateCardEngine.estimateSavings(currentRates);
         return NextResponse.json(savingsResult);
 
       default:

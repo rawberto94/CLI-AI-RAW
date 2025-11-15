@@ -452,3 +452,6 @@ function RiskDisplay({ data }: { data: any }) {
     </div>
   );
 }
+
+// Auto-generated default export
+export default ArtifactDisplay;

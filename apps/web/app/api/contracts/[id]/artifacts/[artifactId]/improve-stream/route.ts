@@ -62,11 +62,8 @@ export async function POST(
   await client.artifact.update({
     where: { id: artifact.id },
     data: { 
-      status: 'PROCESSING',
-      metadata: { 
-        ...(artifact.metadata || {}), 
-        improvingAt: new Date().toISOString() 
-      }
+      validationStatus: 'PROCESSING',
+      lastEditedAt: new Date()
     }
   });
 
@@ -77,7 +74,7 @@ export async function POST(
     async start(controller) {
       try {
         const OpenAIClass = (await import('openai')).default;
-        const openai = new OpenAIClass({ apiKey: process.env.OPENAI_API_KEY });
+        const openai = new OpenAIClass({ apiKey: process.env['OPENAI_API_KEY'] });
 
         const userContent = promptConfig.userPrompt(rawText, `REFINEMENT_INSTRUCTIONS: ${userPrompt}`);
 
@@ -126,8 +123,8 @@ export async function POST(
         const validation = validateExtractedData(artifact.type, resultData);
 
         // Capture previous confidence for audit trail
-        const previousConfidence = artifact.metadata?.confidence || 0;
-        const newConfidence = validation?.confidence || 0;
+        const previousConfidence = artifact.confidence ? parseFloat(artifact.confidence.toString()) : 0;
+        const newConfidence = resultData.confidence || 0;
 
         // Update artifact with enhanced metadata
         const { editableArtifactService } = await import('data-orchestration/services');
@@ -135,8 +132,8 @@ export async function POST(
           artifact.id,
           {
             ...resultData,
-            metadata: {
-              ...resultData.metadata,
+            _metadata: {
+              ...resultData._metadata,
               previousConfidence,
               newConfidence,
               improvedAt: new Date().toISOString(),

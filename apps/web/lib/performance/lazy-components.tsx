@@ -89,7 +89,7 @@ export const LazyExportDialog = dynamic(
 
 // Import wizards - load on demand
 export const LazyColumnMappingInterface = dynamic(
-  () => import('@/components/import/ColumnMappingInterface').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/import/ColumnMappingInterface').then(mod => ({ default: mod.default || mod })) as any as any,
   {
     loading: () => <div className="animate-pulse bg-gray-200 h-screen" />,
     ssr: false,
@@ -97,7 +97,7 @@ export const LazyColumnMappingInterface = dynamic(
 );
 
 export const LazyValidationReview = dynamic(
-  () => import('@/components/import/ValidationReview').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/import/ValidationReview').then(mod => ({ default: mod.default || mod })) as any as any,
   {
     loading: () => <div className="animate-pulse bg-gray-200 h-screen" />,
     ssr: false,
@@ -106,7 +106,7 @@ export const LazyValidationReview = dynamic(
 
 // Analytics components - load on demand
 export const LazyAnalyticsHub = dynamic(
-  () => import('@/components/analytics/AnalyticsHub').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/analytics/AnalyticsHub').then(mod => ({ default: mod.default || mod })) as any as any,
   {
     loading: () => <LoadingSkeleton />,
     ssr: false,
@@ -114,7 +114,7 @@ export const LazyAnalyticsHub = dynamic(
 );
 
 export const LazyOptimizedAnalyticsComponents = dynamic(
-  () => import('@/components/analytics/OptimizedAnalyticsComponents').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/analytics/OptimizedAnalyticsComponents').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton />,
     ssr: false,
@@ -131,7 +131,7 @@ export const LazyRateCardTable = dynamic(
 );
 
 export const LazyRateCardFilters = dynamic(
-  () => import('@/components/rate-cards/RateCardFilters').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/rate-cards/RateCardFilters').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton height="h-32" />,
     ssr: false,
@@ -139,7 +139,7 @@ export const LazyRateCardFilters = dynamic(
 );
 
 export const LazyBenchmarkCard = dynamic(
-  () => import('@/components/rate-cards/BenchmarkCard').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/rate-cards/BenchmarkCard').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton height="h-64" />,
     ssr: false,
@@ -148,7 +148,7 @@ export const LazyBenchmarkCard = dynamic(
 
 // Monitoring components - load on demand
 export const LazyMonitoringDashboard = dynamic(
-  () => import('@/components/monitoring/MonitoringDashboard').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/monitoring/MonitoringDashboard').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton />,
     ssr: false,
@@ -164,7 +164,7 @@ export const LazyPerformanceMonitoringDashboard = dynamic(
 );
 
 export const LazyConnectionManagementDashboard = dynamic(
-  () => import('@/components/monitoring/ConnectionManagementDashboard').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/monitoring/ConnectionManagementDashboard').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton />,
     ssr: false,
@@ -173,7 +173,7 @@ export const LazyConnectionManagementDashboard = dynamic(
 
 // Contract components - load on demand
 export const LazyArtifactDisplay = dynamic(
-  () => import('@/components/contracts/ArtifactDisplay').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/contracts/ArtifactDisplay').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton />,
     ssr: false,
@@ -181,7 +181,7 @@ export const LazyArtifactDisplay = dynamic(
 );
 
 export const LazyEnhancedUploadZone = dynamic(
-  () => import('@/components/contracts/EnhancedUploadZone').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/contracts/EnhancedUploadZone').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton height="h-64" />,
     ssr: false,
@@ -207,7 +207,7 @@ export const LazyCostSavingsDashboardWidget = dynamic(
 
 // AI components - load on demand
 export const LazyChatAssistant = dynamic(
-  () => import('@/components/ai/ChatAssistant').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/ai/ChatAssistant').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton height="h-screen" />,
     ssr: false,
@@ -216,7 +216,7 @@ export const LazyChatAssistant = dynamic(
 
 // Search components - load on demand
 export const LazySmartSearch = dynamic(
-  () => import('@/components/search/SmartSearch').then(mod => ({ default: mod.default || mod })),
+  () => import('@/components/search/SmartSearch').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton height="h-16" />,
     ssr: false,

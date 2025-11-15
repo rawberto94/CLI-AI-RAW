@@ -34,8 +34,8 @@ export function RealTimeProvider({
   children,
   tenantId = 'demo',
   userId,
-  showConnectionToasts = true,
-  autoReconnect = true,
+  showConnectionToasts = false, // Disabled by default since SSE is optional
+  autoReconnect = false, // Disabled by default to reduce noise
 }: RealTimeProviderProps) {
   const toast = useToast();
   const [connectionAttempts, setConnectionAttempts] = useState(0);
@@ -72,44 +72,46 @@ export function RealTimeProvider({
 
   // Handle connection errors
   const handleError = useCallback((error: Error) => {
-    console.error('[RealTimeProvider] Connection error:', error);
+    // Only log errors in development, don't show toasts for optional SSE feature
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[RealTimeProvider] SSE connection error (optional feature):', error.message);
+    }
     setConnectionAttempts(prev => prev + 1);
     
-    if (showConnectionToasts) {
-      toast.warning('Attempting to reconnect to real-time updates...');
-    }
-  }, [showConnectionToasts, toast]);
+    // Don't show toast notifications for SSE errors since it's an optional feature
+    // The app works perfectly without real-time updates
+  }, []);
 
   // Handle successful connection
   const handleConnect = useCallback(() => {
     console.log('[RealTimeProvider] Connected to real-time updates');
     setConnectionAttempts(0);
     
-    if (showConnectionToasts) {
+    // Only show success toast if explicitly enabled and we had previous failures
+    if (showConnectionToasts && connectionAttempts > 2) {
       toast.success('Real-time updates are now active');
     }
-  }, [showConnectionToasts, toast]);
+  }, [showConnectionToasts, toast, connectionAttempts]);
 
   // Handle disconnection
   const handleDisconnect = useCallback(() => {
-    console.log('[RealTimeProvider] Disconnected from real-time updates');
-    
-    if (showConnectionToasts && connectionAttempts > 0) {
-      toast.warning('Real-time updates are temporarily unavailable');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[RealTimeProvider] Disconnected from real-time updates');
     }
-  }, [showConnectionToasts, toast, connectionAttempts]);
+    
+    // Don't show disconnect warnings for optional SSE feature
+  }, []);
 
   // Use the event stream hook
   const { isConnected, lastEvent, error, reconnect, disconnect } = useEventStream({
     tenantId,
     userId,
     autoReconnect,
-    reconnectInterval: 3000,
     onEvent: handleEvent,
     onError: handleError,
     onConnect: handleConnect,
     onDisconnect: handleDisconnect,
-  });
+  } as any);
 
   // Subscribe to specific event types
   const subscribe = useCallback((eventType: string, handler: (data: any) => void) => {

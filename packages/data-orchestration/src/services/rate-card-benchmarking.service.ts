@@ -62,6 +62,7 @@ export interface SavingsAnalysis {
   savingsPercentToP25: number;
   savingsPercentToP10: number;
   annualSavings?: number;
+  annualSavingsPotential?: number;
   isAboveMarket: boolean;
 }
 
@@ -224,11 +225,11 @@ export class RateCardBenchmarkingEngine {
     const statistics = this.calculateStatistics(cohortRates);
 
     // Determine market position
-    const marketPosition = this.calculateMarketPosition(rateCard.dailyRateUSD, statistics);
+    const marketPosition = this.calculateMarketPosition(Number(rateCard.dailyRateUSD), statistics);
 
     // Calculate savings analysis
     const savingsAnalysis = this.calculateSavingsAnalysis(
-      rateCard.dailyRateUSD,
+      Number(rateCard.dailyRateUSD),
       statistics,
       rateCard.volumeCommitted
     );
@@ -829,7 +830,7 @@ export class RateCardBenchmarkingEngine {
     const rateCard = await this.prisma.rateCardEntry.findUnique({
       where: { id: rateCardEntryId },
       include: {
-        benchmarkSnapshot: {
+        benchmarkSnapshots: {
           take: 1,
           orderBy: { snapshotDate: 'desc' },
         },

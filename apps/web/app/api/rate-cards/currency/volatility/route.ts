@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { currencyAdvancedService } from 'data-orchestration/services';
+import { CurrencyAdvancedService } from 'data-orchestration/services';
+
+const currencyAdvancedService = new CurrencyAdvancedService();
 
 export async function GET(request: NextRequest) {
   try {

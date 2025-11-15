@@ -191,6 +191,16 @@ class AnalyticalIntelligenceService {
         contracts: [],
         summary: { total: 0, compliant: 0, nonCompliant: 0 },
       }),
+      generateComplianceReport: async (filters: any) => ({
+        report: [],
+        summary: {},
+      }),
+      updatePolicies: async (policies: any) => ({
+        success: true,
+      }),
+      recommendRemediation: async (findingId: string) => ({
+        recommendations: [],
+      }),
     };
   }
 
@@ -204,6 +214,14 @@ class AnalyticalIntelligenceService {
         interpretation: query,
         confidence: 0,
       }),
+      processQuery: async (query: string, context?: any) => ({
+        results: [],
+        sql: '',
+      }),
+      searchContracts: async (query: string) => ({
+        contracts: [],
+        count: 0,
+      }),
     };
   }
 
@@ -216,6 +234,19 @@ class AnalyticalIntelligenceService {
         benchmarks: [],
         summary: { average: 0, median: 0, count: 0 },
       }),
+      parseRateCards: async (file: any) => ({
+        rateCards: [],
+        count: 0,
+      }),
+      generateRateCardReport: async (filters: any) => ({
+        report: {},
+      }),
+      calculateBenchmarks: async (rateCardId: string) => ({
+        benchmarks: [],
+      }),
+      estimateSavings: async (rateCardId: string) => ({
+        savings: 0,
+      }),
     };
   }
 
@@ -227,6 +258,19 @@ class AnalyticalIntelligenceService {
       getUpcoming: async (params: any) => ({
         renewals: [],
         summary: { count: 0, totalValue: 0 },
+      }),
+      extractRenewalData: async (contractId: string) => ({
+        renewalDate: null,
+        terms: {},
+      }),
+      generateRenewalCalendar: async (filters: any) => ({
+        calendar: [],
+      }),
+      scheduleAlerts: async (renewalId: string, alerts: any) => ({
+        success: true,
+      }),
+      triggerRfxGeneration: async (renewalId: string) => ({
+        rfxId: '',
       }),
     };
   }
@@ -242,6 +286,18 @@ class AnalyticalIntelligenceService {
         bySupplier: {},
         trends: [],
       }),
+      calculateEfficiency: async (params: any) => ({
+        efficiency: 0,
+      }),
+      integrateSpendData: async (data: any) => ({
+        success: true,
+      }),
+      mapSpendToContracts: async (params: any) => ({
+        mappings: [],
+      }),
+      analyzeVariances: async (params: any) => ({
+        variances: [],
+      }),
     };
   }
 
@@ -254,6 +310,19 @@ class AnalyticalIntelligenceService {
         supplierId,
         name: 'Unknown',
         metrics: {},
+      }),
+      aggregateSupplierData: async (supplierId: string) => ({
+        data: {},
+      }),
+      integrateExternalData: async (supplierId: string) => ({
+        data: {},
+      }),
+      calculateSupplierMetrics: async (supplierId: string) => ({
+        metrics: {},
+      }),
+      generateExecutiveSummary: async (supplierId: string) => ({
+        summary: '',
+        keyMetrics: {},
       }),
     };
   }

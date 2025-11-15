@@ -34,8 +34,8 @@ export const prisma =
   });
 
 // Log slow queries (only in development)
-if (process.env.NODE_ENV === 'development') {
-  prisma.$on('query' as any, (e: any) => {
+if (process.env['NODE_ENV'] === 'development') {
+  (prisma.$on as any)('query', (e: any) => {
     if (e.duration > 1000) {
       logger.warn(
         {
@@ -49,18 +49,18 @@ if (process.env.NODE_ENV === 'development') {
   });
 
   // Log errors
-  prisma.$on('error' as any, (e: any) => {
+  (prisma.$on as any)('error', (e: any) => {
     logger.error({ error: e }, 'Prisma error');
   });
 
   // Log warnings
-  prisma.$on('warn' as any, (e: any) => {
+  (prisma.$on as any)('warn', (e: any) => {
     logger.warn({ warning: e }, 'Prisma warning');
   });
 }
 
 // Graceful shutdown
-if (process.env.NODE_ENV !== 'production') {
+if (process.env['NODE_ENV'] !== 'production') {
   global.prisma = prisma;
 }
 

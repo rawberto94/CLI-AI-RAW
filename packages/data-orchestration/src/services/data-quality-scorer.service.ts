@@ -87,7 +87,7 @@ export class DataQualityScorerService {
     const rateCard = await this.prisma.rateCardEntry.findUnique({
       where: { id: rateCardEntryId },
       include: {
-        benchmarkSnapshot: {
+        benchmarkSnapshots: {
           take: 1,
           orderBy: { snapshotDate: 'desc' },
         },
@@ -498,7 +498,7 @@ export class DataQualityScorerService {
    * Save quality score to database
    */
   private async saveQualityScore(score: DataQualityScore): Promise<void> {
-    await this.prisma.dataQualityScore.upsert({
+    await this.prisma.dataQuality.upsert({
       where: { rateCardEntryId: score.rateCardEntryId },
       create: {
         rateCardEntryId: score.rateCardEntryId,
@@ -555,19 +555,19 @@ export class DataQualityScorerService {
     for (const rateCard of rateCards) {
       let score: DataQualityScore;
       
-      if (rateCard.dataQualityScore) {
+      if (rateCard.dataQuality) {
         score = {
           rateCardEntryId: rateCard.id,
-          overallScore: Number(rateCard.dataQualityScore.overallScore),
+          overallScore: Number(rateCard.dataQuality.overallScore),
           dimensions: {
-            completeness: Number(rateCard.dataQualityScore.completeness),
-            accuracy: Number(rateCard.dataQualityScore.accuracy),
-            consistency: Number(rateCard.dataQualityScore.consistency),
-            timeliness: Number(rateCard.dataQualityScore.timeliness),
+            completeness: Number(rateCard.dataQuality.completeness),
+            accuracy: Number(rateCard.dataQuality.accuracy),
+            consistency: Number(rateCard.dataQuality.consistency),
+            timeliness: Number(rateCard.dataQuality.timeliness),
           },
-          issues: rateCard.dataQualityScore.issues as any,
-          recommendations: rateCard.dataQualityScore.recommendations as any,
-          calculatedAt: rateCard.dataQualityScore.calculatedAt,
+          issues: rateCard.dataQuality.issues as any,
+          recommendations: rateCard.dataQuality.recommendations as any,
+          calculatedAt: rateCard.dataQuality.calculatedAt,
         };
       } else {
         // Calculate if not already done

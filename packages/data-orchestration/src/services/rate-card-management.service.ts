@@ -25,6 +25,16 @@ class RateCardManagementService {
   async deleteRateCard(id: string): Promise<void> {
     // Delete rate card
   }
+
+  async getRateCards(tenantId: string, filters?: any): Promise<any[]> {
+    // Return empty array for now - stub implementation
+    return [];
+  }
+
+  async getRateCard(id: string, tenantId: string): Promise<any | null> {
+    // Return null for now - stub implementation
+    return null;
+  }
 }
 
 export const rateCardManagementService = RateCardManagementService.getInstance();

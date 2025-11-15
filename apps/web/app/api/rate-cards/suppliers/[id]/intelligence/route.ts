@@ -15,14 +15,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
-import { supplierIntelligenceService } from 'data-orchestration/services';
-import { supplierTrendAnalyzerService } from 'data-orchestration/services';
-import { supplierRecommenderService } from 'data-orchestration/services';
+import { 
+  SupplierIntelligenceService,
+  // SupplierTrendAnalyzerService, // TODO: File is empty, implement or remove
+  SupplierRecommenderService
+} from 'data-orchestration/services';
+
+const supplierIntelligenceService = new SupplierIntelligenceService();
+// const supplierTrendAnalyzerService = new SupplierTrendAnalyzerService(); // TODO: Implement
+const supplierRecommenderService = new SupplierRecommenderService();
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -38,12 +44,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       session.user.tenantId
     );
 
-    // Analyze historical trends
-    const trends = await supplierTrendAnalyzerService.analyzeSupplierTrends(
-      supplierId,
-      session.user.tenantId,
-      monthsBack
-    );
+    // Analyze historical trends - TODO: implement SupplierTrendAnalyzerService
+    const trends = null; // await supplierTrendAnalyzerService.analyzeSupplierTrends(...)
 
     // Get alternative supplier recommendations if requested
     let alternatives = null;
@@ -61,12 +63,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       }
     }
 
-    // Detect above-market rate increases
-    const rateIncreaseAnalysis = await supplierTrendAnalyzerService.detectAboveMarketIncreases(
-      supplierId,
-      session.user.tenantId,
-      6 // Last 6 months
-    );
+    // Detect above-market rate increases - TODO: implement SupplierTrendAnalyzerService
+    const rateIncreaseAnalysis = null; // await supplierTrendAnalyzerService.detectAboveMarketIncreases(...)
 
     return NextResponse.json({
       supplierId,

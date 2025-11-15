@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
 
     if (artifactType && artifactData) {
       // Validate specific artifact
-      const validation = artifactValidationService.validateArtifact({
+      const validation = await artifactValidationService.validateArtifact({
         type: artifactType,
         ...artifactData
       });
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       // Try auto-fix if there are issues
       let autoFixResult = null;
       if (!validation.valid && validation.canAutoFix) {
-        autoFixResult = artifactValidationService.autoFix(
+        autoFixResult = await artifactValidationService.autoFix(
           artifactData,
           validation.issues
         );

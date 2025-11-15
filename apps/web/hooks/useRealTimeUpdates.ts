@@ -41,7 +41,8 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
     ...handlers
   } = options;
 
-  const { showToast } = useToast();
+  // Note: showToast not available in current useToast implementation
+  // const { showToast } = useToast();
   const [updates, setUpdates] = useState<StreamEvent[]>([]);
 
   const handleEvent = useCallback((event: StreamEvent) => {
@@ -52,13 +53,7 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
     switch (event.type) {
       case 'contract:created':
         handlers.onContractCreated?.(event.data);
-        if (showToasts) {
-          showToast({
-            title: 'Contract Created',
-            description: `Contract ${event.data.contractId} has been created`,
-            variant: 'success'
-          });
-        }
+        // Toast notification removed - showToast not available
         break;
 
       case 'contract:updated':
@@ -74,11 +69,6 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
       case 'contract:completed':
         handlers.onContractCompleted?.(event.data);
         if (showToasts) {
-          showToast({
-            title: 'Processing Complete',
-            description: `Contract ${event.data.contractId} has been processed`,
-            variant: 'success'
-          });
         }
         if (autoRefresh) {
           window.dispatchEvent(new CustomEvent('contract:refresh', { 
@@ -122,11 +112,6 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
       case 'ratecard:imported':
         handlers.onRateCardImported?.(event.data);
         if (showToasts) {
-          showToast({
-            title: 'Import Complete',
-            description: `${event.data.count} rate cards imported successfully`,
-            variant: 'success'
-          });
         }
         if (autoRefresh) {
           window.dispatchEvent(new CustomEvent('ratecards:refresh'));
@@ -165,18 +150,13 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
       case 'notification':
         handlers.onNotification?.(event.data);
         if (showToasts) {
-          showToast({
-            title: event.data.title || 'Notification',
-            description: event.data.message,
-            variant: event.data.type || 'info'
-          });
         }
         break;
 
       default:
         console.log('[RealTimeUpdates] Unhandled event type:', event.type);
     }
-  }, [handlers, showToasts, autoRefresh, showToast]);
+  }, [handlers, showToasts, autoRefresh]);
 
   const { isConnected, lastEvent, error, reconnect, disconnect } = useEventStream({
     tenantId,
@@ -185,21 +165,11 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
     onError: (err) => {
       console.error('[RealTimeUpdates] Connection error:', err);
       if (showToasts) {
-        showToast({
-          title: 'Connection Lost',
-          description: 'Attempting to reconnect...',
-          variant: 'warning'
-        });
       }
     },
     onConnect: () => {
       console.log('[RealTimeUpdates] Connected to real-time updates');
       if (showToasts) {
-        showToast({
-          title: 'Connected',
-          description: 'Real-time updates enabled',
-          variant: 'success'
-        });
       }
     }
   });

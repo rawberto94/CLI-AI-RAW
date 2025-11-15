@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { alertManagementService } from 'data-orchestration/services';
+import { AlertManagementService } from 'data-orchestration/services';
+import { prisma } from '@/lib/prisma';
+
+const alertManagementService = new AlertManagementService(prisma);
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,11 +16,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const alertRule = await alertManagementService.createAlertRule(
+    const alertRule = await alertManagementService.createAlertRule({
+      ...rule,
       tenantId,
       userId,
-      rule
-    );
+    });
 
     return NextResponse.json(alertRule);
   } catch (error: any) {
@@ -42,9 +45,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rules = await alertManagementService.getAlertRules(
+    const rules = await alertManagementService.getAlerts(
       tenantId,
-      userId || undefined
+      userId || undefined,
+      { limit: 100 }
     );
 
     return NextResponse.json(rules);

@@ -15,53 +15,59 @@ test.describe('Contracts Management', () => {
 
     test('should display contracts page', async ({ page }) => {
       await expect(page.getByRole('heading', { name: /contracts/i })).toBeVisible({ timeout: 10000 });
+      // Verify stats cards are visible
+      await expect(page.locator('[data-testid="contracts-stats"]')).toBeVisible({ timeout: 5000 });
     });
 
-    test('should display contract list or table', async ({ page }) => {
-      // Look for table or list structure
-      const contractList = page.locator('table, [role="table"], [data-testid="contract-list"]').first();
+    test('should display contract list or cards', async ({ page }) => {
+      // Look for card-based contract list
+      const contractList = page.locator('[data-testid="contracts-list"]').first();
       await expect(contractList).toBeVisible({ timeout: 10000 }).catch(() => {
         console.log('Contract list not immediately visible - may be empty');
       });
     });
 
     test('should filter contracts by search term', async ({ page }) => {
-      const searchInput = page.getByPlaceholder(/search|filter/i).first();
+      const searchInput = page.locator('[data-testid="contract-search"]');
       
       if (await searchInput.isVisible({ timeout: 3000 }).catch(() => false)) {
         await searchInput.fill('test');
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
         
-        // Verify filtering occurred (results should update)
-        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+        // Verify search input has value
+        await expect(searchInput).toHaveValue('test');
       }
     });
 
     test('should filter contracts by status', async ({ page }) => {
-      const statusFilter = page.locator('select, [data-testid="status-filter"]').first();
+      // Click Active filter button
+      const activeFilter = page.locator('[data-testid="filter-active"]');
       
-      if (await statusFilter.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await statusFilter.click();
+      if (await activeFilter.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await activeFilter.click();
         await page.waitForTimeout(500);
+        // Verify button is now in default (active) state
+        await expect(activeFilter).toHaveAttribute('data-testid', 'filter-active');
       }
     });
 
-    test('should sort contracts by column', async ({ page }) => {
-      const sortableColumn = page.locator('th[role="columnheader"], [data-sort]').first();
+    test('should show status filter buttons', async ({ page }) => {
+      // Verify all filter buttons are visible
+      const filterAll = page.locator('[data-testid="filter-all"]');
+      const filterActive = page.locator('[data-testid="filter-active"]');
+      const filterProcessing = page.locator('[data-testid="filter-processing"]');
       
-      if (await sortableColumn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await sortableColumn.click();
-        await page.waitForTimeout(1000);
-      }
+      await expect(filterAll).toBeVisible({ timeout: 3000 });
+      await expect(filterActive).toBeVisible({ timeout: 3000 });
+      await expect(filterProcessing).toBeVisible({ timeout: 3000 });
     });
 
-    test('should paginate through contracts', async ({ page }) => {
-      const nextPageButton = page.getByRole('button', { name: /next|>/i }).first();
-      
-      if (await nextPageButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await nextPageButton.click();
-        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
-      }
+    test('should display stats cards', async ({ page }) => {
+      // Verify all stats cards are visible
+      await expect(page.locator('[data-testid="stat-total"]')).toBeVisible({ timeout: 3000 });
+      await expect(page.locator('[data-testid="stat-active"]')).toBeVisible({ timeout: 3000 });
+      await expect(page.locator('[data-testid="stat-processing"]')).toBeVisible({ timeout: 3000 });
+      await expect(page.locator('[data-testid="stat-value"]')).toBeVisible({ timeout: 3000 });
     });
   });
 
@@ -100,11 +106,11 @@ test.describe('Contracts Management', () => {
       await page.goto('/contracts');
       await page.waitForLoadState('domcontentloaded');
       
-      // Try to find and click on a contract
-      const contractLink = page.locator('a[href*="/contracts/"], tr a, [data-testid="contract-link"]').first();
+      // Try to find and click on a contract card
+      const contractCard = page.locator('[data-testid="contract-card"]').first();
       
-      if (await contractLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await contractLink.click();
+      if (await contractCard.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await contractCard.click();
         await page.waitForLoadState('domcontentloaded');
         
         // Verify we're on a contract detail page
@@ -139,30 +145,9 @@ test.describe('Contracts Management', () => {
   });
 
   test.describe('Bulk Contract Operations', () => {
-    test.beforeEach(async ({ page }) => {
-      await page.goto('/contracts/bulk');
-      await page.waitForLoadState('domcontentloaded').catch(() => {});
-    });
-
-    test('should display bulk upload page', async ({ page }) => {
-      const heading = page.getByRole('heading', { name: /bulk|multiple/i }).first();
-      await expect(heading).toBeVisible({ timeout: 10000 }).catch(() => {
-        console.log('Bulk upload page not found');
-      });
-    });
-
-    test('should allow CSV or Excel upload', async ({ page }) => {
-      const uploadInput = page.locator('input[type="file"][accept*="csv"], input[type="file"][accept*="excel"]').first();
-      await expect(uploadInput).toBeVisible({ timeout: 5000 }).catch(() => {
-        console.log('Bulk upload input not found');
-      });
-    });
-
-    test('should show template download option', async ({ page }) => {
-      const templateLink = page.getByRole('link', { name: /template|sample|example/i }).first();
-      await expect(templateLink).toBeVisible({ timeout: 5000 }).catch(() => {
-        console.log('Template download not found');
-      });
+    test.skip('Bulk operations removed in UI simplification', () => {
+      // These features were intentionally removed to simplify the UI
+      // Bulk upload functionality may be re-added in future if needed
     });
   });
 });

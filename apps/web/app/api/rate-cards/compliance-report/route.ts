@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { complianceReportingService } from 'data-orchestration/services';
+import { ComplianceReportingService } from 'data-orchestration/services';
+
+const complianceReportingService = new ComplianceReportingService();
 
 export async function POST(request: NextRequest) {
   try {

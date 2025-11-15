@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,7 +144,7 @@ export function AdvancedFilterBuilder({
     }
   };
 
-  const renderGroup = (group: FilterGroup, depth: number = 0, parentGroup?: FilterGroup, groupIndex?: number): JSX.Element => {
+  const renderGroup = (group: FilterGroup, depth: number = 0, parentGroup?: FilterGroup, groupIndex?: number): React.ReactElement => {
     return (
       <div
         key={`group-${depth}-${groupIndex}`}

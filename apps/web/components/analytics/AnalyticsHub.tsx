@@ -239,3 +239,6 @@ export function AnalyticsHub() {
     </div>
   )
 }
+
+// Auto-generated default export
+export default AnalyticsHub;

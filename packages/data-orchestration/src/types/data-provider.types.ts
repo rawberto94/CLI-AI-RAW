@@ -9,8 +9,11 @@ export type DataMode = 'real' | 'mock' | 'auto';
 
 export interface DataSourceMetadata {
   source: 'database' | 'mock' | 'hybrid';
-  lastUpdated: Date;
-  recordCount: number;
+  timestamp?: string;
+  lastUpdated: Date | string;
+  recordCount?: number;
+  count?: number;
+  mode?: string;
   confidence: number;
   warning?: string;
 }

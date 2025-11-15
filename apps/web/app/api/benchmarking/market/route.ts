@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       Object.entries(criteria).filter(([_, v]) => v !== undefined)
     );
 
-    const intelligence = await benchmarkingEngine.calculateMarketIntelligence(cleanCriteria);
+    const intelligence = await benchmarkingEngine.calculateMarketIntelligence(cleanCriteria as any);
 
     return NextResponse.json({
       success: true,

@@ -104,6 +104,7 @@ export class ExcelParser {
         dataStartRow,
         rowCount: rows.length,
         columnCount: headers.length,
+        hasEmptyRows: false,
       },
     };
   }
@@ -176,7 +177,7 @@ export class ExcelParser {
       case 'b': // Boolean
         return cell.v;
       case 's': // String
-      case 'str':
+      case 'str' as any:
         return String(cell.v).trim();
       case 'e': // Error
         return null;

@@ -21,9 +21,9 @@ export default function MarketIntelligencePage() {
         </p>
       </div>
 
-      <MarketIntelligenceFilters />
+      <MarketIntelligenceFilters onFilterChange={() => {}} />
       <MarketIntelligenceDashboard tenantId="default-tenant" />
-      <EmergingTrendsPanel />
+      <EmergingTrendsPanel tenantId="default-tenant" />
     </div>
   );
 }
