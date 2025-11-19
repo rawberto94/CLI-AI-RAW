@@ -138,7 +138,7 @@ function MainNavigation() {
   return (
     <TooltipProvider>
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="h-6 w-6 text-blue-600" />
           <span className="font-semibold text-gray-900">Contract Intelligence</span>
@@ -162,7 +162,7 @@ function MainNavigation() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-screen transition-transform bg-white border-r border-gray-200 shadow-lg',
+          'fixed top-0 left-0 z-30 h-screen transition-transform bg-white border-r border-gray-200 shadow-lg',
           'lg:translate-x-0 w-64',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
@@ -284,7 +284,7 @@ function MainNavigation() {
       {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

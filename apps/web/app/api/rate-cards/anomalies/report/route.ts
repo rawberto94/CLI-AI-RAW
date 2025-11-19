@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 import { AnomalyExplainerService } from 'data-orchestration/services';
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 /**
  * GET /api/rate-cards/anomalies/report

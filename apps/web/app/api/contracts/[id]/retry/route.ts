@@ -10,9 +10,9 @@ import {
   retryProcessingJob,
 } from "@/lib/contract-processing";
 import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 export async function POST(
   _request: NextRequest,

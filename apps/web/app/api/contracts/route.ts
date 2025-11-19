@@ -183,6 +183,17 @@ async function handler(request: NextRequest) {
   const orderBy: any = {};
   orderBy[sortBy] = sortOrder;
 
+  // Build cache key
+  const cacheKey = CacheKeys.contractsList(
+    tenantId,
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+    search,
+    statuses
+  );
+
   // Try to get from cache or fetch from database
   const cachedResult = await withCache(
     cacheKey,

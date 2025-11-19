@@ -1,0 +1,119 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - text: "Tenant:"
+      - strong [ref=e5]: —
+    - generic [ref=e6]:
+      - text: "API:"
+      - strong [ref=e7]: ok
+    - generic [ref=e8]:
+      - text: "Web:"
+      - strong [ref=e9]: "?"
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e12]
+      - generic [ref=e15]: Contract Intelligence
+    - navigation [ref=e16]:
+      - link "Dashboard" [ref=e18] [cursor=pointer]:
+        - /url: /
+        - img [ref=e19]
+        - generic [ref=e24]: Dashboard
+      - link "Contracts" [ref=e26] [cursor=pointer]:
+        - /url: /contracts
+        - img [ref=e27]
+        - generic [ref=e30]: Contracts
+      - link "Upload" [ref=e32] [cursor=pointer]:
+        - /url: /upload
+        - img [ref=e33]
+        - generic [ref=e36]: Upload
+      - link "Analytics" [ref=e38] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e39]
+        - generic [ref=e41]: Analytics
+      - button "Rate Cards" [ref=e43] [cursor=pointer]:
+        - generic [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e47]: Rate Cards
+        - img [ref=e49]
+      - link "Search" [ref=e52] [cursor=pointer]:
+        - /url: /search
+        - img [ref=e53]
+        - generic [ref=e56]: Search
+      - link "Templates" [ref=e58] [cursor=pointer]:
+        - /url: /templates
+        - img [ref=e59]
+        - generic [ref=e62]: Templates
+    - generic [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]: Version
+        - generic [ref=e67]: 2.0.0
+      - generic [ref=e68]:
+        - generic [ref=e69]: Real-time
+        - generic "Real-time updates are active" [ref=e70]:
+          - img [ref=e71]
+  - generic [ref=e75]:
+    - button "Real Data real" [ref=e77] [cursor=pointer]:
+      - img
+      - generic [ref=e78]: Real Data
+      - generic [ref=e79]: real
+    - generic [ref=e81]:
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - heading "Contracts" [level=1] [ref=e84]
+          - paragraph [ref=e85]: Manage and view all your contracts
+        - generic [ref=e86]:
+          - button "Refresh" [ref=e87] [cursor=pointer]:
+            - img
+            - text: Refresh
+          - link "Upload Contract" [ref=e88] [cursor=pointer]:
+            - /url: /upload
+            - img
+            - text: Upload Contract
+      - generic [ref=e89]:
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - paragraph [ref=e94]: Total Contracts
+            - paragraph [ref=e95]: "0"
+          - img [ref=e96]
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - paragraph [ref=e103]: Active
+            - paragraph [ref=e104]: "0"
+          - img [ref=e105]
+        - generic [ref=e110]:
+          - generic [ref=e111]:
+            - paragraph [ref=e112]: Processing
+            - paragraph [ref=e113]: "0"
+          - img [ref=e114]
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - paragraph [ref=e120]: Total Value
+            - paragraph [ref=e121]: —
+          - img [ref=e122]
+      - generic [ref=e126]:
+        - generic [ref=e127]:
+          - img [ref=e128]
+          - textbox "Search contracts by title, client, or supplier..." [ref=e131]
+        - generic [ref=e132]:
+          - button "All" [ref=e133] [cursor=pointer]
+          - button "Active" [ref=e134] [cursor=pointer]
+          - button "Processing" [ref=e135] [cursor=pointer]
+      - generic [ref=e138]:
+        - img [ref=e139]
+        - heading "No contracts found" [level=3] [ref=e142]
+        - paragraph [ref=e143]: Upload your first contract to get started
+        - link "Upload Contract" [ref=e144] [cursor=pointer]:
+          - /url: /upload
+          - img
+          - text: Upload Contract
+  - button [ref=e145] [cursor=pointer]:
+    - img
+  - button [ref=e146] [cursor=pointer]:
+    - img
+  - button "Open Next.js Dev Tools" [ref=e152] [cursor=pointer]:
+    - img [ref=e153]
+  - alert [ref=e156]
+```

@@ -9,10 +9,18 @@
     "build": "cd apps/web && npm run build",
     "build:clients": "bash scripts/build-clients.sh",
     "start": "cd apps/web && npm run start",
-    "test": "echo \"Running system tests...\" && exit 0",
+    "workers": "cd packages/workers && pnpm dev",
+    "workers:build": "cd packages/workers && pnpm build",
+    "workers:start": "cd packages/workers && pnpm start",
+    "api": "cd packages/data-orchestration && node api-server.js",
+    "test": "bash scripts/start-test-services.sh && cd apps/web && pnpm test:headless",
+    "test:e2e": "cd apps/web && pnpm test:e2e",
+    "test:e2e:ui": "cd apps/web && pnpm test:e2e:ui",
     "test:rag-integration": "tsx scripts/test-rag-integration.ts",
     "services": "bash .devcontainer/start-services.sh",
-    "setup": "bash .devcontainer/setup.sh"
+    "services:test": "bash scripts/start-test-services.sh",
+    "setup": "bash .devcontainer/setup.sh",
+    "verify": "bash scripts/verify-production-readiness.sh"
   },
   "dependencies": {
     "@types/jspdf": "^2.0.0",

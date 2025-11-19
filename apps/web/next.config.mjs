@@ -268,6 +268,18 @@ const nextConfig = {
         worker_threads: false,
         canvas: false,
       };
+    } else {
+      // Server-side: ensure 'self' is defined for webpack runtime
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+      };
+      
+      // Add plugin to define 'self' on the server
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'self': 'globalThis',
+        })
+      );
     }
 
     // Handle binary files from pdfjs-dist

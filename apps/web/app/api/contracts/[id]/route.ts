@@ -10,12 +10,12 @@
 
 import { NextResponse } from "next/server";
 import { unlink } from "fs/promises";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 export const runtime = "nodejs";
 

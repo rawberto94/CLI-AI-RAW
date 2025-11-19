@@ -9,7 +9,8 @@
     "allowJs": true,
     "strict": false,
     "noEmit": true,
-    "incremental": false,
+    "incremental": true,
+    "tsBuildInfoFile": "./.next/cache/.tsbuildinfo",
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
@@ -20,7 +21,8 @@
     "skipDefaultLibCheck": true,
     "disableSourceOfProjectReferenceRedirect": true,
     "disableSolutionSearching": true,
-    "preserveWatchOutput": false,
+    "preserveWatchOutput": true,
+    "assumeChangesOnlyAffectDirectDependencies": true,
     "types": ["react", "react-dom"],
     "plugins": [
       {
@@ -69,7 +71,15 @@
     "**/*.test.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx",
-    "**/__tests__/**"
+    "**/__tests__/**",
+    ".next/**",
+    "out/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".turbo/**",
+    "**/node_modules/**",
+    "**/.next/**"
   ]
 }
 

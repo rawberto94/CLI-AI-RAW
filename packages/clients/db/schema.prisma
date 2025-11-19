@@ -2496,3 +2496,92 @@ model ContractActivity {
   @@index([timestamp(sort: Desc)])
   @@map("contract_activities")
 }
+
+// ============================================
+// Production Infrastructure Models
+// ============================================
+
+// Webhook Configuration
+model Webhook {
+  id          String             @id @default(cuid())
+  tenantId    String
+  name        String
+  url         String
+  secret      String?            // HMAC secret for signature verification
+  events      String[]           // Array of event types to listen for
+  enabled     Boolean            @default(true)
+  maxRetries  Int                @default(5)
+  timeout     Int                @default(10000) // milliseconds
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  createdBy   String?
+  deliveries  WebhookDelivery[]
+
+  @@index([tenantId])
+  @@index([enabled])
+  @@map("webhooks")
+}
+
+// Webhook Delivery Tracking
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+  webhookId   String
+  tenantId    String
+  event       String
+  payload     Json
+  status      String   @default("pending") // pending, success, failed
+  attempt     Int      @default(1)
+  maxAttempts Int      @default(5)
+  statusCode  Int?
+  response    String?  @db.Text
+  error       String?  @db.Text
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("webhook_deliveries")
+}
+
+// Idempotency Key for preventing duplicate operations
+model IdempotencyKey {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  tenantId     String
+  requestHash  String   // Hash of request parameters
+  response     Json?    // Cached response
+  statusCode   Int?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime // Keys expire after 24 hours
+
+  @@index([tenantId])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+// Transactional Outbox Pattern for reliable event publishing
+model OutboxEvent {
+  id          String   @id @default(cuid())
+  tenantId    String
+  eventType   String
+  aggregateId String   // ID of the entity that triggered the event
+  payload     Json
+  status      String   @default("pending") // pending, published, failed
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+  error       String?  @db.Text
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("outbox_events")
+}

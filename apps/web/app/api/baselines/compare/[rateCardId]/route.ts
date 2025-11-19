@@ -6,9 +6,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { BaselineManagementService } from 'data-orchestration';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 export async function GET(req: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;

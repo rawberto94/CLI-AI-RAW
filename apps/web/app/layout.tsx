@@ -23,26 +23,26 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-white font-sans antialiased">
         <GlobalErrorBoundary>
           <DataModeProvider>
             <ToastProvider>
               <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
-                {/* Data Mode Banner - Shows when not in real mode */}
-                <DataModeBanner />
+                {/* Data Mode Banner - Disabled */}
+                {/* <DataModeBanner /> */}
                 <HealthBanner />
                 <MainNavigation />
-                <div className="min-h-screen lg:pl-64 pt-16 lg:pt-0">
-                  {/* Data Mode Toggle - Fixed Position */}
-                  <div className="fixed top-4 right-4 z-50">
+                <div className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-white">
+                  {/* Data Mode Toggle - Disabled to prevent overlay */}
+                  {/* <div className="fixed top-4 right-4 z-50">
                     <EnhancedDataModeToggle />
-                  </div>
+                  </div> */}
                   {children}
                 </div>
                 {/* AI Chat Assistant - Available everywhere */}
-                <ChatAssistant />
+                {/* <ChatAssistant /> */}
                 {/* Enhanced AI Chatbot - Context-aware assistance */}
-                <AIChatbot context="global" />
+                {/* <AIChatbot context="global" /> */}
               </RealTimeProvider>
             </ToastProvider>
           </DataModeProvider>

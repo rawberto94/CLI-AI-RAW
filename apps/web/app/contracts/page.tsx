@@ -81,18 +81,22 @@ export default function ContractsPage() {
     fetchContracts();
   }, [fetchContracts]);
 
-  const filteredContracts = useMemo(() => contracts.filter((contract) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      contract.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contract.parties?.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contract.parties?.supplier?.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredContracts = useMemo(() => {
+    if (!Array.isArray(contracts)) return [];
+    
+    return contracts.filter((contract) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        contract.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contract.parties?.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contract.parties?.supplier?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "all" || contract.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" || contract.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  }), [contracts, searchQuery, statusFilter]);
+      return matchesSearch && matchesStatus;
+    });
+  }, [contracts, searchQuery, statusFilter]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -187,7 +191,7 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Total Contracts</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {contracts.length}
+                    {Array.isArray(contracts) ? contracts.length : 0}
                   </p>
                 </div>
                 <FileText className="h-10 w-10 text-blue-600" />
@@ -200,7 +204,7 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Active</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {contracts.filter((c) => c.status === "completed").length}
+                    {Array.isArray(contracts) ? contracts.filter((c) => c.status === "completed").length : 0}
                   </p>
                 </div>
                 <CheckCircle className="h-10 w-10 text-green-600" />
@@ -213,7 +217,7 @@ export default function ContractsPage() {
                 <div>
                   <p className="text-sm text-gray-600">Processing</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {contracts.filter((c) => c.status === "processing").length}
+                    {Array.isArray(contracts) ? contracts.filter((c) => c.status === "processing").length : 0}
                   </p>
                 </div>
                 <Loader2 className="h-10 w-10 text-blue-600" />
@@ -227,7 +231,7 @@ export default function ContractsPage() {
                   <p className="text-sm text-gray-600">Total Value</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {formatCurrency(
-                      contracts.reduce((sum, c) => sum + (c.value || 0), 0)
+                      Array.isArray(contracts) ? contracts.reduce((sum, c) => sum + (c.value || 0), 0) : 0
                     )}
                   </p>
                 </div>

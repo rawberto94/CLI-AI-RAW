@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
+    // Using singleton prisma instance from @/lib/prisma
 
     try {
       if (contractId) {

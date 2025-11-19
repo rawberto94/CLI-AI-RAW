@@ -9,10 +9,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readFile, writeFile, mkdir, unlink, rm } from 'fs/promises';
 import { join } from 'path';
 import { existsSync, createReadStream } from 'fs';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration } from '@/lib/artifact-trigger';
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 export async function POST(req: NextRequest) {
   try {

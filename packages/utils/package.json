@@ -19,6 +19,7 @@
     "@opentelemetry/resources": "^2.1.0",
     "@opentelemetry/sdk-node": "^0.205.0",
     "@opentelemetry/semantic-conventions": "^1.37.0",
+    "bullmq": "^4.12.3",
     "ioredis": "^5.3.2",
     "pino": "^8.15.1",
     "pino-pretty": "^13.1.1",

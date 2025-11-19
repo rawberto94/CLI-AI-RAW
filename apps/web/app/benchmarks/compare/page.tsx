@@ -110,6 +110,7 @@ export default function CompareRatesPage() {
 
   // Filter contracts by optional FilterBar selections (client/supplier/type/status)
   const filteredContracts = useMemo(() => {
+    if (!Array.isArray(contracts)) return [];
     if (!filters || Object.keys(filters).length === 0) return contracts;
     return (contracts as any[]).filter((c) => {
       const ov: Overview | undefined = c.__overview;
@@ -138,6 +139,7 @@ export default function CompareRatesPage() {
 
   // Search within filtered contracts for dropdown
   const searchFilteredContracts = useMemo(() => {
+    if (!Array.isArray(filteredContracts)) return [];
     const q = contractSearch.trim().toLowerCase();
     if (!q) return filteredContracts;
     return filteredContracts.filter((c) => (c.name || '').toLowerCase().includes(q));
@@ -145,6 +147,7 @@ export default function CompareRatesPage() {
 
   // Build reference list filtered by role/country/los for custom selection
   const filteredRepoRates = useMemo(() => {
+    if (!Array.isArray(rates)) return [];
     const r = refQuery.role.toLowerCase();
     const c = refQuery.country.toLowerCase();
     const l = refQuery.lineOfService.toLowerCase();

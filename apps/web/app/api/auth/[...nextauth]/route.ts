@@ -1,23 +1,8 @@
 /**
- * NextAuth Route Handler Stub
- * TODO: Implement actual NextAuth configuration
+ * NextAuth v5 Route Handler
+ * Handles all authentication requests
  */
 
-import { authOptions } from '@/lib/auth';
+import { handlers } from "@/lib/auth";
 
-// Stub: NextAuth would handle GET/POST here
-export async function GET(request: Request) {
-  return new Response(JSON.stringify({ error: 'Auth not configured' }), {
-    status: 501,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-export async function POST(request: Request) {
-  return new Response(JSON.stringify({ error: 'Auth not configured' }), {
-    status: 501,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
-
-export { authOptions };
+export const { GET, POST } = handlers;

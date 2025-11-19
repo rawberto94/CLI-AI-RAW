@@ -99,7 +99,7 @@ export function AlertsList({ userId }: AlertsListProps) {
     return <div className="text-center py-8">Loading alerts...</div>;
   }
 
-  const unreadCount = alerts.filter(a => !a.read).length;
+  const unreadCount = Array.isArray(alerts) ? alerts.filter(a => !a.read).length : 0;
 
   return (
     <div className="space-y-4">

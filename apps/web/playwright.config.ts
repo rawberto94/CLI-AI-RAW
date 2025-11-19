@@ -21,12 +21,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  // webServer: {
-  //   command: 'pnpm dev',
-  //   port: 3005,
-  //   timeout: 120 * 1000,
-  //   reuseExistingServer: !process.env.CI, // Reuse existing server in dev, start new in CI
-  //   stdout: 'pipe', // Capture output
-  //   stderr: 'pipe',
-  // },
+  webServer: {
+    command: 'pnpm dev:stable',
+    port: 3005,
+    timeout: 120 * 1000,
+    reuseExistingServer: !process.env.CI,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  },
 });

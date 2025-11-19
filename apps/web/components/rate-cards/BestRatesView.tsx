@@ -95,8 +95,8 @@ export function BestRatesView() {
   };
 
   // Get unique countries and lines of service for filters
-  const uniqueCountries = Array.from(new Set(bestRates.map(br => br.bestRateEntry.country)));
-  const uniqueLinesOfService = Array.from(new Set(bestRates.map(br => br.bestRateEntry.lineOfService)));
+  const uniqueCountries = Array.from(new Set(Array.isArray(bestRates) ? bestRates.map(br => br.bestRateEntry.country) : []));
+  const uniqueLinesOfService = Array.from(new Set(Array.isArray(bestRates) ? bestRates.map(br => br.bestRateEntry.lineOfService) : []));
 
   if (loading) {
     return (

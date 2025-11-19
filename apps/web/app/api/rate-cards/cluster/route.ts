@@ -5,12 +5,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
 import { rateCardClusteringService } from 'data-orchestration/services';
 import { consolidationOpportunityService } from 'data-orchestration/services';
 import { geographicArbitrageService } from 'data-orchestration/services';
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 export async function POST(request: NextRequest) {
   try {

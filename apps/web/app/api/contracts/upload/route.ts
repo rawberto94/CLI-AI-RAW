@@ -11,10 +11,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 
-const prisma = new PrismaClient();
+// Using singleton prisma instance from @/lib/prisma
 
 // ============================================================================
 // FILE VALIDATION CONSTANTS
@@ -211,19 +211,59 @@ export async function POST(
       );
     }
 
-    // Save file to disk
+    // Save file to object storage (MinIO/S3)
     const timestamp = Date.now();
     const sanitizedFileName = sanitizeFileName(file.name);
     const storedFileName = `${timestamp}-${sanitizedFileName}`;
-    const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
-    await mkdir(uploadDir, { recursive: true });
-
-    const filePath = join(uploadDir, storedFileName);
+    const objectKey = `contracts/${tenantId}/${storedFileName}`;
+    
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
 
-    console.log("💾 File saved to:", filePath);
+    let filePath = objectKey;
+    let storageProvider = "s3";
+    let uploadResult: { success: boolean; url?: string; error?: string } | null = null;
+
+    // Try to upload to object storage first
+    try {
+      const { initializeStorage } = await import("@/lib/storage-service");
+      const storageService = initializeStorage();
+      
+      if (storageService) {
+        uploadResult = await storageService.upload({
+          fileName: objectKey,
+          buffer,
+          contentType: file.type,
+          metadata: {
+            tenantId,
+            originalName: file.name,
+            uploadedAt: new Date().toISOString(),
+          },
+        });
+
+        if (uploadResult.success) {
+          console.log("💾 File saved to object storage:", objectKey);
+          filePath = objectKey;
+          storageProvider = "s3";
+        } else {
+          throw new Error(uploadResult.error || "Upload failed");
+        }
+      } else {
+        throw new Error("Storage service not available");
+      }
+    } catch (storageError) {
+      console.warn("⚠️  Object storage upload failed, falling back to local:", storageError);
+      
+      // Fallback to local filesystem
+      const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
+      await mkdir(uploadDir, { recursive: true });
+      const localPath = join(uploadDir, storedFileName);
+      await writeFile(localPath, buffer);
+      
+      filePath = localPath;
+      storageProvider = "local";
+      console.log("💾 File saved to local filesystem:", localPath);
+    }
 
     // Extract metadata
     const metadata = {
@@ -238,59 +278,85 @@ export async function POST(
       currency: formData.get("currency") as string | null,
     };
 
-    // Create contract using Prisma directly
-    const contract = await prisma.contract.create({
-      data: {
-        tenantId,
-        fileName: file.name,
-        originalName: file.name,
-        fileSize: BigInt(file.size),
-        mimeType: file.type || "application/octet-stream",
-        storagePath: filePath,
-        storageProvider: "local",
-        status: "PROCESSING",
-        uploadedBy: metadata.uploadedBy || "anonymous",
-        contractType: metadata.contractType || "UNKNOWN",
-        contractTitle: metadata.contractTitle || file.name,
-        clientName: metadata.clientName || undefined,
-        supplierName: metadata.supplierName || undefined,
-        description: metadata.description || undefined,
-        category: metadata.category || undefined,
-        uploadedAt: new Date(),
-      },
-    });
+    // Create contract with all side effects in a transaction
+    const idempotencyKey = formData.get("idempotency_key") as string | undefined;
+    
+    const { result: transactionResult, wasExecuted } = await (async () => {
+      try {
+        const { createContractWithSideEffects } = await import("@/lib/transaction-service");
+        
+        return await createContractWithSideEffects({
+          contractData: {
+            tenantId,
+            fileName: file.name,
+            originalName: file.name,
+            fileSize: BigInt(file.size),
+            mimeType: file.type || "application/octet-stream",
+            storagePath: filePath,
+            storageProvider: storageProvider,
+            storageUrl: uploadResult?.url,
+            status: "PROCESSING",
+            uploadedBy: metadata.uploadedBy || "anonymous",
+            contractType: metadata.contractType || "UNKNOWN",
+            contractTitle: metadata.contractTitle || file.name,
+            clientName: metadata.clientName || undefined,
+            supplierName: metadata.supplierName || undefined,
+            description: metadata.description || undefined,
+            category: metadata.category || undefined,
+            uploadedAt: new Date(),
+          },
+          idempotencyKey,
+        });
+      } catch (error) {
+        console.error("❌ Transaction service import failed, using direct creation:", error);
+        
+        // Fallback to direct creation
+        const contract = await prisma.contract.create({
+          data: {
+            tenantId,
+            fileName: file.name,
+            originalName: file.name,
+            fileSize: BigInt(file.size),
+            mimeType: file.type || "application/octet-stream",
+            storagePath: filePath,
+            storageProvider: storageProvider,
+            storageUrl: uploadResult?.url,
+            status: "PROCESSING",
+            uploadedBy: metadata.uploadedBy || "anonymous",
+            contractType: metadata.contractType || "UNKNOWN",
+            contractTitle: metadata.contractTitle || file.name,
+            uploadedAt: new Date(),
+          },
+        });
 
-    console.log("✅ Contract created:", {
+        const processingJob = await prisma.processingJob.create({
+          data: {
+            contractId: contract.id,
+            tenantId: contract.tenantId,
+            status: "PENDING",
+            progress: 0,
+            currentStep: "uploaded",
+            totalStages: 5,
+            priority: 5,
+            maxRetries: 3,
+            retryCount: 0,
+          },
+        });
+
+        return {
+          result: { contract, processingJob, outboxEvent: null },
+          wasExecuted: true,
+        };
+      }
+    })();
+
+    const { contract, processingJob } = transactionResult;
+
+    console.log("✅ Contract created in transaction:", {
       contractId: contract.id,
       status: contract.status,
+      wasExecuted,
     });
-
-    // Create processing job in database
-    const processingJob = await prisma.processingJob.create({
-      data: {
-        contractId: contract.id,
-        tenantId: contract.tenantId,
-        status: "PENDING",
-        progress: 0,
-        currentStep: "uploaded",
-        totalStages: 5,
-        priority: 5,
-        maxRetries: 3,
-        retryCount: 0,
-      },
-    }).catch((error) => {
-      console.error("❌ Processing job creation error:", error);
-      // Return a mock job if creation fails
-      return {
-        id: `job-${contract.id}`,
-        contractId: contract.id,
-        tenantId: contract.tenantId,
-        status: "PENDING" as const,
-        progress: 0,
-      };
-    });
-
-    console.log("✅ Processing job created:", processingJob.id);
 
     // Initialize contract metadata (non-blocking)
     try {
@@ -311,23 +377,34 @@ export async function POST(
       console.error("❌ Failed to import contract-integration:", error);
     }
 
-    // Trigger artifact generation in background (non-blocking)
+    // Trigger artifact generation via queue (non-blocking)
     try {
-      triggerArtifactGeneration({
+      // Initialize queue service if not already done
+      await import("@/lib/queue-init");
+      
+      const artifactResult = await triggerArtifactGeneration({
         contractId: contract.id,
         tenantId: contract.tenantId,
         filePath,
         mimeType: file.type,
-        useQueue: false,
-      })
-        .then((artifactResult) => {
-          console.log("🎉 Artifact generation started:", artifactResult);
-        })
-        .catch((error) => {
-          console.error("❌ Artifact generation error:", error);
-        });
+        useQueue: true, // Use queue system
+      });
+      
+      console.log("🎉 Artifact generation queued:", artifactResult);
+      
+      if (artifactResult.jobId) {
+        // Update processing job with queue job ID
+        await prisma.processingJob.update({
+          where: { id: processingJob.id },
+          data: {
+            externalJobId: artifactResult.jobId,
+            status: "QUEUED",
+          },
+        }).catch(err => console.error("Failed to update job with queueId:", err));
+      }
     } catch (error) {
-      console.error("❌ Failed to trigger artifact generation:", error);
+      console.error("❌ Failed to queue artifact generation:", error);
+      // Continue anyway - job will still process via fallback
     }
 
     return NextResponse.json(

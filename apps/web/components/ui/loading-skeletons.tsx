@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton-loader';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 export function ContractDetailSkeleton() {

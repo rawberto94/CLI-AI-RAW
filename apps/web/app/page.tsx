@@ -1,122 +1,108 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { LazyCostSavingsDashboardWidget as CostSavingsDashboardWidget } from "@/components/lazy";
+import dynamic from "next/dynamic";
 import {
   Grid,
-  StatusIndicator,
-  AIBadge,
   formatCurrency,
   formatPercentage,
 } from "@/components/ui/design-system";
+import { MessageCircle } from "lucide-react";
+
+// Lazy load heavy components
+const CostSavingsDashboardWidget = dynamic(
+  () => import("@/components/lazy").then((mod) => ({ default: mod.LazyCostSavingsDashboardWidget })),
+  { ssr: false, loading: () => <div className="h-32 bg-muted animate-pulse rounded-lg" /> }
+);
+
+// Import new dashboard components
+import { UpcomingRenewals } from "@/components/dashboard/UpcomingRenewals";
+import { ContractTypeChart } from "@/components/dashboard/ContractTypeChart";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { StatusOverview } from "@/components/dashboard/StatusOverview";
+import { DashboardChatbot } from "@/components/dashboard/DashboardChatbot";
+
 import {
   FileText,
   TrendingUp,
   Shield,
-  Activity,
-  Brain,
-  Zap,
-  BarChart3,
-  Clock,
   CheckCircle,
-  AlertTriangle,
-  ArrowRight,
-  Sparkles,
-  Network,
+  Calendar,
+  TrendingDown,
+  AlertCircle,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 
-// Mock data - in real app this would come from API
-// Moved outside component to prevent recreation on every render
-const getDashboardData = () => ({
+interface DashboardData {
   overview: {
-    totalContracts: 1247,
-    totalValue: 45600000,
-    activeContracts: 892,
-    processingJobs: 12,
-    riskScore: 23,
-    complianceScore: 94,
-  },
-  recentActivity: [
-    {
-      id: "1",
-      type: "contract_uploaded",
-      title: "New service agreement uploaded",
-      description: "TechCorp-ServiceAgreement-2024.pdf",
-      timestamp: "2 minutes ago",
-      status: "processing",
-    },
-    {
-      id: "2",
-      type: "analysis_complete",
-      title: "Contract analysis completed",
-      description: "High-value procurement contract analyzed",
-      timestamp: "15 minutes ago",
-      status: "success",
-    },
-    {
-      id: "3",
-      type: "risk_alert",
-      title: "Risk threshold exceeded",
-      description: "Contract ABC-123 flagged for review",
-      timestamp: "1 hour ago",
-      status: "warning",
-    },
-  ],
-  quickStats: [
-    {
-      title: "Processing Queue",
-      value: "12",
-      change: "+3",
-      trend: "up",
-      icon: Activity,
-      color: "blue",
-    },
-    {
-      title: "Avg Processing Time",
-      value: "2.3m",
-      change: "-15%",
-      trend: "down",
-      icon: Clock,
-      color: "green",
-    },
-    {
-      title: "Success Rate",
-      value: "98.7%",
-      change: "+0.3%",
-      trend: "up",
-      icon: CheckCircle,
-      color: "green",
-    },
-    {
-      title: "Active Alerts",
-      value: "3",
-      change: "-2",
-      trend: "down",
-      icon: AlertTriangle,
-      color: "yellow",
-    },
-  ],
-});
+    totalContracts: number;
+    activeContracts: number;
+    portfolioValue: number;
+    recentlyAdded: number;
+  };
+  renewals: {
+    expiringIn30Days: number;
+    expiringIn90Days: number;
+    urgentCount: number;
+  };
+  breakdown: {
+    byStatus: Array<{ status: string; count: number }>;
+    byType: Array<{ type: string; count: number }>;
+  };
+  riskScore: number;
+  complianceScore: number;
+}
+
+interface RenewalItem {
+  id: string;
+  name: string;
+  type: string;
+  endDate: string;
+  daysUntilExpiry: number;
+  priority: 'urgent' | 'high' | 'medium';
+}
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [renewals, setRenewals] = useState<RenewalItem[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
+    loadDashboardData();
+  }, [refreshKey]);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [statsRes, renewalsRes] = await Promise.all([
+        fetch('/api/dashboard/stats'),
+        fetch('/api/dashboard/renewals?days=90')
+      ]);
+      
+      const statsData = await statsRes.json();
+      const renewalsData = await renewalsRes.json();
+      
+      if (statsData.success) {
+        setDashboardData(statsData.data);
+      }
+      
+      if (renewalsData.success) {
+        setRenewals(renewalsData.data);
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
       setLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    }
+  };
 
   // Real-time updates for dashboard
   const eventHandlers = useMemo(() => ({
@@ -139,11 +125,11 @@ export default function DashboardPage() {
 
   useRealTimeEvents(eventHandlers);
 
-  if (loading) {
+  if (loading || !dashboardData) {
     return (
       <DashboardLayout
-        title="Dashboard"
-        description="Overview of your contract intelligence platform"
+        title="Contracts Dashboard"
+        description="Comprehensive contract management overview"
       >
         <DashboardSkeleton />
       </DashboardLayout>
@@ -151,247 +137,235 @@ export default function DashboardPage() {
   }
 
   return (
-    <>
-      {/* Onboarding Manager - handles first-time user experience */}
-      {/* <OnboardingManager /> */}
-
-      <DashboardLayout
-        title="Dashboard"
-        description="Contract lifecycle management overview"
-        actions={
+    <DashboardLayout
+      title="Contracts Dashboard"
+      description="Your complete contract intelligence command center"
+      actions={
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setRefreshKey(k => k + 1)}>
+            Refresh
+          </Button>
           <Button size="sm" asChild>
-            <Link href="/dashboard">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              View Analytics
+            <Link href="/analytics">
+              View Full Analytics
             </Link>
           </Button>
-        }
-      >
-        {/* Cost Savings Widget - Full Width */}
-        <div className="mb-6">
-          <CostSavingsDashboardWidget />
         </div>
+      }
+    >
+      {/* Hero KPIs - Full Width */}
+      <Grid cols={4} gap="md" className="mb-8">
+        <Card className="card-elevated group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Contracts
+            </CardTitle>
+            <div className="icon-md bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+              <FileText className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tracking-tight mb-2">
+              {dashboardData.overview.totalContracts.toLocaleString()}
+            </div>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <span className="status-success">{dashboardData.overview.activeContracts} active</span>
+              <span>•</span>
+              <span className="text-green-600 dark:text-green-400">+{dashboardData.overview.recentlyAdded} this month</span>
+            </p>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="mt-4 w-full justify-center text-xs group-hover:bg-blue-50 dark:group-hover:bg-blue-950/50" 
+              asChild
+            >
+              <Link href="/contracts">View All Contracts →</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-        {/* Key Metrics */}
-        <Grid cols={4} gap="md">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Contracts
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {dashboardData.overview.totalContracts.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {dashboardData.overview.activeContracts} active
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="card-elevated group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Portfolio Value
+            </CardTitle>
+            <div className="icon-md bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tracking-tight mb-2">
+              {formatCurrency(dashboardData.overview.portfolioValue)}
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">
+              Total contract value
+            </p>
+            <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span className="font-medium">+12%</span>
+              <span className="text-muted-foreground">from last quarter</span>
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Portfolio Value
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {formatCurrency(dashboardData.overview.totalValue)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                +12% from last month
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="card-elevated group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Upcoming Renewals
+            </CardTitle>
+            <div className="icon-md bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
+              <Calendar className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tracking-tight mb-2">
+              {dashboardData.renewals.expiringIn90Days}
+            </div>
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <span className="status-warning">{dashboardData.renewals.urgentCount} urgent</span>
+              <span>•</span>
+              <span>next 90 days</span>
+            </p>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="mt-4 w-full justify-center text-xs group-hover:bg-orange-50 dark:group-hover:bg-orange-950/50" 
+              asChild
+            >
+              <Link href="/contracts?filter=expiring">Review Renewals →</Link>
+            </Button>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Risk Score</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {dashboardData.overview.riskScore}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Low risk portfolio
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="card-elevated group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Compliance Score
+            </CardTitle>
+            <div className="icon-md bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+              <Shield className="h-5 w-5" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold tracking-tight mb-3">
+              {formatPercentage(dashboardData.complianceScore)}
+            </div>
+            <Progress
+              value={dashboardData.complianceScore}
+              className="h-2 mb-3"
+            />
+            <p className="text-sm text-muted-foreground">
+              Risk Score: <span className="font-semibold text-foreground">{dashboardData.riskScore}/100</span>
+              <span className="ml-2 text-xs status-success">Low risk</span>
+            </p>
+          </CardContent>
+        </Card>
+      </Grid>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Compliance Score
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {formatPercentage(dashboardData.overview.complianceScore)}
-              </div>
-              <Progress
-                value={dashboardData.overview.complianceScore}
-                className="mt-2"
-              />
-            </CardContent>
-          </Card>
-        </Grid>
+      {/* Cost Savings Widget */}
+      <div className="mb-6">
+        <CostSavingsDashboardWidget />
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>System Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Grid cols={4} gap="sm">
-                  {dashboardData.quickStats.map((stat, index) => (
-                    <div
-                      key={index}
-                      className="text-center p-4 bg-muted/50 rounded-lg"
-                    >
-                      <stat.icon
-                        className={`h-6 w-6 mx-auto mb-2 text-${stat.color}-600`}
-                      />
-                      <div className="text-2xl font-bold">{stat.value}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {stat.title}
-                      </div>
-                      <div
-                        className={`text-xs ${
-                          stat.trend === "up"
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {stat.change}
-                      </div>
-                    </div>
-                  ))}
-                </Grid>
-              </CardContent>
-            </Card>
-
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <Button variant="outline" className="h-24 flex-col" asChild>
-                    <Link href="/upload">
-                      <Upload className="h-8 w-8 mb-2 text-blue-600" />
-                      <span className="font-semibold">Upload Contract</span>
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex-col" asChild>
-                    <Link href="/search">
-                      <Search className="h-8 w-8 mb-2 text-purple-600" />
-                      <span className="font-semibold">Search Contracts</span>
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex-col" asChild>
-                    <Link href="/dashboard">
-                      <BarChart3 className="h-8 w-8 mb-2 text-green-600" />
-                      <span className="font-semibold">View Analytics</span>
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex-col" asChild>
-                    <Link href="/contracts">
-                      <FileText className="h-8 w-8 mb-2 text-orange-600" />
-                      <span className="font-semibold">All Contracts</span>
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-4 w-4" />
-                  Recent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {dashboardData.recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
-                    <StatusIndicator status={activity.status as any}>
-                      <div className="w-2 h-2 rounded-full bg-current" />
-                    </StatusIndicator>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{activity.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {activity.description}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {activity.timestamp}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" className="w-full">
-                  View All Activity
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* System Health */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  System Health
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>API Response Time</span>
-                    <span className="text-green-600">142ms</span>
-                  </div>
-                  <Progress value={85} className="h-2" />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Worker Utilization</span>
-                    <span className="text-blue-600">67%</span>
-                  </div>
-                  <Progress value={67} className="h-2" />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Storage Usage</span>
-                    <span className="text-yellow-600">43%</span>
-                  </div>
-                  <Progress value={43} className="h-2" />
-                </div>
-
-                <Button variant="outline" size="sm" className="w-full" asChild>
-                  <Link href="/processing-status">View Detailed Status</Link>
-                </Button>
-              </CardContent>
-            </Card>
-
-
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Left Column - 2/3 width */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Renewals List */}
+          <UpcomingRenewals renewals={renewals} />
+          
+          {/* Contract Type Distribution */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ContractTypeChart data={dashboardData.breakdown.byType} />
+            <StatusOverview 
+              data={dashboardData.breakdown.byStatus}
+              totalContracts={dashboardData.overview.totalContracts}
+            />
           </div>
         </div>
-      </DashboardLayout>
-    </>
+
+        {/* Right Column - 1/3 width */}
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <QuickActions />
+          
+          {/* Key Insights Card */}
+          <Card className="card-elevated">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <div className="icon-sm bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                  <AlertCircle className="h-4 w-4" />
+                </div>
+                Key Insights
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">Smart alerts and recommendations</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="p-3.5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/30 card-hover">
+                <div className="flex items-start gap-3">
+                  <div className="icon-sm bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 flex-shrink-0">
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-red-900 dark:text-red-100">Urgent Action Required</p>
+                    <p className="text-xs text-red-700 dark:text-red-400 mt-0.5">
+                      {dashboardData.renewals.urgentCount} contracts expiring within 30 days
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-3.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30 card-hover">
+                <div className="flex items-start gap-3">
+                  <div className="icon-sm bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 flex-shrink-0">
+                    <TrendingUp className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-green-900 dark:text-green-100">Growing Portfolio</p>
+                    <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+                      {dashboardData.overview.recentlyAdded} new contracts added this month
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-3.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 card-hover">
+                <div className="flex items-start gap-3">
+                  <div className="icon-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                    <CheckCircle className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">High Compliance</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+                      Maintaining {dashboardData.complianceScore}% compliance rate
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* AI Chatbot - Full Width Section */}
+      <Card className="mt-6">
+        <CardHeader className="pb-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg mb-1">
+                <MessageCircle className="h-5 w-5 text-blue-600" />
+                AI Assistant
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                I can help you with contract queries, renewals, insights, and more
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <DashboardChatbot />
+        </CardContent>
+      </Card>
+    </DashboardLayout>
   );
 }

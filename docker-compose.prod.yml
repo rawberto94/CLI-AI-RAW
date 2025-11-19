@@ -106,28 +106,35 @@ services:
     volumes:
       - app_logs:/app/logs
 
-  # Workers
+  # Background workers
   workers:
-    image: contract-intelligence/workers:${VERSION:-latest}
+    image: ${WORKERS_IMAGE:-ghcr.io/yourorg/cli-ai-raw/workers:latest}
     container_name: contract-intelligence-workers
     restart: unless-stopped
     deploy:
-      replicas: ${WORKER_REPLICAS:-3}
+      replicas: ${WORKER_REPLICAS:-2}
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
     environment:
       NODE_ENV: production
+      
+      # Database
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/contract_intelligence
-      REDIS_URL: redis://redis:6379
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: ${S3_BUCKET:-contracts}
-      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-minioadmin}
-      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-minioadmin}
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # OpenAI
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
-      ANALYSIS_USE_LLM: ${ANALYSIS_USE_LLM:-true}
-      RAG_ENABLED: ${RAG_ENABLED:-true}
-      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-3}
+      
+      # Features
+      RAG_INTEGRATION_ENABLED: ${RAG_ENABLED:-false}
+      
+      # Logging
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -135,13 +142,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      api:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "process.exit(0)"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - contract-intelligence
     volumes:
@@ -149,20 +149,48 @@ services:
 
   # Web Frontend
   web:
-    image: contract-intelligence/web:${VERSION:-latest}
+    image: ${WEB_IMAGE:-ghcr.io/yourorg/cli-ai-raw/web:latest}
     container_name: contract-intelligence-web
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8080}
       PORT: 3000
+      
+      # Database
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/contract_intelligence
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # MinIO
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${S3_BUCKET:-contracts}
+      MINIO_USE_SSL: "false"
+      
+      # NextAuth
+      AUTH_SECRET: ${AUTH_SECRET}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      
+      # Features
+      RAG_INTEGRATION_ENABLED: ${RAG_ENABLED:-false}
     ports:
       - "3000:3000"
     depends_on:
-      api:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,0 +1,159 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - text: "Tenant:"
+      - strong [ref=e5]: —
+    - generic [ref=e6]:
+      - text: "API:"
+      - strong [ref=e7]: "?"
+    - generic [ref=e8]:
+      - text: "Web:"
+      - strong [ref=e9]: "?"
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e12]
+      - generic [ref=e15]: Contract Intelligence
+    - navigation [ref=e16]:
+      - link "Dashboard" [ref=e18] [cursor=pointer]:
+        - /url: /
+        - img [ref=e19]
+        - generic [ref=e24]: Dashboard
+      - link "Contracts" [ref=e26] [cursor=pointer]:
+        - /url: /contracts
+        - img [ref=e27]
+        - generic [ref=e30]: Contracts
+      - link "Upload" [ref=e32] [cursor=pointer]:
+        - /url: /upload
+        - img [ref=e33]
+        - generic [ref=e36]: Upload
+      - link "Analytics" [ref=e38] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e39]
+        - generic [ref=e41]: Analytics
+      - button "Rate Cards" [ref=e43] [cursor=pointer]:
+        - generic [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e47]: Rate Cards
+        - img [ref=e49]
+      - link "Search" [ref=e52] [cursor=pointer]:
+        - /url: /search
+        - img [ref=e53]
+        - generic [ref=e56]: Search
+      - link "Templates" [ref=e58] [cursor=pointer]:
+        - /url: /templates
+        - img [ref=e59]
+        - generic [ref=e62]: Templates
+    - generic [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]: Version
+        - generic [ref=e67]: 2.0.0
+      - generic [ref=e68]:
+        - generic [ref=e69]: Real-time
+        - generic "Real-time updates are unavailable" [ref=e70]:
+          - img [ref=e71]
+  - generic [ref=e78]:
+    - button "Real Data real" [ref=e80] [cursor=pointer]:
+      - img
+      - generic [ref=e81]: Real Data
+      - generic [ref=e82]: real
+    - generic [ref=e84]:
+      - generic [ref=e87]:
+        - button "Go back" [ref=e89] [cursor=pointer]:
+          - img [ref=e90]
+          - text: Back
+        - heading "Compare Rate Cards" [level=1] [ref=e92]:
+          - img [ref=e93]
+          - text: Compare Rate Cards
+        - paragraph [ref=e97]: Select contracts (e.g., Deloitte across clients) and compare roles vs market percentiles to identify savings.
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - heading "1) Pick contracts to compare" [level=3] [ref=e100]:
+            - img [ref=e101]
+            - text: 1) Pick contracts to compare
+          - generic [ref=e106]: "Selected: 0"
+        - generic [ref=e107]:
+          - button "Select contracts" [ref=e109] [cursor=pointer]:
+            - img [ref=e110]
+            - text: Select contracts
+            - img [ref=e113]
+          - button "Supplier presets" [ref=e116] [cursor=pointer]:
+            - img [ref=e117]
+            - text: Supplier presets
+            - img [ref=e121]
+          - button "Select all visible" [ref=e123] [cursor=pointer]:
+            - img [ref=e124]
+            - text: Select all visible
+          - button "Clear" [ref=e127] [cursor=pointer]:
+            - img [ref=e128]
+            - text: Clear
+      - generic [ref=e131]:
+        - heading "2) Filter visible contracts (optional)" [level=3] [ref=e132]:
+          - img [ref=e133]
+          - text: 2) Filter visible contracts (optional)
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - generic [ref=e138]: Supplier
+            - generic [ref=e140]: No suppliers detected
+          - generic [ref=e142]: Type of contract
+          - generic [ref=e144]: Status
+          - generic [ref=e146]: Category
+      - generic [ref=e147]:
+        - heading "3) Choose comparison base" [level=3] [ref=e148]:
+          - img [ref=e149]
+          - text: 3) Choose comparison base
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - button "Market" [ref=e152] [cursor=pointer]:
+              - img [ref=e153]
+              - text: Market
+            - button "Custom rates" [ref=e157] [cursor=pointer]:
+              - img [ref=e158]
+              - text: Custom rates
+          - generic [ref=e161]:
+            - generic [ref=e162]:
+              - img [ref=e163]
+              - text: "Percentile:"
+            - combobox [ref=e164]:
+              - option "P50"
+              - option "P75" [selected]
+              - option "P90"
+      - generic [ref=e165]:
+        - heading "4) Role comparison and savings opportunities" [level=3] [ref=e166]:
+          - img [ref=e167]
+          - text: 4) Role comparison and savings opportunities
+        - generic [ref=e171]:
+          - generic [ref=e172]: "Mode: Market (P75)"
+          - button "Export CSV" [ref=e173] [cursor=pointer]:
+            - img [ref=e174]
+            - text: Export CSV
+        - table [ref=e178]:
+          - rowgroup [ref=e179]:
+            - row "Role Avg (selected) P50 P75 P90 Gap vs P75 Potential savings" [ref=e180]:
+              - cell "Role" [ref=e181]
+              - cell "Avg (selected)" [ref=e182]
+              - cell "P50" [ref=e183]
+              - cell "P75" [ref=e184]
+              - cell "P90" [ref=e185]
+              - cell "Gap vs P75" [ref=e186]
+              - cell "Potential savings" [ref=e187]
+          - rowgroup [ref=e188]:
+            - row "Select at least one contract to see comparison." [ref=e189]:
+              - cell "Select at least one contract to see comparison." [ref=e190]
+        - generic [ref=e191]:
+          - text: "Suggestions:"
+          - list [ref=e192]:
+            - listitem [ref=e193]: Focus negotiations on roles with the largest positive gap vs selected target.
+            - listitem [ref=e194]: Consider location/line-of-service adjustments where appropriate.
+            - listitem [ref=e195]: Import additional market ratecards in Benchmarks → Uploads to enrich reference percentiles.
+      - link "Back to Benchmarks" [ref=e197] [cursor=pointer]:
+        - /url: /benchmarks
+        - img [ref=e198]
+        - text: Back to Benchmarks
+  - button [ref=e201] [cursor=pointer]:
+    - img
+  - button [ref=e202] [cursor=pointer]:
+    - img
+```
