@@ -23,6 +23,8 @@ const publicPaths = [
 // API routes that don't require authentication  
 const publicApiPaths = [
   "/api/health",
+  "/api/healthz",
+  "/api/web-health",
   "/api/auth",
   "/api/events", // Allow SSE endpoint for real-time updates
   "/api/contracts", // Allow contract endpoints (includes artifact streams)

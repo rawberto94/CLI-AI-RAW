@@ -95,6 +95,7 @@ export default function UploadPage() {
       }
 
       // Upload file
+      console.log('[Upload] Starting upload for file:', uploadFile.file.name);
       const uploadResponse = await fetch('/api/contracts/upload', {
         method: 'POST',
         body: formData,
@@ -103,11 +104,24 @@ export default function UploadPage() {
         }
       })
 
+      console.log('[Upload] Response status:', uploadResponse.status);
+      
       if (!uploadResponse.ok) {
-        throw new Error('Upload failed')
+        const errorText = await uploadResponse.text();
+        console.error('[Upload] Upload failed:', errorText);
+        throw new Error(`Upload failed: ${uploadResponse.status}`)
       }
 
-      const { contractId } = await uploadResponse.json()
+      const responseData = await uploadResponse.json()
+      console.log('[Upload] Response data:', responseData);
+      const { contractId } = responseData
+
+      if (!contractId) {
+        console.error('[Upload] No contract ID in response:', responseData);
+        throw new Error('No contract ID returned')
+      }
+
+      console.log('[Upload] Switching to processing state with contract ID:', contractId);
 
       // Update to processing with artifact viewer enabled
       setFiles(prev => prev.map(f =>
@@ -120,9 +134,11 @@ export default function UploadPage() {
       // The RealtimeArtifactViewer component will show live artifact generation
 
     } catch (error) {
+      console.error('[Upload] Error during upload:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' }
+          ? { ...f, status: 'error', progress: 0, error: errorMessage }
           : f
       ))
     }
