@@ -140,10 +140,8 @@ export function useArtifactStream({
     };
 
     eventSource.onerror = (err) => {
-      // Only log if there's meaningful error info
-      if (err && Object.keys(err).length > 0) {
-        console.error('[SSE] Connection error:', err);
-      }
+      // EventSource errors typically don't have useful info, only log state
+      console.log('[SSE] Connection state:', eventSource.readyState);
       setIsConnected(false);
       
       // Don't reconnect if already complete or if connection was explicitly closed
