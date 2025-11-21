@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { PrismaClient } from '@prisma/client';
+import getClient from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';
 import { QUEUE_NAMES, ProcessContractJobData } from '../../utils/src/queue/contract-queue';
 import pino from 'pino';
@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const logger = pino({ name: 'contract-processor-worker' });
-const prisma = new PrismaClient();
+const prisma = getClient();
 
 interface ArtifactGenerationResult {
   success: boolean;

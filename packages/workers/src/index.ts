@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import { getQueueService } from '../../utils/src/queue/queue-service';
-import { registerContractProcessorWorker } from './contract-processor';
+import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';
 import pino from 'pino';
@@ -43,14 +43,14 @@ async function startWorkers() {
     // Register workers
     logger.info('Registering workers...');
     
-    const contractWorker = registerContractProcessorWorker();
+    const ocrArtifactWorker = registerOCRArtifactWorker();
     const artifactWorker = registerArtifactGeneratorWorker();
     const webhookWorker = registerWebhookWorker();
 
     logger.info('✅ All workers registered successfully');
     logger.info({
       workers: [
-        'contract-processing',
+        'ocr-artifact-processing (contract-processing queue)',
         'artifact-generation',
         'webhook-delivery',
       ],
@@ -61,7 +61,7 @@ async function startWorkers() {
       logger.info({ signal }, 'Received shutdown signal, closing workers...');
 
       await Promise.all([
-        contractWorker.close(),
+        ocrArtifactWorker.close(),
         artifactWorker.close(),
         webhookWorker.close(),
       ]);

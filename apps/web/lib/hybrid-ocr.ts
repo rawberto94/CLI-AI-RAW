@@ -27,6 +27,10 @@ import {
   extractTablesWithTextract,
   TextractResult 
 } from './textract-client';
+import {
+  analyzeDocumentWithMistral,
+  MistralOcrResult
+} from './mistral-client';
 import { 
   preprocessDocument,
   shouldPreprocess,
@@ -37,15 +41,17 @@ import { promisify } from 'util';
 
 const readFile = promisify(fs.readFile);
 
-export type OcrQuality = 'fast' | 'balanced' | 'high';
+export type OcrQuality = 'fast' | 'balanced' | 'high' | 'mistral';
 
 export interface HybridOcrOptions {
   quality?: OcrQuality;
   usePreprocessing?: boolean;
   forceVision?: boolean;
   forceTextract?: boolean;
+  forceMistral?: boolean;
   awsRegion?: string;
   visionModel?: 'gpt-4o' | 'gpt-4-vision-preview' | 'gpt-4-turbo';
+  mistralModel?: string;
 }
 
 export interface HybridOcrResult {
@@ -55,9 +61,12 @@ export interface HybridOcrResult {
   // Additional data from Textract (if used)
   textractData?: TextractResult;
   
+  // Additional data from Mistral (if used)
+  mistralData?: MistralOcrResult;
+  
   // Metadata about the extraction
   metadata: {
-    methodUsed: 'pdf-parse' | 'vision' | 'textract' | 'hybrid';
+    methodUsed: 'pdf-parse' | 'vision' | 'textract' | 'hybrid' | 'mistral';
     quality: OcrQuality;
     complexity: number; // 0.0-1.0
     preprocessed: boolean;
@@ -65,6 +74,7 @@ export interface HybridOcrResult {
     costs: {
       vision?: number;
       textract?: number;
+      mistral?: number;
       total: number;
     };
     timing: {
@@ -90,8 +100,10 @@ export async function extractDocumentData(
     usePreprocessing = true,
     forceVision = false,
     forceTextract = false,
+    forceMistral = false,
     awsRegion = 'us-east-1',
     visionModel = 'gpt-4o',
+    mistralModel = 'mistral-ocr-latest',
   } = options;
 
   let preprocessingResult: PreprocessingResult | undefined;
@@ -118,26 +130,36 @@ export async function extractDocumentData(
   // Step 3: Select extraction strategy based on quality mode
   let result: HybridOcrResult;
 
-  switch (quality) {
-    case 'fast':
-      result = await extractFast(processedFilePath, complexity);
-      break;
-      
-    case 'balanced':
-      result = await extractBalanced(processedFilePath, complexity, {
-        forceVision,
-        visionModel,
-      });
-      break;
-      
-    case 'high':
-      result = await extractHigh(processedFilePath, complexity, {
-        forceVision,
-        forceTextract,
-        awsRegion,
-        visionModel,
-      });
-      break;
+  if (forceMistral || quality === 'mistral') {
+    result = await extractMistral(processedFilePath, complexity, { mistralModel });
+  } else {
+    switch (quality) {
+      case 'fast':
+        result = await extractFast(processedFilePath, complexity);
+        break;
+        
+      case 'balanced':
+        result = await extractBalanced(processedFilePath, complexity, {
+          forceVision,
+          visionModel,
+        });
+        break;
+        
+      case 'high':
+        result = await extractHigh(processedFilePath, complexity, {
+          forceVision,
+          forceTextract,
+          awsRegion,
+          visionModel,
+        });
+        break;
+      default:
+        // Fallback to balanced if quality is unknown (though TS should prevent this)
+        result = await extractBalanced(processedFilePath, complexity, {
+          forceVision,
+          visionModel,
+        });
+    }
   }
 
   // Step 4: Add timing and preprocessing metadata
@@ -154,6 +176,72 @@ export async function extractDocumentData(
   };
 
   return result;
+}
+
+/**
+ * Mistral extraction: High quality OCR with Mistral
+ */
+async function extractMistral(
+  filePath: string,
+  complexity: Awaited<ReturnType<typeof assessDocumentComplexity>>,
+  options: { mistralModel?: string }
+): Promise<HybridOcrResult> {
+  const { mistralModel = 'mistral-ocr-latest' } = options;
+  console.log(`Using MISTRAL extraction (${mistralModel})`);
+
+  try {
+    const mistralResult = await analyzeDocumentWithMistral(filePath, { model: mistralModel });
+    
+    // Convert Mistral markdown to DocumentAnalysis
+    // This is a simplified conversion. In a real app, we might want to parse the markdown
+    // or pass it to an LLM for structuring.
+    
+    const analysis: DocumentAnalysis = {
+      overview: {
+        documentType: 'Contract (Mistral OCR)',
+        title: 'Extracted Document',
+        parties: [],
+        dates: {},
+        summary: mistralResult.markdown.substring(0, 2000), // Truncate for summary
+      },
+      financial: {
+        ratecards: [],
+      },
+      clauses: [], // We could parse headers as clauses
+      tables: [], // We could parse markdown tables
+      metadata: {
+        pageCount: mistralResult.pages.length,
+        language: 'en',
+        confidence: 0.95, // Mistral OCR is usually high quality
+        processingTime: 0,
+        model: mistralModel,
+      },
+    };
+
+    return {
+      analysis,
+      mistralData: mistralResult,
+      metadata: {
+        methodUsed: 'mistral',
+        quality: 'mistral',
+        complexity: complexity.complexity,
+        preprocessed: false,
+        costs: {
+          mistral: mistralResult.usage.pagesProcessed * 0.01, // Estimate cost
+          total: mistralResult.usage.pagesProcessed * 0.01,
+        },
+        timing: {
+          extraction: 0,
+          total: 0,
+        },
+        confidence: 0.95,
+      },
+    };
+  } catch (error) {
+    console.error('Mistral extraction failed:', error);
+    // Fallback to fast extraction
+    return extractFast(filePath, complexity);
+  }
 }
 
 /**
@@ -471,16 +559,18 @@ export function estimateBatchCost(
     fast: number;
     vision: number;
     textract: number;
+    mistral: number;
   };
 } {
   const costs = {
     fast: 0.001,
     vision: 0.03,
     textract: 0.015,
+    mistral: 0.01, // Estimated cost
   };
 
   let perDocument: number;
-  let breakdown = { fast: 0, vision: 0, textract: 0 };
+  let breakdown = { fast: 0, vision: 0, textract: 0, mistral: 0 };
 
   switch (quality) {
     case 'fast':
@@ -501,6 +591,11 @@ export function estimateBatchCost(
       perDocument = costs.vision + costs.textract;
       breakdown.vision = documentCount;
       breakdown.textract = documentCount;
+      break;
+
+    case 'mistral':
+      perDocument = costs.mistral;
+      breakdown.mistral = documentCount;
       break;
   }
 

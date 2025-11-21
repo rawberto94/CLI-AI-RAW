@@ -391,6 +391,7 @@ model ProcessingJob {
   nextRetryAt           DateTime?
   priority              Int       @default(0)
   queuePosition         Int?
+  queueId               String?   // BullMQ job ID for tracking
   lastCheckpoint        String?
   checkpointData        Json?
   metadata              Json?
@@ -2566,18 +2567,19 @@ model IdempotencyKey {
 
 // Transactional Outbox Pattern for reliable event publishing
 model OutboxEvent {
-  id          String   @id @default(cuid())
-  tenantId    String
-  eventType   String
-  aggregateId String   // ID of the entity that triggered the event
-  payload     Json
-  status      String   @default("pending") // pending, published, failed
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3)
-  error       String?  @db.Text
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  tenantId      String
+  eventType     String
+  aggregateType String   // Type of entity (Contract, RateCard, etc.)
+  aggregateId   String   // ID of the entity that triggered the event
+  payload       Json
+  status        String   @default("pending") // pending, published, failed
+  attempts      Int      @default(0)
+  maxAttempts   Int      @default(3)
+  error         String?  @db.Text
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([status])
   @@index([tenantId])

@@ -23,6 +23,8 @@
     "disableSolutionSearching": true,
     "preserveWatchOutput": true,
     "assumeChangesOnlyAffectDirectDependencies": true,
+    "disableReferencedProjectLoad": true,
+    "maxNodeModuleJsDepth": 0,
     "types": ["react", "react-dom"],
     "plugins": [
       {
@@ -55,6 +57,30 @@
       ],
       "@/packages/clients/db/*": [
         "../../packages/clients/db/*"
+      ],
+      "@repo/utils": [
+        "../../packages/utils/src"
+      ],
+      "@repo/utils/*": [
+        "../../packages/utils/src/*"
+      ],
+      "@repo/db": [
+        "../../packages/clients/db"
+      ],
+      "@repo/db/*": [
+        "../../packages/clients/db/*"
+      ],
+      "data-orchestration": [
+        "../../packages/data-orchestration/src"
+      ],
+      "data-orchestration/*": [
+        "../../packages/data-orchestration/src/*"
+      ],
+      "clients-rag": [
+        "../../packages/clients/rag/index.ts"
+      ],
+      "clients-openai": [
+        "../../packages/clients/openai/index.ts"
       ]
     }
   },
@@ -79,7 +105,21 @@
     "coverage/**",
     ".turbo/**",
     "**/node_modules/**",
-    "**/.next/**"
-  ]
+    "**/.next/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/.git/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.cache/**",
+    "**/tmp/**",
+    "**/temp/**"
+  ],
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }
 

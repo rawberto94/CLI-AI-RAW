@@ -71,6 +71,7 @@ export function RealtimeArtifactViewer({
     contractStatus,
     processingStage,
     error,
+    disconnect,
     reconnect
   } = useArtifactStream({
     contractId,
@@ -83,6 +84,7 @@ export function RealtimeArtifactViewer({
 
   const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
   const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());
+  const [localError, setError] = useState<string | null>(null);
 
   // Animate new artifacts
   useEffect(() => {
@@ -146,22 +148,38 @@ export function RealtimeArtifactViewer({
   return (
     <div className="space-y-6">
       {/* Connection Status */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className=\"flex items-center justify-between\">
+        <div className=\"flex items-center gap-2\">
           {isConnected ? (
             <>
-              <Wifi className="h-4 w-4 text-green-600" />
-              <span className="text-sm text-green-600 font-medium">Live Updates Connected</span>
+              <Wifi className=\"h-4 w-4 text-green-600 animate-pulse\" />
+              <span className=\"text-sm text-green-600 font-medium\">Live Updates Connected</span>
             </>
           ) : isComplete ? (
             <>
-              <CheckCircle2 className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">Processing Complete</span>
+              <CheckCircle2 className=\"h-4 w-4 text-blue-600\" />
+              <span className=\"text-sm text-blue-600 font-medium\">Processing Complete</span>
+            </>
+          ) : error ? (
+            <>
+              <AlertTriangle className=\"h-4 w-4 text-red-500\" />
+              <span className=\"text-sm text-red-500\">Connection Error</span>
+              <Button
+                variant=\"ghost\"
+                size=\"sm\"
+                onClick={() => {
+                  setError(null);
+                  reconnect();
+                }}
+                className=\"ml-2\"
+              >
+                <RefreshCw className=\"h-3 w-3\" />
+              </Button>
             </>
           ) : (
             <>
-              <WifiOff className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-400">Connecting...</span>
+              <WifiOff className=\"h-4 w-4 text-gray-400 animate-pulse\" />
+              <span className=\"text-sm text-gray-400\">Connecting...</span>
             </>
           )}
         </div>
@@ -204,7 +222,23 @@ export function RealtimeArtifactViewer({
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Processing Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>{error}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setError(null);
+                  reconnect();
+                }}
+                className="mt-2"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Retry Connection
+              </Button>
+            </div>
+          </AlertDescription>
         </Alert>
       )}
 

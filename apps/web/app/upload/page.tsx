@@ -48,6 +48,7 @@ export default function UploadPage() {
   const { dataMode, isRealData, isMockData, isAIGenerated } = useDataMode()
   const [files, setFiles] = useState<UploadFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [ocrMode, setOcrMode] = useState<'gpt4' | 'mistral' | 'tesseract'>('gpt4')
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadFile[] = acceptedFiles.map(file => ({
@@ -75,6 +76,7 @@ export default function UploadPage() {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('dataMode', dataMode)
+    formData.append('ocrMode', ocrMode)
 
     try {
       // Update to uploading
@@ -269,6 +271,104 @@ export default function UploadPage() {
             </Card>
           </div>
         </div>
+
+        {/* OCR Model Selector */}
+        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1">
+                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                  Select AI/OCR Model
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setOcrMode('gpt4')}
+                    className={cn(
+                      'relative p-4 rounded-xl border-2 text-left transition-all',
+                      ocrMode === 'gpt4'
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Brain className={cn('h-5 w-5', ocrMode === 'gpt4' ? 'text-blue-600' : 'text-gray-600')} />
+                      <span className={cn('font-bold', ocrMode === 'gpt4' ? 'text-blue-900' : 'text-gray-900')}>
+                        GPT-4 Vision
+                      </span>
+                      {ocrMode === 'gpt4' && (
+                        <CheckCircle className="h-5 w-5 text-blue-600 ml-auto" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">Highest accuracy, best for complex documents</p>
+                    <Badge className="mt-2 bg-green-100 text-green-700 text-xs">Recommended</Badge>
+                  </button>
+
+                  <button
+                    onClick={() => setOcrMode('mistral')}
+                    className={cn(
+                      'relative p-4 rounded-xl border-2 text-left transition-all',
+                      ocrMode === 'mistral'
+                        ? 'border-purple-500 bg-purple-50 shadow-md'
+                        : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Sparkles className={cn('h-5 w-5', ocrMode === 'mistral' ? 'text-purple-600' : 'text-gray-600')} />
+                      <span className={cn('font-bold', ocrMode === 'mistral' ? 'text-purple-900' : 'text-gray-900')}>
+                        Mistral OCR
+                      </span>
+                      {ocrMode === 'mistral' && (
+                        <CheckCircle className="h-5 w-5 text-purple-600 ml-auto" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">Fast processing, specialized OCR model</p>
+                    <Badge className="mt-2 bg-purple-100 text-purple-700 text-xs">New</Badge>
+                  </button>
+
+                  <button
+                    onClick={() => setOcrMode('tesseract')}
+                    className={cn(
+                      'relative p-4 rounded-xl border-2 text-left transition-all',
+                      ocrMode === 'tesseract'
+                        ? 'border-orange-500 bg-orange-50 shadow-md'
+                        : 'border-gray-200 hover:border-orange-300 hover:bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <Zap className={cn('h-5 w-5', ocrMode === 'tesseract' ? 'text-orange-600' : 'text-gray-600')} />
+                      <span className={cn('font-bold', ocrMode === 'tesseract' ? 'text-orange-900' : 'text-gray-900')}>
+                        Tesseract
+                      </span>
+                      {ocrMode === 'tesseract' && (
+                        <CheckCircle className="h-5 w-5 text-orange-600 ml-auto" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-600">Free open-source, good for simple text</p>
+                    <Badge className="mt-2 bg-orange-100 text-orange-700 text-xs">Free</Badge>
+                  </button>
+                </div>
+              </div>
+              <div className="hidden lg:block w-64 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+                <h4 className="font-semibold text-gray-900 mb-2 text-sm">Model Info</h4>
+                {ocrMode === 'gpt4' && (
+                  <p className="text-xs text-gray-700">
+                    OpenAI GPT-4 Vision provides the most accurate extraction with advanced understanding of document structure and context.
+                  </p>
+                )}
+                {ocrMode === 'mistral' && (
+                  <p className="text-xs text-gray-700">
+                    Mistral OCR is optimized for fast document processing with specialized training on contracts and legal documents.
+                  </p>
+                )}
+                {ocrMode === 'tesseract' && (
+                  <p className="text-xs text-gray-700">
+                    Tesseract is an open-source OCR engine, best for simple documents with clear text. No AI costs.
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Upload Zone */}
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">

@@ -1,11 +1,11 @@
 import { Job } from 'bullmq';
-import { PrismaClient } from '@prisma/client';
+import getClient from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';
 import { QUEUE_NAMES, GenerateArtifactsJobData } from '../../utils/src/queue/contract-queue';
 import pino from 'pino';
 
 const logger = pino({ name: 'artifact-generator-worker' });
-const prisma = new PrismaClient();
+const prisma = getClient();
 
 interface ArtifactResult {
   artifactsCreated: number;

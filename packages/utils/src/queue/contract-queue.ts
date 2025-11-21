@@ -82,6 +82,8 @@ export class ContractQueueManager {
       delay?: number;
     }
   ): Promise<string | null> {
+    logger.info({ data, options }, '🔍 queueContractProcessing called with data');
+    
     const job = await this.queueService.addJob(
       QUEUE_NAMES.CONTRACT_PROCESSING,
       JOB_NAMES.PROCESS_CONTRACT,
@@ -92,6 +94,8 @@ export class ContractQueueManager {
         jobId: `contract-${data.contractId}`,
       }
     );
+
+    logger.info({ jobId: job?.id, jobData: job?.data }, '✅ Job created');
 
     return job?.id || null;
   }

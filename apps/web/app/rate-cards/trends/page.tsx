@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { EmergingTrendsPanel } from '@/components/rate-cards/EmergingTrendsPanel';
 
@@ -10,7 +9,7 @@ export const metadata = {
 };
 
 export default async function EmergingTrendsPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session?.user) {
     redirect('/api/auth/signin');

@@ -1,12 +1,12 @@
 import { Job } from 'bullmq';
-import { PrismaClient } from '@prisma/client';
+import getClient from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';
 import { QUEUE_NAMES, SendWebhookJobData } from '../../utils/src/queue/contract-queue';
 import pino from 'pino';
 import crypto from 'crypto';
 
 const logger = pino({ name: 'webhook-worker' });
-const prisma = new PrismaClient();
+const prisma = getClient();
 
 interface WebhookDeliveryResult {
   success: boolean;

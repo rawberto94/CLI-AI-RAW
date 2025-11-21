@@ -64,10 +64,19 @@ if (process.env['NODE_ENV'] !== 'production') {
   global.prisma = prisma;
 }
 
-process.on('beforeExit', async () => {
-  logger.info('Disconnecting Prisma client');
-  await prisma.$disconnect();
-});
+// Only disconnect on explicit process termination, not on every request
+let disconnecting = false;
+
+const gracefulShutdown = async () => {
+  if (!disconnecting) {
+    disconnecting = true;
+    logger.info('Disconnecting Prisma client');
+    await prisma.$disconnect();
+  }
+};
+
+process.once('SIGTERM', gracefulShutdown);
+process.once('SIGINT', gracefulShutdown);
 
 // Connection health check
 export async function checkDatabaseConnection(): Promise<boolean> {

@@ -36,7 +36,8 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       
       const contractQueue = getContractQueue();
       
-      // Queue the contract for processing
+      // Queue the contract for processing with minimal delay (optimized)
+      // Database transaction should commit quickly with proper connection pooling
       const jobId = await contractQueue.queueContractProcessing(
         {
           contractId,
@@ -46,6 +47,7 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
         },
         {
           priority: 10, // Normal priority
+          delay: 500, // 500ms delay (reduced from 2s for faster processing)
         }
       );
       

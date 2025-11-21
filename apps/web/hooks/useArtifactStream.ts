@@ -39,7 +39,16 @@ export function useArtifactStream({
   onError,
   enabled = true
 }: UseArtifactStreamOptions) {
-  const [artifacts, setArtifacts] = useState<ArtifactUpdate[]>([]);
+  // Persist state in sessionStorage to survive page refreshes
+  const storageKey = `artifact-stream-${contractId}`;
+  
+  const [artifacts, setArtifacts] = useState<ArtifactUpdate[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   const [isConnected, setIsConnected] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [contractStatus, setContractStatus] = useState<string | null>(null);
@@ -47,6 +56,13 @@ export function useArtifactStream({
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  
+  // Save artifacts to sessionStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && artifacts.length > 0) {
+      sessionStorage.setItem(storageKey, JSON.stringify(artifacts));
+    }
+  }, [artifacts, storageKey]);
 
   const connect = useCallback(() => {
     if (!enabled || !contractId) return;
@@ -77,6 +93,7 @@ export function useArtifactStream({
             break;
 
           case 'update':
+            // Batch state updates to reduce re-renders
             if (data.artifacts) {
               setArtifacts(data.artifacts);
             }
@@ -95,17 +112,25 @@ export function useArtifactStream({
             console.log('[SSE] Stream complete:', data);
             setIsComplete(true);
             setIsConnected(false);
-            if (data.artifacts && onComplete) {
-              onComplete(data.artifacts);
+            // Use artifacts from message or current state
+            const finalArtifacts = data.artifacts || artifacts;
+            if (finalArtifacts.length > 0 && onComplete) {
+              onComplete(finalArtifacts);
             }
             eventSource.close();
             break;
 
           case 'error':
             console.error('[SSE] Stream error:', data.error);
-            setError(data.error || 'Unknown error');
-            if (onError) {
-              onError(data.error || 'Unknown error');
+            // Only set error if it's not recoverable
+            if (!data.recoverable) {
+              setError(data.error || 'Unknown error');
+              if (onError) {
+                onError(data.error || 'Unknown error');
+              }
+              eventSource.close();
+            } else {
+              console.log('[SSE] Recoverable error, continuing...');
             }
             break;
         }
@@ -117,14 +142,22 @@ export function useArtifactStream({
     eventSource.onerror = (err) => {
       console.error('[SSE] Connection error:', err);
       setIsConnected(false);
+      
+      // Don't reconnect if already complete or if connection was explicitly closed
+      if (eventSource.readyState === EventSource.CLOSED) {
+        console.log('[SSE] Connection closed by server');
+        return;
+      }
+      
       eventSource.close();
 
-      // Retry connection after 2 seconds if not complete
+      // Auto-retry connection with exponential backoff if not complete
       if (!isComplete) {
+        const retryDelay = Math.min(2000 * Math.pow(1.5, (reconnectTimeoutRef.current ? 1 : 0)), 10000);
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('[SSE] Reconnecting...');
+          console.log('[SSE] Auto-reconnecting...');
           connect();
-        }, 2000);
+        }, retryDelay);
       }
     };
 

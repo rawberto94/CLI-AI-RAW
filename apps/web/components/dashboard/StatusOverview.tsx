@@ -59,8 +59,8 @@ const statusConfig: Record<string, {
 export function StatusOverview({ data, totalContracts }: StatusOverviewProps) {
   return (
     <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="flex items-center gap-2 text-base">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base mb-1">
           <Activity className="h-4 w-4 text-blue-600" />
           Contract Status
         </CardTitle>

@@ -12,20 +12,28 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const contractId = params.id;
   const tenantId = request.headers.get('x-tenant-id') || 'demo';
 
-  // Try to validate contract exists, but don't fail if DB is unavailable
+  console.log('[SSE] Stream requested:', { contractId, tenantId });
+
+  // Check initial contract status - if already completed, we can send data immediately
   let contract;
   let useMockData = false;
+  let isInitiallyCompleted = false;
   
   try {
     contract = await prisma.contract.findUnique({
-      where: { id: contractId, tenantId }
+      where: { id: contractId, tenantId },
+      select: { id: true, status: true }
     });
+    
+    console.log('[SSE] Contract found:', !!contract, 'status:', contract?.status);
     
     if (!contract) {
       useMockData = true;
+    } else {
+      isInitiallyCompleted = contract.status === 'COMPLETED' || contract.status === 'FAILED';
     }
   } catch (dbError) {
-    console.log('Database unavailable, using mock stream data');
+    console.log('[SSE] Database unavailable, using mock stream data');
     useMockData = true;
   }
 
@@ -36,8 +44,81 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Poll for artifact updates every 500ms
+      // Send initial connection message
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({
+          type: 'connected',
+          contractId,
+          timestamp: new Date().toISOString()
+        })}\n\n`)
+      );
+      
+      console.log('[SSE] Stream started for contract:', contractId);
+      
+      // Poll for artifact updates every 1 second (optimized)
       let updateCount = 0;
+      let lastArtifactCount = 0;
+      
+      // If already completed, send data once and close immediately
+      if (isInitiallyCompleted && !useMockData) {
+        try {
+          const dbArtifacts = await prisma.artifact.findMany({
+            where: { contractId, tenantId },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              type: true,
+              validationStatus: true,
+              data: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          });
+          
+          const artifacts = dbArtifacts.map(a => ({
+            id: a.id,
+            type: a.type,
+            status: (a.validationStatus === 'valid') ? 'COMPLETED' : 'PROCESSING',
+            hasContent: !!a.data,
+            contentLength: JSON.stringify(a.data).length || 0,
+            metadata: {},
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt
+          }));
+          
+          // Send update
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({
+              type: 'update',
+              contractId,
+              contractStatus: contract!.status,
+              processingStage: 'complete',
+              errorMessage: null,
+              artifacts,
+              timestamp: new Date().toISOString()
+            })}\\n\\n`)
+          );
+          
+          // Send complete
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'complete', 
+              contractId,
+              status: contract!.status,
+              artifactCount: artifacts.length,
+              artifacts
+            })}\\n\\n`)
+          );
+          
+          controller.close();
+          isClosed = true;
+          return;
+        } catch (error) {
+          console.error('[SSE] Error fetching completed artifacts:', error);
+          // Fall through to polling
+        }
+      }
+      
       pollInterval = setInterval(async () => {
         if (isClosed) {
           clearInterval(pollInterval);
@@ -75,32 +156,35 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             
             contractStatus = progress >= 100 ? 'COMPLETED' : 'PROCESSING';
           } else {
-            // Fetch current artifacts from database
-            const dbArtifacts = await prisma.artifact.findMany({
-              where: { contractId, tenantId },
-              orderBy: { createdAt: 'asc' },
-              select: {
-                id: true,
-                type: true,
-                validationStatus: true,
-                data: true,
-                createdAt: true,
-                updatedAt: true
-              }
-            });
-
-            // Check contract status
-            const updatedContract = await prisma.contract.findUnique({
-              where: { id: contractId },
-              select: { 
-                status: true
-              }
-            });
+            // If initially completed, we can skip contract status check after first fetch
+            const shouldCheckStatus = !isInitiallyCompleted || updateCount === 0;
+            
+            // Fetch current artifacts from database (with connection pooling)
+            const [dbArtifacts, updatedContract] = await Promise.all([
+              prisma.artifact.findMany({
+                where: { contractId, tenantId },
+                orderBy: { createdAt: 'asc' },
+                select: {
+                  id: true,
+                  type: true,
+                  validationStatus: true,
+                  data: true,
+                  createdAt: true,
+                  updatedAt: true
+                }
+              }),
+              shouldCheckStatus ? prisma.contract.findUnique({
+                where: { id: contractId },
+                select: { 
+                  status: true
+                }
+              }) : Promise.resolve(contract)
+            ]);
             
             artifacts = dbArtifacts.map(a => ({
               id: a.id,
               type: a.type,
-              status: a.validationStatus || 'valid',
+              status: (a.validationStatus === 'valid') ? 'COMPLETED' : 'PROCESSING',
               hasContent: !!a.data,
               contentLength: JSON.stringify(a.data).length || 0,
               metadata: {},
@@ -111,30 +195,35 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             contractStatus = updatedContract?.status || 'PROCESSING';
           }
 
-          // Send artifact update
-          const data = {
-            type: 'update',
-            contractId,
-            contractStatus,
-            processingStage: contractStatus === 'COMPLETED' ? 'complete' : 'processing',
-            errorMessage: null,
-            artifacts,
-            timestamp: new Date().toISOString()
-          };
+          // Only send update if artifacts changed or status changed
+          if (artifacts.length !== lastArtifactCount || contractStatus === 'COMPLETED' || contractStatus === 'FAILED') {
+            lastArtifactCount = artifacts.length;
+            
+            const data = {
+              type: 'update',
+              contractId,
+              contractStatus,
+              processingStage: contractStatus === 'COMPLETED' ? 'complete' : 'processing',
+              errorMessage: null,
+              artifacts,
+              timestamp: new Date().toISOString()
+            };
 
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
-          );
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
+            );
+          }
 
           // If contract is completed or failed, close stream
           if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED') {
-            // Send final update
+            // Send final update with artifacts
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ 
                 type: 'complete', 
                 contractId,
                 status: contractStatus,
-                artifactCount: artifacts.length
+                artifactCount: artifacts.length,
+                artifacts
               })}\n\n`)
             );
             
@@ -144,14 +233,18 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           }
         } catch (error) {
           console.error('Error polling artifacts:', error);
-          // Don't fail the stream, just log the error
-        }
-      }, 500); // Poll every 500ms
-              error: 'Failed to fetch artifacts' 
+          
+          // Send error notification but keep stream alive
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({
+              type: 'error',
+              error: 'Temporary polling error',
+              recoverable: true,
+              timestamp: new Date().toISOString()
             })}\n\n`)
           );
         }
-      }, 500); // Poll every 500ms
+      }, 1000); // Poll every 1 second (optimized)
 
       // Cleanup on close
       request.signal.addEventListener('abort', () => {
@@ -174,8 +267,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no', // Disable nginx buffering
     },
   });
 }

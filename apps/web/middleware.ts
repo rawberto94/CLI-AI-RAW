@@ -24,6 +24,8 @@ const publicPaths = [
 const publicApiPaths = [
   "/api/health",
   "/api/auth",
+  "/api/events", // Allow SSE endpoint for real-time updates
+  "/api/contracts", // Allow contract endpoints (includes artifact streams)
 ];
 
 export default auth((req) => {

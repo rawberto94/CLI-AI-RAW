@@ -28,8 +28,8 @@ export function ContractTypeChart({ data }: ContractTypeChartProps) {
 
   return (
     <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="flex items-center gap-2 text-base">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base mb-1">
           <FileText className="h-4 w-4 text-purple-600" />
           Contract Distribution
         </CardTitle>

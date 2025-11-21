@@ -294,7 +294,6 @@ export async function POST(
             mimeType: file.type || "application/octet-stream",
             storagePath: filePath,
             storageProvider: storageProvider,
-            storageUrl: uploadResult?.url,
             status: "PROCESSING",
             uploadedBy: metadata.uploadedBy || "anonymous",
             contractType: metadata.contractType || "UNKNOWN",
@@ -311,6 +310,7 @@ export async function POST(
         console.error("❌ Transaction service import failed, using direct creation:", error);
         
         // Fallback to direct creation
+        // Fallback to direct creation
         const contract = await prisma.contract.create({
           data: {
             tenantId,
@@ -320,11 +320,14 @@ export async function POST(
             mimeType: file.type || "application/octet-stream",
             storagePath: filePath,
             storageProvider: storageProvider,
-            storageUrl: uploadResult?.url,
             status: "PROCESSING",
             uploadedBy: metadata.uploadedBy || "anonymous",
             contractType: metadata.contractType || "UNKNOWN",
             contractTitle: metadata.contractTitle || file.name,
+            clientName: metadata.clientName || undefined,
+            supplierName: metadata.supplierName || undefined,
+            description: metadata.description || undefined,
+            category: metadata.category || undefined,
             uploadedAt: new Date(),
           },
         });
