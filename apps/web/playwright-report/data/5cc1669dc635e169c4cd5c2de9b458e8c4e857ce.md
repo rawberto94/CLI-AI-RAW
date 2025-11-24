@@ -1,0 +1,184 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - text: "Tenant:"
+      - strong [ref=e5]: —
+    - generic [ref=e6]:
+      - text: "API:"
+      - strong [ref=e7]: ok
+    - generic [ref=e8]:
+      - text: "Web:"
+      - strong [ref=e9]: ok
+  - complementary [ref=e10]:
+    - generic [ref=e11]:
+      - img [ref=e12]
+      - generic [ref=e15]: Contract Intelligence
+    - navigation [ref=e16]:
+      - link "Dashboard" [ref=e18] [cursor=pointer]:
+        - /url: /
+        - img [ref=e19]
+        - generic [ref=e24]: Dashboard
+      - link "Contracts" [ref=e26] [cursor=pointer]:
+        - /url: /contracts
+        - img [ref=e27]
+        - generic [ref=e30]: Contracts
+      - link "Upload" [ref=e32] [cursor=pointer]:
+        - /url: /upload
+        - img [ref=e33]
+        - generic [ref=e36]: Upload
+      - link "Analytics" [ref=e38] [cursor=pointer]:
+        - /url: /dashboard
+        - img [ref=e39]
+        - generic [ref=e41]: Analytics
+      - button "Rate Cards" [ref=e43] [cursor=pointer]:
+        - generic [ref=e44]:
+          - img [ref=e45]
+          - generic [ref=e47]: Rate Cards
+        - img [ref=e49]
+      - link "Search" [ref=e52] [cursor=pointer]:
+        - /url: /search
+        - img [ref=e53]
+        - generic [ref=e56]: Search
+      - link "Templates" [ref=e58] [cursor=pointer]:
+        - /url: /templates
+        - img [ref=e59]
+        - generic [ref=e62]: Templates
+    - generic [ref=e64]:
+      - generic [ref=e65]:
+        - generic [ref=e66]: Version
+        - generic [ref=e67]: 2.0.0
+      - generic [ref=e68]:
+        - generic [ref=e69]: Real-time
+        - generic "Real-time updates are active" [ref=e70]:
+          - img [ref=e71]
+  - generic [ref=e77]:
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - img [ref=e83]
+        - generic [ref=e86]:
+          - heading "Upload Contracts" [level=1] [ref=e87]
+          - paragraph [ref=e88]: AI-powered contract analysis in seconds
+      - generic [ref=e89]:
+        - generic [ref=e90]:
+          - img [ref=e91]
+          - text: Using real mode
+        - link "View All Contracts" [ref=e93] [cursor=pointer]:
+          - /url: /contracts
+          - button "View All Contracts" [ref=e94]:
+            - text: View All Contracts
+            - img
+    - generic [ref=e95]:
+      - generic [ref=e99]:
+        - img [ref=e101]
+        - heading "Lightning Fast" [level=3] [ref=e103]
+        - paragraph [ref=e104]: AI-powered extraction processes contracts in seconds, not hours
+      - generic [ref=e108]:
+        - img [ref=e110]
+        - heading "Secure Storage" [level=3] [ref=e112]
+        - paragraph [ref=e113]: Bank-grade encryption with full compliance and data protection
+      - generic [ref=e117]:
+        - img [ref=e119]
+        - heading "AI Analysis" [level=3] [ref=e129]
+        - paragraph [ref=e130]: Advanced GPT-4 models extract clauses, risks, and insights
+      - generic [ref=e134]:
+        - img [ref=e136]
+        - heading "Real-time Status" [level=3] [ref=e139]
+        - paragraph [ref=e140]: Watch AI generate artifacts live with instant progress updates
+    - generic [ref=e143]:
+      - generic [ref=e144]:
+        - generic [ref=e145]: Select AI/OCR Model
+        - generic [ref=e146]:
+          - button "GPT-4 Vision Highest accuracy, best for complex documents Recommended" [ref=e147] [cursor=pointer]:
+            - generic [ref=e148]:
+              - img [ref=e149]
+              - generic [ref=e159]: GPT-4 Vision
+            - paragraph [ref=e160]: Highest accuracy, best for complex documents
+            - generic [ref=e161]: Recommended
+          - button "Mistral OCR Fast processing, specialized OCR model New" [active] [ref=e162] [cursor=pointer]:
+            - generic [ref=e163]:
+              - img [ref=e164]
+              - generic [ref=e166]: Mistral OCR
+              - img [ref=e167]
+            - paragraph [ref=e170]: Fast processing, specialized OCR model
+            - generic [ref=e171]: New
+          - button "Tesseract Free open-source, good for simple text Free" [ref=e172] [cursor=pointer]:
+            - generic [ref=e173]:
+              - img [ref=e174]
+              - generic [ref=e176]: Tesseract
+            - paragraph [ref=e177]: Free open-source, good for simple text
+            - generic [ref=e178]: Free
+      - generic [ref=e179]:
+        - heading "Model Info" [level=4] [ref=e180]
+        - paragraph [ref=e181]: Mistral OCR is optimized for fast document processing with specialized training on contracts and legal documents.
+    - generic [ref=e184] [cursor=pointer]:
+      - button "Choose File" [ref=e185]
+      - generic [ref=e186]:
+        - img [ref=e188]
+        - paragraph [ref=e191]: Drag & drop contracts here
+        - paragraph [ref=e192]: or click to browse your files
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - img [ref=e195]
+            - text: PDF
+          - generic [ref=e198]:
+            - img [ref=e199]
+            - text: DOC
+          - generic [ref=e202]:
+            - img [ref=e203]
+            - text: DOCX
+        - paragraph [ref=e206]: "Maximum file size: 50MB per file • Upload multiple files at once"
+    - generic [ref=e207]:
+      - generic [ref=e210]:
+        - img [ref=e212]
+        - generic [ref=e214]:
+          - heading "Quick Tips" [level=3] [ref=e215]
+          - list [ref=e216]:
+            - listitem [ref=e217]:
+              - img [ref=e218]
+              - generic [ref=e220]: Upload multiple contracts at once for batch processing
+            - listitem [ref=e221]:
+              - img [ref=e222]
+              - generic [ref=e224]: Watch AI generate insights in real-time during upload
+            - listitem [ref=e225]:
+              - img [ref=e226]
+              - generic [ref=e228]: View and analyze contracts immediately after processing
+            - listitem [ref=e229]:
+              - img [ref=e230]
+              - generic [ref=e232]: Switch data modes to test with mock or AI-generated data
+      - generic [ref=e235]:
+        - img [ref=e237]
+        - generic [ref=e241]:
+          - heading "What Gets Extracted" [level=3] [ref=e242]
+          - list [ref=e243]:
+            - listitem [ref=e244]:
+              - img [ref=e245]
+              - generic [ref=e248]:
+                - strong [ref=e249]: "Overview:"
+                - text: Parties, dates, and executive summary
+            - listitem [ref=e250]:
+              - img [ref=e251]
+              - generic [ref=e254]:
+                - strong [ref=e255]: "Clauses:"
+                - text: All contract clauses with obligations
+            - listitem [ref=e256]:
+              - img [ref=e257]
+              - generic [ref=e260]:
+                - strong [ref=e261]: "Financial:"
+                - text: Payment terms, rates, and schedules
+            - listitem [ref=e262]:
+              - img [ref=e263]
+              - generic [ref=e266]:
+                - strong [ref=e267]: "Risk Analysis:"
+                - text: Risk factors with severity levels
+            - listitem [ref=e268]:
+              - img [ref=e269]
+              - generic [ref=e272]:
+                - strong [ref=e273]: "Compliance:"
+                - text: Regulatory requirements and gaps
+  - button "Open Next.js Dev Tools" [ref=e279] [cursor=pointer]:
+    - img [ref=e280]
+  - alert [ref=e283]
+```
