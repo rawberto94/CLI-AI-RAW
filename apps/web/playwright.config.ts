@@ -15,6 +15,11 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
+  // Set environment variable to disable authentication in tests
+  env: {
+    E2E_TEST_MODE: 'true',
+    PLAYWRIGHT_TEST: 'true',
+  },
   projects: [
     {
       name: 'chromium',
@@ -22,11 +27,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev:stable',
+    command: 'E2E_TEST_MODE=true PLAYWRIGHT_TEST=true pnpm dev:stable',
     port: 3005,
     timeout: 120 * 1000,
     reuseExistingServer: true, // Always reuse for development
     stdout: 'pipe',
     stderr: 'pipe',
+    env: {
+      E2E_TEST_MODE: 'true',
+      PLAYWRIGHT_TEST: 'true',
+    },
   },
 });
