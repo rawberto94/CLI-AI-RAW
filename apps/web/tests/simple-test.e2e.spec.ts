@@ -18,7 +18,5 @@ test.describe('Simple Test', () => {
     const button = page.locator('[data-testid="test-button"]');
     await expect(button).toBeVisible();
     await button.click();
-    
-    console.log('Simple test passed!');
   });
 });
