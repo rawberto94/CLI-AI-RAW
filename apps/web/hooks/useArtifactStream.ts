@@ -65,7 +65,10 @@ export function useArtifactStream({
   }, [artifacts, storageKey]);
 
   const connect = useCallback(() => {
-    if (!enabled || !contractId) return;
+    // Skip establishing new connections after completion
+    if (!enabled || !contractId || isComplete) {
+      return;
+    }
 
     // Close existing connection
     if (eventSourceRef.current) {

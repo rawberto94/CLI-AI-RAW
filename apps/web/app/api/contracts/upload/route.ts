@@ -400,7 +400,7 @@ export async function POST(
         await prisma.processingJob.update({
           where: { id: processingJob.id },
           data: {
-            externalJobId: artifactResult.jobId,
+            queueId: artifactResult.jobId,
             status: "QUEUED",
           },
         }).catch(err => console.error("Failed to update job with queueId:", err));
