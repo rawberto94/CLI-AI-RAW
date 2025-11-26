@@ -105,7 +105,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               errorMessage: null,
               artifacts,
               timestamp: new Date().toISOString()
-            })}\\n\\n`)
+            })}\n\n`)
           );
           
           // Send complete
@@ -165,12 +165,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             
             // Simulate artifact generation
             const mockArtifacts = [
-              { type: 'overview', status: progress >= 20 ? 'valid' : 'pending' },
-              { type: 'key_clauses', status: progress >= 40 ? 'valid' : 'pending' },
-              { type: 'financial_analysis', status: progress >= 60 ? 'valid' : 'pending' },
-              { type: 'risk_assessment', status: progress >= 80 ? 'valid' : 'pending' },
-              { type: 'compliance_check', status: progress >= 100 ? 'valid' : 'pending' },
-            ].filter(a => progress >= 20 || a.type === 'overview');
+              { type: 'OVERVIEW', status: progress >= 20 ? 'valid' : 'pending' },
+              { type: 'CLAUSES', status: progress >= 40 ? 'valid' : 'pending' },
+              { type: 'FINANCIAL', status: progress >= 60 ? 'valid' : 'pending' },
+              { type: 'RISK', status: progress >= 80 ? 'valid' : 'pending' },
+              { type: 'COMPLIANCE', status: progress >= 100 ? 'valid' : 'pending' },
+            ].filter(a => progress >= 20 || a.type === 'OVERVIEW');
             
             artifacts = mockArtifacts.map((a, i) => ({
               id: `mock-artifact-${i}`,

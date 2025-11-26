@@ -506,7 +506,7 @@ async function generateArtifactWithAI(
   // For now, return structured data based on type
   
   const artifactTemplates: Record<string, any> = {
-    overview: {
+    OVERVIEW: {
       summary: `Contract analysis for ${contract.contractTitle}`,
       contractType: contract.contractType || 'Service Agreement',
       parties: [contract.clientName, contract.supplierName].filter(Boolean),
@@ -517,7 +517,7 @@ async function generateArtifactWithAI(
       keyTerms: ['Payment terms', 'Deliverables', 'Service levels'],
       extractedLength: contractText.length,
     },
-    key_clauses: {
+    CLAUSES: {
       clauses: [
         {
           title: 'Scope of Work',
@@ -539,14 +539,14 @@ async function generateArtifactWithAI(
         },
       ],
     },
-    financial_analysis: {
+    FINANCIAL: {
       totalValue: contract.totalValue || 0,
       currency: contract.currency || 'USD',
       paymentSchedule: 'To be determined from contract text',
       costBreakdown: [],
       analysis: 'Financial analysis based on OCR extraction',
     },
-    risk_assessment: {
+    RISK: {
       overallRisk: 'Medium',
       risks: [
         {
@@ -561,7 +561,7 @@ async function generateArtifactWithAI(
         },
       ],
     },
-    compliance_check: {
+    COMPLIANCE: {
       compliant: true,
       checks: [
         { regulation: 'Internal Policy', status: 'compliant' },

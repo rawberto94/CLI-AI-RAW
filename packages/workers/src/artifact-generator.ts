@@ -46,11 +46,11 @@ export async function generateArtifactsJob(
 
     // Define artifacts to generate
     const artifactTypes = [
-      { type: 'overview', weight: 15 },
-      { type: 'key_clauses', weight: 20 },
-      { type: 'financial_analysis', weight: 25 },
-      { type: 'risk_assessment', weight: 20 },
-      { type: 'compliance_check', weight: 20 },
+      { type: 'OVERVIEW', weight: 15 },
+      { type: 'CLAUSES', weight: 20 },
+      { type: 'FINANCIAL', weight: 25 },
+      { type: 'RISK', weight: 20 },
+      { type: 'COMPLIANCE', weight: 20 },
     ];
 
     let progressBase = 10;
@@ -136,7 +136,7 @@ async function generateArtifactData(
 
   // This would be replaced with actual OpenAI API calls
   const artifactTemplates: Record<string, any> = {
-    overview: {
+    OVERVIEW: {
       summary: `AI-generated summary for contract ${contractId}`,
       contractType: 'Service Agreement',
       parties: ['Party A', 'Party B'],
@@ -144,7 +144,7 @@ async function generateArtifactData(
       expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
       keyTerms: ['Term 1', 'Term 2', 'Term 3'],
     },
-    key_clauses: {
+    CLAUSES: {
       clauses: [
         {
           title: 'Payment Terms',
@@ -163,7 +163,7 @@ async function generateArtifactData(
         },
       ],
     },
-    financial_analysis: {
+    FINANCIAL: {
       totalValue: 1000000,
       currency: 'USD',
       paymentSchedule: 'Monthly',
@@ -172,7 +172,7 @@ async function generateArtifactData(
         { category: 'Support', amount: 200000 },
       ],
     },
-    risk_assessment: {
+    RISK: {
       overallRisk: 'Medium',
       risks: [
         {
@@ -187,7 +187,7 @@ async function generateArtifactData(
         },
       ],
     },
-    compliance_check: {
+    COMPLIANCE: {
       compliant: true,
       checks: [
         { regulation: 'GDPR', status: 'compliant' },

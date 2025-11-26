@@ -30,6 +30,9 @@ interface RealtimeArtifactViewerProps {
   onComplete?: () => void;
 }
 
+// Helper to normalize artifact types to uppercase
+const normalizeType = (type: string): string => type.toUpperCase().replace('KEY_CLAUSES', 'CLAUSES').replace('FINANCIAL_ANALYSIS', 'FINANCIAL').replace('RISK_ASSESSMENT', 'RISK').replace('COMPLIANCE_CHECK', 'COMPLIANCE');
+
 const artifactIcons: Record<string, React.ReactNode> = {
   OVERVIEW: <FileText className="h-5 w-5" />,
   FINANCIAL: <DollarSign className="h-5 w-5" />,
@@ -135,9 +138,15 @@ export function RealtimeArtifactViewer({
     }
   };
 
-  const sortedArtifacts = [...artifacts].sort((a, b) => {
-    const aIndex = artifactOrder.indexOf(a.type);
-    const bIndex = artifactOrder.indexOf(b.type);
+  // Normalize artifact types for consistent display
+  const normalizedArtifacts = artifacts.map(a => ({
+    ...a,
+    normalizedType: normalizeType(a.type)
+  }));
+
+  const sortedArtifacts = [...normalizedArtifacts].sort((a, b) => {
+    const aIndex = artifactOrder.indexOf(a.normalizedType);
+    const bIndex = artifactOrder.indexOf(b.normalizedType);
     return aIndex - bIndex;
   });
 
@@ -245,6 +254,7 @@ export function RealtimeArtifactViewer({
       {/* Artifacts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedArtifacts.map((artifact) => {
+          const displayType = artifact.normalizedType;
           const isAnimating = animatingArtifacts.has(artifact.id);
           const isRetrying = retryingArtifacts.has(artifact.id);
           const isCompleted = artifact.status === 'COMPLETED';
@@ -271,11 +281,11 @@ export function RealtimeArtifactViewer({
                       isFailed && "bg-red-100 text-red-700",
                       !isCompleted && !isProcessing && !isFailed && "bg-gray-100 text-gray-400"
                     )}>
-                      {artifactIcons[artifact.type]}
+                      {artifactIcons[displayType]}
                     </div>
                     <div>
                       <CardTitle className="text-sm font-semibold">
-                        {artifactLabels[artifact.type] || artifact.type}
+                        {artifactLabels[displayType] || artifact.type}
                       </CardTitle>
                       <CardDescription className="text-xs">
                         {artifact.metadata?.description || 'AI-generated insights'}
