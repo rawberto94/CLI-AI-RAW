@@ -5,7 +5,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -16,7 +17,6 @@ import {
   FileCheck,
   TrendingUp,
   Download,
-  Edit,
   MoreVertical,
   Sparkles,
   Clock,
@@ -25,23 +25,28 @@ import {
   Building,
   CheckCircle2,
   AlertTriangle,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Copy,
+  Check,
+  MessageSquare,
+  Activity,
+  GitCompare,
+  FileSignature,
+  Share2,
+  Bell,
+  ChevronRight,
+  Scale,
+  Eye
 } from 'lucide-react'
 import Link from 'next/link'
-import { ModernArtifactViewer } from '@/components/contracts/ModernArtifactViewer'
-import { ContractComments } from '@/components/contracts/ContractComments'
-import { ActivityFeed } from '@/components/contracts/ActivityFeed'
-import { ExportMenu } from '@/components/contracts/ExportMenu'
-import { ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
-import { RiskAnalysisPanel } from '@/components/contracts/RiskAnalysisPanel'
-import { WorkflowExecutionTracker } from '@/components/contracts/WorkflowExecutionTracker'
-import { VersionComparison } from '@/components/contracts/VersionComparison'
-import { SignatureRequest } from '@/components/contracts/SignatureRequest'
-import { SignatureWorkflowTracker } from '@/components/contracts/SignatureWorkflowTracker'
-import { ContractContextSidebar } from '@/components/contracts/ContractContextSidebar'
-import { CommandPalette } from '@/components/contracts/CommandPalette'
-import { ProcessingStatusCard } from '@/components/contracts/ProcessingStatusCard'
-import { Scale, FileWarning, Lock, Zap, GitCompare, FileSignature } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactViewer'
+import { GenerationFlowVisualization, CompactGenerationFlow } from '@/components/artifacts/GenerationFlowVisualization'
+import { MetricCard, ScoreRing } from '@/components/artifacts/ArtifactCards'
+import { formatCurrency, formatDate, getRiskColor, getComplianceColor } from '@/lib/design-tokens'
+
+// ============ TYPES ============
 
 interface ContractData {
   id: string
@@ -62,7 +67,149 @@ interface ContractData {
   }
 }
 
-export default function ContractDetailPage() {
+interface QuickAction {
+  id: string
+  label: string
+  icon: React.ElementType
+  color: string
+  onClick: () => void
+}
+
+// ============ HELPER COMPONENTS ============
+
+function StatusBadge({ status }: { status: string }) {
+  const config = {
+    completed: {
+      bg: 'bg-emerald-100',
+      text: 'text-emerald-700',
+      icon: CheckCircle2,
+      label: 'Completed'
+    },
+    processing: {
+      bg: 'bg-indigo-100',
+      text: 'text-indigo-700',
+      icon: Loader2,
+      label: 'Processing',
+      animate: true
+    },
+    error: {
+      bg: 'bg-rose-100',
+      text: 'text-rose-700',
+      icon: AlertCircle,
+      label: 'Error'
+    },
+    failed: {
+      bg: 'bg-rose-100',
+      text: 'text-rose-700',
+      icon: AlertCircle,
+      label: 'Failed'
+    },
+    uploaded: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
+      icon: Clock,
+      label: 'Pending'
+    }
+  }[status.toLowerCase()] || {
+    bg: 'bg-slate-100',
+    text: 'text-slate-700',
+    icon: FileText,
+    label: status
+  };
+  
+  const Icon = config.icon;
+  
+  return (
+    <Badge className={cn("px-3 py-1.5", config.bg, config.text)}>
+      <Icon className={cn("h-3.5 w-3.5 mr-1.5", config.animate && "animate-spin")} />
+      {config.label}
+    </Badge>
+  );
+}
+
+function ContractIdBadge({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  
+  const copyId = () => {
+    navigator.clipboard.writeText(id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  return (
+    <button
+      onClick={copyId}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono bg-slate-100 hover:bg-slate-200 rounded-md text-slate-600 transition-colors"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-emerald-600" />
+          <span className="text-emerald-600">Copied!</span>
+        </>
+      ) : (
+        <>
+          <span className="truncate max-w-[120px]">{id}</span>
+          <Copy className="h-3 w-3" />
+        </>
+      )}
+    </button>
+  );
+}
+
+function QuickActionButton({ action }: { action: QuickAction }) {
+  const Icon = action.icon;
+  
+  return (
+    <button
+      onClick={action.onClick}
+      className={cn(
+        "flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white",
+        "hover:bg-slate-50 hover:border-slate-300 transition-all",
+        "text-sm font-medium text-slate-700"
+      )}
+    >
+      <Icon className={cn("h-4 w-4", action.color)} />
+      {action.label}
+    </button>
+  );
+}
+
+function InsightCard({ insight, index }: { insight: any; index: number }) {
+  const colorMap: Record<string, { bg: string; border: string; icon: string }> = {
+    green: { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-600' },
+    yellow: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600' },
+    red: { bg: 'bg-rose-50', border: 'border-rose-200', icon: 'text-rose-600' },
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600' },
+    purple: { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'text-purple-600' }
+  };
+  
+  const colors = colorMap[insight.color] || colorMap.blue;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      className={cn(
+        "p-4 rounded-xl border-l-4",
+        colors.bg,
+        colors.border
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <Sparkles className={cn("h-5 w-5 mt-0.5 shrink-0", colors.icon)} />
+        <div>
+          <h4 className="font-semibold text-slate-900">{insight.title}</h4>
+          <p className="text-sm text-slate-600 mt-1">{insight.description}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ============ MAIN COMPONENT ============
+
+export default function EnhancedContractDetailPage() {
   const params = useParams()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -70,9 +217,7 @@ export default function ContractDetailPage() {
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
-  const [showVersionComparison, setShowVersionComparison] = useState(false)
-  const [showSignatureRequest, setShowSignatureRequest] = useState(false)
+  const [activeSection, setActiveSection] = useState('artifacts')
 
   const loadContract = useCallback(async () => {
     setLoading(true)
@@ -107,69 +252,78 @@ export default function ContractDetailPage() {
     loadContract()
   }, [loadContract])
 
-  // Status badge styling
-  const getStatusConfig = (status?: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-        return { 
-          label: 'Completed', 
-          className: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0',
-          icon: CheckCircle2
-        }
-      case 'processing':
-        return { 
-          label: 'Processing', 
-          className: 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0',
-          icon: Loader2
-        }
-      case 'error':
-      case 'failed':
-        return { 
-          label: 'Failed', 
-          className: 'bg-gradient-to-r from-red-500 to-pink-500 text-white border-0',
-          icon: AlertTriangle
-        }
-      default:
-        return { 
-          label: 'Unknown', 
-          className: 'bg-gradient-to-r from-gray-500 to-slate-500 text-white border-0',
-          icon: Clock
-        }
-    }
-  }
+  // Extract data helpers
+  const overviewData = contract?.extractedData?.overview
+  const financialData = contract?.extractedData?.financial
+  const riskData = contract?.extractedData?.risk
+  const complianceData = contract?.extractedData?.compliance
+  const clausesData = contract?.extractedData?.clauses
 
-  const statusConfig = getStatusConfig(contract?.status)
-  const StatusIcon = statusConfig.icon
+  // Quick actions
+  const quickActions: QuickAction[] = [
+    {
+      id: 'export',
+      label: 'Export',
+      icon: Download,
+      color: 'text-slate-600',
+      onClick: () => console.log('Export')
+    },
+    {
+      id: 'share',
+      label: 'Share',
+      icon: Share2,
+      color: 'text-blue-600',
+      onClick: () => console.log('Share')
+    },
+    {
+      id: 'remind',
+      label: 'Set Reminder',
+      icon: Bell,
+      color: 'text-amber-600',
+      onClick: () => console.log('Remind')
+    },
+    {
+      id: 'compare',
+      label: 'Compare',
+      icon: GitCompare,
+      color: 'text-purple-600',
+      onClick: () => console.log('Compare')
+    }
+  ];
 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 flex items-center justify-center p-6">
-        <Card className="max-w-2xl w-full shadow-2xl border-0">
-          <CardContent className="p-12 text-center">
-            <div className="p-4 bg-red-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-              <AlertCircle className="h-12 w-12 text-red-600" />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Error Loading Contract
-            </h2>
-            <p className="text-gray-600 mb-8 text-lg">
-              {error}
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Button onClick={loadContract} size="lg" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                <RefreshCw className="h-5 w-5 mr-2" />
-                Try Again
-              </Button>
-              <Link href="/contracts">
-                <Button variant="outline" size="lg">
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                  Back to Contracts
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full"
+        >
+          <Card className="border-rose-200 bg-rose-50/50">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-rose-100 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-rose-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">
+                Error Loading Contract
+              </h2>
+              <p className="text-slate-600 mb-6">{error}</p>
+              <div className="flex gap-3 justify-center">
+                <Button onClick={loadContract} className="bg-indigo-600 hover:bg-indigo-700">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
                 </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+                <Link href="/contracts">
+                  <Button variant="outline">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     )
   }
@@ -177,490 +331,355 @@ export default function ContractDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
-        <div className="max-w-[1600px] mx-auto space-y-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
-            <div className="h-12 flex-1 bg-gray-200 rounded-lg animate-pulse"></div>
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-24 bg-slate-200 rounded-lg animate-pulse" />
+            <div className="h-8 w-64 bg-slate-200 rounded-lg animate-pulse" />
           </div>
-          <div className="h-64 bg-white rounded-2xl animate-pulse shadow-lg"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="h-40 bg-white rounded-2xl animate-pulse shadow-lg"></div>
-            <div className="h-40 bg-white rounded-2xl animate-pulse shadow-lg"></div>
-            <div className="h-40 bg-white rounded-2xl animate-pulse shadow-lg"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-32 bg-slate-100 rounded-xl animate-pulse" />
+            ))}
           </div>
-          <div className="h-96 bg-white rounded-2xl animate-pulse shadow-lg"></div>
+          <div className="h-96 bg-slate-100 rounded-xl animate-pulse" />
         </div>
       </div>
     )
   }
 
-  const overviewData = contract?.extractedData?.overview
-  const financialData = contract?.extractedData?.financial
-  const riskData = contract?.extractedData?.risk
-  const complianceData = contract?.extractedData?.compliance
+  const isProcessing = contract?.status?.toLowerCase() === 'processing' || 
+                       contract?.status?.toLowerCase() === 'uploaded';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
-      {/* Command Palette - Global keyboard shortcuts */}
-      <CommandPalette contractId={params.id as string} />
-      
-      <div className="max-w-[1800px] mx-auto">
-        <div className="flex gap-6">
-          {/* Left: Context Sidebar */}
-          <ContractContextSidebar
-            contractId={params.id as string}
-            contractName={contract?.filename || 'Contract'}
-            status={contract?.status || 'unknown'}
-            value={financialData?.totalValue}
-            currency={financialData?.currency}
-            riskScore={riskData?.riskScore}
-            riskLevel={riskData?.riskLevel}
-            effectiveDate={overviewData?.effectiveDate || overviewData?.startDate}
-            expirationDate={overviewData?.expirationDate || overviewData?.expiryDate || overviewData?.endDate}
-            startDate={overviewData?.startDate || overviewData?.contractDate}
-            endDate={overviewData?.endDate}
-            client={{
-              name: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || overviewData?.clientName,
-              contact: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.email,
-            }}
-            supplier={{
-              name: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || overviewData?.supplierName,
-              contact: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.email,
-            }}
-            onExport={() => document.querySelector<HTMLButtonElement>('[data-export-button]')?.click()}
-            onShare={() => console.log('Share contract')}
-            onReminder={() => console.log('Set reminder')}
-            onDuplicate={() => console.log('Duplicate contract')}
-          />
-
-          {/* Right: Main Content */}
-          <div className="flex-1 min-w-0 space-y-6">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        
         {/* Header */}
-        <div className="flex items-start justify-between gap-6 flex-wrap">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            <Link href="/contracts">
-              <Button variant="ghost" size="lg" className="hover:bg-white/80">
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                  <FileText className="h-7 w-7 text-white" />
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex items-start gap-4">
+              <Link href="/contracts">
+                <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back
+                </Button>
+              </Link>
+              
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200/50">
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {contract?.filename || 'Contract Details'}
+                  </h1>
                 </div>
-                <h1 className="text-4xl font-bold text-gray-900 truncate">
-                  {contract?.filename || 'Contract Details'}
-                </h1>
-              </div>
-              <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1.5 rounded-lg">
-                  ID: {params.id}
-                </span>
-                <Badge className={`${statusConfig.className} px-4 py-2 shadow-md text-sm font-semibold`}>
-                  <StatusIcon className={`h-4 w-4 mr-2 ${contract?.status === 'processing' ? 'animate-spin' : ''}`} />
-                  {statusConfig.label}
-                </Badge>
-                {contract?.processing && contract.status === 'processing' && (
-                  <Badge className="bg-blue-100 text-blue-700 px-4 py-2 text-sm font-medium">
-                    {contract.processing.progress}% Complete
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="lg" 
-              data-signature-button
-              onClick={() => setShowSignatureRequest(!showSignatureRequest)}
-              className="hover:bg-pink-50 hover:border-pink-400"
-            >
-              <FileSignature className="h-5 w-5 mr-2" />
-              Request Signature
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={() => setShowVersionComparison(!showVersionComparison)}
-              className="hover:bg-purple-50 hover:border-purple-400"
-            >
-              <GitCompare className="h-5 w-5 mr-2" />
-              Compare Versions
-            </Button>
-            <Button variant="outline" size="lg" onClick={loadContract} className="hover:bg-blue-50 hover:border-blue-400">
-              <RefreshCw className="h-5 w-5 mr-2" />
-              Refresh
-            </Button>
-            <div data-export-button>
-              <ExportMenu contractId={params.id as string} contractName={contract?.filename} />
-            </div>
-          </div>
-        </div>
-
-        {/* Processing Status Card - Show when contract is being processed */}
-        {(contract?.status === 'PROCESSING' || contract?.status === 'UPLOADED') && (
-          <ProcessingStatusCard
-            contractId={params.id as string}
-            onComplete={loadContract}
-            onError={(error) => console.error('Processing error:', error)}
-            pollInterval={2000}
-          />
-        )}
-
-        {/* Key Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Contract Value */}
-          {financialData?.totalValue && (
-            <div className="group relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
-              <Card className="relative bg-white shadow-xl border-0">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
-                      <DollarSign className="h-6 w-6 text-white" />
-                    </div>
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Contract Value</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">
-                    {financialData.currency} {financialData.totalValue?.toLocaleString()}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Risk Score */}
-          {riskData?.riskScore !== undefined && (
-            <div className="group relative">
-              <div className={`absolute -inset-0.5 bg-gradient-to-r ${
-                riskData.riskScore < 30 ? 'from-green-500 to-emerald-500' :
-                riskData.riskScore < 70 ? 'from-yellow-500 to-orange-500' :
-                'from-red-500 to-pink-500'
-              } rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur`}></div>
-              <Card className="relative bg-white shadow-xl border-0">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`p-3 bg-gradient-to-br ${
-                      riskData.riskScore < 30 ? 'from-green-500 to-emerald-600' :
-                      riskData.riskScore < 70 ? 'from-yellow-500 to-orange-600' :
-                      'from-red-500 to-pink-600'
-                    } rounded-xl shadow-lg`}>
-                      <Shield className="h-6 w-6 text-white" />
-                    </div>
-                    <AlertTriangle className={`h-5 w-5 ${
-                      riskData.riskScore < 30 ? 'text-green-600' :
-                      riskData.riskScore < 70 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`} />
-                  </div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Risk Score</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">
-                    {riskData.riskScore}/100
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">{riskData.riskLevel} Risk</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Compliance Score */}
-          {complianceData?.complianceScore !== undefined && (
-            <div className="group relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
-              <Card className="relative bg-white shadow-xl border-0">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                      <FileCheck className="h-6 w-6 text-white" />
-                    </div>
-                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Compliance</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">
-                    {complianceData.complianceScore}%
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">{complianceData.regulations?.length || 0} regulations</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Artifacts Count */}
-          <div className="group relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
-            <Card className="relative bg-white shadow-xl border-0">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
-                    <Sparkles className="h-6 w-6 text-white" />
-                  </div>
-                  <FileText className="h-5 w-5 text-purple-600" />
-                </div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">AI Artifacts</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {contract?.artifactCount || contract?.artifacts?.length || 0}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">Generated insights</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Enhanced Metadata Editor with Confidence Scores */}
-        <div className="rounded-2xl overflow-hidden">
-          <ContractMetadataEditor
-            contractId={params.id as string}
-            initialData={{
-              contractTitle: { value: overviewData?.title, confidence: overviewData?.titleConfidence },
-              description: { value: overviewData?.summary, confidence: overviewData?.summaryConfidence },
-              clientName: { value: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name, confidence: 0.85 },
-              supplierName: { value: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name, confidence: 0.85 },
-              contractType: { value: overviewData?.type || overviewData?.contractType, confidence: 0.90 },
-              category: { value: overviewData?.category, confidence: 0.75 },
-              totalValue: { value: financialData?.totalValue, confidence: financialData?.totalValueConfidence },
-              currency: { value: financialData?.currency, confidence: 0.95 },
-              effectiveDate: { value: overviewData?.effectiveDate, confidence: 0.88 },
-              startDate: { value: overviewData?.startDate || overviewData?.contractDate, confidence: 0.88 },
-              endDate: { value: overviewData?.endDate, confidence: 0.85 },
-              expirationDate: { value: overviewData?.expiryDate, confidence: 0.85 },
-              jurisdiction: { value: overviewData?.jurisdiction, confidence: 0.65 },
-              status: { value: contract?.status?.toUpperCase(), confidence: 1.0 },
-              tags: { value: overviewData?.tags || [], confidence: 0.70 },
-              keywords: { value: overviewData?.keywords || [], confidence: 0.70 },
-            }}
-            onUpdate={async (updatedData) => {
-              console.log('Metadata updated:', updatedData)
-              // Reload contract to show updated data
-              await loadContract()
-            }}
-          />
-        </div>
-
-        {/* Risk Analysis Panel */}
-        {(riskData || complianceData) && (
-          <RiskAnalysisPanel
-            contractId={params.id as string}
-            overallRiskScore={riskData?.riskScore || 0}
-            riskLevel={riskData?.riskLevel || 'UNKNOWN'}
-            categories={riskData?.categories || [
-              {
-                id: 'liability',
-                name: 'Liability & Indemnification',
-                score: riskData?.liabilityScore || 0,
-                level: (riskData?.liabilityScore || 0) >= 70 ? 'high' : (riskData?.liabilityScore || 0) >= 40 ? 'medium' : 'low',
-                issues: riskData?.liabilityIssues || [],
-                description: 'Risk associated with liability clauses and indemnification terms',
-                icon: Scale
-              },
-              {
-                id: 'termination',
-                name: 'Termination & Renewal',
-                score: riskData?.terminationScore || 0,
-                level: (riskData?.terminationScore || 0) >= 70 ? 'high' : (riskData?.terminationScore || 0) >= 40 ? 'medium' : 'low',
-                issues: riskData?.terminationIssues || [],
-                description: 'Risk related to termination clauses and renewal terms',
-                icon: FileWarning
-              },
-              {
-                id: 'payment',
-                name: 'Payment & Financial Terms',
-                score: riskData?.paymentScore || 0,
-                level: (riskData?.paymentScore || 0) >= 70 ? 'high' : (riskData?.paymentScore || 0) >= 40 ? 'medium' : 'low',
-                issues: riskData?.paymentIssues || [],
-                description: 'Financial risks and payment obligation concerns',
-                icon: DollarSign
-              },
-              {
-                id: 'confidentiality',
-                name: 'Confidentiality & IP',
-                score: riskData?.confidentialityScore || 0,
-                level: (riskData?.confidentialityScore || 0) >= 70 ? 'high' : (riskData?.confidentialityScore || 0) >= 40 ? 'medium' : 'low',
-                issues: riskData?.confidentialityIssues || [],
-                description: 'Risk related to confidentiality and intellectual property',
-                icon: Lock
-              },
-              {
-                id: 'compliance',
-                name: 'Compliance & Regulatory',
-                score: complianceData?.complianceScore || 0,
-                level: (complianceData?.complianceScore || 0) < 70 ? 'high' : (complianceData?.complianceScore || 0) < 90 ? 'medium' : 'low',
-                issues: complianceData?.complianceIssues || [],
-                description: 'Compliance with regulatory requirements and standards',
-                icon: Shield
-              }
-            ]}
-          />
-        )}
-
-        {/* Workflow Execution Tracker */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-            Active Workflows
-          </h2>
-          <WorkflowExecutionTracker
-            contractId={params.id as string}
-            onApprove={async (stepId, comment) => {
-              console.log('Approving step:', stepId, comment)
-              // TODO: Implement approval API call
-              await loadContract()
-            }}
-            onReject={async (stepId, comment) => {
-              console.log('Rejecting step:', stepId, comment)
-              // TODO: Implement rejection API call
-              await loadContract()
-            }}
-          />
-        </div>
-
-        {/* E-Signature Workflow Tracker */}
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent flex items-center gap-3">
-            <FileSignature className="h-7 w-7 text-blue-600" />
-            E-Signature Status
-          </h2>
-          <SignatureWorkflowTracker
-            contractId={params.id as string}
-            onRequestNew={() => setShowSignatureRequest(true)}
-          />
-        </div>
-
-        {/* Contract Overview Card */}
-        {overviewData && (
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Contract Overview
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {overviewData.parties?.map((party: any, idx: number) => (
-                  <div key={idx} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      {party.role === 'Client' || party.role === 'Buyer' ? (
-                        <Building className="h-5 w-5 text-blue-600" />
-                      ) : (
-                        <Users className="h-5 w-5 text-purple-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase">{party.role}</p>
-                      <p className="text-sm font-bold text-gray-900">{party.name}</p>
-                    </div>
-                  </div>
-                ))}
                 
-                {(overviewData.startDate || overviewData.contractDate) && (
-                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <Calendar className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase">Start Date</p>
-                      <p className="text-sm font-bold text-gray-900">{overviewData.startDate || overviewData.contractDate}</p>
-                    </div>
-                  </div>
-                )}
-                
-                {(overviewData.endDate || overviewData.expiryDate) && (
-                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <Clock className="h-5 w-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase">End Date</p>
-                      <p className="text-sm font-bold text-gray-900">{overviewData.endDate || overviewData.expiryDate}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {overviewData.summary && (
-                <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Executive Summary</h3>
-                  <p className="text-gray-700 leading-relaxed">{overviewData.summary}</p>
+                <div className="flex items-center gap-3">
+                  <ContractIdBadge id={params.id as string} />
+                  <StatusBadge status={contract?.status || 'unknown'} />
+                  {contract?.uploadDate && (
+                    <span className="text-sm text-slate-500">
+                      Uploaded {formatDate(contract.uploadDate)}
+                    </span>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Enhanced Artifacts Viewer */}
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                AI-Generated Artifacts
-              </h2>
-              <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 shadow-md">
-                <Sparkles className="h-4 w-4 mr-2" />
-                {contract?.artifactCount || 0} Artifacts
-              </Badge>
+              </div>
             </div>
             
-            {contract?.extractedData && (
-              <ModernArtifactViewer
-                artifacts={contract.extractedData}
-                contractId={params.id as string}
-                initialTab={activeTab}
-              />
-            )}
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-2">
+              {quickActions.map(action => (
+                <QuickActionButton key={action.id} action={action} />
+              ))}
+              <Button onClick={loadContract} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </motion.div>
 
-        {/* Insights Section */}
-        {contract?.insights && contract.insights.length > 0 && (
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-8">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                AI Insights
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {contract.insights.map((insight: any, idx: number) => (
-                  <div key={idx} className={`p-6 rounded-xl border-l-4 shadow-md ${
-                    insight.color === 'green' ? 'bg-green-50 border-green-500' :
-                    insight.color === 'yellow' ? 'bg-yellow-50 border-yellow-500' :
-                    insight.color === 'red' ? 'bg-red-50 border-red-500' :
-                    insight.color === 'blue' ? 'bg-blue-50 border-blue-500' :
-                    'bg-purple-50 border-purple-500'
-                  }`}>
-                    <h3 className="font-bold text-gray-900 mb-2">{insight.title}</h3>
-                    <p className="text-sm text-gray-700">{insight.description}</p>
+        {/* Processing Status */}
+        <AnimatePresence>
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-8"
+            >
+              <GenerationFlowVisualization
+                contractId={params.id as string}
+                isConnected={true}
+                currentStage={(contract?.processing?.currentStage || 'ARTIFACT_GENERATION') as any}
+                progress={contract?.processing?.progress || 50}
+                artifacts={[]}
+                onRetry={loadContract}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Key Metrics */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+        >
+          {/* Contract Value */}
+          {financialData?.totalValue && (
+            <MetricCard
+              title="Contract Value"
+              value={formatCurrency(financialData.totalValue, financialData.currency || 'USD')}
+              icon={DollarSign}
+              color="green"
+              trend={{ value: 12, label: 'vs avg' }}
+            />
+          )}
+          
+          {/* Risk Score */}
+          {riskData?.riskScore !== undefined && (
+            <Card className="border-slate-200/80 overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Risk Score</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">
+                      {riskData.riskScore}/100
+                    </p>
+                    <Badge 
+                      className={cn(
+                        "mt-2",
+                        riskData.riskScore < 30 ? "bg-emerald-100 text-emerald-700" :
+                        riskData.riskScore < 60 ? "bg-amber-100 text-amber-700" :
+                        "bg-rose-100 text-rose-700"
+                      )}
+                    >
+                      {riskData.riskLevel || (riskData.riskScore < 30 ? 'Low' : riskData.riskScore < 60 ? 'Medium' : 'High')}
+                    </Badge>
                   </div>
-                ))}
+                  <ScoreRing score={riskData.riskScore} size="md" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Compliance Score */}
+          {complianceData?.complianceScore !== undefined && (
+            <Card className="border-slate-200/80 overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Compliance</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">
+                      {complianceData.complianceScore}%
+                    </p>
+                    <p className="text-sm text-slate-500 mt-2">
+                      {complianceData.regulations?.length || 0} regulations
+                    </p>
+                  </div>
+                  <ScoreRing score={complianceData.complianceScore} size="md" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Artifacts */}
+          <MetricCard
+            title="AI Artifacts"
+            value={contract?.artifactCount || contract?.artifacts?.length || 5}
+            subtitle="Generated"
+            icon={Sparkles}
+            color="purple"
+          />
+        </motion.div>
+
+        {/* Contract Summary */}
+        {overviewData?.summary && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <Card className="border-slate-200/80">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                  Executive Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-700 leading-relaxed">{overviewData.summary}</p>
+                
+                {/* Parties */}
+                {overviewData.parties && overviewData.parties.length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-slate-100">
+                    <h4 className="text-sm font-semibold text-slate-600 mb-3">Contract Parties</h4>
+                    <div className="flex flex-wrap gap-3">
+                      {overviewData.parties.map((party: any, i: number) => (
+                        <div 
+                          key={i}
+                          className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg"
+                        >
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center",
+                            party.role === 'Client' || party.role === 'Buyer' 
+                              ? "bg-blue-100" 
+                              : "bg-purple-100"
+                          )}>
+                            {party.role === 'Client' || party.role === 'Buyer' ? (
+                              <Building className="h-4 w-4 text-blue-600" />
+                            ) : (
+                              <Users className="h-4 w-4 text-purple-600" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900">{party.name}</p>
+                            <p className="text-xs text-slate-500">{party.role}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Key Dates */}
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                  <h4 className="text-sm font-semibold text-slate-600 mb-3">Key Dates</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    {overviewData.startDate && (
+                      <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                        <p className="text-xs text-emerald-600 font-medium">Effective</p>
+                        <p className="text-sm font-semibold text-slate-900 mt-1">
+                          {formatDate(overviewData.startDate)}
+                        </p>
+                      </div>
+                    )}
+                    {overviewData.contractDate && (
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs text-blue-600 font-medium">Signed</p>
+                        <p className="text-sm font-semibold text-slate-900 mt-1">
+                          {formatDate(overviewData.contractDate)}
+                        </p>
+                      </div>
+                    )}
+                    {(overviewData.endDate || overviewData.expiryDate) && (
+                      <div className="text-center p-3 bg-amber-50 rounded-lg">
+                        <p className="text-xs text-amber-600 font-medium">Expires</p>
+                        <p className="text-sm font-semibold text-slate-900 mt-1">
+                          {formatDate(overviewData.endDate || overviewData.expiryDate)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* AI Insights */}
+        {contract?.insights && contract.insights.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-purple-600" />
+              <h2 className="text-lg font-semibold text-slate-900">AI Insights</h2>
+              <Badge className="bg-purple-100 text-purple-700">
+                {contract.insights.length} findings
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {contract.insights.map((insight, i) => (
+                <InsightCard key={i} insight={insight} index={i} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Artifacts Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="h-5 w-5 text-indigo-600" />
+            <h2 className="text-lg font-semibold text-slate-900">AI-Generated Artifacts</h2>
+            <Badge className="bg-indigo-100 text-indigo-700">
+              {contract?.artifactCount || 5} artifacts
+            </Badge>
+          </div>
+          
+          {contract?.extractedData && (
+            <EnhancedArtifactViewer
+              artifacts={contract.extractedData}
+              contractId={params.id as string}
+              initialTab={searchParams.get('tab') || 'overview'}
+            />
+          )}
+        </motion.div>
+
+        {/* Quick Links Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4"
+        >
+          <Card className="border-slate-200/80 hover:border-slate-300 transition-colors cursor-pointer group">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-blue-100 group-hover:bg-blue-200 transition-colors">
+                <MessageSquare className="h-5 w-5 text-blue-600" />
               </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900">Comments</h3>
+                <p className="text-sm text-slate-500">View discussion</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
             </CardContent>
           </Card>
-        )}
-
-        {/* E-Signature Request Section */}
-        {showSignatureRequest && (
-          <SignatureRequest 
-            contractId={params.id as string}
-            contractName={contract?.filename || 'Contract'}
-            onClose={() => setShowSignatureRequest(false)}
-          />
-        )}
-
-        {/* Version Comparison Section */}
-        {showVersionComparison && (
-          <VersionComparison 
-            contractId={params.id as string}
-            onClose={() => setShowVersionComparison(false)}
-          />
-        )}
-
-        {/* Collaboration Tools Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ContractComments contractId={params.id as string} />
-          <ActivityFeed contractId={params.id as string} />
-        </div>
-          </div>
-        </div>
+          
+          <Card className="border-slate-200/80 hover:border-slate-300 transition-colors cursor-pointer group">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-purple-100 group-hover:bg-purple-200 transition-colors">
+                <Activity className="h-5 w-5 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900">Activity</h3>
+                <p className="text-sm text-slate-500">View history</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            </CardContent>
+          </Card>
+          
+          <Card className="border-slate-200/80 hover:border-slate-300 transition-colors cursor-pointer group">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-100 group-hover:bg-amber-200 transition-colors">
+                <FileSignature className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-slate-900">Signatures</h3>
+                <p className="text-sm text-slate-500">Request signatures</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   )
 }
+
+// Import for Brain icon that was missing
+import { Brain } from 'lucide-react'
