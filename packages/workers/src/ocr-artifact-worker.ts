@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+// Load environment variables FIRST, before any other imports that need them
+dotenv.config();
+
 import { Job } from 'bullmq';
 import getClient from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';
@@ -271,40 +275,36 @@ async function performGPT4OCR(filePath: string): Promise<string> {
 export async function processOCRArtifactJob(
   job: Job<ProcessContractJobData>
 ): Promise<OCRArtifactResult> {
-  logger.info({ jobData: job.data, jobId: job.id }, '🔍 RAW JOB DATA RECEIVED');
-  
   const { contractId, tenantId, filePath } = job.data;
+  const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
 
-  logger.info({ 
-    contractId, 
-    tenantId, 
-    filePath,
-    jobId: job.id 
-  }, 'Starting OCR + artifact processing');
+  jobLogger.info({ jobData: job.data }, '🔍 RAW JOB DATA RECEIVED');
+
+  jobLogger.info({ filePath }, 'Starting OCR + artifact processing');
 
   try {
-    logger.info({ contractId }, 'Step 1: Updating progress to 5%');
+    jobLogger.info('Step 1: Updating progress to 5%');
     await job.updateProgress(5);
 
     // 1. Fetch contract from database
-    logger.info({ contractId, tenantId }, 'Step 2: Fetching contract from database');
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    jobLogger.info('Step 2: Fetching contract from database');
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
     });
 
     if (!contract || contract.tenantId !== tenantId) {
-      logger.error({ contractId, tenantId, found: !!contract }, 'Contract not found or tenant mismatch');
+      jobLogger.error({ found: !!contract }, 'Contract not found or tenant mismatch');
       throw new Error(`Contract ${contractId} not found`);
     }
 
-    logger.info({ contractId, status: contract.status }, 'Contract found');
+    jobLogger.info({ status: contract.status }, 'Contract found');
     await job.updateProgress(10);
 
     // 2. Download file from storage to temp location
     let localFilePath: string;
     
     if (contract.storageProvider === 's3') {
-      logger.info({ contractId, storagePath: contract.storagePath }, 'Downloading from S3/MinIO');
+      jobLogger.info({ storagePath: contract.storagePath }, 'Downloading from S3/MinIO');
       
       const getObjectCommand = new GetObjectCommand({
         Bucket: process.env.MINIO_BUCKET || 'contracts',
@@ -327,29 +327,25 @@ export async function processOCRArtifactJob(
       }
       
       await fs.writeFile(localFilePath, Buffer.concat(chunks));
-      logger.info({ contractId, localFilePath, size: Buffer.concat(chunks).length }, 'File downloaded');
+      jobLogger.info({ localFilePath, size: Buffer.concat(chunks).length }, 'File downloaded');
     } else {
       // Local file system
       localFilePath = contract.storagePath;
-      logger.info({ contractId, localFilePath }, 'Using local file');
+      jobLogger.info({ localFilePath }, 'Using local file');
     }
 
     // 3. Run OCR extraction (skip progress update for speed)
-    logger.info({ contractId, filePath: localFilePath }, 'Running OCR extraction');
+    jobLogger.info({ filePath: localFilePath }, 'Running OCR extraction');
     
     const ocrMode = (contract as any).ocrMode || 'mistral'; // Default to Mistral OCR
     const extractedText = await performOCR(localFilePath, ocrMode);
     
-    logger.info({ 
-      contractId, 
-      ocrMode,
-      textLength: extractedText.length 
-    }, 'OCR extraction completed');
+    jobLogger.info({ ocrMode, textLength: extractedText.length }, 'OCR extraction completed');
 
     await job.updateProgress(60);
 
     // 4. Generate artifacts using AI
-    logger.info({ contractId }, 'Generating AI artifacts');
+    jobLogger.info('Generating AI artifacts');
     
     const artifactTypes = [
       'OVERVIEW',
@@ -378,7 +374,7 @@ export async function processOCRArtifactJob(
           };
         } catch (error) {
           lastError = error as Error;
-          logger.warn({ error, contractId, artifactType, attempt }, `Artifact generation attempt ${attempt} failed`);
+          jobLogger.warn({ error, artifactType, attempt }, `Artifact generation attempt ${attempt} failed`);
           
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, 500 * attempt));
@@ -387,7 +383,7 @@ export async function processOCRArtifactJob(
       }
       
       // Generate fallback artifact
-      logger.error({ error: lastError, contractId, artifactType }, `All attempts failed, creating fallback artifact`);
+      jobLogger.error({ error: lastError, artifactType }, `All attempts failed, creating fallback artifact`);
       return {
         contractId,
         tenantId,
@@ -407,29 +403,26 @@ export async function processOCRArtifactJob(
       skipDuplicates: true,
     });
 
-    logger.info({ 
-      contractId, 
-      artifactsCreated: artifacts.count 
-    }, 'All artifacts created in batch');
+    jobLogger.info({ artifactsCreated: artifacts.count }, 'All artifacts created in batch');
 
     await job.updateProgress(90);
 
     // 5. Batch update contract and processing job in parallel
     const updatePromises = [
-      prisma.contract.update({
-        where: { id: contractId },
+      prisma.contract.updateMany({
+        where: { id: contractId, tenantId },
         data: {
           status: 'COMPLETED',
           updatedAt: new Date(),
         },
       }),
       prisma.processingJob.findFirst({
-        where: { contractId },
+        where: { contractId, tenantId },
         orderBy: { createdAt: 'desc' },
       }).then(processingJob => {
         if (processingJob) {
-          return prisma.processingJob.update({
-            where: { id: processingJob.id },
+          return prisma.processingJob.updateMany({
+            where: { id: processingJob.id, tenantId },
             data: {
               status: 'COMPLETED',
               progress: 100,
@@ -440,7 +433,11 @@ export async function processOCRArtifactJob(
       })
     ];
     
-    await Promise.all(updatePromises);
+    const [contractUpdateResult] = await Promise.all(updatePromises);
+
+    if (contractUpdateResult.count === 0) {
+      jobLogger.warn('Contract update skipped because no matching record was found');
+    }
 
     // Clean up temp file if we created one
     if (contract.storageProvider === 's3') {
@@ -449,8 +446,7 @@ export async function processOCRArtifactJob(
 
     await job.updateProgress(100);
 
-    logger.info({ 
-      contractId, 
+    jobLogger.info({ 
       artifactsCreated: artifacts.count,
       textLength: extractedText.length 
     }, 'OCR + artifact processing completed');
@@ -463,28 +459,26 @@ export async function processOCRArtifactJob(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
-    logger.error({ 
+    jobLogger.error({ 
       error: errorMessage,
-      stack: errorStack,
-      contractId, 
-      jobId: job.id 
+      stack: errorStack
     }, 'OCR + artifact processing failed');
 
     // Update statuses to failed
     try {
-      await prisma.contract.update({
-        where: { id: contractId },
+      await prisma.contract.updateMany({
+        where: { id: contractId, tenantId },
         data: { status: 'FAILED', updatedAt: new Date() },
       });
 
       const processingJob = await prisma.processingJob.findFirst({
-        where: { contractId },
+        where: { contractId, tenantId },
         orderBy: { createdAt: 'desc' },
       });
 
       if (processingJob) {
-        await prisma.processingJob.update({
-          where: { id: processingJob.id },
+        await prisma.processingJob.updateMany({
+          where: { id: processingJob.id, tenantId },
           data: {
             status: 'FAILED',
             currentStep: 'failed',
@@ -493,7 +487,7 @@ export async function processOCRArtifactJob(
         });
       }
     } catch (updateError) {
-      logger.error({ updateError, contractId }, 'Failed to update failure status');
+      jobLogger.error({ updateError }, 'Failed to update failure status');
     }
 
     throw error;

@@ -124,7 +124,7 @@ By: Michael Chen, President
 Date: January 1, 2024
 `;
 
-    const fileInput = page.locator('input[type="file"]').first();
+    const fileInput = page.getByTestId('contract-upload-input');
     await fileInput.setInputFiles({
       name: 'comprehensive-services-agreement.txt',
       mimeType: 'text/plain',
@@ -232,7 +232,7 @@ Date: January 1, 2024
     await page.goto('/upload');
     
     const testFile = 'Worker execution test contract content';
-    const fileInput = page.locator('input[type="file"]').first();
+    const fileInput = page.getByTestId('contract-upload-input');
     await fileInput.setInputFiles({
       name: 'worker-test.txt',
       mimeType: 'text/plain',
@@ -296,7 +296,7 @@ Date: January 1, 2024
     // Upload a contract and verify artifact data structure
     await page.goto('/upload');
     
-    const fileInput = page.locator('input[type="file"]').first();
+    const fileInput = page.getByTestId('contract-upload-input');
     await fileInput.setInputFiles({
       name: 'schema-test.txt',
       mimeType: 'text/plain',
@@ -343,7 +343,7 @@ Date: January 1, 2024
     // Upload contract
     await page.goto('/upload');
     
-    const fileInput = page.locator('input[type="file"]').first();
+    const fileInput = page.getByTestId('contract-upload-input');
     await fileInput.setInputFiles({
       name: 'api-query-test.txt',
       mimeType: 'text/plain',

@@ -14,7 +14,7 @@ test.describe('Upload progress and artifacts', () => {
 
     // Select a small test file (use tmp/sample-contract.txt in repo)
   const filePath = '/Users/maddalena/Library/Mobile Documents/com~apple~CloudDocs/Robi/contract-intelligence/tmp/sample-contract.txt';
-    await page.setInputFiles('input[type="file"]', filePath);
+    await page.setInputFiles('[data-testid="contract-upload-input"]', filePath);
 
     // Click Upload & Analyze
     await page.getByRole('button', { name: /upload/i }).click();

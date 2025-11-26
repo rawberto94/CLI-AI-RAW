@@ -11,7 +11,7 @@
       - strong [ref=e7]: ok
     - generic [ref=e8]:
       - text: "Web:"
-      - strong [ref=e9]: ok
+      - strong [ref=e9]: "?"
   - complementary [ref=e10]:
     - generic [ref=e11]:
       - img [ref=e12]

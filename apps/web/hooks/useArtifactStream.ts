@@ -56,6 +56,8 @@ export function useArtifactStream({
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const maxReconnectAttempts = 5;
   
   // Save artifacts to sessionStorage whenever they change
   useEffect(() => {
@@ -84,6 +86,7 @@ export function useArtifactStream({
       console.log('[SSE] Connected to artifact stream');
       setIsConnected(true);
       setError(null);
+      reconnectAttemptsRef.current = 0; // Reset on successful connection
     };
 
     eventSource.onmessage = (event) => {
@@ -154,14 +157,25 @@ export function useArtifactStream({
       }
       
       eventSource.close();
+      
+      // Increment reconnection attempts
+      reconnectAttemptsRef.current++;
 
       // Auto-retry connection with exponential backoff if not complete
-      if (!isComplete) {
-        const retryDelay = Math.min(2000 * Math.pow(1.5, (reconnectTimeoutRef.current ? 1 : 0)), 10000);
+      if (!isComplete && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        const retryDelay = Math.min(2000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
+        console.log(`[SSE] Auto-reconnecting (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('[SSE] Auto-reconnecting...');
           connect();
         }, retryDelay);
+      } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+        console.log('[SSE] Max reconnection attempts reached, giving up');
+        const message = 'Unable to connect to live updates. Please refresh the page to retry.';
+        setError(message);
+        setIsComplete(true);
+        if (onError) {
+          onError(message);
+        }
       }
     };
 
@@ -174,8 +188,49 @@ export function useArtifactStream({
   }, [contractId, enabled, isComplete, onComplete, onError]);
 
   useEffect(() => {
-    const cleanup = connect();
+    if (!enabled || !contractId) {
+      return;
+    }
+
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+
+    const verifyAndConnect = async () => {
+      try {
+        const response = await fetch(`/api/contracts/${contractId}`, {
+          headers: {
+            'x-tenant-id': tenantId
+          }
+        });
+
+        if (!response.ok) {
+          const message = response.status === 404
+            ? 'Contract not found or no longer available.'
+            : 'Unable to verify contract status.';
+          throw new Error(message);
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        cleanup = connect();
+      } catch (err) {
+        console.error('[SSE] Verification failed before connecting:', err);
+        const message = err instanceof Error ? err.message : 'Unable to connect to live updates.';
+        setError(message);
+        setIsComplete(true);
+        setIsConnected(false);
+        if (onError) {
+          onError(message);
+        }
+      }
+    };
+
+    verifyAndConnect();
+
     return () => {
+      cancelled = true;
       if (cleanup) cleanup();
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -184,7 +239,7 @@ export function useArtifactStream({
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [connect]);
+  }, [contractId, enabled, tenantId, connect, onError]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {

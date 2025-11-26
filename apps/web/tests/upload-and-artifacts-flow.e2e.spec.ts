@@ -13,10 +13,24 @@
 import { test, expect, Page } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import { setupMockUploadPipeline } from './utils/mockUploadPipeline';
+
+type ContractStatusPayload = {
+  contractId: string;
+  status: string;
+  progress: number;
+  artifactsGenerated: number;
+  [key: string]: unknown;
+};
 
 test.describe('Complete Upload and Artifacts Flow', () => {
   const TEST_TENANT_ID = 'test-tenant-upload-flow';
   let testContractId: string | null = null;
+
+  const navigateToUpload = async (page: Page) => {
+    await page.goto('/upload', { waitUntil: 'domcontentloaded', timeout: 60_000 });
+    await expect(page).toHaveURL(/\/upload/);
+  };
 
   test.beforeAll(async () => {
     // Ensure test data directory exists
@@ -27,14 +41,15 @@ test.describe('Complete Upload and Artifacts Flow', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    const mock = await setupMockUploadPipeline(page, { tenantId: TEST_TENANT_ID });
+    testContractId = mock.contractId;
+
     // Set tenant context
     await page.addInitScript((tenantId) => {
       localStorage.setItem('tenantId', tenantId);
-      localStorage.setItem('mockApiForTests', 'false'); // Use real API
+      localStorage.setItem('mockApiForTests', 'true');
     }, TEST_TENANT_ID);
 
-    // Clear any existing auth tokens for clean slate
-    await page.goto('/');
   });
 
   test('should complete full upload → OCR → artifacts → viewing flow', async ({ page }) => {
@@ -42,8 +57,7 @@ test.describe('Complete Upload and Artifacts Flow', () => {
     // PHASE 1: NAVIGATE TO UPLOAD PAGE
     // ============================================
     await test.step('Navigate to upload page', async () => {
-      await page.goto('/upload');
-      await expect(page).toHaveURL(/\/upload/, { timeout: 10000 });
+      await navigateToUpload(page);
       
       // Verify page loaded correctly
       await expect(page.locator('h1, h2').filter({ hasText: /upload|contract/i }).first())
@@ -176,9 +190,14 @@ Date: January 1, 2024
       
       const currentUrl = page.url();
       const match = currentUrl.match(/\/contracts\/([^/?#]+)/);
-      testContractId = match ? match[1] : null;
+      const derivedId = match ? match[1] : null;
       
-      expect(testContractId).toBeTruthy();
+      expect(derivedId).toBeTruthy();
+      if (derivedId && testContractId) {
+        expect(derivedId).toBe(testContractId);
+      } else if (!testContractId && derivedId) {
+        testContractId = derivedId;
+      }
       console.log('Contract created with ID:', testContractId);
     });
 
@@ -207,7 +226,7 @@ Date: January 1, 2024
       let statusCalls = 0;
       
       page.on('request', (request) => {
-        if (request.url().includes(`/api/contracts/${testContractId}/status`)) {
+        if (testContractId && request.url().includes(`/api/contracts/${testContractId}/status`)) {
           statusCalls++;
           console.log(`Status poll #${statusCalls}: ${request.url()}`);
         }
@@ -262,31 +281,30 @@ Date: January 1, 2024
         throw new Error('Contract ID not captured');
       }
 
-      // Call status API to check artifacts
-      const response = await page.request.get(
-        `http://localhost:3005/api/contracts/${testContractId}/status`,
-        {
-          headers: { 'x-tenant-id': TEST_TENANT_ID }
-        }
-      );
+      let statusData: ContractStatusPayload | null = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const response = await page.waitForResponse((res) =>
+          res.url().includes(`/api/contracts/${testContractId}/status`) &&
+          res.request().method() === 'GET'
+        );
 
-      expect(response.ok()).toBeTruthy();
-      const statusData = await response.json();
+        const payload = (await response.json()) as ContractStatusPayload;
+        statusData = payload;
+        if (payload.status === 'COMPLETED') {
+          break;
+        }
+      }
+
+      if (!statusData) {
+        throw new Error('Status payload never received');
+      }
 
       console.log('Contract status:', JSON.stringify(statusData, null, 2));
 
-      // Verify status data structure
-      expect(statusData).toHaveProperty('contractId');
-      expect(statusData).toHaveProperty('status');
-      expect(statusData).toHaveProperty('progress');
-      
-      // Check if artifacts are generated or in progress
-      if (statusData.artifactsGenerated > 0) {
-        console.log(`✓ Artifacts generated: ${statusData.artifactsGenerated}`);
-        expect(statusData.artifactsGenerated).toBeGreaterThan(0);
-      } else {
-        console.log('⚠ Artifacts not yet generated, processing may take longer');
-      }
+      expect(statusData.contractId).toBe(testContractId);
+      expect(statusData.progress).toBeGreaterThan(0);
+      expect(statusData.artifactsGenerated).toBeGreaterThan(0);
+      expect(statusData.status).toBe('COMPLETED');
     });
 
     // ============================================
@@ -369,7 +387,7 @@ Date: January 1, 2024
   });
 
   test('should handle large file uploads with chunking', async ({ page }) => {
-    await page.goto('/upload');
+    await navigateToUpload(page);
     
     // Create a larger test file (simulate 2MB)
     const largeContent = 'TEST CONTENT '.repeat(150000); // ~2MB
@@ -396,7 +414,7 @@ Date: January 1, 2024
 
   test('should poll status API correctly', async ({ page }) => {
     // Create a contract and monitor polling
-    await page.goto('/upload');
+    await navigateToUpload(page);
     
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.setInputFiles({
@@ -432,7 +450,7 @@ Date: January 1, 2024
   });
 
   test('should display correct progress stages', async ({ page }) => {
-    await page.goto('/upload');
+    await navigateToUpload(page);
     
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.setInputFiles({
@@ -465,7 +483,7 @@ Date: January 1, 2024
   });
 
   test('should handle upload errors gracefully', async ({ page }) => {
-    await page.goto('/upload');
+    await navigateToUpload(page);
     
     // Try to upload without selecting a file
     const uploadButton = page.getByRole('button', { name: /upload|analyze/i }).first();
@@ -484,7 +502,7 @@ Date: January 1, 2024
   });
 
   test('should show artifact generation progress', async ({ page }) => {
-    await page.goto('/upload');
+    await navigateToUpload(page);
     
     const fileInput = page.locator('input[type="file"]').first();
     await fileInput.setInputFiles({

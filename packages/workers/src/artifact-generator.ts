@@ -1,3 +1,7 @@
+import dotenv from 'dotenv';
+// Load environment variables FIRST, before any other imports that need them
+dotenv.config();
+
 import { Job } from 'bullmq';
 import getClient from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';

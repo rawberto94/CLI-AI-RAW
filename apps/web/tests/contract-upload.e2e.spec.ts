@@ -32,7 +32,7 @@ test.describe('Contract Upload Flow', () => {
     await expect(page).toHaveURL(/\/upload/);
     
     // Verify upload zone is visible
-    const uploadZone = page.locator('[data-testid="upload-zone"], input[type="file"]').first();
+    const uploadZone = page.locator('[data-testid="upload-zone"], [data-testid="contract-upload-input"]').first();
     await expect(uploadZone).toBeVisible({ timeout: 10000 });
 
     // Step 2: Create a test contract file
@@ -60,7 +60,7 @@ test.describe('Contract Upload Flow', () => {
     const testFilePath = join(process.cwd(), 'tmp', 'test-contract-e2e.txt');
     
     // Step 3: Upload the file
-    await page.setInputFiles('input[type="file"]', {
+    await page.setInputFiles('[data-testid="contract-upload-input"]', {
       name: 'test-contract.txt',
       mimeType: 'text/plain',
       buffer: Buffer.from(testContractContent)
@@ -146,7 +146,7 @@ test.describe('Contract Upload Flow', () => {
   test('should support multiple file formats', async ({ page }) => {
     await page.goto('/upload');
     
-    const fileInput = page.locator('input[type="file"]');
+    const fileInput = page.getByTestId('contract-upload-input');
     
     // Test with PDF (simulated)
     await fileInput.setInputFiles({

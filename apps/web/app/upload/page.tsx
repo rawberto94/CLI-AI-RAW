@@ -390,7 +390,7 @@ export default function UploadPage() {
         <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
           <CardContent className="p-8">
             <div
-              {...getRootProps()}
+              {...getRootProps({ 'data-testid': 'upload-zone' })}
               className={cn(
                 'relative border-2 border-dashed rounded-2xl p-16 text-center cursor-pointer transition-all duration-300',
                 isDragActive
@@ -398,7 +398,7 @@ export default function UploadPage() {
                   : 'border-gray-300 hover:border-blue-400 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30 hover:scale-[1.01]'
               )}
             >
-              <input {...getInputProps()} />
+              <input {...getInputProps({ 'data-testid': 'contract-upload-input' })} />
               <div className="relative">
                 {isDragActive ? (
                   <>

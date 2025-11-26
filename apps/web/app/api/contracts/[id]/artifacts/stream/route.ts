@@ -28,7 +28,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     console.log('[SSE] Contract found:', !!contract, 'status:', contract?.status);
     
     if (!contract) {
-      useMockData = true;
+      // Contract doesn't exist - return 404
+      console.log('[SSE] Contract not found, returning 404');
+      return new Response(
+        JSON.stringify({ error: 'Contract not found' }),
+        { 
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
     } else {
       isInitiallyCompleted = contract.status === 'COMPLETED' || contract.status === 'FAILED';
     }
@@ -58,6 +66,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       // Poll for artifact updates every 1 second (optimized)
       let updateCount = 0;
       let lastArtifactCount = 0;
+      let maxPolls = 180; // 3 minutes timeout (180 seconds)
       
       // If already completed, send data once and close immediately
       if (isInitiallyCompleted && !useMockData) {
@@ -124,6 +133,27 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           clearInterval(pollInterval);
           return;
         }
+        
+        updateCount++;
+        
+        // Timeout after max polls with no progress
+        if (updateCount >= maxPolls && lastArtifactCount === 0) {
+          console.log('[SSE] Timeout: No artifacts generated after', maxPolls, 'seconds');
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({
+              type: 'complete',
+              contractId,
+              status: 'TIMEOUT',
+              artifactCount: 0,
+              artifacts: [],
+              message: 'Processing timeout - please retry'
+            })}\n\n`)
+          );
+          clearInterval(pollInterval);
+          controller.close();
+          isClosed = true;
+          return;
+        }
 
         try {
           let artifacts: any[] = [];
@@ -131,7 +161,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           
           if (useMockData) {
             // Mock data for when database is unavailable
-            updateCount++;
             const progress = Math.min(updateCount * 10, 100);
             
             // Simulate artifact generation
