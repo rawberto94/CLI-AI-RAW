@@ -246,7 +246,9 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
     }
 
     filteredCommands.forEach(cmd => {
-      groups[cmd.category].push(cmd)
+      if (groups[cmd.category]) {
+        groups[cmd.category]!.push(cmd)
+      }
     })
 
     return groups

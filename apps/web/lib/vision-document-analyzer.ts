@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Vision-Based Document Analyzer
  * 

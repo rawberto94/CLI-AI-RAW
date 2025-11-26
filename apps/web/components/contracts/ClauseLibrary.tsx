@@ -260,7 +260,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
     if (!acc[clause.category]) {
       acc[clause.category] = [];
     }
-    acc[clause.category].push(clause);
+    acc[clause.category]!.push(clause);
     return acc;
   }, {} as Record<string, Clause[]>);
 

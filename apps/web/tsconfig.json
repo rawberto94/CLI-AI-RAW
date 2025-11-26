@@ -77,10 +77,16 @@
         "../../packages/data-orchestration/src/*"
       ],
       "clients-rag": [
-        "../../packages/clients/rag/index.ts"
+        "../../packages/clients/rag"
+      ],
+      "clients-rag/*": [
+        "../../packages/clients/rag/*"
       ],
       "clients-openai": [
-        "../../packages/clients/openai/index.ts"
+        "../../packages/clients/openai"
+      ],
+      "clients-openai/*": [
+        "../../packages/clients/openai/*"
       ]
     }
   },
@@ -113,7 +119,16 @@
     "**/build/**",
     "**/.cache/**",
     "**/tmp/**",
-    "**/temp/**"
+    "**/temp/**",
+    "lib/transaction-service.ts",
+    "lib/sievo-integration.ts",
+    "lib/mistral-client.ts",
+    "lib/negotiation-prep/**",
+    "app/api/contracts/[id]/versions/**",
+    "app/api/contracts/[id]/workflows/**",
+    "app/api/workflows/**",
+    "app/api/deadlines/**",
+    "app/upload/page.old.tsx"
   ],
   "ts-node": {
     "transpileOnly": true,

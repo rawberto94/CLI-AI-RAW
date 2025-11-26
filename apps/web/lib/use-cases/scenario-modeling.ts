@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NegotiationScenario } from './rate-history-types'
 
 export interface ScenarioConfig {

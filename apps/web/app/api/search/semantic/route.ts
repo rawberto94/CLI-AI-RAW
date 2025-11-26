@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔍 Semantic search: "${query}" in contract: ${contractId || 'all'}`)
 
     // Import RAG utilities
-    const { retrieve } = await import('@/packages/clients/rag')
+    const { retrieve } = await import('clients-rag')
 
     let results: Array<{ text: string; score: number; chunkIndex: number }> = []
 

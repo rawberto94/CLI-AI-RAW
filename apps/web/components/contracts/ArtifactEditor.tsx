@@ -33,13 +33,19 @@ export function ArtifactEditor({
       let current = newData;
       
       for (let i = 0; i < keys.length - 1; i++) {
-        if (!current[keys[i]]) {
-          current[keys[i]] = {};
+        const key = keys[i];
+        if (key !== undefined) {
+          if (!current[key]) {
+            current[key] = {};
+          }
+          current = current[key];
         }
-        current = current[keys[i]];
       }
       
-      current[keys[keys.length - 1]] = value;
+      const lastKey = keys[keys.length - 1];
+      if (lastKey !== undefined) {
+        current[lastKey] = value;
+      }
       return newData;
     });
   };

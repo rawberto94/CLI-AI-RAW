@@ -21,6 +21,8 @@ export default function ImportWizardPage() {
     if (files.length === 0) return;
 
     const file = files[0];
+    if (!file) return;
+    
     setUploadedFile(file);
     setIsProcessing(true);
 

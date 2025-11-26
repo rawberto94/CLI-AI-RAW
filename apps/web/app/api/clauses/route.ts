@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
-// Mock clauses for fallback
+// Mock clauses for clause library feature
 const mockClauses = [
   {
     id: 'clause-1',
@@ -247,46 +246,20 @@ export async function GET(request: NextRequest) {
     const riskLevel = searchParams.get('riskLevel');
     const favorite = searchParams.get('favorite');
 
-    try {
-      // Try database first
-      let clauses = await prisma.clause.findMany({
-        where: {
-          ...(category && category !== 'all' ? { category } : {}),
-          ...(riskLevel && riskLevel !== 'all' ? { riskLevel } : {}),
-          ...(favorite === 'true' ? { isFavorite: true } : {}),
-        },
-        orderBy: { updatedAt: 'desc' },
-      });
-
-      // Parse JSON fields
-      clauses = clauses.map((c: any) => ({
-        ...c,
-        tags: typeof c.tags === 'string' ? JSON.parse(c.tags) : c.tags,
-        variables: typeof c.variables === 'string' ? JSON.parse(c.variables) : c.variables,
-        alternativeVersions: c.alternativeVersions && typeof c.alternativeVersions === 'string' 
-          ? JSON.parse(c.alternativeVersions) 
-          : c.alternativeVersions,
-      }));
-
-      return NextResponse.json({ clauses, source: 'database' });
-    } catch (dbError) {
-      console.warn('Database unavailable, using mock data:', dbError);
-      
-      // Fallback to mock data
-      let filtered = mockClauses;
-      
-      if (category && category !== 'all') {
-        filtered = filtered.filter(c => c.category === category);
-      }
-      if (riskLevel && riskLevel !== 'all') {
-        filtered = filtered.filter(c => c.riskLevel === riskLevel);
-      }
-      if (favorite === 'true') {
-        filtered = filtered.filter(c => c.isFavorite);
-      }
-
-      return NextResponse.json({ clauses: filtered, source: 'mock' });
+    // Use mock data - clause library feature needs schema update
+    let filtered = mockClauses;
+    
+    if (category && category !== 'all') {
+      filtered = filtered.filter(c => c.category === category);
     }
+    if (riskLevel && riskLevel !== 'all') {
+      filtered = filtered.filter(c => c.riskLevel === riskLevel);
+    }
+    if (favorite === 'true') {
+      filtered = filtered.filter(c => c.isFavorite);
+    }
+
+    return NextResponse.json({ clauses: filtered, source: 'mock' });
   } catch (error) {
     console.error('Error fetching clauses:', error);
     return NextResponse.json(
@@ -304,60 +277,34 @@ export async function POST(request: NextRequest) {
 
     // Extract variables from content
     const variableRegex = /\{\{([^}]+)\}\}/g;
-    const variables = [];
+    const variables: string[] = [];
     let match;
     while ((match = variableRegex.exec(content)) !== null) {
-      if (!variables.includes(match[1].trim())) {
+      if (match[1] && !variables.includes(match[1].trim())) {
         variables.push(match[1].trim());
       }
     }
 
-    try {
-      const clause = await prisma.clause.create({
-        data: {
-          title,
-          content,
-          category,
-          subcategory: subcategory || '',
-          tags: JSON.stringify(tags || []),
-          riskLevel: riskLevel || 'medium',
-          isStandard: false,
-          variables: JSON.stringify(variables),
-          legalNotes: legalNotes || '',
-        },
-      });
+    // Return mock response - clause library feature needs schema update
+    const mockClause = {
+      id: `clause-${Date.now()}`,
+      title,
+      content,
+      category,
+      subcategory: subcategory || '',
+      tags: tags || [],
+      riskLevel: riskLevel || 'medium',
+      isStandard: false,
+      isFavorite: false,
+      usageCount: 0,
+      variables,
+      alternativeVersions: [],
+      legalNotes: legalNotes || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-      return NextResponse.json({
-        clause: {
-          ...clause,
-          tags: JSON.parse(clause.tags as string),
-          variables: JSON.parse(clause.variables as string),
-        },
-        source: 'database'
-      });
-    } catch (dbError) {
-      console.warn('Database unavailable, returning mock response:', dbError);
-      
-      const mockClause = {
-        id: `clause-${Date.now()}`,
-        title,
-        content,
-        category,
-        subcategory: subcategory || '',
-        tags: tags || [],
-        riskLevel: riskLevel || 'medium',
-        isStandard: false,
-        isFavorite: false,
-        usageCount: 0,
-        variables,
-        alternativeVersions: [],
-        legalNotes: legalNotes || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json({ clause: mockClause, source: 'mock' });
-    }
+    return NextResponse.json({ clause: mockClause, source: 'mock' });
   } catch (error) {
     console.error('Error creating clause:', error);
     return NextResponse.json(

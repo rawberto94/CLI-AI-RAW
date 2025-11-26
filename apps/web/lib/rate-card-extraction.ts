@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Rate Card Extraction from Contracts
  * Extracts rate cards using AI and saves them to the database

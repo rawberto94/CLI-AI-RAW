@@ -176,7 +176,7 @@ export function ContractMetadataEditor({
       const result = await response.json();
       
       const duration = performance.now() - startTime;
-      logUserAction('contract-metadata-edit-success', duration, { contractId });
+      logUserAction('contract-metadata-edit-success', String(duration), { contractId });
       
       toast.success('Saved', 'Contract metadata updated successfully');
       setIsEditing(false);

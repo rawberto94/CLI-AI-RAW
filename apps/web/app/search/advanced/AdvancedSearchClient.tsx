@@ -557,7 +557,10 @@ export default function AdvancedSearchClient() {
                       value={field.field}
                       onChange={(e) => {
                         const newFields = [...searchCriteria.customFields];
-                        newFields[index].field = e.target.value;
+                        const currentField = newFields[index];
+                        if (currentField) {
+                          currentField.field = e.target.value;
+                        }
                         setSearchCriteria((prev) => ({
                           ...prev,
                           customFields: newFields,
@@ -571,7 +574,10 @@ export default function AdvancedSearchClient() {
                       value={field.operator}
                       onChange={(e) => {
                         const newFields = [...searchCriteria.customFields];
-                        newFields[index].operator = e.target.value;
+                        const currentField = newFields[index];
+                        if (currentField) {
+                          currentField.operator = e.target.value;
+                        }
                         setSearchCriteria((prev) => ({
                           ...prev,
                           customFields: newFields,
@@ -593,7 +599,10 @@ export default function AdvancedSearchClient() {
                       value={field.value}
                       onChange={(e) => {
                         const newFields = [...searchCriteria.customFields];
-                        newFields[index].value = e.target.value;
+                        const currentField = newFields[index];
+                        if (currentField) {
+                          currentField.value = e.target.value;
+                        }
                         setSearchCriteria((prev) => ({
                           ...prev,
                           customFields: newFields,

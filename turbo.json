@@ -1,6 +1,8 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "daemon": true,
+  "cacheDir": ".turbo",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -17,6 +19,7 @@
         "!.next/cache/**",
         "build/**"
       ],
+      "outputLogs": "new-only",
       "env": [
         "NODE_ENV",
         "NEXT_PUBLIC_*",
@@ -25,7 +28,7 @@
       ]
     },
     "lint": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         ".eslintrc*",
@@ -35,7 +38,7 @@
       "cache": true
     },
     "lint:fix": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         ".eslintrc*", 
@@ -43,6 +46,12 @@
       ],
       "outputs": [],
       "cache": false
+    },
+    "type-check": {
+      "dependsOn": [],
+      "inputs": ["$TURBO_DEFAULT$", "tsconfig*.json"],
+      "outputs": [],
+      "cache": true
     },
     "format": {
       "inputs": [
@@ -89,7 +98,7 @@
       ]
     },
     "test:unit": {
-      "dependsOn": ["^build"],
+      "dependsOn": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "vitest.config.*"
@@ -130,6 +139,12 @@
       "env": [
         "DATABASE_URL"
       ]
+    },
+    "db:generate": {
+      "cache": false,
+      "inputs": ["**/schema.prisma"],
+      "outputs": ["node_modules/.prisma/**"],
+      "env": ["DATABASE_URL"]
     }
   },
   "globalEnv": [

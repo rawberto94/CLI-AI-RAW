@@ -53,6 +53,7 @@ export function ColumnCustomizer({
 
     const newColumns = [...localColumns]
     const draggedColumn = newColumns[draggedIndex]
+    if (!draggedColumn) return
     
     // Remove dragged column
     newColumns.splice(draggedIndex, 1)

@@ -333,7 +333,7 @@ export async function POST(
         
         return await createContractWithSideEffects({
           contractData: {
-            tenantId,
+            tenant: { connect: { id: tenantId } },
             fileName: file.name,
             originalName: file.name,
             fileSize: BigInt(file.size),
@@ -359,7 +359,7 @@ export async function POST(
         // Fallback to direct creation
         const contract = await prisma.contract.create({
           data: {
-            tenantId,
+            tenant: { connect: { id: tenantId } },
             fileName: file.name,
             originalName: file.name,
             fileSize: BigInt(file.size),
@@ -434,7 +434,7 @@ export async function POST(
       
       // Determine priority from form data or default to NORMAL
       const priorityParam = formData.get("priority") as string | null;
-      let priority = PROCESSING_PRIORITY.NORMAL;
+      let priority: number = PROCESSING_PRIORITY.NORMAL;
       
       if (priorityParam === 'urgent' || priorityParam === 'high') {
         priority = PROCESSING_PRIORITY.HIGH;
@@ -450,7 +450,7 @@ export async function POST(
         filePath,
         mimeType: file.type,
         useQueue: true, // Use queue system
-        priority,
+        priority: priority as any, // Type assertion for numeric priority
         source: 'upload',
       });
       
@@ -462,7 +462,7 @@ export async function POST(
           where: { id: processingJob.id },
           data: {
             queueId: artifactResult.jobId,
-            status: "QUEUED",
+            status: "RUNNING",
           },
         }).catch(err => console.error("Failed to update job with queueId:", err));
       }

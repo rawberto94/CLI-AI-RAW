@@ -183,7 +183,8 @@ function InsightCard({ insight, index }: { insight: any; index: number }) {
     purple: { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'text-purple-600' }
   };
   
-  const colors = colorMap[insight.color] || colorMap.blue;
+  const defaultColors = { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600' };
+  const colors = colorMap[insight.color] ?? defaultColors;
   
   return (
     <motion.div

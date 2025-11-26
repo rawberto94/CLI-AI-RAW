@@ -127,7 +127,7 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
           }
         ]
 
-        const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)]
+        const randomResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)]!
         response = {
           id: Date.now().toString(),
           role: 'assistant',

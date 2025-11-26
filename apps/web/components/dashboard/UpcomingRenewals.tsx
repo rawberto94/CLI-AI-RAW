@@ -24,7 +24,7 @@ interface UpcomingRenewalsProps {
 
 const priorityConfig = {
   urgent: {
-    color: 'destructive',
+    color: 'destructive' as const,
     icon: AlertCircle,
     label: 'Urgent',
     bgClass: 'bg-white hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-850'

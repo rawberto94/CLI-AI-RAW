@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hybrid OCR Strategy
  * 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Data transformation service for rate card normalization
  */

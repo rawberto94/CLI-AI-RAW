@@ -94,7 +94,7 @@ export async function GET(
             priority: true,
             startedAt: true,
             completedAt: true,
-            lastError: true,
+            error: true,
             retryCount: true,
             maxRetries: true,
             createdAt: true,
@@ -222,14 +222,14 @@ export async function GET(
         priority: processingJob.priority,
         retryCount: processingJob.retryCount,
         maxRetries: processingJob.maxRetries,
-        lastError: processingJob.lastError,
+        error: processingJob.error,
       } : null,
       
       // Metadata
       createdAt: contract.createdAt,
       updatedAt: contract.updatedAt,
       error: contract.status === 'FAILED' 
-        ? (processingJob?.lastError || 'Processing failed')
+        ? (processingJob?.error || 'Processing failed')
         : null,
     });
   } catch (error) {

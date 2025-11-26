@@ -1,4 +1,5 @@
-import { Queue, Worker, Job, QueueEvents, ConnectionOptions } from 'bullmq';
+import { Queue, Worker, QueueEvents, Job } from 'bullmq';
+import type { ConnectionOptions } from 'bullmq';
 import Redis from 'ioredis';
 import pino from 'pino';
 
@@ -30,8 +31,8 @@ export interface JobResult {
  * Provides unified interface for job queuing, processing, and monitoring
  */
 export class QueueService {
-  private queues: Map<string, Queue> = new Map();
-  private workers: Map<string, Worker> = new Map();
+  private queues: Map<string, Queue<any>> = new Map();
+  private workers: Map<string, Worker<any>> = new Map();
   private queueEvents: Map<string, QueueEvents> = new Map();
   private connection: ConnectionOptions;
   private redisClient?: Redis;

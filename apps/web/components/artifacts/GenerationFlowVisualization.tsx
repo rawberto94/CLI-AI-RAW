@@ -338,9 +338,9 @@ export function GenerationFlowVisualization({
   
   // Determine stage states
   const getStageState = (stageId: string) => {
-    const stageOrder = PIPELINE_STAGES.map(s => s.id);
-    const currentIndex = stageOrder.indexOf(currentStage);
-    const stageIndex = stageOrder.indexOf(stageId);
+    const stageOrder = PIPELINE_STAGES.map(s => s.id) as string[];
+    const currentIndex = stageOrder.indexOf(currentStage as string);
+    const stageIndex = stageOrder.indexOf(stageId as string);
     
     if (currentStage === 'ERROR') {
       return { isComplete: false, isActive: false, isError: stageIndex === currentIndex };

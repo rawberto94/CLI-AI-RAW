@@ -16,3 +16,4 @@ export function DataModeBanner() {
 
   // Temporarily disabled to fix overlay issue
   return null
+}

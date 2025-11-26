@@ -90,6 +90,7 @@ model User {
   passwordHash        String
   status              UserStatus            @default(ACTIVE)
   tenantId            String
+  role                String                @default("user") // Added for auth compatibility
   auditLogs           AuditLog[]
   tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   roles               UserRole[]
@@ -100,6 +101,7 @@ model User {
   helpAnalytics       HelpAnalytics[]
   widgetAnalytics     WidgetAnalytics[]
   rateCardSegments    RateCardSegment[]
+  uploadedVersions    ContractVersion[]     @relation("VersionUploader")
 
   @@index([email])
   @@index([tenantId])
@@ -231,6 +233,7 @@ model Contract {
   templateAnalysis    TemplateAnalysis[]
   costSavings         CostSavingsOpportunity[]
   rateCardEntries     RateCardEntry[]
+  workflowExecutions  WorkflowExecution[]
 
   @@index([tenantId])
   @@index([status])
@@ -391,7 +394,7 @@ model ProcessingJob {
   nextRetryAt           DateTime?
   priority              Int       @default(0)
   queuePosition         Int?
-  queueId               String?   // BullMQ job ID for tracking
+  queueId               String? // BullMQ job ID for tracking
   lastCheckpoint        String?
   checkpointData        Json?
   metadata              Json?
@@ -414,9 +417,12 @@ model ProcessingJob {
 model ContractVersion {
   id              String    @id @default(cuid())
   contractId      String
+  tenantId        String? // Added for multi-tenant filtering
   versionNumber   Int
   parentVersionId String?
   changes         Json?
+  summary         String? // Added for version summary
+  fileUrl         String? // Added for version file URL
   uploadedBy      String?
   uploadedAt      DateTime  @default(now())
   isActive        Boolean   @default(true)
@@ -424,9 +430,11 @@ model ContractVersion {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   contract        Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  uploadedByUser  User?     @relation("VersionUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
 
   @@unique([contractId, versionNumber])
   @@index([contractId])
+  @@index([tenantId])
   @@index([isActive])
 }
 
@@ -644,6 +652,10 @@ model AuditLog {
   action       String
   resource     String?
   resourceType String?
+  entityType   String? // Alias for resourceType (compatibility)
+  entityId     String? // Added for entity ID tracking
+  changes      Json? // Added for change tracking
+  metadata     Json? // Added for additional metadata
   details      Json?
   ipAddress    String?
   userAgent    String?
@@ -655,6 +667,8 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([resourceType])
+  @@index([entityType])
+  @@index([entityId])
   @@index([createdAt])
   @@index([tenantId, action])
 }
@@ -867,6 +881,11 @@ enum ContractStatus {
   FAILED
   ARCHIVED
   DELETED
+  ACTIVE
+  PENDING
+  DRAFT
+  EXPIRED
+  CANCELLED
 }
 
 enum JobStatus {
@@ -2440,33 +2459,33 @@ model NegotiationScenario {
 // Contract Collaboration Models
 
 model ContractComment {
-  id          String   @id @default(cuid())
-  contractId  String   @map("contract_id")
-  tenantId    String   @map("tenant_id")
-  userId      String   @map("user_id")
-  parentId    String?  @map("parent_id")
-  
+  id         String  @id @default(cuid())
+  contractId String  @map("contract_id")
+  tenantId   String  @map("tenant_id")
+  userId     String  @map("user_id")
+  parentId   String? @map("parent_id")
+
   // Comment content
-  content     String   @db.Text
-  mentions    String[] // Array of user IDs mentioned with @
-  
+  content  String   @db.Text
+  mentions String[] // Array of user IDs mentioned with @
+
   // Status
-  isResolved  Boolean  @default(false) @map("is_resolved")
-  resolvedBy  String?  @map("resolved_by")
-  resolvedAt  DateTime? @map("resolved_at")
-  
+  isResolved Boolean   @default(false) @map("is_resolved")
+  resolvedBy String?   @map("resolved_by")
+  resolvedAt DateTime? @map("resolved_at")
+
   // Engagement
-  reactions   Json     @default("[]") // Array of { emoji, userId, userName }
-  likes       Int      @default(0)
-  
+  reactions Json @default("[]") // Array of { emoji, userId, userName }
+  likes     Int  @default(0)
+
   // Timestamps
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
   // Relations
-  parent      ContractComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies     ContractComment[] @relation("CommentReplies")
-  
+  parent  ContractComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies ContractComment[] @relation("CommentReplies")
+
   @@index([contractId])
   @@index([tenantId])
   @@index([userId])
@@ -2476,20 +2495,20 @@ model ContractComment {
 }
 
 model ContractActivity {
-  id          String   @id @default(cuid())
-  contractId  String   @map("contract_id")
-  tenantId    String   @map("tenant_id")
-  userId      String   @map("user_id")
-  
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+  userId     String @map("user_id")
+
   // Activity details
-  type        String   // upload, edit, comment, approval, rejection, share, download, workflow, metadata
-  action      String   // Human-readable action description
-  details     String?  @db.Text
-  metadata    Json?    // Type-specific data
-  
+  type     String // upload, edit, comment, approval, rejection, share, download, workflow, metadata
+  action   String // Human-readable action description
+  details  String? @db.Text
+  metadata Json? // Type-specific data
+
   // Timestamps
-  timestamp   DateTime @default(now())
-  
+  timestamp DateTime @default(now())
+
   @@index([contractId])
   @@index([tenantId])
   @@index([userId])
@@ -2504,20 +2523,20 @@ model ContractActivity {
 
 // Webhook Configuration
 model Webhook {
-  id          String             @id @default(cuid())
-  tenantId    String
-  name        String
-  url         String
-  secret      String?            // HMAC secret for signature verification
-  events      String[]           // Array of event types to listen for
-  enabled     Boolean            @default(true)
-  maxRetries  Int                @default(5)
-  timeout     Int                @default(10000) // milliseconds
-  metadata    Json?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  createdBy   String?
-  deliveries  WebhookDelivery[]
+  id         String            @id @default(cuid())
+  tenantId   String
+  name       String
+  url        String
+  secret     String? // HMAC secret for signature verification
+  events     String[] // Array of event types to listen for
+  enabled    Boolean           @default(true)
+  maxRetries Int               @default(5)
+  timeout    Int               @default(10000) // milliseconds
+  metadata   Json?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  createdBy  String?
+  deliveries WebhookDelivery[]
 
   @@index([tenantId])
   @@index([enabled])
@@ -2526,21 +2545,21 @@ model Webhook {
 
 // Webhook Delivery Tracking
 model WebhookDelivery {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   webhookId   String
   tenantId    String
   event       String
   payload     Json
-  status      String   @default("pending") // pending, success, failed
-  attempt     Int      @default(1)
-  maxAttempts Int      @default(5)
+  status      String    @default("pending") // pending, success, failed
+  attempt     Int       @default(1)
+  maxAttempts Int       @default(5)
   statusCode  Int?
-  response    String?  @db.Text
-  error       String?  @db.Text
+  response    String?   @db.Text
+  error       String?   @db.Text
   sentAt      DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  webhook     Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@index([webhookId])
   @@index([tenantId])
@@ -2551,15 +2570,17 @@ model WebhookDelivery {
 
 // Idempotency Key for preventing duplicate operations
 model IdempotencyKey {
-  id           String   @id @default(cuid())
-  key          String   @unique
-  tenantId     String
-  requestHash  String   // Hash of request parameters
-  response     Json?    // Cached response
-  statusCode   Int?
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime // Keys expire after 24 hours
+  id          String   @id @default(cuid())
+  key         String
+  tenantId    String
+  operation   String? // Operation name for tracking
+  requestHash String // Hash of request parameters
+  response    Json? // Cached response
+  statusCode  Int?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // Keys expire after 24 hours
 
+  @@unique([key, tenantId])
   @@index([tenantId])
   @@index([expiresAt])
   @@map("idempotency_keys")
@@ -2567,23 +2588,126 @@ model IdempotencyKey {
 
 // Transactional Outbox Pattern for reliable event publishing
 model OutboxEvent {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   tenantId      String
   eventType     String
-  aggregateType String   // Type of entity (Contract, RateCard, etc.)
-  aggregateId   String   // ID of the entity that triggered the event
+  aggregateType String // Type of entity (Contract, RateCard, etc.)
+  aggregateId   String // ID of the entity that triggered the event
   payload       Json
-  status        String   @default("pending") // pending, published, failed
-  attempts      Int      @default(0)
-  maxAttempts   Int      @default(3)
-  error         String?  @db.Text
+  status        String    @default("pending") // pending, published, failed
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(3)
+  error         String?   @db.Text
   publishedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([status])
   @@index([tenantId])
   @@index([eventType])
   @@index([createdAt])
   @@map("outbox_events")
+}
+
+// ============================================
+// Workflow Models
+// ============================================
+
+model Workflow {
+  id          String  @id @default(cuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String?
+  type        String  @default("APPROVAL") // APPROVAL, REVIEW, CUSTOM
+  isActive    Boolean @default(true) @map("is_active")
+  isDefault   Boolean @default(false) @map("is_default")
+  config      Json?
+  metadata    Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  steps      WorkflowStep[]
+  executions WorkflowExecution[]
+
+  @@index([tenantId])
+  @@index([isActive])
+  @@index([type])
+  @@map("workflows")
+}
+
+model WorkflowStep {
+  id           String  @id @default(cuid())
+  workflowId   String  @map("workflow_id")
+  name         String
+  description  String?
+  order        Int     @default(0)
+  type         String  @default("APPROVAL") // APPROVAL, REVIEW, NOTIFICATION, CUSTOM
+  assignedRole String? @map("assigned_role")
+  assignedUser String? @map("assigned_user")
+  config       Json?
+  isRequired   Boolean @default(true) @map("is_required")
+  timeout      Int? // timeout in hours
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  workflow   Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  executions WorkflowStepExecution[]
+
+  @@index([workflowId])
+  @@index([order])
+  @@map("workflow_steps")
+}
+
+model WorkflowExecution {
+  id          String  @id @default(cuid())
+  workflowId  String  @map("workflow_id")
+  contractId  String  @map("contract_id")
+  tenantId    String? @map("tenant_id")
+  status      String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
+  currentStep String? @map("current_step")
+  initiatedBy String  @map("initiated_by")
+  metadata    Json?
+  error       String?
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  workflow Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  contract Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  steps    WorkflowStepExecution[]
+
+  @@index([workflowId])
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([status])
+  @@map("workflow_executions")
+}
+
+model WorkflowStepExecution {
+  id          String  @id @default(cuid())
+  executionId String  @map("execution_id")
+  stepId      String  @map("step_id")
+  status      String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED
+  assignedTo  String? @map("assigned_to")
+  completedBy String? @map("completed_by")
+  comments    String?
+  metadata    Json?
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  execution WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  step      WorkflowStep      @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([stepId])
+  @@index([status])
+  @@map("workflow_step_executions")
 }

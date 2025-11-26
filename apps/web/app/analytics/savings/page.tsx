@@ -357,7 +357,7 @@ export default function SavingsPipelinePage() {
                         <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                           <div 
                             className="h-full bg-yellow-500 flex items-center justify-end pr-2"
-                            style={{ width: `${(trend.identified / data.trends[data.trends.length - 1].identified) * 100}%` }}
+                            style={{ width: `${(trend.identified / (data.trends[data.trends.length - 1]?.identified || 1)) * 100}%` }}
                           >
                             <span className="text-xs font-medium text-white">
                               ${(trend.identified / 1000000).toFixed(1)}M
@@ -370,7 +370,7 @@ export default function SavingsPipelinePage() {
                         <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
                           <div 
                             className="h-full bg-green-500 flex items-center justify-end pr-2"
-                            style={{ width: `${(trend.realized / data.trends[data.trends.length - 1].identified) * 100}%` }}
+                            style={{ width: `${(trend.realized / (data.trends[data.trends.length - 1]?.identified || 1)) * 100}%` }}
                           >
                             <span className="text-xs font-medium text-white">
                               ${(trend.realized / 1000000).toFixed(1)}M

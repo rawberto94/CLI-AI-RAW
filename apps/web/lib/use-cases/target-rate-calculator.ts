@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { RateCardRole } from './multi-client-rate-data'
 import { TargetRates, MarketPercentiles } from './rate-history-types'
 

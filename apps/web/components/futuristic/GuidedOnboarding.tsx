@@ -187,10 +187,11 @@ export function GuidedOnboarding() {
 
   const nextStep = () => {
     if (progress.currentStep < onboardingSteps.length - 1) {
+      const currentStepId = onboardingSteps[progress.currentStep]?.id ?? '';
       const newProgress = {
         ...progress,
         currentStep: progress.currentStep + 1,
-        completedSteps: [...progress.completedSteps, onboardingSteps[progress.currentStep].id],
+        completedSteps: [...progress.completedSteps, currentStepId],
         totalProgress: ((progress.currentStep + 1) / onboardingSteps.length) * 100
       };
       setProgress(newProgress);

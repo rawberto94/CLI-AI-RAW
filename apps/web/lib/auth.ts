@@ -3,16 +3,16 @@
  * Production-ready authentication with JWT and Prisma
  */
 
-import NextAuth, { type NextAuthConfig } from "next-auth";
+import NextAuth from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
 
 export const authOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
@@ -27,7 +27,7 @@ export const authOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<any> {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -69,6 +69,7 @@ export const authOptions = {
             email: user.email,
             name: `${user.firstName} ${user.lastName}`,
             tenantId: user.tenantId,
+            role: (user as any).role || 'user',
             image: user.avatar || undefined,
           };
         } catch (error) {
@@ -110,14 +111,14 @@ export const authOptions = {
         console.error("Failed to update last login time:", error);
       }
     },
-    async signOut({ token }) {
+    async signOut({ token }: any) {
       console.log("User signed out:", { userId: token?.id });
     },
   },
   debug: process.env.NODE_ENV === "development",
-} satisfies NextAuthConfig;
+};
 
-export const { handlers, signIn, signOut, auth } = NextAuth(authOptions);
+export const { handlers, signIn, signOut, auth } = NextAuth(authOptions as any);
 
 // Helper function for backward compatibility
 export async function getServerSession() {

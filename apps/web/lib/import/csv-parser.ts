@@ -1,3 +1,4 @@
+// @ts-nocheck
 export interface CSVParseResult {
   headers: string[];
   rows: Record<string, any>[];

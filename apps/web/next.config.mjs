@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 import path from "path";
-import crypto from "crypto";
 import { fileURLToPath } from "url";
 import bundleAnalyzer from "@next/bundle-analyzer";
 
@@ -16,15 +15,15 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    // Temporary: unblock build while React 19 + framer-motion typings are stabilized
+    // Type checking done via turbo task
     ignoreBuildErrors: true,
   },
   output: "standalone",
   
-  // Skip failing pages during static generation
-  staticPageGenerationTimeout: 120,
+  // Optimized static generation
+  staticPageGenerationTimeout: 180,
   generateBuildId: async () => {
-    return 'build-' + Date.now();
+    return process.env.GIT_COMMIT_SHA || `build-${Date.now()}`;
   },
 
   // Transpile workspace packages
@@ -40,22 +39,22 @@ const nextConfig = {
   // Image optimization
   images: {
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 31536000, // 1 year
+    minimumCacheTTL: 31536000,
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    remotePatterns: [],
   },
 
-  // Reduce memory usage during development
+  // Optimized dev server
   onDemandEntries: {
-    maxInactiveAge: 15 * 1000, // Reduced from 25s to 15s
-    pagesBufferLength: 1, // Reduced from 2 to 1
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 2,
   },
   
-  // Aggressive memory optimization
+  // No source maps in production
   productionBrowserSourceMaps: false,
 
-  // Disable problematic experimental features completely
-  // Turbopack configuration for better performance
+  // Turbopack configuration (dev only)
   turbopack: {
     rules: {
       '*.svg': {
@@ -66,16 +65,39 @@ const nextConfig = {
   },
 
   experimental: {
-    // webpackBuildWorker causes issues in 15.1.0
-    webpackBuildWorker: false,
+    // Enable for Next.js 15.5+
+    webpackBuildWorker: true,
+    parallelServerBuildTraces: true,
+    parallelServerCompiles: true,
     externalDir: true,
-    // Allow Server Actions from Codespaces forwarded requests
+    // Optimized package imports - reduces bundle size significantly
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      'recharts',
+      '@radix-ui/react-icons',
+      'date-fns',
+      '@tanstack/react-table',
+      'react-hook-form',
+      '@hookform/resolvers',
+      'class-variance-authority',
+      'clsx',
+    ],
+    // Server Actions configuration
     serverActions: {
+      bodySizeLimit: '2mb',
       allowedOrigins: [
         "localhost:3005",
         "*.app.github.dev",
         "zany-journey-69w67jw7vvwj347jg-3005.app.github.dev",
       ],
+    },
+  },
+
+  // Logging
+  logging: {
+    fetches: {
+      fullUrl: process.env.NODE_ENV === 'development',
     },
   },
 
@@ -307,11 +329,29 @@ const nextConfig = {
           },
           {
             key: "Referrer-Policy",
-            value: "origin-when-cross-origin",
+            value: "strict-origin-when-cross-origin",
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+        ],
+      },
+      {
+        // Cache static assets aggressively
+        source: "/static/(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },

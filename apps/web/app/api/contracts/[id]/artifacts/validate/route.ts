@@ -37,7 +37,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       if (!validation.valid && validation.canAutoFix) {
         autoFixResult = await artifactValidationService.autoFix(
           artifactData,
-          validation.issues
+          validation.issues ?? []
         );
       }
 

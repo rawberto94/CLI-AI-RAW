@@ -244,7 +244,7 @@ export function ProcessingStatusCard({
                 
                 {index < STAGES.length - 1 && (
                   <div className={`flex-1 h-0.5 mx-2 ${
-                    getStageStatus(STAGES[index + 1].key) === 'pending' 
+                    getStageStatus(STAGES[index + 1]?.key ?? '') === 'pending' 
                       ? 'bg-gray-200' 
                       : 'bg-green-400'
                   }`} />

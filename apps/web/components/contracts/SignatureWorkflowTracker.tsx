@@ -200,7 +200,7 @@ export function SignatureWorkflowTracker({
       },
     };
 
-    const config = configs[status] || configs.draft;
+    const config = configs[status] ?? configs.draft!;
     return (
       <Badge className={config.color}>
         {config.icon}

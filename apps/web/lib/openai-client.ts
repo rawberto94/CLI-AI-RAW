@@ -3,7 +3,7 @@
  * Re-exports the OpenAI client from packages
  */
 
-import { OpenAIClient } from '@/packages/clients/openai';
+import { OpenAIClient } from 'clients-openai';
 
 // Initialize OpenAI client with API key from environment
 const apiKey = process.env.OPENAI_API_KEY || '';

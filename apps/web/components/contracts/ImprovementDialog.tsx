@@ -89,7 +89,7 @@ export function ImprovementDialog({
     return [];
   });
 
-  const templates = PROMPT_TEMPLATES[artifactType] || PROMPT_TEMPLATES.OVERVIEW;
+  const templates = PROMPT_TEMPLATES[artifactType] ?? PROMPT_TEMPLATES.OVERVIEW ?? [];
 
   const handleSubmit = () => {
     if (prompt.trim()) {

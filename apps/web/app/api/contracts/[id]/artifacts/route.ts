@@ -37,8 +37,8 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          error: result.error.message,
-          code: result.error.code,
+          error: result.error?.message ?? 'Unknown error',
+          code: result.error?.code ?? 'UNKNOWN',
         },
         { status: 500 }
       );

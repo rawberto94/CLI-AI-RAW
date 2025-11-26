@@ -271,8 +271,8 @@ function generateMockPresence(): PresenceData[] {
     .map((user) => ({
       userId: user.id,
       user,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      location: locations[Math.floor(Math.random() * locations.length)],
+      status: statuses[Math.floor(Math.random() * statuses.length)] ?? 'idle',
+      location: locations[Math.floor(Math.random() * locations.length)] ?? 'Dashboard',
       lastSeen: new Date(Date.now() - Math.random() * 300000), // Within last 5 mins
     }));
 }
@@ -295,8 +295,8 @@ function generateMockActivity(): ActivityEvent {
 
   const contracts = ['Acme Corp MSA', 'TechVendor SLA', 'Global Services SOW'];
 
-  const activity = activities[Math.floor(Math.random() * activities.length)];
-  const user = users[Math.floor(Math.random() * users.length)];
+  const activity = activities[Math.floor(Math.random() * activities.length)]!;
+  const user = users[Math.floor(Math.random() * users.length)]!;
 
   return {
     id: `activity-${Date.now()}-${Math.random()}`,

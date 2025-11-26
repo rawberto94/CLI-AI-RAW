@@ -1,2 +1,2 @@
-export * from './queue/queue-service';
-export * from './queue/contract-queue';
+export * from './queue-service';
+export * from './contract-queue';

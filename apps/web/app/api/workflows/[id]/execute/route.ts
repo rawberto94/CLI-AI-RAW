@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@repo/db';
+import getDb from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +65,12 @@ export async function POST(
     // Create first step execution
     if (workflow.steps.length > 0) {
       const firstStep = workflow.steps[0];
+      if (!firstStep) {
+        return NextResponse.json(
+          { success: false, error: 'Workflow has no valid first step' },
+          { status: 400 }
+        );
+      }
       
       await db.workflowStepExecution.create({
         data: {

@@ -134,7 +134,10 @@ export const LiveContractAnalysisDemo = () => {
 
   const simulateAnalysisProcess = async () => {
     for (let i = 0; i < analysisStages.length; i++) {
-      setAnalysisStage(analysisStages[i].id);
+      const stage = analysisStages[i];
+      if (stage) {
+        setAnalysisStage(stage.id);
+      }
       setAnalysisProgress((i / (analysisStages.length - 1)) * 100);
 
       // Simulate processing time for each stage (faster for better UX)

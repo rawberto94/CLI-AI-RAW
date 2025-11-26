@@ -259,14 +259,14 @@ export const components = {
 } as const;
 
 // Utility function to get risk color based on score
-export function getRiskColor(score: number): typeof statusColors.success {
+export function getRiskColor(score: number) {
   if (score < 30) return statusColors.success;
   if (score < 60) return statusColors.warning;
   return statusColors.danger;
 }
 
 // Utility function to get compliance color based on score
-export function getComplianceColor(score: number): typeof statusColors.success {
+export function getComplianceColor(score: number) {
   if (score >= 90) return statusColors.success;
   if (score >= 70) return statusColors.warning;
   return statusColors.danger;

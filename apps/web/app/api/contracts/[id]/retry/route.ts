@@ -50,7 +50,7 @@ export async function POST(
     await triggerArtifactGeneration({
       contractId: contract.id,
       tenantId: contract.tenantId,
-      filePath: contract.storagePath,
+      filePath: contract.storagePath ?? '',
       mimeType: contract.mimeType,
       useQueue: false
     });

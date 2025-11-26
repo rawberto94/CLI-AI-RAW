@@ -314,7 +314,9 @@ export function BatchUploadZone({
 
       // Upload files one by one with retry logic
       for (let i = 0; i < files.length; i++) {
-        const file = files[i].file;
+        const fileItem = files[i];
+        if (!fileItem) continue;
+        const file = fileItem.file;
 
         try {
           setFiles((prev) =>
@@ -424,10 +426,13 @@ export function BatchUploadZone({
 
         // Handle navigation
         if (results.length === 1) {
-          const qp = policyPack
-            ? `?policyPack=${encodeURIComponent(policyPack)}`
-            : "";
-          router.push(`/contracts/${results[0].docId}${qp}`);
+          const firstResult = results[0];
+          if (firstResult) {
+            const qp = policyPack
+              ? `?policyPack=${encodeURIComponent(policyPack)}`
+              : "";
+            router.push(`/contracts/${firstResult.docId}${qp}`);
+          }
         } else if (results.length > 0) {
           try {
             window.sessionStorage.setItem(
@@ -724,10 +729,10 @@ export function BatchUploadZone({
             >
               View All Contracts
             </Button>
-            {uploadResults.length === 1 && (
+            {uploadResults.length === 1 && uploadResults[0] && (
               <Button
                 onClick={() =>
-                  router.push(`/contracts/${uploadResults[0].docId}`)
+                  router.push(`/contracts/${uploadResults[0]?.docId}`)
                 }
                 size="sm"
               >

@@ -40,6 +40,7 @@ interface ContractData {
   mimeType: string
   extractedData?: any
   artifacts?: any[]
+  artifactCount?: number
   summary?: any
   insights?: any[]
   processing?: {

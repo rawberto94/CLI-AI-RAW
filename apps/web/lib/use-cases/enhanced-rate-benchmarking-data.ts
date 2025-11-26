@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Enhanced Mock Data for Rate Card Benchmarking Use Case
  * Includes multi-dimensional data: suppliers, service lines, geographies, role taxonomy

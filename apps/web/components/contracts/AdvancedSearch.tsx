@@ -134,7 +134,7 @@ export function AdvancedSearch({ onApplyFilters, onClearFilters }: AdvancedSearc
     filters.status.length +
     filters.tags.length +
     (filters.dateRange.start ? 1 : 0) +
-    (filters.riskLevel[0] > 0 || filters.riskLevel[1] < 100 ? 1 : 0) +
+    ((filters.riskLevel[0] ?? 0) > 0 || (filters.riskLevel[1] ?? 100) < 100 ? 1 : 0) +
     (filters.valueRange.min > 0 || filters.valueRange.max < 10000000 ? 1 : 0);
 
   return (
@@ -237,7 +237,7 @@ export function AdvancedSearch({ onApplyFilters, onClearFilters }: AdvancedSearc
                         mode="single"
                         selected={filters.dateRange.start}
                         onSelect={(date) =>
-                          setFilters({ ...filters, dateRange: { ...filters.dateRange, start: date } })
+                          setFilters({ ...filters, dateRange: { ...filters.dateRange, start: Array.isArray(date) ? date[0] : date } })
                         }
                       />
                     </PopoverContent>
@@ -257,7 +257,7 @@ export function AdvancedSearch({ onApplyFilters, onClearFilters }: AdvancedSearc
                         mode="single"
                         selected={filters.dateRange.end}
                         onSelect={(date) =>
-                          setFilters({ ...filters, dateRange: { ...filters.dateRange, end: date } })
+                          setFilters({ ...filters, dateRange: { ...filters.dateRange, end: Array.isArray(date) ? date[0] : date } })
                         }
                       />
                     </PopoverContent>

@@ -281,6 +281,7 @@ export default function ArtifactsAnalyticsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {artifactTypes.map((type) => {
               const typeData = metrics.byType[type];
+              if (!typeData) return null;
               return (
                 <Card key={type}>
                   <CardHeader>

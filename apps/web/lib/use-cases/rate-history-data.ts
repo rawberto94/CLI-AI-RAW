@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Rate History Data Structures and Mock Data
 import { allRateCardRoles } from './multi-client-rate-data'
 

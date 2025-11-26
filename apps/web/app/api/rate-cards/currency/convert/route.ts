@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const rate = EXCHANGE_RATES[from.toUpperCase()] || EXCHANGE_RATES['USD'];
+    const rate = EXCHANGE_RATES[from.toUpperCase()] ?? EXCHANGE_RATES['USD']!;
 
     const converted = {
       usd: amount * rate.usd,

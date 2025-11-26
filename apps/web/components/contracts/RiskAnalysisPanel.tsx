@@ -297,7 +297,7 @@ export function RiskAnalysisPanel({
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
                                         <h4 className="font-semibold text-gray-900">{issue.title}</h4>
-                                        <Badge className={issueConfig.badgeClass} size="sm">
+                                        <Badge className={cn(issueConfig.badgeClass, "text-xs")}>
                                           {issueConfig.label}
                                         </Badge>
                                       </div>

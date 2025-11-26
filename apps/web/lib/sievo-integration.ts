@@ -503,7 +503,8 @@ export class SievoIntegrationService {
         return { success: false, message: `API error: ${response.status}` };
       }
     } catch (error) {
-      return { success: false, message: `Connection failed: ${error.message}` };
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { success: false, message: `Connection failed: ${errorMessage}` };
     }
   }
 }

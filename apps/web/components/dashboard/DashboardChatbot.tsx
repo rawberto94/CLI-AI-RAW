@@ -162,8 +162,8 @@ export function DashboardChatbot() {
   return (
     <div className="w-full space-y-4">
       {/* Messages Area */}
-      <ScrollArea className="h-[280px] border rounded-lg p-4 bg-gray-50" ref={scrollRef}>
-          <div className="space-y-4">
+      <ScrollArea className="h-[280px] border rounded-lg p-4 bg-gray-50">
+          <div ref={scrollRef} className="space-y-4">
             {messages.map((message) => (
               <div key={message.id} className="space-y-2">
                 <div

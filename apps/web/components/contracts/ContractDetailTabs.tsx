@@ -183,21 +183,29 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
   const handleNextTab = () => {
     const currentIndex = tabs.indexOf(activeTab)
     const nextIndex = (currentIndex + 1) % tabs.length
-    setActiveTab(tabs[nextIndex])
-    logUserAction('tab-navigation', undefined, { from: activeTab, to: tabs[nextIndex], method: 'keyboard' })
+    const nextTab = tabs[nextIndex]
+    if (nextTab) {
+      setActiveTab(nextTab)
+      logUserAction('tab-navigation', undefined, { from: activeTab, to: nextTab, method: 'keyboard' })
+    }
   }
 
   const handlePrevTab = () => {
     const currentIndex = tabs.indexOf(activeTab)
     const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length
-    setActiveTab(tabs[prevIndex])
-    logUserAction('tab-navigation', undefined, { from: activeTab, to: tabs[prevIndex], method: 'keyboard' })
+    const prevTab = tabs[prevIndex]
+    if (prevTab) {
+      setActiveTab(prevTab)
+      logUserAction('tab-navigation', undefined, { from: activeTab, to: prevTab, method: 'keyboard' })
+    }
   }
 
   const handleCopyCurrentArtifact = () => {
     if (artifacts && artifacts.length > 0) {
       const firstArtifact = artifacts[0]
-      handleCopyArtifact(firstArtifact.type || 'unknown', firstArtifact.data)
+      if (firstArtifact) {
+        handleCopyArtifact(firstArtifact.type || 'unknown', firstArtifact.data)
+      }
     }
   }
 

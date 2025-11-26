@@ -176,9 +176,11 @@ export class NegotiationHistoryService {
       conservative: outcomes.filter(o => o.strategyUsed === 'conservative' && o.achieved).length
     }
 
-    const bestStrategy = Object.entries(strategySuccess).reduce((best, [strategy, count]) => 
-      count > strategySuccess[best as keyof typeof strategySuccess] ? strategy : best
-    , 'moderate') as 'aggressive' | 'moderate' | 'conservative'
+    type StrategyType = 'aggressive' | 'moderate' | 'conservative';
+    const entries = Object.entries(strategySuccess) as [StrategyType, number][];
+    const bestStrategy = entries.reduce<StrategyType>((best, [strategy, count]) => 
+      count > strategySuccess[best] ? strategy : best
+    , 'moderate')
 
     const lastNegotiation = outcomes.length > 0
       ? outcomes.reduce((latest, current) => 

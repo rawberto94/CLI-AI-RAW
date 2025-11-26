@@ -113,3 +113,11 @@ export async function getConnectionStats() {
     return null;
   }
 }
+
+// Helper function to get db instance (for compatibility with routes using getDb)
+export async function getDb(): Promise<PrismaClient> {
+  return prisma;
+}
+
+// Default export - getDb for routes that import like `import getDb from '@/lib/prisma'`
+export default getDb;

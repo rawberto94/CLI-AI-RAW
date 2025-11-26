@@ -142,19 +142,19 @@ function selectResponse(query: string, context: any) {
   const lowerQuery = query.toLowerCase();
 
   if (lowerQuery.includes('high-risk') || lowerQuery.includes('risky')) {
-    return mockAIResponses['high-risk contracts'](query, context);
+    return mockAIResponses['high-risk contracts']?.(query, context);
   }
   if (lowerQuery.includes('expire') || lowerQuery.includes('renewal')) {
-    return mockAIResponses['expire'](query, context);
+    return mockAIResponses['expire']?.(query, context);
   }
   if (lowerQuery.includes('pending') || lowerQuery.includes('approval')) {
-    return mockAIResponses['pending approvals'](query, context);
+    return mockAIResponses['pending approvals']?.(query, context);
   }
   if (lowerQuery.includes('summarize') || lowerQuery.includes('summary')) {
-    return mockAIResponses['summarize'](query, context);
+    return mockAIResponses['summarize']?.(query, context);
   }
 
-  return mockAIResponses['default'](query, context);
+  return mockAIResponses['default']?.(query, context);
 }
 
 async function getOpenAIResponse(message: string, conversationHistory: any[], context: any) {

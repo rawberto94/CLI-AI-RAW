@@ -155,7 +155,9 @@ export function CommentThread({
     let match
 
     while ((match = mentionRegex.exec(text)) !== null) {
-      mentions.push(match[1])
+      if (match[1]) {
+        mentions.push(match[1])
+      }
     }
 
     return mentions

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@repo/db';
+import getDb from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,21 +70,26 @@ export async function GET(
         orderBy: { versionNumber: 'asc' },
         include: {
           uploadedByUser: {
-            select: { name: true, email: true }
+            select: { firstName: true, lastName: true, email: true }
           }
         }
       });
 
-      const transformedVersions = versions.map(v => ({
-        id: v.id,
-        versionNumber: v.versionNumber,
-        uploadedBy: v.uploadedByUser?.name || v.uploadedBy || 'Unknown',
-        uploadedAt: v.uploadedAt.toISOString(),
-        isActive: v.isActive,
-        summary: v.summary || undefined,
-        changes: v.changes || undefined,
-        fileUrl: v.fileUrl || undefined
-      }));
+      const transformedVersions = versions.map(v => {
+        const userName = v.uploadedByUser 
+          ? `${v.uploadedByUser.firstName || ''} ${v.uploadedByUser.lastName || ''}`.trim() 
+          : null;
+        return {
+          id: v.id,
+          versionNumber: v.versionNumber,
+          uploadedBy: userName || v.uploadedBy || 'Unknown',
+          uploadedAt: v.uploadedAt.toISOString(),
+          isActive: v.isActive,
+          summary: v.summary || undefined,
+          changes: v.changes || undefined,
+          fileUrl: v.fileUrl || undefined
+        };
+      });
 
       return NextResponse.json({
         success: true,

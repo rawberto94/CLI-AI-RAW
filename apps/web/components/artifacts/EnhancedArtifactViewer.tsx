@@ -42,6 +42,11 @@ interface ArtifactData {
   risk?: any
   compliance?: any
   rates?: any
+  // Legacy property names for backward compatibility
+  keyClauses?: any
+  financialAnalysis?: any
+  riskAssessment?: any
+  complianceCheck?: any
 }
 
 interface EnhancedArtifactViewerProps {
@@ -148,13 +153,13 @@ export function EnhancedArtifactViewer({
   const goToNextTab = () => {
     const currentIndex = TABS.findIndex(t => t.id === activeTab);
     const nextIndex = (currentIndex + 1) % TABS.length;
-    setActiveTab(TABS[nextIndex].id);
+    setActiveTab(TABS[nextIndex]?.id ?? TABS[0]!.id);
   };
 
   const goToPrevTab = () => {
     const currentIndex = TABS.findIndex(t => t.id === activeTab);
     const prevIndex = (currentIndex - 1 + TABS.length) % TABS.length;
-    setActiveTab(TABS[prevIndex].id);
+    setActiveTab(TABS[prevIndex]?.id ?? TABS[0]!.id);
   };
 
   // Quick stats for header

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@repo/db';
+import getDb from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,10 +38,10 @@ const getMockExecutions = () => [
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = params.id;
+    const { id: contractId } = await params;
     const tenantId = request.headers.get('x-tenant-id') || 'demo';
     const useMock = request.nextUrl.searchParams.get('mock') === 'true';
 
@@ -72,8 +72,8 @@ export async function GET(
     // Get workflow executions for this contract
     const executions = await db.workflowExecution.findMany({
       where: {
-        entityId: contractId,
-        entityType: 'CONTRACT'
+        contractId,
+        tenantId
       },
       include: {
         workflow: {
@@ -83,10 +83,10 @@ export async function GET(
           }
         },
         steps: {
-          orderBy: { order: 'asc' },
+          orderBy: { startedAt: 'asc' },
           include: {
-            assignedToUser: {
-              select: { name: true, email: true }
+            step: {
+              select: { name: true, order: true, assignedRole: true }
             }
           }
         }
@@ -101,16 +101,16 @@ export async function GET(
       status: exec.status.toLowerCase(),
       startedAt: exec.startedAt.toISOString(),
       completedAt: exec.completedAt?.toISOString(),
-      currentStep: exec.steps.find(s => s.status === 'IN_PROGRESS')?.name,
+      currentStep: exec.steps.find(s => s.status === 'IN_PROGRESS')?.step?.name,
       initiatedBy: exec.initiatedBy || 'System',
-      steps: exec.steps.map(step => ({
-        id: step.id,
-        name: step.name,
-        assignedTo: step.assignedToUser?.name || step.assignedToRole || 'Unassigned',
-        status: step.status.toLowerCase().replace('_', '_'),
-        completedAt: step.completedAt?.toISOString(),
-        comment: step.comment || undefined,
-        order: step.order
+      steps: exec.steps.map(stepExec => ({
+        id: stepExec.id,
+        name: stepExec.step?.name || 'Unknown',
+        assignedTo: stepExec.assignedTo || stepExec.step?.assignedRole || 'Unassigned',
+        status: stepExec.status.toLowerCase().replace('_', '_'),
+        completedAt: stepExec.completedAt?.toISOString(),
+        comment: stepExec.comments || undefined,
+        order: stepExec.step?.order || 0
       }))
     }));
 
@@ -148,10 +148,10 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = params.id;
+    const { id: contractId } = await params;
     const tenantId = request.headers.get('x-tenant-id') || 'demo';
     const body = await request.json();
     const { workflowId, initiatedBy } = body;
@@ -180,7 +180,7 @@ export async function POST(
 
     // Get workflow template
     const workflow = await db.workflow.findUnique({
-      where: { id: workflowId, tenantId },
+      where: { id: workflowId },
       include: {
         steps: {
           orderBy: { order: 'asc' }
@@ -188,7 +188,7 @@ export async function POST(
       }
     });
 
-    if (!workflow) {
+    if (!workflow || workflow.tenantId !== tenantId) {
       return NextResponse.json(
         { success: false, error: 'Workflow not found' },
         { status: 404 }
@@ -200,32 +200,23 @@ export async function POST(
       data: {
         tenantId,
         workflowId,
-        entityType: 'CONTRACT',
-        entityId: contractId,
+        contractId,
         status: 'IN_PROGRESS',
         startedAt: new Date(),
         initiatedBy: initiatedBy || 'System',
         steps: {
           create: workflow.steps.map((step, index) => ({
-            tenantId,
-            name: step.name,
-            description: step.description,
-            type: step.type,
-            order: step.order,
+            stepId: step.id,
             status: index === 0 ? 'IN_PROGRESS' : 'PENDING',
-            assignedToRole: step.assignedToRole,
-            assignedToUserId: step.assignedToUserId,
-            dueDate: step.dueDays 
-              ? new Date(Date.now() + step.dueDays * 24 * 60 * 60 * 1000)
-              : undefined,
-            config: step.config
+            assignedTo: step.assignedUser || step.assignedRole,
+            startedAt: index === 0 ? new Date() : undefined
           }))
         }
       },
       include: {
         workflow: true,
         steps: {
-          orderBy: { order: 'asc' }
+          orderBy: { startedAt: 'asc' }
         }
       }
     });

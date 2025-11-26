@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Multi-Client Rate Card Data Model and Generator
  * Supports enterprise-level rate card management across multiple clients

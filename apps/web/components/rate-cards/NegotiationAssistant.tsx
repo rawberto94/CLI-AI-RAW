@@ -16,7 +16,64 @@ import {
   MessageSquare,
   Building2
 } from 'lucide-react';
-import type { NegotiationBrief } from '@/packages/data-orchestration/src/services/negotiation-assistant.service';
+
+// Local type definition to avoid cross-package import issues
+interface NegotiationBrief {
+  currentSituation: {
+    currentRate: number;
+    supplierName: string;
+    contractExpiry?: Date;
+    volumeCommitted?: number;
+    roleStandardized: string;
+    seniority: string;
+    country: string;
+  };
+  marketPosition: {
+    percentileRank: number;
+    position: string;
+    marketMedian: number;
+    marketP25: number;
+    marketP75: number;
+    cohortSize: number;
+  };
+  targetRates: {
+    aggressive: number;
+    realistic: number;
+    fallback: number;
+    justification: string;
+  };
+  leverage: Array<{
+    point: string;
+    category: 'market' | 'volume' | 'competition' | 'relationship';
+    strength: 'high' | 'medium' | 'low';
+  }>;
+  alternatives: Array<{
+    supplierName: string;
+    dailyRate: number;
+    savingsAmount: number;
+    savingsPercent: number;
+    country: string;
+    effectiveDate: Date;
+    pros: string[];
+    cons: string[];
+  }>;
+  talkingPoints: Array<{
+    point: string;
+    category: 'savings' | 'market' | 'relationship' | 'volume';
+    impact: 'high' | 'medium' | 'low';
+    dataSource: string;
+    priority?: number;
+    supportingData?: string;
+  }>;
+  risks: Array<{
+    risk: string;
+    mitigation: string;
+    likelihood: 'high' | 'medium' | 'low';
+    impact: 'high' | 'medium' | 'low';
+    severity?: 'high' | 'medium' | 'low';
+  }>;
+  recommendedStrategy: string;
+}
 
 interface NegotiationAssistantProps {
   rateCardId: string;

@@ -27,11 +27,14 @@ function SignInForm() {
         email,
         password,
         callbackUrl,
-        redirect: true,
+        redirect: false,
       });
 
       if (result?.error) {
         setError("Invalid email or password");
+      } else if (result?.ok) {
+        // Redirect manually since we set redirect: false
+        window.location.href = callbackUrl;
       }
     } catch (error) {
       setError("An error occurred. Please try again.");

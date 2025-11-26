@@ -642,23 +642,23 @@ export default function EnhancedUploadZone({
                                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                                                             <MetricCard
                                                                 title="Risk Score"
-                                                                value={file.intelligence.riskScore}
-                                                                subtitle={file.intelligence.riskScore > 70 ? 'High Risk' : file.intelligence.riskScore > 40 ? 'Medium Risk' : 'Low Risk'}
+                                                                value={file.intelligence.riskScore ?? 0}
+                                                                subtitle={(file.intelligence.riskScore ?? 0) > 70 ? 'High Risk' : (file.intelligence.riskScore ?? 0) > 40 ? 'Medium Risk' : 'Low Risk'}
                                                                 icon={<Shield className="w-4 h-4" />}
                                                                 color="red"
                                                                 size="sm"
                                                             />
                                                             <MetricCard
                                                                 title="Opportunity"
-                                                                value={file.intelligence.opportunityScore}
-                                                                subtitle={file.intelligence.opportunityScore > 70 ? 'High Value' : 'Moderate'}
+                                                                value={file.intelligence.opportunityScore ?? 0}
+                                                                subtitle={(file.intelligence.opportunityScore ?? 0) > 70 ? 'High Value' : 'Moderate'}
                                                                 icon={<TrendingUp className="w-4 h-4" />}
                                                                 color="green"
                                                                 size="sm"
                                                             />
                                                             <MetricCard
                                                                 title="Risk Patterns"
-                                                                value={file.intelligence.patterns}
+                                                                value={file.intelligence.patterns ?? 0}
                                                                 subtitle="Detected"
                                                                 icon={<Target className="w-4 h-4" />}
                                                                 color="blue"
@@ -666,7 +666,7 @@ export default function EnhancedUploadZone({
                                                             />
                                                             <MetricCard
                                                                 title="AI Insights"
-                                                                value={file.intelligence.insights}
+                                                                value={file.intelligence.insights ?? 0}
                                                                 subtitle="Generated"
                                                                 icon={<Zap className="w-4 h-4" />}
                                                                 color="purple"
@@ -719,12 +719,12 @@ export default function EnhancedUploadZone({
                                                                 <Badge variant="outline" className="text-xs bg-gray-50">
                                                                     📄 {file.intelligence.contractType}
                                                                 </Badge>
-                                                                {file.intelligence.riskScore > 70 && (
+                                                                {(file.intelligence.riskScore ?? 0) > 70 && (
                                                                     <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
                                                                         ⚠️ Requires Review
                                                                     </Badge>
                                                                 )}
-                                                                {file.intelligence.opportunityScore > 70 && (
+                                                                {(file.intelligence.opportunityScore ?? 0) > 70 && (
                                                                     <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                                                         💡 High Opportunity
                                                                     </Badge>

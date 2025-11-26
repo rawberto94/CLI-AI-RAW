@@ -92,7 +92,7 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
 
   useEffect(() => {
     if (messages.length === 0) {
-      setSuggestions(contextualSuggestions[context]);
+      setSuggestions(contextualSuggestions[context] ?? []);
       // Send welcome message
       setMessages([
         {
@@ -308,8 +308,8 @@ How can I help you today?`,
       </CardHeader>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 p-4">
+        <div ref={scrollRef} className="space-y-4">
           {messages.map((message) => (
             <div
               key={message.id}

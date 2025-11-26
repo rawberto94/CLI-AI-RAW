@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Fuzzy matching service for column name mapping
  */

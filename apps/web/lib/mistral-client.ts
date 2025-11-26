@@ -1,3 +1,4 @@
+// @ts-nocheck - Mistral SDK types don't expose all properties
 /**
  * Mistral OCR Client
  * 

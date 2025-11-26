@@ -353,8 +353,11 @@ export function AccessibleTabs({ tabs }: { tabs: TabProps[] }) {
     }
 
     if (nextIndex !== index) {
-      setActiveTab(tabs[nextIndex].id);
-      document.getElementById(`tab-${tabs[nextIndex].id}`)?.focus();
+      const nextTab = tabs[nextIndex];
+      if (nextTab) {
+        setActiveTab(nextTab.id);
+        document.getElementById(`tab-${nextTab.id}`)?.focus();
+      }
     }
   };
 

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   console.log('[SSE] Stream requested:', { contractId, tenantId });
 
   // Check initial contract status - if already completed, we can send data immediately
-  let contract;
+  let contract: { id: string; status: string } | null = null;
   let useMockData = false;
   let isInitiallyCompleted = false;
   
@@ -49,6 +49,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const encoder = new TextEncoder();
   let isClosed = false;
   let pollInterval: NodeJS.Timeout;
+  let heartbeatInterval: NodeJS.Timeout;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       console.log('[SSE] Stream started for contract:', contractId);
       
       // Heartbeat interval to keep connection alive (every 15 seconds)
-      const heartbeatInterval = setInterval(() => {
+      heartbeatInterval = setInterval(() => {
         if (!isClosed) {
           try {
             sendEvent({

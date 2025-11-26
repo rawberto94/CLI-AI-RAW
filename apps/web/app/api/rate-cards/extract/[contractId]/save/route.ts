@@ -102,7 +102,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
         AUD: { usd: 0.65, chf: 0.57 },
         INR: { usd: 0.012, chf: 0.011 },
       };
-      const rate = rates[currency.toUpperCase()] || rates['USD'];
+      const rate = rates[currency.toUpperCase()] ?? rates['USD']!;
       return {
         usd: amount * rate.usd,
         chf: amount * rate.chf,
