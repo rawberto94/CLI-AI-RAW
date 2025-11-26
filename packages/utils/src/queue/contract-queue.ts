@@ -4,6 +4,20 @@ import pino from 'pino';
 
 const logger = pino({ name: 'contract-queue' });
 
+/**
+ * Priority levels for queue jobs
+ * Lower number = higher priority
+ */
+export const QUEUE_PRIORITY = {
+  URGENT: 1,      // VIP customers, critical contracts
+  HIGH: 5,        // Standard interactive processing
+  NORMAL: 10,     // Default processing
+  LOW: 20,        // Bulk/batch operations
+  BACKGROUND: 50, // Non-urgent background tasks
+} as const;
+
+export type QueuePriorityLevel = keyof typeof QUEUE_PRIORITY;
+
 export const QUEUE_NAMES = {
   CONTRACT_PROCESSING: 'contract-processing',
   ARTIFACT_GENERATION: 'artifact-generation',

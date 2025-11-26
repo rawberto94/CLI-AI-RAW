@@ -40,6 +40,7 @@ import { SignatureRequest } from '@/components/contracts/SignatureRequest'
 import { SignatureWorkflowTracker } from '@/components/contracts/SignatureWorkflowTracker'
 import { ContractContextSidebar } from '@/components/contracts/ContractContextSidebar'
 import { CommandPalette } from '@/components/contracts/CommandPalette'
+import { ProcessingStatusCard } from '@/components/contracts/ProcessingStatusCard'
 import { Scale, FileWarning, Lock, Zap, GitCompare, FileSignature } from 'lucide-react'
 
 interface ContractData {
@@ -299,6 +300,16 @@ export default function ContractDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Processing Status Card - Show when contract is being processed */}
+        {(contract?.status === 'PROCESSING' || contract?.status === 'UPLOADED') && (
+          <ProcessingStatusCard
+            contractId={params.id as string}
+            onComplete={loadContract}
+            onError={(error) => console.error('Processing error:', error)}
+            pollInterval={2000}
+          />
+        )}
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

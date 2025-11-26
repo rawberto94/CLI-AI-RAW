@@ -59,9 +59,11 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 });
 const prisma = getClient();
 
-// Simple in-memory cache for artifacts (production would use Redis)
+// Simple in-memory cache for OCR results (production would use Redis)
+const ocrCache = new Map<string, { text: string; timestamp: number }>();
 const artifactCache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const OCR_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for OCR results
 
 // Cleanup old cache entries every 10 minutes
 setInterval(() => {
@@ -71,7 +73,16 @@ setInterval(() => {
       artifactCache.delete(key);
     }
   }
+  for (const [key, value] of ocrCache.entries()) {
+    if (now - value.timestamp > OCR_CACHE_TTL) {
+      ocrCache.delete(key);
+    }
+  }
 }, 10 * 60 * 1000);
+
+// OCR fallback chain - try in order until one succeeds
+const OCR_FALLBACK_CHAIN = ['mistral', 'gpt4', 'tesseract'] as const;
+type OCRMode = typeof OCR_FALLBACK_CHAIN[number];
 
 // Preload heavy modules to reduce cold start time
 let pdfParseModule: any = null;
@@ -104,58 +115,99 @@ interface OCRArtifactResult {
   success: boolean;
   artifactsCreated: number;
   extractedText?: string;
+  partialSuccess?: boolean;
+  failedArtifacts?: string[];
 }
 
 /**
- * Perform OCR extraction on a file with circuit breaker protection
+ * Generate cache key for OCR results
  */
-async function performOCR(filePath: string, ocrMode: string): Promise<string> {
+function generateOCRCacheKey(filePath: string, fileSize: number): string {
+  const fileName = path.basename(filePath);
+  return `ocr:${fileName}:${fileSize}`;
+}
+
+/**
+ * Perform OCR extraction on a file with circuit breaker protection and caching
+ */
+async function performOCR(filePath: string, ocrMode: string, fileSize?: number): Promise<string> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
-  // Check circuit breaker states and potentially switch providers
-  let effectiveOcrMode = ocrMode;
-  
-  if (ocrMode === 'mistral' && mistralCircuitBreaker.getState() === CircuitState.OPEN) {
-    logger.warn('Mistral circuit breaker is open, falling back to GPT-4');
-    effectiveOcrMode = 'gpt4';
-  }
-  
-  if (effectiveOcrMode === 'gpt4' && openaiCircuitBreaker.getState() === CircuitState.OPEN) {
-    logger.warn('OpenAI circuit breaker is open, using text extraction fallback');
-    return await extractTextFallback(filePath);
-  }
-
-  try {
-    if (effectiveOcrMode === 'mistral') {
-      return await mistralCircuitBreaker.execute(() => 
-        retry(() => performMistralOCR(filePath), {
-          maxAttempts: 3,
-          initialDelay: 1000,
-          maxDelay: 10000,
-          onRetry: (error, attempt, delay) => {
-            logger.warn({ error: error.message, attempt, delay }, 'Mistral OCR retry');
-          },
-        })
-      );
-    } else if (effectiveOcrMode === 'gpt4') {
-      return await openaiCircuitBreaker.execute(() => 
-        retryOpenAI(() => performGPT4OCR(filePath))
-      );
-    } else {
-      logger.warn({ ocrMode: effectiveOcrMode }, 'Unknown OCR mode, using text extraction');
-      return await extractTextFallback(filePath);
+  // Check cache first
+  if (fileSize) {
+    const cacheKey = generateOCRCacheKey(filePath, fileSize);
+    const cached = ocrCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp) < OCR_CACHE_TTL) {
+      logger.info({ cacheKey }, 'Using cached OCR result');
+      return cached.text;
     }
-  } catch (error) {
-    if (error instanceof CircuitBreakerError) {
-      logger.error({ state: error.state }, 'Circuit breaker prevented OCR call');
-    } else {
-      logger.error({ error }, 'OCR extraction failed completely');
+  }
+  
+  // Build fallback chain starting from preferred mode
+  const preferredIndex = OCR_FALLBACK_CHAIN.indexOf(ocrMode as OCRMode);
+  const fallbackOrder = preferredIndex >= 0 
+    ? [...OCR_FALLBACK_CHAIN.slice(preferredIndex), ...OCR_FALLBACK_CHAIN.slice(0, preferredIndex)]
+    : OCR_FALLBACK_CHAIN;
+  
+  let lastError: Error | null = null;
+  
+  for (const mode of fallbackOrder) {
+    // Check circuit breaker state before attempting
+    if (mode === 'mistral' && mistralCircuitBreaker.getState() === CircuitState.OPEN) {
+      logger.warn('Mistral circuit breaker is open, skipping');
+      continue;
+    }
+    if (mode === 'gpt4' && openaiCircuitBreaker.getState() === CircuitState.OPEN) {
+      logger.warn('OpenAI circuit breaker is open, skipping');
+      continue;
     }
     
-    // Final fallback: basic text extraction
-    logger.warn('All OCR methods failed, using fallback extraction');
-    return await extractTextFallback(filePath);
+    try {
+      let result: string;
+      
+      if (mode === 'mistral') {
+        result = await mistralCircuitBreaker.execute(() => 
+          retry(() => performMistralOCR(filePath), {
+            maxAttempts: 3,
+            initialDelay: 1000,
+            maxDelay: 10000,
+            onRetry: (error, attempt, delay) => {
+              logger.warn({ error: error.message, attempt, delay }, 'Mistral OCR retry');
+            },
+          })
+        );
+      } else if (mode === 'gpt4') {
+        result = await openaiCircuitBreaker.execute(() => 
+          retryOpenAI(() => performGPT4OCR(filePath))
+        );
+      } else {
+        // tesseract/fallback
+        result = await extractTextFallback(filePath);
+      }
+      
+      // Cache successful result
+      if (fileSize && result && result.length > 100) {
+        const cacheKey = generateOCRCacheKey(filePath, fileSize);
+        ocrCache.set(cacheKey, { text: result, timestamp: Date.now() });
+        logger.info({ cacheKey, textLength: result.length }, 'Cached OCR result');
+      }
+      
+      logger.info({ mode, textLength: result.length }, 'OCR extraction succeeded');
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (error instanceof CircuitBreakerError) {
+        logger.warn({ mode, state: error.state }, 'Circuit breaker prevented OCR call, trying next');
+      } else {
+        logger.warn({ mode, error: lastError.message }, 'OCR mode failed, trying next');
+      }
+    }
   }
+  
+  // All modes exhausted - use basic extraction as last resort
+  logger.error({ lastError: lastError?.message }, 'All OCR modes exhausted, using basic extraction');
+  return await extractTextFallback(filePath);
 }
 
 /**
@@ -412,7 +464,7 @@ export async function processOCRArtifactJob(
 
     await job.updateProgress(60);
 
-    // 4. Generate artifacts using AI
+    // 4. Generate artifacts using AI with partial success tracking
     jobLogger.info('Generating AI artifacts');
     
     const artifactTypes = [
@@ -423,6 +475,9 @@ export async function processOCRArtifactJob(
       'COMPLIANCE',
     ];
 
+    const failedArtifacts: string[] = [];
+    const successfulArtifacts: string[] = [];
+
     // Generate all artifacts in parallel with retry logic
     const artifactPromises = artifactTypes.map(async (artifactType) => {
       const maxRetries = 2;
@@ -431,6 +486,7 @@ export async function processOCRArtifactJob(
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           const artifactData = await generateArtifactWithAI(artifactType, extractedText, contract);
+          successfulArtifacts.push(artifactType);
           return {
             contractId,
             tenantId,
@@ -450,13 +506,22 @@ export async function processOCRArtifactJob(
         }
       }
       
-      // Generate fallback artifact
+      // Track failed artifact for partial success reporting
+      failedArtifacts.push(artifactType);
+      
+      // Generate fallback artifact with retry metadata
       jobLogger.error({ error: lastError, artifactType }, `All attempts failed, creating fallback artifact`);
       return {
         contractId,
         tenantId,
         type: artifactType,
-        data: { error: 'Failed to generate', type: artifactType, fallback: true },
+        data: { 
+          error: 'Failed to generate', 
+          type: artifactType, 
+          fallback: true,
+          retryable: true,
+          lastError: lastError?.message,
+        },
         validationStatus: 'error',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -471,7 +536,17 @@ export async function processOCRArtifactJob(
       skipDuplicates: true,
     });
 
-    jobLogger.info({ artifactsCreated: artifacts.count }, 'All artifacts created in batch');
+    // Determine final status based on success rate
+    const hasPartialSuccess = failedArtifacts.length > 0 && successfulArtifacts.length > 0;
+    const hasCompleteFailure = successfulArtifacts.length === 0;
+    const finalStatus = hasCompleteFailure ? 'FAILED' : (hasPartialSuccess ? 'PARTIAL' : 'COMPLETED');
+
+    jobLogger.info({ 
+      artifactsCreated: artifacts.count,
+      successfulArtifacts,
+      failedArtifacts,
+      finalStatus,
+    }, 'Artifact generation completed');
 
     await job.updateProgress(90);
 
@@ -480,7 +555,7 @@ export async function processOCRArtifactJob(
       prisma.contract.updateMany({
         where: { id: contractId, tenantId },
         data: {
-          status: 'COMPLETED',
+          status: finalStatus === 'PARTIAL' ? 'COMPLETED' : finalStatus, // Treat partial as completed for now
           updatedAt: new Date(),
         },
       }),
@@ -492,9 +567,9 @@ export async function processOCRArtifactJob(
           return prisma.processingJob.updateMany({
             where: { id: processingJob.id, tenantId },
             data: {
-              status: 'COMPLETED',
+              status: finalStatus === 'PARTIAL' ? 'COMPLETED' : finalStatus,
               progress: 100,
-              currentStep: 'completed',
+              currentStep: failedArtifacts.length > 0 ? `completed with ${failedArtifacts.length} failed artifacts` : 'completed',
             },
           });
         }
@@ -516,13 +591,17 @@ export async function processOCRArtifactJob(
 
     jobLogger.info({ 
       artifactsCreated: artifacts.count,
-      textLength: extractedText.length 
+      textLength: extractedText.length,
+      partialSuccess: hasPartialSuccess,
+      failedArtifacts,
     }, 'OCR + artifact processing completed');
 
     return {
-      success: true,
+      success: !hasCompleteFailure,
       artifactsCreated: artifacts.count,
       extractedText: extractedText.substring(0, 500), // First 500 chars for logging
+      partialSuccess: hasPartialSuccess,
+      failedArtifacts: failedArtifacts.length > 0 ? failedArtifacts : undefined,
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

@@ -13,7 +13,7 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
+import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -432,12 +432,26 @@ export async function POST(
       // Initialize queue service if not already done
       await import("@/lib/queue-init");
       
+      // Determine priority from form data or default to NORMAL
+      const priorityParam = formData.get("priority") as string | null;
+      let priority = PROCESSING_PRIORITY.NORMAL;
+      
+      if (priorityParam === 'urgent' || priorityParam === 'high') {
+        priority = PROCESSING_PRIORITY.HIGH;
+      } else if (priorityParam === 'low' || priorityParam === 'bulk') {
+        priority = PROCESSING_PRIORITY.LOW;
+      } else if (priorityParam === 'background') {
+        priority = PROCESSING_PRIORITY.BACKGROUND;
+      }
+      
       const artifactResult = await triggerArtifactGeneration({
         contractId: contract.id,
         tenantId: contract.tenantId,
         filePath,
         mimeType: file.type,
         useQueue: true, // Use queue system
+        priority,
+        source: 'upload',
       });
       
       console.log("🎉 Artifact generation queued:", artifactResult);
