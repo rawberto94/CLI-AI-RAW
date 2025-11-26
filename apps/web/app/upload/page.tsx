@@ -41,6 +41,30 @@ interface UploadFile {
   error?: string
   processingStage?: string
   showArtifacts?: boolean
+  estimatedTime?: number // in seconds
+  startTime?: number
+}
+
+// Estimated processing times by OCR mode (seconds per MB)
+const PROCESSING_TIME_ESTIMATES = {
+  gpt4: { baseTime: 15, perMbTime: 8 },      // Highest quality, slower
+  mistral: { baseTime: 10, perMbTime: 5 },   // Fast, good quality
+  tesseract: { baseTime: 5, perMbTime: 3 },  // Fastest, basic
+};
+
+// Estimate processing time based on file size and OCR mode
+function estimateProcessingTime(file: File, ocrMode: 'gpt4' | 'mistral' | 'tesseract'): number {
+  const fileSizeMb = file.size / (1024 * 1024);
+  const estimate = PROCESSING_TIME_ESTIMATES[ocrMode];
+  return Math.ceil(estimate.baseTime + (fileSizeMb * estimate.perMbTime));
+}
+
+// Format seconds to human readable
+function formatTime(seconds: number): string {
+  if (seconds < 60) return `~${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return secs > 0 ? `~${mins}m ${secs}s` : `~${mins}m`;
 }
 
 export default function UploadPage() {
@@ -55,10 +79,11 @@ export default function UploadPage() {
       id: Math.random().toString(36).substr(2, 9),
       file,
       status: 'pending',
-      progress: 0
+      progress: 0,
+      estimatedTime: estimateProcessingTime(file, ocrMode),
     }))
     setFiles(prev => [...prev, ...newFiles])
-  }, [])
+  }, [ocrMode])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -79,10 +104,11 @@ export default function UploadPage() {
     formData.append('ocrMode', ocrMode)
 
     try {
-      // Update to uploading
+      // Update to uploading with start time
+      const startTime = Date.now();
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...' }
+          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...', startTime }
           : f
       ))
 
@@ -148,10 +174,19 @@ export default function UploadPage() {
     setIsUploading(true)
     const pendingFiles = files.filter(f => f.status === 'pending')
     
-    // Upload files sequentially (or in parallel batches)
-    for (const file of pendingFiles) {
-      await uploadFile(file)
-    }
+    // Parallel upload with concurrency limit
+    const CONCURRENCY_LIMIT = 3;
+    const uploadWithLimit = async (files: UploadFile[]) => {
+      const results = [];
+      for (let i = 0; i < files.length; i += CONCURRENCY_LIMIT) {
+        const batch = files.slice(i, i + CONCURRENCY_LIMIT);
+        const batchResults = await Promise.allSettled(batch.map(file => uploadFile(file)));
+        results.push(...batchResults);
+      }
+      return results;
+    };
+    
+    await uploadWithLimit(pendingFiles);
     
     setIsUploading(false)
   }
@@ -316,7 +351,10 @@ export default function UploadPage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-600">Highest accuracy, best for complex documents</p>
-                    <Badge className="mt-2 bg-green-100 text-green-700 text-xs">Recommended</Badge>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className="bg-green-100 text-green-700 text-xs">Recommended</Badge>
+                      <Badge variant="outline" className="text-xs">~15s base + 8s/MB</Badge>
+                    </div>
                   </button>
 
                   <button
@@ -338,7 +376,10 @@ export default function UploadPage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-600">Fast processing, specialized OCR model</p>
-                    <Badge className="mt-2 bg-purple-100 text-purple-700 text-xs">New</Badge>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className="bg-purple-100 text-purple-700 text-xs">Fast</Badge>
+                      <Badge variant="outline" className="text-xs">~10s base + 5s/MB</Badge>
+                    </div>
                   </button>
 
                   <button
@@ -360,7 +401,10 @@ export default function UploadPage() {
                       )}
                     </div>
                     <p className="text-xs text-gray-600">Free open-source, good for simple text</p>
-                    <Badge className="mt-2 bg-orange-100 text-orange-700 text-xs">Free</Badge>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className="bg-orange-100 text-orange-700 text-xs">Free</Badge>
+                      <Badge variant="outline" className="text-xs">~5s base + 3s/MB</Badge>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -561,19 +605,35 @@ export default function UploadPage() {
                         <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
                           <FileText className="h-6 w-6 text-white" />
                         </div>
-                        <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-900 text-lg truncate">
                             {uploadFile.file.name}
                           </p>
-                          <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-3 mt-1 flex-wrap">
                             <p className="text-sm text-gray-500">
                               {(uploadFile.file.size / 1024 / 1024).toFixed(2)} MB
                             </p>
+                            {uploadFile.status === 'pending' && uploadFile.estimatedTime && (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <p className="text-sm text-blue-600 font-medium">
+                                  Est. {formatTime(uploadFile.estimatedTime)}
+                                </p>
+                              </>
+                            )}
                             {uploadFile.processingStage && (
                               <>
                                 <span className="text-gray-300">•</span>
                                 <p className="text-sm text-gray-600">
                                   {uploadFile.processingStage}
+                                </p>
+                              </>
+                            )}
+                            {uploadFile.startTime && (uploadFile.status === 'uploading' || uploadFile.status === 'processing') && (
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <p className="text-sm text-purple-600">
+                                  {Math.round((Date.now() - uploadFile.startTime) / 1000)}s elapsed
                                 </p>
                               </>
                             )}

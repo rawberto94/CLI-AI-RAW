@@ -12,8 +12,51 @@ import { Readable } from 'stream';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { 
+  CircuitBreaker, 
+  CircuitState, 
+  CircuitBreakerError 
+} from '../../utils/src/patterns/circuit-breaker';
+import { retry, retryOpenAI, retryStorage } from '../../utils/src/patterns/retry';
 
 const logger = pino({ name: 'ocr-artifact-worker' });
+
+// Circuit breakers for external services
+const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
+  failureThreshold: 5,
+  successThreshold: 3,
+  resetTimeout: 60000, // 1 minute
+  requestTimeout: 120000, // 2 minutes for OCR
+  onStateChange: (from, to, metrics) => {
+    logger.warn({ from, to, metrics }, 'Mistral circuit breaker state changed');
+  },
+  onFailure: (error, metrics) => {
+    logger.error({ error: error.message, metrics }, 'Mistral circuit breaker failure');
+  },
+});
+
+const openaiCircuitBreaker = new CircuitBreaker('openai-ocr', {
+  failureThreshold: 5,
+  successThreshold: 3,
+  resetTimeout: 60000,
+  requestTimeout: 120000,
+  onStateChange: (from, to, metrics) => {
+    logger.warn({ from, to, metrics }, 'OpenAI circuit breaker state changed');
+  },
+  onFailure: (error, metrics) => {
+    logger.error({ error: error.message, metrics }, 'OpenAI circuit breaker failure');
+  },
+});
+
+const storageCircuitBreaker = new CircuitBreaker('storage', {
+  failureThreshold: 3,
+  successThreshold: 2,
+  resetTimeout: 10000,
+  requestTimeout: 30000,
+  onStateChange: (from, to, metrics) => {
+    logger.warn({ from, to, metrics }, 'Storage circuit breaker state changed');
+  },
+});
 const prisma = getClient();
 
 // Simple in-memory cache for artifacts (production would use Redis)
@@ -64,37 +107,55 @@ interface OCRArtifactResult {
 }
 
 /**
- * Perform OCR extraction on a file
+ * Perform OCR extraction on a file with circuit breaker protection
  */
 async function performOCR(filePath: string, ocrMode: string): Promise<string> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
-  const maxRetries = 3;
-  let lastError: Error | null = null;
+  // Check circuit breaker states and potentially switch providers
+  let effectiveOcrMode = ocrMode;
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      if (ocrMode === 'mistral') {
-        return await performMistralOCR(filePath);
-      } else if (ocrMode === 'gpt4') {
-        return await performGPT4OCR(filePath);
-      } else {
-        logger.warn({ ocrMode }, 'Unknown OCR mode, using text extraction');
-        return await extractTextFallback(filePath);
-      }
-    } catch (error) {
-      lastError = error as Error;
-      logger.warn({ attempt, error, filePath }, `OCR attempt ${attempt} failed`);
-      
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
-      }
-    }
+  if (ocrMode === 'mistral' && mistralCircuitBreaker.getState() === CircuitState.OPEN) {
+    logger.warn('Mistral circuit breaker is open, falling back to GPT-4');
+    effectiveOcrMode = 'gpt4';
   }
   
-  // Final fallback: basic text extraction
-  logger.error({ error: lastError }, 'All OCR attempts failed, using fallback');
-  return await extractTextFallback(filePath);
+  if (effectiveOcrMode === 'gpt4' && openaiCircuitBreaker.getState() === CircuitState.OPEN) {
+    logger.warn('OpenAI circuit breaker is open, using text extraction fallback');
+    return await extractTextFallback(filePath);
+  }
+
+  try {
+    if (effectiveOcrMode === 'mistral') {
+      return await mistralCircuitBreaker.execute(() => 
+        retry(() => performMistralOCR(filePath), {
+          maxAttempts: 3,
+          initialDelay: 1000,
+          maxDelay: 10000,
+          onRetry: (error, attempt, delay) => {
+            logger.warn({ error: error.message, attempt, delay }, 'Mistral OCR retry');
+          },
+        })
+      );
+    } else if (effectiveOcrMode === 'gpt4') {
+      return await openaiCircuitBreaker.execute(() => 
+        retryOpenAI(() => performGPT4OCR(filePath))
+      );
+    } else {
+      logger.warn({ ocrMode: effectiveOcrMode }, 'Unknown OCR mode, using text extraction');
+      return await extractTextFallback(filePath);
+    }
+  } catch (error) {
+    if (error instanceof CircuitBreakerError) {
+      logger.error({ state: error.state }, 'Circuit breaker prevented OCR call');
+    } else {
+      logger.error({ error }, 'OCR extraction failed completely');
+    }
+    
+    // Final fallback: basic text extraction
+    logger.warn('All OCR methods failed, using fallback extraction');
+    return await extractTextFallback(filePath);
+  }
 }
 
 /**
@@ -306,28 +367,35 @@ export async function processOCRArtifactJob(
     if (contract.storageProvider === 's3') {
       jobLogger.info({ storagePath: contract.storagePath }, 'Downloading from S3/MinIO');
       
-      const getObjectCommand = new GetObjectCommand({
-        Bucket: process.env.MINIO_BUCKET || 'contracts',
-        Key: contract.storagePath,
-      });
+      // Use circuit breaker and retry for storage operations
+      const fileBuffer = await storageCircuitBreaker.execute(() => 
+        retryStorage(async () => {
+          const getObjectCommand = new GetObjectCommand({
+            Bucket: process.env.MINIO_BUCKET || 'contracts',
+            Key: contract.storagePath,
+          });
 
-      const response = await s3Client.send(getObjectCommand);
+          const response = await s3Client.send(getObjectCommand);
+          
+          // Read stream to buffer
+          const stream = response.Body as Readable;
+          const chunks: Buffer[] = [];
+          
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk));
+          }
+          
+          return Buffer.concat(chunks);
+        })
+      );
       
       // Create temp file
       const tempDir = os.tmpdir();
       const fileName = path.basename(contract.storagePath);
       localFilePath = path.join(tempDir, `${contractId}-${fileName}`);
       
-      // Write stream to file
-      const stream = response.Body as Readable;
-      const chunks: Buffer[] = [];
-      
-      for await (const chunk of stream) {
-        chunks.push(Buffer.from(chunk));
-      }
-      
-      await fs.writeFile(localFilePath, Buffer.concat(chunks));
-      jobLogger.info({ localFilePath, size: Buffer.concat(chunks).length }, 'File downloaded');
+      await fs.writeFile(localFilePath, fileBuffer);
+      jobLogger.info({ localFilePath, size: fileBuffer.length }, 'File downloaded');
     } else {
       // Local file system
       localFilePath = contract.storagePath;
@@ -616,4 +684,25 @@ if (require.main === module) {
     logger.info('SIGINT received, shutting down gracefully...');
     process.exit(0);
   });
+}
+
+/**
+ * Get circuit breaker metrics for health monitoring
+ */
+export function getCircuitBreakerMetrics() {
+  return {
+    mistral: mistralCircuitBreaker.getMetrics(),
+    openai: openaiCircuitBreaker.getMetrics(),
+    storage: storageCircuitBreaker.getMetrics(),
+  };
+}
+
+/**
+ * Reset circuit breakers (for testing or manual intervention)
+ */
+export function resetCircuitBreakers() {
+  mistralCircuitBreaker.reset();
+  openaiCircuitBreaker.reset();
+  storageCircuitBreaker.reset();
+  logger.info('All circuit breakers reset');
 }

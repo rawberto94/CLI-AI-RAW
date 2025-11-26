@@ -52,16 +52,40 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
   const stream = new ReadableStream({
     async start(controller) {
-      // Send initial connection message
-      controller.enqueue(
-        encoder.encode(`data: ${JSON.stringify({
-          type: 'connected',
-          contractId,
-          timestamp: new Date().toISOString()
-        })}\n\n`)
-      );
+      // Send initial connection message with event ID for resume support
+      let eventId = 0;
+      const sendEvent = (data: object) => {
+        eventId++;
+        controller.enqueue(
+          encoder.encode(`id: ${eventId}\ndata: ${JSON.stringify(data)}\n\n`)
+        );
+      };
+      
+      sendEvent({
+        type: 'connected',
+        contractId,
+        timestamp: new Date().toISOString()
+      });
       
       console.log('[SSE] Stream started for contract:', contractId);
+      
+      // Heartbeat interval to keep connection alive (every 15 seconds)
+      const heartbeatInterval = setInterval(() => {
+        if (!isClosed) {
+          try {
+            sendEvent({
+              type: 'heartbeat',
+              contractId,
+              timestamp: new Date().toISOString()
+            });
+          } catch (e) {
+            // Connection closed
+            clearInterval(heartbeatInterval);
+          }
+        } else {
+          clearInterval(heartbeatInterval);
+        }
+      }, 15000);
       
       // Poll for artifact updates every 1 second (optimized)
       let updateCount = 0;
@@ -278,6 +302,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       // Cleanup on close
       request.signal.addEventListener('abort', () => {
         clearInterval(pollInterval);
+        clearInterval(heartbeatInterval);
         isClosed = true;
         try {
           controller.close();
@@ -289,6 +314,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
     cancel() {
       clearInterval(pollInterval);
+      clearInterval(heartbeatInterval);
       isClosed = true;
     }
   });

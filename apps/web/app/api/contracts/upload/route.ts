@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 
@@ -69,12 +70,26 @@ interface UploadResponse {
   message?: string;
   error?: string;
   details?: string;
+  code?: string;
+  retryable?: boolean;
+  isDuplicate?: boolean;
 }
 
 interface FileValidationResult {
   valid: boolean;
   error?: string;
   details?: string;
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Generate content hash for deduplication
+ */
+function generateContentHash(buffer: Buffer): string {
+  return createHash('sha256').update(buffer).digest('hex');
 }
 
 // ============================================================================
@@ -219,6 +234,37 @@ export async function POST(
     
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    
+    // Generate content hash for deduplication (uses checksum field)
+    const contentHash = generateContentHash(buffer);
+    console.log("🔍 Content hash:", contentHash.substring(0, 16) + "...");
+    
+    // Check for duplicate file (same content already uploaded by this tenant)
+    const existingContract = await prisma.contract.findFirst({
+      where: {
+        tenantId,
+        checksum: contentHash,
+        status: { notIn: ['FAILED'] }
+      },
+      select: { id: true, status: true, fileName: true, createdAt: true }
+    });
+    
+    if (existingContract) {
+      console.log("⚠️ Duplicate file detected:", existingContract.id);
+      return NextResponse.json(
+        {
+          success: true,
+          contractId: existingContract.id,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          status: existingContract.status,
+          message: "This file was already uploaded. Returning existing contract.",
+          isDuplicate: true,
+        },
+        { status: 200 }
+      );
+    }
 
     let filePath = objectKey;
     let storageProvider = "s3";
@@ -303,13 +349,13 @@ export async function POST(
             description: metadata.description || undefined,
             category: metadata.category || undefined,
             uploadedAt: new Date(),
+            checksum: contentHash, // Add checksum for deduplication
           },
           idempotencyKey,
         });
       } catch (error) {
         console.error("❌ Transaction service import failed, using direct creation:", error);
         
-        // Fallback to direct creation
         // Fallback to direct creation
         const contract = await prisma.contract.create({
           data: {
@@ -329,6 +375,7 @@ export async function POST(
             description: metadata.description || undefined,
             category: metadata.category || undefined,
             uploadedAt: new Date(),
+            checksum: contentHash, // Add checksum for deduplication
           },
         });
 
@@ -432,17 +479,44 @@ export async function POST(
     );
   } catch (error) {
     console.error("❌ Upload error:", error);
+    
+    // Determine error type and retryability
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    let code = "UPLOAD_ERROR";
+    let retryable = true;
+    let statusCode = 500;
+    
+    if (errorMessage.includes("rate limit") || errorMessage.includes("too many")) {
+      code = "RATE_LIMITED";
+      retryable = true;
+      statusCode = 429;
+    } else if (errorMessage.includes("quota") || errorMessage.includes("storage")) {
+      code = "QUOTA_EXCEEDED";
+      retryable = false;
+      statusCode = 507;
+    } else if (errorMessage.includes("validation") || errorMessage.includes("invalid")) {
+      code = "VALIDATION_ERROR";
+      retryable = false;
+      statusCode = 400;
+    } else if (errorMessage.includes("connection") || errorMessage.includes("timeout")) {
+      code = "CONNECTION_ERROR";
+      retryable = true;
+      statusCode = 503;
+    }
+    
     return NextResponse.json(
       {
         success: false,
         error: "Upload failed",
-        details:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        code,
+        details: errorMessage,
+        retryable,
       },
       {
-        status: 500,
+        status: statusCode,
         headers: {
           "Access-Control-Allow-Origin": "*",
+          ...(code === "RATE_LIMITED" ? { "Retry-After": "60" } : {}),
         },
       }
     );

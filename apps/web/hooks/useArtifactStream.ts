@@ -12,7 +12,7 @@ export interface ArtifactUpdate {
 }
 
 export interface StreamMessage {
-  type: 'connected' | 'update' | 'complete' | 'error';
+  type: 'connected' | 'update' | 'complete' | 'error' | 'heartbeat';
   contractId?: string;
   contractStatus?: string;
   processingStage?: string;
@@ -22,6 +22,7 @@ export interface StreamMessage {
   status?: string;
   artifactCount?: number;
   error?: string;
+  recoverable?: boolean;
 }
 
 export interface UseArtifactStreamOptions {
@@ -96,6 +97,12 @@ export function useArtifactStream({
         switch (data.type) {
           case 'connected':
             console.log('[SSE] Stream connected:', data.contractId);
+            break;
+            
+          case 'heartbeat':
+            // Heartbeat received - connection is alive
+            // Reset reconnection attempts on successful heartbeat
+            reconnectAttemptsRef.current = 0;
             break;
 
           case 'update':
