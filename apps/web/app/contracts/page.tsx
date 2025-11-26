@@ -6,10 +6,12 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { NoContracts, NoResults } from "@/components/ui/empty-states";
 import {
   FileText,
   Search,
@@ -24,6 +26,8 @@ import {
   Shield,
   RefreshCw,
   Filter,
+  TrendingUp,
+  ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -148,10 +152,16 @@ export default function ContractsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-96">
-            <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          <div className="flex flex-col items-center justify-center h-96 gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            >
+              <Loader2 className="h-12 w-12 text-blue-600" />
+            </motion.div>
+            <p className="text-gray-600 animate-pulse">Loading contracts...</p>
           </div>
         </div>
       </div>
@@ -159,164 +169,212 @@ export default function ContractsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div 
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Contracts</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Contracts
+            </h1>
             <p className="text-gray-600 mt-1">
               Manage and view all your contracts
             </p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={fetchContracts}>
+            <Button 
+              variant="outline" 
+              onClick={fetchContracts}
+              className="hover:bg-blue-50 transition-colors"
+            >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button asChild>
+            <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
               <Link href="/upload">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Contract
               </Link>
             </Button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6" data-testid="contracts-stats">
-          <Card data-testid="stat-total">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-4 gap-6" 
+          data-testid="contracts-stats"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <Card data-testid="stat-total" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Contracts</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-3xl font-bold text-gray-900">
                     {Array.isArray(contracts) ? contracts.length : 0}
                   </p>
                 </div>
-                <FileText className="h-10 w-10 text-blue-600" />
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card data-testid="stat-active">
+          <Card data-testid="stat-active" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Active</p>
-                  <p className="text-2xl font-bold text-green-600">
+                  <p className="text-3xl font-bold text-green-600">
                     {Array.isArray(contracts) ? contracts.filter((c) => c.status === "completed").length : 0}
                   </p>
                 </div>
-                <CheckCircle className="h-10 w-10 text-green-600" />
+                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                  <CheckCircle className="h-6 w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card data-testid="stat-processing">
+          <Card data-testid="stat-processing" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Processing</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className="text-3xl font-bold text-blue-600">
                     {Array.isArray(contracts) ? contracts.filter((c) => c.status === "processing").length : 0}
                   </p>
                 </div>
-                <Loader2 className="h-10 w-10 text-blue-600" />
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                </div>
               </div>
             </CardContent>
           </Card>
-          <Card data-testid="stat-value">
+          <Card data-testid="stat-value" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Value</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-3xl font-bold text-gray-900">
                     {formatCurrency(
                       Array.isArray(contracts) ? contracts.reduce((sum, c) => sum + (c.value || 0), 0) : 0
                     )}
                   </p>
                 </div>
-                <DollarSign className="h-10 w-10 text-green-600" />
+                <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
+                  <DollarSign className="h-6 w-6 text-white" />
+                </div>
               </div>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Search and Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search contracts by title, client, or supplier..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  data-testid="contract-search"
-                />
-              </div>
-              <div className="flex gap-2" data-testid="status-filters">
-                <Button
-                  variant={statusFilter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("all")}
-                  data-testid="filter-all"
-                >
-                  All
-                </Button>
-                <Button
-                  variant={statusFilter === "completed" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("completed")}
-                  data-testid="filter-active"
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={statusFilter === "processing" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("processing")}
-                  data-testid="filter-processing"
-                >
-                  Processing
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Contracts List */}
-        {filteredContracts.length === 0 ? (
-          <Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
             <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  No contracts found
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  {searchQuery || statusFilter !== "all"
-                    ? "Try adjusting your filters"
-                    : "Upload your first contract to get started"}
-                </p>
-                <Button asChild>
-                  <Link href="/upload">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Contract
-                  </Link>
-                </Button>
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search contracts by title, client, or supplier..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
+                    data-testid="contract-search"
+                  />
+                </div>
+                <div className="flex gap-2" data-testid="status-filters">
+                  <Button
+                    variant={statusFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("all")}
+                    data-testid="filter-all"
+                    className={statusFilter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={statusFilter === "completed" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("completed")}
+                    data-testid="filter-active"
+                    className={statusFilter === "completed" ? "bg-green-600 hover:bg-green-700" : ""}
+                  >
+                    Active
+                  </Button>
+                  <Button
+                    variant={statusFilter === "processing" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("processing")}
+                    data-testid="filter-processing"
+                    className={statusFilter === "processing" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    Processing
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-4" data-testid="contracts-list">
-            {filteredContracts.map((contract) => (
-              <Card
-                key={contract.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => router.push(`/contracts/${contract.id}`)}
-                data-testid="contract-card"
-              >
+        </motion.div>
+
+        {/* Contracts List */}
+        <AnimatePresence mode="wait">
+          {filteredContracts.length === 0 ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardContent className="pt-6">
+                  {(searchQuery || statusFilter !== "all") ? (
+                    <NoResults onClearFilters={() => {
+                      setSearchQuery("");
+                      setStatusFilter("all");
+                    }} />
+                  ) : (
+                    <NoContracts />
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="list"
+              className="space-y-4" 
+              data-testid="contracts-list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              {filteredContracts.map((contract, index) => (
+                <motion.div
+                  key={contract.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  whileHover={{ scale: 1.01, y: -2 }}
+                  className="transform-gpu"
+                >
+                  <Card
+                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer bg-white/80 backdrop-blur-sm group"
+                    onClick={() => router.push(`/contracts/${contract.id}`)}
+                    data-testid="contract-card"
+                  >
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -410,19 +468,22 @@ export default function ContractsPage() {
                     <Link href={`/contracts/${contract.id}`}>
                       <Button
                         size="sm"
-                        className="ml-4"
+                        className="ml-4 bg-blue-600 hover:bg-blue-700 shadow-md group-hover:shadow-lg transition-all"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View
+                        <ArrowUpRight className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Button>
                     </Link>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )}
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

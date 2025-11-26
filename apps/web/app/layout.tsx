@@ -10,6 +10,7 @@ import { DataModeBanner } from "@/components/ui/data-mode-banner";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { RealTimeProvider } from "@/contexts/RealTimeContext";
+import { QuickActionsFAB } from "@/components/ui/quick-actions-fab";
 
 export const metadata = {
   title: "Contract Intelligence Platform",
@@ -39,6 +40,8 @@ export default function RootLayout({
                   </div> */}
                   {children}
                 </div>
+                {/* Quick Actions FAB - Global keyboard shortcut access */}
+                <QuickActionsFAB />
                 {/* AI Chat Assistant - Available everywhere */}
                 {/* <ChatAssistant /> */}
                 {/* Enhanced AI Chatbot - Context-aware assistance */}
