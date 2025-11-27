@@ -13,7 +13,7 @@ const getMockExecutions = () => [
     currentStep: 'Legal Review',
     initiatedBy: 'Sarah Chen',
     steps: [
-      { id: '1', name: 'Manager Review', assignedTo: 'John Doe', status: 'completed', completedAt: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(), order: 1 },
+      { id: '1', name: 'Manager Review', assignedTo: 'Roberto Ostojic', status: 'completed', completedAt: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(), order: 1 },
       { id: '2', name: 'Legal Review', assignedTo: 'Legal Team', status: 'in_progress', order: 2 },
       { id: '3', name: 'Finance Approval', assignedTo: 'Finance Team', status: 'pending', order: 3 }
     ]

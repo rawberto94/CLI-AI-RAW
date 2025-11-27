@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NegotiationScenario } from './rate-history-types'
 
 export interface ScenarioConfig {
@@ -135,7 +134,7 @@ export class ScenarioModeler {
     }
     
     // Check for extreme scenarios
-    const maxSavingsPercent = Math.max(...scenarios.map(s => s.savingsPercentage))
+    const maxSavingsPercent = Math.max(...scenarios.map(s => s.savingsPercentage ?? 0))
     if (maxSavingsPercent > 30) {
       factors.push('Some scenarios require aggressive rate reductions')
     }
@@ -169,7 +168,7 @@ export class ScenarioModeler {
     const riskFactors: string[] = []
     const opportunities: string[] = []
     
-    const reductionPercent = scenario.savingsPercentage
+    const reductionPercent = scenario.savingsPercentage ?? 0
     
     // Analyze savings
     if (scenario.savings > 0) {
@@ -328,11 +327,14 @@ export class ScenarioModeler {
     newSavings: number
     newAnnualCost: number
   }> {
+    const baseVolume = baseScenario.annualVolume ?? 220
+    const baseAnnualCost = baseScenario.annualCost ?? (baseScenario.targetRate * baseVolume)
+    
     return volumeChanges.map(change => {
       const multiplier = 1 + (change / 100)
-      const newVolume = Math.round(baseScenario.annualVolume * multiplier)
+      const newVolume = Math.round(baseVolume * multiplier)
       const newAnnualCost = baseScenario.targetRate * newVolume
-      const currentAnnualCost = (baseScenario.annualCost + baseScenario.savings) / baseScenario.annualVolume * newVolume
+      const currentAnnualCost = (baseAnnualCost + baseScenario.savings) / baseVolume * newVolume
       const newSavings = Math.round(currentAnnualCost - newAnnualCost)
       
       return {

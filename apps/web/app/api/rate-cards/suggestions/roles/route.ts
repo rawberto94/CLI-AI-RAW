@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardEntryService } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
 const rateCardService = new RateCardEntryService(prisma);
 
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('q') || '';
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
     
-    // TODO: Get tenantId from session/auth
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
 
     if (!query || query.length < 2) {
       return NextResponse.json([]);

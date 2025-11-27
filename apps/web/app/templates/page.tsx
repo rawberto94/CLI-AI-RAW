@@ -75,7 +75,7 @@ export default function TemplatesPage() {
           language: 'en-US',
           variables: 15,
           clauses: 25,
-          createdBy: 'John Doe',
+          createdBy: 'Roberto Ostojic',
           createdAt: '2024-02-10',
           lastModified: '2024-12-18',
           status: 'active',

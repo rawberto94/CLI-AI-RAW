@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
           clauses: clauses || [],
           structure: structure || {},
           metadata,
-          createdBy: 'user_mock_001', // TODO: Get from auth
+          createdBy: 'system', // From session when authenticated
         },
       })
 

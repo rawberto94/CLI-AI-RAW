@@ -1,4 +1,3 @@
-// @ts-nocheck - Mistral SDK types don't expose all properties
 /**
  * Mistral OCR Client
  * 
@@ -17,12 +16,26 @@ import { promisify } from 'util';
 
 const readFile = promisify(fs.readFile);
 
+// Extend Mistral SDK types for OCR
+interface MistralOcrPage {
+  index: number;
+  markdown: string;
+  images?: unknown[];
+}
+
+interface MistralOcrResponse {
+  pages: MistralOcrPage[];
+  usage?: {
+    pagesProcessed: number;
+  };
+}
+
 export interface MistralOcrResult {
   markdown: string;
   pages: {
     index: number;
     markdown: string;
-    images: any[];
+    images: unknown[];
   }[];
   usage: {
     pagesProcessed: number;
@@ -85,12 +98,12 @@ export async function analyzeDocumentWithMistral(
       document: {
         type: 'file',
         fileId: fileId,
-      } as any,
+      },
       includeImageBase64: false
-    });
+    }) as unknown as MistralOcrResponse;
 
     // 3. Format response
-    const pages = ocrResponse.pages.map((page: any) => ({
+    const pages = ocrResponse.pages.map((page: MistralOcrPage) => ({
       index: page.index,
       markdown: page.markdown,
       images: page.images || []

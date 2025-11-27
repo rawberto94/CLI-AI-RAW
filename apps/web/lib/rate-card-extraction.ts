@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Rate Card Extraction from Contracts
  * Extracts rate cards using AI and saves them to the database
@@ -9,6 +8,15 @@ import { prisma } from '@/lib/prisma';
 
 const openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] || '' });
 
+/** Additional rate information from extraction */
+export interface RateAdditionalInfo {
+  originalRate?: number;
+  originalPeriod?: string;
+  minimumHours?: number;
+  volumeDiscount?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
 interface ExtractedRate {
   role: string;
   seniority: 'JUNIOR' | 'MID' | 'SENIOR' | 'PRINCIPAL' | 'PARTNER';
@@ -17,7 +25,7 @@ interface ExtractedRate {
   location?: string;
   lineOfService?: string;
   skills?: string[];
-  additionalInfo?: any;
+  additionalInfo?: RateAdditionalInfo;
   confidence: number;
 }
 

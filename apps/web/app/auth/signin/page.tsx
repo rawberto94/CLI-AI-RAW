@@ -100,7 +100,7 @@ function SignInForm() {
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <p>Demo Accounts (password: password123):</p>
           <p className="font-mono text-xs mt-1">
-            admin@acme.com (Admin) | john.doe@acme.com (Manager)
+            admin@acme.com (Admin) | roberto@acme.com (Manager)
           </p>
         </div>
       </Card>

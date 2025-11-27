@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { contractService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 import {
   ensureProcessingJob,
   startProcessingJob,
@@ -52,7 +53,8 @@ export async function POST(request: NextRequest) {
       jobId: string;
     }>;
 
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
+    const userId = "user"; // From session when authenticated
 
     for (const file of files) {
       // Create contract using real service
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         mimeType: file.type || "application/pdf",
         fileSize: file.size,
-        uploadedBy: "user", // TODO: Get from auth session
+        uploadedBy: userId,
         status: "UPLOADED",
         contractType: formData.get(`${file.name}_type`) as string | undefined,
       });

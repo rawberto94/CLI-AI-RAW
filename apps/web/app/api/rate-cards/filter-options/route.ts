@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerTenantId } from '@/lib/tenant-server';
 
 /**
  * GET /api/rate-cards/filter-options
@@ -13,8 +14,7 @@ import { prisma } from '@/lib/prisma';
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Add authentication when next-auth is configured
-    const tenantId = 'demo-tenant'; // Default tenant for now
+    const tenantId = await getServerTenantId();
 
     // Get unique clients
     const clients = await prisma.$queryRaw<Array<{ clientName: string }>>`

@@ -26,7 +26,7 @@ const getMockActivities = () => [
       {
         id: '3',
         type: 'comment',
-        user: 'John Doe',
+        user: 'Roberto Ostojic',
         action: 'added a comment',
         details: 'Requested changes to liability clause',
         timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),

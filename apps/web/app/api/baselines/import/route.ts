@@ -7,12 +7,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BaselineManagementService } from 'data-orchestration';
 import { prisma } from "@/lib/prisma";
+import { getServerTenantId } from "@/lib/tenant-server";
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function POST(req: NextRequest) {
   try {
-    const tenantId = 'demo'; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
     const body = await req.json();
 
     const { baselines, updateExisting = true, autoApprove = false } = body;
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
   try {
-    const tenantId = 'demo'; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
 
     const service = new BaselineManagementService(prisma);
     const statistics = await service.getBaselineStatistics(tenantId);

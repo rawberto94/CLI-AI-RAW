@@ -1,13 +1,12 @@
-// @ts-nocheck
 import { RateCardRole } from './multi-client-rate-data'
 import { TargetRates, MarketPercentiles } from './rate-history-types'
 
 // Helper function to calculate market percentiles
 function calculateMarketPercentiles(rates: number[]): MarketPercentiles {
   const sorted = [...rates].sort((a, b) => a - b)
-  const getPercentile = (p: number) => {
+  const getPercentile = (p: number): number => {
     const index = Math.floor((p / 100) * sorted.length)
-    return sorted[Math.min(index, sorted.length - 1)]
+    return sorted[Math.min(index, sorted.length - 1)] ?? 0
   }
   
   return {

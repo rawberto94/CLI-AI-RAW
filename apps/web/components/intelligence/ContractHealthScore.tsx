@@ -652,11 +652,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
               >
                 <p className="text-xs text-slate-500 mb-2">Quick Actions:</p>
                 <div className="flex flex-wrap gap-2">
-                  {getActionLinks().map((link) => {
+                  {getActionLinks().map((link, linkIndex) => {
                     const LinkIcon = link.icon;
                     return (
                       <Link
-                        key={link.href}
+                        key={`${link.label}-${linkIndex}`}
                         href={link.href}
                         className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-slate-200 text-slate-700 rounded-md hover:bg-slate-50 hover:border-blue-200 hover:text-blue-700 transition-colors"
                       >

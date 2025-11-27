@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Multi-Client Rate Card Data Model and Generator
  * Supports enterprise-level rate card management across multiple clients
@@ -329,12 +328,14 @@ export function generateMultiClientRateData(): {
     
     for (let i = 0; i < numRateCards; i++) {
       const supplier = suppliers[Math.floor(Math.random() * suppliers.length)]
+      if (!supplier) continue
       const serviceLine = supplier.serviceLines[
         Math.floor(Math.random() * supplier.serviceLines.length)
       ]
       const geography = supplier.geographies[
         Math.floor(Math.random() * supplier.geographies.length)
       ]
+      if (!serviceLine || !geography) continue
       
       const rateCardId = `rc-${String(rateCardIdCounter++).padStart(5, '0')}`
       const contractId = `${client.id.toUpperCase()}-${supplier.id.toUpperCase()}-${String(i + 1).padStart(3, '0')}`
@@ -345,9 +346,11 @@ export function generateMultiClientRateData(): {
       
       for (let j = 0; j < numRoles; j++) {
         const taxonomy = roleTaxonomy[Math.floor(Math.random() * roleTaxonomy.length)]
+        if (!taxonomy) continue
         const level = taxonomy.typicalSeniority[
           Math.floor(Math.random() * taxonomy.typicalSeniority.length)
         ]
+        if (!level) continue
         
         // Generate original rate in various currencies and periods
         const originalCurrency = getRandomCurrency()
@@ -450,9 +453,10 @@ function getRandomCurrency(): Currency {
   let cumulative = 0
   
   for (let i = 0; i < currencies.length; i++) {
-    cumulative += weights[i]
-    if (random < cumulative) {
-      return currencies[i]
+    cumulative += weights[i] ?? 0
+    const currency = currencies[i]
+    if (random < cumulative && currency) {
+      return currency
     }
   }
   
@@ -466,9 +470,10 @@ function getRandomPeriod(): RatePeriod {
   let cumulative = 0
   
   for (let i = 0; i < periods.length; i++) {
-    cumulative += weights[i]
-    if (random < cumulative) {
-      return periods[i]
+    cumulative += weights[i] ?? 0
+    const period = periods[i]
+    if (random < cumulative && period) {
+      return period
     }
   }
   
@@ -494,7 +499,8 @@ function getBaseRate(
     'Customer Service Representative': { Junior: 200, Mid: 280, Senior: 400, Principal: 560, Partner: 760 }
   }
   
-  const roleRates = baseRates[role] ?? baseRates['Business Analyst']
+  const defaultRoleRates = { Junior: 600, Mid: 840, Senior: 1080, Principal: 1360, Partner: 1760 }
+  const roleRates = baseRates[role] ?? defaultRoleRates
   const baseRate = roleRates[level] ?? roleRates.Mid
   
   // Apply geography multiplier

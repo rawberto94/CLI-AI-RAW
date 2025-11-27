@@ -1,7 +1,16 @@
-// @ts-nocheck
+/**
+ * CSV Parser for rate card imports
+ */
+
+/** Parsed cell value types */
+export type ParsedCellValue = string | number | boolean | Date | null;
+
+/** Row with parsed values */
+export type ParsedRow = Record<string, ParsedCellValue>;
+
 export interface CSVParseResult {
   headers: string[];
-  rows: Record<string, any>[];
+  rows: ParsedRow[];
   metadata: {
     fileName: string;
     fileSize: number;
@@ -42,13 +51,13 @@ export class CSVParser {
     }
     
     // Parse data rows
-    const rows: Record<string, any>[] = [];
+    const rows: ParsedRow[] = [];
     
     for (const line of dataLines) {
       if (line.trim() === '') continue;
       
       const values = this.parseLine(line, delimiter);
-      const row: Record<string, any> = {};
+      const row: ParsedRow = {};
       
       for (let i = 0; i < headers.length; i++) {
         const header = headers[i];
@@ -180,7 +189,7 @@ export class CSVParser {
   /**
    * Parse value to appropriate type
    */
-  private static parseValue(value: string): any {
+  private static parseValue(value: string): ParsedCellValue {
     if (value === '' || value === null || value === undefined) {
       return null;
     }
@@ -219,7 +228,26 @@ export class CSVParser {
   /**
    * Convert CSV result to Excel-like format for consistency
    */
-  static toExcelFormat(result: CSVParseResult): any {
+  static toExcelFormat(result: CSVParseResult): {
+    sheets: Array<{
+      name: string;
+      headers: string[];
+      rows: ParsedRow[];
+      metadata: {
+        rowCount: number;
+        columnCount: number;
+        headerRow: number;
+        dataStartRow: number;
+        hasEmptyRows: boolean;
+      };
+    }>;
+    metadata: {
+      fileName: string;
+      fileSize: number;
+      sheetCount: number;
+      totalRows: number;
+    };
+  } {
     return {
       sheets: [{
         name: 'Sheet1',
@@ -273,7 +301,7 @@ export class CSVParser {
   /**
    * Export to CSV format
    */
-  static export(headers: string[], rows: Record<string, any>[], delimiter: string = ','): string {
+  static export(headers: string[], rows: ParsedRow[], delimiter: string = ','): string {
     const lines: string[] = [];
     
     // Add header

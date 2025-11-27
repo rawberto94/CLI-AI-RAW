@@ -16,7 +16,7 @@ const getMockVersions = () => [
       {
         id: '2',
         versionNumber: 2,
-        uploadedBy: 'John Doe',
+        uploadedBy: 'Roberto Ostojic',
         uploadedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
         isActive: false,
         summary: 'Updated payment terms and expiration date',

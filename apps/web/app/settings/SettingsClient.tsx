@@ -29,8 +29,8 @@ import {
 // Mock settings data (kept local to the client component)
 const settingsData = {
   user: {
-    name: "John Administrator",
-    email: "admin@company.com",
+    name: "Roberto Ostojic",
+    email: "roberto@company.com",
     role: "System Administrator",
     lastLogin: "2024-01-20 09:30:00",
     avatar: null,

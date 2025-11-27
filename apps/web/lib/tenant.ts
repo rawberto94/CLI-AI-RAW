@@ -1,20 +1,27 @@
 /**
  * Tenant Management Utilities
- * Handles multi-tenant functionality
+ * Production-ready multi-tenant isolation
+ * 
+ * NOTE: Server-side tenant context functions are in tenant-server.ts
+ * This file contains only client-safe utilities
  */
 
-// Get tenant ID from environment or default
+// ============================================
+// Client-Side Tenant Utilities
+// ============================================
+
+// Get tenant ID from environment or default (client-side)
 export function getTenantId(): string {
   if (typeof window !== "undefined") {
     // Client-side: check localStorage or use default
     return (
       localStorage.getItem("tenantId") ||
       process.env.NEXT_PUBLIC_TENANT_ID ||
-      "default"
+      "demo"
     );
   }
   // Server-side: use environment variable
-  return process.env.NEXT_PUBLIC_TENANT_ID || "default";
+  return process.env.NEXT_PUBLIC_TENANT_ID || "demo";
 }
 
 // Set tenant ID (client-side only)
@@ -61,7 +68,7 @@ export function getTenantConfig(): TenantConfig {
   // Default configuration
   return {
     id: tenantId,
-    name: tenantId === "default" ? "Default Tenant" : tenantId,
+    name: tenantId === "demo" ? "Demo Tenant" : tenantId,
     features: {
       aiChat: true,
       batchUpload: true,

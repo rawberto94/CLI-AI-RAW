@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { SegmentManagementService } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
 const segmentService = new SegmentManagementService(prisma);
 
@@ -13,9 +14,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
   try {
     const body = await request.json();
     
-    // TODO: Get from session/auth
-    const tenantId = body.tenantId || 'default-tenant';
-    const userId = body.userId || 'system';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
+    const userId = session?.user?.id || body.userId || 'system';
 
     const segment = await segmentService.shareSegment(params.id, tenantId, userId);
 
@@ -38,9 +40,10 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
   try {
     const searchParams = request.nextUrl.searchParams;
     
-    // TODO: Get from session/auth
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
-    const userId = searchParams.get('userId') || 'system';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
+    const userId = session?.user?.id || searchParams.get('userId') || 'system';
 
     const segment = await segmentService.unshareSegment(params.id, tenantId, userId);
 

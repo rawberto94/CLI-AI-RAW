@@ -1,10 +1,18 @@
-// @ts-nocheck
+/**
+ * Excel Parser for rate card imports
+ */
 import * as XLSX from 'xlsx';
+
+/** Excel cell value types */
+export type ExcelCellValue = string | number | boolean | Date | null;
+
+/** Row with Excel values */
+export type ExcelRow = Record<string, ExcelCellValue>;
 
 export interface ParsedSheet {
   name: string;
   headers: string[];
-  rows: Record<string, any>[];
+  rows: ExcelRow[];
   metadata: SheetMetadata;
 }
 
@@ -69,11 +77,11 @@ export class ExcelParser {
     const headers = this.extractHeaders(worksheet, headerRow);
     
     // Extract data rows
-    const rows: Record<string, any>[] = [];
+    const rows: ExcelRow[] = [];
     const dataStartRow = headerRow + 1;
     
     for (let rowNum = dataStartRow; rowNum <= range.e.r; rowNum++) {
-      const row: Record<string, any> = {};
+      const row: ExcelRow = {};
       let hasData = false;
       
       for (let colNum = range.s.c; colNum <= range.e.c; colNum++) {
@@ -167,23 +175,24 @@ export class ExcelParser {
   /**
    * Get cell value with proper type conversion
    */
-  private static getCellValue(cell: XLSX.CellObject): any {
+  private static getCellValue(cell: XLSX.CellObject): ExcelCellValue {
     if (!cell) return null;
     
-    switch (cell.t) {
+    const cellType = cell.t;
+    switch (cellType) {
       case 'n': // Number
-        return cell.v;
+        return cell.v as number;
       case 'd': // Date
-        return cell.v;
+        return cell.v as Date;
       case 'b': // Boolean
-        return cell.v;
-      case 's': // String
-      case 'str' as any:
+        return cell.v as boolean;
+      case 's': // String (shared string)
         return String(cell.v).trim();
       case 'e': // Error
         return null;
       default:
-        return cell.v;
+        // Handle 'str' (inline string) and other types
+        return cell.v != null ? String(cell.v) : null;
     }
   }
 
@@ -192,7 +201,7 @@ export class ExcelParser {
    */
   private static extractMetadata(
     worksheet: XLSX.WorkSheet,
-    rows: Record<string, any>[]
+    rows: ExcelRow[]
   ): Partial<SheetMetadata> {
     const metadata: Partial<SheetMetadata> = {
       hasEmptyRows: false,
@@ -215,7 +224,7 @@ export class ExcelParser {
    */
   private static detectSupplier(
     worksheet: XLSX.WorkSheet,
-    rows: Record<string, any>[]
+    _rows: ExcelRow[]
   ): string | undefined {
     const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
     
@@ -252,7 +261,7 @@ export class ExcelParser {
    */
   private static detectCurrency(
     worksheet: XLSX.WorkSheet,
-    rows: Record<string, any>[]
+    _rows: ExcelRow[]
   ): string | undefined {
     const currencyPatterns = [
       /\b(USD|EUR|GBP|CHF|CAD|AUD|INR)\b/i,
@@ -288,7 +297,7 @@ export class ExcelParser {
    */
   private static detectDate(
     worksheet: XLSX.WorkSheet,
-    rows: Record<string, any>[]
+    _rows: ExcelRow[]
   ): Date | undefined {
     const datePatterns = [
       /effective[:\s]+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,

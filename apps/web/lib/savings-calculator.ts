@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Savings Calculation Engine for Procurement Intelligence
 // Calculates potential savings with confidence intervals and recommendations
 

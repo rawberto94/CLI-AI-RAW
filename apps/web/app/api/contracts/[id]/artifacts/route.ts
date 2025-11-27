@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { artifactService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 
 export async function GET(
   request: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
 
   try {
     const { id: contractId } = await params;
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
 
     if (!contractId) {
       return NextResponse.json(

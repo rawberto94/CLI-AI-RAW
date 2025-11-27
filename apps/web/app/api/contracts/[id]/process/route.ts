@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { contractService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 import {
   ensureProcessingJob,
   startProcessingJob,
@@ -25,7 +26,7 @@ export async function POST(
   }
 
   try {
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
     
     // Get contract using real service
     const result = await contractService.getContract(contractId, tenantId);

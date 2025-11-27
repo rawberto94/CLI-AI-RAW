@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { AdvancedFilterService } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
 const advancedFilterService = new AdvancedFilterService(prisma);
 
@@ -12,8 +13,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // TODO: Get from session/auth
-    const tenantId = body.tenantId || 'default-tenant';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
     const filter = body.filter;
 
     if (!filter) {

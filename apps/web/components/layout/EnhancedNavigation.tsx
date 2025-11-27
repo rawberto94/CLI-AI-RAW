@@ -8,6 +8,7 @@
 import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -452,7 +453,7 @@ function EnhancedNavigation() {
                 JD
               </div>
               <div className="text-left hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">John Doe</p>
+                <p className="text-sm font-medium text-gray-900">Roberto Ostojic</p>
                 <p className="text-xs text-gray-500">Admin</p>
               </div>
               <ChevronDown className="h-4 w-4 text-gray-400" />
@@ -488,7 +489,10 @@ function EnhancedNavigation() {
                     Help & Support
                   </Link>
                   <hr className="my-1" />
-                  <button className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full">
+                  <button 
+                    onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
+                  >
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </button>
@@ -634,9 +638,9 @@ function EnhancedNavigation() {
                           className="overflow-hidden"
                         >
                           <div className="ml-5 mt-1 space-y-0.5 border-l-2 border-gray-200 pl-3">
-                            {item.children?.map((child) => (
+                            {item.children?.map((child, childIndex) => (
                               <Link
-                                key={child.href}
+                                key={`${child.name}-${childIndex}`}
                                 href={child.href}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={cn(

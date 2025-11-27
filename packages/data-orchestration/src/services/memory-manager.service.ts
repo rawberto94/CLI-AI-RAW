@@ -59,12 +59,12 @@ class MemoryManagerService extends EventEmitter {
   constructor(config: MemoryConfig = {}) {
     super();
     this.config = {
-      maxCacheSize: config.maxCacheSize ?? 100 * 1024 * 1024, // 100 MB
-      maxCacheEntries: config.maxCacheEntries ?? 10000,
-      cleanupInterval: config.cleanupInterval ?? 60000, // 1 minute
-      memoryCheckInterval: config.memoryCheckInterval ?? 30000, // 30 seconds
-      memoryWarningThreshold: config.memoryWarningThreshold ?? 80,
-      memoryCriticalThreshold: config.memoryCriticalThreshold ?? 90,
+      maxCacheSize: config.maxCacheSize ?? 50 * 1024 * 1024, // 50 MB (reduced for dev environments)
+      maxCacheEntries: config.maxCacheEntries ?? 5000, // Reduced from 10000
+      cleanupInterval: config.cleanupInterval ?? 30000, // 30 seconds (more frequent cleanup)
+      memoryCheckInterval: config.memoryCheckInterval ?? 15000, // 15 seconds (more frequent checks)
+      memoryWarningThreshold: config.memoryWarningThreshold ?? 70, // Lower threshold
+      memoryCriticalThreshold: config.memoryCriticalThreshold ?? 85, // Lower critical threshold
       enableAutoCleanup: config.enableAutoCleanup ?? true,
     };
 

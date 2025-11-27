@@ -11,7 +11,6 @@ import {
   formatCurrency,
   formatPercentage,
 } from "@/components/ui/design-system";
-import { MessageCircle } from "lucide-react";
 
 // Lazy load heavy components
 const CostSavingsDashboardWidget = dynamic(
@@ -24,7 +23,7 @@ import { UpcomingRenewals } from "@/components/dashboard/UpcomingRenewals";
 import { ContractTypeChart } from "@/components/dashboard/ContractTypeChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { StatusOverview } from "@/components/dashboard/StatusOverview";
-import { DashboardChatbot } from "@/components/dashboard/DashboardChatbot";
+import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
 import { 
   IntelligenceWidget, 
   ApprovalsWidget, 
@@ -372,29 +371,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </section>
-
-        <section className="relative z-0">
-          {/* AI Chatbot - Full Width Section */}
-          <div>
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="space-y-1">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <MessageCircle className="h-5 w-5 text-blue-600" />
-                    AI Assistant
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    I can help you with contract queries, renewals, insights, and more
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <DashboardChatbot />
-              </CardContent>
-            </Card>
-          </div>
-        </section>
       </div>
+
+      {/* Floating AI Assistant */}
+      <FloatingAIBubble />
     </DashboardLayout>
   );
 }

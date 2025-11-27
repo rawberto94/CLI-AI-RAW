@@ -5,8 +5,8 @@ const mockPortalData = {
   supplier: {
     id: 'sup1',
     name: 'TechVendor Solutions Inc.',
-    contact: 'John Smith',
-    email: 'john.smith@techvendor.com',
+    contact: 'Roberto Ostojic',
+    email: 'roberto@techvendor.com',
     phone: '+1 (555) 123-4567',
     rating: 4.7,
     activeContracts: 3,

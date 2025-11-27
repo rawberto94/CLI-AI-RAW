@@ -1,7 +1,9 @@
-// @ts-nocheck
 /**
  * Data transformation service for rate card normalization
  */
+
+/** Raw row value types from parsed files */
+export type RawCellValue = string | number | boolean | Date | null | undefined;
 
 export interface TransformationOptions {
   baseCurrency?: string;
@@ -58,7 +60,7 @@ export class DataTransformer {
    * Transform rate card data
    */
   static transform(
-    rows: Record<string, any>[],
+    rows: Record<string, RawCellValue>[],
     mappings: Record<string, string>,
     options: TransformationOptions = {}
   ): TransformedRate[] {
@@ -72,7 +74,7 @@ export class DataTransformer {
    * Transform a single row
    */
   private static transformRow(
-    row: Record<string, any>,
+    row: Record<string, RawCellValue>,
     mappings: Record<string, string>,
     baseCurrency: string,
     exchangeRates: Record<string, number>,
@@ -126,7 +128,10 @@ export class DataTransformer {
     }
 
     // Service line
-    const serviceLine = getValue('serviceLine') || this.inferServiceLine(standardizedRole);
+    const serviceLineValue = getValue('serviceLine');
+    const serviceLine = serviceLineValue 
+      ? String(serviceLineValue) 
+      : this.inferServiceLine(standardizedRole);
     if (!getValue('serviceLine')) {
       transformations.push('service_line_inferred');
       confidence *= 0.9;
@@ -380,7 +385,7 @@ export class DataTransformer {
   /**
    * Parse skills from string or array
    */
-  private static parseSkills(value: any): string[] {
+  private static parseSkills(value: RawCellValue | RawCellValue[]): string[] {
     if (Array.isArray(value)) {
       return value.map(v => String(v).trim());
     }
@@ -395,7 +400,7 @@ export class DataTransformer {
   /**
    * Parse experience from string or number
    */
-  private static parseExperience(value: any): number | undefined {
+  private static parseExperience(value: RawCellValue): number | undefined {
     if (typeof value === 'number') {
       return value;
     }

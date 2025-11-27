@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateCardManagementService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 
 export async function GET(
   request: Request,
@@ -7,7 +8,7 @@ export async function GET(
 ) {
   try {
     const params = await context.params;
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
     
     // Get rate card using real service
     const result = await rateCardManagementService.getRateCard(tenantId, params.id);

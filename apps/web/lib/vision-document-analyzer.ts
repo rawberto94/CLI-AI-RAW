@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Vision-Based Document Analyzer
  * 
@@ -252,9 +251,9 @@ Return as structured JSON with confidence scores. Be thorough.`;
   }
 
   // Parse the JSON response
-  let parsedResult: any;
+  let parsedResult: Record<string, unknown>;
   try {
-    parsedResult = JSON.parse(content);
+    parsedResult = JSON.parse(content) as Record<string, unknown>;
   } catch (error) {
     throw new Error(`Failed to parse Vision API response: ${error}`);
   }
@@ -262,26 +261,45 @@ Return as structured JSON with confidence scores. Be thorough.`;
   // Calculate processing time
   const processingTime = Date.now() - startTime;
 
+  // Helper to safely access nested properties
+  const getNestedValue = <T>(obj: Record<string, unknown>, ...keys: string[]): T | undefined => {
+    let result: unknown = obj;
+    for (const key of keys) {
+      if (result && typeof result === 'object' && key in result) {
+        result = (result as Record<string, unknown>)[key];
+      } else {
+        return undefined;
+      }
+    }
+    return result as T;
+  };
+
   // Transform to our DocumentAnalysis format
   const analysis: DocumentAnalysis = {
     overview: {
-      documentType: parsedResult.overview?.documentType || parsedResult.documentType || 'Unknown',
-      title: parsedResult.overview?.title || parsedResult.title || 'Untitled Document',
-      parties: parsedResult.overview?.parties || parsedResult.parties || [],
-      dates: parsedResult.overview?.dates || parsedResult.dates || {},
-      summary: parsedResult.overview?.summary || parsedResult.summary || '',
+      documentType: (getNestedValue<string>(parsedResult, 'overview', 'documentType') || 
+                     getNestedValue<string>(parsedResult, 'documentType') || 'Unknown'),
+      title: (getNestedValue<string>(parsedResult, 'overview', 'title') || 
+              getNestedValue<string>(parsedResult, 'title') || 'Untitled Document'),
+      parties: (getNestedValue(parsedResult, 'overview', 'parties') || 
+                getNestedValue(parsedResult, 'parties') || []) as DocumentAnalysis['overview']['parties'],
+      dates: (getNestedValue(parsedResult, 'overview', 'dates') || 
+              getNestedValue(parsedResult, 'dates') || {}) as DocumentAnalysis['overview']['dates'],
+      summary: (getNestedValue<string>(parsedResult, 'overview', 'summary') || 
+                getNestedValue<string>(parsedResult, 'summary') || ''),
     },
     financial: {
-      totalValue: parsedResult.financial?.totalValue || parsedResult.totalValue,
-      paymentTerms: parsedResult.financial?.paymentTerms || parsedResult.paymentTerms,
-      ratecards: parsedResult.financial?.ratecards || parsedResult.ratecards || [],
+      totalValue: getNestedValue(parsedResult, 'financial', 'totalValue') || getNestedValue(parsedResult, 'totalValue') as DocumentAnalysis['financial']['totalValue'],
+      paymentTerms: getNestedValue<string>(parsedResult, 'financial', 'paymentTerms') || getNestedValue<string>(parsedResult, 'paymentTerms'),
+      ratecards: (getNestedValue(parsedResult, 'financial', 'ratecards') || 
+                  getNestedValue(parsedResult, 'ratecards') || []) as DocumentAnalysis['financial']['ratecards'],
     },
-    clauses: parsedResult.clauses || [],
-    tables: parsedResult.tables || [],
+    clauses: (parsedResult.clauses || []) as DocumentAnalysis['clauses'],
+    tables: (parsedResult.tables || []) as DocumentAnalysis['tables'],
     metadata: {
-      pageCount: parsedResult.metadata?.pageCount || 1,
-      language: parsedResult.metadata?.language || 'en',
-      confidence: parsedResult.metadata?.confidence || 0.85,
+      pageCount: getNestedValue<number>(parsedResult, 'metadata', 'pageCount') || 1,
+      language: getNestedValue<string>(parsedResult, 'metadata', 'language') || 'en',
+      confidence: getNestedValue<number>(parsedResult, 'metadata', 'confidence') || 0.85,
       processingTime,
       model,
     },

@@ -11,10 +11,24 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDataMode } from '@/contexts/DataModeContext';
 
+interface RateCard {
+  id: string;
+  clientName: string;
+  supplierName: string;
+  roleTitle: string;
+  roleStandardized: string;
+  seniority: string;
+  country: string;
+  hourlyRate: number;
+  currency: string;
+  isBaseline: boolean;
+  isNegotiated: boolean;
+}
+
 export default function RateCardEntriesPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
-  const [rateCards, setRateCards] = useState([]);
+  const [rateCards, setRateCards] = useState<RateCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<{
     clientName?: string;

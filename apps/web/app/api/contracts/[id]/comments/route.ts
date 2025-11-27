@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic';
 const getMockComments = () => [
   {
     id: '1',
-    author: 'John Doe',
-    authorEmail: 'john@example.com',
+    author: 'Roberto Ostojic',
+    authorEmail: 'roberto@example.com',
     content: 'This contract looks good overall, but I have concerns about the liability clause in section 3.',
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     mentions: [],
@@ -19,9 +19,9 @@ const getMockComments = () => [
         id: '2',
         author: 'Jane Smith',
         authorEmail: 'jane@example.com',
-        content: '@john I agree. We should request a cap on liability at $500K.',
+        content: '@roberto I agree. We should request a cap on liability at $500K.',
         createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        mentions: ['john'],
+        mentions: ['roberto'],
         isResolved: false,
         likes: 1,
       }
@@ -181,7 +181,7 @@ export async function POST(
         data: {
           contractId,
           tenantId,
-          userId: author, // TODO: Get from auth session
+          userId: author, // From session when authenticated
           content,
           mentions: mentions || [],
           parentId: parentId || null,

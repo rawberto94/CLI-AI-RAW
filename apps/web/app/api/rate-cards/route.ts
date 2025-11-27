@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 // NOTE: Using direct Prisma queries instead of data-orchestration services
 // The data-orchestration package has 60+ TypeScript errors that need extensive refactoring
@@ -252,8 +253,9 @@ export async function GET(request: NextRequest) {
     }
     
     // ===== REAL DATA MODE: Direct Prisma Queries =====
-    // TODO: Get tenantId from session/auth
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
     
     // Build where clause from filters
     const where: any = { tenantId };
@@ -356,9 +358,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // TODO: Get tenantId and userId from session/auth
-    const tenantId = body.tenantId || 'default-tenant';
-    const userId = body.userId || 'system';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
+    const userId = session?.user?.id || body.userId || 'system';
 
     // Convert date strings to Date objects
     if (body.effectiveDate) {

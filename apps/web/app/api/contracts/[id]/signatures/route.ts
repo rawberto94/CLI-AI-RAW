@@ -11,8 +11,8 @@ const mockSignatureWorkflows = [
     signers: [
       {
         id: 'signer-1',
-        name: 'John Smith',
-        email: 'john.smith@acmecorp.com',
+        name: 'Roberto Ostojic',
+        email: 'roberto@acmecorp.com',
         role: 'Client Signatory',
         status: 'signed',
         order: 1,

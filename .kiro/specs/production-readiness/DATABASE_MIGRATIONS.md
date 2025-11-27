@@ -22,6 +22,7 @@ This guide explains how to manage database migrations for the Contract Intellige
 ## Migration System Overview
 
 ### Technology Stack
+
 - **ORM**: Prisma
 - **Database**: PostgreSQL 16 with pgvector extension
 - **Migration Tool**: Prisma Migrate
@@ -50,7 +51,7 @@ The system uses two types of migrations:
 
 ### Development Workflow
 
-```
+```text
 ┌─────────────────┐
 │ Update Schema   │
 │ (schema.prisma) │
@@ -89,7 +90,7 @@ The system uses two types of migrations:
 
 ### Production Deployment Workflow
 
-```
+```text
 ┌─────────────────┐
 │ Backup Database │
 └────────┬────────┘
@@ -243,9 +244,10 @@ cat migrations/YYYYMMDDHHMMSS_add_new_feature/migration.sql
 ```
 
 Example output:
+
 ```sql
 -- CreateTable
-CREATE TABLE "NewFeature" (
+CREATE TABLE \"NewFeature\" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -435,11 +437,13 @@ curl http://localhost:3000/api/health
 ### Execution
 
 1. **Always Backup First**
+
    ```bash
    pg_dump -F c -b -v -f backup.dump $DATABASE_URL
    ```
 
 2. **Use Transactions**
+
    ```sql
    BEGIN;
    -- migration statements
@@ -447,6 +451,7 @@ curl http://localhost:3000/api/health
    ```
 
 3. **Add Indexes Concurrently**
+
    ```sql
    CREATE INDEX CONCURRENTLY idx_name ON table(column);
    ```
@@ -464,6 +469,7 @@ curl http://localhost:3000/api/health
    - Archive old data before deletion
 
 2. **Validate Data**
+
    ```sql
    -- Check for null values before adding NOT NULL
    SELECT COUNT(*) FROM table WHERE column IS NULL;
@@ -474,6 +480,7 @@ curl http://localhost:3000/api/health
    ```
 
 3. **Handle Large Tables**
+
    ```sql
    -- Add column without default (fast)
    ALTER TABLE large_table ADD COLUMN new_col TEXT;
@@ -486,10 +493,11 @@ curl http://localhost:3000/api/health
 ### Documentation
 
 1. **Comment Migrations**
+
    ```sql
    -- Migration: Add user preferences
    -- Date: 2025-10-30
-   -- Author: John Doe
+   -- Author: Roberto Ostojic
    -- Ticket: PROJ-123
    -- Description: Adds user preferences table for customization
    ```
@@ -513,6 +521,7 @@ curl http://localhost:3000/api/health
 **Cause**: Migration was partially applied
 
 **Solution**:
+
 ```bash
 # Check migration status
 npx prisma migrate status
@@ -529,6 +538,7 @@ npx prisma migrate resolve --applied MIGRATION_NAME
 **Cause**: Migration failed mid-execution
 
 **Solution**:
+
 ```bash
 # Check what failed
 npx prisma migrate status
@@ -546,6 +556,7 @@ npx prisma migrate deploy
 **Cause**: Locking operations on large tables
 
 **Solution**:
+
 ```sql
 -- Instead of:
 ALTER TABLE large_table ADD COLUMN new_col TEXT DEFAULT 'value';
@@ -584,6 +595,7 @@ ALTER TABLE large_table ALTER COLUMN new_col SET DEFAULT 'value';
 **Cause**: Orphaned records or invalid references
 
 **Solution**:
+
 ```sql
 -- Find orphaned records
 SELECT c.id, c.parent_id 
@@ -603,6 +615,7 @@ WHERE parent_id NOT IN (SELECT id FROM parent);
 **Cause**: Large table operations require temporary space
 
 **Solution**:
+
 ```bash
 # Check disk space
 df -h

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { contractService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 
 type SearchMode = "balanced" | "semantic" | "keyword";
 
@@ -103,7 +104,7 @@ async function performRealSearch(
   const limit = pagination?.limit ?? 20;
   const offset = pagination?.offset ?? 0;
   const page = Math.floor(offset / limit) + 1;
-  const tenantId = "demo"; // TODO: Get from auth session
+  const tenantId = await getServerTenantId();
 
   // Use real contract service to search
   const result = await contractService.queryContracts({

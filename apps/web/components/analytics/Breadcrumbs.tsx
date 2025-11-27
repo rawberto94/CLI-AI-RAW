@@ -64,7 +64,7 @@ export function Breadcrumbs() {
   return (
     <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
       {breadcrumbs.map((crumb, index) => (
-        <React.Fragment key={crumb.href}>
+        <React.Fragment key={`${crumb.label}-${index}`}>
           {index > 0 && (
             <ChevronRight className="h-4 w-4" />
           )}

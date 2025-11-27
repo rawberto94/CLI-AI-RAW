@@ -238,11 +238,11 @@ class ConnectionCleanupSchedulerService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance with more aggressive cleanup settings
 export const connectionCleanupScheduler = new ConnectionCleanupSchedulerService({
   enabled: true,
-  interval: 60000, // 1 minute
-  staleThreshold: 120000, // 2 minutes
-  timeoutThreshold: 600000, // 10 minutes
-  maxConnectionsBeforeCleanup: 10, // Only cleanup if more than 10 connections
+  interval: 30000, // 30 seconds (more frequent cleanup)
+  staleThreshold: 60000, // 1 minute (faster stale detection)
+  timeoutThreshold: 300000, // 5 minutes (faster timeout)
+  maxConnectionsBeforeCleanup: 3, // Cleanup when more than 3 connections
 });

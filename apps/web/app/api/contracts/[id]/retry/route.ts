@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { contractService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 import {
   ensureProcessingJob,
   retryProcessingJob,
@@ -29,7 +30,7 @@ export async function POST(
       );
     }
 
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
     
     // Get contract from database
     const contract = await prisma.contract.findFirst({

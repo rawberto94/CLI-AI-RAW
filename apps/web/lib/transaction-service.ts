@@ -1,11 +1,10 @@
-// @ts-nocheck - Schema mismatch with Prisma types, needs Prisma migration
 /**
  * Transaction Service
  * Provides transactional wrappers for multi-step operations
  */
 
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { type Prisma, ContractStatus } from "@prisma/client";
 import pino from "pino";
 
 const logger = pino({ name: "transaction-service" });
@@ -120,7 +119,9 @@ export async function withIdempotency<T>(
         key,
         tenantId,
         operation: operationName,
-        response: result as any,
+        response: result as Prisma.JsonValue,
+        requestHash: key, // Use key as hash for now
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
         createdAt: new Date(),
       },
     });
@@ -144,8 +145,8 @@ export async function withIdempotency<T>(
  * Create contract with all side effects in a transaction
  */
 export async function createContractWithSideEffects(data: {
-  contractData: Prisma.ContractCreateInput;
-  processingJobData?: Partial<Prisma.ProcessingJobCreateInput>;
+  contractData: Prisma.ContractUncheckedCreateInput;
+  processingJobData?: Partial<Prisma.ProcessingJobUncheckedCreateInput>;
   idempotencyKey?: string;
 }) {
   const { contractData, processingJobData, idempotencyKey } = data;
@@ -249,7 +250,7 @@ export async function updateContractStatusWithAudit(
     const updatedContract = await tx.contract.update({
       where: { id: contractId },
       data: {
-        status: newStatus as any,
+        status: newStatus as ContractStatus,
         updatedAt: new Date(),
       },
     });

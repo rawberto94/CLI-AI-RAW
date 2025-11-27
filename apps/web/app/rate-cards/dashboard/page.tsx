@@ -15,11 +15,33 @@ import { useRealTimeEvents } from '@/contexts/RealTimeContext';
 import { Button } from '@/components/ui/button';
 import { Upload, Plus } from 'lucide-react';
 
+interface ClientMetrics {
+  totalRateCards: number;
+  uniqueSuppliers: number;
+  geographicCoverage: number;
+  serviceLineCoverage: number;
+}
+
+interface BaselineMetrics {
+  totalBaselines: number;
+  percentBaseline: number;
+  percentTopQuartile: number;
+  percentNegotiated: number;
+  avgSavingsPerRate: number;
+}
+
+interface NegotiationMetrics {
+  activeNegotiations: number;
+  pendingApproval: number;
+  completedThisMonth: number;
+  avgNegotiationTime: number;
+}
+
 export default function RateCardDashboardPage() {
   const router = useRouter();
-  const [clientMetrics, setClientMetrics] = useState(null);
-  const [baselineMetrics, setBaselineMetrics] = useState(null);
-  const [negotiationMetrics, setNegotiationMetrics] = useState(null);
+  const [clientMetrics, setClientMetrics] = useState<ClientMetrics | null>(null);
+  const [baselineMetrics, setBaselineMetrics] = useState<BaselineMetrics | null>(null);
+  const [negotiationMetrics, setNegotiationMetrics] = useState<NegotiationMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,25 +50,20 @@ export default function RateCardDashboardPage() {
 
   // Real-time updates for rate cards
   const eventHandlers = useMemo(() => ({
-    'ratecard:created': (data: any) => {
-      console.log('[RateCards] New rate card created:', data);
-      fetchDashboardMetrics(); // Refresh metrics
+    'ratecard:created': () => {
+      fetchDashboardMetrics(); // Refresh metrics on new rate card
     },
-    'ratecard:updated': (data: any) => {
-      console.log('[RateCards] Rate card updated:', data);
-      fetchDashboardMetrics(); // Refresh metrics
+    'ratecard:updated': () => {
+      fetchDashboardMetrics(); // Refresh metrics on update
     },
-    'ratecard:imported': (data: any) => {
-      console.log('[RateCards] Rate cards imported:', data);
-      fetchDashboardMetrics(); // Refresh metrics
+    'ratecard:imported': () => {
+      fetchDashboardMetrics(); // Refresh metrics on import
     },
-    'benchmark:calculated': (data: any) => {
-      console.log('[RateCards] Benchmark calculated:', data);
-      fetchDashboardMetrics(); // Refresh metrics
+    'benchmark:calculated': () => {
+      fetchDashboardMetrics(); // Refresh metrics on benchmark
     },
-    'benchmark:invalidated': (data: any) => {
-      console.log('[RateCards] Benchmark invalidated:', data);
-      fetchDashboardMetrics(); // Refresh metrics
+    'benchmark:invalidated': () => {
+      fetchDashboardMetrics(); // Refresh metrics on invalidation
     },
   }), []);
 

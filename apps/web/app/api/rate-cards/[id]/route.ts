@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardEntryService } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
 const rateCardService = new RateCardEntryService(prisma);
 
@@ -142,8 +143,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       return NextResponse.json(mockEntry);
     }
     
-    // TODO: Get tenantId from session/auth
-    const tenantId = request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
 
     const entry = await rateCardService.getEntry(id, tenantId);
 
@@ -167,8 +169,9 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
     const { id } = params;
     const body = await request.json();
     
-    // TODO: Get tenantId from session/auth
-    const tenantId = body.tenantId || 'default-tenant';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
 
     // Convert date strings to Date objects
     if (body.effectiveDate) {
@@ -199,8 +202,9 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
   try {
     const { id } = params;
     
-    // TODO: Get tenantId from session/auth
-    const tenantId = request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
+    // Get authenticated user from session
+    const session = await getServerSession();
+    const tenantId = session?.user?.tenantId || request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
 
     await rateCardService.deleteEntry(id, tenantId);
 

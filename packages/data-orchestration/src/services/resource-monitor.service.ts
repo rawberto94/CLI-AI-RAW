@@ -85,12 +85,12 @@ class ResourceMonitorService extends EventEmitter {
   constructor(config: ResourceMonitorConfig = {}) {
     super();
     this.config = {
-      monitoringInterval: config.monitoringInterval ?? 10000, // 10 seconds
-      historySize: config.historySize ?? 360, // 1 hour at 10s intervals
+      monitoringInterval: config.monitoringInterval ?? 30000, // 30 seconds (reduced frequency to save memory)
+      historySize: config.historySize ?? 120, // 1 hour at 30s intervals (reduced from 360)
       enableAlerts: config.enableAlerts ?? true,
       thresholds: {
-        memoryWarning: config.thresholds?.memoryWarning ?? 80,
-        memoryCritical: config.thresholds?.memoryCritical ?? 90,
+        memoryWarning: config.thresholds?.memoryWarning ?? 70, // Lower threshold
+        memoryCritical: config.thresholds?.memoryCritical ?? 85, // Lower critical threshold
         cpuWarning: config.thresholds?.cpuWarning ?? 70,
         cpuCritical: config.thresholds?.cpuCritical ?? 85,
         connectionsWarning: config.thresholds?.connectionsWarning ?? 80,

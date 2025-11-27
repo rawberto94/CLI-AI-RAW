@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Hybrid OCR Strategy
  * 
@@ -301,13 +300,15 @@ async function extractFast(
   };
 }
 
+type VisionModel = 'gpt-4o' | 'gpt-4-vision-preview' | 'gpt-4-turbo';
+
 /**
  * Balanced extraction: Vision AI for complex docs, basic for simple
  */
 async function extractBalanced(
   filePath: string,
   complexity: Awaited<ReturnType<typeof assessDocumentComplexity>>,
-  options: { forceVision?: boolean; visionModel?: string }
+  options: { forceVision?: boolean; visionModel?: VisionModel }
 ): Promise<HybridOcrResult> {
   const { forceVision = false, visionModel = 'gpt-4o' } = options;
 
@@ -316,7 +317,7 @@ async function extractBalanced(
     console.log(`Using VISION extraction (${visionModel}): ${complexity.reason}`);
     
     const analysis = await analyzeDocumentWithVision(filePath, {
-      model: visionModel as any,
+      model: visionModel,
       detail: 'high',
     });
 
@@ -355,7 +356,7 @@ async function extractHigh(
     forceVision?: boolean;
     forceTextract?: boolean;
     awsRegion?: string;
-    visionModel?: string;
+    visionModel?: VisionModel;
   }
 ): Promise<HybridOcrResult> {
   const {
@@ -381,7 +382,7 @@ async function extractHigh(
   const [visionPromise, textractPromise] = [
     // Vision AI analysis
     analyzeDocumentWithVision(filePath, {
-      model: visionModel as any,
+      model: visionModel,
       detail: 'high',
       extractTables: true,
       extractClauses: true,

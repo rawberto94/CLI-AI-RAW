@@ -35,19 +35,19 @@ export function ResponsiveExamples() {
         }
         desktopNav={
           <div className="flex items-center gap-6">
-            <a href="#" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <a href="/" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <Home className="w-4 h-4" />
               Home
             </a>
-            <a href="#" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <a href="/contracts" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <FileText className="w-4 h-4" />
               Contracts
             </a>
-            <a href="#" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <a href="/analytics" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <BarChart className="w-4 h-4" />
               Analytics
             </a>
-            <a href="#" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <a href="/settings" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <Settings className="w-4 h-4" />
               Settings
             </a>
@@ -55,19 +55,19 @@ export function ResponsiveExamples() {
         }
         mobileNav={
           <div className="space-y-2">
-            <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            <a href="/" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <Home className="w-5 h-5" />
               <span>Home</span>
             </a>
-            <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            <a href="/contracts" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <FileText className="w-5 h-5" />
               <span>Contracts</span>
             </a>
-            <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            <a href="/analytics" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <BarChart className="w-5 h-5" />
               <span>Analytics</span>
             </a>
-            <a href="#" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            <a href="/settings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <Settings className="w-5 h-5" />
               <span>Settings</span>
             </a>
@@ -176,7 +176,7 @@ export function ResponsiveExamples() {
             <ResponsiveTable
               headers={['Name', 'Email', 'Role', 'Status']}
               rows={[
-                ['John Doe', 'john@example.com', 'Admin', 'Active'],
+                ['Roberto Ostojic', 'roberto@example.com', 'Admin', 'Active'],
                 ['Jane Smith', 'jane@example.com', 'User', 'Active'],
                 ['Bob Johnson', 'bob@example.com', 'User', 'Inactive'],
               ]}

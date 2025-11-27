@@ -140,7 +140,7 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
           const isLast = index === breadcrumbs.length - 1;
 
           return (
-            <li key={crumb.href} className="flex items-center">
+            <li key={`${crumb.label}-${index}`} className="flex items-center">
               {index > 0 && (
                 <ChevronRight className="h-4 w-4 text-slate-400 mx-1 flex-shrink-0" />
               )}
@@ -191,11 +191,11 @@ export function RelatedModules({ modules, title = 'Related Modules' }: RelatedMo
     <div className="bg-white rounded-lg border border-slate-200 p-4">
       <h3 className="text-xs font-medium text-slate-500 uppercase mb-3">{title}</h3>
       <div className="flex flex-wrap gap-2">
-        {modules.map((module) => {
+        {modules.map((module, index) => {
           const Icon = module.icon;
           return (
             <Link
-              key={module.href}
+              key={`${module.label}-${index}`}
               href={module.href}
               className="flex items-center gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors group"
             >

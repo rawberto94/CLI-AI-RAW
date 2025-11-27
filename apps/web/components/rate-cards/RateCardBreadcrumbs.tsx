@@ -18,7 +18,7 @@ export function RateCardBreadcrumbs() {
     ];
 
     if (pathname.startsWith('/rate-cards')) {
-      breadcrumbs.push({ label: 'Rate Cards', href: '/rate-cards/dashboard' });
+      breadcrumbs.push({ label: 'Rate Cards', href: '/rate-cards' });
 
       if (pathname.includes('/dashboard')) {
         breadcrumbs.push({ label: 'Dashboard', href: '/rate-cards/dashboard' });
@@ -67,7 +67,7 @@ export function RateCardBreadcrumbs() {
   return (
     <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
       {breadcrumbs.map((crumb, index) => (
-        <div key={crumb.href} className="flex items-center">
+        <div key={`${crumb.label}-${index}`} className="flex items-center">
           {index > 0 && <ChevronRight className="h-4 w-4 mx-2" />}
           {index === breadcrumbs.length - 1 ? (
             <span className="font-medium text-foreground">{crumb.label}</span>

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateCardManagementService } from "@/lib/data-orchestration";
+import { getServerTenantId } from "@/lib/tenant-server";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
 
     // Get rate cards using real service
     const result = await rateCardManagementService.getRateCards(tenantId);
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
 
     // Create rate card using real service
     const result = await rateCardManagementService.createRateCard({

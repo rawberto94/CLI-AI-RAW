@@ -216,9 +216,9 @@ function MainNavigation() {
                     {/* Children */}
                     {isExpanded && (
                       <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 pl-4">
-                        {item.children.map((child) => (
+                        {item.children.map((child, childIndex) => (
                           <Link
-                            key={child.href}
+                            key={`${child.name}-${childIndex}`}
                             href={child.href}
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={cn(

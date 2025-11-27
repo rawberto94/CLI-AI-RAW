@@ -1,3 +1,8 @@
+// Note: This project uses Prisma 5.x. The datasource URL uses env() which is the
+// standard approach for Prisma 5.x. Prisma 7+ requires different configuration.
+// If using VS Code Prisma extension with Prisma 7 defaults, you can ignore the warning
+// or pin to Prisma 6 mode in extension settings.
+
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]

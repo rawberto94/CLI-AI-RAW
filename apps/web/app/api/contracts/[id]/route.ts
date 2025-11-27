@@ -13,6 +13,7 @@ import { unlink } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
+import { getServerTenantId } from "@/lib/tenant-server";
 import { join } from "path";
 
 // Using singleton prisma instance from @/lib/prisma
@@ -37,7 +38,7 @@ export async function GET(
       );
     }
 
-    const tenantId = "demo"; // TODO: Get from auth session
+    const tenantId = await getServerTenantId();
 
     // Get contract directly from database
     const contract = await prisma.contract.findFirst({

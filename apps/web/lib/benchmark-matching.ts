@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Advanced Benchmark Matching Algorithms for Procurement Intelligence
 // Implements strict, relaxed, and historical fallback matching
 
@@ -80,10 +79,10 @@ export class BenchmarkMatchingService {
     const key = this.createBenchmarkKey(criteria.role, criteria.level, criteria.geography, criteria.industry);
     const matches = this.benchmarkDatabase.get(key) || [];
     
-    return (matches as any)
-      .filter((match: any) => this.isStrictMatch(match, criteria))
-      .map((match: any) => ({ ...match, matchType: 'exact' as const, confidence: match.confidence * 1.0 }))
-      .sort((a: any, b: any) => b.confidence - a.confidence);
+    return matches
+      .filter((match: BenchmarkMatch) => this.isStrictMatch(match, criteria))
+      .map((match: BenchmarkMatch) => ({ ...match, matchType: 'exact' as const, confidence: match.confidence * 1.0 }))
+      .sort((a: BenchmarkMatch, b: BenchmarkMatch) => b.confidence - a.confidence);
   }
 
   /**

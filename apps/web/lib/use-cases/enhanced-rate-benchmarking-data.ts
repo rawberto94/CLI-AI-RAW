@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Enhanced Mock Data for Rate Card Benchmarking Use Case
  * Includes multi-dimensional data: suppliers, service lines, geographies, role taxonomy
@@ -563,11 +562,11 @@ export function calculateBenchmarkStatistics(
   }
 
   const mean = hourlyRates.reduce((sum, rate) => sum + rate, 0) / n
-  const median = hourlyRates[Math.floor(n / 2)]
-  const p25 = hourlyRates[Math.floor(n * 0.25)]
-  const p75 = hourlyRates[Math.floor(n * 0.75)]
-  const p10 = hourlyRates[Math.floor(n * 0.10)]
-  const p90 = hourlyRates[Math.floor(n * 0.90)]
+  const median = hourlyRates[Math.floor(n / 2)] ?? 0
+  const p25 = hourlyRates[Math.floor(n * 0.25)] ?? 0
+  const p75 = hourlyRates[Math.floor(n * 0.75)] ?? 0
+  const p10 = hourlyRates[Math.floor(n * 0.10)] ?? 0
+  const p90 = hourlyRates[Math.floor(n * 0.90)] ?? 0
 
   const variance = hourlyRates.reduce((sum, rate) => sum + Math.pow(rate - mean, 2), 0) / n
   const stdDev = Math.sqrt(variance)

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Rate History Data Structures and Mock Data
 import { allRateCardRoles } from './multi-client-rate-data'
 
@@ -115,8 +114,10 @@ export function analyzeTrend(history: RateHistoryPoint[]): TrendAnalysis {
   let denominator = 0
   
   for (let i = 0; i < n; i++) {
-    numerator += (xValues[i] - xMean) * (rates[i] - yMean)
-    denominator += Math.pow(xValues[i] - xMean, 2)
+    const xVal = xValues[i] ?? 0
+    const rateVal = rates[i] ?? 0
+    numerator += (xVal - xMean) * (rateVal - yMean)
+    denominator += Math.pow(xVal - xMean, 2)
   }
   
   const slope = denominator !== 0 ? numerator / denominator : 0
@@ -127,7 +128,9 @@ export function analyzeTrend(history: RateHistoryPoint[]): TrendAnalysis {
   const volatility = (stdDev / yMean) * 100
   
   // Determine direction
-  const percentChange = ((rates[n - 1] - rates[0]) / rates[0]) * 100
+  const lastRate = rates[n - 1] ?? 0
+  const firstRate = rates[0] ?? 1
+  const percentChange = ((lastRate - firstRate) / firstRate) * 100
   let direction: TrendAnalysis['direction']
   
   if (volatility > 10) {
@@ -157,7 +160,9 @@ export function generateForecast(history: RateHistoryPoint[]): RateForecast[] {
   
   const sorted = [...history].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
   const rates = sorted.map(h => h.dailyRateCHF)
-  const lastDate = sorted[sorted.length - 1].timestamp
+  const lastEntry = sorted[sorted.length - 1]
+  if (!lastEntry) return []
+  const lastDate = lastEntry.timestamp
   
   // Simple linear regression for forecast
   const n = rates.length
@@ -169,8 +174,10 @@ export function generateForecast(history: RateHistoryPoint[]): RateForecast[] {
   let denominator = 0
   
   for (let i = 0; i < n; i++) {
-    numerator += (xValues[i] - xMean) * (rates[i] - yMean)
-    denominator += Math.pow(xValues[i] - xMean, 2)
+    const xVal = xValues[i] ?? 0
+    const rateVal = rates[i] ?? 0
+    numerator += (xVal - xMean) * (rateVal - yMean)
+    denominator += Math.pow(xVal - xMean, 2)
   }
   
   const slope = denominator !== 0 ? numerator / denominator : 0
@@ -178,7 +185,7 @@ export function generateForecast(history: RateHistoryPoint[]): RateForecast[] {
   
   // Calculate standard error for confidence intervals
   const predictions = xValues.map(x => slope * x + intercept)
-  const residuals = rates.map((y, i) => y - predictions[i])
+  const residuals = rates.map((y, i) => y - (predictions[i] ?? 0))
   const mse = residuals.reduce((sum, r) => sum + r * r, 0) / n
   const standardError = Math.sqrt(mse)
   
@@ -206,20 +213,24 @@ export function generateForecast(history: RateHistoryPoint[]): RateForecast[] {
 }
 
 // Detect significant rate changes (>10%)
-export function detectRateChanges(history: RateHistoryPoint[]): Array<{
+export interface RateChange {
   point: RateHistoryPoint
   previousRate: number
   changePercent: number
   isSignificant: boolean
-}> {
+}
+
+export function detectRateChanges(history: RateHistoryPoint[]): RateChange[] {
   if (history.length < 2) return []
   
   const sorted = [...history].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-  const changes: Array<any> = []
+  const changes: RateChange[] = []
   
   for (let i = 1; i < sorted.length; i++) {
     const current = sorted[i]
     const previous = sorted[i - 1]
+    if (!current || !previous) continue
+    
     const changePercent = ((current.dailyRateCHF - previous.dailyRateCHF) / previous.dailyRateCHF) * 100
     
     if (Math.abs(changePercent) > 10) {

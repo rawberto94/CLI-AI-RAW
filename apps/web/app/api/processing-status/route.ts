@@ -66,7 +66,7 @@ const mockJobs = [
     ],
     metadata: {
       fileSize: 2048576,
-      uploadedBy: "john.doe@company.com",
+      uploadedBy: "roberto@company.com",
     },
   },
   {
