@@ -27,6 +27,10 @@ export interface FilterCriteria {
   dateFrom?: string;
   dateTo?: string;
   searchTerm?: string;
+  // Array-based filters for API compatibility
+  roles?: string[];
+  suppliers?: string[];
+  regions?: string[];
 }
 
 interface AdvancedFiltersProps {

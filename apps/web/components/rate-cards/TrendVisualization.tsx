@@ -204,8 +204,10 @@ function SimpleHistoricalChart({
   const pathD = `M ${points.join(' L ')}`;
 
   // Determine trend color
-  const firstRate = data[0].averageRate;
-  const lastRate = data[data.length - 1].averageRate;
+  const firstData = data[0];
+  const lastData = data[data.length - 1];
+  const firstRate = firstData?.averageRate ?? 0;
+  const lastRate = lastData?.averageRate ?? 0;
   const trendColor = lastRate > firstRate ? '#dc2626' : lastRate < firstRate ? '#16a34a' : '#6b7280';
 
   return (
@@ -272,11 +274,12 @@ function SimpleHistoricalChart({
 
       {/* X-axis labels */}
       <div className="flex justify-between text-xs text-gray-500 px-4">
-        <div>{new Date(data[0].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
-        {data.length > 2 && (
-          <div>{new Date(data[Math.floor(data.length / 2)].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
-        )}
-        <div>{new Date(data[data.length - 1].date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
+        <div>{firstData ? new Date(firstData.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''}</div>
+        {data.length > 2 && (() => {
+          const midData = data[Math.floor(data.length / 2)];
+          return midData ? <div>{new Date(midData.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div> : null;
+        })()}
+        <div>{lastData ? new Date(lastData.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''}</div>
       </div>
     </div>
   );

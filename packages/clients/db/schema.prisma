@@ -2716,3 +2716,73 @@ model WorkflowStepExecution {
   @@index([status])
   @@map("workflow_step_executions")
 }
+
+// ============================================
+// Integration Hub Models
+// ============================================
+
+model Integration {
+  id                 String    @id @default(cuid())
+  tenantId           String    @map("tenant_id")
+  name               String
+  description        String?
+  type               String // ERP, PROCUREMENT, SIGNATURE, CLM, ANALYTICS, AI, CLOUD
+  provider           String // SAP, Coupa, DocuSign, etc.
+  status             String    @default("DISCONNECTED") // CONNECTED, DISCONNECTED, ERROR, SYNCING
+  version            String?
+  config             Json? // Connection configuration (encrypted credentials)
+  credentials        Json? // Encrypted credentials
+  lastSyncAt         DateTime? @map("last_sync_at")
+  lastHealthCheck    DateTime? @map("last_health_check")
+  healthStatus       String?   @default("UNKNOWN") // HEALTHY, DEGRADED, DOWN, UNKNOWN
+  errorMessage       String?   @map("error_message")
+  recordsProcessed   Int       @default(0) @map("records_processed")
+  documentsProcessed Int       @default(0) @map("documents_processed")
+  uptime             Float?    @default(100) // Percentage uptime
+  errors24h          Int       @default(0) @map("errors_24h")
+  metadata           Json?
+  capabilities       String[]  @default([])
+  isActive           Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by")
+
+  syncLogs SyncLog[]
+
+  @@unique([tenantId, provider])
+  @@index([tenantId])
+  @@index([status])
+  @@index([type])
+  @@index([provider])
+  @@map("integrations")
+}
+
+model SyncLog {
+  id             String  @id @default(cuid())
+  integrationId  String  @map("integration_id")
+  tenantId       String  @map("tenant_id")
+  direction      String  @default("INBOUND") // INBOUND, OUTBOUND, BIDIRECTIONAL
+  status         String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  syncType       String  @default("FULL") // FULL, INCREMENTAL, DELTA
+  recordsTotal   Int     @default(0) @map("records_total")
+  recordsSuccess Int     @default(0) @map("records_success")
+  recordsFailed  Int     @default(0) @map("records_failed")
+  recordsSkipped Int     @default(0) @map("records_skipped")
+  duration       Int? // Duration in milliseconds
+  errorMessage   String? @map("error_message")
+  errorDetails   Json?   @map("error_details")
+  metadata       Json?
+
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("sync_logs")
+}

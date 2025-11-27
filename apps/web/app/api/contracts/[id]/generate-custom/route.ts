@@ -377,7 +377,7 @@ function generateMockArtifact(topic: string, focusArea?: string): ArtifactResult
     topic,
     title: topicTitles[topic] || 'Custom Analysis',
     summary: `Comprehensive ${topic} analysis completed. ${mockFindings[topic]?.length || 1} key findings identified requiring attention.`,
-    keyFindings: mockFindings[topic] || mockFindings.custom,
+    keyFindings: mockFindings[topic] ?? mockFindings.custom ?? [],
     riskScore: Math.floor(Math.random() * 30) + 40,
     confidence: Math.floor(Math.random() * 15) + 80,
     generatedAt: new Date().toISOString(),

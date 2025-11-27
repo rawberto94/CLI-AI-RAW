@@ -1,38 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CompetitivenessGauge } from '@/components/rate-cards/CompetitivenessGauge';
 import { MarketPositionChart } from '@/components/rate-cards/MarketPositionChart';
 import { TopOpportunitiesTable } from '@/components/rate-cards/TopOpportunitiesTable';
 import { AtRiskRatesAlert } from '@/components/rate-cards/AtRiskRatesAlert';
 import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+
+const fetchCompetitiveMetrics = async () => {
+  const response = await fetch('/api/rate-cards/competitive-intelligence?tenantId=default-tenant');
+  if (!response.ok) throw new Error('Failed to load competitive intelligence');
+  return response.json();
+};
 
 export default function CompetitiveIntelligencePage() {
-  const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState<any>(null);
+  const { 
+    data: metrics, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['competitive-intelligence'],
+    queryFn: fetchCompetitiveMetrics,
+    staleTime: 60 * 1000, // Consider fresh for 1 minute
+    retry: 2,
+  });
 
-  useEffect(() => {
-    loadMetrics();
-  }, []);
-
-  const loadMetrics = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/rate-cards/competitive-intelligence?tenantId=default-tenant');
-      
-      if (response.ok) {
-        const data = await response.json();
-        setMetrics(data);
-      }
-    } catch (error) {
-      console.error('Error loading competitive intelligence:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -40,7 +34,7 @@ export default function CompetitiveIntelligencePage() {
     );
   }
 
-  if (!metrics) {
+  if (error || !metrics) {
     return (
       <div className="p-8">
         <Card>

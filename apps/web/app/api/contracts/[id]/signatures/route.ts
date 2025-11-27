@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 // Mock signature workflows
 const mockSignatureWorkflows = [
@@ -50,25 +51,42 @@ const mockSignatureWorkflows = [
 // GET /api/contracts/[id]/signatures - Get signature workflows for a contract
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = params.id;
+    const { id: contractId } = await params;
 
-    // Try database first (when implemented)
+    // Try database first
     try {
-      // const workflows = await prisma.signatureWorkflow.findMany({
-      //   where: { contractId },
-      //   include: { signers: true },
-      //   orderBy: { createdAt: 'desc' },
-      // });
-      // return NextResponse.json({ workflows, source: 'database' });
+      const contract = await prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { 
+          id: true, 
+          contractTitle: true,
+          searchMetadata: true,
+        },
+      });
+
+      if (contract) {
+        // Check if there are signature workflows stored in searchMetadata
+        const metadata = contract.searchMetadata as Record<string, unknown> | null;
+        const signatureData = metadata?.signatureWorkflows as unknown[] | undefined;
+        
+        if (signatureData && Array.isArray(signatureData) && signatureData.length > 0) {
+          return NextResponse.json({ 
+            workflows: signatureData,
+            source: 'database'
+          });
+        }
+      }
     } catch (dbError) {
-      console.warn('Database unavailable, using mock data:', dbError);
+      console.warn('Database lookup failed:', dbError);
     }
 
-    // Fallback to mock data
-    const workflows = mockSignatureWorkflows.filter(w => w.contractId === contractId);
+    // Fallback to mock data - filter by contractId or return all if it's a specific contract
+    const workflows = contractId === 'contract-001' 
+      ? mockSignatureWorkflows 
+      : mockSignatureWorkflows.map(w => ({ ...w, contractId }));
     
     return NextResponse.json({ 
       workflows,
@@ -86,10 +104,10 @@ export async function GET(
 // POST /api/contracts/[id]/signatures - Create a new signature request
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const contractId = params.id;
+    const { id: contractId } = await params;
     const body = await request.json();
     const { signers, provider, message, expiresInDays = 30 } = body;
 
@@ -99,7 +117,7 @@ export async function POST(
       contractName: 'Contract Name',
       provider: provider || 'docusign',
       status: 'sent',
-      signers: signers.map((s: any, index: number) => ({
+      signers: signers.map((s: { name: string; email: string; role: string }, index: number) => ({
         ...s,
         id: `signer-${Date.now()}-${index}`,
         status: 'sent',
@@ -111,6 +129,36 @@ export async function POST(
       expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000).toISOString(),
       message,
     };
+
+    // Try to store in database
+    try {
+      const contract = await prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { searchMetadata: true },
+      });
+
+      if (contract) {
+        const currentMetadata = (contract.searchMetadata as Record<string, unknown>) || {};
+        const existingWorkflows = (currentMetadata.signatureWorkflows as Record<string, unknown>[]) || [];
+        
+        await prisma.contract.update({
+          where: { id: contractId },
+          data: {
+            searchMetadata: JSON.parse(JSON.stringify({
+              ...currentMetadata,
+              signatureWorkflows: [...existingWorkflows, newWorkflow],
+            })),
+          },
+        });
+
+        return NextResponse.json({ 
+          workflow: newWorkflow,
+          source: 'database'
+        });
+      }
+    } catch (dbError) {
+      console.warn('Database update failed:', dbError);
+    }
 
     return NextResponse.json({ 
       workflow: newWorkflow,

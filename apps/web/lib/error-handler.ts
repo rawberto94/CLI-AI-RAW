@@ -123,8 +123,9 @@ export function handleError(
     
     // Try to extract status code from error message
     const statusMatch = message.match(/\b(4\d{2}|5\d{2})\b/);
-    if (statusMatch) {
-      statusCode = parseInt(statusMatch[1], 10);
+    const matchedStatus = statusMatch?.[1];
+    if (matchedStatus) {
+      statusCode = parseInt(matchedStatus, 10);
     }
   }
 
@@ -166,7 +167,7 @@ export async function handleApiError(response: Response): Promise<never> {
 /**
  * Wraps an async function with error handling
  */
-export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
+export function withErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
   context?: Omit<ErrorContext, 'metadata'>
 ): T {

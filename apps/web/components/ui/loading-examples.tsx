@@ -196,9 +196,11 @@ export function OperationProgressExample() {
     ];
 
     for (let i = 0; i < steps.length; i++) {
-      setCurrentStep(steps[i].name);
+      const step = steps[i];
+      if (!step) continue;
+      setCurrentStep(step.name);
       setProgress(((i + 1) / steps.length) * 100);
-      await new Promise(resolve => setTimeout(resolve, steps[i].duration));
+      await new Promise(resolve => setTimeout(resolve, step.duration));
     }
 
     setIsRunning(false);

@@ -114,10 +114,10 @@ export function filterContracts(
   // Client filter
   if (filters.clients && filters.clients.length > 0) {
     filtered = filtered.filter((contract) => {
-      const parties = contract.extractedData?.metadata?.parties || []
+      const parties: string[] = contract.extractedData?.metadata?.parties || []
       // Check if any selected client is in the parties list
       return filters.clients.some(client => 
-        parties.some(party => 
+        parties.some((party: string) => 
           party.toLowerCase().includes(client.toLowerCase())
         )
       )
@@ -127,10 +127,10 @@ export function filterContracts(
   // Supplier filter
   if (filters.suppliers && filters.suppliers.length > 0) {
     filtered = filtered.filter((contract) => {
-      const parties = contract.extractedData?.metadata?.parties || []
+      const parties: string[] = contract.extractedData?.metadata?.parties || []
       // Check if any selected supplier is in the parties list
       return filters.suppliers.some(supplier => 
-        parties.some(party => 
+        parties.some((party: string) => 
           party.toLowerCase().includes(supplier.toLowerCase())
         )
       )
@@ -167,8 +167,8 @@ export function extractPartiesFromContracts(contracts: Contract[]): {
   const allParties = new Set<string>()
   
   contracts.forEach(contract => {
-    const parties = contract.extractedData?.metadata?.parties || []
-    parties.forEach(party => {
+    const parties: string[] = contract.extractedData?.metadata?.parties || []
+    parties.forEach((party: string) => {
       if (party && party.trim()) {
         allParties.add(party.trim())
       }

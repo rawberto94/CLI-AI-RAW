@@ -4,6 +4,9 @@
   "packageManager": "pnpm@8.9.0",
   "description": "Next-Generation Contract Intelligence System with Advanced Integration",
   "type": "module",
+  "prisma": {
+    "schema": "packages/clients/db/schema.prisma"
+  },
   "scripts": {
     "dev": "cd apps/web && npm run dev",
     "build": "cd apps/web && npm run build",
@@ -20,7 +23,12 @@
     "services": "bash .devcontainer/start-services.sh",
     "services:test": "bash scripts/start-test-services.sh",
     "setup": "bash .devcontainer/setup.sh",
-    "verify": "bash scripts/verify-production-readiness.sh"
+    "verify": "bash scripts/verify-production-readiness.sh",
+    "db:migrate": "npx prisma migrate deploy --schema packages/clients/db/schema.prisma",
+    "db:generate": "npx prisma generate --schema packages/clients/db/schema.prisma",
+    "db:studio": "npx prisma studio --schema packages/clients/db/schema.prisma",
+    "db:push": "npx prisma db push --schema packages/clients/db/schema.prisma",
+    "db:seed": "npx prisma db seed --schema packages/clients/db/schema.prisma"
   },
   "dependencies": {
     "@types/jspdf": "^2.0.0",

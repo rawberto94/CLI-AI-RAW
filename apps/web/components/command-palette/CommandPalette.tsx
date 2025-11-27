@@ -202,7 +202,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     };
 
     filteredCommands.forEach(cmd => {
-      groups[cmd.category].push(cmd);
+      const group = groups[cmd.category];
+      if (group) {
+        group.push(cmd);
+      }
     });
 
     return groups;

@@ -63,7 +63,7 @@ export function Confetti({
         id: `particle-${i}`,
         x: Math.random() * 100,
         y: -10,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: colors[Math.floor(Math.random() * colors.length)] ?? '#FF6B6B',
         size: Math.random() * 8 + 4,
         rotation: Math.random() * 360,
         velocity: {

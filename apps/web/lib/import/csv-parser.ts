@@ -41,7 +41,8 @@ export class CSVParser {
     let dataLines: string[];
     
     if (hasHeader && lines.length > 0) {
-      headers = this.parseLine(lines[0], delimiter);
+      const firstLine = lines[0];
+      headers = firstLine ? this.parseLine(firstLine, delimiter) : [];
       dataLines = lines.slice(1);
     } else {
       // Generate column names
@@ -54,7 +55,7 @@ export class CSVParser {
     const rows: ParsedRow[] = [];
     
     for (const line of dataLines) {
-      if (line.trim() === '') continue;
+      if (!line || line.trim() === '') continue;
       
       const values = this.parseLine(line, delimiter);
       const row: ParsedRow = {};
@@ -62,7 +63,9 @@ export class CSVParser {
       for (let i = 0; i < headers.length; i++) {
         const header = headers[i];
         const value = values[i];
-        row[header] = this.parseValue(value);
+        if (header) {
+          row[header] = this.parseValue(value ?? '');
+        }
       }
       
       rows.push(row);
@@ -123,7 +126,7 @@ export class CSVParser {
       return (a.variance / a.avgCount) - (b.variance / b.avgCount);
     });
     
-    return counts[0].delimiter;
+    return counts[0]?.delimiter ?? ',';
   }
 
   /**
@@ -132,8 +135,12 @@ export class CSVParser {
   private static detectHeader(lines: string[], delimiter: string): boolean {
     if (lines.length < 2) return true;
     
-    const firstLine = this.parseLine(lines[0], delimiter);
-    const secondLine = this.parseLine(lines[1], delimiter);
+    const line0 = lines[0];
+    const line1 = lines[1];
+    if (!line0 || !line1) return true;
+    
+    const firstLine = this.parseLine(line0, delimiter);
+    const secondLine = this.parseLine(line1, delimiter);
     
     // Check if first line has mostly text and second line has numbers
     const firstLineTextCount = firstLine.filter(v => isNaN(Number(v))).length;

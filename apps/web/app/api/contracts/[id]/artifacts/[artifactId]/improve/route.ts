@@ -48,7 +48,8 @@ export async function POST(
       ...(Array.isArray(process.env['JSON_MODE']) || true ? { response_format: { type: 'json_object' } } : {}),
     });
 
-    const resultData = JSON.parse(response.choices[0].message.content || '{}');
+    const responseMessage = response.choices[0]?.message;
+    const resultData = JSON.parse(responseMessage?.content || '{}');
 
     const validation = validateExtractedData(artifact.type, resultData);
 

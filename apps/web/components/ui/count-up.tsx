@@ -73,7 +73,7 @@ export function CountUp({
     const rounded = Number(num.toFixed(decimals));
     const parts = rounded.toString().split('.');
     
-    if (separator) {
+    if (separator && parts[0]) {
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, separator);
     }
     

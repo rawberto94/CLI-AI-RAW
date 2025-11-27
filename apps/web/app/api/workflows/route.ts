@@ -1,124 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-
-// Mock data store (in production, this would use Prisma/database)
-const mockWorkflows: any[] = [
-  {
-    id: '1',
-    tenantId: 'demo',
-    name: 'Contract Approval Workflow',
-    description: 'Standard approval process for new contracts',
-    type: 'CONTRACT_APPROVAL',
-    triggerType: 'MANUAL',
-    isActive: true,
-    steps: [
-      {
-        id: 's1',
-        name: 'Legal Review',
-        order: 0,
-        stepType: 'REVIEW',
-        assigneeType: 'ROLE',
-        assigneeName: 'Legal Team',
-        dueDays: 3,
-        requiresApproval: true,
-        allowReject: true,
-        allowDelegate: false,
-      },
-      {
-        id: 's2',
-        name: 'Finance Approval',
-        order: 1,
-        stepType: 'APPROVAL',
-        assigneeType: 'ROLE',
-        assigneeName: 'Finance Manager',
-        dueDays: 2,
-        requiresApproval: true,
-        allowReject: true,
-        allowDelegate: true,
-      },
-      {
-        id: 's3',
-        name: 'Executive Sign-off',
-        order: 2,
-        stepType: 'APPROVAL',
-        assigneeType: 'USER',
-        assigneeName: 'CEO',
-        dueDays: 1,
-        requiresApproval: true,
-        allowReject: true,
-        allowDelegate: false,
-      },
-    ],
-    executions: 45,
-    createdAt: new Date('2025-01-01'),
-    updatedAt: new Date('2025-01-15'),
-  },
-  {
-    id: '2',
-    tenantId: 'demo',
-    name: 'High-Value Contract Review',
-    description: 'Enhanced review process for contracts over $100K',
-    type: 'CONTRACT_REVIEW',
-    triggerType: 'ON_VALUE_THRESHOLD',
-    isActive: true,
-    steps: [
-      {
-        id: 's1',
-        name: 'Risk Assessment',
-        order: 0,
-        stepType: 'REVIEW',
-        assigneeType: 'ROLE',
-        assigneeName: 'Risk Team',
-        dueDays: 2,
-        requiresApproval: true,
-        allowReject: true,
-        allowDelegate: false,
-      },
-      {
-        id: 's2',
-        name: 'Compliance Check',
-        order: 1,
-        stepType: 'REVIEW',
-        assigneeType: 'ROLE',
-        assigneeName: 'Compliance Officer',
-        dueDays: 2,
-        requiresApproval: true,
-        allowReject: true,
-        allowDelegate: false,
-      },
-      {
-        id: 's3',
-        name: 'Final Approval',
-        order: 2,
-        stepType: 'APPROVAL',
-        assigneeType: 'ROLE',
-        assigneeName: 'Senior Management',
-        dueDays: 3,
-        requiresApproval: true,
-        allowReject: true,
-        allowDelegate: true,
-      },
-    ],
-    executions: 12,
-    createdAt: new Date('2025-01-10'),
-    updatedAt: new Date('2025-01-14'),
-  },
-];
 
 /**
  * GET /api/workflows - List all workflows
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
-    
-    // Filter workflows by tenant
-    const workflows = mockWorkflows.filter(w => w.tenantId === tenantId);
-    
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
+    const isActive = searchParams.get('isActive');
+
+    const where: Record<string, unknown> = { tenantId };
+    if (type) where.type = type;
+    if (isActive !== null) where.isActive = isActive === 'true';
+
+    const workflows = await prisma.workflow.findMany({
+      where,
+      include: {
+        steps: {
+          orderBy: { order: 'asc' },
+        },
+        _count: {
+          select: { executions: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
     return NextResponse.json({
       success: true,
-      workflows,
+      workflows: workflows.map(w => ({
+        ...w,
+        executions: w._count.executions,
+      })),
       total: workflows.length,
     });
   } catch (error) {
@@ -134,28 +52,71 @@ export async function GET(request: NextRequest) {
   }
 }
 
+interface WorkflowStepInput {
+  name: string;
+  description?: string;
+  order?: number;
+  type?: string;
+  assignedRole?: string;
+  assignedUser?: string;
+  config?: Record<string, unknown>;
+  isRequired?: boolean;
+  timeout?: number;
+}
+
 /**
  * POST /api/workflows - Create new workflow
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
     const body = await request.json();
-    
-    const newWorkflow = {
-      id: Date.now().toString(),
-      tenantId,
-      ...body,
-      executions: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    mockWorkflows.push(newWorkflow);
-    
+
+    const { name, description, type, steps, isActive } = body;
+
+    if (!name) {
+      return NextResponse.json(
+        { success: false, error: 'Workflow name is required' },
+        { status: 400 }
+      );
+    }
+
+    const workflow = await prisma.workflow.create({
+      data: {
+        tenantId,
+        name,
+        description,
+        type: type || 'APPROVAL',
+        isActive: isActive !== false,
+        config: body.config || {},
+        metadata: body.metadata || {},
+        steps: {
+          create: ((steps || []) as WorkflowStepInput[]).map((step, index) => {
+            const stepData: Prisma.WorkflowStepCreateWithoutWorkflowInput = {
+              name: step.name,
+              order: step.order ?? index,
+              type: step.type || 'APPROVAL',
+              isRequired: step.isRequired !== false,
+            };
+            if (step.description) stepData.description = step.description;
+            if (step.assignedRole) stepData.assignedRole = step.assignedRole;
+            if (step.assignedUser) stepData.assignedUser = step.assignedUser;
+            if (step.config) stepData.config = step.config as Prisma.InputJsonValue;
+            if (step.timeout) stepData.timeout = step.timeout;
+            return stepData;
+          }),
+        },
+      },
+      include: {
+        steps: {
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+
     return NextResponse.json({
       success: true,
-      workflow: newWorkflow,
+      workflow,
       message: 'Workflow created successfully',
     });
   } catch (error) {
@@ -166,6 +127,105 @@ export async function POST(request: NextRequest) {
         error: 'Failed to create workflow',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/workflows - Update workflow
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, steps, ...updates } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Workflow ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // If updating steps, delete old ones and create new ones
+    if (steps) {
+      await prisma.workflowStep.deleteMany({
+        where: { workflowId: id },
+      });
+
+      await prisma.workflowStep.createMany({
+        data: (steps as WorkflowStepInput[]).map((step, index) => {
+          const stepData: Prisma.WorkflowStepCreateManyInput = {
+            workflowId: id,
+            name: step.name,
+            order: step.order ?? index,
+            type: step.type || 'APPROVAL',
+            isRequired: step.isRequired !== false,
+          };
+          if (step.description) stepData.description = step.description;
+          if (step.assignedRole) stepData.assignedRole = step.assignedRole;
+          if (step.assignedUser) stepData.assignedUser = step.assignedUser;
+          if (step.config) stepData.config = step.config as Prisma.InputJsonValue;
+          if (step.timeout) stepData.timeout = step.timeout;
+          return stepData;
+        }),
+      });
+    }
+
+    const workflow = await prisma.workflow.update({
+      where: { id },
+      data: {
+        ...updates,
+        updatedAt: new Date(),
+      },
+      include: {
+        steps: {
+          orderBy: { order: 'asc' },
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      workflow,
+      message: 'Workflow updated successfully',
+    });
+  } catch (error) {
+    console.error('Error updating workflow:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update workflow' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/workflows - Delete workflow
+ */
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+
+  if (!id) {
+    return NextResponse.json(
+      { success: false, error: 'Workflow ID is required' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await prisma.workflow.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Workflow deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting workflow:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to delete workflow' },
       { status: 500 }
     );
   }

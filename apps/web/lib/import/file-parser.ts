@@ -73,7 +73,7 @@ export class FileParser {
   static async extractHeaders(file: File): Promise<string[]> {
     const result = await this.parse(file, { maxRows: 1 });
     
-    if (result.sheets.length > 0) {
+    if (result.sheets.length > 0 && result.sheets[0]) {
       return result.sheets[0].headers;
     }
     

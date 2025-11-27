@@ -13,6 +13,60 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get("tenantId") || "demo";
     const days = Number(searchParams.get("days")) || 90;
+    const dataMode = request.headers.get('x-data-mode') || 'real';
+    
+    // Mock data for demo mode
+    const mockRenewals = [
+      {
+        id: "1",
+        name: "AWS Enterprise Agreement",
+        type: "Cloud Services",
+        endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
+        daysUntilExpiry: 15,
+        priority: 'urgent'
+      },
+      {
+        id: "2",
+        name: "Accenture IT Services MSA",
+        type: "IT Services",
+        endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
+        daysUntilExpiry: 28,
+        priority: 'urgent'
+      },
+      {
+        id: "3",
+        name: "Salesforce Enterprise License",
+        type: "Software License",
+        endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
+        daysUntilExpiry: 45,
+        priority: 'high'
+      },
+      {
+        id: "4",
+        name: "Deloitte Consulting Agreement",
+        type: "Consulting",
+        endDate: new Date(Date.now() + 62 * 24 * 60 * 60 * 1000).toISOString(),
+        daysUntilExpiry: 62,
+        priority: 'high'
+      },
+      {
+        id: "5",
+        name: "Microsoft Azure Subscription",
+        type: "Cloud Services",
+        endDate: new Date(Date.now() + 78 * 24 * 60 * 60 * 1000).toISOString(),
+        daysUntilExpiry: 78,
+        priority: 'medium'
+      },
+    ];
+    
+    // If mock mode, return mock data immediately
+    if (dataMode === 'mock') {
+      return NextResponse.json({
+        success: true,
+        data: mockRenewals,
+        meta: { source: 'mock' }
+      });
+    }
     
     try {
       const { prisma } = await import("@/lib/prisma");

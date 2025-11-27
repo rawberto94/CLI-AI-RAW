@@ -130,8 +130,11 @@ export function WelcomeTour() {
   };
 
   const step = tourSteps[currentStep];
-  const Icon = step.icon;
   const isLastStep = currentStep === tourSteps.length - 1;
+
+  if (!step) return null;
+  
+  const Icon = step.icon;
 
   return (
     <AnimatePresence>

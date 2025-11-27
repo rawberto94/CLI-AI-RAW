@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { prisma } from '@/lib/prisma';
 
 // File type validation
 const ALLOWED_FILE_TYPES = [
@@ -12,6 +13,14 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const ALLOWED_EXTENSIONS = ['.xlsx', '.xls', '.csv', '.pdf'];
+
+// Map file extensions to import sources
+const FILE_TYPE_MAP: Record<string, 'XLSX' | 'XLS' | 'CSV' | 'PDF'> = {
+  '.xlsx': 'XLSX',
+  '.xls': 'XLS',
+  '.csv': 'CSV',
+  '.pdf': 'PDF',
+};
 
 // File size limit: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -29,7 +38,7 @@ interface UploadResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<UploadResponse>> {
   try {
     // Get tenant ID from headers or session
-    const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
     
     // Parse multipart form data
     const formData = await request.formData();
@@ -114,27 +123,43 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
     const supplierId = formData.get('supplierId') as string | null;
     const supplierName = formData.get('supplierName') as string | null;
     const priority = (formData.get('priority') as string) || 'NORMAL';
+    const mappingTemplateId = formData.get('mappingTemplateId') as string | null;
 
-    // TODO: Create import job in database
-    // This will be implemented when we integrate with the repository layer
-    // For now, we'll return the job ID and file info
-    
-    console.log('File uploaded successfully:', {
-      jobId,
+    // Create import job in database
+    const importJob = await prisma.importJob.create({
+      data: {
+        id: jobId,
+        tenantId,
+        source: 'UPLOAD',
+        status: 'PENDING',
+        priority: (priority === 'HIGH' || priority === 'NORMAL' || priority === 'LOW') ? priority : 'NORMAL',
+        fileName: file.name,
+        fileSize: BigInt(file.size),
+        fileType: FILE_TYPE_MAP[fileExtension] || 'XLSX',
+        storagePath: filePath,
+        mappingTemplateId: mappingTemplateId || undefined,
+        extractedData: {
+          originalFileName: file.name,
+          uploadedAt: new Date().toISOString(),
+          supplierId,
+          supplierName,
+        },
+      },
+    });
+
+    console.log('Import job created:', {
+      jobId: importJob.id,
       fileName: file.name,
       fileSize: file.size,
       fileType: fileExtension,
       tenantId,
-      supplierId,
-      supplierName,
-      priority,
-      storagePath: filePath,
+      status: importJob.status,
     });
 
     return NextResponse.json(
       {
         success: true,
-        jobId,
+        jobId: importJob.id,
         fileName: file.name,
         fileSize: file.size,
         fileType: fileExtension,
@@ -158,6 +183,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
 // GET endpoint to check upload status
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
 
@@ -168,14 +194,84 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // TODO: Query import job status from database
-    // For now, return a mock response
+    // Query import job status from database
+    const importJob = await prisma.importJob.findFirst({
+      where: {
+        id: jobId,
+        tenantId,
+      },
+      include: {
+        rateCards: {
+          select: {
+            id: true,
+            supplierName: true,
+            _count: {
+              select: { roles: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!importJob) {
+      return NextResponse.json(
+        { error: 'Import job not found' },
+        { status: 404 }
+      );
+    }
+
+    // Calculate progress based on status
+    let progress = 0;
+    let message = '';
     
+    switch (importJob.status) {
+      case 'PENDING':
+        progress = 0;
+        message = 'Upload received, waiting for processing';
+        break;
+      case 'VALIDATING':
+        progress = 20;
+        message = 'Validating file format and contents';
+        break;
+      case 'MAPPING':
+        progress = 40;
+        message = 'Mapping columns to rate card fields';
+        break;
+      case 'PROCESSING':
+        progress = 70;
+        message = 'Processing rate card entries';
+        break;
+      case 'COMPLETED':
+        progress = 100;
+        message = 'Import completed successfully';
+        break;
+      case 'FAILED':
+        progress = 0;
+        message = 'Import failed';
+        break;
+      case 'REQUIRES_REVIEW':
+        progress = 90;
+        message = 'Import requires manual review';
+        break;
+    }
+
     return NextResponse.json({
-      jobId,
-      status: 'pending',
-      progress: 0,
-      message: 'Upload received, waiting for processing',
+      jobId: importJob.id,
+      status: importJob.status,
+      progress,
+      message,
+      fileName: importJob.fileName,
+      createdAt: importJob.createdAt.toISOString(),
+      startedAt: importJob.startedAt?.toISOString() || null,
+      completedAt: importJob.completedAt?.toISOString() || null,
+      rowsProcessed: importJob.rowsProcessed,
+      rowsSucceeded: importJob.rowsSucceeded,
+      rowsFailed: importJob.rowsFailed,
+      errors: importJob.errors,
+      warnings: importJob.warnings,
+      requiresReview: importJob.requiresReview,
+      rateCardsCreated: importJob.rateCards.length,
+      mappingConfidence: Number(importJob.mappingConfidence),
     });
   } catch (error) {
     console.error('Status check error:', error);

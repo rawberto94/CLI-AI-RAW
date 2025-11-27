@@ -1,35 +1,83 @@
 /**
- * Contract ID Validator
- * Validates and sanitizes contract IDs to ensure they are properly formatted
+ * Contract ID Validation Utilities
+ * Validates and fixes common contract ID format issues
  */
 
 export interface ValidationResult {
   isValid: boolean;
   error?: string;
-  sanitized?: string;
+  suggestedFix?: string;
 }
 
 export class ContractIdValidator {
-  private static readonly HEX_PATTERN = /^[0-9a-fA-F-]+$/;
-  private static readonly VALID_ID_PATTERN = /^doc-[0-9a-fA-F]{13}-[0-9a-fA-F]{6}$/;
+  // CUID pattern - 25 characters, alphanumeric
+  private static readonly CUID_PATTERN = /^c[a-z0-9]{24}$/i;
+  
+  // UUID pattern
+  private static readonly UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  // Generic ID pattern (alphanumeric with dashes/underscores)
+  private static readonly GENERIC_ID_PATTERN = /^[a-z0-9_-]+$/i;
 
   /**
-   * Validates if a contract ID is properly formatted
+   * Validate a contract ID
    */
-  static validateId(id: string): ValidationResult {
-    if (!id || typeof id !== 'string') {
+  static validateId(id: string | null | undefined): ValidationResult {
+    if (!id) {
       return {
         isValid: false,
-        error: 'Contract ID is required and must be a string'
+        error: 'Contract ID is required',
       };
     }
 
-    // Check if it matches the expected pattern
-    if (!this.VALID_ID_PATTERN.test(id)) {
+    const trimmedId = id.trim();
+
+    if (trimmedId.length === 0) {
       return {
         isValid: false,
-        error: 'Contract ID must follow format: doc-[13 hex chars]-[6 hex chars]',
-        sanitized: this.sanitizeId(id)
+        error: 'Contract ID cannot be empty',
+      };
+    }
+
+    // Check for common invalid patterns
+    if (trimmedId === 'undefined' || trimmedId === 'null') {
+      return {
+        isValid: false,
+        error: 'Contract ID is invalid (undefined/null string)',
+      };
+    }
+
+    // Check for CUID format
+    if (this.CUID_PATTERN.test(trimmedId)) {
+      return { isValid: true };
+    }
+
+    // Check for UUID format
+    if (this.UUID_PATTERN.test(trimmedId)) {
+      return { isValid: true };
+    }
+
+    // Check for generic ID format
+    if (this.GENERIC_ID_PATTERN.test(trimmedId) && trimmedId.length >= 8) {
+      return { isValid: true };
+    }
+
+    // ID is too short
+    if (trimmedId.length < 8) {
+      return {
+        isValid: false,
+        error: 'Contract ID is too short',
+        suggestedFix: trimmedId,
+      };
+    }
+
+    // ID contains invalid characters
+    if (!/^[a-z0-9_-]+$/i.test(trimmedId)) {
+      const cleaned = trimmedId.replace(/[^a-z0-9_-]/gi, '');
+      return {
+        isValid: false,
+        error: 'Contract ID contains invalid characters',
+        suggestedFix: cleaned,
       };
     }
 
@@ -37,69 +85,55 @@ export class ContractIdValidator {
   }
 
   /**
-   * Checks if a string contains only valid hexadecimal characters
-   */
-  static isValidHexadecimal(str: string): boolean {
-    return this.HEX_PATTERN.test(str);
-  }
-
-  /**
-   * Sanitizes a contract ID by removing invalid characters
-   */
-  static sanitizeId(id: string): string {
-    if (!id) return '';
-    
-    // Remove any non-hexadecimal characters except hyphens
-    const sanitized = id.replace(/[^0-9a-fA-F-]/g, '');
-    
-    // If it starts with 'doc-', keep that format
-    if (sanitized.startsWith('doc-')) {
-      return sanitized;
-    }
-    
-    // Otherwise, try to format it properly
-    const hexOnly = sanitized.replace(/-/g, '');
-    if (hexOnly.length >= 19) {
-      return `doc-${hexOnly.substring(0, 13)}-${hexOnly.substring(13, 19)}`;
-    }
-    
-    return sanitized;
-  }
-
-  /**
-   * Generates a valid contract ID
-   */
-  static generateValidId(): string {
-    const timestamp = Date.now().toString(16);
-    const random = Math.random().toString(16).substring(2, 8);
-    return `doc-${timestamp}-${random}`;
-  }
-
-  /**
-   * Fixes common contract ID issues
+   * Fix common contract ID issues
    */
   static fixCommonIssues(id: string): string {
-    if (!id) return this.generateValidId();
-    
-    // Fix the specific invalid ID from your system
-    if (id === 'doc-1757416850438-f8xy03') {
-      return 'doc-1757416850438-f83003';
+    if (!id) return '';
+
+    let fixed = id.trim();
+
+    // Remove URL encoding
+    try {
+      fixed = decodeURIComponent(fixed);
+    } catch {
+      // Ignore decoding errors
     }
-    
-    // Replace invalid characters with valid hex
-    const fixed = id.replace(/[xy]/g, '3').replace(/[^0-9a-fA-F-]/g, '');
-    
-    const validation = this.validateId(fixed);
-    if (validation.isValid) {
-      return fixed;
-    }
-    
-    return validation.sanitized || this.generateValidId();
+
+    // Remove common prefixes/suffixes that might be accidentally added
+    fixed = fixed.replace(/^(contract[-_]?|id[-_]?)/i, '');
+    fixed = fixed.replace(/([-_]?contract|[-_]?id)$/i, '');
+
+    // Remove any whitespace
+    fixed = fixed.replace(/\s+/g, '');
+
+    // Remove invalid characters
+    fixed = fixed.replace(/[^a-z0-9_-]/gi, '');
+
+    return fixed || id;
+  }
+
+  /**
+   * Check if an ID looks like a CUID
+   */
+  static isCuid(id: string): boolean {
+    return this.CUID_PATTERN.test(id);
+  }
+
+  /**
+   * Check if an ID looks like a UUID
+   */
+  static isUuid(id: string): boolean {
+    return this.UUID_PATTERN.test(id);
+  }
+
+  /**
+   * Get the ID type
+   */
+  static getIdType(id: string): 'cuid' | 'uuid' | 'generic' | 'invalid' {
+    if (!id) return 'invalid';
+    if (this.isCuid(id)) return 'cuid';
+    if (this.isUuid(id)) return 'uuid';
+    if (this.GENERIC_ID_PATTERN.test(id) && id.length >= 8) return 'generic';
+    return 'invalid';
   }
 }
-
-// Utility functions for easy import
-export const validateContractId = ContractIdValidator.validateId;
-export const sanitizeContractId = ContractIdValidator.sanitizeId;
-export const generateContractId = ContractIdValidator.generateValidId;
-export const fixContractId = ContractIdValidator.fixCommonIssues;

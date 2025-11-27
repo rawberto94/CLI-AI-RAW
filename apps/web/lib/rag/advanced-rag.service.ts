@@ -748,7 +748,8 @@ export async function processContractWithSemanticChunking(
   }
   
   // Step 3: Store in database with metadata
-  const { toSql } = (await import('pgvector/utils')).pgvector;
+  const pgvector = await import('pgvector/utils');
+  const toSql = pgvector.toSql;
   
   // Delete existing embeddings
   await prisma.contractEmbedding.deleteMany({ where: { contractId } });

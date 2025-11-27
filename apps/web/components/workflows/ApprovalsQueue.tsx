@@ -495,7 +495,7 @@ export const ApprovalsQueue: React.FC = () => {
       // If in demo mode, always use mock data
       if (isMockData) {
         setApprovals(mockApprovals);
-        setSelectedId(mockApprovals[0]?.id);
+        setSelectedId(mockApprovals[0]?.id ?? null);
         setLoading(false);
         return;
       }
@@ -533,12 +533,12 @@ export const ApprovalsQueue: React.FC = () => {
         } else {
           // Fallback to mock data
           setApprovals(mockApprovals);
-          setSelectedId(mockApprovals[0]?.id);
+          setSelectedId(mockApprovals[0]?.id ?? null);
         }
       } catch (error) {
         console.log('Using mock approvals data');
         setApprovals(mockApprovals);
-        setSelectedId(mockApprovals[0]?.id);
+        setSelectedId(mockApprovals[0]?.id ?? null);
       } finally {
         setLoading(false);
       }

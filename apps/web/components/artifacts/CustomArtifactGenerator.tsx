@@ -239,6 +239,7 @@ export function CustomArtifactGenerator({
 
     for (let i = 0; i < topics.length; i++) {
       const topic = topics[i];
+      if (!topic) continue;
       setCurrentTopic(topic.name);
       setProgress(((i + 0.5) / totalTopics) * 100);
 
@@ -334,7 +335,8 @@ export function CustomArtifactGenerator({
       title: `Analysis of ${topic.name}`,
       content: `Based on the contract review, several key provisions related to ${topic.name.toLowerCase()} were identified. ${topic.description}`,
       confidence: 0.75 + Math.random() * 0.2,
-      riskLevel: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as any,
+      riskLevel: ['low', 'medium', 'high'][Math.floor(Math.random() * 3)] as 'low' | 'medium' | 'high',
+      actionRequired: false,
       suggestions: ['Review with legal team', 'Compare with industry benchmarks']
     };
 
@@ -346,7 +348,7 @@ export function CustomArtifactGenerator({
       confidence: mockData.confidence || 0.8,
       sources: ['Section 4.2', 'Section 8.1', 'Exhibit A'],
       riskLevel: mockData.riskLevel,
-      actionRequired: mockData.actionRequired,
+      actionRequired: mockData.actionRequired ?? false,
       suggestions: mockData.suggestions
     };
   };
@@ -478,7 +480,8 @@ export function CustomArtifactGenerator({
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
           {PRESET_TOPICS.map((topic) => {
             const isSelected = selectedTopics.some(t => t.id === topic.id);
-            const colors = CATEGORY_COLORS[topic.category] || CATEGORY_COLORS.Risk;
+            const defaultColors = { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+            const colors = CATEGORY_COLORS[topic.category] ?? CATEGORY_COLORS.Risk ?? defaultColors;
             
             return (
               <button

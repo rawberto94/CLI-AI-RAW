@@ -80,7 +80,7 @@ function scheduleProgress(job: InternalProcessingJob) {
     const nextProgress = Math.min(job.progress + 20, 95);
     job.progress = nextProgress;
     job.updatedAt = new Date();
-    job.currentStep = PROCESSING_STAGES[Math.min(stageIndex, PROCESSING_STAGES.length - 2)];
+    job.currentStep = PROCESSING_STAGES[Math.min(stageIndex, PROCESSING_STAGES.length - 2)] ?? null;
     stageIndex += 1;
 
     if (nextProgress >= 95 && job.progressTimer) {

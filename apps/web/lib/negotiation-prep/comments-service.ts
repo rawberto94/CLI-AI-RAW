@@ -142,7 +142,7 @@ export class CommentsService {
     let match
 
     while ((match = mentionRegex.exec(content)) !== null) {
-      mentions.push(match[1])
+      if (match[1]) mentions.push(match[1])
     }
 
     return mentions

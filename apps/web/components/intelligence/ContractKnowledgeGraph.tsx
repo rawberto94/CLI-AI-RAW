@@ -240,8 +240,10 @@ const useForceLayout = (nodes: GraphNode[], edges: GraphEdge[], containerRef: Re
           for (let j = i + 1; j < nodes.length; j++) {
             const nodeA = nodes[i];
             const nodeB = nodes[j];
+            if (!nodeA || !nodeB) continue;
             const posA = newPositions[nodeA.id];
             const posB = newPositions[nodeB.id];
+            if (!posA || !posB) continue;
 
             const dx = posB.x - posA.x;
             const dy = posB.y - posA.y;
@@ -251,10 +253,14 @@ const useForceLayout = (nodes: GraphNode[], edges: GraphEdge[], containerRef: Re
             const fx = (dx / dist) * force;
             const fy = (dy / dist) * force;
 
-            forces[nodeA.id].fx -= fx;
-            forces[nodeA.id].fy -= fy;
-            forces[nodeB.id].fx += fx;
-            forces[nodeB.id].fy += fy;
+            const forceA = forces[nodeA.id];
+            const forceB = forces[nodeB.id];
+            if (forceA && forceB) {
+              forceA.fx -= fx;
+              forceA.fy -= fy;
+              forceB.fx += fx;
+              forceB.fy += fy;
+            }
           }
         }
 
@@ -267,23 +273,30 @@ const useForceLayout = (nodes: GraphNode[], edges: GraphEdge[], containerRef: Re
           const dx = posTarget.x - posSource.x;
           const dy = posTarget.y - posSource.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist === 0) return;
 
           const force = dist * attraction * edge.strength;
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
 
-          forces[edge.source].fx += fx;
-          forces[edge.source].fy += fy;
-          forces[edge.target].fx -= fx;
-          forces[edge.target].fy -= fy;
+          const forceSource = forces[edge.source];
+          const forceTarget = forces[edge.target];
+          if (forceSource && forceTarget) {
+            forceSource.fx += fx;
+            forceSource.fy += fy;
+            forceTarget.fx -= fx;
+            forceTarget.fy -= fy;
+          }
         });
 
         // Apply forces with damping
         nodes.forEach(node => {
           const pos = newPositions[node.id];
           const force = forces[node.id];
-          pos.x = Math.max(50, Math.min(width - 50, pos.x + force.fx * damping));
-          pos.y = Math.max(50, Math.min(height - 50, pos.y + force.fy * damping));
+          if (pos && force) {
+            pos.x = Math.max(50, Math.min(width - 50, pos.x + force.fx * damping));
+            pos.y = Math.max(50, Math.min(height - 50, pos.y + force.fy * damping));
+          }
         });
       }
 

@@ -49,6 +49,7 @@ export class ExcelParser {
 
     for (const sheetName of workbook.SheetNames) {
       const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) continue;
       const parsedSheet = this.parseSheet(worksheet, sheetName);
       sheets.push(parsedSheet);
       totalRows += parsedSheet.rows.length;
@@ -245,8 +246,9 @@ export class ExcelParser {
           
           for (const pattern of supplierPatterns) {
             const match = value.match(pattern);
-            if (match) {
-              return match[1].trim();
+            const matched = match?.[1];
+            if (matched) {
+              return matched.trim();
             }
           }
         }
@@ -281,8 +283,9 @@ export class ExcelParser {
           
           for (const pattern of currencyPatterns) {
             const match = value.match(pattern);
-            if (match) {
-              return match[1].toUpperCase();
+            const matched = match?.[1];
+            if (matched) {
+              return matched.toUpperCase();
             }
           }
         }
@@ -324,8 +327,9 @@ export class ExcelParser {
             
             for (const pattern of datePatterns) {
               const match = value.match(pattern);
-              if (match) {
-                const date = new Date(match[1]);
+              const matched = match?.[1];
+              if (matched) {
+                const date = new Date(matched);
                 if (!isNaN(date.getTime())) {
                   return date;
                 }

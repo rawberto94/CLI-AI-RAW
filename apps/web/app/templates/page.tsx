@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,9 +19,11 @@ import {
   AlertCircle,
   Sparkles,
   Filter,
+  RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useTemplates, useDeleteTemplate } from '@/hooks/use-queries'
 
 interface ContractTemplate {
   id: string
@@ -39,110 +41,110 @@ interface ContractTemplate {
 }
 
 export default function TemplatesPage() {
-  const [templates, setTemplates] = useState<ContractTemplate[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
-  useEffect(() => {
-    loadTemplates()
-  }, [])
+  // Use React Query for data fetching with caching
+  const { data: templatesData, isLoading: loading, refetch } = useTemplates()
+  const deleteTemplate = useDeleteTemplate()
 
-  const loadTemplates = async () => {
-    setLoading(true)
-    try {
-      // Mock data for now
-      const mockTemplates: ContractTemplate[] = [
-        {
-          id: '1',
-          name: 'Software License Agreement',
-          description: 'Standard SaaS software licensing agreement with usage terms',
-          category: 'Technology',
-          language: 'en-US',
-          variables: 12,
-          clauses: 18,
-          createdBy: 'Sarah Chen',
-          createdAt: '2024-01-15',
-          lastModified: '2024-12-20',
-          status: 'active',
-          usageCount: 45,
-        },
-        {
-          id: '2',
-          name: 'Master Services Agreement',
-          description: 'Comprehensive MSA template for professional services',
-          category: 'Services',
-          language: 'en-US',
-          variables: 15,
-          clauses: 25,
-          createdBy: 'Roberto Ostojic',
-          createdAt: '2024-02-10',
-          lastModified: '2024-12-18',
-          status: 'active',
-          usageCount: 78,
-        },
-        {
-          id: '3',
-          name: 'Non-Disclosure Agreement',
-          description: 'Mutual NDA with customizable confidentiality terms',
-          category: 'Legal',
-          language: 'en-US',
-          variables: 8,
-          clauses: 12,
-          createdBy: 'Mike Johnson',
-          createdAt: '2024-03-05',
-          lastModified: '2024-11-30',
-          status: 'active',
-          usageCount: 120,
-        },
-        {
-          id: '4',
-          name: 'Employment Agreement',
-          description: 'Standard employment contract with benefits and termination clauses',
-          category: 'HR',
-          language: 'en-US',
-          variables: 20,
-          clauses: 30,
-          createdBy: 'Sarah Chen',
-          createdAt: '2024-04-12',
-          lastModified: '2024-12-10',
-          status: 'active',
-          usageCount: 65,
-        },
-        {
-          id: '5',
-          name: 'Vendor Agreement',
-          description: 'Procurement contract for goods and services',
-          category: 'Procurement',
-          language: 'en-US',
-          variables: 18,
-          clauses: 22,
-          createdBy: 'Alex Brown',
-          createdAt: '2024-05-20',
-          lastModified: '2024-12-05',
-          status: 'active',
-          usageCount: 32,
-        },
-        {
-          id: '6',
-          name: 'Consulting Agreement (Draft)',
-          description: 'Independent contractor consulting agreement',
-          category: 'Services',
-          language: 'en-US',
-          variables: 10,
-          clauses: 15,
-          createdBy: 'Jane Smith',
-          createdAt: '2024-12-01',
-          lastModified: '2024-12-15',
-          status: 'draft',
-          usageCount: 0,
-        },
-      ]
-      setTemplates(mockTemplates)
-    } catch (error) {
-      console.error('Failed to load templates:', error)
-    } finally {
-      setLoading(false)
+  // Fallback to mock data if API returns empty
+  const templates: ContractTemplate[] = useMemo(() => {
+    if (templatesData?.templates && (templatesData.templates as ContractTemplate[]).length > 0) {
+      return templatesData.templates as ContractTemplate[]
+    }
+    // Mock data fallback
+    return [
+      {
+        id: '1',
+        name: 'Software License Agreement',
+        description: 'Standard SaaS software licensing agreement with usage terms',
+        category: 'Technology',
+        language: 'en-US',
+        variables: 12,
+        clauses: 18,
+        createdBy: 'Sarah Chen',
+        createdAt: '2024-01-15',
+        lastModified: '2024-12-20',
+        status: 'active',
+        usageCount: 45,
+      },
+      {
+        id: '2',
+        name: 'Master Services Agreement',
+        description: 'Comprehensive MSA template for professional services',
+        category: 'Services',
+        language: 'en-US',
+        variables: 15,
+        clauses: 25,
+        createdBy: 'Roberto Ostojic',
+        createdAt: '2024-02-10',
+        lastModified: '2024-12-18',
+        status: 'active',
+        usageCount: 78,
+      },
+      {
+        id: '3',
+        name: 'Non-Disclosure Agreement',
+        description: 'Mutual NDA with customizable confidentiality terms',
+        category: 'Legal',
+        language: 'en-US',
+        variables: 8,
+        clauses: 12,
+        createdBy: 'Mike Johnson',
+        createdAt: '2024-03-05',
+        lastModified: '2024-11-30',
+        status: 'active',
+        usageCount: 120,
+      },
+      {
+        id: '4',
+        name: 'Employment Agreement',
+        description: 'Standard employment contract with benefits and termination clauses',
+        category: 'HR',
+        language: 'en-US',
+        variables: 20,
+        clauses: 30,
+        createdBy: 'Sarah Chen',
+        createdAt: '2024-04-12',
+        lastModified: '2024-12-10',
+        status: 'active',
+        usageCount: 65,
+      },
+      {
+        id: '5',
+        name: 'Vendor Agreement',
+        description: 'Procurement contract for goods and services',
+        category: 'Procurement',
+        language: 'en-US',
+        variables: 18,
+        clauses: 22,
+        createdBy: 'Alex Brown',
+        createdAt: '2024-05-20',
+        lastModified: '2024-12-05',
+        status: 'active',
+        usageCount: 32,
+      },
+      {
+        id: '6',
+        name: 'Consulting Agreement (Draft)',
+        description: 'Independent contractor consulting agreement',
+        category: 'Services',
+        language: 'en-US',
+        variables: 10,
+        clauses: 15,
+        createdBy: 'Jane Smith',
+        createdAt: '2024-12-01',
+        lastModified: '2024-12-15',
+        status: 'draft',
+        usageCount: 0,
+      },
+    ]
+  }, [templatesData])
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (confirm('Are you sure you want to delete this template?')) {
+      await deleteTemplate.mutateAsync(id)
     }
   }
 

@@ -180,12 +180,13 @@ export class DataTransformer {
     taxonomy?: Record<string, string>
   ): { standardizedRole: string; category: string; seniority: string } {
     // Use taxonomy if provided
-    if (taxonomy && taxonomy[role.toLowerCase()]) {
-      const standardized = taxonomy[role.toLowerCase()];
+    const lowerRole = role.toLowerCase();
+    const taxonomyMatch = taxonomy?.[lowerRole];
+    if (taxonomyMatch) {
       return {
-        standardizedRole: standardized,
-        category: this.inferCategory(standardized),
-        seniority: this.inferSeniority(standardized),
+        standardizedRole: taxonomyMatch,
+        category: this.inferCategory(taxonomyMatch),
+        seniority: this.inferSeniority(taxonomyMatch),
       };
     }
 
@@ -407,7 +408,8 @@ export class DataTransformer {
 
     const str = String(value);
     const match = str.match(/(\d+)/);
-    return match ? parseInt(match[1], 10) : undefined;
+    const matched = match?.[1];
+    return matched ? parseInt(matched, 10) : undefined;
   }
 
   /**

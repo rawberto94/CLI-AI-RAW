@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { taxonomyService } from "@/lib/data-orchestration";
+import { prisma } from "@/lib/prisma";
 
 /**
  * GET /api/contracts/[id]/metadata - Get contract metadata
@@ -25,19 +25,37 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Get contract metadata
-    const metadataResult = await taxonomyService.getContractMetadata(contractId, tenantId);
+    // Get contract with metadata fields
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: {
+        id: true,
+        fileName: true,
+        contractType: true,
+        status: true,
+        effectiveDate: true,
+        expirationDate: true,
+        totalValue: true,
+        currency: true,
+        supplierName: true,
+        clientName: true,
+        description: true,
+        tags: true,
+        createdAt: true,
+        updatedAt: true,
+      }
+    });
 
-    if (!metadataResult.success) {
+    if (!contract) {
       return NextResponse.json({
         success: false,
-        error: metadataResult.error || "Failed to get contract metadata"
-      }, { status: 500 });
+        error: "Contract not found"
+      }, { status: 404 });
     }
 
     return NextResponse.json({
       success: true,
-      data: metadataResult.data
+      data: contract
     });
 
   } catch (error) {
@@ -71,23 +89,27 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Update metadata
-    const updateResult = await taxonomyService.updateContractMetadata(
-      contractId,
-      tenantId,
-      metadata
-    );
-
-    if (!updateResult.success) {
-      return NextResponse.json({
-        success: false,
-        error: updateResult.error || "Failed to update metadata"
-      }, { status: 500 });
-    }
+    // Update contract metadata
+    const updatedContract = await prisma.contract.update({
+      where: { id: contractId },
+      data: {
+        ...(metadata.contractType && { contractType: metadata.contractType }),
+        ...(metadata.status && { status: metadata.status }),
+        ...(metadata.effectiveDate && { effectiveDate: new Date(metadata.effectiveDate) }),
+        ...(metadata.expirationDate && { expirationDate: new Date(metadata.expirationDate) }),
+        ...(metadata.totalValue !== undefined && { totalValue: metadata.totalValue }),
+        ...(metadata.currency && { currency: metadata.currency }),
+        ...(metadata.supplierName && { supplierName: metadata.supplierName }),
+        ...(metadata.clientName && { clientName: metadata.clientName }),
+        ...(metadata.description && { description: metadata.description }),
+        ...(metadata.tags && { tags: metadata.tags }),
+        updatedAt: new Date(),
+      }
+    });
 
     return NextResponse.json({
       success: true,
-      data: updateResult.data,
+      data: updatedContract,
       message: "Contract metadata updated successfully"
     });
 

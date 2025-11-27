@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,58 +33,25 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
-
-interface Contract {
-  id: string;
-  title: string;
-  status: string;
-  parties?: {
-    client?: string;
-    supplier?: string;
-  };
-  value?: number;
-  effectiveDate?: string;
-  expirationDate?: string;
-  riskScore?: number;
-  uploadedAt?: string;
-  error?: string;
-  processing?: {
-    progress: number;
-    currentStage: string;
-  };
-}
+import { useContracts, type Contract } from "@/hooks/use-queries";
 
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const fetchContracts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/contracts/list", {
-        headers: {
-          "X-Data-Mode": dataMode,
-        },
-      });
+  // Use React Query for data fetching with caching
+  const { 
+    data: contractsData, 
+    isLoading: loading, 
+    refetch,
+    error 
+  } = useContracts({
+    status: statusFilter === 'all' ? undefined : statusFilter,
+  });
 
-      if (!response.ok) throw new Error("Failed to fetch contracts");
-
-      const result = await response.json();
-      setContracts(result.data || []);
-    } catch (error) {
-      console.error("Error fetching contracts:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [dataMode]);
-
-  useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
+  const contracts: Contract[] = contractsData?.contracts || [];
 
   const filteredContracts = useMemo(() => {
     if (!Array.isArray(contracts)) return [];
@@ -184,7 +151,7 @@ export default function ContractsPage() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={fetchContracts}
+              onClick={() => refetch()}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh

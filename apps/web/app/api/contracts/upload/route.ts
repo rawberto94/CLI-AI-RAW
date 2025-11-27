@@ -333,7 +333,7 @@ export async function POST(
         
         return await createContractWithSideEffects({
           contractData: {
-            tenant: { connect: { id: tenantId } },
+            tenantId: tenantId,
             fileName: file.name,
             originalName: file.name,
             fileSize: BigInt(file.size),
@@ -359,7 +359,7 @@ export async function POST(
         // Fallback to direct creation
         const contract = await prisma.contract.create({
           data: {
-            tenant: { connect: { id: tenantId } },
+            tenantId: tenantId,
             fileName: file.name,
             originalName: file.name,
             fileSize: BigInt(file.size),

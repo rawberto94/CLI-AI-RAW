@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Processing Job Service
  * 

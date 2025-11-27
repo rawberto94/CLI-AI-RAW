@@ -119,7 +119,7 @@ export async function withIdempotency<T>(
         key,
         tenantId,
         operation: operationName,
-        response: result as Prisma.JsonValue,
+        response: result as Prisma.InputJsonValue,
         requestHash: key, // Use key as hash for now
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
         createdAt: new Date(),

@@ -5,7 +5,7 @@
 export interface ValidationRule {
   field: string;
   type: 'required' | 'type' | 'range' | 'format' | 'custom';
-  validator: (value: any, row: Record<string, any>) => boolean;
+  validator: (value: unknown, row: Record<string, unknown>) => boolean;
   message: string;
   severity: 'error' | 'warning' | 'info';
 }
@@ -13,7 +13,7 @@ export interface ValidationRule {
 export interface ValidationIssue {
   rowNumber: number;
   field: string;
-  value: any;
+  value: unknown;
   type: string;
   message: string;
   severity: 'error' | 'warning' | 'info';
@@ -39,7 +39,7 @@ export class DataValidator {
   /**
    * Validate rate card data
    */
-  static validate(rows: Record<string, any>[], mappings: Record<string, string>): ValidationResult {
+  static validate(rows: Record<string, unknown>[], mappings: Record<string, string>): ValidationResult {
     const issues: ValidationIssue[] = [];
     const rules = this.getValidationRules();
 
@@ -189,7 +189,7 @@ export class DataValidator {
     if (!roleField) return issues;
 
     const role = row[roleField];
-    const location = row[locationField];
+    const location = locationField ? row[locationField] : undefined;
 
     // Find duplicates
     const duplicates = allRows.filter((r, i) => {

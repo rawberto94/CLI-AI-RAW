@@ -11,6 +11,8 @@ import { ModuleProvider } from "@/contexts/ModuleContext";
 import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
 import { FloatingDataModeToggle } from "@/components/ui/DataModeToggle";
 import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
+import { QueryProvider } from "@/lib/query-client";
+import { WebSocketProvider } from "@/contexts/websocket-context";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -33,26 +35,30 @@ export default function RootLayout({
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-slate-50 font-sans antialiased">
         <GlobalErrorBoundary>
-          <DataModeProvider>
-            <ToastProvider>
-              <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
-                <ModuleProvider>
-                  <FeedbackProvider>
-                    <GlobalKeyboardShortcuts>
-                      <HealthBanner />
-                      <EnhancedNavigation />
-                      <main className="min-h-screen lg:pl-72 pt-16 lg:pt-0 bg-slate-50 overflow-x-hidden">
-                        <div className="h-full w-full max-w-full">
-                          {children}
-                        </div>
-                      </main>
-                      <FloatingDataModeToggle />
-                    </GlobalKeyboardShortcuts>
-                  </FeedbackProvider>
-                </ModuleProvider>
-              </RealTimeProvider>
-            </ToastProvider>
-          </DataModeProvider>
+          <QueryProvider>
+            <WebSocketProvider>
+              <DataModeProvider>
+                <ToastProvider>
+                  <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                    <ModuleProvider>
+                      <FeedbackProvider>
+                        <GlobalKeyboardShortcuts>
+                          <HealthBanner />
+                          <EnhancedNavigation />
+                          <main className="min-h-screen lg:pl-72 pt-16 lg:pt-0 bg-slate-50 overflow-x-hidden">
+                            <div className="h-full w-full max-w-full">
+                              {children}
+                            </div>
+                          </main>
+                          <FloatingDataModeToggle />
+                        </GlobalKeyboardShortcuts>
+                      </FeedbackProvider>
+                    </ModuleProvider>
+                  </RealTimeProvider>
+                </ToastProvider>
+              </DataModeProvider>
+            </WebSocketProvider>
+          </QueryProvider>
         </GlobalErrorBoundary>
       </body>
     </html>

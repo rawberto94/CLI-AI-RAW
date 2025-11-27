@@ -60,8 +60,10 @@ export function Pagination({
   };
 
   const visiblePages = getVisiblePages();
-  const showFirstPage = visiblePages[0] > 1;
-  const showLastPage = visiblePages[visiblePages.length - 1] < totalPages;
+  const firstVisiblePage = visiblePages[0];
+  const lastVisiblePage = visiblePages[visiblePages.length - 1];
+  const showFirstPage = (firstVisiblePage ?? 1) > 1;
+  const showLastPage = (lastVisiblePage ?? totalPages) < totalPages;
 
   return (
     <div className="flex items-center justify-between px-2 py-4">
@@ -106,7 +108,7 @@ export function Pagination({
             >
               1
             </Button>
-            {visiblePages[0] > 2 && (
+            {(firstVisiblePage ?? 0) > 2 && (
               <span className="px-2 text-muted-foreground">...</span>
             )}
           </>
@@ -129,7 +131,7 @@ export function Pagination({
         {/* Last page number */}
         {showLastPage && (
           <>
-            {visiblePages[visiblePages.length - 1] < totalPages - 1 && (
+            {(lastVisiblePage ?? totalPages) < totalPages - 1 && (
               <span className="px-2 text-muted-foreground">...</span>
             )}
             <Button

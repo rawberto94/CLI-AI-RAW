@@ -76,11 +76,15 @@ export function BulkCSVUpload({ onSuccess, tenantId = 'demo' }: BulkCSVUploadPro
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length < 2) return [];
 
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headerLine = lines[0];
+    if (!headerLine) return [];
+    const headers = headerLine.split(',').map(h => h.trim());
     const data = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const line = lines[i];
+      if (!line) continue;
+      const values = line.split(',').map(v => v.trim());
       const row: any = {};
       
       headers.forEach((header, index) => {
@@ -274,7 +278,7 @@ export function BulkCSVUpload({ onSuccess, tenantId = 'demo' }: BulkCSVUploadPro
                   <Button
                     size="sm"
                     onClick={handleImport}
-                    disabled={loading || validating || (result && result.summary.invalid > 0)}
+                    disabled={loading || validating || (result && result.summary.invalid > 0) || false}
                   >
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Import

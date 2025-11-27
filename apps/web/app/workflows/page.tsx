@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { WorkflowBuilder } from '@/components/workflows/WorkflowBuilder'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,51 +21,35 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useWorkflows, useUpdateWorkflow, useDeleteWorkflow, useCreateWorkflow, type Workflow } from '@/hooks/use-queries'
+import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
 
 export default function WorkflowsPage() {
   const router = useRouter()
-  const [workflows, setWorkflows] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
   const [showBuilder, setShowBuilder] = useState(false)
-  const [selectedWorkflow, setSelectedWorkflow] = useState<any>(null)
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null)
 
-  useEffect(() => {
-    loadWorkflows()
-  }, [])
+  // Use React Query for data fetching with caching
+  const { data: workflowsData, isLoading: loading, refetch } = useWorkflows()
+  const updateWorkflow = useUpdateWorkflow()
+  const deleteWorkflowMutation = useDeleteWorkflow()
+  const createWorkflowMutation = useCreateWorkflow()
 
-  const loadWorkflows = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/workflows')
-      if (response.ok) {
-        const data = await response.json()
-        setWorkflows(data.workflows || [])
-      }
-    } catch (error) {
-      console.error('Failed to load workflows:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const workflows: Workflow[] = workflowsData?.workflows || []
 
   const createNew = () => {
     setSelectedWorkflow(null)
     setShowBuilder(true)
   }
 
-  const editWorkflow = (workflow: any) => {
+  const editWorkflow = (workflow: Workflow) => {
     setSelectedWorkflow(workflow)
     setShowBuilder(true)
   }
 
   const toggleWorkflow = async (workflowId: string, isActive: boolean) => {
     try {
-      await fetch(`/api/workflows/${workflowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive }),
-      })
-      await loadWorkflows()
+      await updateWorkflow.mutateAsync({ id: workflowId, data: { isActive } })
     } catch (error) {
       console.error('Failed to toggle workflow:', error)
     }
@@ -75,8 +59,7 @@ export default function WorkflowsPage() {
     if (!confirm('Are you sure you want to delete this workflow?')) return
     
     try {
-      await fetch(`/api/workflows/${workflowId}`, { method: 'DELETE' })
-      await loadWorkflows()
+      await deleteWorkflowMutation.mutateAsync(workflowId)
     } catch (error) {
       console.error('Failed to delete workflow:', error)
     }
@@ -84,16 +67,11 @@ export default function WorkflowsPage() {
 
   const duplicateWorkflow = async (workflow: any) => {
     try {
-      await fetch('/api/workflows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...workflow,
-          name: `${workflow.name} (Copy)`,
-          isActive: false,
-        }),
+      await createWorkflowMutation.mutateAsync({
+        ...workflow,
+        name: `${workflow.name} (Copy)`,
+        isActive: false,
       })
-      await loadWorkflows()
     } catch (error) {
       console.error('Failed to duplicate workflow:', error)
     }
@@ -122,7 +100,7 @@ export default function WorkflowsPage() {
               })
               
               setShowBuilder(false)
-              await loadWorkflows()
+              await refetch()
             }}
             onTest={async (data) => {
               console.log('Testing workflow:', data)
@@ -146,7 +124,7 @@ export default function WorkflowsPage() {
             <p className="text-gray-600 mt-2">Create and manage automated approval workflows</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={loadWorkflows}>
+            <Button variant="outline" onClick={() => refetch()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>

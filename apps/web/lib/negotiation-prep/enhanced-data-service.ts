@@ -62,8 +62,8 @@ export class EnhancedDataService {
         totalRecords: rates.length,
         uniqueSuppliers: new Set(rates.map(r => r.supplierName)).size,
         dateRange: {
-          from: history.length > 0 ? history[0].timestamp : new Date(),
-          to: history.length > 0 ? history[history.length - 1].timestamp : new Date()
+          from: history.length > 0 ? (history[0]?.timestamp ?? new Date()) : new Date(),
+          to: history.length > 0 ? (history[history.length - 1]?.timestamp ?? new Date()) : new Date()
         }
       }
     }

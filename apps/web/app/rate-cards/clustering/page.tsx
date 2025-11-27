@@ -6,96 +6,71 @@
  * Displays clustering analysis results and consolidation opportunities
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClusterVisualization } from '@/components/rate-cards/ClusterVisualization';
 import { Loader2, Play, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const fetchClusters = async () => {
+  const tenantId = 'default-tenant';
+  const response = await fetch(`/api/rate-cards/clusters?tenantId=${tenantId}`);
+  if (!response.ok) throw new Error('Failed to load clusters');
+  return response.json();
+};
+
+const runClusteringAnalysis = async () => {
+  const tenantId = 'default-tenant';
+  const response = await fetch('/api/rate-cards/cluster', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tenantId }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to run clustering');
+  }
+  return response.json();
+};
 
 export default function ClusteringPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [clustering, setClustering] = useState(false);
-  const [clusters, setClusters] = useState<any[]>([]);
-  const [consolidationOpportunities, setConsolidationOpportunities] = useState<any[]>([]);
-  const [arbitrageOpportunities, setArbitrageOpportunities] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>(null);
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  // Load existing clusters
-  useEffect(() => {
-    loadClusters();
-  }, []);
+  const { 
+    data, 
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['rate-card-clusters'],
+    queryFn: fetchClusters,
+    staleTime: 60 * 1000,
+  });
 
-  const loadClusters = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const tenantId = 'default-tenant'; // Replace with actual tenant ID
-      const response = await fetch(`/api/rate-cards/clusters?tenantId=${tenantId}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to load clusters');
-      }
-
-      const data = await response.json();
-      setClusters(data.clusters || []);
-      setConsolidationOpportunities(data.consolidationOpportunities || []);
-      setArbitrageOpportunities(data.arbitrageOpportunities || []);
-      setSummary(data.summary);
-    } catch (err: any) {
+  const clusterMutation = useMutation({
+    mutationFn: runClusteringAnalysis,
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ['rate-card-clusters'] });
+    },
+    onError: (err: Error) => {
       setError(err.message);
-      console.error('Error loading clusters:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
-  const runClustering = async () => {
-    setClustering(true);
-    setError(null);
-
-    try {
-      const tenantId = 'default-tenant'; // Replace with actual tenant ID
-      const response = await fetch('/api/rate-cards/cluster', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tenantId,
-          // Optional parameters
-          // k: 5,
-          // maxIterations: 100,
-          // convergenceThreshold: 0.001,
-          // minClusterSize: 3,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to run clustering');
-      }
-
-      const data = await response.json();
-      
-      // Reload clusters to get the latest data
-      await loadClusters();
-    } catch (err: any) {
-      setError(err.message);
-      console.error('Error running clustering:', err);
-    } finally {
-      setClustering(false);
-    }
-  };
+  const clusters = data?.clusters || [];
+  const consolidationOpportunities = data?.consolidationOpportunities || [];
+  const arbitrageOpportunities = data?.arbitrageOpportunities || [];
+  const summary = data?.summary;
 
   const handleClusterClick = (clusterId: string) => {
     router.push(`/rate-cards/clustering/${clusterId}`);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -117,17 +92,17 @@ export default function ClusteringPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={loadClusters}
-              disabled={loading || clustering}
+              onClick={() => refetch()}
+              disabled={isLoading || clusterMutation.isPending}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Refresh
             </Button>
             <Button
-              onClick={runClustering}
-              disabled={clustering}
+              onClick={() => clusterMutation.mutate()}
+              disabled={clusterMutation.isPending}
             >
-              {clustering ? (
+              {clusterMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Clustering...
@@ -197,7 +172,7 @@ export default function ClusteringPage() {
       />
 
       {/* Getting Started */}
-      {clusters.length === 0 && !loading && !clustering && (
+      {clusters.length === 0 && !isLoading && !clusterMutation.isPending && (
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Get Started with Clustering</CardTitle>
@@ -217,7 +192,7 @@ export default function ClusteringPage() {
                 <li>Calculate potential cost savings</li>
                 <li>Assess implementation risk and complexity</li>
               </ul>
-              <Button onClick={runClustering} className="mt-4">
+              <Button onClick={() => clusterMutation.mutate()} className="mt-4">
                 <Play className="w-4 h-4 mr-2" />
                 Run Your First Clustering Analysis
               </Button>

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         tenantId,
         fileName: file.name,
         mimeType: file.type || "application/pdf",
-        fileSize: file.size,
+        fileSize: BigInt(file.size),
         uploadedBy: userId,
         status: "UPLOADED",
         contractType: formData.get(`${file.name}_type`) as string | undefined,
@@ -74,8 +74,10 @@ export async function POST(request: NextRequest) {
       }
 
       const contract = result.data;
+      if (!contract.id) continue;
       ensureProcessingJob(contract.id);
       const job = startProcessingJob(contract.id);
+      if (!job.id) continue;
 
       results.push({
         contractId: contract.id,

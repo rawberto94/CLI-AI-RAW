@@ -116,6 +116,7 @@ export function OnboardingTour({
 
   // Update spotlight position
   const updateSpotlight = useCallback(() => {
+    if (!step) return;
     if (step.target) {
       const element = document.querySelector(step.target);
       if (element) {
@@ -177,7 +178,7 @@ export function OnboardingTour({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !step) return null;
 
   // Calculate tooltip position
   const getTooltipStyle = (): React.CSSProperties => {

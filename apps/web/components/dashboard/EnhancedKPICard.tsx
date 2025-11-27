@@ -228,12 +228,14 @@ export function EnhancedKPICard({
                   <Tooltip
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
+                        const firstPayload = payload[0];
+                        if (!firstPayload) return null;
                         return (
                           <div className="bg-white dark:bg-gray-800 border rounded-lg px-2 py-1 shadow-lg text-xs">
-                            {payload[0].payload.label && (
-                              <p className="text-muted-foreground">{payload[0].payload.label}</p>
+                            {firstPayload.payload.label && (
+                              <p className="text-muted-foreground">{firstPayload.payload.label}</p>
                             )}
-                            <p className="font-semibold">{prefix}{payload[0].value}{suffix}</p>
+                            <p className="font-semibold">{prefix}{firstPayload.value}{suffix}</p>
                           </div>
                         );
                       }

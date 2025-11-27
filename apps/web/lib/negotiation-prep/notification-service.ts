@@ -103,6 +103,7 @@ export class NotificationService {
     if (index === -1) return false
 
     const notification = this.notifications[index]
+    if (!notification) return false
     this.notifications.splice(index, 1)
     this.notifyListeners(notification.userId)
     return true

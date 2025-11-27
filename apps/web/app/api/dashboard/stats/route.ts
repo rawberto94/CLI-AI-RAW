@@ -12,6 +12,45 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get("tenantId") || "demo";
+    const dataMode = request.headers.get('x-data-mode') || 'real';
+    
+    // If mock mode, return mock data immediately
+    if (dataMode === 'mock') {
+      return NextResponse.json({
+        success: true,
+        data: {
+          overview: {
+            totalContracts: 1247,
+            activeContracts: 892,
+            portfolioValue: 45600000,
+            recentlyAdded: 18,
+          },
+          renewals: {
+            expiringIn30Days: 12,
+            expiringIn90Days: 47,
+            urgentCount: 3,
+          },
+          breakdown: {
+            byStatus: [
+              { status: 'COMPLETED', count: 892 },
+              { status: 'PROCESSING', count: 12 },
+              { status: 'UPLOADED', count: 156 },
+              { status: 'FAILED', count: 5 },
+            ],
+            byType: [
+              { type: 'IT Services', count: 342 },
+              { type: 'Software Development', count: 278 },
+              { type: 'Cloud Services', count: 195 },
+              { type: 'Consulting', count: 187 },
+              { type: 'Other', count: 245 },
+            ]
+          },
+          riskScore: 23,
+          complianceScore: 94
+        },
+        meta: { source: 'mock' }
+      });
+    }
     
     // Try to get from database
     try {

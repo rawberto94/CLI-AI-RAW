@@ -37,7 +37,8 @@ import {
   RefreshCw,
   CheckCheck,
   Lock,
-  Unlock
+  Unlock,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

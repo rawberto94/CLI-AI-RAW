@@ -10,6 +10,7 @@ interface DataModeContextType {
   isRealData: boolean
   isMockData: boolean
   isAIGenerated: boolean
+  useRealData: boolean // Alias for isRealData for backwards compatibility
 }
 
 const DataModeContext = createContext<DataModeContextType | undefined>(undefined)
@@ -36,7 +37,8 @@ export function DataModeProvider({ children }: { children: React.ReactNode }) {
     setDataMode,
     isRealData: dataMode === 'real',
     isMockData: dataMode === 'mock',
-    isAIGenerated: dataMode === 'ai-generated'
+    isAIGenerated: dataMode === 'ai-generated',
+    useRealData: dataMode === 'real'
   }
 
   return (

@@ -86,12 +86,13 @@ export class SievoIntegrationService {
     }
 
     try {
-      const params = new URLSearchParams({
-        startDate: dateRange.startDate.toISOString().split('T')[0],
-        endDate: dateRange.endDate.toISOString().split('T')[0],
-        ...(categories && { categories: categories.join(',') }),
-        ...(suppliers && { suppliers: suppliers.join(',') })
-      });
+      const paramsObj: Record<string, string> = {
+        startDate: dateRange.startDate.toISOString().split('T')[0] ?? '',
+        endDate: dateRange.endDate.toISOString().split('T')[0] ?? '',
+      };
+      if (categories) paramsObj.categories = categories.join(',');
+      if (suppliers) paramsObj.suppliers = suppliers.join(',');
+      const params = new URLSearchParams(paramsObj);
 
       const response = await fetch(`${this.apiEndpoint}/spend-data?${params}`, {
         headers: {
@@ -402,7 +403,7 @@ export class SievoIntegrationService {
       opportunities.push({
         type: 'Alternative Sourcing',
         description: `Reduce dependency on ${supplier.supplier} (${supplier.percentage.toFixed(1)}% of spend)`,
-        category: supplier.categories[0],
+        category: supplier.categories[0] ?? 'Unknown',
         currentSpend: supplier.totalSpend,
         potentialSavings: supplier.totalSpend * 0.12, // 12% savings
         confidence: 0.7,

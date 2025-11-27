@@ -304,7 +304,7 @@ export const TalkingPointsUtils = {
     bgColor: string;
     label: string;
   } {
-    const styles = {
+    const styles: Record<string, { color: string; bgColor: string; label: string }> = {
       market: {
         color: "text-blue-600",
         bgColor: "bg-blue-50",
@@ -330,8 +330,19 @@ export const TalkingPointsUtils = {
         bgColor: "bg-pink-50",
         label: "Relationship",
       },
+      value: {
+        color: "text-emerald-600",
+        bgColor: "bg-emerald-50",
+        label: "Value",
+      },
+      trend: {
+        color: "text-indigo-600",
+        bgColor: "bg-indigo-50",
+        label: "Trend",
+      },
     };
-    return styles[category];
+    const defaultStyle = { color: "text-blue-600", bgColor: "bg-blue-50", label: "Market Data" };
+    return styles[category as keyof typeof styles] ?? defaultStyle;
   },
 
   // Get persuasiveness badge

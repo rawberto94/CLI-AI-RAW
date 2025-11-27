@@ -191,8 +191,6 @@ export function TrendChart({
               strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorValue)"
-              onMouseEnter={(_, index) => setActiveIndex(index)}
-              onMouseLeave={() => setActiveIndex(null)}
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -391,7 +391,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
             <CardContent>
               <div className="space-y-4">
                 {brief.talkingPoints
-                  .sort((a, b) => a.priority - b.priority)
+                  .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
                   .map((point, index) => (
                     <div key={index} className="p-4 border rounded-lg">
                       <div className="flex items-start justify-between mb-2">

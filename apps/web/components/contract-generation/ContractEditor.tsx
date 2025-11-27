@@ -32,6 +32,7 @@ import {
   BookOpen,
   Lightbulb,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { useDataMode } from '@/contexts/DataModeContext';
+import { useToast } from '@/hooks/use-toast';
 import type { 
   ContractDraft, 
   DraftClause, 
@@ -386,15 +389,16 @@ function ClauseBlock({
 
 interface ClauseLibrarySidebarProps {
   onInsert: (clause: LibraryClause) => void;
+  libraryClauses: LibraryClause[];
 }
 
-function ClauseLibrarySidebar({ onInsert }: ClauseLibrarySidebarProps) {
+function ClauseLibrarySidebar({ onInsert, libraryClauses }: ClauseLibrarySidebarProps) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const categories = [...new Set(mockLibraryClauses.map(c => c.category))];
+  const categories = [...new Set(libraryClauses.map(c => c.category))];
   
-  const filteredClauses = mockLibraryClauses.filter(c => {
+  const filteredClauses = libraryClauses.filter(c => {
     const matchesSearch = c.title.toLowerCase().includes(search.toLowerCase()) ||
                           c.content.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !selectedCategory || c.category === selectedCategory;
@@ -636,14 +640,83 @@ function AISuggestionsPanel() {
 // ====================
 
 export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
-  const [clauses, setClauses] = useState<DraftClause[]>(mockClauses);
+  const { useRealData } = useDataMode();
+  const { toast } = useToast();
+  
+  const [clauses, setClauses] = useState<DraftClause[]>([]);
+  const [libraryClauses, setLibraryClauses] = useState<LibraryClause[]>(mockLibraryClauses);
+  const [variables, setVariables] = useState<TemplateVariable[]>(mockVariables);
   const [selectedClauseId, setSelectedClauseId] = useState<string | null>(null);
   const [editingClauseId, setEditingClauseId] = useState<string | null>(null);
-  const [variableValues, setVariableValues] = useState<Record<string, any>>({});
+  const [variableValues, setVariableValues] = useState<Record<string, unknown>>({});
   const [showPreview, setShowPreview] = useState(false);
   const [sidebarView, setSidebarView] = useState<'library' | 'variables' | 'ai'>('library');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch clauses from database
+  const fetchClauses = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/clauses?draftId=${draft.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.clauses?.length > 0) {
+          setClauses(data.clauses);
+          toast({
+            title: 'Clauses loaded',
+            description: `${data.clauses.length} clause(s) loaded from database`,
+          });
+        } else {
+          setClauses(mockClauses);
+        }
+      } else {
+        setClauses(mockClauses);
+      }
+    } catch (error) {
+      console.error('Failed to fetch clauses:', error);
+      setClauses(mockClauses);
+    } finally {
+      setLoading(false);
+    }
+  }, [draft.id, toast]);
+
+  // Fetch library clauses
+  const fetchLibraryClauses = useCallback(async () => {
+    try {
+      const response = await fetch('/api/clauses/library');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.clauses?.length > 0) {
+          setLibraryClauses(data.clauses);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch library clauses:', error);
+    }
+  }, []);
+
+  // Fetch template variables
+  const fetchVariables = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/templates/${draft.templateId}/variables`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.variables?.length > 0) {
+          setVariables(data.variables);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch variables:', error);
+    }
+  }, [draft.templateId]);
+
+  useEffect(() => {
+    fetchClauses();
+    fetchLibraryClauses();
+    fetchVariables();
+  }, [fetchClauses, fetchLibraryClauses, fetchVariables]);
 
   const handleClauseChange = useCallback((clauseId: string, content: string) => {
     setClauses(prev => prev.map(c => 
@@ -704,7 +777,12 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
           </Button>
           <Separator orientation="vertical" className="h-6" />
           <div>
-            <h2 className="font-semibold">{draft.title}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold">{draft.title}</h2>
+              <Badge variant={useRealData ? "default" : "secondary"} className="text-xs">
+                {useRealData ? "Live" : "Mock"}
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground">Version {draft.version} • Last saved 2 min ago</p>
           </div>
         </div>
@@ -806,7 +884,7 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
 
               {/* Add Clause Button */}
               <Button
-                variant="dashed"
+                variant="outline"
                 className="w-full h-16 border-dashed border-2"
                 onClick={() => setSidebarView('library')}
               >
@@ -915,11 +993,11 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
               {/* Sidebar Content */}
               <div className="flex-1 overflow-hidden">
                 {sidebarView === 'library' && (
-                  <ClauseLibrarySidebar onInsert={handleInsertClause} />
+                  <ClauseLibrarySidebar onInsert={handleInsertClause} libraryClauses={libraryClauses} />
                 )}
                 {sidebarView === 'variables' && (
                   <VariablesSidebar
-                    variables={mockVariables}
+                    variables={variables}
                     values={variableValues}
                     onChange={handleVariableChange}
                   />

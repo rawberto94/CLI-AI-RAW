@@ -86,7 +86,10 @@ export function RateCardExtractionModal({
 
   const handleSaveEdit = (index: number, updatedRate: Partial<ExtractedRate>) => {
     const newRates = [...editedRates];
-    newRates[index] = { ...newRates[index], ...updatedRate };
+    const existingRate = newRates[index];
+    if (existingRate) {
+      newRates[index] = { ...existingRate, ...updatedRate };
+    }
     setEditedRates(newRates);
     setEditingIndex(null);
   };

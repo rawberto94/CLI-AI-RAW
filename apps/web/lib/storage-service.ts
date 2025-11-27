@@ -127,7 +127,7 @@ export class StorageService {
         bucket: this.bucket,
         url,
         etag: result.etag,
-        versionId: result.versionId,
+        versionId: result.versionId ?? undefined,
       };
     } catch (error) {
       logger.error({ error, fileName }, 'Failed to upload file');

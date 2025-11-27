@@ -193,11 +193,18 @@ export async function semanticRerank(
     dimensions: 1536,
   });
 
-  const [queryEmbed, ...docEmbeds] = response.data.map(d => d.embedding);
+  const embeddings = response.data.map(d => d.embedding);
+  const queryEmbed = embeddings[0];
+  const docEmbeds = embeddings.slice(1);
+  
+  if (!queryEmbed) {
+    return [];
+  }
 
   // Score each document
   const results = documents.map((text, index) => {
-    const similarity = cosineSimilarity(queryEmbed, docEmbeds[index]);
+    const docEmbed = docEmbeds[index];
+    const similarity = docEmbed ? cosineSimilarity(queryEmbed, docEmbed) : 0;
     return {
       index,
       text,
@@ -223,9 +230,11 @@ function cosineSimilarity(a: number[], b: number[]): number {
   let normB = 0;
   
   for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+    const aVal = a[i] ?? 0;
+    const bVal = b[i] ?? 0;
+    dotProduct += aVal * bVal;
+    normA += aVal * aVal;
+    normB += bVal * bVal;
   }
   
   const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
@@ -255,6 +264,7 @@ export async function mmrRerank(
 
     for (let i = 0; i < remaining.length; i++) {
       const doc = remaining[i];
+      if (!doc) continue;
       
       // Relevance to query
       const relevance = cosineSimilarity(queryEmbedding, doc.embedding);
@@ -263,8 +273,10 @@ export async function mmrRerank(
       let maxSimToSelected = 0;
       for (const sel of selected) {
         const selDoc = documents[sel.index];
-        const sim = cosineSimilarity(doc.embedding, selDoc.embedding);
-        maxSimToSelected = Math.max(maxSimToSelected, sim);
+        if (selDoc) {
+          const sim = cosineSimilarity(doc.embedding, selDoc.embedding);
+          maxSimToSelected = Math.max(maxSimToSelected, sim);
+        }
       }
       
       // MMR score = λ * relevance - (1 - λ) * maxSimToSelected
@@ -277,12 +289,14 @@ export async function mmrRerank(
     }
 
     const chosen = remaining.splice(bestIdx, 1)[0];
-    selected.push({
-      index: chosen.index,
-      text: chosen.text,
-      score: chosen.score,
-      originalScore: chosen.score,
-    });
+    if (chosen) {
+      selected.push({
+        index: chosen.index,
+        text: chosen.text,
+        score: chosen.score,
+        originalScore: chosen.score,
+      });
+    }
   }
 
   return selected;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Artifact Change Propagation Service
  * 

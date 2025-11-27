@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,8 +29,12 @@ import {
   MoveDown,
   Copy,
   Sparkles,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useDataMode } from '@/contexts/DataModeContext'
+import { useToast } from '@/hooks/use-toast'
+import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
 
 interface WorkflowStep {
   id: string
@@ -61,6 +65,9 @@ export function WorkflowBuilder({
   onSave,
   onTest,
 }: WorkflowBuilderProps) {
+  const { useRealData } = useDataMode()
+  const { toast } = useToast()
+  
   const [workflow, setWorkflow] = useState({
     name: initialData?.name || '',
     description: initialData?.description || '',
@@ -86,6 +93,46 @@ export function WorkflowBuilder({
 
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  // Fetch workflow from database if workflowId is provided
+  const fetchWorkflow = useCallback(async () => {
+    if (!workflowId) return
+    
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/workflows/${workflowId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.workflow) {
+          setWorkflow({
+            name: data.workflow.name || '',
+            description: data.workflow.description || '',
+            type: data.workflow.type || 'CONTRACT_APPROVAL',
+            triggerType: data.workflow.triggerType || 'MANUAL',
+            isActive: data.workflow.isActive ?? true,
+          })
+          if (data.workflow.steps?.length > 0) {
+            setSteps(data.workflow.steps)
+          }
+          toast({
+            title: 'Workflow loaded',
+            description: `Loaded "${data.workflow.name}" from ${data.source}`,
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch workflow:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [workflowId, toast])
+
+  useEffect(() => {
+    if (workflowId && !initialData) {
+      fetchWorkflow()
+    }
+  }, [workflowId, initialData, fetchWorkflow])
 
   const addStep = () => {
     const newStep: WorkflowStep = {
@@ -115,7 +162,11 @@ export function WorkflowBuilder({
     const newSteps = [...steps]
     const targetIndex = direction === 'up' ? index - 1 : index + 1
     
-    ;[newSteps[index], newSteps[targetIndex]] = [newSteps[targetIndex], newSteps[index]]
+    const currentStep = newSteps[index]
+    const targetStep = newSteps[targetIndex]
+    if (!currentStep || !targetStep) return
+    
+    ;[newSteps[index], newSteps[targetIndex]] = [targetStep, currentStep]
     
     setSteps(newSteps.map((s, idx) => ({ ...s, order: idx })))
   }
@@ -138,10 +189,37 @@ export function WorkflowBuilder({
   }
 
   const handleSave = async () => {
-    if (!onSave) return
     setSaving(true)
     try {
-      await onSave({ ...workflow, steps })
+      // Save to database via API
+      const method = workflowId ? 'PUT' : 'POST'
+      const url = workflowId ? `/api/workflows/${workflowId}` : '/api/workflows'
+      
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...workflow, steps }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: 'Workflow saved',
+          description: `Successfully saved workflow to ${data.source}`,
+        })
+      }
+      
+      // Also call the onSave callback if provided
+      if (onSave) {
+        await onSave({ ...workflow, steps })
+      }
+    } catch (error) {
+      console.error('Failed to save workflow:', error)
+      toast({
+        title: 'Save failed',
+        description: 'Could not save workflow. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
       setSaving(false)
     }
@@ -169,6 +247,36 @@ export function WorkflowBuilder({
 
   return (
     <div className="space-y-6">
+      {/* Header with data mode indicator and presence */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Workflow Builder</h2>
+          <Badge variant={useRealData ? "default" : "secondary"} className="text-xs">
+            {useRealData ? "Live" : "Mock"}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Real-time collaboration presence indicator */}
+          {workflowId && (
+            <PresenceIndicator 
+              maxAvatars={4}
+              showConnectionStatus
+            />
+          )}
+          {workflowId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchWorkflow()}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          )}
+        </div>
+      </div>
+      
       {/* Workflow Configuration */}
       <Card className="shadow-2xl border-0">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">

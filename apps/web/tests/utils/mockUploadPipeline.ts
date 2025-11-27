@@ -17,7 +17,15 @@ interface MockArtifactRecord {
   updatedAt: string;
 }
 
-const DEFAULT_ARTIFACTS: Array<{ type: string; data: Record<string, unknown> }> = [
+interface ArtifactData {
+  clauses?: { title: string; importance: string; summary: string }[];
+  risks?: { category: string; level: string; mitigation: string }[];
+  rateCards?: { role: string; rate: number }[];
+  parties?: string[];
+  [key: string]: unknown;
+}
+
+const DEFAULT_ARTIFACTS: Array<{ type: string; data: ArtifactData }> = [
   {
     type: 'OVERVIEW',
     data: {

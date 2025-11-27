@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 
 interface ImportJob {
   id: string;
@@ -17,29 +18,29 @@ interface ImportJob {
   warnings: any;
 }
 
+const fetchImportHistory = async (): Promise<ImportJob[]> => {
+  const response = await fetch('/api/import/history');
+  if (!response.ok) throw new Error('Failed to fetch import history');
+  const data = await response.json();
+  // Handle new API format with data array
+  return data.data || data || [];
+};
+
 export default function ImportHistoryPage() {
-  const [jobs, setJobs] = useState<ImportJob[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all');
 
-  useEffect(() => {
-    fetchImportHistory();
-  }, []);
-
-  const fetchImportHistory = async () => {
-    try {
-      const response = await fetch('/api/import/history');
-      if (!response.ok) throw new Error('Failed to fetch import history');
-      const data = await response.json();
-      setJobs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { 
+    data: jobs = [], 
+    isLoading, 
+    error, 
+    refetch 
+  } = useQuery({
+    queryKey: ['import-history'],
+    queryFn: fetchImportHistory,
+    staleTime: 30 * 1000, // Consider fresh for 30 seconds
+    refetchOnWindowFocus: true,
+  });
 
   const filteredJobs = jobs.filter(job => {
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
@@ -93,7 +94,7 @@ export default function ImportHistoryPage() {
     return ((job.rowsSucceeded / job.rowsProcessed) * 100).toFixed(1);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
@@ -108,9 +109,9 @@ export default function ImportHistoryPage() {
       <div className="container mx-auto p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <h3 className="text-red-800 font-semibold">Error Loading Import History</h3>
-          <p className="text-red-600 mt-2">{error}</p>
+          <p className="text-red-600 mt-2">{error instanceof Error ? error.message : 'An error occurred'}</p>
           <button
-            onClick={fetchImportHistory}
+            onClick={() => refetch()}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Retry

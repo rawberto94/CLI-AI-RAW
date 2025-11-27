@@ -58,11 +58,15 @@ export function BaselineCSVImport() {
       throw new Error('CSV file must contain headers and at least one data row');
     }
 
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headerLine = lines[0];
+    if (!headerLine) throw new Error('No header line found');
+    const headers = headerLine.split(',').map(h => h.trim());
     const baselines = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const line = lines[i];
+      if (!line) continue;
+      const values = line.split(',').map(v => v.trim());
       const baseline: any = {};
 
       headers.forEach((header, index) => {

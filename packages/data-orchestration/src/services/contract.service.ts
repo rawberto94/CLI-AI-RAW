@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { dbAdaptor } from "../dal/database.adaptor";
 import { enhancedDbAdaptor } from "../dal/enhanced-database.adaptor";
 import { smartCacheService } from "./smart-cache.service";

@@ -181,7 +181,7 @@ export const LazyArtifactDisplay = dynamic(
 );
 
 export const LazyEnhancedUploadZone = dynamic(
-  () => import('@/components/contracts/EnhancedUploadZone').then(mod => ({ default: mod.default || mod })) as any,
+  () => import('@/components/upload/EnhancedUploadZone').then(mod => ({ default: mod.default || mod })) as any,
   {
     loading: () => <LoadingSkeleton height="h-64" />,
     ssr: false,

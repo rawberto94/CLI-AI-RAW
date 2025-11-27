@@ -17,6 +17,7 @@ import {
   dataConsistencyAuditService,
   OptimisticLockError
 } from 'data-orchestration';
+import { prisma } from '@/lib/prisma';
 
 // Define validation schema
 const updateContractSchema = z.object({

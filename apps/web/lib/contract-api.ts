@@ -101,7 +101,7 @@ export class ContractApi {
       const contracts = Array.isArray(data) ? data : (data?.items || []);
       
       // Validate and fix any invalid contract IDs
-      const validatedContracts = contracts.map(contract => {
+      const validatedContracts = contracts.map((contract: { id?: string; [key: string]: unknown }) => {
         if (contract.id) {
           const validation = ContractIdValidator.validateId(contract.id);
           if (!validation.isValid) {

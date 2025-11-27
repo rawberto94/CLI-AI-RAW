@@ -47,7 +47,7 @@ export default function CompareRatesPage() {
         }));
         setContracts(enriched || []);
         const [r, b] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/ratecards`).then((x) => x.json()),
+          fetch(`${API_BASE_URL}/api/rate-cards`).then((x) => x.json()),
           fetch(`${API_BASE_URL}/api/benchmarks`).then((x) => x.json()),
         ]);
         setRates((r?.items || []) as Rate[]);

@@ -48,7 +48,8 @@ export async function GET(
     const responseTime = Date.now() - startTime;
 
     // Transform artifacts for UI compatibility
-    const transformedArtifacts = result.data.map((artifact: any) => {
+    const artifactsData = result.data ?? [];
+    const transformedArtifacts = artifactsData.map((artifact: any) => {
         const artifactData = artifact.data as any || {};
         return {
           id: artifact.id,

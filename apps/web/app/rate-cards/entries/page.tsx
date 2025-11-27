@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { EnhancedRateCardFilters } from '@/components/rate-cards/EnhancedRateCardFilters';
 import { RateCardTable } from '@/components/rate-cards/RateCardTable';
@@ -10,90 +10,70 @@ import { Plus, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-interface RateCard {
-  id: string;
-  clientName: string;
-  supplierName: string;
-  roleTitle: string;
-  roleStandardized: string;
-  seniority: string;
-  country: string;
-  hourlyRate: number;
-  currency: string;
-  isBaseline: boolean;
-  isNegotiated: boolean;
+interface RateCardFilters {
+  clientName?: string;
+  supplierName?: string;
+  role?: string;
+  seniority?: string;
+  country?: string;
+  isBaseline?: boolean;
+  isNegotiated?: boolean;
 }
+
+const fetchRateCards = async (filters: RateCardFilters, dataMode: string) => {
+  const params = new URLSearchParams();
+  if (filters.clientName) params.append('clientName', filters.clientName);
+  if (filters.supplierName) params.append('supplierName', filters.supplierName);
+  if (filters.role) params.append('roleStandardized', filters.role);
+  if (filters.seniority) params.append('seniority', filters.seniority);
+  if (filters.country) params.append('country', filters.country);
+  if (filters.isBaseline !== undefined) params.append('isBaseline', String(filters.isBaseline));
+  if (filters.isNegotiated !== undefined) params.append('isNegotiated', String(filters.isNegotiated));
+  
+  const response = await fetch(`/api/rate-cards?${params.toString()}`, {
+    headers: { 'x-data-mode': dataMode },
+  });
+  const data = await response.json();
+  
+  // Map database fields to component interface
+  const entries = (data.data || data.entries || []).map((entry: any) => ({
+    id: entry.id,
+    clientName: entry.clientName,
+    supplierName: entry.supplierName,
+    role: entry.roleStandardized || entry.standardizedRole,
+    seniority: entry.seniority || entry.seniorityLevel,
+    lineOfService: entry.lineOfService || entry.serviceLine,
+    country: entry.country,
+    dailyRate: Number(entry.dailyRate || entry.dailyRateUSD),
+    currency: entry.currency || 'USD',
+    isBaseline: entry.isBaseline || false,
+    baselineType: entry.baselineType,
+    isNegotiated: entry.isNegotiated || false,
+    msaReference: entry.msaReference,
+    createdAt: entry.createdAt,
+  }));
+  
+  return { entries, total: data.total || 0 };
+};
 
 export default function RateCardEntriesPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { dataMode } = useDataMode();
-  const [rateCards, setRateCards] = useState<RateCard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<{
-    clientName?: string;
-    supplierName?: string;
-    role?: string;
-    seniority?: string;
-    country?: string;
-    isBaseline?: boolean;
-    isNegotiated?: boolean;
-  }>({});
-  const [matchCount, setMatchCount] = useState(0);
+  const [filters, setFilters] = useState<RateCardFilters>({});
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchRateCards();
-  }, [filters, dataMode]);
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['rate-cards', filters, dataMode],
+    queryFn: () => fetchRateCards(filters, dataMode),
+    staleTime: 30 * 1000,
+  });
 
-  const fetchRateCards = async () => {
-    try {
-      setLoading(true);
-      
-      // Build query string from filters
-      const params = new URLSearchParams();
-      if (filters.clientName) params.append('clientName', filters.clientName);
-      if (filters.supplierName) params.append('supplierName', filters.supplierName);
-      if (filters.role) params.append('roleStandardized', filters.role);
-      if (filters.seniority) params.append('seniority', filters.seniority);
-      if (filters.country) params.append('country', filters.country);
-      if (filters.isBaseline !== undefined) params.append('isBaseline', String(filters.isBaseline));
-      if (filters.isNegotiated !== undefined) params.append('isNegotiated', String(filters.isNegotiated));
-      
-      const response = await fetch(`/api/rate-cards?${params.toString()}`, {
-        headers: {
-          'x-data-mode': dataMode,
-        },
-      });
-      const data = await response.json();
-      
-      // Map database fields to component interface
-      const mappedData = (data.data || data.entries || []).map((entry: any) => ({
-        id: entry.id,
-        clientName: entry.clientName,
-        supplierName: entry.supplierName,
-        role: entry.roleStandardized || entry.standardizedRole,
-        seniority: entry.seniority || entry.seniorityLevel,
-        lineOfService: entry.lineOfService || entry.serviceLine,
-        country: entry.country,
-        dailyRate: Number(entry.dailyRate || entry.dailyRateUSD),
-        currency: entry.currency || 'USD',
-        isBaseline: entry.isBaseline || false,
-        baselineType: entry.baselineType,
-        isNegotiated: entry.isNegotiated || false,
-        msaReference: entry.msaReference,
-        createdAt: entry.createdAt,
-      }));
-      
-      setRateCards(mappedData);
-      setMatchCount(data.total || 0);
-    } catch (error) {
-      console.error('Error fetching rate cards:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const rateCards = data?.entries || [];
+  const matchCount = data?.total || 0;
 
   const handleEdit = (id: string) => {
     router.push(`/rate-cards/${id}`);
@@ -108,7 +88,7 @@ export default function RateCardEntriesPage() {
     
     try {
       await fetch(`/api/rate-cards/${id}`, { method: 'DELETE' });
-      fetchRateCards();
+      queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
     } catch (error) {
       console.error('Error deleting rate card:', error);
     }
@@ -120,7 +100,7 @@ export default function RateCardEntriesPage() {
   };
 
   const handleBulkEditSuccess = () => {
-    fetchRateCards();
+    queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
     setSelectedIds([]);
   };
 
@@ -160,7 +140,7 @@ export default function RateCardEntriesPage() {
         onView={handleView}
         onDelete={handleDelete}
         onBulkEdit={handleBulkEdit}
-        loading={loading}
+        loading={isLoading}
         showClientColumn={true}
         showBaselineColumn={true}
         showNegotiatedColumn={true}

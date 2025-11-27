@@ -310,7 +310,8 @@ export function isEmpty(value: any): boolean {
 export function getFirstError(errors?: Record<string, string>): string | undefined {
   if (!errors) return undefined;
   const keys = Object.keys(errors);
-  return keys.length > 0 ? errors[keys[0]] : undefined;
+  const firstKey = keys[0];
+  return keys.length > 0 && firstKey ? errors[firstKey] : undefined;
 }
 
 /**

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp,
@@ -28,7 +28,11 @@ import {
   Play,
   Pause,
   Info,
+  AlertCircle,
 } from 'lucide-react';
+import { useDataMode } from '@/contexts/DataModeContext';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 // ============================================================================
 // Types
@@ -373,24 +377,68 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, isSelected, onSel
 // ============================================================================
 
 export const ForecastingDashboard: React.FC = () => {
+  const { useRealData } = useDataMode();
+  const { toast } = useToast();
+  
   const [selectedScenario, setSelectedScenario] = useState<string>('s1');
   const [timeRange, setTimeRange] = useState<'6m' | '12m' | '24m'>('12m');
+  const [forecastData, setForecastData] = useState<ForecastData[]>(mockForecastData);
+  const [scenarios, setScenarios] = useState<CostScenario[]>(mockScenarios);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
+  const [supplierSpend, setSupplierSpend] = useState<SupplierSpend[]>(mockSupplierSpend);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAnalyticsData = useCallback(async () => {
+    if (!useRealData) {
+      setForecastData(mockForecastData);
+      setScenarios(mockScenarios);
+      setOpportunities(mockOpportunities);
+      setSupplierSpend(mockSupplierSpend);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/analytics/forecasting?timeRange=${timeRange}`);
+      if (!response.ok) throw new Error('Failed to fetch analytics');
+      
+      const data = await response.json();
+      if (data.success) {
+        if (data.forecastData?.length) setForecastData(data.forecastData);
+        if (data.scenarios?.length) setScenarios(data.scenarios);
+        if (data.opportunities?.length) setOpportunities(data.opportunities);
+        if (data.supplierSpend?.length) setSupplierSpend(data.supplierSpend);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics:', err);
+      setError('Using sample data - connect database for real analytics');
+    } finally {
+      setLoading(false);
+    }
+  }, [useRealData, timeRange]);
+
+  useEffect(() => {
+    fetchAnalyticsData();
+  }, [fetchAnalyticsData]);
 
   const stats = useMemo(() => {
-    const totalOpportunitySavings = mockOpportunities.reduce((sum, o) => sum + o.potentialSavings, 0);
-    const highConfidenceOps = mockOpportunities.filter(o => o.confidence >= 80);
-    const projectedSpend = mockSupplierSpend.reduce((sum, s) => sum + s.projectedSpend, 0);
-    const currentSpend = mockSupplierSpend.reduce((sum, s) => sum + s.currentSpend, 0);
+    const totalOpportunitySavings = opportunities.reduce((sum, o) => sum + o.potentialSavings, 0);
+    const highConfidenceOps = opportunities.filter(o => o.confidence >= 80);
+    const projectedSpend = supplierSpend.reduce((sum, s) => sum + s.projectedSpend, 0);
+    const currentSpend = supplierSpend.reduce((sum, s) => sum + s.currentSpend, 0);
     
     return {
-      totalOpportunities: mockOpportunities.length,
+      totalOpportunities: opportunities.length,
       totalSavings: totalOpportunitySavings,
       highConfidence: highConfidenceOps.length,
       projectedSpend,
       currentSpend,
-      spendChange: ((projectedSpend - currentSpend) / currentSpend) * 100,
+      spendChange: currentSpend > 0 ? ((projectedSpend - currentSpend) / currentSpend) * 100 : 0,
     };
-  }, []);
+  }, [opportunities, supplierSpend]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">

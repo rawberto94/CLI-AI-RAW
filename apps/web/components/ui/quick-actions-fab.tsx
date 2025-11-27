@@ -186,20 +186,20 @@ function getContextualActions(pathname: string): QuickAction[] {
   
   switch (path) {
     case 'contracts':
-      return [...coreActions.slice(0, 2), ...intelligenceActions.slice(0, 2), ...workflowActions.slice(0, 2)];
+      return [...coreActions.slice(0, 2), ...intelligenceActions.slice(0, 2), ...workflowActions.slice(0, 2)].filter((a): a is QuickAction => !!a);
     case 'intelligence':
-      return [...intelligenceActions, ...workflowActions.slice(0, 2)];
+      return [...intelligenceActions, ...workflowActions.slice(0, 2)].filter((a): a is QuickAction => !!a);
     case 'approvals':
     case 'renewals':
-      return [...workflowActions, ...intelligenceActions.slice(0, 2)];
+      return [...workflowActions, ...intelligenceActions.slice(0, 2)].filter((a): a is QuickAction => !!a);
     case 'drafting':
     case 'generate':
-      return [coreActions[3], ...workflowActions.slice(2), ...collaborationActions];
+      return [coreActions[3], ...workflowActions.slice(2), ...collaborationActions].filter((a): a is QuickAction => !!a);
     case 'portal':
     case 'integrations':
-      return [...collaborationActions, ...coreActions.slice(0, 2)];
+      return [...collaborationActions, ...coreActions.slice(0, 2)].filter((a): a is QuickAction => !!a);
     case 'governance':
-      return [...workflowActions, ...intelligenceActions.slice(0, 2)];
+      return [...workflowActions, ...intelligenceActions.slice(0, 2)].filter((a): a is QuickAction => !!a);
     default:
       // Default: show a mix of most useful actions
       return [
@@ -209,7 +209,7 @@ function getContextualActions(pathname: string): QuickAction[] {
         workflowActions[0], // Approvals
         workflowActions[1], // Renewals
         intelligenceActions[0], // Intelligence
-      ];
+      ].filter((a): a is QuickAction => !!a);
   }
 }
 

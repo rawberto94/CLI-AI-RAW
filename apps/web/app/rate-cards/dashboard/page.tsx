@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { DashboardKPICards } from '@/components/rate-cards/DashboardKPICards';
 import { FinancialMetricsCards } from '@/components/rate-cards/FinancialMetricsCards';
@@ -13,40 +13,22 @@ import { NegotiationStatusWidget } from '@/components/rate-cards/NegotiationStat
 import { useRouter } from 'next/navigation';
 import { useRealTimeEvents } from '@/contexts/RealTimeContext';
 import { Button } from '@/components/ui/button';
-import { Upload, Plus } from 'lucide-react';
-
-interface ClientMetrics {
-  totalRateCards: number;
-  uniqueSuppliers: number;
-  geographicCoverage: number;
-  serviceLineCoverage: number;
-}
-
-interface BaselineMetrics {
-  totalBaselines: number;
-  percentBaseline: number;
-  percentTopQuartile: number;
-  percentNegotiated: number;
-  avgSavingsPerRate: number;
-}
-
-interface NegotiationMetrics {
-  activeNegotiations: number;
-  pendingApproval: number;
-  completedThisMonth: number;
-  avgNegotiationTime: number;
-}
+import { Upload, Plus, RefreshCw } from 'lucide-react';
+import { useRateCardDashboardMetrics } from '@/hooks/use-queries';
 
 export default function RateCardDashboardPage() {
   const router = useRouter();
-  const [clientMetrics, setClientMetrics] = useState<ClientMetrics | null>(null);
-  const [baselineMetrics, setBaselineMetrics] = useState<BaselineMetrics | null>(null);
-  const [negotiationMetrics, setNegotiationMetrics] = useState<NegotiationMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardMetrics();
-  }, []);
+  // Use React Query for data fetching with caching
+  const { 
+    data: metricsData, 
+    isLoading: loading, 
+    refetch: fetchDashboardMetrics 
+  } = useRateCardDashboardMetrics();
+
+  const clientMetrics = metricsData?.clientMetrics || null;
+  const baselineMetrics = metricsData?.baselineMetrics || null;
+  const negotiationMetrics = metricsData?.negotiationMetrics || null;
 
   // Real-time updates for rate cards
   const eventHandlers = useMemo(() => ({
@@ -65,35 +47,9 @@ export default function RateCardDashboardPage() {
     'benchmark:invalidated': () => {
       fetchDashboardMetrics(); // Refresh metrics on invalidation
     },
-  }), []);
+  }), [fetchDashboardMetrics]);
 
   useRealTimeEvents(eventHandlers);
-
-  const fetchDashboardMetrics = async () => {
-    try {
-      setLoading(true);
-      
-      const [clientRes, baselineRes, negotiationRes] = await Promise.all([
-        fetch('/api/rate-cards/dashboard/client-metrics'),
-        fetch('/api/rate-cards/dashboard/baseline-metrics'),
-        fetch('/api/rate-cards/dashboard/negotiation-metrics'),
-      ]);
-
-      const [clientData, baselineData, negotiationData] = await Promise.all([
-        clientRes.json(),
-        baselineRes.json(),
-        negotiationRes.json(),
-      ]);
-
-      setClientMetrics(clientData);
-      setBaselineMetrics(baselineData);
-      setNegotiationMetrics(negotiationData);
-    } catch (error) {
-      console.error('Error fetching dashboard metrics:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="container mx-auto p-6 space-y-6">

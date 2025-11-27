@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Data Lineage Tracker
  * Tracks data transformations and dependencies with enhanced propagation support

@@ -45,8 +45,10 @@ import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactV
 import { GenerationFlowVisualization, CompactGenerationFlow } from '@/components/artifacts/GenerationFlowVisualization'
 import { MetricCard, ScoreRing } from '@/components/artifacts/ArtifactCards'
 import { formatCurrency, formatDate, getRiskColor, getComplianceColor } from '@/lib/design-tokens'
-import { CustomArtifactGenerator, QuickTopicGenerator } from '@/components/artifacts/CustomArtifactGenerator'
+import { CustomArtifactGenerator } from '@/components/artifacts/CustomArtifactGenerator'
 import SmartMetadataValidator from '@/components/metadata/SmartMetadataValidator'
+import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
+import { useContract } from '@/hooks/use-queries'
 
 // ============ TYPES ============
 
@@ -396,6 +398,11 @@ export default function EnhancedContractDetailPage() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Real-time collaboration presence indicator */}
+              <PresenceIndicator 
+                maxAvatars={4}
+                showConnectionStatus
+              />
               {quickActions.map(action => (
                 <QuickActionButton key={action.id} action={action} />
               ))}
@@ -647,9 +654,9 @@ export default function EnhancedContractDetailPage() {
           </div>
           <CustomArtifactGenerator
             contractId={params.id as string}
-            contractTitle={contract?.filename || 'Contract'}
-            onArtifactGenerated={(artifact) => {
-              console.log('New artifact generated:', artifact);
+            contractText={contract?.filename || 'Contract'}
+            onInsightsGenerated={(insights) => {
+              console.log('New insights generated:', insights);
               // Optionally refresh artifacts
             }}
           />

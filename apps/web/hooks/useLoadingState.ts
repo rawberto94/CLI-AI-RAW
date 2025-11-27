@@ -86,12 +86,15 @@ export function useLoadingState(options: UseLoadingStateOptions = {}) {
       steps?: string[]
     ): Promise<T | null> => {
       try {
-        startLoading(steps?.[0]);
+        startLoading(steps?.[0] ?? '');
 
         if (steps && options.trackProgress) {
           const stepProgress = 100 / steps.length;
           for (let i = 0; i < steps.length; i++) {
-            setStep(steps[i]);
+            const step = steps[i];
+            if (step) {
+              setStep(step);
+            }
             updateProgress((i + 1) * stepProgress);
             await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for UX
           }

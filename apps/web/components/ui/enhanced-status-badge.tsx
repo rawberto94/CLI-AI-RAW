@@ -262,7 +262,7 @@ export function EnhancedStatusBadge({
       {/* Animated Dot */}
       {showDot && (
         <span className="relative flex h-2 w-2">
-          {config.animated && (
+          {'animated' in config && config.animated && (
             <motion.span
               className={cn(
                 'absolute inline-flex h-full w-full rounded-full opacity-75',
@@ -281,7 +281,7 @@ export function EnhancedStatusBadge({
         <Icon 
           className={cn(
             iconSizes[size],
-            config.animated && 'animate-spin'
+            'animated' in config && config.animated && 'animate-spin'
           )} 
         />
       )}

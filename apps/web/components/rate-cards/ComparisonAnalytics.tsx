@@ -139,6 +139,11 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
       const recs: SwitchingRecommendation[] = [];
       const bestRateCard = sortedRates[0];
       
+      if (!bestRateCard) {
+        setRecommendations(recs);
+        return;
+      }
+      
       rateCards.forEach(rc => {
         if (rc.id !== bestRateCard.id) {
           const savings = rc.dailyRateUSD - bestRateCard.dailyRateUSD;

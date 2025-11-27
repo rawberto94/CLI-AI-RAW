@@ -173,14 +173,19 @@ export class TemplateManager {
 
     if (index === -1) return null;
 
-    templates[index] = {
-      ...templates[index],
+    const existingTemplate = templates[index];
+    if (!existingTemplate) return null;
+    
+    const updatedTemplate: MappingTemplate = {
+      ...existingTemplate,
       ...updates,
       updatedAt: new Date(),
-    };
+    } as MappingTemplate;
+    
+    templates[index] = updatedTemplate;
 
     this.saveToStorage(templates);
-    return templates[index];
+    return updatedTemplate;
   }
 
   /**

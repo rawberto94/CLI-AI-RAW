@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   formatCurrency,
   formatPercentage,
 } from "@/components/ui/design-system";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // Lazy load heavy components
 const CostSavingsDashboardWidget = dynamic(
@@ -74,63 +75,60 @@ interface RenewalItem {
   priority: 'urgent' | 'high' | 'medium';
 }
 
-export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [renewals, setRenewals] = useState<RenewalItem[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, [refreshKey]);
-
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      const [statsRes, renewalsRes] = await Promise.all([
-        fetch('/api/dashboard/stats'),
-        fetch('/api/dashboard/renewals?days=90')
-      ]);
-      
-      const statsData = await statsRes.json();
-      const renewalsData = await renewalsRes.json();
-      
-      if (statsData.success) {
-        setDashboardData(statsData.data);
-      }
-      
-      if (renewalsData.success) {
-        setRenewals(renewalsData.data);
-      }
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
+const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; renewals: RenewalItem[] }> => {
+  // Get data mode from localStorage (synced with context)
+  const dataMode = typeof window !== 'undefined' ? localStorage.getItem('dataMode') || 'real' : 'real';
+  const headers = { 'x-data-mode': dataMode };
+  
+  const [statsRes, renewalsRes] = await Promise.all([
+    fetch('/api/dashboard/stats', { headers }),
+    fetch('/api/dashboard/renewals?days=90', { headers })
+  ]);
+  
+  const statsData = await statsRes.json();
+  const renewalsData = await renewalsRes.json();
+  
+  return {
+    stats: statsData.success ? statsData.data : null,
+    renewals: renewalsData.success ? renewalsData.data : []
   };
+};
+
+export default function DashboardPage() {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: fetchDashboardData,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  const dashboardData = data?.stats || null;
+  const renewals = data?.renewals || [];
 
   // Real-time updates for dashboard
   const eventHandlers = useMemo(() => ({
-    'contract:created': (data: any) => {
-      console.log('[Dashboard] New contract created:', data);
-      setRefreshKey(prev => prev + 1);
+    'contract:created': (eventData: any) => {
+      console.log('[Dashboard] New contract created:', eventData);
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    'contract:completed': (data: any) => {
-      console.log('[Dashboard] Contract completed:', data);
-      setRefreshKey(prev => prev + 1);
+    'contract:completed': (eventData: any) => {
+      console.log('[Dashboard] Contract completed:', eventData);
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    'job:progress': (data: any) => {
-      console.log('[Dashboard] Job progress update:', data);
-      setRefreshKey(prev => prev + 1);
+    'job:progress': (eventData: any) => {
+      console.log('[Dashboard] Job progress update:', eventData);
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    'notification': (data: any) => {
-      console.log('[Dashboard] Notification received:', data);
+    'notification': (eventData: any) => {
+      console.log('[Dashboard] Notification received:', eventData);
     },
-  }), []);
+  }), [queryClient]);
 
   useRealTimeEvents(eventHandlers);
 
-  if (loading || !dashboardData) {
+  if (isLoading || !dashboardData) {
     return (
       <DashboardLayout
         title="Contracts Dashboard"
@@ -147,7 +145,7 @@ export default function DashboardPage() {
       description="Your complete contract intelligence command center"
       actions={
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setRefreshKey(k => k + 1)}>
+          <Button size="sm" variant="outline" onClick={() => queryClient.invalidateQueries({ queryKey: ['dashboard'] })}>
             Refresh
           </Button>
           <Button size="sm" asChild>

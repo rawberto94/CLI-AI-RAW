@@ -181,8 +181,8 @@ export function createDefaultPresets(): void {
         search: '',
         status: [],
         dateRange: {
-          from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          to: new Date().toISOString().split('T')[0],
+          from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] ?? '',
+          to: new Date().toISOString().split('T')[0] ?? '',
         },
         valueRange: { min: 0, max: 0 },
         contractType: [],

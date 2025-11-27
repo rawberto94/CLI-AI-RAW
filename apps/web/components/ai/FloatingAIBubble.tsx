@@ -5,6 +5,49 @@
 
 "use client";
 
+// Speech Recognition type declarations for Web Speech API
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
+
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -241,7 +284,7 @@ export function FloatingAIBubble() {
 
       recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = Array.from(event.results)
-          .map((result) => result[0].transcript)
+          .map((result) => result[0]?.transcript ?? '')
           .join("");
         setInput(transcript);
       };
@@ -650,9 +693,10 @@ export function FloatingAIBubble() {
         costs: "For cost optimization, I can provide vendor comparisons, suggest negotiation strategies, or forecast next quarter's spend.",
       };
 
-      if (topicResponses[context.lastTopic] && lowerQuery.length < 20) {
+      const topicResponse = context.lastTopic ? topicResponses[context.lastTopic] : undefined;
+      if (topicResponse && lowerQuery.length < 20) {
         return {
-          content: topicResponses[context.lastTopic],
+          content: topicResponse,
           suggestions: ["Yes, please", "Something else", "Go back"],
           confidence: 0.85,
           source: "context-aware",
@@ -669,7 +713,7 @@ export function FloatingAIBubble() {
         "🔍 **Smart Search** - Find any contract or clause\n" +
         "💰 **Cost Analysis** - Spending, savings, budgets\n" +
         "🛡️ **Compliance** - Risk scores, audit trails\n\n" +
-        "What would you like to explore?",
+        "What would you like to explore?" as string,
       suggestions: ["Contract summary", "Renewals", "Search", "Cost analysis"],
       confidence: 0.90,
       source: "general-assistant",
@@ -1211,12 +1255,4 @@ export function FloatingAIBubble() {
       </>
     </TooltipProvider>
   );
-}
-
-// Add TypeScript declarations for Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
 }

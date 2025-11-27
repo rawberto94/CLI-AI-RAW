@@ -760,7 +760,7 @@ export const ContractHealthScore: React.FC = () => {
       // If in demo mode, always use mock data
       if (isMockData) {
         setHealthData(mockHealthData);
-        setSelectedContract(mockHealthData[0]);
+        setSelectedContract(mockHealthData[0] ?? null);
         setLoading(false);
         return;
       }
@@ -783,15 +783,15 @@ export const ContractHealthScore: React.FC = () => {
             actionItems: item.actionItems || [],
           }));
           setHealthData(mapped);
-          setSelectedContract(mapped[0]);
+          setSelectedContract(mapped[0] ?? null);
         } else {
           setHealthData(mockHealthData);
-          setSelectedContract(mockHealthData[0]);
+          setSelectedContract(mockHealthData[0] ?? null);
         }
       } catch (error) {
         console.log('Using mock health data');
         setHealthData(mockHealthData);
-        setSelectedContract(mockHealthData[0]);
+        setSelectedContract(mockHealthData[0] ?? null);
       } finally {
         setLoading(false);
       }

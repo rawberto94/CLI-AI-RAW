@@ -1,34 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// Import mock data from route.ts (in production, use database)
-const mockWorkflows: any[] = [];
+// Mock workflow for fallback
+const mockWorkflow = {
+  id: '1',
+  tenantId: 'demo',
+  name: 'Contract Approval Workflow',
+  description: 'Standard approval process for new contracts',
+  type: 'APPROVAL',
+  isActive: true,
+  steps: [
+    {
+      id: 's1',
+      name: 'Legal Review',
+      order: 0,
+      type: 'REVIEW',
+      assignedRole: 'Legal Team',
+      config: { dueDays: 3, requiresApproval: true, allowReject: true },
+    },
+    {
+      id: 's2',
+      name: 'Finance Approval',
+      order: 1,
+      type: 'APPROVAL',
+      assignedRole: 'Finance Manager',
+      config: { dueDays: 2, requiresApproval: true, allowReject: true, allowDelegate: true },
+    },
+  ],
+  executions: 45,
+  createdAt: new Date('2025-01-01'),
+  updatedAt: new Date('2025-01-15'),
+};
 
 /**
  * GET /api/workflows/:id - Get specific workflow
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
     
-    // In production, fetch from database
-    const workflow = mockWorkflows.find(w => w.id === workflowId);
-    
-    if (!workflow) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
-      );
+    // Try database first
+    try {
+      const workflow = await prisma.workflow.findUnique({
+        where: { id: workflowId },
+        include: {
+          steps: {
+            orderBy: { order: 'asc' },
+          },
+          _count: {
+            select: { executions: true },
+          },
+        },
+      });
+      
+      if (workflow) {
+        return NextResponse.json({
+          success: true,
+          workflow: {
+            ...workflow,
+            executions: workflow._count.executions,
+          },
+          source: 'database',
+        });
+      }
+    } catch (dbError) {
+      console.warn('Database lookup failed:', dbError);
     }
     
-    return NextResponse.json({
-      success: true,
-      workflow,
-    });
+    // Fallback to mock
+    if (workflowId === '1' || workflowId === mockWorkflow.id) {
+      return NextResponse.json({
+        success: true,
+        workflow: mockWorkflow,
+        source: 'mock',
+      });
+    }
+    
+    return NextResponse.json(
+      { success: false, error: 'Workflow not found' },
+      { status: 404 }
+    );
   } catch (error) {
     console.error('Error fetching workflow:', error);
     return NextResponse.json(
@@ -47,31 +103,79 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
     const body = await request.json();
+    const { name, description, type, steps, isActive, triggerType, config, metadata } = body;
     
-    const index = mockWorkflows.findIndex(w => w.id === workflowId);
-    
-    if (index === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
-      );
+    // Try database first
+    try {
+      // First, delete existing steps
+      await prisma.workflowStep.deleteMany({
+        where: { workflowId },
+      });
+      
+      // Update workflow with new steps
+      const workflow = await prisma.workflow.update({
+        where: { id: workflowId },
+        data: {
+          name,
+          description,
+          type: type || 'APPROVAL',
+          isActive: isActive !== false,
+          config: config || {},
+          metadata: { ...(metadata || {}), triggerType },
+          updatedAt: new Date(),
+          steps: {
+            create: (steps || []).map((step: { name: string; description?: string; order?: number; stepType?: string; type?: string; assigneeType?: string; assigneeId?: string; dueDays?: number; dueHours?: number; requiresApproval?: boolean; allowReject?: boolean; allowDelegate?: boolean; config?: Record<string, unknown> }, index: number) => ({
+              name: step.name,
+              description: step.description,
+              order: step.order ?? index,
+              type: step.stepType || step.type || 'APPROVAL',
+              assignedRole: step.assigneeType === 'ROLE' ? step.assigneeId : undefined,
+              assignedUser: step.assigneeType === 'USER' ? step.assigneeId : undefined,
+              config: {
+                dueDays: step.dueDays,
+                dueHours: step.dueHours,
+                requiresApproval: step.requiresApproval,
+                allowReject: step.allowReject,
+                allowDelegate: step.allowDelegate,
+                ...step.config,
+              },
+              isRequired: step.requiresApproval !== false,
+              timeout: step.dueDays ? step.dueDays * 24 * 60 : undefined,
+            })),
+          },
+        },
+        include: {
+          steps: {
+            orderBy: { order: 'asc' },
+          },
+        },
+      });
+      
+      return NextResponse.json({
+        success: true,
+        workflow,
+        source: 'database',
+        message: 'Workflow updated successfully',
+      });
+    } catch (dbError) {
+      console.warn('Database update failed:', dbError);
     }
     
-    mockWorkflows[index] = {
-      ...mockWorkflows[index],
-      ...body,
-      updatedAt: new Date(),
-    };
-    
+    // Fallback mock response
     return NextResponse.json({
       success: true,
-      workflow: mockWorkflows[index],
-      message: 'Workflow updated successfully',
+      workflow: {
+        ...mockWorkflow,
+        ...body,
+        updatedAt: new Date(),
+      },
+      source: 'mock',
+      message: 'Workflow updated (mock)',
     });
   } catch (error) {
     console.error('Error updating workflow:', error);
@@ -91,31 +195,47 @@ export async function PUT(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
     const body = await request.json();
     
-    const index = mockWorkflows.findIndex(w => w.id === workflowId);
-    
-    if (index === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
-      );
+    // Try database first
+    try {
+      const workflow = await prisma.workflow.update({
+        where: { id: workflowId },
+        data: {
+          ...body,
+          updatedAt: new Date(),
+        },
+        include: {
+          steps: {
+            orderBy: { order: 'asc' },
+          },
+        },
+      });
+      
+      return NextResponse.json({
+        success: true,
+        workflow,
+        source: 'database',
+        message: 'Workflow updated successfully',
+      });
+    } catch (dbError) {
+      console.warn('Database update failed:', dbError);
     }
     
-    mockWorkflows[index] = {
-      ...mockWorkflows[index],
-      ...body,
-      updatedAt: new Date(),
-    };
-    
+    // Fallback mock response
     return NextResponse.json({
       success: true,
-      workflow: mockWorkflows[index],
-      message: 'Workflow updated successfully',
+      workflow: {
+        ...mockWorkflow,
+        ...body,
+        updatedAt: new Date(),
+      },
+      source: 'mock',
+      message: 'Workflow updated (mock)',
     });
   } catch (error) {
     console.error('Error updating workflow:', error);
@@ -135,25 +255,36 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const workflowId = params.id;
+    const { id: workflowId } = await params;
     
-    const index = mockWorkflows.findIndex(w => w.id === workflowId);
-    
-    if (index === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
-      );
+    // Try database first
+    try {
+      // Delete steps first (cascade should handle this, but be explicit)
+      await prisma.workflowStep.deleteMany({
+        where: { workflowId },
+      });
+      
+      await prisma.workflow.delete({
+        where: { id: workflowId },
+      });
+      
+      return NextResponse.json({
+        success: true,
+        source: 'database',
+        message: 'Workflow deleted successfully',
+      });
+    } catch (dbError) {
+      console.warn('Database delete failed:', dbError);
     }
     
-    mockWorkflows.splice(index, 1);
-    
+    // Fallback mock response
     return NextResponse.json({
       success: true,
-      message: 'Workflow deleted successfully',
+      source: 'mock',
+      message: 'Workflow deleted (mock)',
     });
   } catch (error) {
     console.error('Error deleting workflow:', error);

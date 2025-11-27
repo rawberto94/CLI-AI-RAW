@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -29,7 +29,11 @@ import {
   Unlock,
   Users,
   BarChart3,
+  RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
+import { useDataMode } from '@/contexts/DataModeContext';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -95,7 +99,7 @@ const categoryConfig: Record<TemplateCategory, { label: string; icon: string; co
 };
 
 // ====================
-// MOCK DATA
+// MOCK DATA (fallback when API unavailable)
 // ====================
 
 const mockTemplates: Template[] = [
@@ -226,6 +230,88 @@ const mockTemplates: Template[] = [
     tags: ['rates', 'pricing', 'amendment'],
   },
 ];
+
+// ====================
+// API FUNCTIONS
+// ====================
+
+async function fetchTemplates(search?: string, category?: string): Promise<Template[]> {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  if (category && category !== 'all') params.set('category', category);
+
+  const response = await fetch(`/api/templates?${params.toString()}`);
+  if (!response.ok) throw new Error('Failed to fetch templates');
+  const data = await response.json();
+  
+  return (data.templates || []).map((t: any) => ({
+    ...t,
+    content: t.structure || { sections: [] },
+    variables: [],
+    defaultClauses: t.clauses?.defaultClauses || [],
+    estimatedTime: t.metadata?.estimatedTime || 20,
+    complexity: t.metadata?.complexity || 'moderate',
+    tags: t.metadata?.tags || [],
+    lastUsedAt: t.lastUsedAt ? new Date(t.lastUsedAt) : undefined,
+    createdAt: new Date(t.createdAt),
+    updatedAt: new Date(t.updatedAt),
+    isPublic: t.metadata?.isPublic || false,
+    createdBy: t.createdBy || 'admin',
+  }));
+}
+
+async function createTemplate(template: Partial<Template>): Promise<Template> {
+  const response = await fetch('/api/templates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      clauses: { defaultClauses: template.defaultClauses || [] },
+      structure: template.content || { sections: [] },
+      metadata: {
+        estimatedTime: template.estimatedTime || 20,
+        complexity: template.complexity || 'moderate',
+        tags: template.tags || [],
+        isPublic: template.isPublic || false,
+      },
+    }),
+  });
+  if (!response.ok) throw new Error('Failed to create template');
+  const data = await response.json();
+  return data.template;
+}
+
+async function updateTemplate(id: string, template: Partial<Template>): Promise<Template> {
+  const response = await fetch(`/api/templates/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      clauses: { defaultClauses: template.defaultClauses || [] },
+      structure: template.content || { sections: [] },
+      metadata: {
+        estimatedTime: template.estimatedTime || 20,
+        complexity: template.complexity || 'moderate',
+        tags: template.tags || [],
+        isPublic: template.isPublic || false,
+      },
+    }),
+  });
+  if (!response.ok) throw new Error('Failed to update template');
+  const data = await response.json();
+  return data.template;
+}
+
+async function deleteTemplate(id: string): Promise<void> {
+  const response = await fetch(`/api/templates/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete template');
+}
 
 // ====================
 // TEMPLATE CARD
@@ -525,12 +611,25 @@ function CategoryFilter({ selectedCategory, onSelect }: CategoryFilterProps) {
 // STATS CARDS
 // ====================
 
-function TemplateStats() {
+interface TemplateStatsProps {
+  templates: Template[];
+  loading?: boolean;
+}
+
+function TemplateStats({ templates, loading }: TemplateStatsProps) {
+  const mostUsed = templates.length > 0 
+    ? templates.reduce((a, b) => (a.usageCount || 0) > (b.usageCount || 0) ? a : b)
+    : null;
+  
+  const avgTime = templates.length > 0
+    ? Math.round(templates.reduce((acc, t) => acc + (t.estimatedTime || 20), 0) / templates.length)
+    : 0;
+
   const stats = [
-    { label: 'Total Templates', value: mockTemplates.length, change: '+2 this month' },
-    { label: 'Most Used', value: 'Mutual NDA', change: '234 uses' },
-    { label: 'Avg. Completion', value: '18 min', change: '-12% vs. last month' },
-    { label: 'Active Users', value: 24, change: 'using templates today' },
+    { label: 'Total Templates', value: templates.length, change: 'from database' },
+    { label: 'Most Used', value: mostUsed?.name || 'N/A', change: `${mostUsed?.usageCount || 0} uses` },
+    { label: 'Avg. Completion', value: `${avgTime} min`, change: 'estimated' },
+    { label: 'Active Templates', value: templates.filter(t => t.isActive !== false).length, change: 'ready to use' },
   ];
 
   return (
@@ -539,7 +638,9 @@ function TemplateStats() {
         <Card key={stat.label}>
           <CardHeader className="pb-2">
             <CardDescription>{stat.label}</CardDescription>
-            <CardTitle className="text-2xl">{stat.value}</CardTitle>
+            <CardTitle className={cn("text-2xl", loading && "animate-pulse")}>
+              {loading ? '...' : stat.value}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">{stat.change}</p>
@@ -555,12 +656,43 @@ function TemplateStats() {
 // ====================
 
 export function TemplateManager() {
-  const [templates, setTemplates] = useState<Template[]>(mockTemplates);
+  const { useRealData } = useDataMode();
+  const { toast } = useToast();
+  
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | 'all'>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [favorites, setFavorites] = useState<Set<string>>(new Set(['t1', 't3']));
   const [activeTab, setActiveTab] = useState('all');
+
+  // Fetch templates from API or use mock data
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        if (useRealData) {
+          const data = await fetchTemplates(searchQuery, selectedCategory);
+          setTemplates(data.length > 0 ? data : mockTemplates);
+        } else {
+          // Use mock data
+          setTemplates(mockTemplates);
+        }
+      } catch (err) {
+        console.error('Failed to fetch templates:', err);
+        setError('Failed to load templates. Using sample data.');
+        setTemplates(mockTemplates);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTemplates();
+  }, [useRealData, searchQuery, selectedCategory]);
 
   const filteredTemplates = templates.filter(template => {
     const matchesSearch = template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -585,38 +717,118 @@ export function TemplateManager() {
     });
   }, []);
 
-  const handleDuplicate = useCallback((template: Template) => {
-    const duplicate: Template = {
-      ...template,
-      id: `t${Date.now()}`,
-      name: `${template.name} (Copy)`,
-      usageCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setTemplates(prev => [...prev, duplicate]);
-  }, []);
+  const handleDuplicate = useCallback(async (template: Template) => {
+    try {
+      if (useRealData) {
+        const duplicated = await createTemplate({
+          ...template,
+          name: `${template.name} (Copy)`,
+          usageCount: 0,
+        });
+        setTemplates(prev => [...prev, duplicated]);
+        toast({
+          title: 'Template Duplicated',
+          description: `"${template.name}" has been duplicated successfully.`,
+        });
+      } else {
+        const duplicate: Template = {
+          ...template,
+          id: `t${Date.now()}`,
+          name: `${template.name} (Copy)`,
+          usageCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        setTemplates(prev => [...prev, duplicate]);
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to duplicate template.',
+        variant: 'destructive',
+      });
+    }
+  }, [useRealData, toast]);
 
-  const handleDelete = useCallback((templateId: string) => {
-    setTemplates(prev => prev.filter(t => t.id !== templateId));
-    setFavorites(prev => {
-      const next = new Set(prev);
-      next.delete(templateId);
-      return next;
-    });
-  }, []);
+  const handleDelete = useCallback(async (templateId: string) => {
+    try {
+      if (useRealData) {
+        await deleteTemplate(templateId);
+        toast({
+          title: 'Template Deleted',
+          description: 'Template has been deleted successfully.',
+        });
+      }
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+      setFavorites(prev => {
+        const next = new Set(prev);
+        next.delete(templateId);
+        return next;
+      });
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete template.',
+        variant: 'destructive',
+      });
+    }
+  }, [useRealData, toast]);
+
+  const handleRefresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchTemplates(searchQuery, selectedCategory);
+      setTemplates(data.length > 0 ? data : mockTemplates);
+      setError(null);
+      toast({
+        title: 'Refreshed',
+        description: 'Template list has been refreshed.',
+      });
+    } catch (err) {
+      setError('Failed to refresh templates.');
+      toast({
+        title: 'Error',
+        description: 'Failed to refresh templates.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, selectedCategory, toast]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Template Library</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">Template Library</h1>
+            {useRealData && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Live Data
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
             Manage and use pre-approved contract templates
           </p>
+          {error && (
+            <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+          </Button>
           <Button variant="outline" className="gap-2">
             <Upload className="h-4 w-4" />
             Import
@@ -629,7 +841,7 @@ export function TemplateManager() {
       </div>
 
       {/* Stats */}
-      <TemplateStats />
+      <TemplateStats templates={templates} loading={loading} />
 
       {/* Filters & Search */}
       <div className="space-y-4">

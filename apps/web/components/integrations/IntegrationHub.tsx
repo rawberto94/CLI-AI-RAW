@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Link2,
@@ -40,6 +40,10 @@ import {
   Info,
   Loader2,
 } from 'lucide-react';
+import { useDataMode } from '@/contexts/DataModeContext';
+import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { OAuthConnectionManager } from './OAuthConnectionManager';
 
 interface Integration {
   id: string;
@@ -314,27 +318,204 @@ const getTypeIcon = (type: Integration['type']) => {
 };
 
 export function IntegrationHub() {
-  const [activeTab, setActiveTab] = useState<'integrations' | 'logs' | 'webhooks' | 'api'>('integrations');
+  const { useRealData } = useDataMode();
+  const { toast } = useToast();
+  
+  const [integrations, setIntegrations] = useState<Integration[]>(mockIntegrations);
+  const [syncLogs, setSyncLogs] = useState<SyncLog[]>(mockSyncLogs);
+  const [webhooks, setWebhooks] = useState<Webhook[]>(mockWebhooks);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [activeTab, setActiveTab] = useState<'integrations' | 'logs' | 'webhooks' | 'api' | 'oauth'>('integrations');
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredIntegrations = mockIntegrations.filter(int =>
+  // Fetch integrations from API
+  const fetchIntegrations = useCallback(async () => {
+    if (!useRealData) {
+      setIntegrations(mockIntegrations);
+      setSyncLogs(mockSyncLogs);
+      setWebhooks(mockWebhooks);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/integrations');
+      if (!response.ok) throw new Error('Failed to fetch integrations');
+      const data = await response.json();
+      
+      if (data.success && data.data?.integrations) {
+        // Map API data to component format
+        const mapped = data.data.integrations.map((int: any) => ({
+          id: int.id,
+          name: int.name,
+          type: (int.type || 'other').toLowerCase(),
+          provider: int.provider || 'Custom',
+          status: (int.status || 'disconnected').toLowerCase(),
+          lastSync: int.lastSyncAt ? formatTimeAgo(new Date(int.lastSyncAt)) : 'Never',
+          dataFlows: {
+            direction: 'bidirectional' as const,
+            entities: int.capabilities || [],
+            frequency: 'Real-time',
+            recordsProcessed: int.recordsProcessed || 0,
+          },
+          health: {
+            uptime: int.uptime || 0,
+            errors24h: int.errors24h || 0,
+            avgLatency: 150,
+          },
+          config: {
+            apiVersion: int.version || 'v1',
+            environment: 'production',
+            syncEnabled: int.isActive !== false,
+          },
+        }));
+        
+        setIntegrations(mapped.length > 0 ? mapped : mockIntegrations);
+      } else {
+        setIntegrations(mockIntegrations);
+      }
+    } catch (err) {
+      console.error('Failed to fetch integrations:', err);
+      setError('Failed to load integrations');
+      setIntegrations(mockIntegrations);
+    } finally {
+      setLoading(false);
+    }
+  }, [useRealData]);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  // Helper function
+  const formatTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)} hours ago`;
+    return `${Math.floor(diffMins / 1440)} days ago`;
+  };
+
+  const handleSync = async (integrationId: string) => {
+    try {
+      const response = await fetch('/api/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync', integrationId }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Sync Started',
+          description: 'Integration sync has been initiated.',
+        });
+        fetchIntegrations();
+      }
+    } catch (err) {
+      toast({
+        title: 'Sync Failed',
+        description: 'Failed to start sync.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleConnect = async (integrationId: string) => {
+    try {
+      const response = await fetch('/api/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'connect', integrationId }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Connected',
+          description: 'Integration connected successfully.',
+        });
+        fetchIntegrations();
+      }
+    } catch (err) {
+      toast({
+        title: 'Connection Failed',
+        description: 'Failed to connect integration.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDisconnect = async (integrationId: string) => {
+    try {
+      const response = await fetch('/api/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disconnect', integrationId }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Disconnected',
+          description: 'Integration disconnected successfully.',
+        });
+        fetchIntegrations();
+      }
+    } catch (err) {
+      toast({
+        title: 'Disconnect Failed',
+        description: 'Failed to disconnect integration.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const filteredIntegrations = integrations.filter(int =>
     int.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     int.provider.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const connectedCount = mockIntegrations.filter(i => i.status === 'connected').length;
-  const errorCount = mockIntegrations.filter(i => i.status === 'error').length;
-  const totalRecords = mockIntegrations.reduce((sum, i) => sum + i.dataFlows.recordsProcessed, 0);
+  const connectedCount = integrations.filter(i => i.status === 'connected').length;
+  const errorCount = integrations.filter(i => i.status === 'error').length;
+  const totalRecords = integrations.reduce((sum, i) => sum + i.dataFlows.recordsProcessed, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">S2P Integration Hub</h1>
-          <p className="text-gray-500">Connect and manage your Source-to-Pay ecosystem integrations</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold text-gray-900">S2P Integration Hub</h1>
+              {useRealData && (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Live Data
+                </Badge>
+              )}
+            </div>
+            <p className="text-gray-500 mt-1">Connect and manage your Source-to-Pay ecosystem integrations</p>
+            {error && (
+              <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={fetchIntegrations}
+            disabled={loading}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <RefreshCw className={`h-5 w-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {/* Stats */}
@@ -414,6 +595,7 @@ export function IntegrationHub() {
               <nav className="flex space-x-8">
                 {[
                   { id: 'integrations', label: 'Integrations', icon: Link2 },
+                  { id: 'oauth', label: 'OAuth Connections', icon: Shield },
                   { id: 'logs', label: 'Sync Logs', icon: History },
                   { id: 'webhooks', label: 'Webhooks', icon: Zap },
                   { id: 'api', label: 'API Keys', icon: Key },
@@ -443,6 +625,20 @@ export function IntegrationHub() {
           </div>
 
           <div className="p-6">
+            {/* OAuth Connections Tab */}
+            {activeTab === 'oauth' && (
+              <OAuthConnectionManager 
+                onConnectionChange={(providerId, connected) => {
+                  toast({
+                    title: connected ? 'Connected' : 'Disconnected',
+                    description: `${providerId} integration has been ${connected ? 'connected' : 'disconnected'}`,
+                  });
+                  // Refresh integrations when OAuth status changes
+                  fetchIntegrations();
+                }}
+              />
+            )}
+
             {activeTab === 'integrations' && (
               <div className="space-y-6">
                 {/* Search & Filter */}

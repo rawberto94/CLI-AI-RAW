@@ -86,42 +86,42 @@ class EventBus extends EventEmitter {
   /**
    * Emit an event with data
    */
-  public emit(event: Events | string, data?: any): boolean {
+  public override emit(event: Events | string, data?: unknown): boolean {
     return super.emit(event, data);
   }
 
   /**
    * Publish an event (alias for emit)
    */
-  public publish(event: Events | string, data?: any): boolean {
+  public publish(event: Events | string, data?: unknown): boolean {
     return this.emit(event, data);
   }
 
   /**
    * Listen to an event
    */
-  public on(event: Events | string, listener: (...args: any[]) => void): this {
+  public override on(event: Events | string, listener: (...args: unknown[]) => void): this {
     return super.on(event, listener);
   }
 
   /**
    * Listen to an event once
    */
-  public once(event: Events | string, listener: (...args: any[]) => void): this {
+  public override once(event: Events | string, listener: (...args: unknown[]) => void): this {
     return super.once(event, listener);
   }
 
   /**
    * Remove a listener
    */
-  public off(event: Events | string, listener: (...args: any[]) => void): this {
+  public override off(event: Events | string, listener: (...args: unknown[]) => void): this {
     return super.off(event, listener);
   }
 
   /**
    * Remove all listeners for an event
    */
-  public removeAllListeners(event?: Events | string): this {
+  public override removeAllListeners(event?: Events | string): this {
     return super.removeAllListeners(event);
   }
 }

@@ -68,7 +68,7 @@ export class ImportService {
       }
 
       const sheet = parseResult.sheets[0];
-      if (sheet.rows.length === 0) {
+      if (!sheet || sheet.rows.length === 0) {
         throw new Error('No data rows found');
       }
 
@@ -227,6 +227,9 @@ export class ImportService {
   }> {
     const result = await FileParser.preview(file, rowCount);
     const sheet = result.sheets[0];
+    if (!sheet) {
+      return { headers: [], rows: [] };
+    }
 
     return {
       headers: sheet.headers,
@@ -259,6 +262,20 @@ export class ImportService {
 
       const preview = await FileParser.preview(file, 1);
       const sheet = preview.sheets[0];
+
+      if (!sheet) {
+        errors.push('No sheets found in file');
+        return {
+          valid: false,
+          errors,
+          warnings,
+          info: {
+            rowCount: 0,
+            columnCount: 0,
+            fileSize: file.size,
+          },
+        };
+      }
 
       // Check row count
       if (sheet.rows.length === 0) {

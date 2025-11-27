@@ -202,24 +202,29 @@ export class FuzzyMatcher {
     }
 
     for (let j = 0; j <= str1.length; j++) {
-      matrix[0][j] = j;
+      const row = matrix[0];
+      if (row) row[j] = j;
     }
 
     for (let i = 1; i <= str2.length; i++) {
       for (let j = 1; j <= str1.length; j++) {
+        const currentRow = matrix[i];
+        const prevRow = matrix[i - 1];
+        if (!currentRow || !prevRow) continue;
+        
         if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
+          currentRow[j] = prevRow[j - 1] ?? 0;
         } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1, // substitution
-            matrix[i][j - 1] + 1,     // insertion
-            matrix[i - 1][j] + 1      // deletion
+          currentRow[j] = Math.min(
+            (prevRow[j - 1] ?? 0) + 1, // substitution
+            (currentRow[j - 1] ?? 0) + 1,     // insertion
+            (prevRow[j] ?? 0) + 1      // deletion
           );
         }
       }
     }
 
-    return matrix[str2.length][str1.length];
+    return matrix[str2.length]?.[str1.length] ?? 0;
   }
 
   /**
@@ -301,9 +306,10 @@ export class FuzzyMatcher {
     // Check for unmapped columns that might be important
     const lowConfidence = matches.filter(m => m.confidence < 0.8);
     for (const match of lowConfidence) {
-      if (match.alternatives && match.alternatives.length > 0) {
+      const firstAlt = match.alternatives?.[0];
+      if (firstAlt) {
         suggestions.push(
-          `Consider mapping "${match.sourceColumn}" to "${match.alternatives[0].field}" instead of "${match.targetField}"`
+          `Consider mapping "${match.sourceColumn}" to "${firstAlt.field}" instead of "${match.targetField}"`
         );
       }
     }

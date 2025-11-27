@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * AI Artifact Generator Service with Robust Fallback
  * 

@@ -40,10 +40,20 @@ export function ToastProvider({
   const addToast = useCallback(
     (toast: Omit<Toast, "id">) => {
       const id = `toast-${Date.now()}-${Math.random()}`;
+      
+      // Determine type from variant or use default
+      let type = toast.type;
+      if (!type && toast.variant === 'destructive') {
+        type = 'error';
+      } else if (!type) {
+        type = 'info';
+      }
+      
       const newToast: Toast = {
         id,
         dismissible: true,
         duration: 5000,
+        type,
         ...toast,
       };
 

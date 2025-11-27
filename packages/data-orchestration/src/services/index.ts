@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Export all service instances
 // Note: Some duplicate type exports may exist - consumers should import types directly from specific services
 

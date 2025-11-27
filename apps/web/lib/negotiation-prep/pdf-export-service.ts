@@ -337,6 +337,7 @@ export class PDFExportService {
    * Helper: Add table
    */
   private addTable(data: string[][]): void {
+    if (!data[0]) return
     const colWidth = 170 / data[0].length
     const rowHeight = 8
 

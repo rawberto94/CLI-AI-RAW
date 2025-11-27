@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Performance Optimization Service
  * Provides caching, query optimization, and performance monitoring

@@ -3,6 +3,7 @@
  * 
  * Applies global middleware to all requests:
  * - Authentication check
+ * - Rate limiting
  * - Security headers
  * - Tenant ID injection
  */
@@ -11,6 +12,28 @@ export const runtime = 'nodejs'; // Force nodejs runtime for middleware
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+
+// Rate limiting configuration (in-memory for middleware)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 100; // requests per window
+
+function checkRateLimit(identifier: string): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(identifier);
+  
+  if (!entry || entry.resetAt < now) {
+    rateLimitStore.set(identifier, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  }
+  
+  entry.count++;
+  if (entry.count > RATE_LIMIT_MAX) {
+    return { allowed: false, remaining: 0 };
+  }
+  
+  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+}
 
 // Paths that don't require authentication
 const publicPaths = [
@@ -36,6 +59,29 @@ const publicApiPaths = [
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  // Rate limiting for API routes
+  if (pathname.startsWith("/api/")) {
+    const forwarded = req.headers.get('x-forwarded-for');
+    const ip = forwarded?.split(',')[0] ?? 'unknown';
+    const userId = req.auth?.user?.id;
+    const identifier = userId || `ip:${ip}`;
+    
+    const rateLimit = checkRateLimit(identifier);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too Many Requests', message: 'Rate limit exceeded' },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
+            'X-RateLimit-Remaining': '0',
+            'Retry-After': '60',
+          },
+        }
+      );
+    }
+  }
 
   // Allow public paths
   if (publicPaths.some((path) => pathname.startsWith(path))) {

@@ -214,7 +214,7 @@ function MainNavigation() {
                     </button>
 
                     {/* Children */}
-                    {isExpanded && (
+                    {isExpanded && item.children && (
                       <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 pl-4">
                         {item.children.map((child, childIndex) => (
                           <Link

@@ -184,8 +184,8 @@ export default function ImportWizardPage() {
           {/* Mapping Step */}
           {currentStep === 'mapping' && importResult && (
             <ColumnMappingInterface
-              headers={importResult.parseResult?.sheets[0].headers || []}
-              sampleRows={importResult.parseResult?.sheets[0].rows.slice(0, 5) || []}
+              headers={importResult.parseResult?.sheets?.[0]?.headers || []}
+              sampleRows={importResult.parseResult?.sheets?.[0]?.rows.slice(0, 5) || []}
               initialMappings={importResult.mappings || []}
               onMappingsChange={(mappings) => {
                 // Update mappings in result

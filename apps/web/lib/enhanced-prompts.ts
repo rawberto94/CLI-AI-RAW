@@ -1,4 +1,8 @@
-import { getRealExamples } from './real-contract-examples';
+
+// Stub function for real examples (original file was removed during cleanup)
+function getRealExamples(_type: string, _count: number): Array<{ input: string; output: unknown }> {
+  return [];
+}
 
 export type EnhancedPromptConfig = {
   systemPrompt: string;
@@ -19,8 +23,9 @@ function jsonSchemaRequirement(name: string, schema: string) {
 export function getEnhancedPrompt(type: string): EnhancedPromptConfig | null {
   // Get real contract examples for this artifact type
   const realExamples = getRealExamples(type, 1);
-  const realExampleText = realExamples.length > 0
-    ? `\n\nREAL CONTRACT EXAMPLE:\nInput: ${realExamples[0].input}\nExpected Output: ${JSON.stringify(realExamples[0].output, null, 2)}\n`
+  const firstExample = realExamples[0];
+  const realExampleText = realExamples.length > 0 && firstExample
+    ? `\n\nREAL CONTRACT EXAMPLE:\nInput: ${firstExample.input}\nExpected Output: ${JSON.stringify(firstExample.output, null, 2)}\n`
     : '';
 
   const fewShotOverview = `

@@ -76,7 +76,7 @@ export function NotificationCenter({
   }, [notifications, filter]);
 
   const groupedByDate = useMemo(() => {
-    const groups: Record<string, Notification[]> = {
+    const groups: { today: Notification[]; yesterday: Notification[]; earlier: Notification[] } = {
       today: [],
       yesterday: [],
       earlier: []

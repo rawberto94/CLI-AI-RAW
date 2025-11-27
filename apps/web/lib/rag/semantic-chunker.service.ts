@@ -91,7 +91,7 @@ export async function semanticChunk(
     } else if (section.text.length < minChunkSize && chunks.length > 0) {
       // Merge small sections with previous chunk if possible
       const lastChunk = chunks[chunks.length - 1];
-      if (lastChunk.text.length + section.text.length <= maxChunkSize) {
+      if (lastChunk && lastChunk.text.length + section.text.length <= maxChunkSize) {
         lastChunk.text += '\n\n' + section.text;
         lastChunk.endChar = section.endChar;
       } else {
@@ -132,6 +132,7 @@ function identifySections(text: string): SemanticChunk[] {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    if (!line) continue;
     const lineStart = charPos;
     charPos += line.length + 1; // +1 for newline
 

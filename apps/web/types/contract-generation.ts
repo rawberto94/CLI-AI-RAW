@@ -453,6 +453,8 @@ export interface WorkflowStep {
   reminderHours?: number[];
   escalationHours?: number;
   escalateTo?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   
   // Conditions
   conditions?: {
@@ -460,15 +462,25 @@ export interface WorkflowStep {
     operator: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan';
     value: any;
   }[];
-  skipConditions?: typeof conditions;
+  skipConditions?: {
+    field: string;
+    operator: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan';
+    value: any;
+  }[];
   
   // Actions
   onComplete?: {
     action: string;
     params: Record<string, any>;
   }[];
-  onReject?: typeof onComplete;
-  onTimeout?: typeof onComplete;
+  onReject?: {
+    action: string;
+    params: Record<string, any>;
+  }[];
+  onTimeout?: {
+    action: string;
+    params: Record<string, any>;
+  }[];
 }
 
 export interface WorkflowDefinition {

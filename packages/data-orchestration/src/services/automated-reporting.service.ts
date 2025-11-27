@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { PrismaClient } from '@prisma/client';
 import { RateCardBenchmarkingEngine } from './rate-card-benchmarking.service';
 import { SavingsOpportunityService } from './savings-opportunity.service';

@@ -103,6 +103,7 @@ export function TooltipEnhanced({
   const renderContent = () => {
     if (multiStep && steps.length > 0) {
       const step = steps[currentStep];
+      if (!step) return null;
       return (
         <div className="space-y-2">
           <div className="flex items-center justify-between">

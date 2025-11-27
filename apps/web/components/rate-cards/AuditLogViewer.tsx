@@ -52,16 +52,17 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
   const fetchAuditLogs = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        tenantId,
+      const paramsObj: Record<string, string> = {
+        tenantId: tenantId ?? '',
         limit: pagination.limit.toString(),
         offset: pagination.offset.toString(),
-        ...(filters.startDate && { startDate: filters.startDate }),
-        ...(filters.endDate && { endDate: filters.endDate }),
-        ...(filters.userId && { userId: filters.userId }),
-        ...(filters.action && { action: filters.action }),
-        ...(filters.entityType && { entityType: filters.entityType }),
-      });
+      };
+      if (filters.startDate) paramsObj.startDate = filters.startDate;
+      if (filters.endDate) paramsObj.endDate = filters.endDate;
+      if (filters.userId) paramsObj.userId = filters.userId;
+      if (filters.action) paramsObj.action = filters.action;
+      if (filters.entityType) paramsObj.entityType = filters.entityType;
+      const params = new URLSearchParams(paramsObj);
 
       const response = await fetch(`/api/rate-cards/audit-logs?${params}`);
       const data = await response.json();
@@ -103,12 +104,13 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
 
   const exportToCSV = async () => {
     try {
-      const params = new URLSearchParams({
-        tenantId,
+      const paramsObj: Record<string, string> = {
+        tenantId: tenantId ?? '',
         format: 'csv',
-        ...(filters.startDate && { startDate: filters.startDate }),
-        ...(filters.endDate && { endDate: filters.endDate }),
-      });
+      };
+      if (filters.startDate) paramsObj.startDate = filters.startDate;
+      if (filters.endDate) paramsObj.endDate = filters.endDate;
+      const params = new URLSearchParams(paramsObj);
 
       const response = await fetch(`/api/rate-cards/compliance-report?${params}`);
       const blob = await response.blob();

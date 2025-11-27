@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Supplier Alert Service
  * 

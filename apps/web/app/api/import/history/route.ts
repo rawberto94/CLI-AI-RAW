@@ -1,40 +1,95 @@
-import { NextResponse } from "next/server";
-import { mockRateCards } from "@/lib/mock-database";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const mockImportHistory = mockRateCards
-  .map((card, index) => {
-    const successfulRecords = Math.round(
-      card.services.length * (card.confidence / 100)
-    );
-
-    return {
-      id: `job-${index + 1}`,
-      fileName: `${card.supplier
-        .replace(/\s+/g, "-")
-        .toLowerCase()}-rate-card.xlsx`,
-      status: card.confidence > 90 ? "COMPLETED" : "PARTIAL_SUCCESS",
-      createdAt: card.extractedAt.toISOString(),
-      completedAt: card.extractedAt.toISOString(),
-      totalRecords: card.services.length,
-      successfulRecords,
-      failedRecords: Math.max(0, card.services.length - successfulRecords),
-      notes:
-        card.confidence > 90
-          ? "Import completed successfully."
-          : "Some records required manual review.",
-    };
-  })
-  .sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json(mockImportHistory);
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const { searchParams } = new URL(request.url);
+    
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+    const status = searchParams.get('status');
+    const source = searchParams.get('source');
+
+    // Build where clause
+    const where: any = { tenantId };
+    if (status) where.status = status;
+    if (source) where.source = source;
+
+    // Fetch import jobs from database
+    const [importJobs, totalCount] = await Promise.all([
+      prisma.importJob.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+        include: {
+          rateCards: {
+            select: {
+              id: true,
+              supplierName: true,
+              _count: {
+                select: { roles: true },
+              },
+            },
+          },
+        },
+      }),
+      prisma.importJob.count({ where }),
+    ]);
+
+    // Transform to response format
+    const history = importJobs.map((job) => {
+      const totalRecords = job.rowsProcessed || 0;
+      const successfulRecords = job.rowsSucceeded || 0;
+      const failedRecords = job.rowsFailed || 0;
+
+      return {
+        id: job.id,
+        fileName: job.fileName || 'Unknown file',
+        fileSize: job.fileSize ? Number(job.fileSize) : 0,
+        source: job.source,
+        status: job.status,
+        createdAt: job.createdAt.toISOString(),
+        startedAt: job.startedAt?.toISOString() || null,
+        completedAt: job.completedAt?.toISOString() || null,
+        totalRecords,
+        successfulRecords,
+        failedRecords,
+        rateCardsCreated: job.rateCards.length,
+        suppliers: [...new Set(job.rateCards.map(rc => rc.supplierName))],
+        requiresReview: job.requiresReview,
+        reviewedBy: job.reviewedBy,
+        reviewedAt: job.reviewedAt?.toISOString() || null,
+        mappingConfidence: Number(job.mappingConfidence || 0),
+        errors: job.errors as any[],
+        warnings: job.warnings as any[],
+        notes: job.reviewNotes || (
+          job.status === 'COMPLETED' 
+            ? 'Import completed successfully.'
+            : job.status === 'FAILED'
+            ? 'Import failed. See errors for details.'
+            : job.requiresReview
+            ? 'Some records require manual review.'
+            : null
+        ),
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: history,
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + limit < totalCount,
+      },
+    });
   } catch (error) {
     console.error("Error fetching import history:", error);
     return NextResponse.json(
-      { error: "Failed to fetch import history" },
+      { success: false, error: "Failed to fetch import history" },
       { status: 500 }
     );
   }

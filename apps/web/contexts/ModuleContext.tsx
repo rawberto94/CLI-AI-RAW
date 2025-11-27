@@ -182,7 +182,7 @@ export function ModuleProvider({ children }: ModuleProviderProps) {
       governance: 'governance',
       search: 'search',
     };
-    return moduleMap[path] || 'dashboard';
+    return (path && moduleMap[path]) || 'dashboard';
   }, [pathname]);
   
   // Actions

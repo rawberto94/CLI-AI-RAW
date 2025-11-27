@@ -31,7 +31,7 @@ export function getTagColor(color: string): string {
     orange: 'bg-orange-100 text-orange-800 border-orange-200',
     pink: 'bg-pink-100 text-pink-800 border-pink-200',
   }
-  return colors[color] || colors.gray
+  return colors[color] ?? colors.gray ?? 'bg-gray-100 text-gray-800 border-gray-200'
 }
 
 export function getTagById(tagId: string): Tag | undefined {
@@ -170,7 +170,10 @@ export function deleteTag(tagId: string): void {
       if (stored) {
         const assignments: Record<string, string[]> = JSON.parse(stored)
         Object.keys(assignments).forEach(contractId => {
-          assignments[contractId] = assignments[contractId].filter(id => id !== tagId)
+          const contractAssignments = assignments[contractId]
+          if (contractAssignments) {
+            assignments[contractId] = contractAssignments.filter(id => id !== tagId)
+          }
         })
         localStorage.setItem(CONTRACT_TAGS_STORAGE_KEY, JSON.stringify(assignments))
       }

@@ -15,14 +15,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { 
   SupplierIntelligenceService,
-  // SupplierTrendAnalyzerService, // TODO: File is empty, implement or remove
-  SupplierRecommenderService
+  SupplierRecommenderService,
+  SupplierTrendAnalyzerService
 } from 'data-orchestration/services';
 
 const supplierIntelligenceService = new SupplierIntelligenceService();
-// const supplierTrendAnalyzerService = new SupplierTrendAnalyzerService(); // TODO: Implement
 const supplierRecommenderService = new SupplierRecommenderService();
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -37,6 +37,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const { searchParams } = new URL(request.url);
     const monthsBack = parseInt(searchParams.get('monthsBack') || '12');
     const includeRecommendations = searchParams.get('includeRecommendations') !== 'false';
+    const includeAlerts = searchParams.get('includeAlerts') !== 'false';
+
+    // Initialize trend analyzer with prisma
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supplierTrendAnalyzerService = new SupplierTrendAnalyzerService(prisma) as any;
 
     // Calculate competitiveness score
     const competitivenessScore = await supplierIntelligenceService.calculateCompetitivenessScore(
@@ -44,8 +49,18 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       session.user.tenantId
     );
 
-    // Analyze historical trends - TODO: implement SupplierTrendAnalyzerService
-    const trends = null; // await supplierTrendAnalyzerService.analyzeSupplierTrends(...)
+    // Analyze historical trends
+    let trends = null;
+    try {
+      trends = await supplierTrendAnalyzerService.analyzeSupplierTrends(
+        supplierId,
+        session.user.tenantId,
+        monthsBack
+      );
+    } catch (error) {
+      console.error('Error analyzing supplier trends:', error);
+      // Continue without trends
+    }
 
     // Get alternative supplier recommendations if requested
     let alternatives = null;
@@ -63,8 +78,20 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       }
     }
 
-    // Detect above-market rate increases - TODO: implement SupplierTrendAnalyzerService
-    const rateIncreaseAnalysis = null; // await supplierTrendAnalyzerService.detectAboveMarketIncreases(...)
+    // Detect above-market rate increases
+    let rateIncreaseAnalysis = null;
+    if (includeAlerts) {
+      try {
+        rateIncreaseAnalysis = await supplierTrendAnalyzerService.detectAboveMarketIncreases(
+          supplierId,
+          session.user.tenantId,
+          10 // 10% threshold
+        );
+      } catch (error) {
+        console.error('Error detecting rate increases:', error);
+        // Continue without analysis
+      }
+    }
 
     return NextResponse.json({
       supplierId,

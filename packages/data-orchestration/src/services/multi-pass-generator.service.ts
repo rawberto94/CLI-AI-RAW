@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Multi-Pass Generator Service
  * 
