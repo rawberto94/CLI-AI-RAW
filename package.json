@@ -8,10 +8,14 @@
     "schema": "packages/clients/db/schema.prisma"
   },
   "scripts": {
-    "dev": "cd apps/web && npm run dev",
+    "dev": "(cd packages/workers && pnpm dev &) && cd apps/web && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "dev:all": "bash scripts/start-all.sh",
+    "stop:all": "bash scripts/stop-all.sh",
     "build": "cd apps/web && npm run build",
     "build:clients": "bash scripts/build-clients.sh",
     "start": "cd apps/web && npm run start",
+    "websocket": "cd apps/web && npx ts-node --transpile-only server/start-websocket.ts",
     "workers": "cd packages/workers && pnpm dev",
     "workers:build": "cd packages/workers && pnpm build",
     "workers:start": "cd packages/workers && pnpm start",

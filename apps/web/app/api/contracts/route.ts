@@ -165,6 +165,9 @@ async function handler(request: NextRequest) {
     );
   }
 
+  // Valid ContractStatus values from Prisma schema
+  const VALID_STATUSES = ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED', 'ARCHIVED'];
+
   // Build where clause
   const where: any = { tenantId };
 
@@ -175,8 +178,10 @@ async function handler(request: NextRequest) {
     ];
   }
 
-  if (statuses.length > 0) {
-    where.status = { in: statuses };
+  // Filter to only valid status values
+  const validStatuses = statuses.filter(s => s && s !== 'undefined' && VALID_STATUSES.includes(s));
+  if (validStatuses.length > 0) {
+    where.status = { in: validStatuses };
   }
 
   // Build orderBy

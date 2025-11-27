@@ -81,15 +81,20 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
   // Initialize socket connection
   useEffect(() => {
-    const socketUrl = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+    // Skip WebSocket connection if server URL is not configured
+    const socketUrl = process.env.NEXT_PUBLIC_WS_URL;
+    if (!socketUrl) {
+      // WebSocket is optional - don't connect if not configured
+      return;
+    }
     
     const newSocket = io(socketUrl, {
       path: '/api/socket',
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 2,
+      reconnectionDelay: 5000,
     });
 
     newSocket.on('connect', () => {
@@ -103,7 +108,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('[WebSocket] Connection error:', error.message);
+      // Only log in development, and use debug level since WS is optional
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[WebSocket] Connection unavailable (optional feature):', error.message);
+      }
     });
 
     // Handle presence updates

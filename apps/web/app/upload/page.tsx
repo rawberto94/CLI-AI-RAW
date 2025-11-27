@@ -175,7 +175,7 @@ export default function UploadPage() {
     ))
 
     try {
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/api/contracts/upload', {
         method: 'POST',
         headers: {
           'x-data-mode': dataMode
