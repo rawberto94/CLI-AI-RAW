@@ -63,8 +63,8 @@ export default function AppLayout({
       )}
 
       {/* Page Content */}
-      <main className={cn('flex-1', className)}>
-        <div className="container mx-auto px-4 lg:px-6 py-6">
+      <main className={cn('flex-1 w-full max-w-full overflow-x-hidden', className)}>
+        <div className="w-full px-4 lg:px-6 py-6">
           {children}
         </div>
       </main>

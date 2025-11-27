@@ -291,8 +291,8 @@ export default function UploadPage() {
   const EngineIcon = currentEngine.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white overflow-x-hidden">
+      <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
         <PageBreadcrumb />
         
         {/* Header */}

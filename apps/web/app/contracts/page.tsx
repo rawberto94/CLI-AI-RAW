@@ -153,16 +153,16 @@ export default function ContractsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="page-wrapper">
+        <div className="page-container">
           <div className="flex flex-col items-center justify-center h-96 gap-4">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             >
-              <Loader2 className="h-12 w-12 text-blue-600" />
+              <Loader2 className="h-10 w-10 text-blue-600" />
             </motion.div>
-            <p className="text-gray-600 animate-pulse">Loading contracts...</p>
+            <p className="text-slate-500 text-sm">Loading contracts...</p>
           </div>
         </div>
       </div>
@@ -170,77 +170,62 @@ export default function ContractsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="page-wrapper">
+      <div className="page-container space-y-6">
         <PageBreadcrumb />
         
         {/* Header */}
-        <motion.div 
-          className="flex items-center justify-between"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
+        <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-              Contracts
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Manage and view all your contracts
-            </p>
+            <h1 className="page-title">Contracts</h1>
+            <p className="page-description">Manage and view all your contracts</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <Button 
               variant="outline" 
+              size="sm"
               onClick={fetchContracts}
-              className="hover:bg-blue-50 transition-colors"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
-            <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg">
+            <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
               <Link href="/upload">
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Contract
+                Upload
               </Link>
             </Button>
           </div>
-        </motion.div>
+        </div>
 
         {/* Stats */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-4 gap-6" 
-          data-testid="contracts-stats"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <Card data-testid="stat-total" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
-            <CardContent className="pt-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="card-base">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Contracts</p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="metric-label">Total</p>
+                  <p className="metric-value text-slate-900">
                     {Array.isArray(contracts) ? contracts.length : 0}
                   </p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
-                  <FileText className="h-6 w-6 text-white" />
+                <div className="p-2.5 bg-blue-50 rounded-lg">
+                  <FileText className="h-5 w-5 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card data-testid="stat-active" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
-            <CardContent className="pt-6">
+          <Card className="card-base">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Active</p>
-                  <p className="text-3xl font-bold text-green-600">
+                  <p className="metric-label">Active</p>
+                  <p className="metric-value text-emerald-600">
                     {Array.isArray(contracts) ? contracts.filter((c) => c.status === "completed").length : 0}
                   </p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
-                  <CheckCircle className="h-6 w-6 text-white" />
+                <div className="p-2.5 bg-emerald-50 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-emerald-600" />
                 </div>
               </div>
             </CardContent>
@@ -254,65 +239,60 @@ export default function ContractsPage() {
                     {Array.isArray(contracts) ? contracts.filter((c) => c.status === "processing").length : 0}
                   </p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                <div className="p-2.5 bg-blue-50 rounded-lg">
+                  <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card data-testid="stat-value" className="border-0 shadow-lg hover:shadow-xl transition-shadow bg-white/80 backdrop-blur-sm">
-            <CardContent className="pt-6">
+          <Card className="card-base">
+            <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total Value</p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="metric-label">Total Value</p>
+                  <p className="metric-value text-slate-900">
                     {formatCurrency(
                       Array.isArray(contracts) ? contracts.reduce((sum, c) => sum + (c.value || 0), 0) : 0
                     )}
                   </p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
-                  <DollarSign className="h-6 w-6 text-white" />
+                <div className="p-2.5 bg-emerald-50 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-emerald-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
         {/* Search and Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-            <CardContent className="pt-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search contracts by title, client, or supplier..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border-gray-200 focus:border-blue-400 focus:ring-blue-400"
-                    data-testid="contract-search"
-                  />
-                </div>
-                <div className="flex gap-2" data-testid="status-filters">
-                  <Button
-                    variant={statusFilter === "all" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter("all")}
-                    data-testid="filter-all"
-                    className={statusFilter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    variant={statusFilter === "completed" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setStatusFilter("completed")}
-                    data-testid="filter-active"
+        <Card className="card-base">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search contracts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 input-base"
+                  data-testid="contract-search"
+                />
+              </div>
+              <div className="flex gap-2" data-testid="status-filters">
+                <Button
+                  variant={statusFilter === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatusFilter("all")}
+                  data-testid="filter-all"
+                  className={statusFilter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                  All
+                </Button>
+                <Button
+                  variant={statusFilter === "completed" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatusFilter("completed")}
+                  data-testid="filter-active"
                     className={statusFilter === "completed" ? "bg-green-600 hover:bg-green-700" : ""}
                   >
                     Active
@@ -330,7 +310,6 @@ export default function ContractsPage() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
 
         {/* Contracts List */}
         <AnimatePresence mode="wait">
@@ -342,8 +321,8 @@ export default function ContractsPage() {
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
-              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-                <CardContent className="pt-6">
+              <Card className="card-base">
+                <CardContent className="p-6">
                   {(searchQuery || statusFilter !== "all") ? (
                     <NoResults onClearFilters={() => {
                       setSearchQuery("");
@@ -358,7 +337,7 @@ export default function ContractsPage() {
           ) : (
             <motion.div 
               key="list"
-              className="space-y-4" 
+              className="space-y-3" 
               data-testid="contracts-list"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

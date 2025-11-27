@@ -355,8 +355,8 @@ export default function EnhancedContractDetailPage() {
                        contract?.status?.toLowerCase() === 'uploaded';
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white overflow-x-hidden">
+      <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         
         {/* Header */}
         <motion.div
