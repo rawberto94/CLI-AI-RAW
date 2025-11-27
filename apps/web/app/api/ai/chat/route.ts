@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { hybridSearch } from '@/lib/rag/advanced-rag.service'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -159,6 +160,35 @@ function selectResponse(query: string, context: any) {
 
 async function getOpenAIResponse(message: string, conversationHistory: any[], context: any) {
   try {
+    // Check if the query needs RAG search
+    const needsRAG = shouldUseRAG(message);
+    let ragContext = '';
+    let ragSources: string[] = [];
+
+    if (needsRAG) {
+      try {
+        // Use advanced RAG to find relevant contract content
+        const ragResults = await hybridSearch(message, {
+          mode: 'hybrid',
+          k: 5,
+          rerank: true,
+          expandQuery: true,
+          filters: context?.tenantId ? { tenantId: context.tenantId } : {},
+        });
+
+        if (ragResults.length > 0) {
+          ragContext = `\n\n**Relevant Contract Information Found:**\n${ragResults.map((r, i) => 
+            `[${i + 1}] From "${r.contractName}" (${Math.round(r.score * 100)}% match):\n${r.text.slice(0, 500)}...`
+          ).join('\n\n')}`;
+          
+          ragSources = ragResults.map(r => `Contract: ${r.contractName} (ID: ${r.contractId})`);
+        }
+      } catch (ragError) {
+        console.error('RAG search error:', ragError);
+        // Continue without RAG results
+      }
+    }
+
     const systemPrompt = `You are an AI assistant for a Contract Lifecycle Management (CLM) system. You help users with:
 - Searching and analyzing contracts
 - Managing deadlines and renewals
@@ -169,8 +199,14 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
 
 Current context: ${context?.context || 'global'}
 Contract ID: ${context?.contractId || 'none'}
+${ragContext}
 
-Provide concise, actionable responses. Format your response with markdown. When referencing contracts, use bullet points and bold for emphasis.`;
+When answering:
+1. Be concise and actionable
+2. Use markdown formatting (bold, bullets, headers)
+3. Reference specific contracts when relevant
+4. Suggest next steps or related queries
+5. If you found contract information above, cite it in your response`;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
@@ -192,7 +228,7 @@ Provide concise, actionable responses. Format your response with markdown. When 
 
     return {
       response: responseContent,
-      sources: ['AI-generated response', 'CLM Database'],
+      sources: ragSources.length > 0 ? ragSources : ['AI-generated response', 'CLM Database'],
       suggestedActions: [
         { label: '🔍 Search Contracts', action: 'search-contracts' },
         { label: '📊 View Dashboard', action: 'view-dashboard' },
@@ -207,6 +243,22 @@ Provide concise, actionable responses. Format your response with markdown. When 
     console.error('OpenAI API error:', error);
     throw new Error(`OpenAI API error: ${error.message}`);
   }
+}
+
+// Determine if the query should use RAG search
+function shouldUseRAG(query: string): boolean {
+  const lowerQuery = query.toLowerCase();
+  
+  // Keywords that indicate contract search is needed
+  const ragKeywords = [
+    'find', 'search', 'show me', 'where', 'what', 'which',
+    'contract', 'clause', 'term', 'liability', 'termination',
+    'payment', 'renewal', 'expire', 'obligation', 'risk',
+    'indemnif', 'sla', 'warranty', 'confidential', 'vendor',
+    'supplier', 'agreement', 'msa', 'nda', 'sow',
+  ];
+  
+  return ragKeywords.some(keyword => lowerQuery.includes(keyword));
 }
 
 export async function POST(request: NextRequest) {

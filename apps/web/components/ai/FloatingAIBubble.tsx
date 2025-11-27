@@ -369,26 +369,46 @@ export function FloatingAIBubble() {
     }, 300);
 
     try {
-      // Simulate API call with typing delay
-      const typingDelay = 800 + Math.random() * 1200;
-      await new Promise((resolve) => setTimeout(resolve, typingDelay));
-      
-      const response = generateAIResponse(messageContent, conversationContext);
+      // Call real AI API with RAG integration
+      const startTime = Date.now();
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: messageContent,
+          conversationHistory: messages.slice(-10).map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          context: conversationContext,
+          useMock: false, // Use real OpenAI
+        }),
+      });
+
+      const data = await response.json();
+      const processingTime = Date.now() - startTime;
 
       // Update context based on query
       updateContext(messageContent);
 
+      // Parse actions from API response
+      const actions: ActionButton[] = data.suggestedActions?.map((a: any) => ({
+        label: a.label,
+        action: a.action,
+        variant: a.action.includes('view') ? 'primary' : 'default',
+      })) || [];
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: response.content,
+        content: data.response || data.error || "I couldn't process that request.",
         timestamp: new Date(),
-        suggestions: response.suggestions,
-        actions: response.actions,
+        suggestions: data.suggestions,
+        actions: actions.length > 0 ? actions : undefined,
         metadata: {
-          confidence: response.confidence || 0.95,
-          processingTime: typingDelay,
-          source: response.source || "ai",
+          confidence: 0.95,
+          processingTime,
+          source: data.sources?.[0] || "ai",
         },
       };
 
@@ -398,21 +418,28 @@ export function FloatingAIBubble() {
       if (!isOpen) setHasNewMessage(true);
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage: Message = {
+      // Fallback to local response on API failure
+      const response = generateAIResponse(messageContent, conversationContext);
+      const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I apologize, but I encountered an error. Please try again or rephrase your question.",
+        content: response.content,
         timestamp: new Date(),
-        status: "error",
-        suggestions: ["Try again", "Contact support"],
+        suggestions: response.suggestions,
+        actions: response.actions,
+        metadata: {
+          confidence: response.confidence || 0.85,
+          processingTime: 0,
+          source: "fallback",
+        },
       };
-      setMessages((prev) => [...prev, errorMessage]);
-      playSound("error");
+      setMessages((prev) => [...prev, assistantMessage]);
+      playSound("receive");
     } finally {
       setIsLoading(false);
       setIsTyping(false);
     }
-  }, [input, isLoading, conversationContext, isOpen, playSound]);
+  }, [input, isLoading, conversationContext, isOpen, playSound, messages]);
 
   // Update conversation context
   const updateContext = (query: string) => {
