@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { SmartSearch } from '@/components/search/SmartSearch'
+import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Sparkles, Zap, Target } from 'lucide-react'
 
@@ -10,6 +11,8 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 function SearchPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
+      <PageBreadcrumb />
+      
       {/* Header */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold">Smart Search</h1>

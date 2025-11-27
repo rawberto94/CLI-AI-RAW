@@ -156,8 +156,6 @@ async function regenerateArtifactAsync(
         lastEditedAt: new Date()
       }
     });
-  } finally {
-    await prisma.$disconnect();
   }
 }
 /**

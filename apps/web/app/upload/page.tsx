@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useRouter } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
+import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -292,6 +293,7 @@ export default function UploadPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <div className="max-w-6xl mx-auto px-6 py-12">
+        <PageBreadcrumb />
         
         {/* Header */}
         <motion.div 

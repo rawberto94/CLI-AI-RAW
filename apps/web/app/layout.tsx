@@ -1,7 +1,7 @@
 import "./globals.css";
 
 import { HealthBanner } from "./health-banner";
-import MainNavigation from "@/components/layout/MainNavigation";
+import EnhancedNavigation from "@/components/layout/EnhancedNavigation";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { EnhancedDataModeToggle } from "@/components/ui/enhanced-data-mode-toggle";
 import { ChatAssistant } from "@/components/ai/ChatAssistant";
@@ -11,6 +11,11 @@ import { ToastProvider } from "@/components/ui/toast-provider";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { RealTimeProvider } from "@/contexts/RealTimeContext";
 import { QuickActionsFAB } from "@/components/ui/quick-actions-fab";
+import { ModuleProvider } from "@/contexts/ModuleContext";
+import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
+import { WelcomeTour } from "@/components/onboarding";
+import { FloatingDataModeToggle } from "@/components/ui/DataModeToggle";
+import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 
 export const metadata = {
   title: "Contract Intelligence Platform",
@@ -29,11 +34,14 @@ export default function RootLayout({
           <DataModeProvider>
             <ToastProvider>
               <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                <ModuleProvider>
+                <FeedbackProvider>
+                <GlobalKeyboardShortcuts>
                 {/* Data Mode Banner - Disabled */}
                 {/* <DataModeBanner /> */}
                 <HealthBanner />
-                <MainNavigation />
-                <div className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-white">
+                <EnhancedNavigation />
+                <div className="min-h-screen lg:pl-72 pt-16 lg:pt-0 bg-white">
                   {/* Data Mode Toggle - Disabled to prevent overlay */}
                   {/* <div className="fixed top-4 right-4 z-50">
                     <EnhancedDataModeToggle />
@@ -42,10 +50,17 @@ export default function RootLayout({
                 </div>
                 {/* Quick Actions FAB - Global keyboard shortcut access */}
                 <QuickActionsFAB />
+                {/* Demo/Live Data Toggle - Floating button */}
+                <FloatingDataModeToggle />
+                {/* Welcome Tour for first-time users */}
+                <WelcomeTour />
                 {/* AI Chat Assistant - Available everywhere */}
                 {/* <ChatAssistant /> */}
                 {/* Enhanced AI Chatbot - Context-aware assistance */}
                 {/* <AIChatbot context="global" /> */}
+                </GlobalKeyboardShortcuts>
+                </FeedbackProvider>
+                </ModuleProvider>
               </RealTimeProvider>
             </ToastProvider>
           </DataModeProvider>

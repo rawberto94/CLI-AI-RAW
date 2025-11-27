@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import React, { useEffect, useState, useMemo } from 'react'
 import { AnalyticsHub } from '@/components/analytics/AnalyticsHub'
+import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -96,6 +97,8 @@ export default function ImprovedAnalyticsPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-8">
+      <PageBreadcrumb />
+      
       {/* Main Analytics Hub */}
       <AnalyticsHub key={refreshKey} />
 

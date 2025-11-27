@@ -8,29 +8,33 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
+// Connection pool configuration via DATABASE_URL query params
+// Format: postgresql://user:pass@host:port/db?connection_limit=20&pool_timeout=30
+// Default pool size is 10, we override in env if needed
+
 // Create Prisma client with optimized configuration
 export const prisma =
   global.prisma ||
   new PrismaClient({
     datasources: {
       db: {
+        // Connection pool settings can be set via DATABASE_URL query params:
+        // ?connection_limit=20 - Max connections in pool (default: 10)
+        // &pool_timeout=30 - Seconds to wait for connection (default: 10)
+        // &connect_timeout=30 - Seconds to establish connection (default: 5)
         url: process.env.DATABASE_URL,
       },
     },
-    log: [
-      {
-        emit: 'event',
-        level: 'query',
-      },
-      {
-        emit: 'event',
-        level: 'error',
-      },
-      {
-        emit: 'event',
-        level: 'warn',
-      },
-    ],
+    log: process.env.NODE_ENV === 'development' 
+      ? [
+          { emit: 'event', level: 'query' },
+          { emit: 'event', level: 'error' },
+          { emit: 'event', level: 'warn' },
+        ]
+      : [
+          { emit: 'event', level: 'error' },
+          { emit: 'event', level: 'warn' },
+        ],
   });
 
 // Log slow queries (only in development)

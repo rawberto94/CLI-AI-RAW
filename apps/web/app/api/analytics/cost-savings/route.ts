@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { costSavingsAnalyzerService } from 'data-orchestration/services';
+import { prisma } from '@/lib/prisma';
 
 /**
  * GET /api/analytics/cost-savings
@@ -24,9 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { PrismaClient } = await import('@prisma/client');
     // Using singleton prisma instance from @/lib/prisma
-
     try {
       if (contractId) {
         // Get cost savings for specific contract
@@ -184,8 +183,9 @@ export async function GET(request: NextRequest) {
           }))
         }
       });
-    } finally {
-      await prisma.$disconnect();
+    } catch (dbError) {
+      console.error('Database error in cost savings:', dbError);
+      throw dbError;
     }
   } catch (error) {
     console.error('Cost savings analysis error:', error);

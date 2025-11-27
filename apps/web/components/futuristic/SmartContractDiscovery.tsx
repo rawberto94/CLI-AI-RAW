@@ -26,6 +26,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useDataMode } from '@/contexts/DataModeContext';
 
 interface SmartFilter {
   id: string;
@@ -56,6 +57,7 @@ interface ContractCard {
 }
 
 export function SmartContractDiscovery() {
+  const { isMockData } = useDataMode();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [contracts, setContracts] = useState<ContractCard[]>([]);
@@ -64,64 +66,108 @@ export function SmartContractDiscovery() {
   const [showFilters, setShowFilters] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [loading, setLoading] = useState(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock data - in real app, this would come from API
+  // Mock data fallback
+  const mockContracts: ContractCard[] = [
+    {
+      id: '1',
+      title: 'Master Service Agreement - Cloud Infrastructure',
+      type: 'MSA',
+      client: 'TechCorp Inc.',
+      vendor: 'CloudProvider LLC',
+      value: 2400000,
+      currency: 'USD',
+      status: 'active',
+      riskScore: 25,
+      complianceScore: 94,
+      expirationDate: '2025-12-31',
+      tags: ['cloud', 'infrastructure', 'high-value', 'multi-year'],
+      aiInsights: ['Strong liability protection', 'Favorable payment terms', 'Auto-renewal clause present'],
+      relevanceScore: 98
+    },
+    {
+      id: '2',
+      title: 'Software Development Agreement - Mobile App',
+      type: 'SOW',
+      client: 'StartupCo',
+      vendor: 'DevStudio Inc.',
+      value: 850000,
+      currency: 'USD',
+      status: 'active',
+      riskScore: 45,
+      complianceScore: 87,
+      expirationDate: '2024-06-30',
+      tags: ['software', 'mobile', 'development', 'fixed-price'],
+      aiInsights: ['IP ownership clearly defined', 'Milestone-based payments', 'Limited warranty period'],
+      relevanceScore: 92
+    },
+    {
+      id: '3',
+      title: 'Data Processing Agreement - Analytics Platform',
+      type: 'DPA',
+      client: 'DataCorp',
+      vendor: 'AnalyticsPro',
+      value: 1200000,
+      currency: 'USD',
+      status: 'pending_renewal',
+      riskScore: 35,
+      complianceScore: 96,
+      expirationDate: '2024-04-15',
+      tags: ['data', 'analytics', 'gdpr-compliant', 'enterprise'],
+      aiInsights: ['GDPR compliant', 'Data retention policies clear', 'Strong security requirements'],
+      relevanceScore: 89
+    }
+  ];
+
+  // Fetch contracts from API or use mock data based on mode
   useEffect(() => {
-    const mockContracts: ContractCard[] = [
-      {
-        id: '1',
-        title: 'Master Service Agreement - Cloud Infrastructure',
-        type: 'MSA',
-        client: 'TechCorp Inc.',
-        vendor: 'CloudProvider LLC',
-        value: 2400000,
-        currency: 'USD',
-        status: 'active',
-        riskScore: 25,
-        complianceScore: 94,
-        expirationDate: '2025-12-31',
-        tags: ['cloud', 'infrastructure', 'high-value', 'multi-year'],
-        aiInsights: ['Strong liability protection', 'Favorable payment terms', 'Auto-renewal clause present'],
-        relevanceScore: 98
-      },
-      {
-        id: '2',
-        title: 'Software Development Agreement - Mobile App',
-        type: 'SOW',
-        client: 'StartupCo',
-        vendor: 'DevStudio Inc.',
-        value: 850000,
-        currency: 'USD',
-        status: 'active',
-        riskScore: 45,
-        complianceScore: 87,
-        expirationDate: '2024-06-30',
-        tags: ['software', 'mobile', 'development', 'fixed-price'],
-        aiInsights: ['IP ownership clearly defined', 'Milestone-based payments', 'Limited warranty period'],
-        relevanceScore: 92
-      },
-      {
-        id: '3',
-        title: 'Data Processing Agreement - Analytics Platform',
-        type: 'DPA',
-        client: 'DataCorp',
-        vendor: 'AnalyticsPro',
-        value: 1200000,
-        currency: 'USD',
-        status: 'pending_renewal',
-        riskScore: 35,
-        complianceScore: 96,
-        expirationDate: '2024-04-15',
-        tags: ['data', 'analytics', 'gdpr-compliant', 'enterprise'],
-        aiInsights: ['GDPR compliant', 'Data retention policies clear', 'Strong security requirements'],
-        relevanceScore: 89
+    async function fetchContracts() {
+      // If in demo mode, always use mock data
+      if (isMockData) {
+        setContracts(mockContracts);
+        setFilteredContracts(mockContracts);
+        setLoading(false);
+        return;
       }
-    ];
-    
-    setContracts(mockContracts);
-    setFilteredContracts(mockContracts);
-  }, []);
+      
+      try {
+        const res = await fetch('/api/contracts/list');
+        const json = await res.json();
+        if (json.success && json.data?.contracts?.length > 0) {
+          const mapped = json.data.contracts.map((c: any) => ({
+            id: c.id,
+            title: c.contractName || c.name || c.fileName || 'Contract',
+            type: c.contractType || 'Contract',
+            client: c.parties?.[0] || 'Unknown',
+            vendor: c.counterparty || c.vendor || c.parties?.[1] || 'Unknown',
+            value: c.contractValue || c.value || 0,
+            currency: 'USD',
+            status: c.status?.toLowerCase() || 'active',
+            riskScore: c.riskScore || 30,
+            complianceScore: c.complianceScore || 90,
+            expirationDate: c.endDate || c.expirationDate || '2025-12-31',
+            tags: c.tags || [],
+            aiInsights: c.insights || [],
+            relevanceScore: 85
+          }));
+          setContracts(mapped);
+          setFilteredContracts(mapped);
+        } else {
+          setContracts(mockContracts);
+          setFilteredContracts(mockContracts);
+        }
+      } catch (error) {
+        console.log('Using mock contracts data');
+        setContracts(mockContracts);
+        setFilteredContracts(mockContracts);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchContracts();
+  }, [isMockData]);
 
   // AI-powered search suggestions
   useEffect(() => {
@@ -220,6 +266,17 @@ export function SmartContractDiscovery() {
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <Brain className="w-12 h-12 text-purple-500 animate-pulse mx-auto mb-3" />
+          <p className="text-slate-600">Loading contract intelligence...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

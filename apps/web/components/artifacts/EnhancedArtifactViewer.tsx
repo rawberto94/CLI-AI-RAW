@@ -20,7 +20,11 @@ import {
   X,
   Check,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Edit3,
+  Save,
+  Eye,
+  Wand2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -32,6 +36,7 @@ import {
   MetricCard,
   ScoreRing
 } from '@/components/artifacts/ArtifactCards'
+import { SmartEditableArtifact, convertToEditableSections } from '@/components/artifacts/SmartEditableArtifact'
 
 // ============ TYPES ============
 
@@ -124,6 +129,7 @@ export function EnhancedArtifactViewer({
   const [activeTab, setActiveTab] = useState<TabId>(initialTab as TabId);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState<'view' | 'edit'>('view');
 
   // Normalize artifact data
   const normalizedData = useMemo(() => {
@@ -135,6 +141,11 @@ export function EnhancedArtifactViewer({
       compliance: artifacts.compliance || artifacts.complianceCheck || null,
       rates: artifacts.rates || null
     };
+  }, [artifacts]);
+
+  // Convert to editable sections for edit mode
+  const editableSections = useMemo(() => {
+    return convertToEditableSections(artifacts, 'contract');
   }, [artifacts]);
 
   // Count available tabs
@@ -172,6 +183,41 @@ export function EnhancedArtifactViewer({
     
     return { riskScore, complianceScore, totalValue, clauseCount };
   }, [normalizedData]);
+
+  // Handlers for editable mode
+  const handleSaveArtifact = async (data: Record<string, any>) => {
+    console.log('Saving artifact data:', data);
+    // API call to save
+    try {
+      await fetch(`/api/contracts/${contractId}/artifacts`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+    } catch (e) {
+      console.error('Save failed:', e);
+    }
+  };
+
+  const handleAIEnhance = async (fieldId: string, currentValue: any): Promise<string> => {
+    console.log('Enhancing field:', fieldId);
+    // Mock AI enhancement - in production call OpenAI
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return currentValue + ' (AI Enhanced)';
+  };
+
+  const handleRegenerate = async () => {
+    console.log('Regenerating artifact');
+    // API call to regenerate
+    try {
+      await fetch(`/api/contracts/${contractId}/artifacts/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (e) {
+      console.error('Regeneration failed:', e);
+    }
+  };
 
   // Render tab content
   const renderTabContent = () => {
@@ -390,6 +436,34 @@ export function EnhancedArtifactViewer({
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              {/* View/Edit Toggle */}
+              <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
+                <button
+                  onClick={() => setViewMode('view')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                    viewMode === 'view' 
+                      ? "bg-white text-slate-900 shadow-sm" 
+                      : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  View
+                </button>
+                <button
+                  onClick={() => setViewMode('edit')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+                    viewMode === 'edit' 
+                      ? "bg-white text-indigo-600 shadow-sm" 
+                      : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  Edit
+                </button>
+              </div>
+
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
@@ -414,21 +488,37 @@ export function EnhancedArtifactViewer({
         </div>
 
         <CardContent className="p-6">
-          {/* Tab Content */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {renderTabContent()}
-            </motion.div>
-          </AnimatePresence>
+          {/* Show SmartEditableArtifact in edit mode */}
+          {viewMode === 'edit' ? (
+            <SmartEditableArtifact
+              artifactId={contractId}
+              artifactType="contract"
+              title="Contract Data"
+              sections={editableSections}
+              onSave={handleSaveArtifact}
+              onAIEnhance={handleAIEnhance}
+              onRegenerate={handleRegenerate}
+              enableAI={true}
+              enableComments={true}
+            />
+          ) : (
+            /* Tab Content */
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {renderTabContent()}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </CardContent>
 
-        {/* Footer Navigation */}
+        {/* Footer Navigation - only show in view mode */}
+        {viewMode === 'view' && (
         <div className="border-t border-slate-200 px-6 py-3 bg-slate-50/50 flex items-center justify-between">
           <Button
             variant="ghost"
@@ -465,6 +555,7 @@ export function EnhancedArtifactViewer({
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>
+        )}
       </Card>
     </div>
   );

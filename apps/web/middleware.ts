@@ -30,6 +30,8 @@ const publicApiPaths = [
   "/api/auth",
   "/api/events", // Allow SSE endpoint for real-time updates
   "/api/contracts", // Allow contract endpoints (includes artifact streams)
+  "/api/dashboard/stats", // Allow dashboard stats for testing (remove in production if needed)
+  "/api/dashboard/renewals", // Allow dashboard renewals for testing
 ];
 
 export default auth((req) => {

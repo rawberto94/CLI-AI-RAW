@@ -10,9 +10,7 @@
  * - BACKGROUND (50): Non-urgent background tasks
  */
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 /**
  * Priority levels matching queue configuration

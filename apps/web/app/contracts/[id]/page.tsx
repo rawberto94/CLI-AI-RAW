@@ -45,6 +45,8 @@ import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactV
 import { GenerationFlowVisualization, CompactGenerationFlow } from '@/components/artifacts/GenerationFlowVisualization'
 import { MetricCard, ScoreRing } from '@/components/artifacts/ArtifactCards'
 import { formatCurrency, formatDate, getRiskColor, getComplianceColor } from '@/lib/design-tokens'
+import { CustomArtifactGenerator, QuickTopicGenerator } from '@/components/artifacts/CustomArtifactGenerator'
+import SmartMetadataValidator from '@/components/metadata/SmartMetadataValidator'
 
 // ============ TYPES ============
 
@@ -629,6 +631,50 @@ export default function EnhancedContractDetailPage() {
               initialTab={searchParams.get('tab') || 'overview'}
             />
           )}
+        </motion.div>
+
+        {/* Custom Artifact Generation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mt-8"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Custom Analysis</h2>
+            <Badge className="bg-purple-100 text-purple-700">AI-Powered</Badge>
+          </div>
+          <CustomArtifactGenerator
+            contractId={params.id as string}
+            contractTitle={contract?.filename || 'Contract'}
+            onArtifactGenerated={(artifact) => {
+              console.log('New artifact generated:', artifact);
+              // Optionally refresh artifacts
+            }}
+          />
+        </motion.div>
+
+        {/* Metadata Validation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.47 }}
+          className="mt-8"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <FileCheck className="h-5 w-5 text-emerald-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Metadata Validation</h2>
+            <Badge className="bg-emerald-100 text-emerald-700">AI + Human</Badge>
+          </div>
+          <SmartMetadataValidator
+            contractId={params.id as string}
+            initialMetadata={contract?.extractedData}
+            onSave={(metadata) => {
+              console.log('Metadata saved:', metadata);
+              // Optionally refresh contract data
+            }}
+          />
         </motion.div>
 
         {/* Quick Links Section */}

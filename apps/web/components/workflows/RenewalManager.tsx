@@ -1,0 +1,620 @@
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  RefreshCw,
+  Calendar,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  ChevronRight,
+  Filter,
+  Search,
+  MoreHorizontal,
+  FileText,
+  Building2,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  ArrowRight,
+  Zap,
+  Bell,
+  Mail,
+  Play,
+  Pause,
+  Settings,
+  Download,
+  BarChart3,
+  Eye,
+  Edit,
+  Loader2,
+} from 'lucide-react';
+import { useDataMode } from '@/contexts/DataModeContext';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface RenewalContract {
+  id: string;
+  contractName: string;
+  supplierName: string;
+  currentValue: number;
+  projectedValue: number;
+  renewalDate: string;
+  autoRenewal: boolean;
+  noticeDeadline?: string;
+  status: 'upcoming' | 'in-progress' | 'completed' | 'lapsed' | 'terminated';
+  renewalType: 'auto' | 'manual' | 'negotiated';
+  healthScore: number;
+  daysUntilRenewal: number;
+  lastRenewalDate?: string;
+  renewalHistory: RenewalEvent[];
+  recommendation: 'renew' | 'renegotiate' | 'terminate' | 'review';
+  risks: string[];
+  savings?: {
+    potential: number;
+    realized: number;
+  };
+  assignee?: {
+    name: string;
+    email: string;
+  };
+}
+
+interface RenewalEvent {
+  id: string;
+  type: 'renewal' | 'amendment' | 'notification' | 'action';
+  description: string;
+  date: string;
+  actor?: string;
+}
+
+// ============================================================================
+// Mock Data
+// ============================================================================
+
+const mockRenewals: RenewalContract[] = [
+  {
+    id: 'r1',
+    contractName: 'Master Agreement - Acme Corp',
+    supplierName: 'Acme Corporation',
+    currentValue: 1200000,
+    projectedValue: 1260000,
+    renewalDate: '2024-06-15',
+    autoRenewal: false,
+    status: 'upcoming',
+    renewalType: 'negotiated',
+    healthScore: 78,
+    daysUntilRenewal: 92,
+    lastRenewalDate: '2023-06-15',
+    renewalHistory: [
+      { id: 'e1', type: 'renewal', description: 'Annual renewal completed', date: '2023-06-15', actor: 'System' },
+      { id: 'e2', type: 'notification', description: '90-day renewal reminder sent', date: '2024-03-16' },
+    ],
+    recommendation: 'renew',
+    risks: [],
+    savings: { potential: 120000, realized: 0 },
+    assignee: { name: 'Sarah Johnson', email: 'sarah@company.com' },
+  },
+  {
+    id: 'r2',
+    contractName: 'Procurement Agreement - GlobalSupply',
+    supplierName: 'GlobalSupply Ltd',
+    currentValue: 780000,
+    projectedValue: 842400,
+    renewalDate: '2024-04-01',
+    autoRenewal: true,
+    noticeDeadline: '2024-03-20',
+    status: 'upcoming',
+    renewalType: 'auto',
+    healthScore: 42,
+    daysUntilRenewal: 17,
+    lastRenewalDate: '2023-04-01',
+    renewalHistory: [
+      { id: 'e3', type: 'renewal', description: 'Auto-renewed (missed deadline)', date: '2023-04-01' },
+      { id: 'e4', type: 'notification', description: 'URGENT: 5-day notice deadline', date: '2024-03-15' },
+    ],
+    recommendation: 'terminate',
+    risks: ['Auto-renewal trap', '22% above market', 'Performance issues', '8% annual escalator'],
+    savings: { potential: 171600, realized: 0 },
+    assignee: { name: 'Emily Davis', email: 'emily@company.com' },
+  },
+  {
+    id: 'r3',
+    contractName: 'Cloud Services SLA',
+    supplierName: 'Acme Corporation',
+    currentValue: 450000,
+    projectedValue: 468000,
+    renewalDate: '2024-08-20',
+    autoRenewal: false,
+    status: 'upcoming',
+    renewalType: 'manual',
+    healthScore: 62,
+    daysUntilRenewal: 158,
+    renewalHistory: [],
+    recommendation: 'renegotiate',
+    risks: ['SLA compliance at 97.2%', 'Latency issues'],
+    savings: { potential: 45000, realized: 0 },
+  },
+  {
+    id: 'r4',
+    contractName: 'NDA - TechFlow Inc',
+    supplierName: 'TechFlow Inc',
+    currentValue: 0,
+    projectedValue: 0,
+    renewalDate: '2025-01-10',
+    autoRenewal: true,
+    status: 'upcoming',
+    renewalType: 'auto',
+    healthScore: 95,
+    daysUntilRenewal: 301,
+    renewalHistory: [],
+    recommendation: 'renew',
+    risks: [],
+  },
+  {
+    id: 'r5',
+    contractName: 'Maintenance Contract - Acme',
+    supplierName: 'Acme Corporation',
+    currentValue: 120000,
+    projectedValue: 120000,
+    renewalDate: '2024-09-30',
+    autoRenewal: false,
+    status: 'upcoming',
+    renewalType: 'manual',
+    healthScore: 85,
+    daysUntilRenewal: 199,
+    renewalHistory: [
+      { id: 'e5', type: 'renewal', description: 'Renewed with 5% discount', date: '2023-09-30' },
+    ],
+    recommendation: 'renew',
+    risks: [],
+    savings: { potential: 6000, realized: 0 },
+  },
+];
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+const getStatusConfig = (status: RenewalContract['status']) => {
+  switch (status) {
+    case 'upcoming': return { color: 'bg-blue-100 text-blue-700', icon: Calendar, label: 'Upcoming' };
+    case 'in-progress': return { color: 'bg-amber-100 text-amber-700', icon: RefreshCw, label: 'In Progress' };
+    case 'completed': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' };
+    case 'lapsed': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Lapsed' };
+    case 'terminated': return { color: 'bg-slate-100 text-slate-700', icon: XCircle, label: 'Terminated' };
+  }
+};
+
+const getRecommendationConfig = (rec: RenewalContract['recommendation']) => {
+  switch (rec) {
+    case 'renew': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: 'Renew' };
+    case 'renegotiate': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Edit, label: 'Renegotiate' };
+    case 'terminate': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: 'Terminate' };
+    case 'review': return { color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Eye, label: 'Review' };
+  }
+};
+
+const getUrgencyColor = (days: number, hasAutoRenewal: boolean, noticeDeadline?: string) => {
+  if (noticeDeadline) {
+    const deadlineDays = Math.ceil((new Date(noticeDeadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    if (deadlineDays <= 5) return 'text-red-600 bg-red-50';
+    if (deadlineDays <= 14) return 'text-amber-600 bg-amber-50';
+  }
+  if (days <= 30) return 'text-red-600 bg-red-50';
+  if (days <= 60) return 'text-amber-600 bg-amber-50';
+  if (days <= 90) return 'text-blue-600 bg-blue-50';
+  return 'text-slate-600 bg-slate-50';
+};
+
+// ============================================================================
+// Renewal Card Component
+// ============================================================================
+
+interface RenewalCardProps {
+  renewal: RenewalContract;
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect }) => {
+  const status = getStatusConfig(renewal.status);
+  const StatusIcon = status.icon;
+  const rec = getRecommendationConfig(renewal.recommendation);
+  const RecIcon = rec.icon;
+  const urgencyClass = getUrgencyColor(renewal.daysUntilRenewal, renewal.autoRenewal, renewal.noticeDeadline);
+  const valueChange = renewal.projectedValue - renewal.currentValue;
+  const valueChangePercent = renewal.currentValue > 0 ? (valueChange / renewal.currentValue) * 100 : 0;
+
+  return (
+    <motion.div
+      whileHover={{ scale: 1.01 }}
+      onClick={onSelect}
+      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+        isSelected
+          ? 'border-blue-500 bg-blue-50/50 shadow-lg'
+          : renewal.daysUntilRenewal <= 30 || (renewal.noticeDeadline && new Date(renewal.noticeDeadline).getTime() - new Date().getTime() <= 7 * 24 * 60 * 60 * 1000)
+          ? 'border-red-200 bg-red-50/30 hover:border-red-300'
+          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {/* Health Score Ring */}
+        <div className="relative w-12 h-12 flex-shrink-0">
+          <svg className="w-12 h-12 -rotate-90">
+            <circle cx="24" cy="24" r="20" fill="none" stroke="#E2E8F0" strokeWidth="4" />
+            <circle
+              cx="24"
+              cy="24"
+              r="20"
+              fill="none"
+              stroke={renewal.healthScore >= 70 ? '#22C55E' : renewal.healthScore >= 50 ? '#F59E0B' : '#EF4444'}
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={`${(renewal.healthScore / 100) * 126} 126`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-700">
+            {renewal.healthScore}
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            {renewal.autoRenewal && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" />
+                Auto-Renew
+              </span>
+            )}
+            <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 border ${rec.color}`}>
+              <RecIcon className="w-3 h-3" />
+              {rec.label}
+            </span>
+          </div>
+
+          <h3 className="font-semibold text-slate-900 truncate">{renewal.contractName}</h3>
+          <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+            <Building2 className="w-3 h-3" />
+            {renewal.supplierName}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <div className={`px-2 py-1 rounded text-sm font-medium ${urgencyClass}`}>
+            {renewal.daysUntilRenewal}d
+          </div>
+          <div className="text-xs text-slate-400 mt-1">
+            {renewal.renewalDate}
+          </div>
+        </div>
+      </div>
+
+      {/* Value & Savings */}
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <div className="p-2 bg-slate-50 rounded-lg">
+          <div className="text-xs text-slate-500">Current Value</div>
+          <div className="font-semibold text-slate-900">${renewal.currentValue.toLocaleString()}</div>
+        </div>
+        <div className="p-2 bg-slate-50 rounded-lg">
+          <div className="text-xs text-slate-500">Projected</div>
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-slate-900">${renewal.projectedValue.toLocaleString()}</span>
+            {valueChange !== 0 && (
+              <span className={`text-xs flex items-center ${valueChange > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {valueChange > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                {Math.abs(valueChangePercent).toFixed(1)}%
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Risks & Notice Deadline */}
+      {(renewal.risks.length > 0 || renewal.noticeDeadline) && (
+        <div className="mt-3 space-y-2">
+          {renewal.noticeDeadline && (
+            <div className="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+              <span className="text-xs text-red-700 font-medium">
+                Notice deadline: {renewal.noticeDeadline}
+              </span>
+            </div>
+          )}
+          {renewal.risks.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {renewal.risks.slice(0, 2).map((risk, idx) => (
+                <span key={idx} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full">
+                  {risk}
+                </span>
+              ))}
+              {renewal.risks.length > 2 && (
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full">
+                  +{renewal.risks.length - 2} more
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export const RenewalManager: React.FC = () => {
+  const { isMockData } = useDataMode();
+  const [renewals, setRenewals] = useState<RenewalContract[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'urgent' | 'auto-renew' | 'action-needed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [view, setView] = useState<'list' | 'calendar' | 'timeline'>('list');
+  const [loading, setLoading] = useState(true);
+
+  // Fetch renewals from API or use mock data based on mode
+  useEffect(() => {
+    async function fetchRenewals() {
+      // If in demo mode, always use mock data
+      if (isMockData) {
+        setRenewals(mockRenewals);
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/renewals');
+        const json = await res.json();
+        if (json.success && json.data?.contracts?.length > 0) {
+          const mapped = json.data.contracts.map((item: any) => ({
+            id: item.id,
+            contractName: item.contractName || item.name || 'Unknown Contract',
+            supplierName: item.counterparty || item.vendor || 'Unknown',
+            currentValue: item.contractValue || item.value || 0,
+            projectedValue: item.projectedValue || item.contractValue || 0,
+            renewalDate: item.endDate || item.renewalDate,
+            autoRenewal: item.autoRenewal ?? false,
+            noticeDeadline: item.noticeDeadline,
+            status: item.status || 'upcoming',
+            renewalType: item.autoRenewal ? 'auto' : 'manual',
+            healthScore: item.healthScore || 75,
+            daysUntilRenewal: item.daysUntilRenewal || Math.max(0, Math.round((new Date(item.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+            lastRenewalDate: item.lastRenewalDate,
+            renewalHistory: item.history || [],
+            recommendation: item.recommendation || 'review',
+            risks: item.risks || [],
+            savings: item.savings,
+            assignee: item.assignee,
+          }));
+          setRenewals(mapped);
+        } else {
+          setRenewals(mockRenewals);
+        }
+      } catch (error) {
+        console.log('Using mock renewals data');
+        setRenewals(mockRenewals);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRenewals();
+  }, [isMockData]);
+
+  const selectedRenewal = renewals.find(r => r.id === selectedId);
+
+  const filteredRenewals = useMemo(() => {
+    return renewals.filter(r => {
+      if (filter === 'urgent' && r.daysUntilRenewal > 30) return false;
+      if (filter === 'auto-renew' && !r.autoRenewal) return false;
+      if (filter === 'action-needed' && r.recommendation === 'renew' && !r.risks.length) return false;
+      if (searchQuery && !r.contractName.toLowerCase().includes(searchQuery.toLowerCase()) && 
+          !r.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    }).sort((a, b) => a.daysUntilRenewal - b.daysUntilRenewal);
+  }, [renewals, filter, searchQuery]);
+
+  const stats = useMemo(() => {
+    const totalValue = renewals.reduce((sum, r) => sum + r.currentValue, 0);
+    const potentialSavings = renewals.reduce((sum, r) => sum + (r.savings?.potential || 0), 0);
+    return {
+      total: renewals.length,
+      urgent: renewals.filter(r => r.daysUntilRenewal <= 30).length,
+      autoRenewal: renewals.filter(r => r.autoRenewal).length,
+      totalValue,
+      potentialSavings,
+      atRisk: renewals.filter(r => r.recommendation === 'terminate' || r.recommendation === 'renegotiate').length,
+    };
+  }, [renewals]);
+
+  // Group by month for timeline
+  const renewalsByMonth = useMemo(() => {
+    const grouped: Record<string, RenewalContract[]> = {};
+    filteredRenewals.forEach(r => {
+      const month = new Date(r.renewalDate).toLocaleString('default', { month: 'long', year: 'numeric' });
+      if (!grouped[month]) grouped[month] = [];
+      grouped[month].push(r);
+    });
+    return grouped;
+  }, [filteredRenewals]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-green-500 animate-spin mx-auto mb-3" />
+          <p className="text-slate-600">Loading renewals...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-slate-50">
+      {/* Header */}
+      <div className="flex-none p-6 bg-white border-b border-slate-200">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-green-500" />
+              Renewal Manager
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">Track and manage upcoming contract renewals</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+            <button className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Notifications
+            </button>
+            <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center gap-2">
+              <Play className="w-4 h-4" />
+              Initiate Renewal
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-6 gap-4">
+          <div className="p-3 bg-slate-50 rounded-lg text-center">
+            <div className="text-xl font-bold text-slate-900">{stats.total}</div>
+            <div className="text-xs text-slate-500">Total Renewals</div>
+          </div>
+          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
+            <div className="text-xl font-bold text-red-600">{stats.urgent}</div>
+            <div className="text-xs text-red-600">Due in 30 Days</div>
+          </div>
+          <div className="p-3 bg-purple-50 rounded-lg text-center">
+            <div className="text-xl font-bold text-purple-600">{stats.autoRenewal}</div>
+            <div className="text-xs text-purple-600">Auto-Renewal</div>
+          </div>
+          <div className="p-3 bg-amber-50 rounded-lg text-center">
+            <div className="text-xl font-bold text-amber-600">{stats.atRisk}</div>
+            <div className="text-xs text-amber-600">Action Needed</div>
+          </div>
+          <div className="p-3 bg-blue-50 rounded-lg text-center">
+            <div className="text-xl font-bold text-blue-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
+            <div className="text-xs text-blue-600">Total Value</div>
+          </div>
+          <div className="p-3 bg-green-50 rounded-lg text-center">
+            <div className="text-xl font-bold text-green-600">${(stats.potentialSavings / 1000).toFixed(0)}K</div>
+            <div className="text-xs text-green-600">Potential Savings</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters & View Toggle */}
+      <div className="flex-none p-4 bg-white border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search renewals..."
+              className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            {(['all', 'urgent', 'auto-renew', 'action-needed'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+                  filter === f
+                    ? 'bg-green-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {f.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1">
+          {(['list', 'timeline'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors capitalize ${
+                view === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {view === 'list' ? (
+          <div className="grid grid-cols-2 gap-4">
+            {filteredRenewals.map(renewal => (
+              <RenewalCard
+                key={renewal.id}
+                renewal={renewal}
+                isSelected={selectedId === renewal.id}
+                onSelect={() => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Object.entries(renewalsByMonth).map(([month, monthRenewals]) => (
+              <div key={month}>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-slate-400" />
+                  {month}
+                  <span className="text-sm font-normal text-slate-500">
+                    ({monthRenewals.length} renewal{monthRenewals.length !== 1 ? 's' : ''})
+                  </span>
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {monthRenewals.map(renewal => (
+                    <RenewalCard
+                      key={renewal.id}
+                      renewal={renewal}
+                      isSelected={selectedId === renewal.id}
+                      onSelect={() => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions Bar */}
+      <div className="flex-none p-4 bg-white border-t border-slate-200">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-slate-500">
+            Showing {filteredRenewals.length} of {renewals.length} renewals
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Send Reminders
+            </button>
+            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Bulk Actions
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default RenewalManager;

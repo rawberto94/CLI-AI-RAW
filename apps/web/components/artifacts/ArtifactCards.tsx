@@ -26,7 +26,8 @@ import {
   Info,
   Sparkles,
   Scale,
-  FileCheck
+  FileCheck,
+  Edit3
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getRiskColor, getComplianceColor, formatCurrency, formatDate } from '@/lib/design-tokens'
@@ -539,11 +540,15 @@ interface ClausesArtifactProps extends ArtifactBaseProps {
     clauses: Clause[]
     totalCount?: number
   }
+  onClauseUpdate?: (clauseId: string, updates: Partial<Clause>) => void
+  editable?: boolean
 }
 
-export function ClausesArtifact({ data, className, isLoading }: ClausesArtifactProps) {
+export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, editable = false }: ClausesArtifactProps) {
   const [expandedClauses, setExpandedClauses] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [editingClauseId, setEditingClauseId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
   
   const toggleClause = (id: string) => {
     setExpandedClauses(prev => {
@@ -555,6 +560,24 @@ export function ClausesArtifact({ data, className, isLoading }: ClausesArtifactP
       }
       return next;
     });
+  };
+
+  const startEditing = (clause: Clause) => {
+    setEditingClauseId(clause.id);
+    setEditContent(clause.content);
+  };
+
+  const saveEdit = (clauseId: string) => {
+    if (onClauseUpdate && editContent.trim()) {
+      onClauseUpdate(clauseId, { content: editContent });
+    }
+    setEditingClauseId(null);
+    setEditContent('');
+  };
+
+  const cancelEdit = () => {
+    setEditingClauseId(null);
+    setEditContent('');
   };
 
   if (isLoading) {
@@ -653,9 +676,48 @@ export function ClausesArtifact({ data, className, isLoading }: ClausesArtifactP
                     className="border-t border-slate-200"
                   >
                     <div className="p-4 space-y-4">
-                      <p className="text-sm text-slate-700 leading-relaxed">
-                        {clause.content}
-                      </p>
+                      {/* Editable Content */}
+                      {editingClauseId === clause.id ? (
+                        <div className="space-y-3">
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="w-full min-h-[120px] p-3 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y"
+                            autoFocus
+                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={cancelEdit}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => saveEdit(clause.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700"
+                            >
+                              <CheckCircle2 className="h-4 w-4 mr-1" />
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <p className="text-sm text-slate-700 leading-relaxed">
+                            {clause.content}
+                          </p>
+                          {editable && (
+                            <button
+                              onClick={() => startEditing(clause)}
+                              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white border border-slate-200 rounded-md shadow-sm hover:bg-slate-50"
+                            >
+                              <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                       
                       {clause.obligations && clause.obligations.length > 0 && (
                         <div>

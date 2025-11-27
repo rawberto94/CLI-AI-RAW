@@ -25,6 +25,12 @@ import { ContractTypeChart } from "@/components/dashboard/ContractTypeChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { StatusOverview } from "@/components/dashboard/StatusOverview";
 import { DashboardChatbot } from "@/components/dashboard/DashboardChatbot";
+import { 
+  IntelligenceWidget, 
+  ApprovalsWidget, 
+  RenewalsWidget, 
+  GovernanceWidget 
+} from "@/components/dashboard/CrossModuleWidgets";
 
 import {
   FileText,
@@ -268,6 +274,21 @@ export default function DashboardPage() {
         <section className="relative z-0">
           {/* Cost Savings Widget */}
           <CostSavingsDashboardWidget />
+        </section>
+
+        {/* Cross-Module Integration Widgets */}
+        <section className="relative z-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <IntelligenceWidget />
+            <ApprovalsWidget />
+          </div>
+        </section>
+        
+        <section className="relative z-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RenewalsWidget />
+            <GovernanceWidget />
+          </div>
         </section>
 
         <section className="relative z-0">

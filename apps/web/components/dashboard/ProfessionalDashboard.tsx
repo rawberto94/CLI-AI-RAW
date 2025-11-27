@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
+import { useDataMode } from '@/contexts/DataModeContext';
 import {
   LineChart,
   Line,
@@ -124,7 +125,7 @@ const mockExpirations: UpcomingExpiration[] = [
   { id: '3', name: 'Maintenance Agreement', client: 'Global Systems', expiresAt: '2024-02-28', daysRemaining: 25, value: 45000 },
 ];
 
-const chartData = {
+const mockChartData = {
   monthly: [
     { month: 'Aug', contracts: 32, value: 1.2, processed: 28 },
     { month: 'Sep', contracts: 45, value: 1.8, processed: 41 },
@@ -146,6 +147,94 @@ const chartData = {
     { type: 'Other', count: 15 },
   ],
 };
+
+// ============ API FETCH HOOK ============
+
+function useDashboardData() {
+  const { isMockData } = useDataMode();
+  const [metrics, setMetrics] = useState<DashboardMetrics>(mockMetrics);
+  const [chartData, setChartData] = useState(mockChartData);
+  const [recentContracts, setRecentContracts] = useState<RecentContract[]>(mockRecentContracts);
+  const [expirations, setExpirations] = useState<UpcomingExpiration[]>(mockExpirations);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // If in demo mode, use mock data
+    if (isMockData) {
+      setMetrics(mockMetrics);
+      setChartData(mockChartData);
+      setRecentContracts(mockRecentContracts);
+      setExpirations(mockExpirations);
+      setLoading(false);
+      return;
+    }
+    
+    async function fetchData() {
+      try {
+        const [statsRes, approvalsRes, renewalsRes] = await Promise.all([
+          fetch('/api/dashboard/stats'),
+          fetch('/api/approvals?limit=5'),
+          fetch('/api/renewals?limit=3'),
+        ]);
+
+        const [statsJson, approvalsJson, renewalsJson] = await Promise.all([
+          statsRes.json(),
+          approvalsRes.json(),
+          renewalsRes.json(),
+        ]);
+
+        // Map API data to metrics
+        if (statsJson.success && statsJson.data) {
+          const d = statsJson.data;
+          setMetrics({
+            totalContracts: d.overview?.totalContracts ?? mockMetrics.totalContracts,
+            activeContracts: d.overview?.activeContracts ?? mockMetrics.activeContracts,
+            totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
+            avgRiskScore: d.riskScore ?? mockMetrics.avgRiskScore,
+            pendingApprovals: approvalsJson.data?.items?.length ?? mockMetrics.pendingApprovals,
+            expiringThisMonth: d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth,
+            contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
+            aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
+            trends: mockMetrics.trends, // Keep mock trends for now
+          });
+
+          // Map breakdown to chart
+          if (d.breakdown?.byType) {
+            setChartData(prev => ({
+              ...prev,
+              byType: d.breakdown.byType.slice(0, 5).map((t: any) => ({
+                type: t.type?.substring(0, 10) || 'Other',
+                count: t.count,
+              })),
+            }));
+          }
+        }
+
+        // Map renewals to expirations
+        if (renewalsJson.success && renewalsJson.data?.contracts) {
+          setExpirations(renewalsJson.data.contracts.slice(0, 3).map((c: any, i: number) => ({
+            id: c.id || String(i + 1),
+            name: c.contractName || c.name || 'Contract',
+            client: c.counterparty || c.vendor || 'Unknown',
+            expiresAt: c.endDate || c.renewalDate,
+            daysRemaining: c.daysUntilRenewal || Math.round((new Date(c.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+            value: c.contractValue || c.value || 0,
+          })));
+        }
+
+      } catch (error) {
+        console.log('Using mock data due to API error:', error);
+        // Keep mock data
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [isMockData]);
+
+  return { metrics, chartData, recentContracts, expirations, loading };
+}
 
 // ============ HELPER COMPONENTS ============
 
@@ -306,17 +395,8 @@ function ExpirationRow({ item, index }: { item: UpcomingExpiration; index: numbe
 // ============ MAIN COMPONENT ============
 
 export function ProfessionalDashboard() {
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockMetrics);
-  const [recentContracts] = useState<RecentContract[]>(mockRecentContracts);
-  const [expirations] = useState<UpcomingExpiration[]>(mockExpirations);
-  const [loading, setLoading] = useState(true);
+  const { metrics, chartData, recentContracts, expirations, loading } = useDashboardData();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
-
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
 
   if (loading) {
     return (

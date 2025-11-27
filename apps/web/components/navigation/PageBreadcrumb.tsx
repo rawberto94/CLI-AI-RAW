@@ -1,0 +1,313 @@
+'use client';
+
+import React, { useMemo } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  ChevronRight,
+  Home,
+  FileText,
+  Upload,
+  BarChart3,
+  CreditCard,
+  Sparkles,
+  Zap,
+  CheckCircle2,
+  Calendar,
+  TrendingUp,
+  Edit3,
+  Building2,
+  Link2,
+  Shield,
+  Search,
+  Activity,
+  Target,
+  Briefcase,
+  LayoutDashboard,
+} from 'lucide-react';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface BreadcrumbItem {
+  label: string;
+  href: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  current?: boolean;
+}
+
+interface PageBreadcrumbProps {
+  items?: BreadcrumbItem[];
+  showHome?: boolean;
+  className?: string;
+}
+
+// ============================================================================
+// Route to Breadcrumb Mapping
+// ============================================================================
+
+const ROUTE_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  '/': { label: 'Dashboard', icon: Home },
+  '/contracts': { label: 'Contracts', icon: FileText },
+  '/upload': { label: 'Upload', icon: Upload },
+  '/dashboard': { label: 'Analytics', icon: BarChart3 },
+  '/rate-cards': { label: 'Rate Cards', icon: CreditCard },
+  '/rate-cards/dashboard': { label: 'Dashboard', icon: LayoutDashboard },
+  '/rate-cards/entries': { label: 'Entries', icon: FileText },
+  '/rate-cards/benchmarking': { label: 'Benchmarking', icon: Target },
+  '/rate-cards/opportunities': { label: 'Opportunities', icon: TrendingUp },
+  '/generate': { label: 'Generate', icon: Sparkles },
+  '/generate/templates': { label: 'Templates', icon: FileText },
+  '/generate/workflows': { label: 'Workflows', icon: Activity },
+  '/intelligence': { label: 'Intelligence', icon: Zap },
+  '/intelligence/graph': { label: 'Knowledge Graph', icon: Activity },
+  '/intelligence/health': { label: 'Health Scores', icon: Target },
+  '/intelligence/search': { label: 'AI Search', icon: Search },
+  '/intelligence/negotiate': { label: 'Negotiation', icon: Briefcase },
+  '/approvals': { label: 'Approvals', icon: CheckCircle2 },
+  '/renewals': { label: 'Renewals', icon: Calendar },
+  '/forecast': { label: 'Forecast', icon: TrendingUp },
+  '/drafting': { label: 'Drafting', icon: Edit3 },
+  '/portal': { label: 'Portal', icon: Building2 },
+  '/integrations': { label: 'Integrations', icon: Link2 },
+  '/governance': { label: 'Governance', icon: Shield },
+  '/search': { label: 'Search', icon: Search },
+};
+
+// ============================================================================
+// Component
+// ============================================================================
+
+export function PageBreadcrumb({ items, showHome = true, className = '' }: PageBreadcrumbProps) {
+  const pathname = usePathname();
+
+  // Auto-generate breadcrumbs from pathname if not provided
+  const breadcrumbs = useMemo<BreadcrumbItem[]>(() => {
+    if (items) return items;
+
+    const pathParts = pathname.split('/').filter(Boolean);
+    const crumbs: BreadcrumbItem[] = [];
+
+    if (showHome && pathname !== '/') {
+      crumbs.push({
+        label: 'Home',
+        href: '/',
+        icon: Home,
+        current: false,
+      });
+    }
+
+    let currentPath = '';
+    pathParts.forEach((part, index) => {
+      currentPath += `/${part}`;
+      const config = ROUTE_CONFIG[currentPath];
+      
+      if (config) {
+        crumbs.push({
+          label: config.label,
+          href: currentPath,
+          icon: config.icon,
+          current: index === pathParts.length - 1,
+        });
+      } else if (index === pathParts.length - 1) {
+        // Dynamic route - try to get a clean label
+        const label = part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' ');
+        crumbs.push({
+          label,
+          href: currentPath,
+          current: true,
+        });
+      }
+    });
+
+    return crumbs;
+  }, [pathname, items, showHome]);
+
+  if (breadcrumbs.length === 0) return null;
+
+  return (
+    <motion.nav
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex items-center space-x-1 text-sm ${className}`}
+      aria-label="Breadcrumb"
+    >
+      <ol className="flex items-center space-x-1">
+        {breadcrumbs.map((crumb, index) => {
+          const Icon = crumb.icon;
+          const isLast = index === breadcrumbs.length - 1;
+
+          return (
+            <li key={crumb.href} className="flex items-center">
+              {index > 0 && (
+                <ChevronRight className="h-4 w-4 text-slate-400 mx-1 flex-shrink-0" />
+              )}
+              
+              {isLast ? (
+                <span className="flex items-center gap-1.5 px-2 py-1 text-slate-700 font-medium bg-slate-100 rounded-md">
+                  {Icon && <Icon className="h-3.5 w-3.5 text-slate-500" />}
+                  {crumb.label}
+                </span>
+              ) : (
+                <Link
+                  href={crumb.href}
+                  className="flex items-center gap-1.5 px-2 py-1 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-md transition-colors"
+                >
+                  {Icon && <Icon className="h-3.5 w-3.5" />}
+                  {crumb.label}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </motion.nav>
+  );
+}
+
+// ============================================================================
+// Related Modules Component
+// ============================================================================
+
+interface RelatedModule {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
+  badgeColor?: string;
+}
+
+interface RelatedModulesProps {
+  modules: RelatedModule[];
+  title?: string;
+}
+
+export function RelatedModules({ modules, title = 'Related Modules' }: RelatedModulesProps) {
+  if (modules.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <h3 className="text-xs font-medium text-slate-500 uppercase mb-3">{title}</h3>
+      <div className="flex flex-wrap gap-2">
+        {modules.map((module) => {
+          const Icon = module.icon;
+          return (
+            <Link
+              key={module.href}
+              href={module.href}
+              className="flex items-center gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors group"
+            >
+              <Icon className="h-4 w-4 text-slate-500 group-hover:text-blue-500" />
+              <span className="text-sm text-slate-700 group-hover:text-slate-900">{module.label}</span>
+              {module.badge !== undefined && (
+                <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${module.badgeColor || 'bg-blue-100 text-blue-700'}`}>
+                  {module.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Cross Module Action Button
+// ============================================================================
+
+interface CrossModuleActionProps {
+  label: string;
+  description?: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  variant?: 'primary' | 'secondary' | 'warning' | 'danger';
+}
+
+export function CrossModuleAction({
+  label,
+  description,
+  href,
+  icon: Icon,
+  variant = 'primary',
+}: CrossModuleActionProps) {
+  const variants = {
+    primary: 'bg-blue-500 hover:bg-blue-600 text-white',
+    secondary: 'bg-slate-100 hover:bg-slate-200 text-slate-700',
+    warning: 'bg-amber-500 hover:bg-amber-600 text-white',
+    danger: 'bg-red-500 hover:bg-red-600 text-white',
+  };
+
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${variants[variant]}`}
+    >
+      <Icon className="h-5 w-5" />
+      <div>
+        <span className="font-medium">{label}</span>
+        {description && (
+          <p className="text-sm opacity-80">{description}</p>
+        )}
+      </div>
+      <ChevronRight className="h-4 w-4 ml-auto" />
+    </Link>
+  );
+}
+
+// ============================================================================
+// Page Header Component
+// ============================================================================
+
+interface PageHeaderProps {
+  title: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  actions?: React.ReactNode;
+  badge?: {
+    label: string;
+    variant?: 'new' | 'beta' | 'updated';
+  };
+}
+
+export function PageHeader({ title, description, icon: Icon, actions, badge }: PageHeaderProps) {
+  const badgeStyles = {
+    new: 'bg-green-100 text-green-700 border-green-200',
+    beta: 'bg-purple-100 text-purple-700 border-purple-200',
+    updated: 'bg-blue-100 text-blue-700 border-blue-200',
+  };
+
+  return (
+    <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div className="flex items-center gap-3">
+        {Icon && (
+          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20">
+            <Icon className="h-6 w-6 text-white" />
+          </div>
+        )}
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+            {badge && (
+              <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${badgeStyles[badge.variant || 'new']}`}>
+                {badge.label}
+              </span>
+            )}
+          </div>
+          {description && (
+            <p className="text-sm text-slate-500 mt-0.5">{description}</p>
+          )}
+        </div>
+      </div>
+      {actions && (
+        <div className="flex items-center gap-2">
+          {actions}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default PageBreadcrumb;

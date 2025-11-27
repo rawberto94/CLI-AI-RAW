@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { 
   Plus, 
   Upload, 
@@ -11,7 +11,16 @@ import {
   BarChart3, 
   X,
   Sparkles,
-  Keyboard
+  Keyboard,
+  Zap,
+  CheckCircle2,
+  Calendar,
+  TrendingUp,
+  Edit3,
+  Building2,
+  Link2,
+  Shield,
+  Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,9 +32,12 @@ interface QuickAction {
   onClick?: () => void;
   shortcut?: string;
   color: string;
+  category?: 'core' | 'intelligence' | 'workflow' | 'collaboration';
+  badge?: number;
 }
 
-const actions: QuickAction[] = [
+// Core navigation actions
+const coreActions: QuickAction[] = [
   {
     id: 'upload',
     label: 'Upload Contract',
@@ -33,14 +45,16 @@ const actions: QuickAction[] = [
     href: '/upload',
     shortcut: 'U',
     color: 'bg-blue-500 hover:bg-blue-600',
+    category: 'core',
   },
   {
     id: 'search',
-    label: 'Search',
+    label: 'AI Search',
     icon: <Search className="h-5 w-5" />,
-    href: '/search',
+    href: '/intelligence/search',
     shortcut: '/',
     color: 'bg-purple-500 hover:bg-purple-600',
+    category: 'intelligence',
   },
   {
     id: 'contracts',
@@ -49,6 +63,47 @@ const actions: QuickAction[] = [
     href: '/contracts',
     shortcut: 'C',
     color: 'bg-green-500 hover:bg-green-600',
+    category: 'core',
+  },
+  {
+    id: 'generate',
+    label: 'Generate Contract',
+    icon: <Sparkles className="h-5 w-5" />,
+    href: '/generate',
+    shortcut: 'G',
+    color: 'bg-indigo-500 hover:bg-indigo-600',
+    category: 'core',
+  },
+];
+
+// Intelligence & Analytics actions
+const intelligenceActions: QuickAction[] = [
+  {
+    id: 'intelligence',
+    label: 'Intelligence Hub',
+    icon: <Zap className="h-5 w-5" />,
+    href: '/intelligence',
+    shortcut: 'I',
+    color: 'bg-amber-500 hover:bg-amber-600',
+    category: 'intelligence',
+  },
+  {
+    id: 'health',
+    label: 'Health Scores',
+    icon: <Activity className="h-5 w-5" />,
+    href: '/intelligence/health',
+    shortcut: 'H',
+    color: 'bg-emerald-500 hover:bg-emerald-600',
+    category: 'intelligence',
+  },
+  {
+    id: 'forecast',
+    label: 'Forecast',
+    icon: <TrendingUp className="h-5 w-5" />,
+    href: '/forecast',
+    shortcut: 'F',
+    color: 'bg-cyan-500 hover:bg-cyan-600',
+    category: 'intelligence',
   },
   {
     id: 'analytics',
@@ -57,12 +112,114 @@ const actions: QuickAction[] = [
     href: '/dashboard',
     shortcut: 'A',
     color: 'bg-orange-500 hover:bg-orange-600',
+    category: 'intelligence',
   },
 ];
+
+// Workflow actions
+const workflowActions: QuickAction[] = [
+  {
+    id: 'approvals',
+    label: 'Approvals',
+    icon: <CheckCircle2 className="h-5 w-5" />,
+    href: '/approvals',
+    shortcut: 'P',
+    color: 'bg-yellow-500 hover:bg-yellow-600',
+    category: 'workflow',
+    badge: 4,
+  },
+  {
+    id: 'renewals',
+    label: 'Renewals',
+    icon: <Calendar className="h-5 w-5" />,
+    href: '/renewals',
+    shortcut: 'R',
+    color: 'bg-rose-500 hover:bg-rose-600',
+    category: 'workflow',
+    badge: 2,
+  },
+  {
+    id: 'drafting',
+    label: 'Drafting Canvas',
+    icon: <Edit3 className="h-5 w-5" />,
+    href: '/drafting',
+    shortcut: 'D',
+    color: 'bg-teal-500 hover:bg-teal-600',
+    category: 'workflow',
+  },
+  {
+    id: 'governance',
+    label: 'Governance',
+    icon: <Shield className="h-5 w-5" />,
+    href: '/governance',
+    shortcut: 'V',
+    color: 'bg-slate-600 hover:bg-slate-700',
+    category: 'workflow',
+  },
+];
+
+// Collaboration actions
+const collaborationActions: QuickAction[] = [
+  {
+    id: 'portal',
+    label: 'Supplier Portal',
+    icon: <Building2 className="h-5 w-5" />,
+    href: '/portal',
+    shortcut: 'S',
+    color: 'bg-violet-500 hover:bg-violet-600',
+    category: 'collaboration',
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: <Link2 className="h-5 w-5" />,
+    href: '/integrations',
+    shortcut: 'N',
+    color: 'bg-pink-500 hover:bg-pink-600',
+    category: 'collaboration',
+  },
+];
+
+// Get contextual actions based on current page
+function getContextualActions(pathname: string): QuickAction[] {
+  const path = pathname.split('/')[1] || '';
+  
+  switch (path) {
+    case 'contracts':
+      return [...coreActions.slice(0, 2), ...intelligenceActions.slice(0, 2), ...workflowActions.slice(0, 2)];
+    case 'intelligence':
+      return [...intelligenceActions, ...workflowActions.slice(0, 2)];
+    case 'approvals':
+    case 'renewals':
+      return [...workflowActions, ...intelligenceActions.slice(0, 2)];
+    case 'drafting':
+    case 'generate':
+      return [coreActions[3], ...workflowActions.slice(2), ...collaborationActions];
+    case 'portal':
+    case 'integrations':
+      return [...collaborationActions, ...coreActions.slice(0, 2)];
+    case 'governance':
+      return [...workflowActions, ...intelligenceActions.slice(0, 2)];
+    default:
+      // Default: show a mix of most useful actions
+      return [
+        coreActions[0], // Upload
+        coreActions[1], // AI Search
+        coreActions[3], // Generate
+        workflowActions[0], // Approvals
+        workflowActions[1], // Renewals
+        intelligenceActions[0], // Intelligence
+      ];
+  }
+}
 
 export function QuickActionsFAB() {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  
+  // Get contextual actions based on current page
+  const actions = useMemo(() => getContextualActions(pathname), [pathname]);
 
   const handleAction = (action: QuickAction) => {
     if (action.href) {
@@ -72,6 +229,9 @@ export function QuickActionsFAB() {
     }
     setIsOpen(false);
   };
+
+  // Calculate total badges
+  const totalBadges = actions.reduce((sum, a) => sum + (a.badge || 0), 0);
 
   // Handle keyboard shortcuts
   React.useEffect(() => {
@@ -106,7 +266,7 @@ export function QuickActionsFAB() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, actions]);
 
   return (
     <>
@@ -150,12 +310,17 @@ export function QuickActionsFAB() {
                   onClick={() => handleAction(action)}
                   className={cn(
                     'flex items-center gap-3 px-4 py-3 rounded-full text-white shadow-lg',
-                    'transition-colors duration-200',
+                    'transition-colors duration-200 relative',
                     action.color
                   )}
                 >
                   {action.icon}
                   <span className="font-medium text-sm whitespace-nowrap">{action.label}</span>
+                  {action.badge && action.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 border-2 border-white rounded-full text-xs font-bold flex items-center justify-center">
+                      {action.badge}
+                    </span>
+                  )}
                   {action.shortcut && (
                     <kbd className="px-1.5 py-0.5 text-xs bg-white/20 rounded font-mono">
                       {action.shortcut}
@@ -184,7 +349,7 @@ export function QuickActionsFAB() {
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'w-14 h-14 rounded-full shadow-xl flex items-center justify-center',
+            'w-14 h-14 rounded-full shadow-xl flex items-center justify-center relative',
             'transition-all duration-300',
             isOpen
               ? 'bg-gray-800 hover:bg-gray-900'
@@ -201,6 +366,12 @@ export function QuickActionsFAB() {
               <Plus className="h-6 w-6 text-white" />
             )}
           </motion.div>
+          {/* Badge for pending items */}
+          {!isOpen && totalBadges > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 border-2 border-white rounded-full text-xs font-bold text-white flex items-center justify-center">
+              {totalBadges}
+            </span>
+          )}
         </motion.button>
         
         {/* Tooltip when closed */}

@@ -3,9 +3,7 @@
  * Automatically triggers benchmarking for extracted rate cards
  */
 
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 /**
  * Trigger benchmarking for all rate cards associated with a contract
