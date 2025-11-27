@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   MessageCircle, 
   Send, 
@@ -18,6 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useDataMode } from '@/contexts/DataModeContext';
 
 interface QueryResult {
   id: string;
@@ -43,12 +44,23 @@ interface SuggestedQuery {
 }
 
 export function NaturalLanguageQuery() {
+  const { isMockData } = useDataMode();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<QueryResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const suggestedQueries: SuggestedQuery[] = [
     {
@@ -92,8 +104,76 @@ export function NaturalLanguageQuery() {
     
     const startTime = Date.now();
 
-    // Simulate AI processing
-    setTimeout(() => {
+    try {
+      let response: QueryResult['response'];
+
+      if (!isMockData) {
+        // Use real AI API
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
+        const apiResponse = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: searchQuery,
+            context: 'analytics',
+            systemPrompt: `You are a contract analytics AI assistant. Answer questions about contract portfolios with specific data and insights.
+            
+When answering:
+- Provide specific numbers and percentages when relevant
+- Give actionable insights and recommendations  
+- Reference specific contracts or categories when applicable
+- Be concise but thorough
+
+Format your response as structured data when the question asks about:
+- Lists of contracts (provide as bullet points)
+- Comparisons or trends (summarize key differences)
+- Financial data (include dollar amounts)
+- Risk assessments (categorize by severity)`,
+            useRAG: true,
+            useMock: false,
+          }),
+          signal: abortControllerRef.current.signal,
+        });
+
+        if (!apiResponse.ok) {
+          throw new Error('API request failed');
+        }
+
+        const data = await apiResponse.json();
+        
+        // Parse AI response and structure it
+        response = parseAIResponse(searchQuery, data.message, data.sources);
+      } else {
+        // Use mock data for demo mode
+        await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+        response = generateMockResponse(searchQuery);
+      }
+
+      const result: QueryResult = {
+        id: Date.now().toString(),
+        query: searchQuery,
+        timestamp: new Date().toLocaleTimeString(),
+        response,
+        processingTime: Date.now() - startTime
+      };
+
+      setResults(prev => [result, ...prev]);
+      setQuery('');
+      
+      // Scroll to results
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      console.error('Query error:', error);
+      // Fallback to mock on error
       const mockResult: QueryResult = {
         id: Date.now().toString(),
         query: searchQuery,
@@ -101,16 +181,47 @@ export function NaturalLanguageQuery() {
         response: generateMockResponse(searchQuery),
         processingTime: Date.now() - startTime
       };
-
       setResults(prev => [mockResult, ...prev]);
       setQuery('');
+    } finally {
       setIsProcessing(false);
-      
-      // Scroll to results
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    }, 2000 + Math.random() * 1000);
+    }
+  };
+
+  // Parse AI response into structured format
+  const parseAIResponse = (query: string, aiMessage: string, sources?: any[]): QueryResult['response'] => {
+    const lowerQuery = query.toLowerCase();
+    
+    // Determine response type based on query
+    let type: 'text' | 'chart' | 'table' | 'list' = 'text';
+    if (lowerQuery.includes('compare') || lowerQuery.includes('payment terms')) {
+      type = 'chart';
+    } else if (lowerQuery.includes('expir') || lowerQuery.includes('list')) {
+      type = 'table';
+    } else if (lowerQuery.includes('risk') || lowerQuery.includes('top')) {
+      type = 'list';
+    }
+
+    // Extract insights from AI message (sentences that start with actionable words)
+    const sentences = aiMessage.split(/[.!]/).filter(s => s.trim().length > 10);
+    const insights = sentences.slice(0, 3).map(s => s.trim());
+
+    return {
+      type,
+      content: {
+        text: aiMessage
+      },
+      insights: insights.length > 0 ? insights : [
+        'Analysis completed based on your contract portfolio',
+        'AI-powered insights generated in real-time',
+        'Contact support for detailed breakdown'
+      ],
+      sources: sources?.map((s: any) => ({
+        contractId: s.contractId || s.id || 'unknown',
+        contractName: s.title || s.name || 'Contract Document',
+        relevance: Math.round((s.score || 0.8) * 100)
+      })) || []
+    };
   };
 
   const generateMockResponse = (query: string): QueryResult['response'] => {

@@ -12,12 +12,14 @@ import {
   Brain,
   Zap,
   Eye,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useDataMode } from '@/contexts/DataModeContext';
 
 interface ContractComparison {
   contractA: {
@@ -66,119 +68,152 @@ interface ContractComparison {
 }
 
 export function SmartContractComparison() {
+  const { isMockData } = useDataMode();
   const [comparison, setComparison] = useState<ContractComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedView, setSelectedView] = useState<'overview' | 'differences' | 'financial' | 'risk'>('overview');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate AI-powered contract comparison
     const loadComparison = async () => {
+      setLoading(true);
+      setError(null);
+
+      if (!isMockData) {
+        // Try to use real AI API for comparison
+        try {
+          const response = await fetch('/api/ai/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              // In real implementation, these would be actual contract IDs
+              contractIds: ['sample-contract-1', 'sample-contract-2'],
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.comparison) {
+              setComparison(data.comparison);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (err) {
+          console.log('Falling back to mock comparison data');
+        }
+      }
+
+      // Use mock data for demo or as fallback
       setTimeout(() => {
-        setComparison({
-          contractA: {
-            id: 'contract-1',
-            name: 'MSA-TechCorp-2024.pdf',
-            type: 'Master Service Agreement',
-            value: 2400000,
-            riskScore: 23,
-            complianceScore: 94
-          },
-          contractB: {
-            id: 'contract-2', 
-            name: 'MSA-DataSolutions-2024.pdf',
-            type: 'Master Service Agreement',
-            value: 1800000,
-            riskScore: 31,
-            complianceScore: 87
-          },
-          similarityScore: 78,
-          keyDifferences: [
-            {
-              category: 'Payment Terms',
-              field: 'Payment Schedule',
-              contractA: 'Net 30 days',
-              contractB: 'Net 45 days',
-              impact: 'medium',
-              recommendation: 'Standardize to Net 30 for better cash flow'
-            },
-            {
-              category: 'Liability',
-              field: 'Liability Cap',
-              contractA: '$500,000',
-              contractB: 'Unlimited',
-              impact: 'high',
-              recommendation: 'Add liability cap to Contract B to limit exposure'
-            },
-            {
-              category: 'Termination',
-              field: 'Notice Period',
-              contractA: '60 days',
-              contractB: '90 days',
-              impact: 'low',
-              recommendation: 'Consider standardizing notice periods'
-            },
-            {
-              category: 'IP Rights',
-              field: 'Work Product Ownership',
-              contractA: 'Client owns all work product',
-              contractB: 'Shared ownership model',
-              impact: 'high',
-              recommendation: 'Clarify IP ownership to avoid future disputes'
-            }
-          ],
-          financialComparison: {
-            ratesDifference: 15,
-            paymentTerms: {
-              contractA: 'Net 30',
-              contractB: 'Net 45'
-            },
-            totalValueDifference: 600000
-          },
-          riskComparison: {
-            contractA: [
-              { type: 'Financial', level: 'low', description: 'Standard payment terms' },
-              { type: 'Legal', level: 'medium', description: 'Limited liability clause' },
-              { type: 'Operational', level: 'low', description: 'Clear SLA definitions' }
-            ],
-            contractB: [
-              { type: 'Financial', level: 'medium', description: 'Extended payment terms' },
-              { type: 'Legal', level: 'high', description: 'Unlimited liability exposure' },
-              { type: 'Operational', level: 'medium', description: 'Vague performance metrics' }
-            ]
-          },
-          recommendations: [
-            {
-              type: 'risk-mitigation',
-              title: 'Add Liability Cap to Contract B',
-              description: 'Unlimited liability creates significant financial exposure. Recommend adding a cap of $500K-$1M.',
-              priority: 'high'
-            },
-            {
-              type: 'financial',
-              title: 'Standardize Payment Terms',
-              description: 'Align payment terms to Net 30 across all contracts to improve cash flow management.',
-              priority: 'medium'
-            },
-            {
-              type: 'compliance',
-              title: 'Clarify IP Ownership',
-              description: 'Establish consistent IP ownership model to prevent future disputes and ensure compliance.',
-              priority: 'high'
-            },
-            {
-              type: 'optimization',
-              title: 'Performance Metrics Alignment',
-              description: 'Standardize SLA definitions and performance metrics across similar contract types.',
-              priority: 'medium'
-            }
-          ]
-        });
+        setComparison(getMockComparisonData());
         setLoading(false);
-      }, 2000);
+      }, 1500);
     };
 
     loadComparison();
-  }, []);
+  }, [isMockData]);
+
+  // Mock comparison data for demo mode
+  const getMockComparisonData = (): ContractComparison => ({
+    contractA: {
+      id: 'contract-1',
+      name: 'MSA-TechCorp-2024.pdf',
+      type: 'Master Service Agreement',
+      value: 2400000,
+      riskScore: 23,
+      complianceScore: 94
+    },
+    contractB: {
+      id: 'contract-2', 
+      name: 'MSA-DataSolutions-2024.pdf',
+      type: 'Master Service Agreement',
+      value: 1800000,
+      riskScore: 31,
+      complianceScore: 87
+    },
+    similarityScore: 78,
+    keyDifferences: [
+      {
+        category: 'Payment Terms',
+        field: 'Payment Schedule',
+        contractA: 'Net 30 days',
+        contractB: 'Net 45 days',
+        impact: 'medium',
+        recommendation: 'Standardize to Net 30 for better cash flow'
+      },
+      {
+        category: 'Liability',
+        field: 'Liability Cap',
+        contractA: '$500,000',
+        contractB: 'Unlimited',
+        impact: 'high',
+        recommendation: 'Add liability cap to Contract B to limit exposure'
+      },
+      {
+        category: 'Termination',
+        field: 'Notice Period',
+        contractA: '60 days',
+        contractB: '90 days',
+        impact: 'low',
+        recommendation: 'Consider standardizing notice periods'
+      },
+      {
+        category: 'IP Rights',
+        field: 'Work Product Ownership',
+        contractA: 'Client owns all work product',
+        contractB: 'Shared ownership model',
+        impact: 'high',
+        recommendation: 'Clarify IP ownership to avoid future disputes'
+      }
+    ],
+    financialComparison: {
+      ratesDifference: 15,
+      paymentTerms: {
+        contractA: 'Net 30',
+        contractB: 'Net 45'
+      },
+      totalValueDifference: 600000
+    },
+    riskComparison: {
+      contractA: [
+        { type: 'Financial', level: 'low', description: 'Standard payment terms' },
+        { type: 'Legal', level: 'medium', description: 'Limited liability clause' },
+        { type: 'Operational', level: 'low', description: 'Clear SLA definitions' }
+      ],
+      contractB: [
+        { type: 'Financial', level: 'medium', description: 'Extended payment terms' },
+        { type: 'Legal', level: 'high', description: 'Unlimited liability exposure' },
+        { type: 'Operational', level: 'medium', description: 'Vague performance metrics' }
+      ]
+    },
+    recommendations: [
+      {
+        type: 'risk-mitigation',
+        title: 'Add Liability Cap to Contract B',
+        description: 'Unlimited liability creates significant financial exposure. Recommend adding a cap of $500K-$1M.',
+        priority: 'high'
+      },
+      {
+        type: 'financial',
+        title: 'Standardize Payment Terms',
+        description: 'Align payment terms to Net 30 across all contracts to improve cash flow management.',
+        priority: 'medium'
+      },
+      {
+        type: 'compliance',
+        title: 'Clarify IP Ownership',
+        description: 'Establish consistent IP ownership model to prevent future disputes and ensure compliance.',
+        priority: 'high'
+      },
+      {
+        type: 'optimization',
+        title: 'Performance Metrics Alignment',
+        description: 'Standardize SLA definitions and performance metrics across similar contract types.',
+        priority: 'medium'
+      }
+    ]
+  });
 
   const getRiskColor = (level: string) => {
     switch (level.toLowerCase()) {

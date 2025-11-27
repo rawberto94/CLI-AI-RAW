@@ -173,21 +173,60 @@ export function SmartContractDiscovery() {
   useEffect(() => {
     if (searchQuery.length > 2) {
       setIsSearching(true);
-      // Simulate AI processing
-      setTimeout(() => {
+      
+      const getSuggestions = async () => {
+        if (!isMockData) {
+          // Try real AI for suggestions
+          try {
+            const response = await fetch('/api/ai/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message: `Generate 4 concise search suggestions for contract search starting with: "${searchQuery}". Return only the suggestions as a JSON array of strings.`,
+                useMock: false,
+              }),
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              // Try to parse suggestions from AI response
+              try {
+                const parsed = JSON.parse(data.message);
+                if (Array.isArray(parsed)) {
+                  setAiSuggestions(parsed.slice(0, 4));
+                  setIsSearching(false);
+                  return;
+                }
+              } catch {
+                // If parsing fails, extract suggestions from text
+                const lines = data.message.split('\n').filter((l: string) => l.trim().length > 5);
+                setAiSuggestions(lines.slice(0, 4).map((l: string) => l.replace(/^[\d\.\-\*]+\s*/, '')));
+                setIsSearching(false);
+                return;
+              }
+            }
+          } catch (err) {
+            console.log('Using fallback suggestions');
+          }
+        }
+        
+        // Fallback to contextual suggestions
         const suggestions = [
-          'Show me high-value technology contracts',
-          'Find contracts expiring in Q2 2024',
-          'Display agreements with liability concerns',
-          'Show cloud service agreements'
+          `Show me ${searchQuery} contracts`,
+          `Find contracts related to ${searchQuery}`,
+          'Show high-value technology contracts',
+          'Find contracts expiring soon'
         ];
         setAiSuggestions(suggestions);
         setIsSearching(false);
-      }, 800);
+      };
+
+      const debounce = setTimeout(getSuggestions, 500);
+      return () => clearTimeout(debounce);
     } else {
       setAiSuggestions([]);
     }
-  }, [searchQuery]);
+  }, [searchQuery, isMockData]);
 
   const smartFilters: SmartFilter[] = [
     {

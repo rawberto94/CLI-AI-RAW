@@ -1,11 +1,12 @@
 /**
  * Dashboard Chatbot - AI Assistant for Contract Queries
  * Floating chatbot interface with contract intelligence capabilities
+ * Now uses real OpenAI API with RAG integration
  */
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import {
   Calendar,
   Search,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 interface Message {
@@ -26,6 +28,18 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  suggestions?: string[];
+  error?: boolean;
+}
+
+interface AIResponse {
+  message: string;
+  sources?: Array<{
+    contractId: string;
+    title: string;
+    snippet: string;
+    score: number;
+  }>;
   suggestions?: string[];
 }
 
@@ -54,12 +68,55 @@ export function DashboardChatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const callAIAPI = useCallback(async (messageContent: string, messageHistory: Message[]): Promise<AIResponse> => {
+    // Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: messageContent,
+        context: 'dashboard',
+        conversationHistory: messageHistory.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        useRAG: true,
+        useMock: false,
+      }),
+      signal: abortControllerRef.current.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `API request failed: ${response.status}`);
+    }
+
+    return response.json();
+  }, []);
 
   const handleSendMessage = async (content?: string) => {
     const messageContent = content || input.trim();
@@ -77,27 +134,30 @@ export function DashboardChatbot() {
     setIsLoading(true);
 
     try {
-      // Simulate AI response with contract intelligence
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      const response = generateAIResponse(messageContent);
+      const response = await callAIAPI(messageContent, [...messages, userMessage]);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.content,
+        content: response.message,
         timestamp: new Date(),
-        suggestions: response.suggestions,
+        suggestions: response.suggestions || generateDefaultSuggestions(messageContent),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
+      // Don't show error for aborted requests
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      
       console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: "I apologize, but I encountered an error. Please try again.",
         timestamp: new Date(),
+        error: true,
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
@@ -105,54 +165,20 @@ export function DashboardChatbot() {
     }
   };
 
-  const generateAIResponse = (query: string): { content: string; suggestions?: string[] } => {
+  // Generate contextual suggestions based on query
+  const generateDefaultSuggestions = (query: string): string[] => {
     const lowerQuery = query.toLowerCase();
-
-    // Contract summary
-    if (lowerQuery.includes('summary') || lowerQuery.includes('overview')) {
-      return {
-        content: "📊 **Contract Portfolio Summary:**\n\n✅ **Total Contracts:** 7\n🟢 **Active:** 6 completed, 1 processing\n💰 **Portfolio Value:** $255,500\n📅 **Recent Activity:** 7 contracts added this month\n\nYour portfolio is in good health with high completion rates. Would you like more details on any specific area?",
-        suggestions: ["Show renewals", "View top contracts", "Compliance status"]
-      };
+    
+    if (lowerQuery.includes('renew') || lowerQuery.includes('expir')) {
+      return ["Set up reminders", "View all renewals", "Create renewal report"];
     }
-
-    // Renewals
-    if (lowerQuery.includes('expir') || lowerQuery.includes('renewal') || lowerQuery.includes('soon')) {
-      return {
-        content: "📅 **Upcoming Renewals:**\n\n🔴 **Urgent (15 days):**\n• AWS Enterprise Agreement - Cloud Services\n\n🟠 **High Priority (28 days):**\n• Accenture IT Services MSA - IT Services\n\n🟡 **Medium Priority (45 days):**\n• Salesforce Enterprise License - Software\n\nI recommend prioritizing the AWS contract renewal first. Would you like me to create reminders?",
-        suggestions: ["Create reminders", "View AWS contract", "All renewals"]
-      };
+    if (lowerQuery.includes('risk') || lowerQuery.includes('complian')) {
+      return ["Risk breakdown", "Compliance report", "Mitigation strategies"];
     }
-
-    // Portfolio insights
-    if (lowerQuery.includes('insight') || lowerQuery.includes('analytics') || lowerQuery.includes('portfolio')) {
-      return {
-        content: "📈 **Portfolio Insights:**\n\n🎯 **Key Findings:**\n• Growing portfolio: +7 contracts this month\n• High compliance: 94% score maintained\n• Low risk profile: Score of 23/100\n• 3 urgent renewals in next 30 days\n\n💡 **Recommendations:**\n1. Review upcoming renewals\n2. Update contract types for better categorization\n3. Consider consolidating cloud services\n\nWhat would you like to explore?",
-        suggestions: ["Risk analysis", "Cost optimization", "Compliance details"]
-      };
+    if (lowerQuery.includes('summar') || lowerQuery.includes('overview')) {
+      return ["Show renewals", "View top contracts", "Compliance status"];
     }
-
-    // Search help
-    if (lowerQuery.includes('find') || lowerQuery.includes('search') || lowerQuery.includes('locate')) {
-      return {
-        content: "🔍 **Search Assistance:**\n\nI can help you find contracts by:\n• Contract name or vendor\n• Contract type (IT Services, Cloud, etc.)\n• Status (Active, Expired, Processing)\n• Date range\n• Value range\n\nWhat are you looking for? For example: \"Find all AWS contracts\" or \"Show cloud services contracts\"",
-        suggestions: ["Show all contracts", "Filter by type", "Recent contracts"]
-      };
-    }
-
-    // Compliance
-    if (lowerQuery.includes('complian') || lowerQuery.includes('risk')) {
-      return {
-        content: "🛡️ **Compliance & Risk Status:**\n\n✅ **Compliance Score:** 94%\n⚠️ **Risk Score:** 23/100 (Low)\n\n**Compliance Highlights:**\n• All active contracts have required documentation\n• No expired contracts in active use\n• Regular renewal tracking in place\n\n**Risk Factors:**\n• 3 contracts expiring within 30 days\n• Minor: Some contracts missing detailed categorization\n\nOverall, your portfolio shows strong compliance!",
-        suggestions: ["Risk breakdown", "Compliance report", "Improvement tips"]
-      };
-    }
-
-    // Default response
-    return {
-      content: "I'm here to help with your contract management! I can assist with:\n\n📊 Contract summaries and analytics\n📅 Renewal tracking and reminders\n🔍 Finding specific contracts\n💡 Portfolio insights and recommendations\n🛡️ Compliance and risk analysis\n\nWhat would you like to know?",
-      suggestions: ["Contract summary", "Upcoming renewals", "Portfolio insights"]
-    };
+    return ["Contract summary", "Upcoming renewals", "Portfolio insights"];
   };
 
   const handleQuickAction = (query: string) => {

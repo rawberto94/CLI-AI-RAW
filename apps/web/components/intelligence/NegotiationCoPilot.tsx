@@ -87,6 +87,7 @@ interface NegotiationMessage {
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  loading?: boolean;
 }
 
 // ============================================================================
@@ -441,6 +442,7 @@ export const NegotiationCoPilot: React.FC = () => {
   const [chatInput, setChatInput] = useState('');
   const [showChat, setShowChat] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [chatLoading, setChatLoading] = useState(false);
 
   // Fetch redline changes from API or use mock data based on mode
   useEffect(() => {
@@ -496,9 +498,9 @@ export const NegotiationCoPilot: React.FC = () => {
     ));
   };
 
-  // Handle chat
-  const handleChatSubmit = () => {
-    if (!chatInput.trim()) return;
+  // Handle chat with real AI API
+  const handleChatSubmit = async () => {
+    if (!chatInput.trim() || chatLoading) return;
     
     const userMsg: NegotiationMessage = {
       id: `m-${Date.now()}`,
@@ -507,20 +509,109 @@ export const NegotiationCoPilot: React.FC = () => {
       timestamp: new Date(),
     };
 
-    const aiMsg: NegotiationMessage = {
-      id: `m-${Date.now()}-ai`,
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+
+    // Add loading placeholder
+    const loadingId = `m-${Date.now()}-loading`;
+    setChatMessages(prev => [...prev, {
+      id: loadingId,
       role: 'assistant',
-      content: `Based on your playbook and market standards, here's my analysis: The proposed language "${chatInput}" needs to be strengthened. I recommend adding explicit caps and clarifying the scope of obligations.`,
+      content: '',
       timestamp: new Date(),
-      suggestions: [
+      loading: true,
+    }]);
+
+    try {
+      // Get context from current redlines
+      const redlineContext = redlines.slice(0, 3).map(r => 
+        `${r.clause} (${r.riskLevel} risk): ${r.aiAnalysis.summary}`
+      ).join('\n');
+
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: chatInput,
+          context: 'negotiation',
+          systemPrompt: `You are an expert contract negotiation assistant. You help analyze contract clauses, suggest counter-proposals, and provide negotiation strategies.
+
+Current redline changes being reviewed:
+${redlineContext}
+
+Provide concise, actionable advice. Include specific language suggestions when helpful.`,
+          conversationHistory: chatMessages.slice(-8).map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          useMock: false,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
+      
+      // Generate suggestions based on the response
+      const suggestions = generateNegotiationSuggestions(chatInput, data.message);
+
+      const aiMsg: NegotiationMessage = {
+        id: `m-${Date.now()}-ai`,
+        role: 'assistant',
+        content: data.message,
+        timestamp: new Date(),
+        suggestions,
+      };
+
+      // Replace loading message with actual response
+      setChatMessages(prev => prev.filter(m => m.id !== loadingId).concat(aiMsg));
+    } catch (error) {
+      console.error('Chat error:', error);
+      // Replace loading with error message
+      setChatMessages(prev => prev.filter(m => m.id !== loadingId).concat({
+        id: `m-${Date.now()}-error`,
+        role: 'assistant',
+        content: 'I apologize, but I encountered an error. Please try again.',
+        timestamp: new Date(),
+      }));
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Generate contextual suggestions based on AI response
+  const generateNegotiationSuggestions = (query: string, response: string): string[] => {
+    const lower = query.toLowerCase();
+    
+    if (lower.includes('liability') || lower.includes('cap')) {
+      return [
         'Add liability cap of 2x annual fees',
         'Include carve-outs for gross negligence',
-        'Specify notice requirements',
-      ],
-    };
-
-    setChatMessages(prev => [...prev, userMsg, aiMsg]);
-    setChatInput('');
+        'Specify insurance requirements'
+      ];
+    }
+    if (lower.includes('termination') || lower.includes('notice')) {
+      return [
+        'Propose mutual termination rights',
+        'Add cure period for breaches',
+        'Include transition assistance'
+      ];
+    }
+    if (lower.includes('indemnif')) {
+      return [
+        'Make indemnification mutual',
+        'Add IP infringement carve-outs',
+        'Limit to direct damages'
+      ];
+    }
+    return [
+      'Review market standards',
+      'Request precedent analysis',
+      'Draft counter-proposal'
+    ];
   };
 
   if (loading) {
@@ -665,15 +756,28 @@ export const NegotiationCoPilot: React.FC = () => {
                       <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
                         msg.role === 'user' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-900'
                       }`}>
-                        <p className="text-sm">{msg.content}</p>
-                        {msg.suggestions && (
-                          <div className="mt-2 space-y-1">
-                            {msg.suggestions.map((s, i) => (
-                              <button key={i} className="block text-xs text-purple-600 hover:underline">
-                                → {s}
-                              </button>
-                            ))}
+                        {msg.loading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                            <span className="text-sm text-slate-500">Analyzing...</span>
                           </div>
+                        ) : (
+                          <>
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            {msg.suggestions && (
+                              <div className="mt-2 space-y-1">
+                                {msg.suggestions.map((s, i) => (
+                                  <button 
+                                    key={i} 
+                                    onClick={() => setChatInput(s)}
+                                    className="block text-xs text-purple-600 hover:underline"
+                                  >
+                                    → {s}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -687,15 +791,21 @@ export const NegotiationCoPilot: React.FC = () => {
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleChatSubmit()}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSubmit()}
                     placeholder="Ask about clauses, suggest counters..."
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    disabled={chatLoading}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                   />
                   <button
                     onClick={handleChatSubmit}
-                    className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                    disabled={chatLoading || !chatInput.trim()}
+                    className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Send className="w-4 h-4" />
+                    {chatLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

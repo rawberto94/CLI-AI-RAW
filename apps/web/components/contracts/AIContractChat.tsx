@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
   Sparkles,
   Minimize2,
   Maximize2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,11 +35,24 @@ interface Citation {
 interface AIContractChatProps {
   onContractSelect?: (contractId: string) => void;
   className?: string;
+  contractId?: string; // Optional: focus on specific contract
+}
+
+interface AIResponse {
+  message: string;
+  sources?: Array<{
+    contractId: string;
+    title: string;
+    snippet: string;
+    score: number;
+  }>;
+  suggestions?: string[];
 }
 
 export function AIContractChat({
   onContractSelect,
   className,
+  contractId,
 }: AIContractChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -47,7 +61,7 @@ export function AIContractChat({
       id: "1",
       role: "assistant",
       content:
-        "Hi! I'm your AI contract assistant. I can help you find contracts, analyze terms, identify risks, and answer questions about your contract portfolio. What would you like to know?",
+        "Hi! I'm your AI contract assistant powered by GPT-4. I can help you find contracts, analyze terms, identify risks, and answer questions about your contract portfolio. What would you like to know?",
       timestamp: new Date(),
       suggestions: [
         "Show me all high-risk contracts",
@@ -61,10 +75,54 @@ export function AIContractChat({
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const callAIAPI = useCallback(async (messageContent: string, messageHistory: Message[]): Promise<AIResponse> => {
+    // Cancel any pending request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: messageContent,
+        context: 'contracts',
+        contractId: contractId,
+        conversationHistory: messageHistory.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        useRAG: true,
+        useMock: false,
+      }),
+      signal: abortControllerRef.current.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(error.error || `API request failed: ${response.status}`);
+    }
+
+    return response.json();
+  }, [contractId]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -81,20 +139,32 @@ export function AIContractChat({
     setIsLoading(true);
 
     try {
-      // Simulate AI response (replace with actual API call)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await callAIAPI(input, [...messages, userMessage]);
+
+      // Convert API sources to citations
+      const citations: Citation[] = response.sources?.map((source, idx) => ({
+        contractId: source.contractId,
+        contractTitle: source.title,
+        excerpt: source.snippet,
+        relevanceScore: source.score,
+      })) || [];
 
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: generateAIResponse(input),
+        content: response.message,
         timestamp: new Date(),
-        citations: generateCitations(input),
-        suggestions: generateSuggestions(input),
+        citations: citations.length > 0 ? citations : undefined,
+        suggestions: response.suggestions || generateDefaultSuggestions(input),
       };
 
       setMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
+      // Don't show error for aborted requests
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      
       console.error("Error sending message:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -107,6 +177,33 @@ export function AIContractChat({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Generate contextual suggestions based on query
+  const generateDefaultSuggestions = (query: string): string[] => {
+    const lower = query.toLowerCase();
+
+    if (lower.includes("risk")) {
+      return [
+        "Show risk mitigation strategies",
+        "Compare risk scores over time",
+        "Which clauses trigger high risk?",
+      ];
+    }
+
+    if (lower.includes("expire") || lower.includes("renew")) {
+      return [
+        "Set up renewal reminders",
+        "Compare renewal terms",
+        "Show renegotiation opportunities",
+      ];
+    }
+
+    return [
+      "Summarize this contract",
+      "Find similar contracts",
+      "Check compliance status",
+    ];
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -308,85 +405,11 @@ export function AIContractChat({
               </Button>
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              Press Enter to send, Shift+Enter for new line
-            </p>
-          </div>
-        </>
-      )}
-    </Card>
-  );
-}
-
-// Utility functions for demo (replace with actual AI API calls)
-function generateAIResponse(input: string): string {
-  const lower = input.toLowerCase();
-
-  if (lower.includes("high-risk") || lower.includes("risk")) {
-    return "I found 3 contracts with high-risk indicators:\n\n1. ACME Corp Master Service Agreement - Contains unlimited liability clause\n2. TechVendor Cloud Services - Auto-renewal without opt-out period\n3. Global Logistics Contract - Penalty clauses exceed industry standards\n\nWould you like me to analyze any of these in detail?";
-  }
-
-  if (lower.includes("expire") || lower.includes("expir")) {
-    return "Based on your current portfolio, 8 contracts are expiring this quarter:\n\n• 3 expire in the next 30 days\n• 5 expire in 60-90 days\n\nThe highest-value expiring contract is the ACME Corp agreement ($2.5M annually). Would you like me to set up renewal reminders?";
-  }
-
-  if (lower.includes("renewal") || lower.includes("renew")) {
-    return "I found 12 contracts with automatic renewal clauses:\n\n• 7 have 30-day notice periods\n• 3 have 60-day notice periods\n• 2 have 90-day notice periods\n\nI recommend reviewing contracts with upcoming renewal dates to avoid unwanted extensions.";
-  }
-
-  if (lower.includes("compare") || lower.includes("rate")) {
-    return "Analyzing supplier rates across your contracts:\n\n• Average hourly rate: $185/hour\n• Range: $120 - $250/hour\n• Best value: TechVendor ($120/hour)\n• Above market: Premium Consulting ($250/hour, 35% above average)\n\nWould you like a detailed breakdown by service type?";
-  }
-
-  return "I understand you're asking about your contracts. Could you provide more specific details? For example:\n\n• Which contracts are you interested in?\n• What specific information do you need?\n• Are you looking for analysis or comparison?";
-}
-
-function generateCitations(input: string): Citation[] {
-  const lower = input.toLowerCase();
-
-  if (lower.includes("high-risk") || lower.includes("risk")) {
-    return [
-      {
-        contractId: "1",
-        contractTitle: "ACME Corp Master Service Agreement",
-        excerpt:
-          "...unlimited liability for consequential damages including lost profits...",
-        relevanceScore: 0.95,
-      },
-      {
-        contractId: "2",
-        contractTitle: "TechVendor Cloud Services Agreement",
-        excerpt:
-          "...automatically renews for successive 12-month periods unless...",
-        relevanceScore: 0.88,
-      },
-    ];
-  }
-
-  return [];
-}
-
-function generateSuggestions(input: string): string[] {
-  const lower = input.toLowerCase();
-
-  if (lower.includes("risk")) {
-    return [
-      "Show risk mitigation strategies",
-      "Compare risk scores over time",
-      "Which clauses trigger high risk?",
-    ];
-  }
-
-  if (lower.includes("expire")) {
-    return [
-      "Set up renewal reminders",
-      "Compare renewal terms",
-      "Show renegotiation opportunities",
-    ];
-  }
-
-  return [
-    "Summarize this contract",
-    "Find similar contracts",
-    "Check compliance status",
-  ];
+            Press Enter to send, Shift+Enter for new line
+          </p>
+        </div>
+      </>
+    )}
+  </Card>
+);
 }
