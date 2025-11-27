@@ -75,6 +75,31 @@ interface SearchSuggestion {
 }
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Detect result type based on content
+ */
+function detectResultType(text: string): SearchResult['type'] {
+  const lowerText = text.toLowerCase();
+  
+  if (lowerText.includes('risk') || lowerText.includes('liability') || lowerText.includes('indemnif')) {
+    return 'risk';
+  }
+  if (lowerText.includes('obligation') || lowerText.includes('shall') || lowerText.includes('must')) {
+    return 'obligation';
+  }
+  if (lowerText.includes('clause') || lowerText.includes('section') || lowerText.includes('article')) {
+    return 'clause';
+  }
+  if (lowerText.includes('supplier') || lowerText.includes('vendor') || lowerText.includes('provider')) {
+    return 'supplier';
+  }
+  return 'contract';
+}
+
+// ============================================================================
 // Mock Data
 // ============================================================================
 
@@ -464,24 +489,46 @@ export const UniversalRAGSearch: React.FC = () => {
       results = generateMockResults(searchQuery);
     } else {
       try {
-        const res = await fetch(`/api/intelligence/search?q=${encodeURIComponent(searchQuery)}`);
+        // Use the new state-of-the-art RAG search API
+        const res = await fetch('/api/search/semantic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: searchQuery,
+            k: 10,
+            mode: 'hybrid',
+            rerank: true,
+            expandQuery: true,
+          }),
+        });
         const json = await res.json();
-        if (json.success && json.data?.results?.length > 0) {
-          results = json.data.results.map((r: any) => ({
-            id: r.id,
-            type: r.type || 'contract',
-            title: r.title || r.contractName || 'Result',
-            excerpt: r.excerpt || r.snippet || r.description || '',
-            relevanceScore: r.score || r.relevanceScore || 0.8,
-            metadata: r.metadata || {},
-            highlights: r.highlights || [searchQuery],
-            source: r.source || { documentId: r.id, documentName: r.title || 'Document' },
+        
+        if (json.success && json.results?.length > 0) {
+          results = json.results.map((r: any, idx: number) => ({
+            id: `result-${idx}`,
+            type: detectResultType(r.text),
+            title: r.contractName || 'Contract Match',
+            excerpt: r.text,
+            relevanceScore: r.score || 0.8,
+            metadata: {
+              contractName: r.contractName,
+              status: r.matchType === 'hybrid' ? 'High Match' : 'Match',
+            },
+            highlights: r.highlights || [],
+            source: {
+              documentId: r.contractId,
+              documentName: r.contractName || 'Document',
+              section: `Chunk ${r.chunkIndex}`,
+            },
           }));
+        } else if (json.error) {
+          console.warn('Search error:', json.error);
+          results = generateMockResults(searchQuery);
         } else {
           results = generateMockResults(searchQuery);
         }
       } catch (error) {
-        console.log('Using mock search results');
+        console.log('Using mock search results due to error:', error);
         results = generateMockResults(searchQuery);
       }
     }
