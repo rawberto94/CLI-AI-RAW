@@ -66,13 +66,13 @@ export function BaselineTrackingWidget({
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-4 rounded-lg bg-indigo-50">
             <div className="text-3xl font-bold text-indigo-600">
-              {metrics.totalBaselines}
+              {metrics.totalBaselines ?? 0}
             </div>
             <div className="text-sm text-indigo-700">Total Baselines</div>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted">
-            <div className={`text-3xl font-bold ${getComplianceColor(metrics.compliancePercentage)}`}>
-              {metrics.compliancePercentage.toFixed(1)}%
+            <div className={`text-3xl font-bold ${getComplianceColor(metrics.compliancePercentage ?? 0)}`}>
+              {(metrics.compliancePercentage ?? 0).toFixed(1)}%
             </div>
             <div className="text-sm text-muted-foreground">Compliance</div>
           </div>
@@ -83,22 +83,22 @@ export function BaselineTrackingWidget({
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Compliance Status</span>
             <Badge
-              variant={metrics.compliancePercentage >= 90 ? 'default' : 'secondary'}
+              variant={(metrics.compliancePercentage ?? 0) >= 90 ? 'default' : 'secondary'}
               className={
-                metrics.compliancePercentage >= 90
+                (metrics.compliancePercentage ?? 0) >= 90
                   ? 'bg-green-100 text-green-700'
-                  : metrics.compliancePercentage >= 70
+                  : (metrics.compliancePercentage ?? 0) >= 70
                   ? 'bg-yellow-100 text-yellow-700'
                   : 'bg-red-100 text-red-700'
               }
             >
-              {getComplianceStatus(metrics.compliancePercentage)}
+              {getComplianceStatus(metrics.compliancePercentage ?? 0)}
             </Badge>
           </div>
-          <Progress value={metrics.compliancePercentage} className="h-2" />
+          <Progress value={metrics.compliancePercentage ?? 0} className="h-2" />
           <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-            <span>{metrics.compliantCount} compliant</span>
-            <span>{metrics.atRiskCount} at risk</span>
+            <span>{metrics.compliantCount ?? 0} compliant</span>
+            <span>{metrics.atRiskCount ?? 0} at risk</span>
           </div>
         </div>
 
@@ -106,7 +106,7 @@ export function BaselineTrackingWidget({
         <div>
           <h4 className="text-sm font-semibold mb-3">Baseline Types</h4>
           <div className="space-y-2">
-            {Object.entries(metrics.baselineTypes).map(([type, count]) => (
+            {Object.entries(metrics.baselineTypes || {}).map(([type, count]) => (
               <div
                 key={type}
                 className="flex items-center justify-between p-2 rounded bg-muted/50"
@@ -127,33 +127,33 @@ export function BaselineTrackingWidget({
             </div>
             <span
               className={`text-lg font-bold ${
-                Math.abs(metrics.averageVariance) > 10
+                Math.abs(metrics.averageVariance ?? 0) > 10
                   ? 'text-red-600'
                   : 'text-green-600'
               }`}
             >
-              {metrics.averageVariance > 0 ? '+' : ''}
-              {metrics.averageVariance.toFixed(1)}%
+              {(metrics.averageVariance ?? 0) > 0 ? '+' : ''}
+              {(metrics.averageVariance ?? 0).toFixed(1)}%
             </span>
           </div>
         </div>
 
         {/* Alerts */}
-        {metrics.atRiskCount > 0 && (
+        {(metrics.atRiskCount ?? 0) > 0 && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
               <div>
                 <div className="font-medium text-red-900">At-Risk Baselines</div>
                 <div className="text-sm text-red-700">
-                  {metrics.atRiskCount} baselines exceed variance threshold
+                  {metrics.atRiskCount ?? 0} baselines exceed variance threshold
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {metrics.compliancePercentage >= 90 && (
+        {(metrics.compliancePercentage ?? 0) >= 90 && (
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-start gap-2">
               <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
