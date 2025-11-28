@@ -13,6 +13,7 @@ import { FloatingDataModeToggle } from "@/components/ui/DataModeToggle";
 import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import { QueryProvider } from "@/lib/query-client";
 import { WebSocketProvider } from "@/contexts/websocket-context";
+import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -51,6 +52,7 @@ export default function RootLayout({
                             </div>
                           </main>
                           <FloatingDataModeToggle />
+                          <FloatingAIBubble />
                         </GlobalKeyboardShortcuts>
                       </FeedbackProvider>
                     </ModuleProvider>
