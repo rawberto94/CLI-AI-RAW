@@ -320,16 +320,19 @@ async function performMistralOCR(filePath: string): Promise<string> {
       
       const extractedText = chatResponse.choices?.[0]?.message?.content || '';
       logger.info({ textLength: extractedText.length }, 'Mistral Vision OCR completed');
-      return extractedText;
+      return typeof extractedText === 'string' ? extractedText : '';
     }
   } catch (error) {
-    logger.error({ error, message: error.message, stack: error.stack }, 'Mistral OCR failed');
+    const err = error as Error;
+    logger.error({ error: err, message: err.message, stack: err.stack }, 'Mistral OCR failed');
     throw error;
   }
 }
 
 /**
  * GPT-4 Vision OCR extraction
+ * For PDFs: Uses pdf-parse to extract text, then GPT to clean/enhance
+ * For images: Uses GPT-4 Vision
  */
 async function performGPT4OCR(filePath: string): Promise<string> {
   try {
@@ -341,40 +344,82 @@ async function performGPT4OCR(filePath: string): Promise<string> {
     }
     
     const openai = new OpenAI({ apiKey });
-    
-    // Read file and convert to base64
     const fileBuffer = await fs.readFile(filePath);
-    const base64 = fileBuffer.toString('base64');
-    const mimeType = filePath.endsWith('.pdf') ? 'application/pdf' : 'image/png';
+    const isPDF = filePath.toLowerCase().endsWith('.pdf');
     
-    logger.info({ filePath, size: fileBuffer.length }, 'Processing with GPT-4 Vision OCR');
-    
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Extract all text from this document and return it in markdown format. Preserve the structure and formatting.',
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${base64}`,
+    // For PDFs, use pdf-parse first, then GPT for enhancement
+    if (isPDF) {
+      logger.info({ filePath, size: fileBuffer.length }, 'Processing PDF with pdf-parse + GPT enhancement');
+      
+      const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
+      const pdfData = await pdfParse(fileBuffer);
+      const rawText = pdfData.text;
+      
+      logger.info({ textLength: rawText.length, pages: pdfData.numpages }, 'PDF text extracted');
+      
+      // For small documents, skip GPT enhancement
+      if (rawText.length < 3000) {
+        return rawText;
+      }
+      
+      // Use GPT to clean and structure the text
+      const textToProcess = rawText.substring(0, 15000);
+      
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a document processing expert. Clean and structure the following extracted PDF text. Fix OCR errors, format as clean markdown, and preserve the document structure.'
+          },
+          {
+            role: 'user',
+            content: textToProcess
+          }
+        ],
+        max_tokens: 4096,
+        temperature: 0.2
+      });
+      
+      const enhancedText = response.choices[0]?.message?.content || rawText;
+      logger.info({ originalLength: rawText.length, enhancedLength: enhancedText.length }, 'GPT text enhancement completed');
+      
+      return enhancedText;
+    } else {
+      // For images, use GPT-4 Vision
+      const base64 = fileBuffer.toString('base64');
+      const ext = filePath.toLowerCase().split('.').pop();
+      const mimeType = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+      
+      logger.info({ filePath, size: fileBuffer.length, mimeType }, 'Processing image with GPT-4 Vision OCR');
+      
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Extract all text from this image and return it in markdown format. Preserve the structure and formatting.',
               },
-            },
-          ],
-        },
-      ],
-      max_tokens: 4096,
-    });
-    
-    const extractedText = response.choices[0]?.message?.content || '';
-    logger.info({ textLength: extractedText.length }, 'GPT-4 OCR completed');
-    
-    return extractedText;
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64}`,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 4096,
+      });
+      
+      const extractedText = response.choices[0]?.message?.content || '';
+      logger.info({ textLength: extractedText.length }, 'GPT-4 Vision OCR completed');
+      
+      return extractedText;
+    }
   } catch (error) {
     logger.error({ error }, 'GPT-4 OCR failed');
     throw error;
@@ -642,83 +687,239 @@ export async function processOCRArtifactJob(
 }
 
 /**
- * Generate artifact data using AI (placeholder - integrate with actual OpenAI)
+ * Generate artifact data using OpenAI API - REAL AI ANALYSIS
  */
 async function generateArtifactWithAI(
   type: string,
   contractText: string,
   contract: any
 ): Promise<Record<string, any>> {
-  // This is a placeholder - should integrate with actual OpenAI API
-  // For now, return structured data based on type
+  const apiKey = process.env.OPENAI_API_KEY;
   
+  // If no API key, use fallback templates
+  if (!apiKey) {
+    logger.warn('OPENAI_API_KEY not configured, using fallback templates');
+    return getFallbackArtifact(type, contractText, contract);
+  }
+
+  try {
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey });
+    
+    // Limit contract text to avoid token limits (use first 15000 chars)
+    const truncatedText = contractText.substring(0, 15000);
+    
+    const prompts: Record<string, string> = {
+      OVERVIEW: `Analyze this contract and extract key information. Return a JSON object with:
+{
+  "summary": "A 2-3 sentence executive summary of what this contract is about",
+  "contractType": "The type of contract (e.g., Service Agreement, NDA, MSA, SOW, Employment, Lease)",
+  "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc"}],
+  "effectiveDate": "YYYY-MM-DD or null if not found",
+  "expirationDate": "YYYY-MM-DD or null if not found",
+  "totalValue": numeric value or 0 if not found,
+  "currency": "USD/EUR/GBP/etc",
+  "keyTerms": ["list", "of", "key", "terms", "or", "topics"],
+  "jurisdiction": "Legal jurisdiction if mentioned"
+}
+
+Contract text:
+${truncatedText}`,
+
+      CLAUSES: `Extract the key clauses from this contract. Return a JSON object with:
+{
+  "clauses": [
+    {
+      "title": "Clause title/name",
+      "content": "Brief summary of what the clause says (2-3 sentences)",
+      "importance": "high/medium/low",
+      "category": "payment/termination/liability/confidentiality/indemnification/warranty/scope/other"
+    }
+  ]
+}
+
+Find ALL significant clauses (aim for 5-15 clauses). Focus on:
+- Payment terms, pricing, invoicing
+- Term and termination conditions
+- Liability limitations, indemnification
+- Confidentiality, IP rights
+- Warranties, representations
+- Scope of work, deliverables
+- Force majeure, dispute resolution
+
+Contract text:
+${truncatedText}`,
+
+      FINANCIAL: `Extract all financial terms from this contract. Return a JSON object with:
+{
+  "totalValue": numeric value or 0,
+  "currency": "USD/EUR/GBP/etc",
+  "paymentTerms": "Description of payment terms (e.g., Net 30, monthly, milestone-based)",
+  "paymentSchedule": [{"milestone": "description", "amount": number, "dueDate": "date or trigger"}],
+  "costBreakdown": [{"category": "name", "amount": number, "description": "details"}],
+  "penalties": ["List of any late fees, penalties, or liquidated damages"],
+  "discounts": ["Any discounts, volume pricing, or incentives mentioned"],
+  "analysis": "Brief analysis of the financial terms and any concerns"
+}
+
+Contract text:
+${truncatedText}`,
+
+      RISK: `Analyze this contract for risks. Return a JSON object with:
+{
+  "overallRisk": "Low/Medium/High",
+  "riskScore": number from 0-100 (0=no risk, 100=extreme risk),
+  "risks": [
+    {
+      "category": "Financial/Legal/Operational/Compliance/Reputational",
+      "level": "Low/Medium/High",
+      "title": "Short risk title",
+      "description": "Detailed description of the risk",
+      "mitigation": "Suggested mitigation or action"
+    }
+  ],
+  "redFlags": ["List any critical concerns or red flags"],
+  "recommendations": ["Key recommendations for negotiation or review"]
+}
+
+Look for:
+- Unfavorable terms, one-sided clauses
+- Missing protections (liability caps, termination rights)
+- Compliance concerns (GDPR, regulatory)
+- Financial risks (payment terms, penalties)
+- Ambiguous language that could cause disputes
+
+Contract text:
+${truncatedText}`,
+
+      COMPLIANCE: `Review this contract for compliance requirements. Return a JSON object with:
+{
+  "compliant": true/false (overall assessment),
+  "complianceScore": number from 0-100,
+  "checks": [
+    {
+      "regulation": "Name of regulation/standard (GDPR, SOC2, HIPAA, etc)",
+      "status": "compliant/non-compliant/needs-review/not-applicable",
+      "details": "Brief explanation"
+    }
+  ],
+  "issues": [
+    {
+      "severity": "high/medium/low",
+      "description": "Description of the compliance issue",
+      "recommendation": "How to address it"
+    }
+  ],
+  "dataProtection": {
+    "hasDataProcessing": true/false,
+    "hasDPA": true/false,
+    "concerns": ["any data protection concerns"]
+  },
+  "recommendations": ["List of compliance recommendations"]
+}
+
+Contract text:
+${truncatedText}`
+    };
+
+    const prompt = prompts[type];
+    if (!prompt) {
+      logger.warn({ type }, 'Unknown artifact type, using fallback');
+      return getFallbackArtifact(type, contractText, contract);
+    }
+
+    logger.info({ type, textLength: truncatedText.length }, 'Calling OpenAI for artifact generation');
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a contract analysis expert. Analyze contracts and return ONLY valid JSON (no markdown, no explanation). Be thorough and accurate.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 4000,
+      temperature: 0.2, // Low temperature for consistent, accurate extraction
+      response_format: { type: 'json_object' }
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    const artifactData = JSON.parse(content);
+    logger.info({ type, keys: Object.keys(artifactData) }, 'Successfully generated artifact with AI');
+    
+    // Add metadata
+    artifactData._meta = {
+      generatedAt: new Date().toISOString(),
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      aiGenerated: true,
+      textAnalyzed: truncatedText.length
+    };
+
+    return artifactData;
+
+  } catch (error) {
+    logger.error({ error, type }, 'OpenAI artifact generation failed, using fallback');
+    return getFallbackArtifact(type, contractText, contract);
+  }
+}
+
+/**
+ * Fallback artifact templates when AI is unavailable
+ */
+function getFallbackArtifact(type: string, contractText: string, contract: any): Record<string, any> {
   const artifactTemplates: Record<string, any> = {
     OVERVIEW: {
-      summary: `Contract analysis for ${contract.contractTitle}`,
-      contractType: contract.contractType || 'Service Agreement',
-      parties: [contract.clientName, contract.supplierName].filter(Boolean),
-      effectiveDate: contract.effectiveDate?.toISOString() || new Date().toISOString(),
+      summary: `Contract uploaded: ${contract.fileName || contract.contractTitle || 'Unknown'}. AI analysis unavailable - please review manually.`,
+      contractType: contract.contractType || 'Unknown',
+      parties: [contract.clientName, contract.supplierName].filter(Boolean).map((name: string) => ({ name, role: 'Party' })),
+      effectiveDate: contract.effectiveDate?.toISOString() || null,
       expirationDate: contract.expirationDate?.toISOString() || null,
       totalValue: contract.totalValue || 0,
       currency: contract.currency || 'USD',
-      keyTerms: ['Payment terms', 'Deliverables', 'Service levels'],
+      keyTerms: [],
       extractedLength: contractText.length,
+      _meta: { fallback: true, reason: 'AI unavailable' }
     },
     CLAUSES: {
-      clauses: [
-        {
-          title: 'Scope of Work',
-          content: 'Extracted scope of work details',
-          importance: 'high',
-          pageReference: 1,
-        },
-        {
-          title: 'Payment Terms',
-          content: 'Payment terms and conditions',
-          importance: 'high',
-          pageReference: 2,
-        },
-        {
-          title: 'Termination',
-          content: 'Termination clauses and conditions',
-          importance: 'high',
-          pageReference: 3,
-        },
-      ],
+      clauses: [],
+      _meta: { fallback: true, reason: 'AI unavailable', message: 'Clause extraction requires AI analysis' }
     },
     FINANCIAL: {
       totalValue: contract.totalValue || 0,
       currency: contract.currency || 'USD',
-      paymentSchedule: 'To be determined from contract text',
+      paymentTerms: 'Not analyzed',
+      paymentSchedule: [],
       costBreakdown: [],
-      analysis: 'Financial analysis based on OCR extraction',
+      analysis: 'Financial analysis requires AI - please configure OPENAI_API_KEY',
+      _meta: { fallback: true, reason: 'AI unavailable' }
     },
     RISK: {
-      overallRisk: 'Medium',
-      risks: [
-        {
-          category: 'Compliance',
-          level: 'Low',
-          description: 'Standard compliance requirements',
-        },
-        {
-          category: 'Financial',
-          level: 'Medium',
-          description: 'Payment terms require monitoring',
-        },
-      ],
+      overallRisk: 'Unknown',
+      riskScore: 50,
+      risks: [],
+      redFlags: [],
+      recommendations: ['Configure AI analysis for proper risk assessment'],
+      _meta: { fallback: true, reason: 'AI unavailable' }
     },
     COMPLIANCE: {
-      compliant: true,
-      checks: [
-        { regulation: 'Internal Policy', status: 'compliant' },
-      ],
+      compliant: null,
+      complianceScore: null,
+      checks: [],
       issues: [],
-      recommendations: [],
+      recommendations: ['Configure AI analysis for compliance review'],
+      _meta: { fallback: true, reason: 'AI unavailable' }
     },
   };
 
-  return artifactTemplates[type] || { type, generated: true, timestamp: new Date() };
+  return artifactTemplates[type] || { type, generated: true, timestamp: new Date(), _meta: { fallback: true } };
 }
 
 /**

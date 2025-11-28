@@ -4,6 +4,7 @@ dotenv.config();
 
 import { Job } from 'bullmq';
 import getClient from 'clients-db';
+import { ArtifactType } from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';
 import { QUEUE_NAMES, GenerateArtifactsJobData } from '../../utils/src/queue/contract-queue';
 import pino from 'pino';
@@ -45,12 +46,12 @@ export async function generateArtifactsJob(
     }
 
     // Define artifacts to generate
-    const artifactTypes = [
-      { type: 'OVERVIEW', weight: 15 },
-      { type: 'CLAUSES', weight: 20 },
-      { type: 'FINANCIAL', weight: 25 },
-      { type: 'RISK', weight: 20 },
-      { type: 'COMPLIANCE', weight: 20 },
+    const artifactTypes: Array<{ type: ArtifactType; weight: number }> = [
+      { type: 'OVERVIEW' as ArtifactType, weight: 15 },
+      { type: 'CLAUSES' as ArtifactType, weight: 20 },
+      { type: 'FINANCIAL' as ArtifactType, weight: 25 },
+      { type: 'RISK' as ArtifactType, weight: 20 },
+      { type: 'COMPLIANCE' as ArtifactType, weight: 20 },
     ];
 
     let progressBase = 10;
@@ -124,80 +125,135 @@ export async function generateArtifactsJob(
 }
 
 /**
- * Generate artifact data (placeholder for actual AI generation)
+ * Generate artifact data using OpenAI API - REAL AI ANALYSIS
  */
 async function generateArtifactData(
   type: string,
   contractText: string,
   contractId: string
 ): Promise<Record<string, any>> {
-  // Simulate processing time
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  // If no API key, use fallback templates
+  if (!apiKey) {
+    logger.warn('OPENAI_API_KEY not configured, using fallback templates');
+    return getFallbackArtifactData(type, contractId);
+  }
 
-  // This would be replaced with actual OpenAI API calls
-  const artifactTemplates: Record<string, any> = {
-    OVERVIEW: {
-      summary: `AI-generated summary for contract ${contractId}`,
-      contractType: 'Service Agreement',
-      parties: ['Party A', 'Party B'],
-      effectiveDate: new Date().toISOString(),
-      expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      keyTerms: ['Term 1', 'Term 2', 'Term 3'],
-    },
-    CLAUSES: {
-      clauses: [
-        {
-          title: 'Payment Terms',
-          content: 'Payment terms extracted from contract',
-          importance: 'high',
-        },
-        {
-          title: 'Termination Clause',
-          content: 'Termination conditions',
-          importance: 'high',
-        },
-        {
-          title: 'Liability Limitation',
-          content: 'Liability limitations',
-          importance: 'medium',
-        },
+  try {
+    const OpenAI = (await import('openai')).default;
+    const openai = new OpenAI({ apiKey });
+    
+    // Limit contract text to avoid token limits
+    const truncatedText = contractText.substring(0, 15000);
+    
+    const prompts: Record<string, string> = {
+      OVERVIEW: `Analyze this contract and extract key information. Return a JSON object with:
+{
+  "summary": "A 2-3 sentence executive summary",
+  "contractType": "Type (Service Agreement, NDA, MSA, SOW, etc)",
+  "parties": [{"name": "Party name", "role": "Client/Vendor/etc"}],
+  "effectiveDate": "YYYY-MM-DD or null",
+  "expirationDate": "YYYY-MM-DD or null",
+  "totalValue": numeric value or 0,
+  "currency": "USD/EUR/GBP/etc",
+  "keyTerms": ["list", "of", "key", "terms"]
+}
+
+Contract text:
+${truncatedText}`,
+
+      CLAUSES: `Extract key clauses. Return JSON with:
+{
+  "clauses": [
+    {"title": "Clause name", "content": "Summary (2-3 sentences)", "importance": "high/medium/low", "category": "payment/termination/liability/etc"}
+  ]
+}
+Find 5-15 significant clauses.
+
+Contract text:
+${truncatedText}`,
+
+      FINANCIAL: `Extract financial terms. Return JSON with:
+{
+  "totalValue": number or 0,
+  "currency": "USD/EUR/etc",
+  "paymentTerms": "Description",
+  "paymentSchedule": [{"milestone": "desc", "amount": number}],
+  "costBreakdown": [{"category": "name", "amount": number}],
+  "analysis": "Brief financial analysis"
+}
+
+Contract text:
+${truncatedText}`,
+
+      RISK: `Analyze risks. Return JSON with:
+{
+  "overallRisk": "Low/Medium/High",
+  "riskScore": 0-100,
+  "risks": [{"category": "Financial/Legal/etc", "level": "Low/Medium/High", "title": "title", "description": "details", "mitigation": "suggestion"}],
+  "redFlags": ["list of concerns"],
+  "recommendations": ["key recommendations"]
+}
+
+Contract text:
+${truncatedText}`,
+
+      COMPLIANCE: `Review compliance. Return JSON with:
+{
+  "compliant": true/false,
+  "complianceScore": 0-100,
+  "checks": [{"regulation": "GDPR/SOC2/etc", "status": "compliant/non-compliant/needs-review", "details": "explanation"}],
+  "issues": [{"severity": "high/medium/low", "description": "issue", "recommendation": "fix"}],
+  "recommendations": ["list"]
+}
+
+Contract text:
+${truncatedText}`
+    };
+
+    const prompt = prompts[type];
+    if (!prompt) {
+      return getFallbackArtifactData(type, contractId);
+    }
+
+    logger.info({ type, contractId, textLength: truncatedText.length }, 'Calling OpenAI for artifact');
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a contract analysis expert. Return ONLY valid JSON.' },
+        { role: 'user', content: prompt }
       ],
-    },
-    FINANCIAL: {
-      totalValue: 1000000,
-      currency: 'USD',
-      paymentSchedule: 'Monthly',
-      costBreakdown: [
-        { category: 'Services', amount: 800000 },
-        { category: 'Support', amount: 200000 },
-      ],
-    },
-    RISK: {
-      overallRisk: 'Medium',
-      risks: [
-        {
-          category: 'Financial',
-          level: 'Low',
-          description: 'Payment terms are standard',
-        },
-        {
-          category: 'Legal',
-          level: 'Medium',
-          description: 'Some ambiguous clauses detected',
-        },
-      ],
-    },
-    COMPLIANCE: {
-      compliant: true,
-      checks: [
-        { regulation: 'GDPR', status: 'compliant' },
-        { regulation: 'SOC 2', status: 'compliant' },
-      ],
-      issues: [],
-    },
+      max_tokens: 4000,
+      temperature: 0.2,
+      response_format: { type: 'json_object' }
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error('Empty response');
+
+    const artifactData = JSON.parse(content);
+    artifactData._meta = { generatedAt: new Date().toISOString(), aiGenerated: true };
+    
+    logger.info({ type, contractId }, 'AI artifact generated successfully');
+    return artifactData;
+
+  } catch (error) {
+    logger.error({ error, type, contractId }, 'OpenAI failed, using fallback');
+    return getFallbackArtifactData(type, contractId);
+  }
+}
+
+function getFallbackArtifactData(type: string, contractId: string): Record<string, any> {
+  const templates: Record<string, any> = {
+    OVERVIEW: { summary: `Contract ${contractId} - AI unavailable`, contractType: 'Unknown', parties: [], keyTerms: [], _meta: { fallback: true } },
+    CLAUSES: { clauses: [], _meta: { fallback: true } },
+    FINANCIAL: { totalValue: 0, currency: 'USD', analysis: 'AI analysis unavailable', _meta: { fallback: true } },
+    RISK: { overallRisk: 'Unknown', riskScore: 50, risks: [], _meta: { fallback: true } },
+    COMPLIANCE: { compliant: null, checks: [], issues: [], _meta: { fallback: true } },
   };
-
-  return artifactTemplates[type] || { type, generated: true };
+  return templates[type] || { type, _meta: { fallback: true } };
 }
 
 /**
