@@ -10,7 +10,7 @@
  * - BACKGROUND (50): Non-urgent background tasks
  */
 
-import { prisma } from '@/lib/prisma';
+import { getContractQueue } from '../../../packages/utils/dist/queue/contract-queue';
 
 /**
  * Priority levels matching queue configuration
@@ -78,15 +78,12 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
   
   if (useQueue) {
     try {
-      // Stub queue service - actual implementation excluded from TypeScript check
-      const getContractQueue = () => ({
-        queueContractProcessing: async (data: object, opts: object) => 'job-' + Date.now(),
-      });
-      
+      // Use shared queue from utils package
       const contractQueue = getContractQueue();
       
       // Calculate delay based on source and whether it's a reprocess
-      const delay = isReprocess ? 100 : 500; // Faster for reprocessing
+      // Using 2 seconds to ensure DB transaction is committed before worker picks up the job
+      const delay = isReprocess ? 500 : 2000;
       
       // Queue the contract for processing with priority
       const jobId = await contractQueue.queueContractProcessing(
@@ -150,7 +147,7 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   return { success: true, contractId, status: 'processing' };
 }
 
-export async function triggerProcessing(contractId: string, options?: any) {
+export async function triggerProcessing(contractId: string, options?: Record<string, unknown>) {
   // Trigger processing workflow
   console.log(`Triggering processing for contract: ${contractId}`, options);
   return { success: true, jobId: 'job-' + Date.now() };

@@ -99,6 +99,7 @@
   "exclude": [
     "node_modules",
     "../sharepoint-app_disabled",
+    "../../packages/utils/src/queue/**",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",

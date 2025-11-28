@@ -1,0 +1,13 @@
+/**
+ * Environment loader - must be imported FIRST before any other modules
+ * This ensures DATABASE_URL and other env vars are available when other modules initialize
+ */
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load from workers package .env first, then fall back to root
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
+// Log what DATABASE_URL we're using for debugging
+console.log('🔧 DATABASE_URL:', process.env.DATABASE_URL?.replace(/:[^:@]+@/, ':***@'));

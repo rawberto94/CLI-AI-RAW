@@ -260,7 +260,7 @@ export class ContractQueueManager {
     
     return {
       state,
-      progress: job.progress,
+      progress: typeof job.progress === 'number' ? job.progress : undefined,
       data: job.data,
       returnvalue: job.returnvalue,
       failedReason: job.failedReason,

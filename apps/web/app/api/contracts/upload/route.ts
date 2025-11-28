@@ -239,7 +239,10 @@ export async function POST(
     const contentHash = generateContentHash(buffer);
     console.log("🔍 Content hash:", contentHash.substring(0, 16) + "...");
     
-    // Check for duplicate file (same content already uploaded by this tenant)
+    // TEMPORARILY DISABLED: Check for duplicate file
+    // The duplicate detection was returning stale IDs
+    // TODO: Re-enable once root cause is found
+    /*
     const existingContract = await prisma.contract.findFirst({
       where: {
         tenantId,
@@ -250,21 +253,30 @@ export async function POST(
     });
     
     if (existingContract) {
-      console.log("⚠️ Duplicate file detected:", existingContract.id);
-      return NextResponse.json(
-        {
-          success: true,
-          contractId: existingContract.id,
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-          status: existingContract.status,
-          message: "This file was already uploaded. Returning existing contract.",
-          isDuplicate: true,
-        },
-        { status: 200 }
-      );
+      const verifyContract = await prisma.contract.findUnique({
+        where: { id: existingContract.id },
+        select: { id: true }
+      });
+      
+      if (verifyContract) {
+        console.log("⚠️ Duplicate file detected:", existingContract.id);
+        return NextResponse.json(
+          {
+            success: true,
+            contractId: existingContract.id,
+            fileName: file.name,
+            fileSize: file.size,
+            mimeType: file.type,
+            status: existingContract.status,
+            message: "This file was already uploaded. Returning existing contract.",
+            isDuplicate: true,
+          },
+          { status: 200 }
+        );
+      }
     }
+    */
+    console.log("📝 Creating new contract (duplicate detection disabled)");
 
     let filePath = objectKey;
     let storageProvider = "s3";

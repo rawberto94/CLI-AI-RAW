@@ -1,12 +1,12 @@
-import dotenv from 'dotenv';
+// CRITICAL: Load environment FIRST - this import must be at the very top
+// because other modules read DATABASE_URL at module load time
+import './env';
+
 import { getQueueService } from '../../utils/src/queue/queue-service';
 import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';
 import pino from 'pino';
-
-// Load environment variables
-dotenv.config();
 
 const logger = pino({
   name: 'workers',

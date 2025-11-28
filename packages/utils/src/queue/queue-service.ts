@@ -266,16 +266,18 @@ export class QueueService {
   }> {
     const queue = this.getQueue(queueName);
     
-    const [waiting, active, completed, failed, delayed, paused] = await Promise.all([
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
       queue.getWaitingCount(),
       queue.getActiveCount(),
       queue.getCompletedCount(),
       queue.getFailedCount(),
       queue.getDelayedCount(),
-      queue.getPausedCount(),
     ]);
 
-    return { waiting, active, completed, failed, delayed, paused };
+    // Check if queue is paused
+    const isPaused = await queue.isPaused();
+
+    return { waiting, active, completed, failed, delayed, paused: isPaused ? 1 : 0 };
   }
 
   /**
@@ -286,7 +288,8 @@ export class QueueService {
     jobId: string
   ): Promise<Job<T> | null> {
     const queue = this.getQueue<T>(queueName);
-    return await queue.getJob(jobId);
+    const job = await queue.getJob(jobId);
+    return job ?? null;
   }
 
   /**

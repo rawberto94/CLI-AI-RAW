@@ -190,6 +190,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      bullmq:
+        specifier: ^4.18.3
+        version: 4.18.3
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -277,6 +280,9 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
+      utils:
+        specifier: workspace:*
+        version: link:../../packages/utils
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
