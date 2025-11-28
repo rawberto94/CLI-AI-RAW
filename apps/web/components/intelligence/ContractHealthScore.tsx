@@ -777,10 +777,10 @@ export const ContractHealthScore: React.FC = () => {
             previousScore: item.previousScore || item.healthScore - 5 || 70,
             trend: item.trend || 'stable',
             status: item.healthScore >= 70 ? 'healthy' : item.healthScore >= 50 ? 'at-risk' : 'critical',
-            factors: item.factors || [],
+            factors: Array.isArray(item.factors) ? item.factors : [],
             lastAssessed: item.lastAssessed || new Date().toISOString(),
             nextReview: item.nextReview || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-            actionItems: item.actionItems || [],
+            actionItems: Array.isArray(item.actionItems) ? item.actionItems : [],
           }));
           setHealthData(mapped);
           setSelectedContract(mapped[0] ?? null);
@@ -816,7 +816,7 @@ export const ContractHealthScore: React.FC = () => {
     const healthy = healthData.filter(h => h.status === 'healthy').length;
     const atRisk = healthData.filter(h => h.status === 'at-risk').length;
     const critical = healthData.filter(h => h.status === 'critical').length;
-    const urgentActions = healthData.reduce((sum, h) => sum + h.actionItems.filter(a => a.type === 'urgent').length, 0);
+    const urgentActions = healthData.reduce((sum, h) => sum + (Array.isArray(h.actionItems) ? h.actionItems : []).filter(a => a.type === 'urgent').length, 0);
 
     return { total, avgScore, healthy, atRisk, critical, urgentActions };
   }, [healthData]);
@@ -981,7 +981,7 @@ export const ContractHealthScore: React.FC = () => {
                   <div className="bg-white rounded-xl border border-slate-200 p-6">
                     <h4 className="text-lg font-semibold text-slate-900 mb-4">Health Factor Breakdown</h4>
                     <div className="space-y-4">
-                      {(selectedContract.factors || []).map(factor => {
+                      {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).map(factor => {
                         const colors = getScoreColor(factor.score);
                         return (
                           <div key={factor.id} className="space-y-1">
@@ -1004,14 +1004,14 @@ export const ContractHealthScore: React.FC = () => {
                   </div>
 
                   {/* Urgent Actions */}
-                  {(selectedContract.actionItems || []).filter(a => a.type === 'urgent').length > 0 && (
+                  {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).filter(a => a.type === 'urgent').length > 0 && (
                     <div className="bg-white rounded-xl border border-slate-200 p-6">
                       <h4 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                         <AlertCircle className="w-5 h-5 text-red-500" />
                         Urgent Actions Required
                       </h4>
                       <div className="space-y-3">
-                        {(selectedContract.actionItems || [])
+                        {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : [])
                           .filter(a => a.type === 'urgent')
                           .map(item => (
                             <ActionItemCard key={item.id} item={item} />
@@ -1030,7 +1030,7 @@ export const ContractHealthScore: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-3"
                 >
-                  {(selectedContract.factors || []).map(factor => (
+                  {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).map(factor => (
                     <HealthFactorCard
                       key={factor.id}
                       factor={factor}
@@ -1049,10 +1049,10 @@ export const ContractHealthScore: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-3"
                 >
-                  {(selectedContract.actionItems || []).map(item => (
+                  {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).map(item => (
                     <ActionItemCard key={item.id} item={item} />
                   ))}
-                  {(selectedContract.actionItems || []).length === 0 && (
+                  {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).length === 0 && (
                     <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
                       <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
                       <h4 className="text-lg font-semibold text-slate-900">All Clear!</h4>
