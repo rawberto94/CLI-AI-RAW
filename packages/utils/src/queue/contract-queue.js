@@ -3,11 +3,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ContractQueueManager = exports.JOB_NAMES = exports.QUEUE_NAMES = void 0;
+exports.ContractQueueManager = exports.JOB_NAMES = exports.QUEUE_NAMES = exports.QUEUE_PRIORITY = void 0;
 exports.getContractQueue = getContractQueue;
 const queue_service_1 = require("./queue-service");
 const pino_1 = __importDefault(require("pino"));
 const logger = (0, pino_1.default)({ name: 'contract-queue' });
+/**
+ * Priority levels for queue jobs
+ * Lower number = higher priority
+ */
+exports.QUEUE_PRIORITY = {
+    URGENT: 1, // VIP customers, critical contracts
+    HIGH: 5, // Standard interactive processing
+    NORMAL: 10, // Default processing
+    LOW: 20, // Bulk/batch operations
+    BACKGROUND: 50, // Non-urgent background tasks
+};
 exports.QUEUE_NAMES = {
     CONTRACT_PROCESSING: 'contract-processing',
     ARTIFACT_GENERATION: 'artifact-generation',
@@ -29,18 +40,18 @@ exports.JOB_NAMES = {
  * Handles all contract-related background jobs
  */
 class ContractQueueManager {
-    constructor() {
-        this.queueService = (0, queue_service_1.getQueueService)();
-    }
+    queueService = (0, queue_service_1.getQueueService)();
     /**
      * Queue a contract for processing
      */
     async queueContractProcessing(data, options) {
+        logger.info({ data, options }, '🔍 queueContractProcessing called with data');
         const job = await this.queueService.addJob(exports.QUEUE_NAMES.CONTRACT_PROCESSING, exports.JOB_NAMES.PROCESS_CONTRACT, data, {
             priority: options?.priority || 10,
             delay: options?.delay,
             jobId: `contract-${data.contractId}`,
         });
+        logger.info({ jobId: job?.id, jobData: job?.data }, '✅ Job created');
         return job?.id || null;
     }
     /**
@@ -114,7 +125,7 @@ class ContractQueueManager {
         const state = await job.getState();
         return {
             state,
-            progress: job.progress,
+            progress: typeof job.progress === 'number' ? job.progress : undefined,
             data: job.data,
             returnvalue: job.returnvalue,
             failedReason: job.failedReason,

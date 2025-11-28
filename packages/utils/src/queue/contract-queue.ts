@@ -43,6 +43,7 @@ export interface ProcessContractJobData {
   filePath: string;
   originalName: string;
   userId?: string;
+  ocrMode?: string; // User-selected AI model: 'gpt4', 'mistral', 'auto'
 }
 
 export interface GenerateArtifactsJobData {

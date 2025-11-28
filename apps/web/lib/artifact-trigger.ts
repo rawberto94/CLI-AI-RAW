@@ -34,6 +34,7 @@ interface TriggerOptions {
   priority?: ProcessingPriority;
   isReprocess?: boolean;
   source?: 'upload' | 'bulk' | 'api' | 'webhook' | 'reprocess';
+  ocrMode?: string; // User-selected AI model: 'gpt4', 'mistral', 'auto'
 }
 
 interface QueueResult {
@@ -69,12 +70,14 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
     priority = PROCESSING_PRIORITY.NORMAL,
     source = 'upload',
     isReprocess = false,
+    ocrMode,
   } = options;
   
   console.log(`🚀 Triggering artifact generation for contract: ${contractId}`);
   console.log(`   File: ${filePath}`);
   console.log(`   Priority: ${priority} (source: ${source})`);
   console.log(`   Queue enabled: ${useQueue}`);
+  console.log(`   OCR Mode: ${ocrMode || 'auto'}`);
   
   if (useQueue) {
     try {
@@ -92,6 +95,7 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
           tenantId,
           filePath,
           originalName: filePath.split('/').pop() || 'unknown',
+          ocrMode, // Pass user's AI model selection
         },
         {
           priority,

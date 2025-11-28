@@ -502,7 +502,8 @@ export async function processOCRArtifactJob(
     // 3. Run OCR extraction (skip progress update for speed)
     jobLogger.info({ filePath: localFilePath }, 'Running OCR extraction');
     
-    const ocrMode = (contract as any).ocrMode || 'mistral'; // Default to Mistral OCR
+    // Get ocrMode from job data (user selection) or fallback to default
+    const ocrMode = job.data.ocrMode || 'mistral'; // Default to Mistral OCR
     const extractedText = await performOCR(localFilePath, ocrMode);
     
     jobLogger.info({ ocrMode, textLength: extractedText.length }, 'OCR extraction completed');

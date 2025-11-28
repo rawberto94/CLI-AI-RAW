@@ -456,6 +456,9 @@ export async function POST(
         priority = PROCESSING_PRIORITY.BACKGROUND;
       }
       
+      // Get OCR mode from form data (user-selected AI model)
+      const ocrMode = formData.get("ocrMode") as string | null;
+      
       const artifactResult = await triggerArtifactGeneration({
         contractId: contract.id,
         tenantId: contract.tenantId,
@@ -464,6 +467,7 @@ export async function POST(
         useQueue: true, // Use queue system
         priority: priority as any, // Type assertion for numeric priority
         source: 'upload',
+        ocrMode: ocrMode || undefined, // Pass user's AI model selection
       });
       
       console.log("🎉 Artifact generation queued:", artifactResult);

@@ -15,10 +15,12 @@ const logger = (0, pino_1.default)({ name: 'queue-service' });
  * Provides unified interface for job queuing, processing, and monitoring
  */
 class QueueService {
+    queues = new Map();
+    workers = new Map();
+    queueEvents = new Map();
+    connection;
+    redisClient;
     constructor(config) {
-        this.queues = new Map();
-        this.workers = new Map();
-        this.queueEvents = new Map();
         this.connection = config.connection;
         // Test Redis connection
         this.testConnection();
@@ -161,22 +163,24 @@ class QueueService {
      */
     async getQueueStats(queueName) {
         const queue = this.getQueue(queueName);
-        const [waiting, active, completed, failed, delayed, paused] = await Promise.all([
+        const [waiting, active, completed, failed, delayed] = await Promise.all([
             queue.getWaitingCount(),
             queue.getActiveCount(),
             queue.getCompletedCount(),
             queue.getFailedCount(),
             queue.getDelayedCount(),
-            queue.getPausedCount(),
         ]);
-        return { waiting, active, completed, failed, delayed, paused };
+        // Check if queue is paused
+        const isPaused = await queue.isPaused();
+        return { waiting, active, completed, failed, delayed, paused: isPaused ? 1 : 0 };
     }
     /**
      * Get job by ID
      */
     async getJob(queueName, jobId) {
         const queue = this.getQueue(queueName);
-        return await queue.getJob(jobId);
+        const job = await queue.getJob(jobId);
+        return job ?? null;
     }
     /**
      * Remove a job

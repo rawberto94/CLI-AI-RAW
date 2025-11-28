@@ -8,6 +8,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
 import {
   Upload,
@@ -43,11 +50,19 @@ interface UploadFile {
   showArtifacts?: boolean
 }
 
+// AI Model options for OCR and artifact generation
+const AI_MODELS = [
+  { id: 'gpt4', name: 'GPT-4', description: 'OpenAI GPT-4o-mini - Best accuracy', icon: '🧠' },
+  { id: 'mistral', name: 'Mistral', description: 'Mistral AI - Fast & efficient', icon: '⚡' },
+  { id: 'auto', name: 'Auto', description: 'Automatic fallback chain', icon: '🔄' },
+] as const
+
 export default function UploadPage() {
   const router = useRouter()
   const { dataMode, isRealData, isMockData, isAIGenerated } = useDataMode()
   const [files, setFiles] = useState<UploadFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string>('gpt4')
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadFile[] = acceptedFiles.map(file => ({
@@ -74,6 +89,7 @@ export default function UploadPage() {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('dataMode', dataMode)
+    formData.append('ocrMode', selectedModel)
 
     try {
       // Update to uploading
@@ -401,6 +417,35 @@ export default function UploadPage() {
                   <p className="text-gray-600 mt-1">{files.length} file(s) in queue</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  {/* AI Model Selector */}
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-5 w-5 text-purple-600" />
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                      <SelectTrigger className="w-[180px] border-purple-200 focus:ring-purple-500">
+                        <SelectValue placeholder="Select AI Model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gpt4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">GPT-4</span>
+                            <Badge variant="secondary" className="text-xs">OpenAI</Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="mistral">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Mistral</span>
+                            <Badge variant="secondary" className="text-xs">Fast</Badge>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="auto">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Auto</span>
+                            <Badge variant="secondary" className="text-xs">Best match</Badge>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {completedCount > 0 && (
                     <Button
                       variant="outline"
