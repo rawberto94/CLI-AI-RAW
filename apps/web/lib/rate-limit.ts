@@ -57,10 +57,10 @@ export const rateLimitConfigs: Record<string, RateLimitConfig> = {
     keyPrefix: 'ratelimit:sync:',
   },
   
-  // Contract upload - prevent abuse
+  // Contract upload - allow higher limits for bulk
   '/api/contracts/upload': {
     windowMs: 60 * 1000,
-    maxRequests: 10,
+    maxRequests: 50, // Increased for bulk uploads
     keyPrefix: 'ratelimit:upload:',
   },
   

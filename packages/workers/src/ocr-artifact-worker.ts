@@ -929,18 +929,24 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
 export function registerOCRArtifactWorker() {
   const queueService = getQueueService();
 
+  // Read concurrency from env or use optimized defaults
+  const concurrency = parseInt(process.env.WORKER_CONCURRENCY || '5', 10);
+  const maxJobsPerMinute = parseInt(process.env.WORKER_RATE_LIMIT || '30', 10);
+  
+  logger.info({ concurrency, maxJobsPerMinute }, '⚡ Worker configuration for bulk processing');
+  
   const worker = queueService.registerWorker<ProcessContractJobData, OCRArtifactResult>(
     QUEUE_NAMES.CONTRACT_PROCESSING,
     processOCRArtifactJob,
     {
-      concurrency: 3, // Process 3 contracts at a time (optimized)
+      concurrency, // Process multiple contracts in parallel (env configurable)
       limiter: {
-        max: 15,
-        duration: 60000, // Max 15 jobs per minute
+        max: maxJobsPerMinute,
+        duration: 60000, // Rate limit per minute
       },
       settings: {
-        maxStalledCount: 2, // Retry up to 2 times if stalled
-        stalledInterval: 30000, // Check for stalled jobs every 30s
+        maxStalledCount: 3, // Retry up to 3 times if stalled
+        stalledInterval: 20000, // Check for stalled jobs every 20s (faster recovery)
       },
     }
   );

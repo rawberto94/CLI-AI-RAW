@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (files.length > 50) {
+    if (files.length > 100) {
       return NextResponse.json(
-        { error: "Maximum 50 files allowed per batch" },
+        { error: "Maximum 100 files allowed per batch" },
         { status: 400 }
       );
     }
