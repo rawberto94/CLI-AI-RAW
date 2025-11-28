@@ -7,6 +7,8 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@ta
 export interface Contract {
   id: string;
   title: string;
+  filename?: string;
+  originalName?: string;
   status: string;
   parties?: {
     client?: string;

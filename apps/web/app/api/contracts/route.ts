@@ -235,9 +235,10 @@ async function handler(request: NextRequest) {
         data: {
           contracts: contracts.map((contract) => ({
             id: contract.id,
+            title: contract.originalName || contract.fileName,
             filename: contract.fileName,
             originalName: contract.originalName || contract.fileName,
-            status: contract.status,
+            status: contract.status.toLowerCase(),
             fileSize: contract.fileSize.toString(),
             mimeType: contract.mimeType,
             uploadedAt: contract.createdAt.toISOString(),
