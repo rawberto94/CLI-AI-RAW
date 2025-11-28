@@ -959,6 +959,19 @@ export function registerOCRArtifactWorker() {
 // Start worker if this file is run directly
 if (require.main === module) {
   logger.info('Starting OCR + Artifact worker...');
+  
+  // Initialize queue service with config before registering worker
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  getQueueService({
+    redis: { url: redisUrl },
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: { age: 86400, count: 1000 },
+      removeOnFail: { age: 604800, count: 5000 },
+    },
+  });
+  
   registerOCRArtifactWorker();
   
   // Keep process alive
