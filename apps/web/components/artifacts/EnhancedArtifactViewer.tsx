@@ -292,16 +292,22 @@ export function EnhancedArtifactViewer({
       
       case 'risk':
         const riskFactors = data.riskFactors || data.factors || data.risks || [];
+        // Normalize risk level - handle various formats from AI
+        const rawRiskLevel = data.riskLevel || data.overallRisk || data.risk_level || 'medium';
+        const normalizedRiskLevel = (typeof rawRiskLevel === 'string' ? rawRiskLevel : 'medium').toLowerCase();
+        const riskScore = data.riskScore || data.overallScore || data.score || 
+          (normalizedRiskLevel === 'critical' ? 90 : normalizedRiskLevel === 'high' ? 70 : normalizedRiskLevel === 'medium' ? 50 : 25);
+        
         return (
           <RiskArtifact 
             data={{
-              overallScore: data.riskScore || data.overallScore || 0,
-              riskLevel: data.riskLevel || (data.riskScore > 70 ? 'high' : data.riskScore > 40 ? 'medium' : 'low'),
+              overallScore: riskScore,
+              riskLevel: normalizedRiskLevel as 'critical' | 'high' | 'medium' | 'low',
               factors: riskFactors.map((f: any, i: number) => ({
                 id: f.id || `risk-${i}`,
                 category: f.category || f.type || 'General',
                 description: f.description || f.details || '',
-                severity: f.severity || f.level || 'medium',
+                severity: (f.severity || f.level || 'medium').toLowerCase(),
                 mitigation: f.mitigation || f.recommendation
               })),
               summary: data.summary || data.assessment

@@ -43,6 +43,7 @@ const publicPaths = [
   "/api/auth",
   "/upload", // Allow upload page for testing
   "/test-upload", // Allow test upload page
+  "/contracts", // Allow contracts pages for development
 ];
 
 // API routes that don't require authentication  

@@ -110,13 +110,17 @@ function ConfidenceIndicator({ value, size = 'sm' }: { value: number; size?: 'sm
   );
 }
 
-function SeverityBadge({ severity }: { severity: 'critical' | 'high' | 'medium' | 'low' }) {
-  const config = {
+function SeverityBadge({ severity }: { severity: string }) {
+  const severityMap: Record<string, { bg: string; text: string; label: string }> = {
     critical: { bg: 'bg-rose-100', text: 'text-rose-700', label: 'Critical' },
     high: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'High' },
     medium: { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Medium' },
     low: { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Low' }
-  }[severity];
+  };
+  
+  // Normalize severity to lowercase and get config, fallback to medium
+  const normalizedSeverity = (severity || 'medium').toLowerCase();
+  const config = severityMap[normalizedSeverity] || severityMap.medium;
   
   return (
     <Badge className={cn(config.bg, config.text, 'text-[10px] px-1.5 py-0')}>
