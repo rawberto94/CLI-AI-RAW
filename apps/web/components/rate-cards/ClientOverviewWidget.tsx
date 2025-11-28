@@ -84,7 +84,7 @@ export function ClientOverviewWidget({
         <div>
           <h4 className="text-sm font-semibold mb-3">Top Clients by Volume</h4>
           <div className="space-y-3">
-            {metrics.topClients.slice(0, 5).map((client, index) => (
+            {(metrics.topClients || []).slice(0, 5).map((client, index) => (
               <div
                 key={client.name}
                 className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
