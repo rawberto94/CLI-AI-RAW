@@ -79,33 +79,33 @@ export function NegotiationStatusWidget({
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-4 rounded-lg bg-green-50">
             <div className="text-3xl font-bold text-green-600">
-              {metrics.totalNegotiated}
+              {metrics.totalNegotiated ?? 0}
             </div>
             <div className="text-sm text-green-700">Negotiated</div>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted">
-            <div className={`text-3xl font-bold ${getSuccessRateColor(metrics.successRate)}`}>
-              {metrics.successRate.toFixed(0)}%
+            <div className={`text-3xl font-bold ${getSuccessRateColor(metrics.successRate ?? 0)}`}>
+              {(metrics.successRate ?? 0).toFixed(0)}%
             </div>
             <div className="text-sm text-muted-foreground">Success Rate</div>
           </div>
           <div className="text-center p-4 rounded-lg bg-blue-50">
             <div className="text-3xl font-bold text-blue-600">
-              {metrics.opportunitiesCount}
+              {metrics.opportunitiesCount ?? 0}
             </div>
             <div className="text-sm text-blue-700">Opportunities</div>
           </div>
         </div>
 
         {/* Upcoming Renewals */}
-        {metrics.upcomingRenewals.length > 0 && (
+        {(metrics.upcomingRenewals || []).length > 0 && (
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Upcoming MSA Renewals
             </h4>
             <div className="space-y-2">
-              {metrics.upcomingRenewals.slice(0, 3).map((renewal) => {
+              {(metrics.upcomingRenewals || []).slice(0, 3).map((renewal) => {
                 const daysUntil = getDaysUntilRenewal(renewal.renewalDate);
                 const isUrgent = daysUntil <= 30;
 
@@ -148,14 +148,14 @@ export function NegotiationStatusWidget({
         )}
 
         {/* Recent Negotiations */}
-        {metrics.recentNegotiations.length > 0 && (
+        {(metrics.recentNegotiations || []).length > 0 && (
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Recent Negotiations
             </h4>
             <div className="space-y-2">
-              {metrics.recentNegotiations.slice(0, 3).map((negotiation, index) => (
+              {(metrics.recentNegotiations || []).slice(0, 3).map((negotiation, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-2 rounded bg-muted/50"
@@ -172,7 +172,7 @@ export function NegotiationStatusWidget({
                     variant="secondary"
                     className="bg-green-100 text-green-700"
                   >
-                    {negotiation.savingsPercentage.toFixed(1)}% saved
+                    {(negotiation.savingsPercentage ?? 0).toFixed(1)}% saved
                   </Badge>
                 </div>
               ))}
@@ -181,7 +181,7 @@ export function NegotiationStatusWidget({
         )}
 
         {/* Opportunities Alert */}
-        {metrics.opportunitiesCount > 0 && (
+        {(metrics.opportunitiesCount ?? 0) > 0 && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-2 flex-1">
@@ -191,7 +191,7 @@ export function NegotiationStatusWidget({
                     Negotiation Opportunities
                   </div>
                   <div className="text-sm text-blue-700">
-                    {metrics.opportunitiesCount} rates ready for negotiation
+                    {metrics.opportunitiesCount ?? 0} rates ready for negotiation
                   </div>
                 </div>
               </div>
@@ -210,7 +210,7 @@ export function NegotiationStatusWidget({
         )}
 
         {/* No Upcoming Renewals */}
-        {metrics.upcomingRenewals.length === 0 && (
+        {(metrics.upcomingRenewals || []).length === 0 && (
           <div className="p-3 bg-muted rounded-lg text-center">
             <AlertCircle className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
             <div className="text-sm text-muted-foreground">
