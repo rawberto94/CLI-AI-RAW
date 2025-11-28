@@ -981,7 +981,7 @@ export const ContractHealthScore: React.FC = () => {
                   <div className="bg-white rounded-xl border border-slate-200 p-6">
                     <h4 className="text-lg font-semibold text-slate-900 mb-4">Health Factor Breakdown</h4>
                     <div className="space-y-4">
-                      {selectedContract.factors.map(factor => {
+                      {(selectedContract.factors || []).map(factor => {
                         const colors = getScoreColor(factor.score);
                         return (
                           <div key={factor.id} className="space-y-1">
@@ -1004,14 +1004,14 @@ export const ContractHealthScore: React.FC = () => {
                   </div>
 
                   {/* Urgent Actions */}
-                  {selectedContract.actionItems.filter(a => a.type === 'urgent').length > 0 && (
+                  {(selectedContract.actionItems || []).filter(a => a.type === 'urgent').length > 0 && (
                     <div className="bg-white rounded-xl border border-slate-200 p-6">
                       <h4 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                         <AlertCircle className="w-5 h-5 text-red-500" />
                         Urgent Actions Required
                       </h4>
                       <div className="space-y-3">
-                        {selectedContract.actionItems
+                        {(selectedContract.actionItems || [])
                           .filter(a => a.type === 'urgent')
                           .map(item => (
                             <ActionItemCard key={item.id} item={item} />
@@ -1030,7 +1030,7 @@ export const ContractHealthScore: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-3"
                 >
-                  {selectedContract.factors.map(factor => (
+                  {(selectedContract.factors || []).map(factor => (
                     <HealthFactorCard
                       key={factor.id}
                       factor={factor}
@@ -1049,10 +1049,10 @@ export const ContractHealthScore: React.FC = () => {
                   exit={{ opacity: 0, y: -10 }}
                   className="space-y-3"
                 >
-                  {selectedContract.actionItems.map(item => (
+                  {(selectedContract.actionItems || []).map(item => (
                     <ActionItemCard key={item.id} item={item} />
                   ))}
-                  {selectedContract.actionItems.length === 0 && (
+                  {(selectedContract.actionItems || []).length === 0 && (
                     <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
                       <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
                       <h4 className="text-lg font-semibold text-slate-900">All Clear!</h4>

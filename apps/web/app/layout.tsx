@@ -22,7 +22,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Contract Intelligence Platform",
+  title: "PactumAI - AI Contract Management",
   description: "AI-powered contract management and analysis platform",
 };
 

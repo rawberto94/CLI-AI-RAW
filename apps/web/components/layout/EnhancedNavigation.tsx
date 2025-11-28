@@ -407,8 +407,8 @@ function EnhancedNavigation() {
               <FileText className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900">Contract AI</h1>
-              <p className="text-xs text-gray-500">Intelligence Platform</p>
+              <h1 className="font-bold text-gray-900">PactumAI</h1>
+              <p className="text-xs text-gray-500">AI Contract Management</p>
             </div>
           </div>
 
