@@ -5,9 +5,19 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeft, 
@@ -34,7 +44,11 @@ import {
   Eye,
   ChevronDown,
   ExternalLink,
-  Info
+  Info,
+  Pencil,
+  Save,
+  X,
+  Tag
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -76,6 +90,34 @@ interface ContractData {
     status: string
   }
 }
+
+interface ContractMetadata {
+  contractType: string
+  effectiveDate: string
+  expirationDate: string
+  totalValue: string
+  currency: string
+  clientName: string
+  supplierName: string
+  description: string
+  tags: string[]
+}
+
+const CONTRACT_TYPES = [
+  'Service Agreement',
+  'Master Services Agreement',
+  'Statement of Work',
+  'License Agreement',
+  'Non-Disclosure Agreement',
+  'Employment Contract',
+  'Consulting Agreement',
+  'Purchase Agreement',
+  'Lease Agreement',
+  'Partnership Agreement',
+  'Other'
+]
+
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR']
 
 // ============ HELPER COMPONENTS ============
 
@@ -231,6 +273,23 @@ export default function ContractDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [metadata, setMetadata] = useState<ContractMetadata>({
+    contractType: '',
+    effectiveDate: '',
+    expirationDate: '',
+    totalValue: '',
+    currency: 'USD',
+    clientName: '',
+    supplierName: '',
+    description: '',
+    tags: []
+  })
+  const [newTag, setNewTag] = useState('')
 
   const loadContract = useCallback(async () => {
     setLoading(true)
@@ -263,6 +322,106 @@ export default function ContractDetailPage() {
   useEffect(() => {
     loadContract()
   }, [loadContract])
+
+  // Initialize metadata when contract loads
+  useEffect(() => {
+    if (contract) {
+      const overviewData = contract.extractedData?.overview
+      const financialData = contract.extractedData?.financial
+      setMetadata({
+        contractType: overviewData?.contractType || '',
+        effectiveDate: overviewData?.effectiveDate ? new Date(overviewData.effectiveDate).toISOString().split('T')[0] : '',
+        expirationDate: overviewData?.expirationDate ? new Date(overviewData.expirationDate).toISOString().split('T')[0] : '',
+        totalValue: financialData?.totalValue?.toString() || '',
+        currency: financialData?.currency || 'USD',
+        clientName: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || '',
+        supplierName: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || '',
+        description: overviewData?.summary || '',
+        tags: Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : []
+      })
+    }
+  }, [contract])
+
+  // Handle metadata field change
+  const handleMetadataChange = (field: keyof ContractMetadata, value: string | string[]) => {
+    setMetadata(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Add tag
+  const handleAddTag = () => {
+    if (newTag.trim() && !metadata.tags.includes(newTag.trim())) {
+      setMetadata(prev => ({ ...prev, tags: [...prev.tags, newTag.trim()] }))
+      setNewTag('')
+    }
+  }
+
+  // Remove tag
+  const handleRemoveTag = (tagToRemove: string) => {
+    setMetadata(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tagToRemove) }))
+  }
+
+  // Save metadata
+  const handleSaveMetadata = async () => {
+    setIsSaving(true)
+    setSaveSuccess(false)
+    
+    try {
+      const response = await fetch(`/api/contracts/${params.id}/metadata`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-data-mode': dataMode
+        },
+        body: JSON.stringify({
+          contractType: metadata.contractType,
+          effectiveDate: metadata.effectiveDate || null,
+          expirationDate: metadata.expirationDate || null,
+          totalValue: metadata.totalValue ? parseFloat(metadata.totalValue) : null,
+          currency: metadata.currency,
+          clientName: metadata.clientName,
+          supplierName: metadata.supplierName,
+          description: metadata.description,
+          tags: metadata.tags
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save metadata')
+      }
+      
+      setSaveSuccess(true)
+      setIsEditing(false)
+      await loadContract() // Refresh contract data
+      
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (err) {
+      console.error('Failed to save metadata:', err)
+      setError('Failed to save changes. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setIsEditing(false)
+    // Reset metadata to current contract values
+    if (contract) {
+      const overviewData = contract.extractedData?.overview
+      const financialData = contract.extractedData?.financial
+      setMetadata({
+        contractType: overviewData?.contractType || '',
+        effectiveDate: overviewData?.effectiveDate ? new Date(overviewData.effectiveDate).toISOString().split('T')[0] : '',
+        expirationDate: overviewData?.expirationDate ? new Date(overviewData.expirationDate).toISOString().split('T')[0] : '',
+        totalValue: financialData?.totalValue?.toString() || '',
+        currency: financialData?.currency || 'USD',
+        clientName: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || '',
+        supplierName: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || '',
+        description: overviewData?.summary || '',
+        tags: Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : []
+      })
+    }
+  }
 
   // Extract data helpers
   const overviewData = contract?.extractedData?.overview
@@ -682,41 +841,312 @@ export default function ContractDetailPage() {
               )}
             </TabsContent>
 
-            {/* Details Tab */}
+            {/* Details Tab - Editable Metadata */}
             <TabsContent value="details" className="space-y-6">
+              {/* Success Message */}
+              <AnimatePresence>
+                {saveSuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3"
+                  >
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                    <p className="text-sm font-medium text-emerald-700">
+                      Contract metadata saved successfully and stored in the database.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Editable Contract Information */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold">Contract Information</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+                        <Pencil className="h-4 w-4 text-indigo-600" />
+                        Contract Metadata
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        {isEditing 
+                          ? 'Edit the AI-extracted metadata. Changes will be saved to the database.' 
+                          : 'Review and edit contract details. Click Edit to make changes.'}
+                      </CardDescription>
+                    </div>
+                    {!isEditing ? (
+                      <Button 
+                        size="sm" 
+                        onClick={() => setIsEditing(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        <Pencil className="h-4 w-4 mr-1.5" />
+                        Edit Metadata
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={handleCancelEdit}
+                          disabled={isSaving}
+                        >
+                          <X className="h-4 w-4 mr-1.5" />
+                          Cancel
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={handleSaveMetadata}
+                          disabled={isSaving}
+                          className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          {isSaving ? (
+                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-1.5" />
+                          )}
+                          Approve & Save
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Contract ID - Read only */}
                     <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Contract ID</dt>
-                      <dd className="text-sm font-mono text-slate-900 mt-1">{params.id}</dd>
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Contract ID</Label>
+                      <p className="text-sm font-mono text-slate-900 mt-1">{params.id}</p>
                     </div>
+
+                    {/* File Name - Read only */}
                     <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Name</dt>
-                      <dd className="text-sm text-slate-900 mt-1">{contract?.filename || 'Unknown'}</dd>
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Name</Label>
+                      <p className="text-sm text-slate-900 mt-1">{contract?.filename || 'Unknown'}</p>
                     </div>
+
+                    {/* Contract Type - Editable */}
                     <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Size</dt>
-                      <dd className="text-sm text-slate-900 mt-1">
-                        {contract?.fileSize ? `${(contract.fileSize / 1024).toFixed(1)} KB` : 'Unknown'}
-                      </dd>
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Contract Type</Label>
+                      {isEditing ? (
+                        <Select 
+                          value={metadata.contractType} 
+                          onValueChange={(v) => handleMetadataChange('contractType', v)}
+                        >
+                          <SelectTrigger className="h-9 bg-white">
+                            <SelectValue placeholder="Select type..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CONTRACT_TYPES.map(type => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-slate-900">{metadata.contractType || overviewData?.contractType || 'Unknown'}</p>
+                      )}
                     </div>
+
+                    {/* Status - Read only */}
                     <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Type</dt>
-                      <dd className="text-sm text-slate-900 mt-1">{contract?.mimeType || 'Unknown'}</dd>
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</Label>
+                      <div className="mt-1"><StatusBadge status={contract?.status || 'unknown'} /></div>
                     </div>
+
+                    {/* Total Value - Editable */}
                     <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Contract Type</dt>
-                      <dd className="text-sm text-slate-900 mt-1">{overviewData?.contractType || 'Unknown'}</dd>
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Total Value</Label>
+                      {isEditing ? (
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            value={metadata.totalValue}
+                            onChange={(e) => handleMetadataChange('totalValue', e.target.value)}
+                            placeholder="Enter value"
+                            className="h-9 bg-white flex-1"
+                          />
+                          <Select 
+                            value={metadata.currency} 
+                            onValueChange={(v) => handleMetadataChange('currency', v)}
+                          >
+                            <SelectTrigger className="h-9 bg-white w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CURRENCIES.map(c => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-900">
+                          {metadata.totalValue 
+                            ? `${metadata.currency} ${parseFloat(metadata.totalValue).toLocaleString()}`
+                            : financialData?.totalValue 
+                              ? formatCurrency(financialData.totalValue, financialData.currency || 'USD')
+                              : 'Not specified'}
+                        </p>
+                      )}
                     </div>
+
+                    {/* File Size/Type - Read only */}
                     <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <dt className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</dt>
-                      <dd className="mt-1"><StatusBadge status={contract?.status || 'unknown'} /></dd>
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Details</Label>
+                      <p className="text-sm text-slate-900 mt-1">
+                        {contract?.fileSize ? `${(contract.fileSize / 1024).toFixed(1)} KB` : 'Unknown'} • {contract?.mimeType || 'Unknown'}
+                      </p>
                     </div>
-                  </dl>
+
+                    {/* Effective Date - Editable */}
+                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Effective Date</Label>
+                      {isEditing ? (
+                        <Input
+                          type="date"
+                          value={metadata.effectiveDate}
+                          onChange={(e) => handleMetadataChange('effectiveDate', e.target.value)}
+                          className="h-9 bg-white"
+                        />
+                      ) : (
+                        <p className="text-sm text-slate-900">
+                          {metadata.effectiveDate 
+                            ? formatDate(metadata.effectiveDate) 
+                            : overviewData?.effectiveDate 
+                              ? formatDate(overviewData.effectiveDate) 
+                              : 'Not specified'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Expiration Date - Editable */}
+                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Expiration Date</Label>
+                      {isEditing ? (
+                        <Input
+                          type="date"
+                          value={metadata.expirationDate}
+                          onChange={(e) => handleMetadataChange('expirationDate', e.target.value)}
+                          className="h-9 bg-white"
+                        />
+                      ) : (
+                        <p className="text-sm text-slate-900">
+                          {metadata.expirationDate 
+                            ? formatDate(metadata.expirationDate) 
+                            : overviewData?.expirationDate 
+                              ? formatDate(overviewData.expirationDate) 
+                              : 'Not specified'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Client Name - Editable */}
+                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Client / Buyer</Label>
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={metadata.clientName}
+                          onChange={(e) => handleMetadataChange('clientName', e.target.value)}
+                          placeholder="Enter client name"
+                          className="h-9 bg-white"
+                        />
+                      ) : (
+                        <p className="text-sm text-slate-900">
+                          {metadata.clientName || overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || 'Not specified'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Supplier Name - Editable */}
+                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
+                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Supplier / Vendor</Label>
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={metadata.supplierName}
+                          onChange={(e) => handleMetadataChange('supplierName', e.target.value)}
+                          placeholder="Enter supplier name"
+                          className="h-9 bg-white"
+                        />
+                      ) : (
+                        <p className="text-sm text-slate-900">
+                          {metadata.supplierName || overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || 'Not specified'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description - Full width */}
+                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 block">Description / Summary</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={metadata.description}
+                        onChange={(e) => handleMetadataChange('description', e.target.value)}
+                        placeholder="Enter contract description or summary..."
+                        className="mt-1 bg-white min-h-[100px]"
+                      />
+                    ) : (
+                      <p className="text-sm text-slate-900 mt-1">
+                        {metadata.description || overviewData?.summary || 'No description available.'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Tags */}
+                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      Tags
+                    </Label>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {metadata.tags.map((tag, i) => (
+                        <Badge 
+                          key={i} 
+                          variant="secondary" 
+                          className={cn(
+                            "text-xs",
+                            isEditing && "pr-1"
+                          )}
+                        >
+                          {tag}
+                          {isEditing && (
+                            <button
+                              onClick={() => handleRemoveTag(tag)}
+                              className="ml-1 hover:text-red-600"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </Badge>
+                      ))}
+                      {metadata.tags.length === 0 && !isEditing && (
+                        <span className="text-sm text-slate-500">No tags</span>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          type="text"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                          placeholder="Add a tag..."
+                          className="h-8 bg-white text-sm"
+                        />
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={handleAddTag}
+                          className="h-8"
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
