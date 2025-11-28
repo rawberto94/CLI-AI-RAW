@@ -178,9 +178,14 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
 export function useContracts(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: queryKeys.contracts.list(filters || {}),
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams(filters as Record<string, string>);
-      return fetchAPI<{ contracts: Contract[]; total: number }>(`/api/contracts?${params}`);
+      const response = await fetchAPI<{ success: boolean; data: { contracts: Contract[]; pagination: { total: number } } }>(`/api/contracts?${params}`);
+      // Extract contracts from nested response
+      return { 
+        contracts: response.data?.contracts || [], 
+        total: response.data?.pagination?.total || 0 
+      };
     },
   });
 }
