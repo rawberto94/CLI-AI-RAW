@@ -142,8 +142,8 @@ async function handler(request: NextRequest) {
     return returnMockContracts(searchParams);
   }
 
-  // Parse query parameters
-  const tenantId = searchParams.get("tenantId") || "demo";
+  // Parse query parameters - check header first, then query param, then default
+  const tenantId = request.headers.get("x-tenant-id") || searchParams.get("tenantId") || "demo";
   const search = searchParams.get("search") || undefined;
   const statuses = searchParams.getAll("status");
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;

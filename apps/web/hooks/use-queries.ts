@@ -138,17 +138,26 @@ function getDataMode(): string {
   return 'real';
 }
 
+function getTenantId(): string {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('tenantId') || 'demo';
+  }
+  return 'demo';
+}
+
 // =====================
 // Generic Fetch Function
 // =====================
 
 async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
   const dataMode = getDataMode();
+  const tenantId = getTenantId();
   
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
       'x-data-mode': dataMode,
+      'x-tenant-id': tenantId,
       ...options?.headers,
     },
     ...options,
