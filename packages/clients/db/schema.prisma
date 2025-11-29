@@ -2672,8 +2672,9 @@ model WorkflowExecution {
   contractId  String  @map("contract_id")
   tenantId    String? @map("tenant_id")
   status      String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
-  currentStep String? @map("current_step")
-  initiatedBy String  @map("initiated_by")
+  currentStep Int     @default(0) @map("current_step")
+  startedBy   String? @map("started_by")
+  dueDate     DateTime? @map("due_date")
   metadata    Json?
   error       String?
 
@@ -2682,14 +2683,15 @@ model WorkflowExecution {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  workflow Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  contract Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  steps    WorkflowStepExecution[]
+  workflow       Workflow                @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  contract       Contract                @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  stepExecutions WorkflowStepExecution[]
 
   @@index([workflowId])
   @@index([contractId])
   @@index([tenantId])
   @@index([status])
+  @@index([dueDate])
   @@map("workflow_executions")
 }
 
@@ -2697,10 +2699,12 @@ model WorkflowStepExecution {
   id          String  @id @default(cuid())
   executionId String  @map("execution_id")
   stepId      String  @map("step_id")
-  status      String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED
+  stepOrder   Int     @default(0) @map("step_order")
+  stepName    String  @default("") @map("step_name")
+  status      String  @default("PENDING") // PENDING, WAITING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED, REJECTED
   assignedTo  String? @map("assigned_to")
   completedBy String? @map("completed_by")
-  comments    String?
+  result      Json?   // Approval result with comments
   metadata    Json?
 
   startedAt   DateTime  @default(now()) @map("started_at")
@@ -2714,6 +2718,7 @@ model WorkflowStepExecution {
   @@index([executionId])
   @@index([stepId])
   @@index([status])
+  @@index([stepOrder])
   @@map("workflow_step_executions")
 }
 
@@ -2785,4 +2790,54 @@ model SyncLog {
   @@index([status])
   @@index([startedAt])
   @@map("sync_logs")
+}
+
+// ============================================
+// Collaboration Models
+// ============================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  userId    String   @map("user_id")
+  type      String   @default("SYSTEM") // APPROVAL_REQUEST, APPROVAL_COMPLETED, COMMENT_MENTION, CONTRACT_DEADLINE, WORKFLOW_STEP, SHARE_INVITE, SYSTEM
+  title     String
+  message   String
+  link      String?
+  metadata  Json?
+  isRead    Boolean  @default(false) @map("is_read")
+  expiresAt DateTime? @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, userId])
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model DocumentShare {
+  id           String    @id @default(cuid())
+  tenantId     String    @map("tenant_id")
+  documentId   String    @map("document_id")
+  documentType String    @map("document_type") // contract, rate_card, template, workflow
+  sharedWith   String    @map("shared_with") // userId or email
+  sharedBy     String    @map("shared_by")
+  permission   String    @default("VIEW") // VIEW, COMMENT, EDIT, ADMIN
+  accessToken  String?   @unique @map("access_token") // For secure link sharing
+  expiresAt    DateTime? @map("expires_at")
+  isActive     Boolean   @default(true) @map("is_active")
+  accessedAt   DateTime? @map("accessed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([documentId, documentType, sharedWith])
+  @@index([tenantId])
+  @@index([documentId, documentType])
+  @@index([sharedWith])
+  @@index([accessToken])
+  @@map("document_shares")
 }

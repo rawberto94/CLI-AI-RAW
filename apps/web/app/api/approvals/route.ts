@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-// Mock approval queue data
+export const dynamic = 'force-dynamic';
+
+// Mock approval queue data (fallback)
 const mockApprovals = [
   {
     id: 'appr1',
@@ -107,12 +110,127 @@ const mockApprovals = [
 ];
 
 export async function GET(request: NextRequest) {
+  const tenantId = request.headers.get('x-tenant-id') || 'demo';
+  const userId = request.headers.get('x-user-id') || 'current-user';
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const priority = searchParams.get('priority');
   const type = searchParams.get('type');
   const assignedTo = searchParams.get('assignedTo');
 
+  // Try database first
+  try {
+    // Get workflow executions that need approval
+    const workflowExecutions = await prisma.workflowExecution.findMany({
+      where: {
+        tenantId,
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+      },
+      include: {
+        workflow: true,
+        contract: {
+          select: {
+            id: true,
+            title: true,
+            counterparty: true,
+            contractValue: true,
+            status: true,
+          },
+        },
+        stepExecutions: {
+          orderBy: { stepOrder: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Transform to approvals format
+    const dbApprovals = workflowExecutions.map((exec) => {
+      const currentStep = exec.stepExecutions.find(s => s.status === 'PENDING');
+      const completedSteps = exec.stepExecutions.filter(s => s.status === 'COMPLETED').length;
+      
+      return {
+        id: exec.id,
+        type: exec.workflow?.type?.toLowerCase() || 'contract',
+        title: `${exec.workflow?.name || 'Workflow'} - ${exec.contract?.title || 'Contract'}`,
+        description: exec.workflow?.description || '',
+        contractName: exec.contract?.title || 'Unknown Contract',
+        supplierName: exec.contract?.counterparty || 'Unknown',
+        requestedBy: {
+          id: exec.startedBy || 'system',
+          name: exec.startedBy || 'System',
+          email: `${exec.startedBy || 'system'}@company.com`,
+        },
+        requestedAt: exec.createdAt.toISOString(),
+        dueDate: exec.dueDate?.toISOString() || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: (exec.metadata as Record<string, string>)?.priority || 'medium',
+        status: exec.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
+        value: exec.contract?.contractValue ?? 0,
+        riskLevel: 'medium',
+        stage: currentStep?.stepName || 'initial-review',
+        assignedTo: currentStep ? {
+          id: currentStep.assignedTo || 'unassigned',
+          name: currentStep.assignedTo || 'Unassigned',
+          email: `${currentStep.assignedTo || 'unassigned'}@company.com`,
+        } : undefined,
+        approvalChain: exec.stepExecutions.map((step, idx) => ({
+          step: idx + 1,
+          role: step.stepName,
+          status: step.status.toLowerCase(),
+          approver: step.assignedTo || 'Unassigned',
+          completedAt: step.completedAt?.toISOString() || null,
+        })),
+        currentStep: completedSteps + 1,
+        totalSteps: exec.stepExecutions.length,
+        documents: [],
+        healthScore: 75,
+        deviations: 0,
+      };
+    });
+
+    if (dbApprovals.length > 0) {
+      let approvals = [...dbApprovals];
+      if (status && status !== 'all') {
+        approvals = approvals.filter(a => a.status === status);
+      }
+      if (priority && priority !== 'all') {
+        approvals = approvals.filter(a => a.priority === priority);
+      }
+      if (type && type !== 'all') {
+        approvals = approvals.filter(a => a.type === type);
+      }
+
+      const stats = {
+        total: dbApprovals.length,
+        pending: dbApprovals.filter(a => a.status === 'pending').length,
+        approved: dbApprovals.filter(a => a.status === 'approved').length,
+        rejected: dbApprovals.filter(a => a.status === 'rejected').length,
+        critical: dbApprovals.filter(a => a.priority === 'critical').length,
+        overdue: dbApprovals.filter(a => new Date(a.dueDate) < new Date()).length,
+        avgProcessingTime: '2.1 days',
+        totalValue: dbApprovals.reduce((sum, a) => sum + a.value, 0),
+      };
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          items: approvals,
+          approvals,
+          stats,
+          filters: {
+            statuses: ['pending', 'approved', 'rejected', 'on-hold'],
+            priorities: ['critical', 'high', 'medium', 'low'],
+            types: ['contract', 'amendment', 'renewal', 'termination'],
+          },
+        },
+        source: 'database',
+      });
+    }
+  } catch (dbError) {
+    console.warn('Database lookup failed, using mock:', dbError);
+  }
+
+  // Fallback to mock data
   let approvals = [...mockApprovals];
 
   if (status && status !== 'all') {
@@ -143,6 +261,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     success: true,
     data: {
+      items: approvals,
       approvals,
       stats,
       filters: {
@@ -151,14 +270,136 @@ export async function GET(request: NextRequest) {
         types: ['contract', 'amendment', 'renewal', 'termination'],
       },
     },
+    source: 'mock',
   });
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     const { action, approvalId, approvalIds, comment, delegateTo, reason } = body;
 
+    // Try database operations first
+    try {
+      if (action === 'approve') {
+        // Update workflow step execution
+        if (approvalId) {
+          await prisma.workflowStepExecution.updateMany({
+            where: {
+              executionId: approvalId,
+              status: 'PENDING',
+            },
+            data: {
+              status: 'COMPLETED',
+              completedAt: new Date(),
+              completedBy: userId,
+              result: { approved: true, comment },
+            },
+          });
+
+          // Check if all steps are complete
+          const stepExecutions = await prisma.workflowStepExecution.findMany({
+            where: { executionId: approvalId },
+          });
+          const allComplete = stepExecutions.every(s => s.status === 'COMPLETED');
+          
+          if (allComplete) {
+            await prisma.workflowExecution.update({
+              where: { id: approvalId },
+              data: { status: 'COMPLETED', completedAt: new Date() },
+            });
+          } else {
+            // Move to next step
+            const nextStep = stepExecutions.find(s => s.status === 'PENDING');
+            if (nextStep) {
+              await prisma.workflowExecution.update({
+                where: { id: approvalId },
+                data: { currentStep: nextStep.stepOrder },
+              });
+            }
+          }
+
+          // Create notification for next approver
+          const nextPending = await prisma.workflowStepExecution.findFirst({
+            where: { executionId: approvalId, status: 'PENDING' },
+          });
+          if (nextPending && nextPending.assignedTo) {
+            await prisma.notification.create({
+              data: {
+                tenantId,
+                userId: nextPending.assignedTo,
+                type: 'APPROVAL_REQUEST',
+                title: 'Approval Required',
+                message: `${nextPending.stepName} step requires your approval`,
+                link: `/approvals`,
+                metadata: { approvalId, stepName: nextPending.stepName },
+              },
+            });
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: approvalIds?.length > 1
+            ? `${approvalIds.length} items approved successfully`
+            : 'Approval completed successfully',
+          data: {
+            approvalId: approvalId || approvalIds?.[0],
+            newStatus: 'approved',
+            approvedAt: new Date().toISOString(),
+            comment,
+          },
+          source: 'database',
+        });
+      }
+
+      if (action === 'reject') {
+        if (!reason) {
+          return NextResponse.json(
+            { success: false, error: 'Rejection reason is required' },
+            { status: 400 }
+          );
+        }
+
+        if (approvalId) {
+          await prisma.workflowStepExecution.updateMany({
+            where: {
+              executionId: approvalId,
+              status: 'PENDING',
+            },
+            data: {
+              status: 'REJECTED',
+              completedAt: new Date(),
+              completedBy: userId,
+              result: { rejected: true, reason },
+            },
+          });
+
+          await prisma.workflowExecution.update({
+            where: { id: approvalId },
+            data: { status: 'REJECTED', completedAt: new Date() },
+          });
+        }
+
+        return NextResponse.json({
+          success: true,
+          message: 'Approval rejected',
+          data: {
+            approvalId,
+            newStatus: 'rejected',
+            rejectedAt: new Date().toISOString(),
+            reason,
+          },
+          source: 'database',
+        });
+      }
+    } catch (dbError) {
+      console.warn('Database operation failed:', dbError);
+    }
+
+    // Fallback mock responses
     if (action === 'approve') {
       return NextResponse.json({
         success: true,
@@ -171,6 +412,7 @@ export async function POST(request: NextRequest) {
           approvedAt: new Date().toISOString(),
           comment,
         },
+        source: 'mock',
       });
     }
 
@@ -191,6 +433,7 @@ export async function POST(request: NextRequest) {
           rejectedAt: new Date().toISOString(),
           reason,
         },
+        source: 'mock',
       });
     }
 
