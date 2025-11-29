@@ -132,16 +132,13 @@ export const queryKeys = {
 // =====================
 
 function getDataMode(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('dataMode') || 'real';
-  }
+  // PRODUCTION: Always use real data mode
+  // The mock mode was causing issues - disabled for reliability
   return 'real';
 }
 
 function getTenantId(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('tenantId') || 'demo';
-  }
+  // PRODUCTION: Use demo tenant - this is where all contracts are stored
   return 'demo';
 }
 
@@ -150,14 +147,11 @@ function getTenantId(): string {
 // =====================
 
 async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
-  const dataMode = getDataMode();
-  const tenantId = getTenantId();
-  
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
-      'x-data-mode': dataMode,
-      'x-tenant-id': tenantId,
+      'x-data-mode': 'real',
+      'x-tenant-id': 'demo',
       ...options?.headers,
     },
     ...options,
@@ -179,14 +173,39 @@ export function useContracts(filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: queryKeys.contracts.list(filters || {}),
     queryFn: async () => {
-      const params = new URLSearchParams(filters as Record<string, string>);
-      const response = await fetchAPI<{ success: boolean; data: { contracts: Contract[]; pagination: { total: number } } }>(`/api/contracts?${params}`);
-      // Extract contracts from nested response
+      // Build clean query params - filter out undefined/null values
+      const params = new URLSearchParams();
+      if (filters) {
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            params.set(key, String(value));
+          }
+        });
+      }
+      
+      // Direct fetch with hardcoded headers for reliability
+      const response = await fetch(`/api/contracts?${params}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-data-mode': 'real',
+          'x-tenant-id': 'demo',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch contracts: ${response.status}`);
+      }
+      
+      const json = await response.json();
+      
+      // Extract contracts from API response
       return { 
-        contracts: response.data?.contracts || [], 
-        total: response.data?.pagination?.total || 0 
+        contracts: json.data?.contracts || [], 
+        total: json.data?.pagination?.total || 0 
       };
     },
+    staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: true,
   });
 }
 

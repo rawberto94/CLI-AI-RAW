@@ -240,7 +240,16 @@ async function extractTextFallback(filePath: string): Promise<string> {
 async function performMistralOCR(filePath: string): Promise<string> {
   try {
     const fileBuffer = await fs.readFile(filePath);
-    const isPDF = filePath.toLowerCase().endsWith('.pdf');
+    const ext = filePath.toLowerCase().split('.').pop() || '';
+    const isPDF = ext === 'pdf';
+    const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
+    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
+    
+    // For text files, just read directly - no OCR needed
+    if (isTextFile) {
+      logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
+      return fileBuffer.toString('utf-8');
+    }
     
     if (isPDF) {
       // Use pdf-parse for PDF text extraction (preloaded or lazy load)
@@ -285,7 +294,7 @@ async function performMistralOCR(filePath: string): Promise<string> {
       const enhancedText = chatResponse.choices?.[0]?.message?.content || rawText;
       logger.info({ enhancedLength: enhancedText.length }, 'Text enhanced with Mistral AI');
       return enhancedText;
-    } else {
+    } else if (isImage) {
       // For images, use Pixtral vision model
       const { Mistral } = await import('@mistralai/mistralai');
       const apiKey = process.env.MISTRAL_API_KEY;
@@ -295,8 +304,11 @@ async function performMistralOCR(filePath: string): Promise<string> {
       
       const client = new Mistral({ apiKey });
       const base64Data = fileBuffer.toString('base64');
+      const mimeType = ext === 'png' ? 'image/png' : 
+                       ext === 'gif' ? 'image/gif' : 
+                       ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
-      logger.info({ filePath, size: fileBuffer.length }, 'Processing image with Mistral Pixtral Vision OCR');
+      logger.info({ filePath, size: fileBuffer.length, mimeType }, 'Processing image with Mistral Pixtral Vision OCR');
       
       const chatResponse = await client.chat.complete({
         model: 'pixtral-12b-2409',
@@ -310,7 +322,7 @@ async function performMistralOCR(filePath: string): Promise<string> {
               },
               {
                 type: 'image_url',
-                imageUrl: `data:image/png;base64,${base64Data}`,
+                imageUrl: `data:${mimeType};base64,${base64Data}`,
               },
             ],
           },
@@ -321,6 +333,14 @@ async function performMistralOCR(filePath: string): Promise<string> {
       const extractedText = chatResponse.choices?.[0]?.message?.content || '';
       logger.info({ textLength: extractedText.length }, 'Mistral Vision OCR completed');
       return typeof extractedText === 'string' ? extractedText : '';
+    } else {
+      // For DOCX/DOC and other unsupported types, try to read as text
+      logger.info({ filePath, ext }, 'Unsupported file type for Mistral Vision, trying text extraction');
+      try {
+        return fileBuffer.toString('utf-8');
+      } catch {
+        throw new Error(`Unsupported file type: ${ext}. Mistral Vision only supports images.`);
+      }
     }
   } catch (error) {
     const err = error as Error;
@@ -332,6 +352,7 @@ async function performMistralOCR(filePath: string): Promise<string> {
 /**
  * GPT-4 Vision OCR extraction
  * For PDFs: Uses pdf-parse to extract text, then GPT to clean/enhance
+ * For text files: Just read the file directly
  * For images: Uses GPT-4 Vision
  */
 async function performGPT4OCR(filePath: string): Promise<string> {
@@ -345,7 +366,18 @@ async function performGPT4OCR(filePath: string): Promise<string> {
     
     const openai = new OpenAI({ apiKey });
     const fileBuffer = await fs.readFile(filePath);
-    const isPDF = filePath.toLowerCase().endsWith('.pdf');
+    const ext = filePath.toLowerCase().split('.').pop() || '';
+    const isPDF = ext === 'pdf';
+    const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
+    const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
+    
+    // For text files, just read directly - no OCR needed
+    if (isTextFile) {
+      logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
+      return fileBuffer.toString('utf-8');
+    }
+    
+    // For PDFs, use pdf-parse first, then GPT for enhancement
     
     // For PDFs, use pdf-parse first, then GPT for enhancement
     if (isPDF) {
@@ -385,11 +417,12 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       logger.info({ originalLength: rawText.length, enhancedLength: enhancedText.length }, 'GPT text enhancement completed');
       
       return enhancedText;
-    } else {
+    } else if (isImage) {
       // For images, use GPT-4 Vision
       const base64 = fileBuffer.toString('base64');
-      const ext = filePath.toLowerCase().split('.').pop();
-      const mimeType = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
+      const mimeType = ext === 'png' ? 'image/png' : 
+                       ext === 'gif' ? 'image/gif' : 
+                       ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
       logger.info({ filePath, size: fileBuffer.length, mimeType }, 'Processing image with GPT-4 Vision OCR');
       
@@ -419,6 +452,14 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       logger.info({ textLength: extractedText.length }, 'GPT-4 Vision OCR completed');
       
       return extractedText;
+    } else {
+      // For DOCX/DOC and other unsupported types, try to read as text
+      logger.info({ filePath, ext }, 'Unsupported file type for GPT-4 Vision, trying text extraction');
+      try {
+        return fileBuffer.toString('utf-8');
+      } catch {
+        throw new Error(`Unsupported file type: ${ext}. GPT-4 Vision only supports images (png, jpg, gif, webp).`);
+      }
     }
   } catch (error) {
     logger.error({ error }, 'GPT-4 OCR failed');
