@@ -2672,7 +2672,8 @@ model WorkflowExecution {
   contractId  String  @map("contract_id")
   tenantId    String? @map("tenant_id")
   status      String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
-  currentStep Int     @default(0) @map("current_step")
+  currentStep String? @map("current_step") // Step ID or number as string
+  initiatedBy String? @map("initiated_by") // Keep backward compatible
   startedBy   String? @map("started_by")
   dueDate     DateTime? @map("due_date")
   metadata    Json?
