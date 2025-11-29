@@ -454,6 +454,174 @@ export function useForecastingData() {
 }
 
 // =====================
+// Cross-Module Integration Hooks
+// =====================
+
+/**
+ * Unified contract intelligence - combines contract data with rate cards and analytics
+ */
+export function useContractIntelligence(contractId: string) {
+  const contract = useContract(contractId);
+  
+  const rateCards = useQuery({
+    queryKey: ['contract-rate-cards', contractId],
+    queryFn: async () => {
+      const response = await fetch(`/api/rate-cards?contractId=${contractId}`, {
+        headers: { 'x-tenant-id': 'demo' },
+      });
+      if (!response.ok) return { entries: [], total: 0 };
+      const json = await response.json();
+      return { entries: json.data?.entries || [], total: json.data?.total || 0 };
+    },
+    enabled: !!contractId,
+  });
+
+  const artifacts = useQuery({
+    queryKey: ['contract-artifacts', contractId],
+    queryFn: async () => {
+      const response = await fetch(`/api/contracts/${contractId}/artifacts`, {
+        headers: { 'x-tenant-id': 'demo' },
+      });
+      if (!response.ok) return [];
+      const json = await response.json();
+      return json.data?.artifacts || json.artifacts || [];
+    },
+    enabled: !!contractId,
+  });
+
+  const healthScore = useQuery({
+    queryKey: ['contract-health', contractId],
+    queryFn: async () => {
+      const response = await fetch(`/api/intelligence/health?contractId=${contractId}`, {
+        headers: { 'x-tenant-id': 'demo' },
+      });
+      if (!response.ok) return null;
+      const json = await response.json();
+      return json.data?.score || null;
+    },
+    enabled: !!contractId,
+  });
+
+  return {
+    contract: contract.data,
+    rateCards: rateCards.data,
+    artifacts: artifacts.data,
+    healthScore: healthScore.data,
+    isLoading: contract.isLoading || rateCards.isLoading || artifacts.isLoading,
+    error: contract.error || rateCards.error || artifacts.error,
+  };
+}
+
+/**
+ * Dashboard summary - aggregates data across all modules
+ */
+export function useDashboardSummary() {
+  return useQuery({
+    queryKey: ['dashboard-summary'],
+    queryFn: async () => {
+      const [contracts, rateCards, analytics] = await Promise.all([
+        fetch('/api/contracts?limit=100', { headers: { 'x-tenant-id': 'demo', 'x-data-mode': 'real' } })
+          .then(r => r.json()).catch(() => ({ data: { contracts: [], pagination: { total: 0 } } })),
+        fetch('/api/rate-cards/entries?limit=1', { headers: { 'x-tenant-id': 'demo' } })
+          .then(r => r.json()).catch(() => ({ data: { total: 0 } })),
+        fetch('/api/analytics/dashboard', { headers: { 'x-tenant-id': 'demo' } })
+          .then(r => r.json()).catch(() => ({ data: null })),
+      ]);
+
+      const contractsList = contracts.data?.contracts || [];
+      const activeContracts = contractsList.filter((c: Contract) => c.status === 'completed');
+      const processingContracts = contractsList.filter((c: Contract) => c.status === 'processing');
+      const failedContracts = contractsList.filter((c: Contract) => c.status === 'failed');
+
+      return {
+        contracts: {
+          total: contracts.data?.pagination?.total || contractsList.length,
+          active: activeContracts.length,
+          processing: processingContracts.length,
+          failed: failedContracts.length,
+        },
+        rateCards: {
+          total: rateCards.data?.total || 0,
+        },
+        analytics: analytics.data,
+        recentContracts: contractsList.slice(0, 5),
+      };
+    },
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Cross-module search - searches across contracts, rate cards, and clauses
+ */
+export function useUnifiedSearch(query: string) {
+  return useQuery({
+    queryKey: ['unified-search', query],
+    queryFn: async () => {
+      if (!query || query.length < 2) return { contracts: [], rateCards: [], clauses: [] };
+
+      const [contracts, rateCards, clauses] = await Promise.all([
+        fetch(`/api/contracts/search?q=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': 'demo' } })
+          .then(r => r.json()).catch(() => ({ data: { results: [] } })),
+        fetch(`/api/rate-cards?search=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': 'demo' } })
+          .then(r => r.json()).catch(() => ({ data: { entries: [] } })),
+        fetch(`/api/clauses?search=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': 'demo' } })
+          .then(r => r.json()).catch(() => ({ data: { clauses: [] } })),
+      ]);
+
+      return {
+        contracts: contracts.data?.results || [],
+        rateCards: rateCards.data?.entries || [],
+        clauses: clauses.data?.clauses || [],
+        total: (contracts.data?.results?.length || 0) + 
+               (rateCards.data?.entries?.length || 0) + 
+               (clauses.data?.clauses?.length || 0),
+      };
+    },
+    enabled: query.length >= 2,
+    staleTime: 10000,
+  });
+}
+
+/**
+ * Renewal intelligence - combines renewal data with contract and rate card info
+ */
+export function useRenewalIntelligence() {
+  return useQuery({
+    queryKey: ['renewal-intelligence'],
+    queryFn: async () => {
+      const [renewals, contracts] = await Promise.all([
+        fetch('/api/renewals', { headers: { 'x-tenant-id': 'demo' } })
+          .then(r => r.json()).catch(() => ({ data: { renewals: [] } })),
+        fetch('/api/contracts?limit=100', { headers: { 'x-tenant-id': 'demo', 'x-data-mode': 'real' } })
+          .then(r => r.json()).catch(() => ({ data: { contracts: [] } })),
+      ]);
+
+      const renewalsList = renewals.data?.renewals || [];
+      const contractsList = contracts.data?.contracts || [];
+
+      // Enrich renewals with contract data
+      const enrichedRenewals = renewalsList.map((renewal: any) => {
+        const contract = contractsList.find((c: Contract) => c.id === renewal.contractId);
+        return {
+          ...renewal,
+          contractDetails: contract,
+        };
+      });
+
+      return {
+        renewals: enrichedRenewals,
+        upcoming30Days: enrichedRenewals.filter((r: any) => r.daysUntilExpiry <= 30),
+        upcoming90Days: enrichedRenewals.filter((r: any) => r.daysUntilExpiry <= 90),
+        totalValue: enrichedRenewals.reduce((sum: number, r: any) => sum + (r.value || 0), 0),
+      };
+    },
+    staleTime: 60000,
+  });
+}
+
+// =====================
 // Optimistic Updates Helper
 // =====================
 

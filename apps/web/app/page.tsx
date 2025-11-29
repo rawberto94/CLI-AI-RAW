@@ -12,6 +12,7 @@ import {
   formatPercentage,
 } from "@/components/ui/design-system";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDashboardSummary } from "@/hooks/use-queries";
 
 // Lazy load heavy components
 const CostSavingsDashboardWidget = dynamic(
