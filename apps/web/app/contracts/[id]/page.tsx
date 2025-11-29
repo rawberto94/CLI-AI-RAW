@@ -55,6 +55,7 @@ import { cn } from '@/lib/utils'
 import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactViewer'
 import { GenerationFlowVisualization } from '@/components/artifacts/GenerationFlowVisualization'
 import { ScoreRing } from '@/components/artifacts/ArtifactCards'
+import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { formatCurrency, formatDate } from '@/lib/design-tokens'
 import {
   DropdownMenu,
@@ -273,6 +274,7 @@ export default function ContractDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [showShareDialog, setShowShareDialog] = useState(false)
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
@@ -566,7 +568,7 @@ export default function ContractDetailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
                     <Share2 className="h-4 w-4 mr-2" />
                     Share
                   </DropdownMenuItem>
@@ -1192,6 +1194,15 @@ export default function ContractDetailPage() {
           </Tabs>
         </motion.div>
       </div>
+
+      {/* Share Dialog */}
+      <ShareDialog
+        isOpen={showShareDialog}
+        onClose={() => setShowShareDialog(false)}
+        documentId={params.id as string}
+        documentType="CONTRACT"
+        documentTitle={contract?.filename || 'Contract'}
+      />
     </div>
   )
 }

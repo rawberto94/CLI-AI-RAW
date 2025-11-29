@@ -2667,14 +2667,14 @@ model WorkflowStep {
 }
 
 model WorkflowExecution {
-  id          String  @id @default(cuid())
-  workflowId  String  @map("workflow_id")
-  contractId  String  @map("contract_id")
-  tenantId    String? @map("tenant_id")
-  status      String  @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
-  currentStep String? @map("current_step") // Step ID or number as string
-  initiatedBy String? @map("initiated_by") // Keep backward compatible
-  startedBy   String? @map("started_by")
+  id          String    @id @default(cuid())
+  workflowId  String    @map("workflow_id")
+  contractId  String    @map("contract_id")
+  tenantId    String?   @map("tenant_id")
+  status      String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED
+  currentStep String?   @map("current_step") // Step ID or number as string
+  initiatedBy String?   @map("initiated_by") // Keep backward compatible
+  startedBy   String?   @map("started_by")
   dueDate     DateTime? @map("due_date")
   metadata    Json?
   error       String?
@@ -2705,7 +2705,7 @@ model WorkflowStepExecution {
   status      String  @default("PENDING") // PENDING, WAITING, IN_PROGRESS, COMPLETED, FAILED, SKIPPED, REJECTED
   assignedTo  String? @map("assigned_to")
   completedBy String? @map("completed_by")
-  result      Json?   // Approval result with comments
+  result      Json? // Approval result with comments
   metadata    Json?
 
   startedAt   DateTime  @default(now()) @map("started_at")
@@ -2798,15 +2798,15 @@ model SyncLog {
 // ============================================
 
 model Notification {
-  id        String   @id @default(cuid())
-  tenantId  String   @map("tenant_id")
-  userId    String   @map("user_id")
-  type      String   @default("SYSTEM") // APPROVAL_REQUEST, APPROVAL_COMPLETED, COMMENT_MENTION, CONTRACT_DEADLINE, WORKFLOW_STEP, SHARE_INVITE, SYSTEM
+  id        String    @id @default(cuid())
+  tenantId  String    @map("tenant_id")
+  userId    String    @map("user_id")
+  type      String    @default("SYSTEM") // APPROVAL_REQUEST, APPROVAL_COMPLETED, COMMENT_MENTION, CONTRACT_DEADLINE, WORKFLOW_STEP, SHARE_INVITE, SYSTEM
   title     String
   message   String
   link      String?
   metadata  Json?
-  isRead    Boolean  @default(false) @map("is_read")
+  isRead    Boolean   @default(false) @map("is_read")
   expiresAt DateTime? @map("expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")

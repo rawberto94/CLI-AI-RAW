@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator';
+import { NotificationBell } from '@/components/collaboration/NotificationCenter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -35,7 +36,6 @@ import {
   ChevronRight,
   CreditCard,
   Target,
-  Bell,
   Command,
   User,
   LogOut,
@@ -244,57 +244,16 @@ const navigationItems: NavigationItem[] = [
   }
 ];
 
-interface Notification {
-  id: string;
-  type: 'success' | 'warning' | 'error' | 'info';
-  title: string;
-  message: string;
-  time: string;
-  read: boolean;
-}
-
-// Sample notifications - in real app, fetch from API
-const sampleNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'success',
-    title: 'Contract Processed',
-    message: 'Acme Corp MSA has been analyzed',
-    time: '5 min ago',
-    read: false
-  },
-  {
-    id: '2',
-    type: 'warning',
-    title: 'Rate Card Alert',
-    message: 'New optimization opportunity found',
-    time: '1 hour ago',
-    read: false
-  },
-  {
-    id: '3',
-    type: 'info',
-    title: 'Weekly Report Ready',
-    message: 'Your analytics report is available',
-    time: '2 hours ago',
-    read: true
-  }
-];
-
 function EnhancedNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(['Rate Cards']);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const notificationRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  const unreadCount = sampleNotifications.filter(n => !n.read).length;
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -304,7 +263,6 @@ function EnhancedNavigation() {
         searchInputRef.current?.focus();
       }
       if (e.key === 'Escape') {
-        setShowNotifications(false);
         setShowUserMenu(false);
         setSearchFocused(false);
         searchInputRef.current?.blur();
@@ -318,9 +276,6 @@ function EnhancedNavigation() {
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(e.target as Node)) {
-        setShowNotifications(false);
-      }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false);
       }
@@ -355,15 +310,6 @@ function EnhancedNavigation() {
       setSearchFocused(false);
     }
   }, [searchQuery, router]);
-
-  const getNotificationIcon = (type: Notification['type']) => {
-    switch (type) {
-      case 'success': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'warning': return <AlertCircle className="h-4 w-4 text-amber-500" />;
-      case 'error': return <AlertCircle className="h-4 w-4 text-red-500" />;
-      default: return <Sparkles className="h-4 w-4 text-blue-500" />;
-    }
-  };
 
   return (
     <TooltipProvider>
@@ -501,80 +447,8 @@ function EnhancedNavigation() {
             </AnimatePresence>
           </div>
 
-          {/* Notifications */}
-          <div ref={notificationRef} className="relative">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => {
-                    setShowNotifications(!showNotifications);
-                    setShowUserMenu(false);
-                  }}
-                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <Bell className="h-5 w-5 text-gray-600" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 rounded-full text-[10px] font-medium text-white flex items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Notifications</TooltipContent>
-            </Tooltip>
-
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50"
-                >
-                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Notifications</h3>
-                    <button className="text-xs text-blue-600 hover:text-blue-700">
-                      Mark all read
-                    </button>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {sampleNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={cn(
-                          'px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer',
-                          !notification.read && 'bg-blue-50/50'
-                        )}
-                      >
-                        <div className="flex items-start gap-3">
-                          {getNotificationIcon(notification.type)}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">{notification.title}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{notification.message}</p>
-                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {notification.time}
-                            </p>
-                          </div>
-                          {!notification.read && (
-                            <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
-                    <Link
-                      href="/notifications"
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      View all notifications →
-                    </Link>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Notifications - Using real NotificationBell component */}
+          <NotificationBell />
         </div>
 
         {/* Navigation */}

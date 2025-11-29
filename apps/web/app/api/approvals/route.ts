@@ -316,7 +316,7 @@ export async function POST(request: NextRequest) {
             if (nextStep) {
               await prisma.workflowExecution.update({
                 where: { id: approvalId },
-                data: { currentStep: nextStep.stepOrder },
+                data: { currentStep: String(nextStep.stepOrder) },
               });
             }
           }
