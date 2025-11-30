@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import Link from 'next/link';
 import {
   FileText,
   DollarSign,
@@ -32,7 +33,9 @@ import {
   AlertCircle,
   Brain,
   ChevronRight,
-  Building
+  Building,
+  Send,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
@@ -393,6 +396,201 @@ function ExpirationRow({ item, index }: { item: UpcomingExpiration; index: numbe
   );
 }
 
+// ============ PENDING APPROVALS WIDGET ============
+
+interface PendingApproval {
+  id: string;
+  title: string;
+  type: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  requestedBy: string;
+  dueDate: string;
+  value?: number;
+}
+
+function PendingApprovalsWidget() {
+  const [approvals, setApprovals] = useState<PendingApproval[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchApprovals = async () => {
+      try {
+        const response = await fetch('/api/approvals?status=pending');
+        if (response.ok) {
+          const data = await response.json();
+          const items = (data.data?.items || []).slice(0, 5).map((item: any) => ({
+            id: item.id,
+            title: item.title || item.contractName || 'Approval Request',
+            type: item.type || 'contract',
+            priority: item.priority || 'medium',
+            requestedBy: item.requestedBy?.name || 'System',
+            dueDate: item.dueDate,
+            value: item.value,
+          }));
+          setApprovals(items);
+        }
+      } catch (error) {
+        // Use mock data on error
+        setApprovals([
+          { id: '1', title: 'Master Agreement - CloudTech', type: 'contract', priority: 'high', requestedBy: 'Sarah Johnson', dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), value: 450000 },
+          { id: '2', title: 'Renewal - GlobalSupply Ltd', type: 'renewal', priority: 'urgent', requestedBy: 'System', dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(), value: 780000 },
+          { id: '3', title: 'SLA Amendment - Acme Corp', type: 'amendment', priority: 'medium', requestedBy: 'Tom Wilson', dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), value: 50000 },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchApprovals();
+  }, []);
+
+  const getPriorityConfig = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' };
+      case 'high': return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' };
+      case 'medium': return { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' };
+      default: return { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' };
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'renewal': return Calendar;
+      case 'amendment': return FileText;
+      default: return Send;
+    }
+  };
+
+  const formatDueDate = (date: string) => {
+    const days = Math.ceil((new Date(date).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+    if (days < 0) return <span className="text-red-600 font-medium">Overdue</span>;
+    if (days === 0) return <span className="text-red-600 font-medium">Today</span>;
+    if (days === 1) return <span className="text-amber-600 font-medium">Tomorrow</span>;
+    if (days <= 3) return <span className="text-amber-600">{days} days</span>;
+    return <span className="text-slate-600">{days} days</span>;
+  };
+
+  if (loading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.85 }}
+      >
+        <Card className="border-slate-200/80">
+          <CardContent className="p-8">
+            <div className="animate-pulse space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-16 bg-slate-100 rounded-lg" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (approvals.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.85 }}
+      >
+        <Card className="border-slate-200/80 bg-gradient-to-br from-emerald-50 to-teal-50">
+          <CardContent className="p-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+            </div>
+            <h3 className="font-semibold text-slate-900 mb-1">All caught up!</h3>
+            <p className="text-sm text-slate-600">No pending approvals at the moment.</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.85 }}
+    >
+      <Card className="border-slate-200/80">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-amber-600" />
+              Pending Approvals
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-amber-600" asChild>
+              <Link href="/approvals">
+                View all
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y divide-slate-100">
+            {approvals.map((approval, index) => {
+              const priorityConfig = getPriorityConfig(approval.priority);
+              const TypeIcon = getTypeIcon(approval.type);
+              
+              return (
+                <motion.div
+                  key={approval.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  <Link 
+                    href={`/approvals?id=${approval.id}`}
+                    className="flex items-center gap-4 p-3 hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className={cn("p-2 rounded-lg", priorityConfig.bg)}>
+                      <TypeIcon className={cn("h-4 w-4", priorityConfig.text)} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-slate-900 truncate group-hover:text-amber-600 transition-colors">
+                        {approval.title}
+                      </p>
+                      <p className="text-xs text-slate-500 flex items-center gap-2">
+                        <span>by {approval.requestedBy}</span>
+                        <span>•</span>
+                        <span className="capitalize">{approval.type}</span>
+                      </p>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-xs text-slate-500">Due</div>
+                      <div className="text-sm font-medium">
+                        {formatDueDate(approval.dueDate)}
+                      </div>
+                    </div>
+                    
+                    {approval.value && approval.value > 0 && (
+                      <span className="text-sm font-semibold text-slate-900 tabular-nums">
+                        {formatCurrency(approval.value)}
+                      </span>
+                    )}
+                    
+                    <Badge className={cn("text-[10px]", priorityConfig.bg, priorityConfig.text, priorityConfig.border)}>
+                      {approval.priority}
+                    </Badge>
+                    
+                    <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Link>
+                </motion.div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
 // ============ MAIN COMPONENT ============
 
 export function ProfessionalDashboard() {
@@ -538,17 +736,20 @@ export function ProfessionalDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="border-slate-200/80">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-100">
-              <Clock className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-slate-900">{metrics.pendingApprovals}</p>
-              <p className="text-xs text-slate-500">Pending approval</p>
-            </div>
-          </CardContent>
-        </Card>
+        <Link href="/approvals">
+          <Card className="border-slate-200/80 hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-100 group-hover:bg-amber-200 transition-colors">
+                <Clock className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-2xl font-bold text-slate-900">{metrics.pendingApprovals}</p>
+                <p className="text-xs text-slate-500">Pending approval</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </CardContent>
+          </Card>
+        </Link>
         
         <Card className="border-slate-200/80">
           <CardContent className="p-4 flex items-center gap-3">
@@ -706,9 +907,11 @@ export function ProfessionalDashboard() {
                   <Activity className="h-5 w-5 text-blue-600" />
                   Recent Contracts
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="text-indigo-600">
-                  View all
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                <Button variant="ghost" size="sm" className="text-indigo-600" asChild>
+                  <Link href="/contracts">
+                    View all
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Link>
                 </Button>
               </div>
             </CardHeader>
@@ -750,6 +953,9 @@ export function ProfessionalDashboard() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Pending Approvals Widget */}
+      <PendingApprovalsWidget />
 
       {/* Contract Types Bar Chart */}
       <motion.div
