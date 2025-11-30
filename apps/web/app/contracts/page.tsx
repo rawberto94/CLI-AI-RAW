@@ -60,6 +60,7 @@ import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
+import { ShareDialog } from "@/components/collaboration/ShareDialog";
 
 // Filter configuration
 const CONTRACT_TYPES = [
@@ -94,6 +95,11 @@ export default function ContractsPage() {
   // Bulk selection state
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareContractId, setShareContractId] = useState<string | null>(null);
+  const [shareContractTitle, setShareContractTitle] = useState<string>("");
 
   // Use React Query for data fetching with caching
   const { 
@@ -178,6 +184,91 @@ export default function ContractsPage() {
     setRiskFilters([]);
     setAdvancedFilters({});
   }, []);
+
+  // Contract action handlers
+  const handleDownload = useCallback(async (contractId: string, format: 'json' | 'csv' | 'pdf' = 'pdf') => {
+    try {
+      toast.info('Preparing download...');
+      const response = await fetch(`/api/contracts/${contractId}/export?format=${format}`, {
+        headers: { 'x-tenant-id': 'demo' },
+      });
+      
+      if (!response.ok) throw new Error('Export failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contract-${contractId}.${format === 'pdf' ? 'html' : format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Download started');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download contract');
+    }
+  }, []);
+
+  const handleShare = useCallback((contractId: string, contractTitle: string) => {
+    setShareContractId(contractId);
+    setShareContractTitle(contractTitle);
+    setShareDialogOpen(true);
+  }, []);
+
+  const handleRequestApproval = useCallback(async (contractId: string, contractTitle: string) => {
+    try {
+      toast.info('Creating approval request...');
+      const response = await fetch('/api/workflows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          name: `Approval: ${contractTitle}`,
+          description: `Approval workflow for contract ${contractTitle}`,
+          type: 'CONTRACT_APPROVAL',
+          contractId,
+          steps: [
+            { name: 'Initial Review', type: 'APPROVAL', order: 1 },
+            { name: 'Final Approval', type: 'APPROVAL', order: 2 },
+          ],
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create workflow');
+      
+      toast.success('Approval workflow created');
+      router.push('/approvals');
+    } catch (error) {
+      console.error('Request approval error:', error);
+      toast.error('Failed to request approval');
+    }
+  }, [router]);
+
+  const handleDelete = useCallback(async (contractId: string) => {
+    if (!confirm('Are you sure you want to delete this contract? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      toast.info('Deleting contract...');
+      const response = await fetch(`/api/contracts/${contractId}`, {
+        method: 'DELETE',
+        headers: { 'x-tenant-id': 'demo' },
+      });
+
+      if (!response.ok) throw new Error('Delete failed');
+      
+      toast.success('Contract deleted successfully');
+      refetch();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete contract');
+    }
+  }, [refetch]);
 
   // Check if any filters are active
   const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || Object.keys(advancedFilters).length > 0;
@@ -888,20 +979,20 @@ export default function ContractsPage() {
                             Compare
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownload(contract.id)}>
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShare(contract.id, contract.title || 'Contract')}>
                             <Share2 className="h-4 w-4 mr-2" />
                             Share
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRequestApproval(contract.id, contract.title || 'Contract')}>
                             <ClipboardCheck className="h-4 w-4 mr-2" />
                             Request Approval
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(contract.id)}>
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
@@ -939,6 +1030,20 @@ export default function ContractsPage() {
         }}
         initialFilters={advancedFilters}
       />
+      
+      {/* Share Dialog */}
+      {shareContractId && (
+        <ShareDialog
+          isOpen={shareDialogOpen}
+          onClose={() => {
+            setShareDialogOpen(false);
+            setShareContractId(null);
+          }}
+          documentId={shareContractId}
+          documentType="contract"
+          documentTitle={shareContractTitle}
+        />
+      )}
     </div>
     </TooltipProvider>
   );

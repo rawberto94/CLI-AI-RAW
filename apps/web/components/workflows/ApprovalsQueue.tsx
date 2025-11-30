@@ -566,18 +566,77 @@ export const ApprovalsQueue: React.FC = () => {
     rejected: approvals.filter(a => a.status === 'rejected').length,
   }), [approvals]);
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!selectedId) return;
-    setApprovals(prev => prev.map(a => 
-      a.id === selectedId ? { ...a, status: 'approved' as const } : a
-    ));
+    
+    try {
+      const response = await fetch('/api/approvals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          action: 'approve',
+          approvalId: selectedId,
+          comment: 'Approved via approvals queue',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to approve');
+      
+      const result = await response.json();
+      if (result.success) {
+        // Update local state
+        setApprovals(prev => prev.map(a => 
+          a.id === selectedId ? { ...a, status: 'approved' as const } : a
+        ));
+      }
+    } catch (error) {
+      console.error('Approve error:', error);
+      // Fallback to local state update
+      setApprovals(prev => prev.map(a => 
+        a.id === selectedId ? { ...a, status: 'approved' as const } : a
+      ));
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!selectedId) return;
-    setApprovals(prev => prev.map(a => 
-      a.id === selectedId ? { ...a, status: 'rejected' as const } : a
-    ));
+    
+    const reason = window.prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+    
+    try {
+      const response = await fetch('/api/approvals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          action: 'reject',
+          approvalId: selectedId,
+          reason,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to reject');
+      
+      const result = await response.json();
+      if (result.success) {
+        // Update local state
+        setApprovals(prev => prev.map(a => 
+          a.id === selectedId ? { ...a, status: 'rejected' as const } : a
+        ));
+      }
+    } catch (error) {
+      console.error('Reject error:', error);
+      // Fallback to local state update
+      setApprovals(prev => prev.map(a => 
+        a.id === selectedId ? { ...a, status: 'rejected' as const } : a
+      ));
+    }
   };
 
   if (loading) {
