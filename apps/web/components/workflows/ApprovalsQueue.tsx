@@ -43,6 +43,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { ApprovalNotificationBell } from './ApprovalNotificationBell';
+import { DeadlineIndicator } from './DeadlineAlerts';
 
 // ============================================================================
 // Types
@@ -313,9 +314,7 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
         </div>
 
         <div className="text-right">
-          <div className={`text-sm font-medium ${daysUntilDue <= 2 ? 'text-red-600' : daysUntilDue <= 5 ? 'text-amber-600' : 'text-slate-600'}`}>
-            {daysUntilDue === 0 ? 'Due today' : daysUntilDue < 0 ? `${Math.abs(daysUntilDue)}d overdue` : `${daysUntilDue}d left`}
-          </div>
+          <DeadlineIndicator dueDate={new Date(approval.dueDate)} size="sm" />
           <div className="text-xs text-slate-400 mt-1">
             Step {approval.currentStep}/{approval.totalSteps}
           </div>

@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { toast } from 'sonner';
+import { DeadlineAlertBanner, useDeadlineAlerts } from '@/components/workflows/DeadlineAlerts';
 import {
   LineChart,
   Line,
@@ -678,6 +679,24 @@ export function ProfessionalDashboard() {
           </Button>
         </div>
       </motion.div>
+
+      {/* Deadline Alerts Banner */}
+      {expirations.filter(e => e.daysRemaining <= 14).length > 0 && (
+        <DeadlineAlertBanner
+          items={expirations
+            .filter(e => e.daysRemaining <= 14)
+            .map(exp => ({
+              id: exp.id,
+              title: exp.name,
+              dueDate: new Date(exp.expiresAt),
+              type: 'contract' as const,
+              priority: exp.daysRemaining <= 3 ? 'urgent' as const : exp.daysRemaining <= 7 ? 'high' as const : 'medium' as const,
+              link: `/contracts/${exp.id}`,
+              assignee: exp.client,
+            }))
+          }
+        />
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
