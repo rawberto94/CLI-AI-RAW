@@ -30,8 +30,11 @@ import {
   CreditCard,
   Target,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle2,
+  GitBranch
 } from 'lucide-react'
+import { ApprovalNotificationBell } from '@/components/workflows/ApprovalNotificationBell'
 
 interface NavigationItem {
   name: string
@@ -110,6 +113,19 @@ const navigationItems: NavigationItem[] = [
     href: '/templates',
     icon: FileText,
     description: 'Contract templates'
+  },
+  {
+    name: 'Approvals',
+    href: '/approvals',
+    icon: CheckCircle2,
+    description: 'Approval workflows',
+    badge: 'New'
+  },
+  {
+    name: 'Workflows',
+    href: '/workflows',
+    icon: GitBranch,
+    description: 'Workflow automation'
   }
 ]
 
@@ -144,6 +160,7 @@ function MainNavigation() {
           <span className="font-semibold text-gray-900">Contract Intelligence</span>
         </div>
         <div className="flex items-center gap-2">
+          <ApprovalNotificationBell />
           <CompactConnectionStatus />
           <Button
             variant="ghost"
@@ -168,9 +185,12 @@ function MainNavigation() {
         )}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-200">
-          <FileText className="h-6 w-6 text-blue-600" />
-          <span className="font-semibold text-gray-900">Contract Intelligence</span>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <FileText className="h-6 w-6 text-blue-600" />
+            <span className="font-semibold text-gray-900">Contract Intelligence</span>
+          </div>
+          <ApprovalNotificationBell />
         </div>
 
         {/* Navigation */}

@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import Link from 'next/link';
 import {
   RefreshCw,
   Calendar,
@@ -30,8 +32,13 @@ import {
   Eye,
   Edit,
   Loader2,
+  SendHorizonal,
+  GitBranch,
+  UserCheck,
+  ClipboardCheck,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
 
 // ============================================================================
 // Types
@@ -62,6 +69,8 @@ interface RenewalContract {
     name: string;
     email: string;
   };
+  approvalStatus?: 'pending' | 'approved' | 'rejected' | 'none';
+  approvalProgress?: number;
 }
 
 interface RenewalEvent {
@@ -98,6 +107,8 @@ const mockRenewals: RenewalContract[] = [
     risks: [],
     savings: { potential: 120000, realized: 0 },
     assignee: { name: 'Sarah Johnson', email: 'sarah@company.com' },
+    approvalStatus: 'pending',
+    approvalProgress: 50,
   },
   {
     id: 'r2',
@@ -121,6 +132,7 @@ const mockRenewals: RenewalContract[] = [
     risks: ['Auto-renewal trap', '22% above market', 'Performance issues', '8% annual escalator'],
     savings: { potential: 171600, realized: 0 },
     assignee: { name: 'Emily Davis', email: 'emily@company.com' },
+    approvalStatus: 'none',
   },
   {
     id: 'r3',
@@ -138,6 +150,8 @@ const mockRenewals: RenewalContract[] = [
     recommendation: 'renegotiate',
     risks: ['SLA compliance at 97.2%', 'Latency issues'],
     savings: { potential: 45000, realized: 0 },
+    approvalStatus: 'approved',
+    approvalProgress: 100,
   },
   {
     id: 'r4',
@@ -154,6 +168,7 @@ const mockRenewals: RenewalContract[] = [
     renewalHistory: [],
     recommendation: 'renew',
     risks: [],
+    approvalStatus: 'none',
   },
   {
     id: 'r5',
@@ -173,6 +188,8 @@ const mockRenewals: RenewalContract[] = [
     recommendation: 'renew',
     risks: [],
     savings: { potential: 6000, realized: 0 },
+    approvalStatus: 'rejected',
+    approvalProgress: 0,
   },
 ];
 
@@ -219,9 +236,19 @@ interface RenewalCardProps {
   renewal: RenewalContract;
   isSelected: boolean;
   onSelect: () => void;
+  onSubmitForApproval: (renewal: RenewalContract) => void;
 }
 
-const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect }) => {
+const getApprovalStatusConfig = (status?: RenewalContract['approvalStatus']) => {
+  switch (status) {
+    case 'pending': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock, label: 'Pending Approval' };
+    case 'approved': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: 'Approved' };
+    case 'rejected': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: 'Rejected' };
+    default: return null;
+  }
+};
+
+const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect, onSubmitForApproval }) => {
   const status = getStatusConfig(renewal.status);
   const StatusIcon = status.icon;
   const rec = getRecommendationConfig(renewal.recommendation);
@@ -229,6 +256,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
   const urgencyClass = getUrgencyColor(renewal.daysUntilRenewal, renewal.autoRenewal, renewal.noticeDeadline);
   const valueChange = renewal.projectedValue - renewal.currentValue;
   const valueChangePercent = renewal.currentValue > 0 ? (valueChange / renewal.currentValue) * 100 : 0;
+  const approvalConfig = getApprovalStatusConfig(renewal.approvalStatus);
 
   return (
     <motion.div
@@ -341,6 +369,61 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
           )}
         </div>
       )}
+
+      {/* Approval Status & Actions */}
+      <div className="mt-3 pt-3 border-t border-slate-100">
+        <div className="flex items-center justify-between">
+          {approvalConfig ? (
+            <div className={`flex items-center gap-2 px-2 py-1 rounded-lg border ${approvalConfig.color}`}>
+              <approvalConfig.icon className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">{approvalConfig.label}</span>
+              {renewal.approvalStatus === 'pending' && renewal.approvalProgress !== undefined && (
+                <div className="w-12 h-1.5 bg-amber-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-amber-600 rounded-full transition-all" 
+                    style={{ width: `${renewal.approvalProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-slate-400">No approval workflow</span>
+          )}
+          
+          <div className="flex items-center gap-1">
+            {(!renewal.approvalStatus || renewal.approvalStatus === 'none' || renewal.approvalStatus === 'rejected') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSubmitForApproval(renewal);
+                }}
+                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Submit for approval"
+              >
+                <SendHorizonal className="w-4 h-4" />
+              </button>
+            )}
+            {renewal.approvalStatus === 'pending' && (
+              <Link
+                href="/approvals"
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                title="View in approvals"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+              </Link>
+            )}
+            <Link
+              href={`/contracts/${renewal.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              title="View contract"
+            >
+              <Eye className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 };
@@ -357,6 +440,31 @@ export const RenewalManager: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'list' | 'calendar' | 'timeline'>('list');
   const [loading, setLoading] = useState(true);
+  
+  // Approval modal state
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [renewalForApproval, setRenewalForApproval] = useState<RenewalContract | null>(null);
+  
+  const handleSubmitForApproval = (renewal: RenewalContract) => {
+    setRenewalForApproval(renewal);
+    setApprovalModalOpen(true);
+  };
+  
+  const handleApprovalSubmit = () => {
+    if (renewalForApproval) {
+      // Update the renewal status locally
+      setRenewals(prev => prev.map(r => 
+        r.id === renewalForApproval.id 
+          ? { ...r, approvalStatus: 'pending' as const, approvalProgress: 0 }
+          : r
+      ));
+      toast.success('Renewal submitted for approval', {
+        description: `${renewalForApproval.contractName} has been sent for review`,
+      });
+    }
+    setApprovalModalOpen(false);
+    setRenewalForApproval(null);
+  };
 
   // Fetch renewals from API or use mock data based on mode
   useEffect(() => {
@@ -565,6 +673,7 @@ export const RenewalManager: React.FC = () => {
                 renewal={renewal}
                 isSelected={selectedId === renewal.id}
                 onSelect={() => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
+                onSubmitForApproval={handleSubmitForApproval}
               />
             ))}
           </div>
@@ -586,6 +695,7 @@ export const RenewalManager: React.FC = () => {
                       renewal={renewal}
                       isSelected={selectedId === renewal.id}
                       onSelect={() => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
+                      onSubmitForApproval={handleSubmitForApproval}
                     />
                   ))}
                 </div>
@@ -602,6 +712,13 @@ export const RenewalManager: React.FC = () => {
             Showing {filteredRenewals.length} of {renewals.length} renewals
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/approvals"
+              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2"
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              View Approvals
+            </Link>
             <button className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium flex items-center gap-2">
               <Mail className="w-4 h-4" />
               Send Reminders
@@ -613,6 +730,20 @@ export const RenewalManager: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Submit for Approval Modal */}
+      {renewalForApproval && (
+        <SubmitForApprovalModal
+          isOpen={approvalModalOpen}
+          onClose={() => {
+            setApprovalModalOpen(false);
+            setRenewalForApproval(null);
+          }}
+          contractId={renewalForApproval.id}
+          contractTitle={`Renewal: ${renewalForApproval.contractName}`}
+          onSubmitSuccess={handleApprovalSubmit}
+        />
+      )}
     </div>
   );
 };
