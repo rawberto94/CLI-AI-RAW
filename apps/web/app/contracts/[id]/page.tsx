@@ -21,6 +21,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ArrowLeft, 
+  ArrowRight,
   RefreshCw, 
   AlertCircle, 
   FileText,
@@ -187,6 +188,201 @@ function ApprovalStatusBadge({ contractId }: { contractId: string }) {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+// Activity Tab Component
+function ActivityTab({ contractId }: { contractId: string }) {
+  const [activities, setActivities] = useState<any[]>([]);
+  const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActivity = async () => {
+      setLoading(true);
+      try {
+        // Fetch approval history
+        const approvalRes = await fetch(`/api/approvals?contractId=${contractId}`);
+        if (approvalRes.ok) {
+          const data = await approvalRes.json();
+          setApprovalHistory(data.data?.items || []);
+        }
+
+        // Generate mock activities (would come from activity log API)
+        const mockActivities = [
+          {
+            id: '1',
+            type: 'view',
+            user: 'Sarah Johnson',
+            action: 'viewed this contract',
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+          },
+          {
+            id: '2',
+            type: 'edit',
+            user: 'Mike Chen',
+            action: 'updated contract metadata',
+            timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
+          },
+          {
+            id: '3',
+            type: 'share',
+            user: 'You',
+            action: 'shared with Legal Team',
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+          {
+            id: '4',
+            type: 'upload',
+            user: 'You',
+            action: 'uploaded this contract',
+            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+          },
+        ];
+        setActivities(mockActivities);
+      } catch (e) {
+        console.log('Failed to fetch activity');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchActivity();
+  }, [contractId]);
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'view': return Eye;
+      case 'edit': return Pencil;
+      case 'share': return Share2;
+      case 'upload': return FileText;
+      case 'approval': return CheckCircle2;
+      default: return FileText;
+    }
+  };
+
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+    return `${Math.floor(seconds / 86400)} days ago`;
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-20 bg-white border border-slate-200 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Approval Workflow Status */}
+      {approvalHistory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-amber-600" />
+              Approval Workflow
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {approvalHistory.map((approval: any) => (
+                <div key={approval.id} className="p-4 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="outline"
+                        className={cn(
+                          approval.status === 'approved' && 'bg-green-50 text-green-700 border-green-200',
+                          approval.status === 'rejected' && 'bg-red-50 text-red-700 border-red-200',
+                          approval.status === 'pending' && 'bg-amber-50 text-amber-700 border-amber-200'
+                        )}
+                      >
+                        {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
+                      </Badge>
+                      <span className="text-sm text-slate-600">{approval.title || 'Approval Request'}</span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      {formatTimeAgo(new Date(approval.requestedAt || approval.createdAt))}
+                    </span>
+                  </div>
+                  
+                  {/* Approval Chain Progress */}
+                  {approval.approvalChain && approval.approvalChain.length > 0 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                      {approval.approvalChain.map((step: any, idx: number) => (
+                        <React.Fragment key={idx}>
+                          <div className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap",
+                            step.status === 'completed' && 'bg-green-100 text-green-700',
+                            step.status === 'pending' && 'bg-amber-100 text-amber-700',
+                            step.status === 'waiting' && 'bg-slate-100 text-slate-500'
+                          )}>
+                            {step.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
+                            {step.status === 'pending' && <Clock className="h-3 w-3" />}
+                            {step.role}
+                          </div>
+                          {idx < approval.approvalChain.length - 1 && (
+                            <ArrowRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-600" />
+            Recent Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activities.length > 0 ? (
+            <div className="space-y-3">
+              {activities.map((activity) => {
+                const Icon = getActivityIcon(activity.type);
+                return (
+                  <div 
+                    key={activity.id}
+                    className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                      <Icon className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-900">
+                        <span className="font-medium">{activity.user}</span>{' '}
+                        {activity.action}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {formatTimeAgo(activity.timestamp)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-500 text-center py-4">
+              No recent activity
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -866,6 +1062,13 @@ export default function ContractDetailPage() {
                   <Info className="h-4 w-4 mr-2" />
                   Details
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="activity" 
+                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Activity
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -1378,6 +1581,11 @@ export default function ContractDetailPage() {
                   </CardContent>
                 </Card>
               )}
+            </TabsContent>
+
+            {/* Activity Tab - Approval History & Collaboration */}
+            <TabsContent value="activity" className="space-y-6">
+              <ActivityTab contractId={params.id as string} />
             </TabsContent>
           </Tabs>
         </motion.div>
