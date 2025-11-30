@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/dialog';
 import { ApprovalNotificationBell } from './ApprovalNotificationBell';
 import { DeadlineIndicator } from './DeadlineAlerts';
+import { CommentsThread } from './CommentsThread';
 
 // ============================================================================
 // Types
@@ -443,29 +444,12 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
         </div>
       </div>
 
-      {/* Comments */}
+      {/* Comments Thread */}
       <div className="flex-1 p-6 overflow-y-auto">
-        <h3 className="text-sm font-medium text-slate-500 uppercase mb-4">Comments & History</h3>
-        {approval.comments.length > 0 ? (
-          <div className="space-y-4">
-            {approval.comments.map(c => (
-              <div key={c.id} className="p-3 bg-slate-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-slate-900">{c.author}</span>
-                  <span className="text-xs text-slate-400">
-                    {new Date(c.createdAt).toLocaleString()}
-                  </span>
-                </div>
-                <p className="text-sm text-slate-600">{c.content}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-slate-400">
-            <MessageSquare className="w-8 h-8 mx-auto mb-2" />
-            <p>No comments yet</p>
-          </div>
-        )}
+        <CommentsThread 
+          approvalId={approval.id}
+          currentUserName="You"
+        />
       </div>
 
       {/* Actions */}
