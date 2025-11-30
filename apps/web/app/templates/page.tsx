@@ -20,11 +20,15 @@ import {
   Sparkles,
   Filter,
   RefreshCw,
+  SendHorizonal,
+  ClipboardCheck,
+  Eye,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useTemplates, useDeleteTemplate, useCreateTemplate } from '@/hooks/use-queries'
 import { toast } from 'sonner'
+import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
 
 interface ContractTemplate {
   id: string
@@ -37,18 +41,38 @@ interface ContractTemplate {
   createdBy: string
   createdAt: string
   lastModified: string
-  status: 'draft' | 'active' | 'archived'
+  status: 'draft' | 'active' | 'archived' | 'pending_approval'
   usageCount: number
+  approvalStatus?: 'pending' | 'approved' | 'rejected' | 'none'
 }
 
 export default function TemplatesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  
+  // Approval modal state
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false)
+  const [templateForApproval, setTemplateForApproval] = useState<ContractTemplate | null>(null)
 
   // Use React Query for data fetching with caching
   const { data: templatesData, isLoading: loading, refetch } = useTemplates()
   const deleteTemplateMutation = useDeleteTemplate()
   const createTemplateMutation = useCreateTemplate()
+
+  // Handle submit for approval
+  const handleSubmitForApproval = (template: ContractTemplate) => {
+    setTemplateForApproval(template)
+    setApprovalModalOpen(true)
+  }
+  
+  const handleApprovalSuccess = () => {
+    toast.success('Template submitted for approval', {
+      description: `${templateForApproval?.name} has been sent for review`,
+    })
+    setApprovalModalOpen(false)
+    setTemplateForApproval(null)
+    refetch()
+  }
 
   // Handle template duplication
   const handleDuplicate = async (template: ContractTemplate) => {
@@ -179,7 +203,15 @@ export default function TemplatesPage() {
     ]
   }, [templatesData])
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, approvalStatus?: string) => {
+    if (approvalStatus === 'pending') {
+      return (
+        <Badge className="bg-amber-500 text-white flex items-center gap-1">
+          <Clock className="h-3 w-3" />
+          Pending Approval
+        </Badge>
+      )
+    }
     switch (status) {
       case 'active':
         return <Badge className="bg-green-500 text-white">Active</Badge>
@@ -187,6 +219,13 @@ export default function TemplatesPage() {
         return <Badge className="bg-yellow-500 text-white">Draft</Badge>
       case 'archived':
         return <Badge className="bg-gray-500 text-white">Archived</Badge>
+      case 'pending_approval':
+        return (
+          <Badge className="bg-amber-500 text-white flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Pending Approval
+          </Badge>
+        )
       default:
         return null
     }
@@ -359,14 +398,17 @@ export default function TemplatesPage() {
             {filteredTemplates.map((template) => (
               <Card
                 key={template.id}
-                className="shadow-xl border-0 bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-shadow duration-200"
+                className={cn(
+                  "shadow-xl border-0 bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-shadow duration-200",
+                  template.approvalStatus === 'pending' && "border-l-4 border-l-amber-500"
+                )}
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-xl font-bold text-gray-900 flex-1">
                       {template.name}
                     </CardTitle>
-                    {getStatusBadge(template.status)}
+                    {getStatusBadge(template.status, template.approvalStatus)}
                   </div>
                   <Badge variant="outline" className="w-fit mt-2">
                     {template.category}
@@ -410,14 +452,36 @@ export default function TemplatesPage() {
                         Edit
                       </Button>
                     </Link>
+                    {template.status === 'draft' && template.approvalStatus !== 'pending' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="text-blue-600 hover:bg-blue-50"
+                        onClick={() => handleSubmitForApproval(template)}
+                        title="Submit for approval"
+                      >
+                        <SendHorizonal className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {template.approvalStatus === 'pending' && (
+                      <Link href="/approvals">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-amber-600 hover:bg-amber-50"
+                          title="View in approvals"
+                        >
+                          <ClipboardCheck className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => handleDuplicate(template)}
                       disabled={createTemplateMutation.isPending}
                     >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Duplicate
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <Button 
                       variant="outline" 
@@ -433,6 +497,20 @@ export default function TemplatesPage() {
               </Card>
             ))}
           </div>
+        )}
+        
+        {/* Submit for Approval Modal */}
+        {templateForApproval && (
+          <SubmitForApprovalModal
+            isOpen={approvalModalOpen}
+            onClose={() => {
+              setApprovalModalOpen(false)
+              setTemplateForApproval(null)
+            }}
+            contractId={templateForApproval.id}
+            contractTitle={`Template: ${templateForApproval.name}`}
+            onSubmitSuccess={handleApprovalSuccess}
+          />
         )}
       </div>
     </div>
