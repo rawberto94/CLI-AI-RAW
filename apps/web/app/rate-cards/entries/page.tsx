@@ -122,7 +122,7 @@ export default function RateCardEntriesPage() {
               Upload CSV
             </Button>
           </Link>
-          <Button>
+          <Button onClick={() => router.push('/rate-cards/new')}>
             <Plus className="h-4 w-4 mr-2" />
             Add Rate Card
           </Button>

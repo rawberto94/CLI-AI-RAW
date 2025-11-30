@@ -30,10 +30,12 @@ export default function BaselinesPage() {
               Import Baselines
             </Button>
           </Link>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Baseline
-          </Button>
+          <Link href="/rate-cards/baselines/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Baseline
+            </Button>
+          </Link>
         </div>
       </div>
 
