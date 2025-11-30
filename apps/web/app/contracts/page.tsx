@@ -1,18 +1,33 @@
 /**
- * Simplified Contracts List Page
- * Clean, focused UI with essential features only
+ * Enhanced Contracts List Page
+ * Integrated filters, bulk selection, cross-module actions
  */
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { NoContracts, NoResults } from "@/components/ui/empty-states";
+import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import {
   FileText,
   Search,
@@ -29,17 +44,56 @@ import {
   Filter,
   TrendingUp,
   ArrowUpRight,
+  MoreHorizontal,
+  Download,
+  Trash2,
+  Share2,
+  Brain,
+  GitCompare,
+  Bell,
+  ClipboardCheck,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, type Contract } from "@/hooks/use-queries";
+import { toast } from "sonner";
+
+// Filter configuration
+const CONTRACT_TYPES = [
+  "Service Agreement",
+  "NDA",
+  "Employment",
+  "Lease",
+  "Vendor Agreement",
+  "Consulting",
+  "License",
+  "Partnership",
+];
+
+const RISK_LEVELS = [
+  { value: "low", label: "Low Risk", range: [0, 30] },
+  { value: "medium", label: "Medium Risk", range: [30, 70] },
+  { value: "high", label: "High Risk", range: [70, 100] },
+];
 
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
+  
+  // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilters, setTypeFilters] = useState<string[]>([]);
+  const [riskFilters, setRiskFilters] = useState<string[]>([]);
+  const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  
+  // Bulk selection state
+  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
 
   // Use React Query for data fetching with caching
   const { 
@@ -52,23 +106,120 @@ export default function ContractsPage() {
   });
 
   const contracts: Contract[] = contractsData?.contracts || [];
+  
+  // Toggle selection for a single contract
+  const toggleSelect = useCallback((contractId: string) => {
+    setSelectedContracts(prev => {
+      const next = new Set(prev);
+      if (next.has(contractId)) {
+        next.delete(contractId);
+      } else {
+        next.add(contractId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Select/deselect all visible contracts
+  const toggleSelectAll = useCallback(() => {
+    const visibleIds = filteredContracts.map(c => c.id);
+    setSelectedContracts(prev => {
+      const allSelected = visibleIds.every(id => prev.has(id));
+      if (allSelected) {
+        return new Set();
+      } else {
+        return new Set(visibleIds);
+      }
+    });
+  }, []);
+
+  // Bulk operations
+  const performBulkAction = async (action: 'export' | 'analyze' | 'delete' | 'share') => {
+    if (selectedContracts.size === 0) return;
+    
+    setIsProcessingBulk(true);
+    try {
+      const response = await fetch('/api/contracts/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-data-mode': dataMode,
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          operation: action,
+          contractIds: Array.from(selectedContracts),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Operation failed');
+      
+      const result = await response.json();
+      toast.success(`Successfully ${action}ed ${selectedContracts.size} contracts`);
+      
+      if (action === 'delete') {
+        refetch();
+      }
+      
+      setSelectedContracts(new Set());
+    } catch (error) {
+      console.error('Bulk operation error:', error);
+      toast.error(`Failed to ${action} contracts`);
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setTypeFilters([]);
+    setRiskFilters([]);
+    setAdvancedFilters({});
+  }, []);
+
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || Object.keys(advancedFilters).length > 0;
 
   const filteredContracts = useMemo(() => {
     if (!Array.isArray(contracts)) return [];
     
     return contracts.filter((contract) => {
+      // Text search
       const matchesSearch =
         searchQuery === "" ||
         contract.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         contract.parties?.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         contract.parties?.supplier?.toLowerCase().includes(searchQuery.toLowerCase());
 
+      // Status filter
       const matchesStatus =
         statusFilter === "all" || contract.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      // Risk level filter
+      const matchesRisk = riskFilters.length === 0 || riskFilters.some(risk => {
+        const level = RISK_LEVELS.find(l => l.value === risk);
+        if (!level || !contract.riskScore) return false;
+        return contract.riskScore >= level.range[0] && contract.riskScore < level.range[1];
+      });
+
+      // Advanced filters
+      const matchesAdvanced = 
+        (!advancedFilters.clientName || contract.parties?.client?.toLowerCase().includes(advancedFilters.clientName.toLowerCase())) &&
+        (!advancedFilters.supplierName || contract.parties?.supplier?.toLowerCase().includes(advancedFilters.supplierName.toLowerCase())) &&
+        (!advancedFilters.minValue || (contract.value && contract.value >= advancedFilters.minValue)) &&
+        (!advancedFilters.maxValue || (contract.value && contract.value <= advancedFilters.maxValue));
+
+      return matchesSearch && matchesStatus && matchesRisk && matchesAdvanced;
     });
-  }, [contracts, searchQuery, statusFilter]);
+  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, advancedFilters]);
+
+  // After filteredContracts is computed, we need to fix toggleSelectAll
+  const allVisibleSelected = useMemo(() => {
+    if (filteredContracts.length === 0) return false;
+    return filteredContracts.every(c => selectedContracts.has(c.id));
+  }, [filteredContracts, selectedContracts]);
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -137,6 +288,7 @@ export default function ContractsPage() {
   }
 
   return (
+    <TooltipProvider>
     <div className="page-wrapper">
       <div className="page-container space-y-6">
         <PageBreadcrumb />
@@ -156,6 +308,14 @@ export default function ContractsPage() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowAdvancedSearch(true)}
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              Advanced
+            </Button>
             <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700">
               <Link href="/upload">
                 <Upload className="h-4 w-4 mr-2" />
@@ -164,6 +324,120 @@ export default function ContractsPage() {
             </Button>
           </div>
         </div>
+
+        {/* Bulk Actions Bar */}
+        <AnimatePresence>
+          {selectedContracts.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Card className="bg-blue-50 border-blue-200 border-2">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={allVisibleSelected}
+                        onCheckedChange={() => {
+                          const visibleIds = filteredContracts.map(c => c.id);
+                          setSelectedContracts(prev => {
+                            if (allVisibleSelected) {
+                              return new Set();
+                            } else {
+                              return new Set(visibleIds);
+                            }
+                          });
+                        }}
+                      />
+                      <span className="font-medium text-blue-900">
+                        {selectedContracts.size} contract{selectedContracts.size !== 1 ? 's' : ''} selected
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-700 hover:text-blue-900"
+                        onClick={() => setSelectedContracts(new Set())}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white"
+                            onClick={() => performBulkAction('export')}
+                            disabled={isProcessingBulk}
+                          >
+                            {isProcessingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                            <span className="hidden sm:inline ml-2">Export</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Export selected contracts</TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white"
+                            onClick={() => performBulkAction('analyze')}
+                            disabled={isProcessingBulk}
+                          >
+                            <Brain className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-2">AI Analyze</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Run AI analysis on selected</TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white"
+                            onClick={() => performBulkAction('share')}
+                            disabled={isProcessingBulk}
+                          >
+                            <Share2 className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-2">Share</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Share selected contracts</TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm(`Delete ${selectedContracts.size} contracts? This cannot be undone.`)) {
+                                performBulkAction('delete');
+                              }
+                            }}
+                            disabled={isProcessingBulk}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline ml-2">Delete</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Delete selected contracts</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -234,32 +508,39 @@ export default function ContractsPage() {
         {/* Search and Filters */}
         <Card className="card-base">
           <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search contracts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 input-base"
-                  data-testid="contract-search"
-                />
+            <div className="flex flex-col gap-4">
+              {/* Search Row */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Search contracts by name, client, or supplier..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 input-base"
+                    data-testid="contract-search"
+                  />
+                </div>
               </div>
-              <div className="flex gap-2" data-testid="status-filters">
-                <Button
-                  variant={statusFilter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("all")}
-                  data-testid="filter-all"
-                  className={statusFilter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={statusFilter === "completed" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter("completed")}
-                  data-testid="filter-active"
+              
+              {/* Filters Row */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Status Filters */}
+                <div className="flex gap-1" data-testid="status-filters">
+                  <Button
+                    variant={statusFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("all")}
+                    data-testid="filter-all"
+                    className={statusFilter === "all" ? "bg-blue-600 hover:bg-blue-700" : ""}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    variant={statusFilter === "completed" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("completed")}
+                    data-testid="filter-active"
                     className={statusFilter === "completed" ? "bg-green-600 hover:bg-green-700" : ""}
                   >
                     Active
@@ -273,10 +554,136 @@ export default function ContractsPage() {
                   >
                     Processing
                   </Button>
+                  <Button
+                    variant={statusFilter === "failed" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setStatusFilter("failed")}
+                    data-testid="filter-failed"
+                    className={statusFilter === "failed" ? "bg-red-600 hover:bg-red-700" : ""}
+                  >
+                    Failed
+                  </Button>
                 </div>
+
+                <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
+
+                {/* Risk Level Filters */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Shield className="h-4 w-4" />
+                      Risk
+                      {riskFilters.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {riskFilters.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {RISK_LEVELS.map((level) => (
+                      <DropdownMenuItem
+                        key={level.value}
+                        onClick={() => {
+                          setRiskFilters(prev => 
+                            prev.includes(level.value) 
+                              ? prev.filter(r => r !== level.value)
+                              : [...prev, level.value]
+                          );
+                        }}
+                      >
+                        <Checkbox
+                          checked={riskFilters.includes(level.value)}
+                          className="mr-2"
+                        />
+                        {level.label}
+                      </DropdownMenuItem>
+                    ))}
+                    {riskFilters.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setRiskFilters([])}>
+                          Clear risk filters
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Clear Filters */}
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="text-slate-500 hover:text-slate-900"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear filters
+                  </Button>
+                )}
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Active Filter Chips */}
+              {hasActiveFilters && (
+                <div className="flex flex-wrap gap-2">
+                  {searchQuery && (
+                    <Badge variant="secondary" className="gap-1 pr-1">
+                      Search: {searchQuery}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 ml-1"
+                        onClick={() => setSearchQuery("")}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {riskFilters.map(risk => (
+                    <Badge key={risk} variant="secondary" className="gap-1 pr-1">
+                      {RISK_LEVELS.find(l => l.value === risk)?.label}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 ml-1"
+                        onClick={() => setRiskFilters(prev => prev.filter(r => r !== risk))}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                  {advancedFilters.clientName && (
+                    <Badge variant="secondary" className="gap-1 pr-1">
+                      Client: {advancedFilters.clientName}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 ml-1"
+                        onClick={() => setAdvancedFilters(prev => ({ ...prev, clientName: undefined }))}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  )}
+                  {advancedFilters.supplierName && (
+                    <Badge variant="secondary" className="gap-1 pr-1">
+                      Supplier: {advancedFilters.supplierName}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 ml-1"
+                        onClick={() => setAdvancedFilters(prev => ({ ...prev, supplierName: undefined }))}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Contracts List */}
         <AnimatePresence mode="wait">
@@ -316,17 +723,27 @@ export default function ContractsPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                  whileHover={{ scale: 1.01, y: -2 }}
+                  whileHover={{ scale: 1.005 }}
                   className="transform-gpu"
                 >
                   <Card
-                    className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer bg-white/80 backdrop-blur-sm group"
-                    onClick={() => router.push(`/contracts/${contract.id}`)}
+                    className={`border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer bg-white/80 backdrop-blur-sm group ${
+                      selectedContracts.has(contract.id) ? 'ring-2 ring-blue-500 bg-blue-50/50' : ''
+                    }`}
                     data-testid="contract-card"
                   >
                 <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
+                  <div className="flex items-start gap-4">
+                    {/* Checkbox */}
+                    <div className="flex-shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedContracts.has(contract.id)}
+                        onCheckedChange={() => toggleSelect(contract.id)}
+                        aria-label={`Select ${contract.title}`}
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0" onClick={() => router.push(`/contracts/${contract.id}`)}>
                       {/* Title and Status */}
                       <div className="flex items-center gap-3 mb-3">
                         <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
@@ -413,18 +830,93 @@ export default function ContractsPage() {
                       )}
                     </div>
 
-                    {/* Action Button */}
-                    <Link href={`/contracts/${contract.id}`}>
+                    {/* Quick Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => router.push(`/contracts/${contract.id}?tab=ai`)}
+                          >
+                            <Brain className="h-4 w-4 text-purple-600" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>AI Analysis</TooltipContent>
+                      </Tooltip>
+                      
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              // Quick share action
+                              navigator.clipboard.writeText(`${window.location.origin}/contracts/${contract.id}`);
+                              toast.success('Link copied to clipboard');
+                            }}
+                          >
+                            <Share2 className="h-4 w-4 text-blue-600" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Share</TooltipContent>
+                      </Tooltip>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push(`/contracts/${contract.id}`)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/contracts/${contract.id}?tab=ai`)}>
+                            <Brain className="h-4 w-4 mr-2" />
+                            AI Analysis
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/ai/compare?contracts=${contract.id}`)}>
+                            <GitCompare className="h-4 w-4 mr-2" />
+                            Compare
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <ClipboardCheck className="h-4 w-4 mr-2" />
+                            Request Approval
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
                       <Button
                         size="sm"
-                        className="ml-4 bg-blue-600 hover:bg-blue-700 shadow-md group-hover:shadow-lg transition-all"
-                        onClick={(e) => e.stopPropagation()}
+                        className="bg-blue-600 hover:bg-blue-700 shadow-md"
+                        onClick={() => router.push(`/contracts/${contract.id}`)}
                       >
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="h-4 w-4 mr-1" />
                         View
-                        <ArrowUpRight className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Button>
-                    </Link>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -434,6 +926,20 @@ export default function ContractsPage() {
           )}
         </AnimatePresence>
       </div>
+      
+      {/* Advanced Search Modal */}
+      <AdvancedSearchModal
+        open={showAdvancedSearch}
+        onOpenChange={setShowAdvancedSearch}
+        onSearch={(filters) => {
+          setAdvancedFilters(filters);
+          if (filters.query) {
+            setSearchQuery(filters.query);
+          }
+        }}
+        initialFilters={advancedFilters}
+      />
     </div>
+    </TooltipProvider>
   );
 }

@@ -33,6 +33,18 @@ import {
   HelpCircle,
   ArrowRight,
   Command as CommandIcon,
+  Upload,
+  Brain,
+  GitCompare,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Bell,
+  Sparkles,
+  Eye,
+  Trash2,
+  RefreshCw,
+  DollarSign,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -60,26 +72,142 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
 
   // Define all available commands
   const allCommands: Command[] = useMemo(() => [
-    // Navigation
+    // Navigation - Core
     {
       id: 'nav-home',
-      label: 'Go to Contracts',
-      description: 'View all contracts',
+      label: 'Go to Dashboard',
+      description: 'View main dashboard',
       icon: Home,
       category: 'navigation',
-      shortcut: 'g h',
-      keywords: ['contracts', 'list', 'home'],
+      shortcut: 'g d',
+      keywords: ['dashboard', 'home', 'overview'],
+      action: () => router.push('/'),
+    },
+    {
+      id: 'nav-contracts',
+      label: 'Go to Contracts',
+      description: 'View all contracts',
+      icon: FileText,
+      category: 'navigation',
+      shortcut: 'g c',
+      keywords: ['contracts', 'list'],
       action: () => router.push('/contracts'),
+    },
+    {
+      id: 'nav-upload',
+      label: 'Upload Contract',
+      description: 'Upload a new contract',
+      icon: Upload,
+      category: 'navigation',
+      shortcut: 'cmd u',
+      keywords: ['upload', 'new', 'add'],
+      action: () => router.push('/upload'),
+    },
+    
+    // Navigation - Workflow
+    {
+      id: 'nav-approvals',
+      label: 'Go to Approvals',
+      description: 'View pending approvals',
+      icon: CheckCircle,
+      category: 'navigation',
+      shortcut: 'g a',
+      keywords: ['approvals', 'pending', 'review'],
+      action: () => router.push('/approvals'),
+    },
+    {
+      id: 'nav-workflows',
+      label: 'Go to Workflows',
+      description: 'Manage workflows',
+      icon: Workflow,
+      category: 'navigation',
+      shortcut: 'g w',
+      keywords: ['workflows', 'automation', 'rules'],
+      action: () => router.push('/workflows'),
     },
     {
       id: 'nav-deadlines',
       label: 'Go to Deadlines',
       description: 'View upcoming deadlines',
-      icon: Calendar,
+      icon: Clock,
       category: 'navigation',
-      shortcut: 'g d',
-      keywords: ['deadlines', 'renewals', 'expirations'],
+      shortcut: 'g l',
+      keywords: ['deadlines', 'renewals', 'expirations', 'expiring'],
       action: () => router.push('/deadlines'),
+    },
+    {
+      id: 'nav-renewals',
+      label: 'Go to Renewals',
+      description: 'Manage contract renewals',
+      icon: RefreshCw,
+      category: 'navigation',
+      shortcut: 'g r',
+      keywords: ['renewals', 'expiring', 'renew'],
+      action: () => router.push('/renewals'),
+    },
+    
+    // Navigation - AI
+    {
+      id: 'nav-ai-chat',
+      label: 'AI Chat',
+      description: 'Chat with AI about contracts',
+      icon: MessageSquare,
+      category: 'navigation',
+      shortcut: 'g i',
+      keywords: ['ai', 'chat', 'ask', 'question'],
+      action: () => router.push('/ai/chat'),
+    },
+    {
+      id: 'nav-ai-search',
+      label: 'AI Search',
+      description: 'Advanced semantic search',
+      icon: Brain,
+      category: 'navigation',
+      shortcut: 'cmd shift f',
+      keywords: ['ai', 'search', 'semantic', 'find'],
+      action: () => router.push('/search/advanced'),
+    },
+    {
+      id: 'nav-ai-compare',
+      label: 'Compare Contracts',
+      description: 'AI-powered contract comparison',
+      icon: GitCompare,
+      category: 'navigation',
+      shortcut: 'cmd shift c',
+      keywords: ['compare', 'diff', 'difference'],
+      action: () => router.push('/ai/compare'),
+    },
+    
+    // Navigation - Analysis
+    {
+      id: 'nav-rate-cards',
+      label: 'Go to Rate Cards',
+      description: 'View rate card analysis',
+      icon: DollarSign,
+      category: 'navigation',
+      shortcut: 'g p',
+      keywords: ['rate', 'cards', 'pricing', 'costs'],
+      action: () => router.push('/rate-cards'),
+    },
+    {
+      id: 'nav-risk',
+      label: 'Go to Risk Analysis',
+      description: 'View risk dashboard',
+      icon: AlertTriangle,
+      category: 'navigation',
+      shortcut: 'g k',
+      keywords: ['risk', 'analysis', 'alerts'],
+      action: () => router.push('/risk'),
+    },
+    {
+      id: 'nav-compliance',
+      label: 'Go to Compliance',
+      description: 'View compliance status',
+      icon: Shield,
+      category: 'navigation',
+      shortcut: 'g o',
+      keywords: ['compliance', 'legal', 'regulations'],
+      action: () => router.push('/compliance'),
     },
     {
       id: 'nav-templates',
@@ -95,7 +223,7 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
       id: 'nav-generate',
       label: 'Generate New Contract',
       description: 'Create contract from template',
-      icon: FileText,
+      icon: Sparkles,
       category: 'navigation',
       shortcut: 'cmd n',
       keywords: ['generate', 'create', 'new'],
@@ -105,12 +233,24 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
     // Actions (contract-specific)
     ...(contractId ? [
       {
+        id: 'action-ai-analyze',
+        label: 'AI Analysis',
+        description: 'Run AI analysis on this contract',
+        icon: Brain,
+        category: 'actions' as const,
+        shortcut: 'cmd i',
+        keywords: ['ai', 'analyze', 'analysis'],
+        action: () => {
+          router.push(`/contracts/${contractId}?tab=artifacts`)
+        },
+      },
+      {
         id: 'action-comment',
         label: 'Add Comment',
         description: 'Start a discussion',
         icon: MessageSquare,
         category: 'actions' as const,
-        shortcut: 'cmd shift c',
+        shortcut: 'c',
         keywords: ['comment', 'discuss', 'mention'],
         action: () => {
           document.querySelector<HTMLTextAreaElement>('[data-comment-input]')?.focus()
@@ -149,8 +289,19 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
         shortcut: 'cmd shift h',
         keywords: ['share', 'collaborate', 'invite'],
         action: () => {
-          // TODO: Implement share dialog
-          console.log('Share contract')
+          document.querySelector<HTMLButtonElement>('[data-share-button]')?.click()
+        },
+      },
+      {
+        id: 'action-approve',
+        label: 'Request Approval',
+        description: 'Submit for approval',
+        icon: CheckCircle,
+        category: 'actions' as const,
+        shortcut: 'cmd shift a',
+        keywords: ['approve', 'approval', 'submit'],
+        action: () => {
+          router.push(`/approvals/new?contractId=${contractId}`)
         },
       },
       {
@@ -166,15 +317,15 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
         },
       },
       {
-        id: 'action-approve',
-        label: 'Approve Workflow Step',
-        description: 'Approve pending step',
-        icon: ThumbsUp,
+        id: 'action-compare',
+        label: 'Compare With...',
+        description: 'Compare with another contract',
+        icon: GitCompare,
         category: 'actions' as const,
-        shortcut: 'cmd a',
-        keywords: ['approve', 'workflow', 'accept'],
+        shortcut: 'cmd shift p',
+        keywords: ['compare', 'diff'],
         action: () => {
-          document.querySelector<HTMLButtonElement>('[data-workflow-approve]')?.click()
+          router.push(`/ai/compare?contracts=${contractId}`)
         },
       },
     ] : []),
@@ -191,20 +342,42 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
       action: () => {
         router.push('/contracts')
         setTimeout(() => {
-          document.querySelector<HTMLInputElement>('[data-search-input]')?.focus()
+          document.querySelector<HTMLInputElement>('[data-testid="contract-search"]')?.focus()
         }, 100)
       },
     },
     {
-      id: 'filter-client',
-      label: 'Filter by Client',
-      description: 'Show contracts for specific client',
-      icon: Filter,
+      id: 'search-ai',
+      label: 'AI Semantic Search',
+      description: 'Search using natural language',
+      icon: Sparkles,
       category: 'search',
-      keywords: ['filter', 'client', 'party'],
+      shortcut: 'cmd shift /',
+      keywords: ['ai', 'semantic', 'natural', 'language'],
       action: () => {
-        // TODO: Open filter panel
-        console.log('Filter by client')
+        router.push('/search/advanced')
+      },
+    },
+    {
+      id: 'filter-expiring',
+      label: 'Show Expiring Soon',
+      description: 'Filter contracts expiring in 90 days',
+      icon: Clock,
+      category: 'search',
+      keywords: ['filter', 'expiring', 'deadline'],
+      action: () => {
+        router.push('/contracts?filter=expiring')
+      },
+    },
+    {
+      id: 'filter-high-risk',
+      label: 'Show High Risk',
+      description: 'Filter high risk contracts',
+      icon: AlertTriangle,
+      category: 'search',
+      keywords: ['filter', 'risk', 'high'],
+      action: () => {
+        router.push('/contracts?risk=high')
       },
     },
 
@@ -220,6 +393,18 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
       action: () => {
         // TODO: Show shortcuts help
         console.log('Show shortcuts')
+      },
+    },
+    {
+      id: 'help-notifications',
+      label: 'Notifications',
+      description: 'View notifications',
+      icon: Bell,
+      category: 'help',
+      shortcut: 'cmd shift n',
+      keywords: ['notifications', 'alerts', 'updates'],
+      action: () => {
+        document.querySelector<HTMLButtonElement>('[data-notification-button]')?.click()
       },
     },
   ], [contractId, router])

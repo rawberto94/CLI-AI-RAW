@@ -648,6 +648,112 @@ export default function ContractDetailPage() {
           />
         </motion.div>
 
+        {/* Cross-Module Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-8"
+        >
+          <Card className="bg-gradient-to-r from-slate-50 to-blue-50 border-slate-200">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-slate-600 mr-2">Quick Actions:</span>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-purple-50 hover:border-purple-300"
+                          asChild
+                        >
+                          <Link href={`/ai/chat?contractId=${params.id}`}>
+                            <Sparkles className="h-4 w-4 mr-1.5 text-purple-600" />
+                            Ask AI
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Chat with AI about this contract</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-blue-50 hover:border-blue-300"
+                          asChild
+                        >
+                          <Link href={`/ai/compare?contracts=${params.id}`}>
+                            <FileCheck className="h-4 w-4 mr-1.5 text-blue-600" />
+                            Compare
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Compare with similar contracts</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-green-50 hover:border-green-300"
+                          onClick={() => setShowShareDialog(true)}
+                        >
+                          <Share2 className="h-4 w-4 mr-1.5 text-green-600" />
+                          Share
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Share or request approval</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-amber-50 hover:border-amber-300"
+                          asChild
+                        >
+                          <Link href={`/approvals/new?contractId=${params.id}`}>
+                            <CheckCircle2 className="h-4 w-4 mr-1.5 text-amber-600" />
+                            Approval
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Request or view approvals</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                
+                {/* Related Modules Summary */}
+                <div className="flex items-center gap-4 text-sm">
+                  {overviewData?.expirationDate && (
+                    <div className="flex items-center gap-1.5 text-slate-600">
+                      <Clock className="h-4 w-4 text-amber-500" />
+                      <span>
+                        {new Date(overviewData.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) 
+                          ? 'Renewal Soon' 
+                          : 'Active'}
+                      </span>
+                    </div>
+                  )}
+                  {riskLevel === 'high' && (
+                    <div className="flex items-center gap-1.5 text-red-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>High Risk</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Main Tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

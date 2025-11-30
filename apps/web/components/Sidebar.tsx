@@ -19,6 +19,15 @@ import {
   Rocket,
   Tag,
   CreditCard,
+  CheckCircle,
+  GitBranch,
+  Clock,
+  Search,
+  MessageSquare,
+  Brain,
+  Calendar,
+  Users,
+  Settings,
 } from "lucide-react";
 import {
   Tooltip,
@@ -27,22 +36,46 @@ import {
   TooltipTrigger,
 } from "./ui/tooltip";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
-const items = [
-  { href: "/", label: "Dashboard", Icon: Home },
-  { href: "/contracts", label: "Contracts", Icon: FolderOpen },
-  { href: "/suppliers", label: "Suppliers", Icon: Building2 },
-  { href: "/drafts", label: "Draft Editor", Icon: FileEdit },
-  { href: "/rate-cards", label: "Rate Cards", Icon: CreditCard },
-  { href: "/benchmarks", label: "Benchmarks", Icon: Percent },
-  { href: "/benchmarks/compare", label: "Compare", Icon: Percent },
-  { href: "/compliance", label: "Compliance", Icon: ShieldAlert },
-  { href: "/risk", label: "Risk", Icon: AlertTriangle },
-  { href: "/taxonomy", label: "Taxonomy", Icon: Tag },
-  { href: "/analytics", label: "Analytics", Icon: Presentation },
-  { href: "/automation", label: "Automation", Icon: Sparkles },
-  { href: "/upload", label: "Upload", Icon: Upload },
-  { href: "/runs", label: "Runs", Icon: Layers },
+// Core navigation items
+const coreItems = [
+  { href: "/", label: "Dashboard", Icon: Home, section: "main" },
+  { href: "/contracts", label: "Contracts", Icon: FolderOpen, section: "main" },
+  { href: "/upload", label: "Upload", Icon: Upload, section: "main" },
+];
+
+// Workflow and collaboration items
+const workflowItems = [
+  { href: "/approvals", label: "Approvals", Icon: CheckCircle, badge: "2", section: "workflow" },
+  { href: "/workflows", label: "Workflows", Icon: GitBranch, section: "workflow" },
+  { href: "/deadlines", label: "Deadlines", Icon: Clock, badge: "5", section: "workflow" },
+  { href: "/renewals", label: "Renewals", Icon: Calendar, section: "workflow" },
+];
+
+// AI & Intelligence items
+const aiItems = [
+  { href: "/ai/chat", label: "AI Chat", Icon: MessageSquare, section: "ai" },
+  { href: "/search/advanced", label: "AI Search", Icon: Search, section: "ai" },
+  { href: "/ai/compare", label: "Compare", Icon: Brain, section: "ai" },
+];
+
+// Analysis items
+const analysisItems = [
+  { href: "/suppliers", label: "Suppliers", Icon: Building2, section: "analysis" },
+  { href: "/rate-cards", label: "Rate Cards", Icon: CreditCard, section: "analysis" },
+  { href: "/benchmarks", label: "Benchmarks", Icon: Percent, section: "analysis" },
+  { href: "/compliance", label: "Compliance", Icon: ShieldAlert, section: "analysis" },
+  { href: "/risk", label: "Risk", Icon: AlertTriangle, section: "analysis" },
+  { href: "/analytics", label: "Analytics", Icon: Presentation, section: "analysis" },
+];
+
+// Tools and settings
+const toolsItems = [
+  { href: "/drafts", label: "Draft Editor", Icon: FileEdit, section: "tools" },
+  { href: "/taxonomy", label: "Taxonomy", Icon: Tag, section: "tools" },
+  { href: "/automation", label: "Automation", Icon: Sparkles, section: "tools" },
+  { href: "/runs", label: "Runs", Icon: Layers, section: "tools" },
 ];
 
 const demoItems = [
@@ -177,8 +210,102 @@ export function Sidebar() {
             </div>
           </div>
 
-          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-            {items.map(({ href, label, Icon }) => {
+          <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-0.5">
+            {/* Core Items */}
+            {coreItems.map(({ href, label, Icon }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                    active ? "bg-muted text-primary" : ""
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              );
+            })}
+            
+            {/* Workflow Section */}
+            <div className="mt-4 mb-2">
+              <span className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Workflow & Collaboration
+              </span>
+            </div>
+            {workflowItems.map(({ href, label, Icon, badge }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                    active ? "bg-muted text-primary" : ""
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="flex-1">{label}</span>
+                  {badge && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-blue-100 text-blue-700">
+                      {badge}
+                    </Badge>
+                  )}
+                </Link>
+              );
+            })}
+            
+            {/* AI Section */}
+            <div className="mt-4 mb-2">
+              <span className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                AI & Intelligence
+              </span>
+            </div>
+            {aiItems.map(({ href, label, Icon }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                    active ? "bg-muted text-primary" : ""
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              );
+            })}
+            
+            {/* Analysis Section */}
+            <div className="mt-4 mb-2">
+              <span className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Analysis
+              </span>
+            </div>
+            {analysisItems.map(({ href, label, Icon }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary ${
+                    active ? "bg-muted text-primary" : ""
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              );
+            })}
+            
+            {/* Tools Section */}
+            <div className="mt-4 mb-2">
+              <span className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Tools
+              </span>
+            </div>
+            {toolsItems.map(({ href, label, Icon }) => {
               const active = pathname === href;
               return (
                 <Link
