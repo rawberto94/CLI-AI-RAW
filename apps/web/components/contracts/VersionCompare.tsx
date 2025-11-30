@@ -135,14 +135,20 @@ function computeDiff(left: string, right: string): DiffLine[] {
 function computeLCS(left: string[], right: string[]): string[] {
   const m = left.length;
   const n = right.length;
-  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  const dp: number[][] = [];
+  for (let i = 0; i <= m; i++) {
+    dp[i] = [];
+    for (let j = 0; j <= n; j++) {
+      dp[i]![j] = 0;
+    }
+  }
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
       if (left[i - 1] === right[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
+        dp[i]![j] = (dp[i - 1]?.[j - 1] ?? 0) + 1;
       } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        dp[i]![j] = Math.max(dp[i - 1]?.[j] ?? 0, dp[i]?.[j - 1] ?? 0);
       }
     }
   }
@@ -152,10 +158,10 @@ function computeLCS(left: string[], right: string[]): string[] {
   let i = m, j = n;
   while (i > 0 && j > 0) {
     if (left[i - 1] === right[j - 1]) {
-      lcs.unshift(left[i - 1]);
+      lcs.unshift(left[i - 1] ?? '');
       i--;
       j--;
-    } else if (dp[i - 1][j] > dp[i][j - 1]) {
+    } else if ((dp[i - 1]?.[j] ?? 0) > (dp[i]?.[j - 1] ?? 0)) {
       i--;
     } else {
       j--;
@@ -174,11 +180,12 @@ function VersionSelector({
   position,
 }: {
   versions: DocumentVersion[];
-  selectedVersion: DocumentVersion;
+  selectedVersion: DocumentVersion | undefined;
   onSelect: (version: DocumentVersion) => void;
   label: string;
   position: 'left' | 'right';
 }) {
+  if (!selectedVersion) return null;
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -340,15 +347,15 @@ export function VersionCompare({
   onMergeVersions,
   className,
 }: VersionCompareProps) {
-  const [leftVersion, setLeftVersion] = useState(versions[versions.length > 1 ? versions.length - 2 : 0]);
-  const [rightVersion, setRightVersion] = useState(versions[versions.length - 1]);
+  const [leftVersion, setLeftVersion] = useState<DocumentVersion | undefined>(versions[versions.length > 1 ? versions.length - 2 : 0]);
+  const [rightVersion, setRightVersion] = useState<DocumentVersion | undefined>(versions[versions.length - 1]);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [viewMode, setViewMode] = useState<'split' | 'unified'>('split');
 
   const diff = useMemo(
-    () => computeDiff(leftVersion.content, rightVersion.content),
-    [leftVersion.content, rightVersion.content]
+    () => leftVersion && rightVersion ? computeDiff(leftVersion.content, rightVersion.content) : [],
+    [leftVersion, rightVersion]
   );
 
   const stats = useMemo(() => {
@@ -516,7 +523,7 @@ export function VersionCompare({
         </div>
 
         <div className="flex items-center gap-2">
-          {onMergeVersions && (
+          {onMergeVersions && leftVersion && rightVersion && (
             <Button
               variant="outline"
               onClick={() => onMergeVersions(leftVersion.id, rightVersion.id)}
@@ -526,7 +533,7 @@ export function VersionCompare({
               Merge Versions
             </Button>
           )}
-          {onAcceptVersion && (
+          {onAcceptVersion && rightVersion && (
             <Button
               onClick={() => onAcceptVersion(rightVersion.id)}
               className="gap-2 bg-green-600 hover:bg-green-700"

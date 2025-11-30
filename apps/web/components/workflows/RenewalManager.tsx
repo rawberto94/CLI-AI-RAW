@@ -783,7 +783,7 @@ export const RenewalManager: React.FC = () => {
           }}
           contractId={renewalForApproval.id}
           contractTitle={`Renewal: ${renewalForApproval.contractName}`}
-          onSubmitSuccess={handleApprovalSubmit}
+          onSuccess={handleApprovalSubmit}
         />
       )}
       

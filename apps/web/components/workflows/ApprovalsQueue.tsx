@@ -612,6 +612,19 @@ export const ApprovalsQueue: React.FC = () => {
     fetchApprovals();
   }, [isMockData]);
 
+  // Derive these before the keyboard effect uses them
+  const selectedApproval = approvals.find(a => a.id === selectedId);
+
+  const filteredApprovals = useMemo(() => {
+    return approvals.filter(a => {
+      if (filter === 'pending' && a.status !== 'pending') return false;
+      if (filter === 'completed' && a.status === 'pending') return false;
+      if (searchQuery && !a.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
+          !a.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
+  }, [approvals, filter, searchQuery]);
+
   // Keyboard shortcuts handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -641,8 +654,9 @@ export const ApprovalsQueue: React.FC = () => {
           nextIndex = currentIndex > 0 ? currentIndex - 1 : filteredApprovals.length - 1;
         }
         
-        if (filteredApprovals[nextIndex]) {
-          setSelectedId(filteredApprovals[nextIndex].id);
+        const nextApproval = filteredApprovals[nextIndex];
+        if (nextApproval) {
+          setSelectedId(nextApproval.id);
         }
         return;
       }
@@ -699,18 +713,6 @@ export const ApprovalsQueue: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId, selectedApproval, filteredApprovals, showShortcuts, delegateModalOpen]);
-
-  const selectedApproval = approvals.find(a => a.id === selectedId);
-
-  const filteredApprovals = useMemo(() => {
-    return approvals.filter(a => {
-      if (filter === 'pending' && a.status !== 'pending') return false;
-      if (filter === 'completed' && a.status === 'pending') return false;
-      if (searchQuery && !a.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
-          !a.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
-    });
-  }, [approvals, filter, searchQuery]);
 
   const stats = useMemo(() => ({
     total: approvals.length,

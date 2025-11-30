@@ -1122,7 +1122,7 @@ export default function ContractsPage() {
           }}
           contractId={approvalContractId}
           contractTitle={approvalContractTitle}
-          onSubmitSuccess={handleApprovalSuccess}
+          onSuccess={handleApprovalSuccess}
         />
       )}
     </div>

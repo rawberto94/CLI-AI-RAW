@@ -455,7 +455,7 @@ function VersionHistoryPanel({
   };
 
   const handleCompare = () => {
-    if (compareSelection.length === 2) {
+    if (compareSelection.length === 2 && compareSelection[0] && compareSelection[1]) {
       onCompareVersions(compareSelection[0], compareSelection[1]);
       setCompareMode(false);
       setCompareSelection([]);

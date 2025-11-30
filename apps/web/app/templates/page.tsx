@@ -509,7 +509,7 @@ export default function TemplatesPage() {
             }}
             contractId={templateForApproval.id}
             contractTitle={`Template: ${templateForApproval.name}`}
-            onSubmitSuccess={handleApprovalSuccess}
+            onSuccess={handleApprovalSuccess}
           />
         )}
       </div>

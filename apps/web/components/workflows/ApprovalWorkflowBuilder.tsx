@@ -555,7 +555,7 @@ function StepEditorModal({
                   </div>
                   <div>
                     <p className="text-sm font-medium">{item.name}</p>
-                    {'role' in item && <p className="text-xs text-slate-500">{item.role}</p>}
+                    {'role' in item && <p className="text-xs text-slate-500">{(item as typeof SAMPLE_USERS[0]).role}</p>}
                   </div>
                 </button>
               ))}
@@ -684,7 +684,11 @@ export function ApprovalWorkflowBuilder({
 
       const newSteps = [...prev];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      [newSteps[index], newSteps[targetIndex]] = [newSteps[targetIndex], newSteps[index]];
+      const step1 = newSteps[index];
+      const step2 = newSteps[targetIndex];
+      if (step1 && step2) {
+        [newSteps[index], newSteps[targetIndex]] = [step2, step1];
+      }
       return newSteps.map((s, i) => ({ ...s, order: i }));
     });
   };

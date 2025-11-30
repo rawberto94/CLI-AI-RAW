@@ -70,6 +70,10 @@ export function DeadlineAlertBanner({ items, onDismiss, className }: DeadlineAle
   const primaryItem = urgentItems[0] || visibleItems[0];
   const remaining = visibleItems.length - 1;
   
+  if (!primaryItem) {
+    return null;
+  }
+  
   return (
     <AnimatePresence>
       <MotionDiv
