@@ -645,6 +645,36 @@ export const ApprovalsQueue: React.FC = () => {
     rejected: approvals.filter(a => a.status === 'rejected').length,
   }), [approvals]);
 
+  // Send email notification for approval actions
+  const sendNotification = async (
+    type: 'approval_completed' | 'approval_rejected' | 'approval_escalated' | 'approval_reminder',
+    approval: ApprovalRequest,
+    message?: string
+  ) => {
+    try {
+      await fetch('/api/approvals/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          contractId: approval.id,
+          contractTitle: approval.title,
+          recipientEmail: approval.requestedBy.email,
+          recipientName: approval.requestedBy.name,
+          senderName: 'Current User', // In production, get from session
+          stepName: approval.approvers.find(a => a.isCurrent)?.role,
+          dueDate: approval.dueDate,
+          priority: approval.priority,
+          message,
+          actionUrl: `/approvals?id=${approval.id}`,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+      // Don't block the main action if notification fails
+    }
+  };
+
   const handleApprove = async () => {
     if (!selectedId) return;
     
@@ -672,6 +702,10 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'approved' as const } : a
         ));
+        // Send notification to requester
+        if (selectedApproval) {
+          sendNotification('approval_completed', selectedApproval, 'Approved via approvals queue');
+        }
         toast.success('Approval completed', {
           description: `"${selectedApprovalTitle}" has been approved successfully.`,
         });
@@ -682,6 +716,10 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'approved' as const } : a
       ));
+      // Still send notification
+      if (selectedApproval) {
+        sendNotification('approval_completed', selectedApproval, 'Approved via approvals queue');
+      }
       toast.success('Approval completed', {
         description: `"${selectedApprovalTitle}" has been approved.`,
       });
@@ -723,6 +761,10 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'rejected' as const } : a
         ));
+        // Send notification to requester
+        if (selectedApproval) {
+          sendNotification('approval_rejected', selectedApproval, reason);
+        }
         toast.success('Approval rejected', {
           description: `"${selectedApprovalTitle}" has been rejected.`,
         });
@@ -733,6 +775,10 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'rejected' as const } : a
       ));
+      // Still send notification
+      if (selectedApproval) {
+        sendNotification('approval_rejected', selectedApproval, reason);
+      }
       toast.success('Approval rejected', {
         description: `"${selectedApprovalTitle}" has been rejected.`,
       });
@@ -764,6 +810,10 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'escalated' as const } : a
         ));
+        // Send notification about escalation
+        if (selectedApproval) {
+          sendNotification('approval_escalated', selectedApproval, 'Escalated to next approval level');
+        }
         toast.success('Approval escalated', {
           description: `"${selectedApprovalTitle}" has been escalated to the next level.`,
         });
