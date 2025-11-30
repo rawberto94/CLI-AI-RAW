@@ -5,7 +5,7 @@ dotenv.config();
 import { Job } from 'bullmq';
 import getClient from 'clients-db';
 import { getQueueService } from '../../utils/src/queue/queue-service';
-import { QUEUE_NAMES, ProcessContractJobData } from '../../utils/src/queue/contract-queue';
+import { QUEUE_NAMES, ProcessContractJobData, IndexContractJobData } from '../../utils/src/queue/contract-queue';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -672,6 +672,31 @@ export async function processOCRArtifactJob(
     // Clean up temp file if we created one
     if (contract.storageProvider === 's3') {
       await fs.unlink(localFilePath).catch(() => {});
+    }
+
+    // 6. Auto-queue RAG indexing for semantic search
+    if (!hasCompleteFailure && extractedText.length > 500) {
+      try {
+        const autoRAG = process.env.AUTO_RAG_INDEXING !== 'false'; // Default to true
+        if (autoRAG) {
+          jobLogger.info('Queueing automatic RAG indexing');
+          const queueService = getQueueService();
+          await queueService.addJob(
+            QUEUE_NAMES.RAG_INDEXING,
+            'index-contract',
+            { contractId, tenantId, artifactIds: [] } as IndexContractJobData,
+            {
+              priority: 15,
+              delay: 3000, // 3 second delay to let DB settle
+              jobId: `rag-${contractId}`,
+            }
+          );
+          jobLogger.info('RAG indexing job queued successfully');
+        }
+      } catch (ragError) {
+        // Don't fail the job if RAG queueing fails
+        jobLogger.warn({ error: ragError }, 'Failed to queue RAG indexing, contract still processed successfully');
+      }
     }
 
     await job.updateProgress(100);
