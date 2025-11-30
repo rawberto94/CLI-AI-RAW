@@ -37,6 +37,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { toast } from 'sonner';
 import {
   LineChart,
   Line,
@@ -398,6 +399,30 @@ export function ProfessionalDashboard() {
   const { metrics, chartData, recentContracts, expirations, loading } = useDashboardData();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
 
+  const handleExport = () => {
+    try {
+      const exportData = {
+        generatedAt: new Date().toISOString(),
+        timeframe,
+        metrics,
+        recentContracts,
+        expirations,
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `dashboard-report-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      toast.success('Dashboard exported successfully');
+    } catch (error) {
+      toast.error('Failed to export dashboard');
+    }
+  };
+
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -445,12 +470,12 @@ export function ProfessionalDashboard() {
             ))}
           </div>
           
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
           
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>

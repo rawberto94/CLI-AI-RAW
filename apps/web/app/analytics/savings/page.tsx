@@ -24,6 +24,7 @@ import {
   PieChart,
   BarChart3
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function SavingsPipelinePage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -45,6 +46,36 @@ export default function SavingsPipelinePage() {
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleExport = () => {
+    if (!data) {
+      toast.error('No data to export');
+      return;
+    }
+    try {
+      const csvContent = [
+        ['Opportunity', 'Category', 'Status', 'Potential Savings', 'Realized Savings', 'Priority', 'Due Date'].join(','),
+        ...(data.opportunities || []).map((o: any) => [
+          o.name || 'Unknown',
+          o.category || 'N/A',
+          o.status || 'N/A',
+          o.potentialSavings || 0,
+          o.realizedSavings || 0,
+          o.priority || 'N/A',
+          o.dueDate || 'N/A'
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `savings-pipeline-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Savings pipeline exported successfully');
+    } catch (error) {
+      toast.error('Failed to export data');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -93,7 +124,7 @@ export default function SavingsPipelinePage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

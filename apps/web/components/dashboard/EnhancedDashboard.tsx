@@ -27,6 +27,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   LineChart,
   Line,
@@ -100,6 +101,26 @@ export function EnhancedDashboard() {
     { name: 'Critical', value: 5, color: '#dc2626' },
   ];
 
+  const handleExport = () => {
+    try {
+      const exportData = {
+        generatedAt: new Date().toISOString(),
+        timeframe,
+        metrics: metrics || { totalContracts: 214, activeContracts: 145, totalValue: 3800000 },
+        statusDistribution: contractsByStatusData,
+        riskDistribution: riskDistributionData,
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `dashboard-analytics-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      toast.success('Dashboard data exported successfully');
+    } catch (error) {
+      toast.error('Failed to export data');
+    }
+  };
+
   const monthlyTrendData = [
     { month: 'Jun', contracts: 145, value: 2.1, risk: 45 },
     { month: 'Jul', contracts: 158, value: 2.4, risk: 42 },
@@ -146,7 +167,7 @@ export function EnhancedDashboard() {
               </Button>
             ))}
           </div>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

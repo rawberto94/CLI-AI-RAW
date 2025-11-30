@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Share2,
   ZoomIn,
@@ -318,9 +319,11 @@ interface NodeDetailPanelProps {
   onClose: () => void;
   relatedNodes: GraphNode[];
   relatedEdges: GraphEdge[];
+  onViewDetails: () => void;
+  onExplorePath: () => void;
 }
 
-const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relatedNodes, relatedEdges }) => {
+const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relatedNodes, relatedEdges, onViewDetails, onExplorePath }) => {
   if (!node) return null;
 
   const Icon = getNodeIcon(node.type);
@@ -402,10 +405,10 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relate
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-slate-900">Quick Actions</h4>
           <div className="grid grid-cols-2 gap-2">
-            <button className="px-3 py-2 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors">
+            <button onClick={onViewDetails} className="px-3 py-2 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors">
               View Details
             </button>
-            <button className="px-3 py-2 text-xs font-medium bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition-colors">
+            <button onClick={onExplorePath} className="px-3 py-2 text-xs font-medium bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition-colors">
               Explore Path
             </button>
           </div>
@@ -490,6 +493,53 @@ export const ContractKnowledgeGraph: React.FC = () => {
     connections: filteredEdges.length,
   }), [filteredNodes, filteredEdges]);
 
+  // Handle fullscreen toggle
+  const handleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      toast.success('Entered fullscreen mode');
+    } else {
+      document.exitFullscreen();
+      toast.success('Exited fullscreen mode');
+    }
+  }, []);
+
+  // Handle graph export
+  const handleExportGraph = useCallback(() => {
+    try {
+      const exportData = {
+        generatedAt: new Date().toISOString(),
+        stats,
+        nodes: filteredNodes.map(n => ({ id: n.id, label: n.label, type: n.type })),
+        edges: filteredEdges.map(e => ({ source: e.source, target: e.target, type: e.type })),
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `knowledge-graph-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+      toast.success('Graph data exported successfully');
+    } catch (error) {
+      toast.error('Failed to export graph data');
+    }
+  }, [stats, filteredNodes, filteredEdges]);
+
+  // Handle view node details
+  const handleViewDetails = useCallback(() => {
+    if (selectedNode) {
+      toast.info(`Viewing details for: ${selectedNode.label}`);
+      // In a real app, this would open a modal or navigate to a details page
+    }
+  }, [selectedNode]);
+
+  // Handle explore path
+  const handleExplorePath = useCallback(() => {
+    if (selectedNode) {
+      toast.info(`Exploring connections from: ${selectedNode.label}`);
+      // Highlight connected nodes
+    }
+  }, [selectedNode]);
+
   return (
     <div className="h-full flex flex-col bg-slate-50">
       {/* Header */}
@@ -525,10 +575,10 @@ export const ContractKnowledgeGraph: React.FC = () => {
             >
               <ZoomOut className="w-4 h-4" />
             </button>
-            <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
+            <button onClick={handleFullscreen} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
               <Maximize2 className="w-4 h-4" />
             </button>
-            <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
+            <button onClick={handleExportGraph} className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
               <Download className="w-4 h-4" />
             </button>
           </div>
@@ -788,6 +838,8 @@ export const ContractKnowledgeGraph: React.FC = () => {
             onClose={() => setSelectedNode(null)}
             relatedNodes={relatedNodes}
             relatedEdges={relatedEdges}
+            onViewDetails={handleViewDetails}
+            onExplorePath={handleExplorePath}
           />
         )}
       </AnimatePresence>

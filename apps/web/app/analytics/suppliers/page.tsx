@@ -26,6 +26,7 @@ import {
   Download,
   Filter
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function SupplierAnalyticsPage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -47,6 +48,37 @@ export default function SupplierAnalyticsPage() {
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleExport = () => {
+    if (!data) {
+      toast.error('No data to export');
+      return;
+    }
+    try {
+      const csvContent = [
+        ['Supplier', 'Category', 'Performance Score', 'Quality Score', 'Delivery Score', 'Cost Efficiency', 'Risk Level', 'Total Spend'].join(','),
+        ...(data.suppliers || []).map((s: any) => [
+          s.name || 'Unknown',
+          s.category || 'N/A',
+          s.performanceScore || 0,
+          s.qualityScore || 0,
+          s.deliveryScore || 0,
+          s.costEfficiency || 0,
+          s.riskLevel || 'N/A',
+          s.totalSpend || 0
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `supplier-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Supplier analytics exported successfully');
+    } catch (error) {
+      toast.error('Failed to export data');
+    }
   };
 
   return (
@@ -76,7 +108,7 @@ export default function SupplierAnalyticsPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

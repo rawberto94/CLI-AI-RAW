@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Activity,
   AlertTriangle,
@@ -486,9 +488,10 @@ interface HealthFactorCardProps {
   factor: HealthFactor;
   expanded: boolean;
   onToggle: () => void;
+  onRefresh?: () => void;
 }
 
-const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, onToggle }) => {
+const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, onToggle, onRefresh }) => {
   const Icon = getCategoryIcon(factor.category);
   const colors = getScoreColor(factor.score);
   const trend = getTrendIcon(factor.trend);
@@ -552,7 +555,7 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
 
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span>Last updated: {factor.lastUpdated}</span>
-                <button className="text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1">
+                <button onClick={onRefresh} className="text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1">
                   <RefreshCw className="w-3 h-3" />
                   Refresh
                 </button>
@@ -821,6 +824,73 @@ export const ContractHealthScore: React.FC = () => {
     return { total, avgScore, healthy, atRisk, critical, urgentActions };
   }, [healthData]);
 
+  const router = useRouter();
+
+  // Handle refresh all health scores
+  const handleRefreshAll = useCallback(async () => {
+    setLoading(true);
+    toast.info('Refreshing all health scores...');
+    try {
+      const res = await fetch('/api/intelligence/health/refresh', { method: 'POST' });
+      if (res.ok) {
+        toast.success('All health scores refreshed');
+        // Refetch data after refresh
+        window.location.reload();
+      } else {
+        throw new Error('Failed to refresh');
+      }
+    } catch (error) {
+      toast.error('Failed to refresh health scores');
+      setLoading(false);
+    }
+  }, []);
+
+  // Handle export report
+  const handleExportReport = useCallback(() => {
+    try {
+      const csvContent = [
+        ['Contract Name', 'Supplier', 'Overall Score', 'Status', 'Trend', 'Last Assessed', 'Next Review'].join(','),
+        ...healthData.map(h => [
+          h.contractName,
+          h.supplierName,
+          h.overallScore,
+          h.status,
+          h.trend,
+          h.lastAssessed,
+          h.nextReview,
+        ].join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `contract-health-report-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Health report exported successfully');
+    } catch (error) {
+      toast.error('Failed to export report');
+    }
+  }, [healthData]);
+
+  // Handle view contract
+  const handleViewContract = useCallback((contractId: string) => {
+    router.push(`/contracts/${contractId}`);
+  }, [router]);
+
+  // Handle reassess contract
+  const handleReassess = useCallback(async (contractId: string, contractName: string) => {
+    toast.info(`Reassessing ${contractName}...`);
+    try {
+      const res = await fetch(`/api/intelligence/health/${contractId}/reassess`, { method: 'POST' });
+      if (res.ok) {
+        toast.success(`${contractName} reassessment complete`);
+      } else {
+        throw new Error('Failed to reassess');
+      }
+    } catch (error) {
+      toast.error('Failed to reassess contract');
+    }
+  }, []);
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-slate-50">
@@ -847,11 +917,11 @@ export const ContractHealthScore: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+            <button onClick={handleRefreshAll} className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />
               Refresh All
             </button>
-            <button className="px-3 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+            <button onClick={handleExportReport} className="px-3 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Export Report
             </button>
@@ -938,11 +1008,11 @@ export const ContractHealthScore: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                  <button onClick={() => handleViewContract(selectedContract.contractId)} className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
                     <Eye className="w-4 h-4" />
                     View Contract
                   </button>
-                  <button className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+                  <button onClick={() => handleReassess(selectedContract.contractId, selectedContract.contractName)} className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
                     <RefreshCw className="w-4 h-4" />
                     Reassess
                   </button>
@@ -1036,6 +1106,7 @@ export const ContractHealthScore: React.FC = () => {
                       factor={factor}
                       expanded={expandedFactors.has(factor.id)}
                       onToggle={() => toggleFactor(factor.id)}
+                      onRefresh={() => toast.info(`Refreshing ${factor.name}...`)}
                     />
                   ))}
                 </motion.div>

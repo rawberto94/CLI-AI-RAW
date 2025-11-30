@@ -25,6 +25,7 @@ import {
   FileText,
   DollarSign
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function RenewalRadarPage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -44,6 +45,37 @@ export default function RenewalRadarPage() {
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleExport = () => {
+    if (!data) {
+      toast.error('No data to export');
+      return;
+    }
+    try {
+      const csvContent = [
+        ['Contract', 'Supplier', 'Renewal Date', 'Days Until Renewal', 'Contract Value', 'Risk Level', 'Status', 'Action Required'].join(','),
+        ...(data.upcomingRenewals || []).map((r: any) => [
+          r.contractName || 'Unknown',
+          r.supplier || 'N/A',
+          r.renewalDate || 'N/A',
+          r.daysUntilRenewal || 0,
+          r.contractValue || 0,
+          r.riskLevel || 'N/A',
+          r.status || 'N/A',
+          r.actionRequired || 'None'
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `renewal-radar-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Renewal data exported successfully');
+    } catch (error) {
+      toast.error('Failed to export data');
+    }
   };
 
   const getRiskColor = (risk: string) => {
@@ -123,7 +155,7 @@ export default function RenewalRadarPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

@@ -27,6 +27,7 @@ import {
   Lightbulb,
   Award
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function NegotiationPrepPage() {
   const [mode, setMode] = useState<DataMode>('real');
@@ -48,6 +49,35 @@ export default function NegotiationPrepPage() {
 
   const handleRefresh = () => {
     refetch();
+  };
+
+  const handleExport = () => {
+    if (!data) {
+      toast.error('No data to export');
+      return;
+    }
+    try {
+      const csvContent = [
+        ['Contract/Supplier', 'Leverage Point', 'Impact', 'Trend', 'Recommendation', 'Potential Savings'].join(','),
+        ...(data.leveragePoints || []).map((l: any) => [
+          l.contractName || l.supplier || 'Unknown',
+          l.leveragePoint || 'N/A',
+          l.impact || 'N/A',
+          l.trend || 'N/A',
+          l.recommendation || 'N/A',
+          l.potentialSavings || 0
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `negotiation-prep-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Negotiation data exported successfully');
+    } catch (error) {
+      toast.error('Failed to export data');
+    }
   };
 
   const getTrendIcon = (trend: string) => {
@@ -101,7 +131,7 @@ export default function NegotiationPrepPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
