@@ -23,7 +23,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { useTemplates, useDeleteTemplate } from '@/hooks/use-queries'
+import { useTemplates, useDeleteTemplate, useCreateTemplate } from '@/hooks/use-queries'
+import { toast } from 'sonner'
 
 interface ContractTemplate {
   id: string
@@ -46,7 +47,43 @@ export default function TemplatesPage() {
 
   // Use React Query for data fetching with caching
   const { data: templatesData, isLoading: loading, refetch } = useTemplates()
-  const deleteTemplate = useDeleteTemplate()
+  const deleteTemplateMutation = useDeleteTemplate()
+  const createTemplateMutation = useCreateTemplate()
+
+  // Handle template duplication
+  const handleDuplicate = async (template: ContractTemplate) => {
+    try {
+      toast.info('Duplicating template...')
+      await createTemplateMutation.mutateAsync({
+        name: `${template.name} (Copy)`,
+        description: template.description,
+        category: template.category,
+        status: 'draft',
+      })
+      toast.success('Template duplicated successfully')
+      refetch()
+    } catch (error) {
+      console.error('Duplicate error:', error)
+      toast.error('Failed to duplicate template')
+    }
+  }
+
+  // Handle template deletion
+  const handleDelete = async (templateId: string, templateName: string) => {
+    if (!confirm(`Are you sure you want to delete "${templateName}"? This action cannot be undone.`)) {
+      return
+    }
+    
+    try {
+      toast.info('Deleting template...')
+      await deleteTemplateMutation.mutateAsync(templateId)
+      toast.success('Template deleted successfully')
+      refetch()
+    } catch (error) {
+      console.error('Delete error:', error)
+      toast.error('Failed to delete template')
+    }
+  }
 
   // Fallback to mock data if API returns empty
   const templates: ContractTemplate[] = useMemo(() => {
@@ -141,12 +178,6 @@ export default function TemplatesPage() {
       },
     ]
   }, [templatesData])
-
-  const handleDeleteTemplate = async (id: string) => {
-    if (confirm('Are you sure you want to delete this template?')) {
-      await deleteTemplate.mutateAsync(id)
-    }
-  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -379,11 +410,22 @@ export default function TemplatesPage() {
                         Edit
                       </Button>
                     </Link>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDuplicate(template)}
+                      disabled={createTemplateMutation.isPending}
+                    >
                       <Copy className="h-4 w-4 mr-2" />
                       Duplicate
                     </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => handleDelete(template.id, template.name)}
+                      disabled={deleteTemplateMutation.isPending}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
