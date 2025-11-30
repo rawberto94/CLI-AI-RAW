@@ -61,6 +61,7 @@ import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
+import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForApprovalModal";
 
 // Filter configuration
 const CONTRACT_TYPES = [
@@ -100,6 +101,11 @@ export default function ContractsPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareContractId, setShareContractId] = useState<string | null>(null);
   const [shareContractTitle, setShareContractTitle] = useState<string>("");
+  
+  // Approval modal state
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [approvalContractId, setApprovalContractId] = useState<string | null>(null);
+  const [approvalContractTitle, setApprovalContractTitle] = useState<string>("");
 
   // Use React Query for data fetching with caching
   const { 
@@ -217,36 +223,21 @@ export default function ContractsPage() {
     setShareDialogOpen(true);
   }, []);
 
-  const handleRequestApproval = useCallback(async (contractId: string, contractTitle: string) => {
-    try {
-      toast.info('Creating approval request...');
-      const response = await fetch('/api/workflows', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
-        },
-        body: JSON.stringify({
-          name: `Approval: ${contractTitle}`,
-          description: `Approval workflow for contract ${contractTitle}`,
-          type: 'CONTRACT_APPROVAL',
-          contractId,
-          steps: [
-            { name: 'Initial Review', type: 'APPROVAL', order: 1 },
-            { name: 'Final Approval', type: 'APPROVAL', order: 2 },
-          ],
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create workflow');
-      
-      toast.success('Approval workflow created');
-      router.push('/approvals');
-    } catch (error) {
-      console.error('Request approval error:', error);
-      toast.error('Failed to request approval');
-    }
-  }, [router]);
+  const handleRequestApproval = useCallback((contractId: string, contractTitle: string) => {
+    setApprovalContractId(contractId);
+    setApprovalContractTitle(contractTitle);
+    setApprovalModalOpen(true);
+  }, []);
+  
+  const handleApprovalSuccess = useCallback(() => {
+    toast.success('Contract submitted for approval', {
+      description: `${approvalContractTitle} has been sent for review`,
+    });
+    setApprovalModalOpen(false);
+    setApprovalContractId(null);
+    setApprovalContractTitle("");
+    refetch();
+  }, [approvalContractTitle, refetch]);
 
   const handleDelete = useCallback(async (contractId: string) => {
     if (!confirm('Are you sure you want to delete this contract? This action cannot be undone.')) {
@@ -1042,6 +1033,21 @@ export default function ContractsPage() {
           documentId={shareContractId}
           documentType="contract"
           documentTitle={shareContractTitle}
+        />
+      )}
+      
+      {/* Submit for Approval Modal */}
+      {approvalContractId && (
+        <SubmitForApprovalModal
+          isOpen={approvalModalOpen}
+          onClose={() => {
+            setApprovalModalOpen(false);
+            setApprovalContractId(null);
+            setApprovalContractTitle("");
+          }}
+          contractId={approvalContractId}
+          contractTitle={approvalContractTitle}
+          onSubmitSuccess={handleApprovalSuccess}
         />
       )}
     </div>
