@@ -533,6 +533,7 @@ export const ApprovalsQueue: React.FC = () => {
   const [delegateTarget, setDelegateTarget] = useState('');
   const [delegateNote, setDelegateNote] = useState('');
   const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Toggle single item selection for bulk actions
   const toggleSelection = (id: string, e: React.MouseEvent) => {
@@ -624,6 +625,94 @@ export const ApprovalsQueue: React.FC = () => {
     }
     fetchApprovals();
   }, [isMockData]);
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Show shortcuts help with ?
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+        return;
+      }
+
+      // Navigation: j/k for up/down
+      if (e.key === 'j' || e.key === 'k') {
+        e.preventDefault();
+        const currentIndex = filteredApprovals.findIndex(a => a.id === selectedId);
+        let nextIndex: number;
+        
+        if (e.key === 'j') {
+          // Next item
+          nextIndex = currentIndex < filteredApprovals.length - 1 ? currentIndex + 1 : 0;
+        } else {
+          // Previous item
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : filteredApprovals.length - 1;
+        }
+        
+        if (filteredApprovals[nextIndex]) {
+          setSelectedId(filteredApprovals[nextIndex].id);
+        }
+        return;
+      }
+
+      // Actions (only if an item is selected and pending)
+      if (selectedId && selectedApproval?.status === 'pending') {
+        // Approve with 'a'
+        if (e.key === 'a' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          handleApprove();
+          return;
+        }
+        
+        // Reject with 'r'
+        if (e.key === 'r' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          handleReject();
+          return;
+        }
+        
+        // Escalate with 'e'
+        if (e.key === 'e' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          handleEscalate();
+          return;
+        }
+        
+        // Delegate with 'd'
+        if (e.key === 'd' && !e.metaKey && !e.ctrlKey) {
+          e.preventDefault();
+          openDelegateModal();
+          return;
+        }
+      }
+
+      // Search with '/'
+      if (e.key === '/') {
+        e.preventDefault();
+        document.querySelector<HTMLInputElement>('[data-search-input]')?.focus();
+        return;
+      }
+
+      // Escape to clear selection or close modal
+      if (e.key === 'Escape') {
+        if (showShortcuts) {
+          setShowShortcuts(false);
+        } else if (delegateModalOpen) {
+          setDelegateModalOpen(false);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedId, selectedApproval, filteredApprovals, showShortcuts, delegateModalOpen]);
 
   const selectedApproval = approvals.find(a => a.id === selectedId);
 
@@ -1042,18 +1131,20 @@ export const ApprovalsQueue: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
+                data-search-input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search approvals..."
+                placeholder="Search approvals... (press /)"
                 className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div className="flex items-center gap-2">
-              {(['all', 'pending', 'completed'] as const).map(f => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {(['all', 'pending', 'completed'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
                     filter === f
                       ? 'bg-blue-500 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1062,6 +1153,15 @@ export const ApprovalsQueue: React.FC = () => {
                   {f}
                 </button>
               ))}
+              </div>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+                title="Keyboard shortcuts"
+              >
+                <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono">?</kbd>
+                Shortcuts
+              </button>
             </div>
           </div>
 
@@ -1231,6 +1331,95 @@ export const ApprovalsQueue: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Keyboard Shortcuts Help Modal */}
+      <AnimatePresence>
+        {showShortcuts && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+            onClick={() => setShowShortcuts(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                Keyboard Shortcuts
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-slate-500 mb-2">Navigation</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Next item</span>
+                      <kbd className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-mono">j</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Previous item</span>
+                      <kbd className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-mono">k</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Search</span>
+                      <kbd className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-mono">/</kbd>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-slate-500 mb-2">Actions</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Approve</span>
+                      <kbd className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-mono">a</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Reject</span>
+                      <kbd className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-mono">r</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Escalate</span>
+                      <kbd className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-mono">e</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Delegate</span>
+                      <kbd className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-mono">d</kbd>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-slate-500 mb-2">General</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Show shortcuts</span>
+                      <kbd className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-mono">?</kbd>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">Close / Cancel</span>
+                      <kbd className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-mono">Esc</kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="mt-6 w-full py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium"
+              >
+                Close (Esc)
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
