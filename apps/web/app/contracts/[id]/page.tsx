@@ -57,6 +57,8 @@ import { GenerationFlowVisualization } from '@/components/artifacts/GenerationFl
 import { ScoreRing } from '@/components/artifacts/ArtifactCards'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
+import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
+import { useWebSocket } from '@/contexts/websocket-context'
 import { formatCurrency, formatDate } from '@/lib/design-tokens'
 import {
   DropdownMenu,
@@ -122,6 +124,71 @@ const CONTRACT_TYPES = [
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR']
 
 // ============ HELPER COMPONENTS ============
+
+function ApprovalStatusBadge({ contractId }: { contractId: string }) {
+  const [status, setStatus] = useState<{
+    hasActiveApproval: boolean;
+    status: string;
+    currentStep?: number;
+    totalSteps?: number;
+    currentApprover?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch(`/api/approvals?contractId=${contractId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const items = data.data?.items || [];
+          const activeApproval = items.find((item: { status: string }) => 
+            item.status === 'pending' || item.status === 'in_progress'
+          );
+          if (activeApproval) {
+            setStatus({
+              hasActiveApproval: true,
+              status: activeApproval.status,
+              currentStep: activeApproval.currentStep,
+              totalSteps: activeApproval.totalSteps,
+              currentApprover: activeApproval.stage || activeApproval.assignedTo?.name,
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Failed to fetch approval status');
+      }
+    };
+    fetchStatus();
+  }, [contractId]);
+
+  if (!status?.hasActiveApproval) {
+    return null;
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge 
+            variant="outline" 
+            className="bg-amber-50 border-amber-200 text-amber-700 gap-1.5"
+          >
+            <Clock className="h-3 w-3" />
+            Approval {status.currentStep}/{status.totalSteps}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-xs">
+            <p className="font-medium">Pending Approval</p>
+            {status.currentApprover && (
+              <p className="text-slate-400">Awaiting: {status.currentApprover}</p>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; icon: React.ElementType; label: string; animate?: boolean }> = {
@@ -271,6 +338,7 @@ export default function ContractDetailPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { dataMode } = useDataMode()
+  const { joinDocument, leaveDocument } = useWebSocket()
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -294,6 +362,16 @@ export default function ContractDetailPage() {
     tags: []
   })
   const [newTag, setNewTag] = useState('')
+
+  // Join document for real-time collaboration
+  useEffect(() => {
+    if (params.id) {
+      joinDocument(params.id as string, 'contract')
+    }
+    return () => {
+      leaveDocument()
+    }
+  }, [params.id, joinDocument, leaveDocument])
 
   const loadContract = useCallback(async () => {
     setLoading(true)
@@ -540,6 +618,7 @@ export default function ContractDetailPage() {
                     <CopyableId id={params.id as string} />
                     <span className="text-slate-300">•</span>
                     <StatusBadge status={contract?.status || 'unknown'} />
+                    <ApprovalStatusBadge contractId={params.id as string} />
                   </div>
                 </div>
               </div>
@@ -547,6 +626,9 @@ export default function ContractDetailPage() {
             
             {/* Right: Actions */}
             <div className="flex items-center gap-2">
+              {/* Collaboration Presence */}
+              <PresenceIndicator maxAvatars={3} showConnectionStatus={true} />
+              
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
