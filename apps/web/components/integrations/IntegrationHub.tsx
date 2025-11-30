@@ -477,6 +477,73 @@ export function IntegrationHub() {
     }
   };
 
+  // Handle export logs
+  const handleExportLogs = useCallback(() => {
+    try {
+      const csvContent = [
+        ['Timestamp', 'Integration', 'Entity', 'Direction', 'Records', 'Status', 'Duration'].join(','),
+        ...syncLogs.map(log => [
+          log.timestamp,
+          log.integration,
+          log.entity,
+          log.direction,
+          log.records,
+          log.status,
+          log.duration,
+        ].join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `sync-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast({
+        title: 'Export Complete',
+        description: 'Sync logs exported successfully.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export logs.',
+        variant: 'destructive',
+      });
+    }
+  }, [syncLogs, toast]);
+
+  // Handle configure integration
+  const handleConfigure = useCallback((integrationId: string, integrationName: string) => {
+    toast({
+      title: 'Configuration',
+      description: `Opening settings for ${integrationName}...`,
+    });
+    // In a real app, this would open a configuration modal
+  }, [toast]);
+
+  // Handle enable sync
+  const handleEnableSync = useCallback(async (integrationId: string) => {
+    try {
+      const response = await fetch('/api/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'enable-sync', integrationId }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Sync Enabled',
+          description: 'Automatic sync has been enabled.',
+        });
+        fetchIntegrations();
+      }
+    } catch (err) {
+      toast({
+        title: 'Failed',
+        description: 'Failed to enable sync.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, fetchIntegrations]);
+
   const filteredIntegrations = integrations.filter(int =>
     int.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     int.provider.toLowerCase().includes(searchQuery.toLowerCase())
@@ -653,7 +720,7 @@ export function IntegrationHub() {
                       className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
+                  <button onClick={() => toast({ title: 'Filters', description: 'Opening filter options...' })} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
                     <Filter className="h-4 w-4" />
                     Filter
                   </button>
@@ -748,22 +815,22 @@ export function IntegrationHub() {
                             {/* Actions */}
                             <div className="flex items-center gap-2">
                               {integration.status === 'error' ? (
-                                <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm">
+                                <button onClick={() => handleConnect(integration.id)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 text-sm">
                                   <RefreshCw className="h-4 w-4" />
                                   Reconnect
                                 </button>
                               ) : integration.config.syncEnabled ? (
-                                <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm">
+                                <button onClick={() => handleSync(integration.id)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm">
                                   <RefreshCw className="h-4 w-4" />
                                   Sync Now
                                 </button>
                               ) : (
-                                <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 text-sm">
+                                <button onClick={() => handleEnableSync(integration.id)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 text-sm">
                                   <Play className="h-4 w-4" />
                                   Enable Sync
                                 </button>
                               )}
-                              <button className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
+                              <button onClick={() => handleConfigure(integration.id, integration.name)} className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
                                 <Settings className="h-4 w-4" />
                                 Configure
                               </button>
@@ -781,7 +848,7 @@ export function IntegrationHub() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">Recent Sync Activity</h3>
-                  <button className="text-sm text-blue-600 hover:text-blue-700">Export Logs</button>
+                  <button onClick={handleExportLogs} className="text-sm text-blue-600 hover:text-blue-700">Export Logs</button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
