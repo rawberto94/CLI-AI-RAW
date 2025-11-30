@@ -56,6 +56,7 @@ import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactV
 import { GenerationFlowVisualization } from '@/components/artifacts/GenerationFlowVisualization'
 import { ScoreRing } from '@/components/artifacts/ArtifactCards'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
+import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
 import { formatCurrency, formatDate } from '@/lib/design-tokens'
 import {
   DropdownMenu,
@@ -275,6 +276,7 @@ export default function ContractDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [showShareDialog, setShowShareDialog] = useState(false)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
@@ -717,15 +719,13 @@ export default function ContractDetailPage() {
                           variant="outline" 
                           size="sm" 
                           className="bg-white hover:bg-amber-50 hover:border-amber-300"
-                          asChild
+                          onClick={() => setShowApprovalModal(true)}
                         >
-                          <Link href={`/approvals/new?contractId=${params.id}`}>
-                            <CheckCircle2 className="h-4 w-4 mr-1.5 text-amber-600" />
-                            Approval
-                          </Link>
+                          <CheckCircle2 className="h-4 w-4 mr-1.5 text-amber-600" />
+                          Submit for Approval
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Request or view approvals</TooltipContent>
+                      <TooltipContent>Submit contract for approval workflow</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
@@ -1308,6 +1308,14 @@ export default function ContractDetailPage() {
         documentId={params.id as string}
         documentType="contract"
         documentTitle={contract?.filename || 'Contract'}
+      />
+
+      {/* Submit for Approval Modal */}
+      <SubmitForApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => setShowApprovalModal(false)}
+        contractId={params.id as string}
+        contractTitle={contract?.filename || 'Contract'}
       />
     </div>
   )

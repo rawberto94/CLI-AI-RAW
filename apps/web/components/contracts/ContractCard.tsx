@@ -15,17 +15,28 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  Send,
+  Users,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 import { fadeIn, expandCollapse } from "@/lib/contracts/animations";
 import { cn } from "@/lib/utils";
 
 // Types
+export interface ApprovalStatus {
+  status: 'pending' | 'in_progress' | 'approved' | 'rejected' | 'none';
+  currentStep?: number;
+  totalSteps?: number;
+  currentApprover?: string;
+  dueDate?: Date;
+}
+
 export interface Contract {
   id: string;
   filename: string;
   originalName: string;
-  status: "uploaded" | "processing" | "completed" | "failed" | "pending";
+  status: "uploaded" | "processing" | "completed" | "failed" | "pending" | "PENDING_APPROVAL";
   uploadedAt: Date;
   processedAt?: Date;
   fileSize: number;
@@ -39,6 +50,7 @@ export interface Contract {
   riskScore?: number;
   complianceScore?: number;
   tags?: string[];
+  approvalStatus?: ApprovalStatus;
 }
 
 export interface ContractCardProps {
@@ -50,21 +62,23 @@ export interface ContractCardProps {
 }
 
 // Status icon mapping
-const statusIcons = {
+const statusIcons: Record<string, any> = {
   uploaded: Clock,
   processing: Clock,
   completed: CheckCircle2,
   failed: XCircle,
   pending: AlertCircle,
+  PENDING_APPROVAL: Send,
 };
 
 // Status color mapping
-const statusColors = {
+const statusColors: Record<string, string> = {
   uploaded: "text-blue-600 bg-blue-50",
   processing: "text-yellow-600 bg-yellow-50",
   completed: "text-green-600 bg-green-50",
   failed: "text-red-600 bg-red-50",
   pending: "text-gray-600 bg-gray-50",
+  PENDING_APPROVAL: "text-amber-600 bg-amber-50",
 };
 
 export function ContractCard({
@@ -244,11 +258,13 @@ export function ContractCard({
           <div
             className={cn(
               "inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium",
-              statusColors[contract.status]
+              statusColors[contract.status === "PENDING_APPROVAL" ? "pending" : contract.status]
             )}
           >
             <StatusIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="capitalize">{contract.status}</span>
+            <span className="capitalize">
+              {contract.status === "PENDING_APPROVAL" ? "Pending Approval" : contract.status}
+            </span>
           </div>
 
           {contract.contractType && (
@@ -257,6 +273,74 @@ export function ContractCard({
             </span>
           )}
         </div>
+
+        {/* Approval Progress Indicator */}
+        {contract.approvalStatus && contract.approvalStatus.status !== 'none' && (
+          <div className="mb-4 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {contract.approvalStatus.status === 'pending' && (
+                  <Clock className="w-4 h-4 text-amber-600" />
+                )}
+                {contract.approvalStatus.status === 'in_progress' && (
+                  <Send className="w-4 h-4 text-blue-600" />
+                )}
+                {contract.approvalStatus.status === 'approved' && (
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                )}
+                {contract.approvalStatus.status === 'rejected' && (
+                  <XCircle className="w-4 h-4 text-red-600" />
+                )}
+                <span className={cn(
+                  "text-xs font-semibold uppercase tracking-wide",
+                  contract.approvalStatus.status === 'pending' && "text-amber-700",
+                  contract.approvalStatus.status === 'in_progress' && "text-blue-700",
+                  contract.approvalStatus.status === 'approved' && "text-green-700",
+                  contract.approvalStatus.status === 'rejected' && "text-red-700"
+                )}>
+                  {contract.approvalStatus.status === 'in_progress' ? 'In Progress' : contract.approvalStatus.status}
+                </span>
+              </div>
+              {contract.approvalStatus.currentStep && contract.approvalStatus.totalSteps && (
+                <span className="text-xs text-gray-600">
+                  Step {contract.approvalStatus.currentStep} of {contract.approvalStatus.totalSteps}
+                </span>
+              )}
+            </div>
+            
+            {/* Progress Bar */}
+            {contract.approvalStatus.currentStep && contract.approvalStatus.totalSteps && (
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-2">
+                <div 
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    contract.approvalStatus.status === 'approved' && "bg-green-500",
+                    contract.approvalStatus.status === 'rejected' && "bg-red-500",
+                    (contract.approvalStatus.status === 'pending' || contract.approvalStatus.status === 'in_progress') && "bg-amber-500"
+                  )}
+                  style={{ 
+                    width: `${(contract.approvalStatus.currentStep / contract.approvalStatus.totalSteps) * 100}%` 
+                  }}
+                />
+              </div>
+            )}
+            
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              {contract.approvalStatus.currentApprover && (
+                <div className="flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  <span>Awaiting: {contract.approvalStatus.currentApprover}</span>
+                </div>
+              )}
+              {contract.approvalStatus.dueDate && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  <span>Due: {formatDate(contract.approvalStatus.dueDate)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Details (Detailed Variant) */}
         {variant === "detailed" && (
