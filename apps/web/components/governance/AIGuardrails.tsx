@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   Shield,
   AlertTriangle,
@@ -397,6 +399,129 @@ export function AIGuardrails() {
   const criticalFlags = riskFlags.filter(f => f.severity === 'critical' && f.status !== 'resolved').length;
   const totalViolations = policies.reduce((sum, p) => sum + p.violations, 0);
 
+  const router = useRouter();
+
+  // Handle configure settings
+  const handleConfigure = useCallback(() => {
+    toast.info('Opening configuration settings...');
+    // In a real app, this would open a configuration modal or page
+  }, []);
+
+  // Handle view rules
+  const handleViewRules = useCallback((policyId: string, policyName: string) => {
+    toast.info(`Viewing rules for: ${policyName}`);
+  }, []);
+
+  // Handle edit policy
+  const handleEditPolicy = useCallback((policyId: string, policyName: string) => {
+    toast.info(`Editing policy: ${policyName}`);
+  }, []);
+
+  // Handle toggle policy lock
+  const handleToggleLock = useCallback((policyId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+    toast.success(`Policy ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
+  }, []);
+
+  // Handle export flags
+  const handleExportFlags = useCallback(() => {
+    try {
+      const csvContent = [
+        ['ID', 'Title', 'Description', 'Severity', 'Status', 'Contract', 'Detected At'].join(','),
+        ...riskFlags.map(f => [
+          f.id,
+          f.title,
+          f.description.replace(/,/g, ';'),
+          f.severity,
+          f.status,
+          f.contract || 'N/A',
+          f.detectedAt || 'N/A',
+        ].join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `risk-flags-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Risk flags exported successfully');
+    } catch (error) {
+      toast.error('Failed to export flags');
+    }
+  }, [riskFlags]);
+
+  // Handle resolve flag
+  const handleResolveFlag = useCallback(async (flagId: string) => {
+    toast.info('Resolving flag...');
+    try {
+      const res = await fetch(`/api/governance/flags/${flagId}/resolve`, { method: 'POST' });
+      if (res.ok) {
+        setRiskFlags(prev => prev.map(f => f.id === flagId ? { ...f, status: 'resolved' } : f));
+        toast.success('Flag resolved successfully');
+      } else {
+        throw new Error('Failed to resolve');
+      }
+    } catch (error) {
+      toast.error('Failed to resolve flag');
+    }
+  }, []);
+
+  // Handle dismiss flag
+  const handleDismissFlag = useCallback(async (flagId: string) => {
+    toast.info('Dismissing flag...');
+    try {
+      const res = await fetch(`/api/governance/flags/${flagId}/dismiss`, { method: 'POST' });
+      if (res.ok) {
+        setRiskFlags(prev => prev.filter(f => f.id !== flagId));
+        toast.success('Flag dismissed');
+      } else {
+        throw new Error('Failed to dismiss');
+      }
+    } catch (error) {
+      toast.error('Failed to dismiss flag');
+    }
+  }, []);
+
+  // Handle investigate flag
+  const handleInvestigate = useCallback((flagId: string, contractId?: string) => {
+    if (contractId) {
+      router.push(`/contracts/${contractId}`);
+    } else {
+      toast.info('Opening investigation...');
+    }
+  }, [router]);
+
+  // Handle export audit log
+  const handleExportAuditLog = useCallback(() => {
+    try {
+      const csvContent = [
+        ['ID', 'Action', 'User', 'Timestamp', 'Resource', 'Decision', 'Reason'].join(','),
+        ...auditLogs.map(log => [
+          log.id,
+          log.action,
+          log.user || 'System',
+          log.timestamp || 'N/A',
+          log.resource || 'N/A',
+          log.decision || 'N/A',
+          (log.reason || '').replace(/,/g, ';'),
+        ].join(','))
+      ].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('Audit log exported successfully');
+    } catch (error) {
+      toast.error('Failed to export audit log');
+    }
+  }, [auditLogs]);
+
+  // Handle create new policy
+  const handleCreatePolicy = useCallback(() => {
+    toast.info('Opening policy creator...');
+    setShowPolicyModal(true);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -543,7 +668,7 @@ export function AIGuardrails() {
                   </button>
                 ))}
               </nav>
-              <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+              <button onClick={handleConfigure} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
                 <Settings className="h-4 w-4" />
                 Configure
               </button>
@@ -635,15 +760,15 @@ export function AIGuardrails() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-4">
-                            <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 text-sm">
+                            <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 text-sm">
                               <Eye className="h-4 w-4" />
                               View Rules
                             </button>
-                            <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
+                            <button onClick={() => handleEditPolicy(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
                               <Settings className="h-4 w-4" />
                               Edit Policy
                             </button>
-                            <button className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
+                            <button onClick={() => handleToggleLock(policy.id, policy.status)} className="flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
                               {policy.status === 'active' ? (
                                 <Lock className="h-4 w-4 text-gray-500" />
                               ) : (
@@ -673,7 +798,7 @@ export function AIGuardrails() {
                       Critical
                     </button>
                   </div>
-                  <button className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
+                  <button onClick={handleExportFlags} className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                     <Download className="h-4 w-4" />
                     Export
                   </button>
@@ -733,10 +858,10 @@ export function AIGuardrails() {
                       </div>
                       {flag.status !== 'resolved' && (
                         <div className="flex flex-col gap-2">
-                          <button className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+                          <button onClick={() => handleResolveFlag(flag.id)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
                             Resolve
                           </button>
-                          <button className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
+                          <button onClick={() => handleDismissFlag(flag.id)} className="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50">
                             Dismiss
                           </button>
                         </div>
@@ -759,11 +884,11 @@ export function AIGuardrails() {
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
+                    <button onClick={() => toast.info('Opening filter options...')} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                       <Filter className="h-4 w-4" />
                       Filter
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
+                    <button onClick={handleExportAuditLog} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
                       <Download className="h-4 w-4" />
                       Export
                     </button>
