@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCircle2, Clock, XCircle, AlertTriangle, X, Eye } from 'lucide-react';
+import { Bell, CheckCircle2, Clock, XCircle, AlertTriangle, X, Eye, Check, ThumbsDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -12,6 +12,8 @@ import {
 import { useWebSocket, type ApprovalNotification } from '@/contexts/websocket-context';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Framer Motion typing workaround
 const MotionDiv = motion.div as React.ComponentType<
@@ -28,9 +30,12 @@ const MotionDiv = motion.div as React.ComponentType<
 interface NotificationItemProps {
   notification: ApprovalNotification;
   onDismiss: (id: string) => void;
+  onQuickApprove?: (approvalId: string) => void;
+  onQuickReject?: (approvalId: string) => void;
+  isProcessing?: boolean;
 }
 
-function NotificationItem({ notification, onDismiss }: NotificationItemProps) {
+function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReject, isProcessing }: NotificationItemProps) {
   const getIcon = () => {
     switch (notification.type) {
       case 'new_approval':
@@ -69,6 +74,9 @@ function NotificationItem({ notification, onDismiss }: NotificationItemProps) {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
+  // Check if this notification type can have quick actions
+  const canQuickApprove = notification.type === 'new_approval' || notification.type === 'deadline_reminder';
+
   return (
     <MotionDiv
       initial={{ opacity: 0, x: -20 }}
@@ -90,6 +98,51 @@ function NotificationItem({ notification, onDismiss }: NotificationItemProps) {
           <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">
             {notification.message}
           </p>
+          
+          {/* Quick action buttons for new approvals */}
+          {canQuickApprove && onQuickApprove && onQuickReject && (
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickApprove(notification.approvalId);
+                }}
+                disabled={isProcessing}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                  "bg-green-50 text-green-700 hover:bg-green-100",
+                  isProcessing && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Check className="w-3 h-3" />
+                )}
+                Approve
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickReject(notification.approvalId);
+                }}
+                disabled={isProcessing}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors",
+                  "bg-red-50 text-red-700 hover:bg-red-100",
+                  isProcessing && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <ThumbsDown className="w-3 h-3" />
+                )}
+                Reject
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs text-gray-400">
               {timeAgo(notification.timestamp)}
@@ -121,6 +174,78 @@ export function ApprovalNotificationBell() {
   const { approvalNotifications, clearApprovalNotification, subscribeToApprovals, connected } = useWebSocket();
   const [isOpen, setIsOpen] = useState(false);
   const [localNotifications, setLocalNotifications] = useState<ApprovalNotification[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Quick approve mutation
+  const approveMutation = useMutation({
+    mutationFn: async (approvalId: string) => {
+      const response = await fetch(`/api/approvals/${approvalId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: 'Approved via quick action' }),
+      });
+      if (!response.ok) throw new Error('Failed to approve');
+      return response.json();
+    },
+    onSuccess: (_, approvalId) => {
+      toast.success('Approval submitted', {
+        description: 'The item has been approved successfully',
+      });
+      // Remove from notifications
+      setLocalNotifications(prev => prev.filter(n => n.approvalId !== approvalId));
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['approval-stats'] });
+      setProcessingId(null);
+    },
+    onError: () => {
+      toast.error('Failed to approve', {
+        description: 'Please try again or view the full approval',
+      });
+      setProcessingId(null);
+    },
+  });
+
+  // Quick reject mutation
+  const rejectMutation = useMutation({
+    mutationFn: async (approvalId: string) => {
+      const response = await fetch(`/api/approvals/${approvalId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Rejected via quick action' }),
+      });
+      if (!response.ok) throw new Error('Failed to reject');
+      return response.json();
+    },
+    onSuccess: (_, approvalId) => {
+      toast.success('Rejection submitted', {
+        description: 'The item has been rejected',
+      });
+      // Remove from notifications
+      setLocalNotifications(prev => prev.filter(n => n.approvalId !== approvalId));
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['approval-stats'] });
+      setProcessingId(null);
+    },
+    onError: () => {
+      toast.error('Failed to reject', {
+        description: 'Please try again or view the full approval',
+      });
+      setProcessingId(null);
+    },
+  });
+
+  const handleQuickApprove = (approvalId: string) => {
+    setProcessingId(approvalId);
+    approveMutation.mutate(approvalId);
+  };
+
+  const handleQuickReject = (approvalId: string) => {
+    setProcessingId(approvalId);
+    rejectMutation.mutate(approvalId);
+  };
 
   // Subscribe to approvals when connected
   useEffect(() => {
@@ -251,6 +376,9 @@ export function ApprovalNotificationBell() {
                     key={notification.id}
                     notification={notification}
                     onDismiss={handleDismiss}
+                    onQuickApprove={handleQuickApprove}
+                    onQuickReject={handleQuickReject}
+                    isProcessing={processingId === notification.approvalId}
                   />
                 ))}
               </AnimatePresence>

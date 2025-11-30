@@ -81,6 +81,13 @@ const RISK_LEVELS = [
   { value: "high", label: "High Risk", range: [70, 100] },
 ];
 
+const APPROVAL_STATUSES = [
+  { value: "pending", label: "Pending Approval", icon: Clock, color: "text-amber-600" },
+  { value: "approved", label: "Approved", icon: CheckCircle, color: "text-green-600" },
+  { value: "rejected", label: "Rejected", icon: AlertTriangle, color: "text-red-600" },
+  { value: "none", label: "No Approval", icon: FileText, color: "text-slate-500" },
+];
+
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
@@ -90,6 +97,7 @@ export default function ContractsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilters, setTypeFilters] = useState<string[]>([]);
   const [riskFilters, setRiskFilters] = useState<string[]>([]);
+  const [approvalFilters, setApprovalFilters] = useState<string[]>([]);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   
@@ -188,6 +196,7 @@ export default function ContractsPage() {
     setStatusFilter("all");
     setTypeFilters([]);
     setRiskFilters([]);
+    setApprovalFilters([]);
     setAdvancedFilters({});
   }, []);
 
@@ -262,7 +271,7 @@ export default function ContractsPage() {
   }, [refetch]);
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || Object.keys(advancedFilters).length > 0;
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || Object.keys(advancedFilters).length > 0;
 
   const filteredContracts = useMemo(() => {
     if (!Array.isArray(contracts)) return [];
@@ -286,6 +295,12 @@ export default function ContractsPage() {
         return contract.riskScore >= level.range[0] && contract.riskScore < level.range[1];
       });
 
+      // Approval status filter  
+      const matchesApproval = approvalFilters.length === 0 || approvalFilters.some(approval => {
+        const contractApprovalStatus = (contract as any).approvalStatus || 'none';
+        return contractApprovalStatus === approval;
+      });
+
       // Advanced filters
       const matchesAdvanced = 
         (!advancedFilters.clientName || contract.parties?.client?.toLowerCase().includes(advancedFilters.clientName.toLowerCase())) &&
@@ -293,9 +308,9 @@ export default function ContractsPage() {
         (!advancedFilters.minValue || (contract.value && contract.value >= advancedFilters.minValue)) &&
         (!advancedFilters.maxValue || (contract.value && contract.value <= advancedFilters.maxValue));
 
-      return matchesSearch && matchesStatus && matchesRisk && matchesAdvanced;
+      return matchesSearch && matchesStatus && matchesRisk && matchesApproval && matchesAdvanced;
     });
-  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, advancedFilters]);
+  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, advancedFilters]);
 
   // After filteredContracts is computed, we need to fix toggleSelectAll
   const allVisibleSelected = useMemo(() => {
@@ -692,6 +707,53 @@ export default function ContractsPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Approval Status Filters */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <ClipboardCheck className="h-4 w-4" />
+                      Approval
+                      {approvalFilters.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                          {approvalFilters.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {APPROVAL_STATUSES.map((status) => {
+                      const StatusIcon = status.icon;
+                      return (
+                        <DropdownMenuItem
+                          key={status.value}
+                          onClick={() => {
+                            setApprovalFilters(prev => 
+                              prev.includes(status.value) 
+                                ? prev.filter(a => a !== status.value)
+                                : [...prev, status.value]
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={approvalFilters.includes(status.value)}
+                            className="mr-2"
+                          />
+                          <StatusIcon className={`h-4 w-4 mr-2 ${status.color}`} />
+                          {status.label}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {approvalFilters.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setApprovalFilters([])}>
+                          Clear approval filters
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 {/* Clear Filters */}
                 {hasActiveFilters && (
                   <Button
@@ -730,6 +792,19 @@ export default function ContractsPage() {
                         size="sm"
                         className="h-4 w-4 p-0 ml-1"
                         onClick={() => setRiskFilters(prev => prev.filter(r => r !== risk))}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  ))}
+                  {approvalFilters.map(approval => (
+                    <Badge key={approval} variant="secondary" className="gap-1 pr-1">
+                      {APPROVAL_STATUSES.find(s => s.value === approval)?.label}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-4 w-4 p-0 ml-1"
+                        onClick={() => setApprovalFilters(prev => prev.filter(a => a !== approval))}
                       >
                         <X className="h-3 w-3" />
                       </Button>

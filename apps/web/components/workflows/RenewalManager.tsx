@@ -444,10 +444,49 @@ export const RenewalManager: React.FC = () => {
   // Approval modal state
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [renewalForApproval, setRenewalForApproval] = useState<RenewalContract | null>(null);
+  const [initiateModalOpen, setInitiateModalOpen] = useState(false);
+  const [selectedRenewalForInitiate, setSelectedRenewalForInitiate] = useState<RenewalContract | null>(null);
   
   const handleSubmitForApproval = (renewal: RenewalContract) => {
     setRenewalForApproval(renewal);
     setApprovalModalOpen(true);
+  };
+  
+  const handleInitiateRenewal = () => {
+    // If a specific renewal is selected, use that; otherwise, show picker
+    if (selectedRenewal) {
+      setSelectedRenewalForInitiate(selectedRenewal);
+      setInitiateModalOpen(true);
+    } else if (filteredRenewals.length > 0) {
+      // Auto-select the most urgent renewal
+      const mostUrgent = filteredRenewals[0];
+      setSelectedRenewalForInitiate(mostUrgent);
+      setInitiateModalOpen(true);
+    } else {
+      toast.error('No renewals available', {
+        description: 'Please add contracts with upcoming renewals first',
+      });
+    }
+  };
+  
+  const handleConfirmInitiateRenewal = () => {
+    if (selectedRenewalForInitiate) {
+      // Update renewal status and auto-submit for approval
+      setRenewals(prev => prev.map(r => 
+        r.id === selectedRenewalForInitiate.id 
+          ? { ...r, status: 'in-progress' as const }
+          : r
+      ));
+      toast.success('Renewal initiated', {
+        description: `${selectedRenewalForInitiate.contractName} renewal process started`,
+      });
+      
+      // Automatically open approval modal after initiating
+      setInitiateModalOpen(false);
+      setRenewalForApproval(selectedRenewalForInitiate);
+      setApprovalModalOpen(true);
+      setSelectedRenewalForInitiate(null);
+    }
   };
   
   const handleApprovalSubmit = () => {
@@ -583,7 +622,10 @@ export const RenewalManager: React.FC = () => {
               <Bell className="w-4 h-4" />
               Notifications
             </button>
-            <button className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center gap-2">
+            <button 
+              onClick={handleInitiateRenewal}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center gap-2"
+            >
               <Play className="w-4 h-4" />
               Initiate Renewal
             </button>
@@ -744,6 +786,83 @@ export const RenewalManager: React.FC = () => {
           onSubmitSuccess={handleApprovalSubmit}
         />
       )}
+      
+      {/* Initiate Renewal Modal */}
+      <AnimatePresence>
+        {initiateModalOpen && selectedRenewalForInitiate && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={() => setInitiateModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+            >
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-green-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500 rounded-lg">
+                    <Play className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-slate-900">Initiate Renewal</h3>
+                    <p className="text-sm text-slate-500">Start the renewal process</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <div className="p-4 bg-slate-50 rounded-lg mb-4">
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-5 h-5 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-900">{selectedRenewalForInitiate.contractName}</p>
+                      <p className="text-sm text-slate-500">{selectedRenewalForInitiate.supplierName}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="text-slate-500">Current Value:</div>
+                    <div className="font-medium text-slate-900">${selectedRenewalForInitiate.currentValue.toLocaleString()}</div>
+                    <div className="text-slate-500">Renewal Date:</div>
+                    <div className="font-medium text-slate-900">{selectedRenewalForInitiate.renewalDate}</div>
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                  <div className="flex items-start gap-2">
+                    <GitBranch className="w-4 h-4 text-blue-500 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-900">Auto-submit for Approval</p>
+                      <p className="text-blue-700">This will start the approval workflow automatically after initiating the renewal.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setInitiateModalOpen(false)}
+                    className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmInitiateRenewal}
+                    className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    Initiate & Submit
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
