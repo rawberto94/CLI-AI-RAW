@@ -69,7 +69,7 @@ export function PresenceIndicator({
           <Users className="h-4 w-4 text-muted-foreground mr-1" />
           <div className="flex -space-x-2">
             {visibleCollaborators.map((user) => (
-              <CollaboratorAvatar key={user.oduserId} user={user} />
+              <CollaboratorAvatar key={user.userId} user={user} />
             ))}
             {hiddenCount > 0 && (
               <TooltipProvider>
@@ -82,7 +82,7 @@ export function PresenceIndicator({
                   <TooltipContent>
                     <div className="space-y-1">
                       {collaborators.slice(maxAvatars).map((user) => (
-                        <div key={user.oduserId} className="flex items-center gap-2">
+                        <div key={user.userId} className="flex items-center gap-2">
                           <div 
                             className="h-2 w-2 rounded-full" 
                             style={{ backgroundColor: user.color }}
@@ -166,7 +166,7 @@ export function CursorOverlay({ containerRef }: CursorOverlayProps) {
       {collaborators.map((user) => (
         user.cursor && (
           <div
-            key={user.oduserId}
+            key={user.userId}
             className="absolute transition-all duration-100"
             style={{
               left: user.cursor.x,
@@ -226,7 +226,7 @@ export function SelectionHighlight({ textRef }: SelectionHighlightProps) {
       {collaborators.map((user) => (
         user.selection && (
           <div
-            key={`selection-${user.oduserId}`}
+            key={`selection-${user.userId}`}
             className="pointer-events-none absolute"
             style={{
               backgroundColor: `${user.color}33`, // 20% opacity

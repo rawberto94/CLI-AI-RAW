@@ -29,8 +29,19 @@ import {
   Bell,
   CheckCheck,
   Loader2,
+  UserPlus,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { useApprovalFlow } from '@/hooks/use-collaboration';
+import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 // ============================================================================
 // Types
@@ -228,10 +239,12 @@ const getDaysUntilDue = (dueDate: string) => {
 interface ApprovalCardProps {
   approval: ApprovalRequest;
   isSelected: boolean;
+  isChecked: boolean;
   onSelect: () => void;
+  onToggleCheck: (e: React.MouseEvent) => void;
 }
 
-const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, onSelect }) => {
+const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChecked, onSelect, onToggleCheck }) => {
   const priority = getPriorityConfig(approval.priority);
   const type = getTypeConfig(approval.type);
   const status = getStatusConfig(approval.status);
@@ -252,6 +265,20 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, onSel
       }`}
     >
       <div className="flex items-start gap-3">
+        {/* Checkbox for bulk selection */}
+        {approval.status === 'pending' && (
+          <button
+            onClick={onToggleCheck}
+            className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all mt-2.5 ${
+              isChecked
+                ? 'bg-blue-500 border-blue-500 text-white'
+                : 'border-slate-300 hover:border-blue-400'
+            }`}
+          >
+            {isChecked && <CheckCircle2 className="w-3 h-3" />}
+          </button>
+        )}
+        
         <div className={`w-10 h-10 rounded-lg ${type.color} flex items-center justify-center flex-shrink-0`}>
           <TypeIcon className="w-5 h-5" />
         </div>
@@ -335,9 +362,11 @@ interface DetailPanelProps {
   approval: ApprovalRequest;
   onApprove: () => void;
   onReject: () => void;
+  onEscalate: () => void;
+  onDelegate: () => void;
 }
 
-const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject }) => {
+const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject, onEscalate, onDelegate }) => {
   const [comment, setComment] = useState('');
   const type = getTypeConfig(approval.type);
   const TypeIcon = type.icon;
@@ -451,22 +480,32 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
               rows={2}
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={onApprove}
-              className="flex-1 px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
+              className="flex-1 min-w-[120px] px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
             >
               <ThumbsUp className="w-4 h-4" />
               Approve
             </button>
             <button
               onClick={onReject}
-              className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center justify-center gap-2"
+              className="flex-1 min-w-[120px] px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center justify-center gap-2"
             >
               <ThumbsDown className="w-4 h-4" />
               Reject
             </button>
-            <button className="px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium flex items-center gap-2">
+            <button
+              onClick={onDelegate}
+              className="px-4 py-2.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              Delegate
+            </button>
+            <button
+              onClick={onEscalate}
+              className="px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium flex items-center gap-2"
+            >
               <ArrowRight className="w-4 h-4" />
               Escalate
             </button>
@@ -485,9 +524,48 @@ export const ApprovalsQueue: React.FC = () => {
   const { isMockData } = useDataMode();
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [delegateModalOpen, setDelegateModalOpen] = useState(false);
+  const [delegateTarget, setDelegateTarget] = useState('');
+  const [delegateNote, setDelegateNote] = useState('');
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
+  // Toggle single item selection for bulk actions
+  const toggleSelection = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Select all pending approvals
+  const selectAllPending = () => {
+    const pendingIds = filteredApprovals.filter(a => a.status === 'pending').map(a => a.id);
+    setSelectedIds(new Set(pendingIds));
+  };
+
+  // Clear selection
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  // Mock team members for delegation
+  const teamMembers = [
+    { id: 'sarah', name: 'Sarah Johnson', email: 'sarah@company.com', role: 'Legal Counsel' },
+    { id: 'mike', name: 'Mike Chen', email: 'mike@company.com', role: 'Finance Director' },
+    { id: 'emily', name: 'Emily Davis', email: 'emily@company.com', role: 'Procurement Manager' },
+    { id: 'james', name: 'James Wilson', email: 'james@company.com', role: 'VP Operations' },
+    { id: 'alex', name: 'Alex Williams', email: 'alex@company.com', role: 'CFO' },
+  ];
 
   // Fetch approvals from API or use mock data based on mode
   useEffect(() => {
@@ -569,6 +647,8 @@ export const ApprovalsQueue: React.FC = () => {
   const handleApprove = async () => {
     if (!selectedId) return;
     
+    const selectedApprovalTitle = selectedApproval?.title || 'Approval';
+    
     try {
       const response = await fetch('/api/approvals', {
         method: 'POST',
@@ -591,6 +671,9 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'approved' as const } : a
         ));
+        toast.success('Approval completed', {
+          description: `"${selectedApprovalTitle}" has been approved successfully.`,
+        });
       }
     } catch (error) {
       console.error('Approve error:', error);
@@ -598,6 +681,9 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'approved' as const } : a
       ));
+      toast.success('Approval completed', {
+        description: `"${selectedApprovalTitle}" has been approved.`,
+      });
     }
   };
 
@@ -605,7 +691,14 @@ export const ApprovalsQueue: React.FC = () => {
     if (!selectedId) return;
     
     const reason = window.prompt('Please provide a reason for rejection:');
-    if (!reason) return;
+    if (!reason) {
+      toast.info('Rejection cancelled', {
+        description: 'A reason is required to reject an approval.',
+      });
+      return;
+    }
+    
+    const selectedApprovalTitle = selectedApproval?.title || 'Approval';
     
     try {
       const response = await fetch('/api/approvals', {
@@ -629,6 +722,9 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'rejected' as const } : a
         ));
+        toast.success('Approval rejected', {
+          description: `"${selectedApprovalTitle}" has been rejected.`,
+        });
       }
     } catch (error) {
       console.error('Reject error:', error);
@@ -636,6 +732,195 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'rejected' as const } : a
       ));
+      toast.success('Approval rejected', {
+        description: `"${selectedApprovalTitle}" has been rejected.`,
+      });
+    }
+  };
+
+  const handleEscalate = async () => {
+    if (!selectedId) return;
+    
+    const selectedApprovalTitle = selectedApproval?.title || 'Approval';
+    
+    try {
+      const response = await fetch('/api/approvals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          action: 'escalate',
+          approvalId: selectedId,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to escalate');
+      
+      const result = await response.json();
+      if (result.success) {
+        setApprovals(prev => prev.map(a => 
+          a.id === selectedId ? { ...a, status: 'escalated' as const } : a
+        ));
+        toast.success('Approval escalated', {
+          description: `"${selectedApprovalTitle}" has been escalated to the next level.`,
+        });
+      }
+    } catch (error) {
+      console.error('Escalate error:', error);
+      toast.error('Escalation failed', {
+        description: 'Unable to escalate the approval. Please try again.',
+      });
+    }
+  };
+
+  const openDelegateModal = () => {
+    setDelegateModalOpen(true);
+    setDelegateTarget('');
+    setDelegateNote('');
+  };
+
+  const handleDelegate = async () => {
+    if (!selectedId || !delegateTarget) {
+      toast.error('Delegation failed', {
+        description: 'Please select a team member to delegate to.',
+      });
+      return;
+    }
+    
+    const selectedApprovalTitle = selectedApproval?.title || 'Approval';
+    const targetMember = teamMembers.find(m => m.id === delegateTarget);
+    
+    try {
+      const response = await fetch('/api/approvals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          action: 'delegate',
+          approvalId: selectedId,
+          delegateTo: delegateTarget,
+          note: delegateNote,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to delegate');
+      
+      const result = await response.json();
+      if (result.success) {
+        toast.success('Approval delegated', {
+          description: `"${selectedApprovalTitle}" has been delegated to ${targetMember?.name || delegateTarget}.`,
+        });
+        setDelegateModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Delegate error:', error);
+      toast.error('Delegation failed', {
+        description: 'Unable to delegate the approval. Please try again.',
+      });
+    }
+  };
+
+  // Bulk approve selected items
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setBulkProcessing(true);
+    const ids = Array.from(selectedIds);
+    
+    try {
+      const response = await fetch('/api/approvals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({
+          action: 'approve',
+          approvalIds: ids,
+          comment: 'Bulk approved via approvals queue',
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to bulk approve');
+      
+      // Update local state
+      setApprovals(prev => prev.map(a => 
+        selectedIds.has(a.id) ? { ...a, status: 'approved' as const } : a
+      ));
+      
+      toast.success(`${ids.length} approvals completed`, {
+        description: `Successfully approved ${ids.length} items.`,
+      });
+      
+      clearSelection();
+    } catch (error) {
+      console.error('Bulk approve error:', error);
+      // Fallback to local state update
+      setApprovals(prev => prev.map(a => 
+        selectedIds.has(a.id) ? { ...a, status: 'approved' as const } : a
+      ));
+      toast.success(`${ids.length} approvals completed`, {
+        description: `Approved ${ids.length} items.`,
+      });
+      clearSelection();
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
+  // Bulk reject selected items
+  const handleBulkReject = async () => {
+    if (selectedIds.size === 0) return;
+    
+    const reason = window.prompt(`Please provide a reason for rejecting ${selectedIds.size} items:`);
+    if (!reason) {
+      toast.info('Rejection cancelled', {
+        description: 'A reason is required to reject approvals.',
+      });
+      return;
+    }
+    
+    setBulkProcessing(true);
+    const ids = Array.from(selectedIds);
+    
+    try {
+      // In a real app, you'd send all at once or batch
+      for (const id of ids) {
+        await fetch('/api/approvals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-tenant-id': 'demo',
+          },
+          body: JSON.stringify({
+            action: 'reject',
+            approvalId: id,
+            reason,
+          }),
+        });
+      }
+      
+      // Update local state
+      setApprovals(prev => prev.map(a => 
+        selectedIds.has(a.id) ? { ...a, status: 'rejected' as const } : a
+      ));
+      
+      toast.success(`${ids.length} approvals rejected`, {
+        description: `Successfully rejected ${ids.length} items.`,
+      });
+      
+      clearSelection();
+    } catch (error) {
+      console.error('Bulk reject error:', error);
+      toast.error('Some rejections failed', {
+        description: 'Please try again or reject individually.',
+      });
+    } finally {
+      setBulkProcessing(false);
     }
   };
 
@@ -736,6 +1021,61 @@ export const ApprovalsQueue: React.FC = () => {
             </div>
           </div>
 
+          {/* Bulk Action Bar */}
+          {selectedIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3 border-b border-blue-200 bg-blue-50"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-blue-800">
+                    {selectedIds.size} selected
+                  </span>
+                  <button
+                    onClick={selectAllPending}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Select all pending
+                  </button>
+                  <button
+                    onClick={clearSelection}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkApprove}
+                    disabled={bulkProcessing}
+                    className="px-3 py-1.5 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {bulkProcessing ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ThumbsUp className="w-3.5 h-3.5" />
+                    )}
+                    Approve All
+                  </button>
+                  <button
+                    onClick={handleBulkReject}
+                    disabled={bulkProcessing}
+                    className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {bulkProcessing ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ThumbsDown className="w-3.5 h-3.5" />
+                    )}
+                    Reject All
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {filteredApprovals.map(approval => (
@@ -743,7 +1083,9 @@ export const ApprovalsQueue: React.FC = () => {
                 key={approval.id}
                 approval={approval}
                 isSelected={selectedId === approval.id}
+                isChecked={selectedIds.has(approval.id)}
                 onSelect={() => setSelectedId(approval.id)}
+                onToggleCheck={(e) => toggleSelection(approval.id, e)}
               />
             ))}
           </div>
@@ -756,6 +1098,8 @@ export const ApprovalsQueue: React.FC = () => {
               approval={selectedApproval}
               onApprove={handleApprove}
               onReject={handleReject}
+              onEscalate={handleEscalate}
+              onDelegate={openDelegateModal}
             />
           ) : (
             <div className="h-full flex items-center justify-center text-slate-400">
@@ -767,6 +1111,82 @@ export const ApprovalsQueue: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Delegation Modal */}
+      <Dialog open={delegateModalOpen} onOpenChange={setDelegateModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-blue-600" />
+              Delegate Approval
+            </DialogTitle>
+            <DialogDescription>
+              Select a team member to delegate this approval to. They will receive a notification to review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Delegate to</label>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {teamMembers.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    onClick={() => setDelegateTarget(member.id)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                      delegateTarget === member.id
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium">
+                      {member.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-slate-900">{member.name}</p>
+                      <p className="text-sm text-slate-500">{member.role}</p>
+                    </div>
+                    {delegateTarget === member.id && (
+                      <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Note (optional)</label>
+              <textarea
+                value={delegateNote}
+                onChange={(e) => setDelegateNote(e.target.value)}
+                placeholder="Add a note for the delegate..."
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={2}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              onClick={() => setDelegateModalOpen(false)}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelegate}
+              disabled={!delegateTarget}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              Delegate
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

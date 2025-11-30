@@ -8,7 +8,7 @@ import { io, type Socket } from 'socket.io-client';
 // =====================
 
 export interface Presence {
-  oduserId: string;
+  userId: string;
   name: string;
   email: string;
   avatar?: string;
@@ -117,12 +117,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // Handle presence updates
     newSocket.on('presence:update', (data: { users: Presence[] }) => {
       const newPresence = new Map<string, Presence>();
-      data.users.forEach(user => newPresence.set(user.oduserId, user));
+      data.users.forEach(user => newPresence.set(user.userId, user));
       setPresence(newPresence);
     });
 
     newSocket.on('presence:join', (user: Presence) => {
-      setPresence(prev => new Map(prev).set(user.oduserId, user));
+      setPresence(prev => new Map(prev).set(user.userId, user));
     });
 
     newSocket.on('presence:leave', (userId: string) => {

@@ -91,7 +91,7 @@ export function CollaborativeEditorWrapper({
   
   const activeUsers: ActiveUser[] = wsContext?.presence 
     ? Array.from(wsContext.presence.values()).map(p => ({
-        id: (p as { oduserId?: string }).oduserId || p.oduserId || '',
+        id: (p as { userId?: string }).userId || p.userId || '',
         name: p.name || '',
         avatar: p.avatar,
         color: p.color,
