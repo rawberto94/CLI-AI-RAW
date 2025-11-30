@@ -45,6 +45,7 @@ import {
 import { ApprovalNotificationBell } from './ApprovalNotificationBell';
 import { DeadlineIndicator } from './DeadlineAlerts';
 import { CommentsThread } from './CommentsThread';
+import { DelegationRulesModal } from './DelegationRulesModal';
 
 // ============================================================================
 // Types
@@ -513,6 +514,7 @@ export const ApprovalsQueue: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [delegateModalOpen, setDelegateModalOpen] = useState(false);
+  const [delegationRulesOpen, setDelegationRulesOpen] = useState(false);
   const [delegateTarget, setDelegateTarget] = useState('');
   const [delegateNote, setDelegateNote] = useState('');
   const [bulkProcessing, setBulkProcessing] = useState(false);
@@ -1072,6 +1074,13 @@ export const ApprovalsQueue: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <ApprovalNotificationBell />
+            <button 
+              onClick={() => setDelegationRulesOpen(true)}
+              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2"
+            >
+              <UserPlus className="w-4 h-4" />
+              Delegation
+            </button>
             <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2">
               <History className="w-4 h-4" />
               History
@@ -1403,6 +1412,12 @@ export const ApprovalsQueue: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Delegation Rules Modal */}
+      <DelegationRulesModal
+        isOpen={delegationRulesOpen}
+        onClose={() => setDelegationRulesOpen(false)}
+      />
     </div>
   );
 };
