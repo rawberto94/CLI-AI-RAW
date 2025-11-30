@@ -46,6 +46,7 @@ import { ApprovalNotificationBell } from './ApprovalNotificationBell';
 import { DeadlineIndicator } from './DeadlineAlerts';
 import { CommentsThread } from './CommentsThread';
 import { DelegationRulesModal } from './DelegationRulesModal';
+import { MobileApprovalActions } from './MobileApprovalActions';
 
 // ============================================================================
 // Types
@@ -1228,7 +1229,7 @@ export const ApprovalsQueue: React.FC = () => {
         </div>
 
         {/* Detail Panel */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden hidden md:block">
           {selectedApproval ? (
             <DetailPanel
               approval={selectedApproval}
@@ -1247,6 +1248,16 @@ export const ApprovalsQueue: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Mobile Approval Actions - Fixed at bottom */}
+      {selectedApproval && selectedApproval.status === 'pending' && (
+        <MobileApprovalActions
+          onApprove={handleApprove}
+          onReject={handleReject}
+          onDelegate={openDelegateModal}
+          onEscalate={handleEscalate}
+        />
+      )}
 
       {/* Delegation Modal */}
       <Dialog open={delegateModalOpen} onOpenChange={setDelegateModalOpen}>
