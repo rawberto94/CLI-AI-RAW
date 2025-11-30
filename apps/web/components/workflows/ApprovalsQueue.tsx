@@ -42,6 +42,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { ApprovalNotificationBell } from './ApprovalNotificationBell';
 
 // ============================================================================
 // Types
@@ -948,14 +949,7 @@ export const ApprovalsQueue: React.FC = () => {
             <p className="text-sm text-slate-500 mt-1">Review and action pending approval requests</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors relative">
-              <Bell className="w-5 h-5" />
-              {stats.urgent > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  {stats.urgent}
-                </span>
-              )}
-            </button>
+            <ApprovalNotificationBell />
             <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2">
               <History className="w-4 h-4" />
               History

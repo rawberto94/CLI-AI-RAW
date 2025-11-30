@@ -19,10 +19,21 @@ export interface Presence {
 }
 
 export interface CollaborationEvent {
-  type: 'join' | 'leave' | 'cursor' | 'selection' | 'edit' | 'comment' | 'lock' | 'unlock';
+  type: 'join' | 'leave' | 'cursor' | 'selection' | 'edit' | 'comment' | 'lock' | 'unlock' | 'approval_update' | 'approval_submitted' | 'approval_completed';
   userId: string;
   documentId: string;
   data?: unknown;
+  timestamp: Date;
+}
+
+export interface ApprovalNotification {
+  id: string;
+  type: 'new_approval' | 'approval_completed' | 'approval_rejected' | 'step_completed' | 'deadline_reminder';
+  title: string;
+  message: string;
+  approvalId: string;
+  contractId?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   timestamp: Date;
 }
 
@@ -39,6 +50,7 @@ interface WebSocketContextValue {
   connected: boolean;
   presence: Map<string, Presence>;
   locks: Map<string, DocumentLock>;
+  approvalNotifications: ApprovalNotification[];
   joinDocument: (documentId: string, documentType: 'contract' | 'rate_card' | 'template' | 'workflow') => void;
   leaveDocument: () => void;
   updateCursor: (position: { x: number; y: number }) => void;
@@ -48,6 +60,8 @@ interface WebSocketContextValue {
   unlockSection: (sectionId: string) => void;
   sendComment: (sectionId: string, content: string, parentId?: string) => void;
   onEvent: (callback: (event: CollaborationEvent) => void) => () => void;
+  subscribeToApprovals: () => void;
+  clearApprovalNotification: (id: string) => void;
 }
 
 // =====================
@@ -76,6 +90,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
   const [locks, setLocks] = useState<Map<string, DocumentLock>>(new Map());
+  const [approvalNotifications, setApprovalNotifications] = useState<ApprovalNotification[]>([]);
   const [currentDocument, setCurrentDocument] = useState<string | null>(null);
   const [eventCallbacks, setEventCallbacks] = useState<Set<(event: CollaborationEvent) => void>>(new Set());
 
@@ -167,6 +182,40 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       eventCallbacks.forEach(callback => callback(event));
     });
 
+    // Handle approval notifications
+    newSocket.on('approval:new', (notification: ApprovalNotification) => {
+      setApprovalNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep last 50
+      eventCallbacks.forEach(callback => callback({
+        type: 'approval_submitted',
+        userId: 'system',
+        documentId: notification.approvalId,
+        data: notification,
+        timestamp: new Date(),
+      }));
+    });
+
+    newSocket.on('approval:completed', (notification: ApprovalNotification) => {
+      setApprovalNotifications(prev => [notification, ...prev].slice(0, 50));
+      eventCallbacks.forEach(callback => callback({
+        type: 'approval_completed',
+        userId: 'system',
+        documentId: notification.approvalId,
+        data: notification,
+        timestamp: new Date(),
+      }));
+    });
+
+    newSocket.on('approval:update', (notification: ApprovalNotification) => {
+      setApprovalNotifications(prev => [notification, ...prev].slice(0, 50));
+      eventCallbacks.forEach(callback => callback({
+        type: 'approval_update',
+        userId: 'system',
+        documentId: notification.approvalId,
+        data: notification,
+        timestamp: new Date(),
+      }));
+    });
+
     setSocket(newSocket);
 
     return () => {
@@ -256,12 +305,22 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const subscribeToApprovals = useCallback(() => {
+    if (!socket) return;
+    socket.emit('approval:subscribe');
+  }, [socket]);
+
+  const clearApprovalNotification = useCallback((id: string) => {
+    setApprovalNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   return (
     <WebSocketContext.Provider value={{
       socket,
       connected,
       presence,
       locks,
+      approvalNotifications,
       joinDocument,
       leaveDocument,
       updateCursor,
@@ -271,6 +330,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       unlockSection,
       sendComment,
       onEvent,
+      subscribeToApprovals,
+      clearApprovalNotification,
     }}>
       {children}
     </WebSocketContext.Provider>

@@ -256,6 +256,88 @@ export function useApprovalFlow(approvalId?: string) {
 }
 
 // ============================================================================
+// useContractApprovalStatus Hook
+// ============================================================================
+
+interface ContractApprovalStatus {
+  hasActiveApproval: boolean;
+  status: 'none' | 'pending' | 'in_progress' | 'approved' | 'rejected';
+  currentStep?: number;
+  totalSteps?: number;
+  currentApprover?: string;
+  dueDate?: string;
+  executionId?: string;
+}
+
+export function useContractApprovalStatus(contractId?: string) {
+  const { data, isLoading, error, refetch } = useQuery<ContractApprovalStatus>({
+    queryKey: ['contract-approval-status', contractId],
+    queryFn: async () => {
+      if (!contractId) {
+        return { hasActiveApproval: false, status: 'none' as const };
+      }
+      
+      try {
+        const response = await fetch(`/api/approvals?contractId=${contractId}`);
+        if (!response.ok) {
+          return { hasActiveApproval: false, status: 'none' as const };
+        }
+        
+        const data = await response.json();
+        const items = data.data?.items || [];
+        
+        // Find active approval for this contract
+        const activeApproval = items.find((item: { 
+          status: string; 
+          contractId?: string;
+        }) => 
+          item.status === 'pending' || item.status === 'in_progress'
+        );
+        
+        if (activeApproval) {
+          return {
+            hasActiveApproval: true,
+            status: (activeApproval.status || 'pending') as 'pending' | 'in_progress',
+            currentStep: activeApproval.currentStep || 1,
+            totalSteps: activeApproval.totalSteps || 2,
+            currentApprover: activeApproval.assignedTo?.name || activeApproval.stage,
+            dueDate: activeApproval.dueDate,
+            executionId: activeApproval.id,
+          };
+        }
+        
+        // Check for completed approvals
+        const completedApproval = items.find((item: { status: string }) => 
+          item.status === 'approved' || item.status === 'rejected'
+        );
+        
+        if (completedApproval) {
+          return {
+            hasActiveApproval: false,
+            status: completedApproval.status as 'approved' | 'rejected',
+            executionId: completedApproval.id,
+          };
+        }
+        
+        return { hasActiveApproval: false, status: 'none' as const };
+      } catch {
+        return { hasActiveApproval: false, status: 'none' as const };
+      }
+    },
+    enabled: !!contractId,
+    staleTime: 30000,
+    refetchInterval: 60000, // Auto-refresh every minute
+  });
+
+  return {
+    approvalStatus: data || { hasActiveApproval: false, status: 'none' as const },
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
+// ============================================================================
 // useSharing Hook
 // ============================================================================
 
@@ -503,6 +585,7 @@ export function useCollaboration(documentId: string, documentType: 'contract' | 
 export default {
   useNotifications,
   useApprovalFlow,
+  useContractApprovalStatus,
   useSharing,
   useComments,
   useCollaboration,
