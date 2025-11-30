@@ -41,31 +41,35 @@ export async function GET(request: NextRequest) {
         where: whereClause,
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           role: true,
-          avatarUrl: true,
+          avatar: true,
           createdAt: true,
         },
         take: limit,
-        orderBy: { name: 'asc' },
+        orderBy: { firstName: 'asc' },
       });
 
       return NextResponse.json({
         success: true,
-        users: users.map(u => ({
-          id: u.id,
-          name: u.name || u.email?.split('@')[0] || 'Unknown',
-          email: u.email,
-          role: u.role || 'member',
-          avatar: u.avatarUrl,
-          initials: (u.name || u.email || 'U')
-            .split(' ')
-            .map((n: string) => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2),
-        })),
+        users: users.map(u => {
+          const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email?.split('@')[0] || 'Unknown';
+          return {
+            id: u.id,
+            name,
+            email: u.email,
+            role: u.role || 'member',
+            avatar: u.avatar,
+            initials: name
+              .split(' ')
+              .map((n: string) => n[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2),
+          };
+        }),
         source: 'database',
       });
     } catch (dbError) {

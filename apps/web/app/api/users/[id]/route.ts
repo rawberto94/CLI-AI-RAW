@@ -21,24 +21,26 @@ export async function GET(
         where: { id, tenantId },
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           role: true,
-          avatarUrl: true,
+          avatar: true,
           createdAt: true,
         },
       });
 
       if (user) {
+        const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email?.split('@')[0] || 'Unknown';
         return NextResponse.json({
           success: true,
           user: {
             id: user.id,
-            name: user.name || user.email?.split('@')[0] || 'Unknown',
+            name,
             email: user.email,
             role: user.role || 'member',
-            avatar: user.avatarUrl,
-            initials: (user.name || user.email || 'U')
+            avatar: user.avatar,
+            initials: name
               .split(' ')
               .map((n: string) => n[0])
               .join('')

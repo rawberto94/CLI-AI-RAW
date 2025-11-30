@@ -1306,7 +1306,7 @@ export default function ContractDetailPage() {
         isOpen={showShareDialog}
         onClose={() => setShowShareDialog(false)}
         documentId={params.id as string}
-        documentType="CONTRACT"
+        documentType="contract"
         documentTitle={contract?.filename || 'Contract'}
       />
     </div>

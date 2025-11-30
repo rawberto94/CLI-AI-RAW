@@ -131,9 +131,9 @@ export async function GET(request: NextRequest) {
         contract: {
           select: {
             id: true,
-            title: true,
-            counterparty: true,
-            contractValue: true,
+            contractTitle: true,
+            supplierName: true,
+            totalValue: true,
             status: true,
           },
         },
@@ -152,10 +152,10 @@ export async function GET(request: NextRequest) {
       return {
         id: exec.id,
         type: exec.workflow?.type?.toLowerCase() || 'contract',
-        title: `${exec.workflow?.name || 'Workflow'} - ${exec.contract?.title || 'Contract'}`,
+        title: `${exec.workflow?.name || 'Workflow'} - ${exec.contract?.contractTitle || 'Contract'}`,
         description: exec.workflow?.description || '',
-        contractName: exec.contract?.title || 'Unknown Contract',
-        supplierName: exec.contract?.counterparty || 'Unknown',
+        contractName: exec.contract?.contractTitle || 'Unknown Contract',
+        supplierName: exec.contract?.supplierName || 'Unknown',
         requestedBy: {
           id: exec.startedBy || 'system',
           name: exec.startedBy || 'System',
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
         dueDate: exec.dueDate?.toISOString() || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         priority: (exec.metadata as Record<string, string>)?.priority || 'medium',
         status: exec.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
-        value: exec.contract?.contractValue ?? 0,
+        value: exec.contract?.totalValue ? Number(exec.contract.totalValue) : 0,
         riskLevel: 'medium',
         stage: currentStep?.stepName || 'initial-review',
         assignedTo: currentStep ? {

@@ -39,7 +39,7 @@ interface WebSocketContextValue {
   connected: boolean;
   presence: Map<string, Presence>;
   locks: Map<string, DocumentLock>;
-  joinDocument: (documentId: string, documentType: 'contract' | 'template' | 'workflow') => void;
+  joinDocument: (documentId: string, documentType: 'contract' | 'rate_card' | 'template' | 'workflow') => void;
   leaveDocument: () => void;
   updateCursor: (position: { x: number; y: number }) => void;
   updateSelection: (selection: { start: number; end: number }) => void;
@@ -175,7 +175,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Join a document for collaboration
-  const joinDocument = useCallback((documentId: string, documentType: 'contract' | 'template' | 'workflow') => {
+  const joinDocument = useCallback((documentId: string, documentType: 'contract' | 'rate_card' | 'template' | 'workflow') => {
     if (!socket) return;
     
     // Leave current document if any
