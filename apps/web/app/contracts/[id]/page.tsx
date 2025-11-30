@@ -49,7 +49,10 @@ import {
   Pencil,
   Save,
   X,
-  Tag
+  Tag,
+  GitCompare,
+  History,
+  Edit3
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -942,6 +945,40 @@ export default function ContractDetailPage() {
                   <span className="text-sm font-medium text-slate-600 mr-2">Quick Actions:</span>
                   
                   <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-indigo-50 hover:border-indigo-300"
+                          asChild
+                        >
+                          <Link href={`/contracts/${params.id}/redline`}>
+                            <Edit3 className="h-4 w-4 mr-1.5 text-indigo-600" />
+                            Redline
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit with track changes</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-cyan-50 hover:border-cyan-300"
+                          asChild
+                        >
+                          <Link href={`/contracts/${params.id}/versions`}>
+                            <History className="h-4 w-4 mr-1.5 text-cyan-600" />
+                            Versions
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Compare document versions</TooltipContent>
+                    </Tooltip>
+                    
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
