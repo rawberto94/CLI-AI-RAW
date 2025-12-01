@@ -112,16 +112,14 @@ export async function POST(request: NextRequest) {
             name: template.name,
             description: `${template.name} workflow for contract approvals`,
             type: 'APPROVAL',
-            status: 'ACTIVE',
-            version: 1,
-            steps: {
+            isActive: true,
+            config: {
               steps: template.steps.map((step, idx) => ({
                 order: idx + 1,
                 ...step,
               })),
             },
             createdBy: userId,
-            updatedBy: userId,
           },
         });
       }
@@ -177,7 +175,7 @@ export async function POST(request: NextRequest) {
       await prisma.contract.update({
         where: { id: contractId },
         data: { 
-          status: 'PENDING_APPROVAL',
+          status: 'PENDING',
           updatedAt: new Date(),
         },
       });
@@ -203,14 +201,19 @@ export async function POST(request: NextRequest) {
       }
 
       // Log activity
-      await prisma.activityLog.create({
+      // Activity log - using notification as audit trail
+      await prisma.notification.create({
         data: {
           tenantId,
           userId,
-          action: 'SUBMIT_FOR_APPROVAL',
-          resourceType: 'CONTRACT',
-          resourceId: contractId,
+          type: 'SYSTEM',
+          title: 'Approval Submitted',
+          message: `Contract submitted for ${workflowType} approval`,
+          link: `/contracts/${contractId}`,
           metadata: {
+            action: 'SUBMIT_FOR_APPROVAL',
+            resourceType: 'CONTRACT',
+            resourceId: contractId,
             workflowType,
             priority,
             executionId: execution.id,
@@ -278,13 +281,13 @@ export async function GET(request: NextRequest) {
       where: {
         tenantId,
         type: 'APPROVAL',
-        status: 'ACTIVE',
+        isActive: true,
       },
       select: {
         id: true,
         name: true,
         description: true,
-        steps: true,
+        config: true,
       },
     });
 
@@ -301,7 +304,7 @@ export async function GET(request: NextRequest) {
         id: w.id,
         name: w.name,
         description: w.description || '',
-        steps: (w.steps as { steps: unknown[] })?.steps || [],
+        steps: ((w.config as Record<string, unknown>)?.steps as unknown[]) || [],
         isDefault: false,
       })),
     ];

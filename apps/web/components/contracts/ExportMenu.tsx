@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Download, FileText, Table, Code, Loader2 } from 'lucide-react'
 import { useDataMode } from '@/contexts/DataModeContext'
+import { toast } from 'sonner'
 
 interface ExportMenuProps {
   contractId: string
@@ -52,11 +53,11 @@ export function ExportMenu({ contractId, contractName }: ExportMenuProps) {
         }
       } else {
         // Mock/AI mode - show success message
-        alert(`Export to ${type.toUpperCase()} completed (${dataMode} mode)`)
+        toast.success(`Export to ${type.toUpperCase()} completed (${dataMode} mode)`)
       }
     } catch (error) {
       console.error('Export failed:', error)
-      alert('Export failed. Please try again.')
+      toast.error('Export failed. Please try again.')
     } finally {
       setIsExporting(false)
       setExportType(null)

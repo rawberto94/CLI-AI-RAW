@@ -6,10 +6,24 @@
  * - Caches GET responses with Redis for reduced database load
  * - Uses selective field projection to minimize data transfer
  * - Implements efficient pagination with cursor-based approach
+ * - Standardized error handling and response format
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { withCache, CacheKeys } from "@/lib/cache";
+import {
+  getApiContext,
+  parseQueryParams,
+  createSuccessResponse,
+  createErrorResponse,
+  createValidationErrorResponse,
+  handleApiError,
+  contractQuerySchema,
+  mapContractStatus,
+  VALID_CONTRACT_STATUSES,
+  type ContractQueryParams,
+  type ApiContext,
+} from "@/lib/api-middleware";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -148,8 +162,28 @@ async function handler(request: NextRequest) {
   const statuses = searchParams.getAll("status");
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
   const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : 20;
-  const sortBy = searchParams.get("sortBy") || "createdAt";
+  
+  // Enhanced sorting options
+  const validSortFields = [
+    "createdAt", "updatedAt", "uploadedAt", "totalValue", 
+    "expirationDate", "effectiveDate", "contractTitle", 
+    "clientName", "supplierName", "viewCount", "lastViewedAt"
+  ];
+  const requestedSortBy = searchParams.get("sortBy") || "createdAt";
+  const sortBy = validSortFields.includes(requestedSortBy) ? requestedSortBy : "createdAt";
   const sortOrder = (searchParams.get("sortOrder") || "desc") as "asc" | "desc";
+  
+  // Additional filter parameters
+  const contractTypes = searchParams.getAll("contractType");
+  const categories = searchParams.getAll("category");
+  const clientNames = searchParams.getAll("clientName");
+  const supplierNames = searchParams.getAll("supplierName");
+  const minValue = searchParams.get("minValue") ? Number(searchParams.get("minValue")) : undefined;
+  const maxValue = searchParams.get("maxValue") ? Number(searchParams.get("maxValue")) : undefined;
+  const expiringBefore = searchParams.get("expiringBefore");
+  const expiringAfter = searchParams.get("expiringAfter");
+  const uploadedAfter = searchParams.get("uploadedAfter");
+  const uploadedBefore = searchParams.get("uploadedBefore");
 
   // Validate pagination parameters
   if (page < 1) {
@@ -169,12 +203,21 @@ async function handler(request: NextRequest) {
   const VALID_STATUSES = ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED', 'ARCHIVED'];
 
   // Build where clause
-  const where: any = { tenantId };
+  const where: any = { 
+    tenantId,
+    status: { not: 'DELETED' },
+  };
 
   if (search) {
     where.OR = [
       { fileName: { contains: search, mode: "insensitive" } },
       { originalName: { contains: search, mode: "insensitive" } },
+      { contractTitle: { contains: search, mode: "insensitive" } },
+      { clientName: { contains: search, mode: "insensitive" } },
+      { supplierName: { contains: search, mode: "insensitive" } },
+      { description: { contains: search, mode: "insensitive" } },
+      { category: { contains: search, mode: "insensitive" } },
+      { contractType: { contains: search, mode: "insensitive" } },
     ];
   }
 
@@ -182,6 +225,44 @@ async function handler(request: NextRequest) {
   const validStatuses = statuses.filter(s => s && s !== 'undefined' && VALID_STATUSES.includes(s));
   if (validStatuses.length > 0) {
     where.status = { in: validStatuses };
+  }
+
+  // Contract type filter
+  if (contractTypes.length > 0) {
+    where.contractType = { in: contractTypes };
+  }
+
+  // Category filter
+  if (categories.length > 0) {
+    where.category = { in: categories };
+  }
+
+  // Party name filters
+  if (clientNames.length > 0) {
+    where.clientName = { in: clientNames };
+  }
+  if (supplierNames.length > 0) {
+    where.supplierName = { in: supplierNames };
+  }
+
+  // Value range filter
+  if (minValue !== undefined || maxValue !== undefined) {
+    where.totalValue = {};
+    if (minValue !== undefined) where.totalValue.gte = minValue;
+    if (maxValue !== undefined) where.totalValue.lte = maxValue;
+  }
+
+  // Date filters
+  if (expiringBefore || expiringAfter) {
+    where.expirationDate = {};
+    if (expiringBefore) where.expirationDate.lte = new Date(expiringBefore);
+    if (expiringAfter) where.expirationDate.gte = new Date(expiringAfter);
+  }
+
+  if (uploadedAfter || uploadedBefore) {
+    where.uploadedAt = {};
+    if (uploadedAfter) where.uploadedAt.gte = new Date(uploadedAfter);
+    if (uploadedBefore) where.uploadedAt.lte = new Date(uploadedBefore);
   }
 
   // Build orderBy
@@ -196,7 +277,9 @@ async function handler(request: NextRequest) {
     sortBy,
     sortOrder,
     search,
-    statuses
+    statuses,
+    contractTypes,
+    categories,
   });
 
   // Try to get from cache or fetch from database
@@ -221,8 +304,21 @@ async function handler(request: NextRequest) {
             fileSize: true,
             mimeType: true,
             createdAt: true,
+            uploadedAt: true,
             status: true,
             contractType: true,
+            contractTitle: true,
+            clientName: true,
+            supplierName: true,
+            category: true,
+            totalValue: true,
+            currency: true,
+            effectiveDate: true,
+            expirationDate: true,
+            description: true,
+            tags: true,
+            viewCount: true,
+            lastViewedAt: true,
           },
         }),
         prisma.contract.count({ where }),
@@ -235,14 +331,26 @@ async function handler(request: NextRequest) {
         data: {
           contracts: contracts.map((contract) => ({
             id: contract.id,
-            title: contract.originalName || contract.fileName,
+            title: contract.contractTitle || contract.originalName || contract.fileName,
             filename: contract.fileName,
             originalName: contract.originalName || contract.fileName,
             status: contract.status.toLowerCase(),
             fileSize: contract.fileSize.toString(),
             mimeType: contract.mimeType,
-            uploadedAt: contract.createdAt.toISOString(),
+            uploadedAt: contract.uploadedAt?.toISOString() || contract.createdAt.toISOString(),
+            createdAt: contract.createdAt.toISOString(),
             contractType: contract.contractType || "Unknown",
+            clientName: contract.clientName,
+            supplierName: contract.supplierName,
+            category: contract.category,
+            totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+            currency: contract.currency,
+            effectiveDate: contract.effectiveDate?.toISOString(),
+            expirationDate: contract.expirationDate?.toISOString(),
+            description: contract.description,
+            tags: contract.tags,
+            viewCount: contract.viewCount,
+            lastViewedAt: contract.lastViewedAt?.toISOString(),
           })),
           pagination: {
             total,
@@ -251,6 +359,19 @@ async function handler(request: NextRequest) {
             totalPages,
             hasMore: page < totalPages,
             hasPrevious: page > 1,
+          },
+          filters: {
+            applied: {
+              search: search || null,
+              statuses: validStatuses,
+              contractTypes,
+              categories,
+              clientNames,
+              supplierNames,
+              valueRange: minValue || maxValue ? { min: minValue, max: maxValue } : null,
+            },
+            sortBy,
+            sortOrder,
           },
           meta: {
             cached: false,

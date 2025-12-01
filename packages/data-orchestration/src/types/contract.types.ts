@@ -114,16 +114,55 @@ export const ContractQuerySchema = z.object({
   clientName: z.array(z.string()).optional(),
   supplierName: z.array(z.string()).optional(),
   category: z.array(z.string()).optional(),
+  contractType: z.array(z.string()).optional(),
   minValue: z.number().optional(),
   maxValue: z.number().optional(),
   startDateFrom: z.date().optional(),
   startDateTo: z.date().optional(),
+  expirationDateFrom: z.date().optional(),
+  expirationDateTo: z.date().optional(),
+  effectiveDateFrom: z.date().optional(),
+  effectiveDateTo: z.date().optional(),
+  uploadedAfter: z.date().optional(),
+  uploadedBefore: z.date().optional(),
+  // Organization filters
+  department: z.array(z.string()).optional(),
+  projectCode: z.string().optional(),
+  priority: z.number().int().min(0).max(4).optional(),
+  complianceStatus: z.array(z.string()).optional(),
+  // Risk/Quality filters
+  minRiskScore: z.number().int().min(0).max(100).optional(),
+  maxRiskScore: z.number().int().min(0).max(100).optional(),
+  minDataQualityScore: z.number().int().min(0).max(100).optional(),
+  // Tags filter
+  tags: z.array(z.string()).optional(),
+  // Pagination
   page: z.number().int().positive().default(1),
   limit: z.number().int().positive().max(100).default(20),
+  // Enhanced sorting
   sortBy: z
-    .enum(["createdAt", "updatedAt", "totalValue", "endDate", "contractTitle"])
+    .enum([
+      "createdAt",
+      "updatedAt", 
+      "uploadedAt",
+      "totalValue",
+      "endDate",
+      "expirationDate",
+      "effectiveDate",
+      "contractTitle",
+      "clientName",
+      "supplierName",
+      "viewCount",
+      "lastViewedAt",
+      "riskScore",
+      "dataQualityScore",
+      "priority",
+    ])
     .default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  // Include options
+  includeMetadata: z.boolean().optional().default(false),
+  includeArtifactSummary: z.boolean().optional().default(false),
 });
 
 export type ContractQuery = z.infer<typeof ContractQuerySchema>;

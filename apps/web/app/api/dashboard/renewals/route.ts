@@ -1,9 +1,13 @@
 /**
  * Dashboard Renewals API
- * GET /api/dashboard/renewals - Get upcoming contract renewals
+ * GET /api/dashboard/renewals - Get upcoming contract renewals from real database
+ * 
+ * Fully integrated with actual contract data - no mock fallback
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getServerTenantId } from "@/lib/tenant-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,202 +15,125 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get("tenantId") || "demo";
     const days = Number(searchParams.get("days")) || 90;
-    const dataMode = request.headers.get('x-data-mode') || 'real';
+    const limit = Number(searchParams.get("limit")) || 10;
     
-    // Mock data for demo mode
-    const mockRenewals = [
-      {
-        id: "1",
-        name: "AWS Enterprise Agreement",
-        type: "Cloud Services",
-        endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-        daysUntilExpiry: 15,
-        priority: 'urgent'
-      },
-      {
-        id: "2",
-        name: "Accenture IT Services MSA",
-        type: "IT Services",
-        endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
-        daysUntilExpiry: 28,
-        priority: 'urgent'
-      },
-      {
-        id: "3",
-        name: "Salesforce Enterprise License",
-        type: "Software License",
-        endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-        daysUntilExpiry: 45,
-        priority: 'high'
-      },
-      {
-        id: "4",
-        name: "Deloitte Consulting Agreement",
-        type: "Consulting",
-        endDate: new Date(Date.now() + 62 * 24 * 60 * 60 * 1000).toISOString(),
-        daysUntilExpiry: 62,
-        priority: 'high'
-      },
-      {
-        id: "5",
-        name: "Microsoft Azure Subscription",
-        type: "Cloud Services",
-        endDate: new Date(Date.now() + 78 * 24 * 60 * 60 * 1000).toISOString(),
-        daysUntilExpiry: 78,
-        priority: 'medium'
-      },
-    ];
+    const tenantId = await getServerTenantId();
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
     
-    // If mock mode, return mock data immediately
-    if (dataMode === 'mock') {
-      return NextResponse.json({
-        success: true,
-        data: mockRenewals,
-        meta: { source: 'mock' }
-      });
-    }
+    // Query contracts with upcoming expiration dates
+    const renewals = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        OR: [
+          // Contracts with endDate in the future within range
+          {
+            endDate: {
+              gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), // Include recently expired
+              lte: futureDate
+            }
+          },
+          // Contracts with expirationDate in the future within range
+          {
+            expirationDate: {
+              gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+              lte: futureDate
+            }
+          }
+        ],
+        status: { in: ['COMPLETED', 'ACTIVE', 'PROCESSING'] }
+      },
+      include: {
+        artifacts: {
+          where: { type: { in: ['OVERVIEW', 'FINANCIAL'] } },
+          select: { type: true, data: true },
+        },
+      },
+      orderBy: [
+        { endDate: 'asc' },
+        { expirationDate: 'asc' }
+      ],
+      take: limit
+    });
     
-    try {
-      const { prisma } = await import("@/lib/prisma");
-      
-      const now = new Date();
-      const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-      
-      const renewals = await prisma.contract.findMany({
+    // Transform to renewal format
+    const renewalData = renewals.map(contract => {
+      const expiryDate = contract.endDate || contract.expirationDate;
+      const daysUntilExpiry = expiryDate 
+        ? Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      // Extract value from contract or artifacts
+      let contractValue = contract.totalValue ? Number(contract.totalValue) : null;
+      const financialArtifact = contract.artifacts.find(a => a.type === 'FINANCIAL');
+      if (!contractValue && financialArtifact?.data) {
+        const financialData = financialArtifact.data as any;
+        contractValue = financialData.totalValue || financialData.contractValue || null;
+      }
+
+      // Extract contract type from contract or artifacts
+      let contractType = contract.contractType || contract.category;
+      const overviewArtifact = contract.artifacts.find(a => a.type === 'OVERVIEW');
+      if (!contractType && overviewArtifact?.data) {
+        const overviewData = overviewArtifact.data as any;
+        contractType = overviewData.contractType || null;
+      }
+        
+      return {
+        id: contract.id,
+        name: contract.contractTitle || contract.originalName || contract.fileName,
+        type: contractType || 'Unknown',
+        endDate: expiryDate?.toISOString() || null,
+        startDate: (contract.startDate || contract.effectiveDate)?.toISOString() || null,
+        daysUntilExpiry,
+        priority: daysUntilExpiry !== null && daysUntilExpiry <= 0 ? 'expired' as const :
+                 daysUntilExpiry !== null && daysUntilExpiry <= 30 ? 'urgent' as const : 
+                 daysUntilExpiry !== null && daysUntilExpiry <= 60 ? 'high' as const : 'medium' as const,
+        value: contractValue,
+        supplier: contract.supplierName || null,
+      };
+    });
+
+    // Sort by urgency (expired first, then by days)
+    renewalData.sort((a, b) => {
+      const aDays = a.daysUntilExpiry ?? 999;
+      const bDays = b.daysUntilExpiry ?? 999;
+      return aDays - bDays;
+    });
+    
+    // Stats for dashboard widget
+    const stats = {
+      total: renewalData.length,
+      expired: renewalData.filter(r => r.daysUntilExpiry !== null && r.daysUntilExpiry < 0).length,
+      urgent: renewalData.filter(r => r.daysUntilExpiry !== null && r.daysUntilExpiry >= 0 && r.daysUntilExpiry <= 30).length,
+      high: renewalData.filter(r => r.daysUntilExpiry !== null && r.daysUntilExpiry > 30 && r.daysUntilExpiry <= 60).length,
+      medium: renewalData.filter(r => r.daysUntilExpiry !== null && r.daysUntilExpiry > 60).length,
+      withoutDates: await prisma.contract.count({
         where: {
           tenantId,
-          endDate: {
-            gte: now,
-            lte: futureDate
-          },
-          status: { in: ['COMPLETED', 'PROCESSING'] }
-        },
-        select: {
-          id: true,
-          fileName: true,
-          originalName: true,
-          contractType: true,
-          endDate: true,
-          startDate: true,
-          createdAt: true,
-        },
-        orderBy: {
-          endDate: 'asc'
-        },
-        take: 10
-      });
-      
-      // If no renewals found in database, return mock data for demo
-      if (renewals.length === 0) {
-        const mockRenewals = [
-          {
-            id: "mock-1",
-            name: "AWS Enterprise Agreement",
-            type: "Cloud Services",
-            endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-            daysUntilExpiry: 15,
-            priority: 'urgent' as const
-          },
-          {
-            id: "mock-2",
-            name: "Accenture IT Services MSA",
-            type: "IT Services",
-            endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
-            daysUntilExpiry: 28,
-            priority: 'urgent' as const
-          },
-          {
-            id: "mock-3",
-            name: "Salesforce Enterprise License",
-            type: "Software License",
-            endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-            daysUntilExpiry: 45,
-            priority: 'high' as const
-          },
-        ];
-        
-        return NextResponse.json({
-          success: true,
-          data: mockRenewals
-        });
+          status: { in: ['COMPLETED', 'ACTIVE'] },
+          endDate: null,
+          expirationDate: null,
+        }
+      }),
+    };
+    
+    return NextResponse.json({
+      success: true,
+      data: renewalData,
+      stats,
+      meta: { 
+        source: 'database',
+        tenantId,
+        daysQueried: days,
+        timestamp: now.toISOString(),
       }
-      
-      return NextResponse.json({
-        success: true,
-        data: renewals.map(contract => {
-          const daysUntilExpiry = contract.endDate 
-            ? Math.ceil((contract.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-            : null;
-            
-          return {
-            id: contract.id,
-            name: contract.originalName || contract.fileName,
-            type: contract.contractType || 'Unknown',
-            endDate: contract.endDate?.toISOString(),
-            daysUntilExpiry,
-            priority: daysUntilExpiry && daysUntilExpiry <= 30 ? 'urgent' : 
-                     daysUntilExpiry && daysUntilExpiry <= 60 ? 'high' : 'medium'
-          };
-        })
-      });
-    } catch (dbError) {
-      console.log("Database unavailable, using mock data");
-      
-      // Mock data
-      const mockRenewals = [
-        {
-          id: "1",
-          name: "AWS Enterprise Agreement",
-          type: "Cloud Services",
-          endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
-          daysUntilExpiry: 15,
-          priority: 'urgent'
-        },
-        {
-          id: "2",
-          name: "Accenture IT Services MSA",
-          type: "IT Services",
-          endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(),
-          daysUntilExpiry: 28,
-          priority: 'urgent'
-        },
-        {
-          id: "3",
-          name: "Salesforce Enterprise License",
-          type: "Software License",
-          endDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString(),
-          daysUntilExpiry: 45,
-          priority: 'high'
-        },
-        {
-          id: "4",
-          name: "Deloitte Consulting Agreement",
-          type: "Consulting",
-          endDate: new Date(Date.now() + 62 * 24 * 60 * 60 * 1000).toISOString(),
-          daysUntilExpiry: 62,
-          priority: 'high'
-        },
-        {
-          id: "5",
-          name: "Microsoft Azure Subscription",
-          type: "Cloud Services",
-          endDate: new Date(Date.now() + 78 * 24 * 60 * 60 * 1000).toISOString(),
-          daysUntilExpiry: 78,
-          priority: 'medium'
-        },
-      ];
-      
-      return NextResponse.json({
-        success: true,
-        data: mockRenewals
-      });
-    }
+    });
   } catch (error) {
-    console.error("Error in renewals API:", error);
+    console.error("Error in dashboard renewals API:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch renewals" },
+      { success: false, error: "Failed to fetch renewals", details: String(error) },
       { status: 500 }
     );
   }

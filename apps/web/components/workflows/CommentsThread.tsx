@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 // Framer Motion typing workaround
-const MotionDiv = motion.div as React.ComponentType<
+const MotionDiv = motion.div as unknown as React.ComponentType<
   React.HTMLAttributes<HTMLDivElement> & {
     initial?: object;
     animate?: object;
@@ -282,23 +282,29 @@ export function CommentsThread({
   const quickEmojis = ['👍', '👏', '✅', '❤️', '🎉', '👀'];
 
   return (
-    <div className={cn("bg-white rounded-xl border border-slate-200 overflow-hidden", className)}>
+    <div 
+      className={cn("bg-white rounded-xl border border-slate-200 overflow-hidden", className)}
+      role="region"
+      aria-label="Discussion thread"
+    >
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
+        aria-expanded={isExpanded}
+        aria-controls="comments-list"
+        className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
       >
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-slate-500" />
+          <MessageSquare className="w-4 h-4 text-slate-500" aria-hidden="true" />
           <span className="font-medium text-slate-900">Discussion</span>
-          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
+          <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full" aria-label={`${comments.length} comments`}>
             {comments.length}
           </span>
         </div>
         <ChevronDown className={cn(
           "w-4 h-4 text-slate-400 transition-transform",
           isExpanded && "rotate-180"
-        )} />
+        )} aria-hidden="true" />
       </button>
 
       <AnimatePresence>
@@ -309,10 +315,10 @@ export function CommentsThread({
             exit={{ height: 0, opacity: 0 }}
           >
             {/* Comments List */}
-            <div className="max-h-[400px] overflow-y-auto">
+            <div id="comments-list" className="max-h-[400px] overflow-y-auto" role="list" aria-label="Comments">
               {comments.length === 0 ? (
                 <div className="p-8 text-center">
-                  <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-3" aria-hidden="true" />
                   <p className="text-slate-500">No comments yet</p>
                   <p className="text-sm text-slate-400">Start the discussion below</p>
                 </div>
@@ -531,23 +537,33 @@ export function CommentsThread({
                     onChange={(e) => setNewComment(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Add a comment... Use @ to mention someone"
+                    aria-label="Write a comment"
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[40px] max-h-[120px]"
                     rows={1}
                   />
                   <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-1">
-                      <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
-                        <AtSign className="w-4 h-4" />
+                    <div className="flex items-center gap-1" role="toolbar" aria-label="Formatting options">
+                      <button 
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="Mention someone"
+                      >
+                        <AtSign className="w-4 h-4" aria-hidden="true" />
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
-                        <Smile className="w-4 h-4" />
+                      <button 
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="Add emoji"
+                      >
+                        <Smile className="w-4 h-4" aria-hidden="true" />
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
-                        <Paperclip className="w-4 h-4" />
+                      <button 
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="Attach file"
+                      >
+                        <Paperclip className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-slate-400" aria-hidden="true">
                         ⌘+Enter to send
                       </span>
                       <Button
@@ -555,11 +571,12 @@ export function CommentsThread({
                         onClick={handleSubmit}
                         disabled={!newComment.trim() || addCommentMutation.isPending}
                         className="gap-1"
+                        aria-label="Send comment"
                       >
                         {addCommentMutation.isPending ? (
-                          <Clock className="w-3.5 h-3.5 animate-spin" />
+                          <Clock className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                         ) : (
-                          <Send className="w-3.5 h-3.5" />
+                          <Send className="w-3.5 h-3.5" aria-hidden="true" />
                         )}
                         Send
                       </Button>

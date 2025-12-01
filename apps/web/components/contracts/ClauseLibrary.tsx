@@ -28,6 +28,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { toast } from 'sonner';
 import {
   FileText,
   Plus,
@@ -235,9 +236,10 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
   const handleCopyClause = async (clause: Clause) => {
     try {
       await navigator.clipboard.writeText(clause.content);
-      // Could add a toast notification here
+      toast.success('Clause copied to clipboard');
     } catch (error) {
       console.error('Failed to copy clause:', error);
+      toast.error('Failed to copy clause');
     }
   };
 

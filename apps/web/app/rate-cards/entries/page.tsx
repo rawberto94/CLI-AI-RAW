@@ -6,11 +6,14 @@ import { EnhancedRateCardFilters } from '@/components/rate-cards/EnhancedRateCar
 import { RateCardTable } from '@/components/rate-cards/RateCardTable';
 import { BulkEditModal } from '@/components/rate-cards/BulkEditModal';
 import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Plus, Upload } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCrossModuleInvalidation } from '@/hooks/use-queries';
+import { toast } from 'sonner';
 
 interface RateCardFilters {
   clientName?: string;
@@ -62,9 +65,12 @@ export default function RateCardEntriesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { dataMode } = useDataMode();
+  const crossModule = useCrossModuleInvalidation();
   const [filters, setFilters] = useState<RateCardFilters>({});
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [rateCardToDelete, setRateCardToDelete] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['rate-cards', filters, dataMode],
@@ -83,14 +89,23 @@ export default function RateCardEntriesPage() {
     router.push(`/rate-cards/${id}`);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this rate card?')) return;
+  const handleDeleteClick = (id: string) => {
+    setRateCardToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!rateCardToDelete) return;
     
     try {
-      await fetch(`/api/rate-cards/${id}`, { method: 'DELETE' });
-      queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
+      await fetch(`/api/rate-cards/${rateCardToDelete}`, { method: 'DELETE' });
+      crossModule.onRateCardChange();
+      toast.success('Rate card deleted successfully');
     } catch (error) {
       console.error('Error deleting rate card:', error);
+      toast.error('Failed to delete rate card');
+    } finally {
+      setRateCardToDelete(null);
     }
   };
 
@@ -100,7 +115,7 @@ export default function RateCardEntriesPage() {
   };
 
   const handleBulkEditSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
+    crossModule.onRateCardChange();
     setSelectedIds([]);
   };
 
@@ -138,7 +153,7 @@ export default function RateCardEntriesPage() {
         data={rateCards}
         onEdit={handleEdit}
         onView={handleView}
-        onDelete={handleDelete}
+        onDelete={handleDeleteClick}
         onBulkEdit={handleBulkEdit}
         loading={isLoading}
         showClientColumn={true}
@@ -151,6 +166,16 @@ export default function RateCardEntriesPage() {
         onClose={() => setBulkEditOpen(false)}
         selectedIds={selectedIds}
         onSuccess={handleBulkEditSuccess}
+      />
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Rate Card"
+        description="Are you sure you want to delete this rate card? This action cannot be undone."
+        variant="destructive"
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

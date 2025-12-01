@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import {
   validateFiles,
   formatFileSize,
@@ -81,7 +82,7 @@ export function RateCardUploadZone({
 
   const addFiles = (newFiles: File[]) => {
     if (files.length + newFiles.length > maxFiles) {
-      alert(`Maximum ${maxFiles} files allowed`);
+      toast.warning(`Maximum ${maxFiles} files allowed`);
       return;
     }
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { toast } from 'sonner'
 import {
   ChevronDown,
   ChevronRight,
@@ -120,7 +121,11 @@ function SeverityBadge({ severity }: { severity: string }) {
   
   // Normalize severity to lowercase and get config, fallback to medium
   const normalizedSeverity = (severity || 'medium').toLowerCase();
-  const config = severityMap[normalizedSeverity] || severityMap.medium;
+  const config = severityMap[normalizedSeverity] ?? severityMap.medium;
+  
+  if (!config) {
+    return <Badge className="text-[10px] px-1.5 py-0">Unknown</Badge>;
+  }
   
   return (
     <Badge className={cn(config.bg, config.text, 'text-[10px] px-1.5 py-0')}>
@@ -406,6 +411,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
   const copyTerm = (term: string, value: string) => {
     navigator.clipboard.writeText(value);
     setCopiedTerm(term);
+    toast.success('Copied!');
     setTimeout(() => setCopiedTerm(null), 2000);
   };
 

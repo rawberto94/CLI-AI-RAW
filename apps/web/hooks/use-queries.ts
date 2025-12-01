@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import { useEffect, useCallback, useRef } from 'react';
+import { STALE_TIMES } from '@/lib/query-client';
 
 // =====================
 // Types
@@ -663,4 +665,414 @@ export function useOptimisticMutation<TData, TVariables>(
     },
     onSuccess: options.onSuccess,
   });
+}
+
+// =====================
+// Cross-Module Cache Invalidation
+// =====================
+
+/**
+ * Hook to invalidate related caches when data changes across modules
+ * This ensures data stays in sync across the entire application
+ */
+export function useCrossModuleInvalidation() {
+  const queryClient = useQueryClient();
+  
+  return {
+    /**
+     * Call when an approval is completed/rejected
+     * Updates: approvals, contracts, dashboard, analytics
+     */
+    onApprovalComplete: (contractId?: string) => {
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['approval-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      if (contractId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.contracts.detail(contractId) });
+        queryClient.invalidateQueries({ queryKey: ['contract-health', contractId] });
+      }
+      queryClient.invalidateQueries({ queryKey: queryKeys.contracts.lists() });
+    },
+    
+    /**
+     * Call when a contract is uploaded or updated
+     * Updates: contracts, dashboard, rate cards (if applicable), analytics
+     */
+    onContractChange: (contractId?: string) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
+      if (contractId) {
+        queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
+        queryClient.invalidateQueries({ queryKey: ['contract-artifacts', contractId] });
+        queryClient.invalidateQueries({ queryKey: ['contract-health', contractId] });
+      }
+    },
+    
+    /**
+     * Call when rate card data changes
+     * Updates: rate cards, contracts (for linked data), analytics
+     */
+    onRateCardChange: (contractId?: string) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      if (contractId) {
+        queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
+      }
+    },
+    
+    /**
+     * Call when a renewal action is taken
+     * Updates: renewals, contracts, dashboard, approvals (if submitted)
+     */
+    onRenewalChange: (contractId?: string) => {
+      queryClient.invalidateQueries({ queryKey: ['renewal-intelligence'] });
+      queryClient.invalidateQueries({ queryKey: ['renewals'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      if (contractId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.contracts.detail(contractId) });
+      }
+    },
+    
+    /**
+     * Call when workflow configuration changes
+     * Updates: workflows, approvals (workflow may affect pending items)
+     */
+    onWorkflowChange: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.workflows.all });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+    },
+    
+    /**
+     * Call when template changes (create, update, delete)
+     * Updates: templates, dashboard (may show template stats)
+     */
+    onTemplateChange: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.templates.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
+    
+    /**
+     * Force refresh all data - use sparingly
+     */
+    refreshAll: () => {
+      queryClient.invalidateQueries();
+    },
+  };
+}
+
+// =====================
+// Approval Hooks with Cross-Module Integration
+// =====================
+
+export function useApprovals(filters?: { status?: string; priority?: string }) {
+  return useQuery({
+    queryKey: ['approvals', filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters?.status) params.set('status', filters.status);
+      if (filters?.priority) params.set('priority', filters.priority);
+      
+      const response = await fetch(`/api/approvals?${params}`, {
+        headers: { 'x-tenant-id': 'demo' },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch approvals');
+      }
+      
+      const json = await response.json();
+      return {
+        approvals: json.data?.approvals || [],
+        stats: json.data?.stats || { pending: 0, completed: 0, total: 0 },
+      };
+    },
+    staleTime: 15000, // Approvals should be relatively fresh
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useApprovalAction() {
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      approvalId, 
+      action, 
+      reason,
+      contractId,
+    }: { 
+      approvalId: string; 
+      action: 'approve' | 'reject' | 'escalate';
+      reason?: string;
+      contractId?: string;
+    }) => {
+      const response = await fetch(`/api/approvals/${approvalId}/${action}`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({ reason }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} approval`);
+      }
+      
+      return { approvalId, action, contractId };
+    },
+    onSuccess: (data) => {
+      // Cross-module cache invalidation
+      crossModule.onApprovalComplete(data.contractId);
+    },
+  });
+}
+
+export function useBulkApprovalAction() {
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      approvalIds, 
+      action,
+      reason,
+    }: { 
+      approvalIds: string[]; 
+      action: 'approve' | 'reject';
+      reason?: string;
+    }) => {
+      const response = await fetch('/api/approvals/bulk', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo',
+        },
+        body: JSON.stringify({ approvalIds, action, reason }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to bulk ${action}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh all related data after bulk action
+      crossModule.onApprovalComplete();
+    },
+  });
+}
+
+// =====================
+// Real-Time Data Sync Hook
+// =====================
+
+/**
+ * Hook to sync query data with real-time events
+ * Listens for SSE/WebSocket events and updates the query cache accordingly
+ */
+export function useRealTimeQuerySync() {
+  const queryClient = useQueryClient();
+  const crossModule = useCrossModuleInvalidation();
+  
+  // Event handler reference for cleanup
+  const eventHandlerRef = useRef<((event: CustomEvent) => void) | null>(null);
+  
+  useEffect(() => {
+    const handleRealTimeEvent = (event: CustomEvent) => {
+      const { type, data } = event.detail || {};
+      
+      switch (type) {
+        // Contract events
+        case 'contract:created':
+        case 'contract:updated':
+        case 'contract:deleted':
+          crossModule.onContractChange(data?.contractId);
+          break;
+        
+        // Approval events
+        case 'approval:submitted':
+        case 'approval:completed':
+        case 'approval:rejected':
+          crossModule.onApprovalComplete(data?.contractId);
+          break;
+        
+        // Rate card events
+        case 'ratecard:imported':
+        case 'ratecard:updated':
+        case 'ratecard:deleted':
+          crossModule.onRateCardChange(data?.contractId);
+          break;
+        
+        // Renewal events
+        case 'renewal:initiated':
+        case 'renewal:completed':
+          crossModule.onRenewalChange(data?.contractId);
+          break;
+        
+        // Processing events
+        case 'processing:started':
+        case 'processing:progress':
+        case 'processing:completed':
+        case 'processing:failed':
+          if (data?.contractId) {
+            queryClient.invalidateQueries({ 
+              queryKey: queryKeys.contracts.detail(data.contractId) 
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ['processing-jobs'] });
+          break;
+        
+        // Notification events
+        case 'notification:new':
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
+          break;
+        
+        // Generic refresh
+        case 'data:refresh':
+          if (data?.queryKey) {
+            queryClient.invalidateQueries({ queryKey: data.queryKey });
+          } else {
+            crossModule.refreshAll();
+          }
+          break;
+      }
+    };
+    
+    eventHandlerRef.current = handleRealTimeEvent;
+    
+    // Listen for real-time events dispatched from WebSocket/SSE context
+    window.addEventListener('realtime-event', handleRealTimeEvent as EventListener);
+    
+    return () => {
+      window.removeEventListener('realtime-event', handleRealTimeEvent as EventListener);
+    };
+  }, [queryClient, crossModule]);
+  
+  // Helper to manually trigger a real-time event (for testing/local sync)
+  const dispatchEvent = useCallback((type: string, data?: Record<string, unknown>) => {
+    window.dispatchEvent(new CustomEvent('realtime-event', { 
+      detail: { type, data } 
+    }));
+  }, []);
+  
+  return { dispatchEvent };
+}
+
+// =====================
+// Pagination Hook for Infinite Queries
+// =====================
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+/**
+ * Hook for paginated data with cursor/offset support
+ */
+export function usePaginatedQuery<T>(
+  queryKey: readonly unknown[],
+  fetchFn: (page: number, pageSize: number) => Promise<PaginatedResult<T>>,
+  options?: {
+    pageSize?: number;
+    staleTime?: number;
+    enabled?: boolean;
+  }
+) {
+  const pageSize = options?.pageSize || 20;
+  const queryClient = useQueryClient();
+  
+  const query = useQuery({
+    queryKey: [...queryKey, { page: 1, pageSize }],
+    queryFn: () => fetchFn(1, pageSize),
+    staleTime: options?.staleTime ?? STALE_TIMES.dynamic,
+    enabled: options?.enabled ?? true,
+  });
+  
+  // Prefetch next page
+  useEffect(() => {
+    if (query.data?.hasMore) {
+      const nextPage = query.data.page + 1;
+      queryClient.prefetchQuery({
+        queryKey: [...queryKey, { page: nextPage, pageSize }],
+        queryFn: () => fetchFn(nextPage, pageSize),
+        staleTime: options?.staleTime ?? STALE_TIMES.dynamic,
+      });
+    }
+  }, [query.data, queryKey, pageSize, queryClient, fetchFn, options?.staleTime]);
+  
+  const loadPage = useCallback(async (page: number) => {
+    return queryClient.fetchQuery({
+      queryKey: [...queryKey, { page, pageSize }],
+      queryFn: () => fetchFn(page, pageSize),
+      staleTime: options?.staleTime ?? STALE_TIMES.dynamic,
+    });
+  }, [queryKey, pageSize, queryClient, fetchFn, options?.staleTime]);
+  
+  return {
+    ...query,
+    loadPage,
+    pageSize,
+  };
+}
+
+// =====================
+// Data Prefetching Utilities
+// =====================
+
+/**
+ * Prefetch contract detail data for faster navigation
+ */
+export function usePrefetchContract() {
+  const queryClient = useQueryClient();
+  
+  return useCallback((contractId: string) => {
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.contracts.detail(contractId),
+      queryFn: async () => {
+        const response = await fetch(`/api/contracts/${contractId}`, {
+          headers: { 'x-tenant-id': 'demo' },
+        });
+        if (!response.ok) throw new Error('Failed to fetch contract');
+        return response.json();
+      },
+      staleTime: STALE_TIMES.dynamic,
+    });
+  }, [queryClient]);
+}
+
+/**
+ * Hook to prefetch data on hover for faster perceived performance
+ */
+export function usePrefetchOnHover<T>(
+  queryKey: readonly unknown[],
+  fetchFn: () => Promise<T>,
+  delay = 200
+) {
+  const queryClient = useQueryClient();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const onMouseEnter = useCallback(() => {
+    timeoutRef.current = setTimeout(() => {
+      queryClient.prefetchQuery({
+        queryKey,
+        queryFn: fetchFn,
+        staleTime: STALE_TIMES.dynamic,
+      });
+    }, delay);
+  }, [queryKey, fetchFn, delay, queryClient]);
+  
+  const onMouseLeave = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+  
+  return { onMouseEnter, onMouseLeave };
 }

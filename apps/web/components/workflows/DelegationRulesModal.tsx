@@ -41,7 +41,7 @@ import { toast } from 'sonner';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Framer Motion typing workaround
-const MotionDiv = motion.div as React.ComponentType<
+const MotionDiv = motion.div as unknown as React.ComponentType<
   React.HTMLAttributes<HTMLDivElement> & {
     initial?: object;
     animate?: object;
@@ -90,7 +90,7 @@ const mockRules: DelegationRule[] = [
   {
     id: 'dr1',
     name: 'Vacation Coverage',
-    delegateTo: mockTeamMembers[0],
+    delegateTo: mockTeamMembers[0]!,
     triggerType: 'date_range',
     startDate: '2024-03-15',
     endDate: '2024-03-25',
@@ -103,7 +103,7 @@ const mockRules: DelegationRule[] = [
   {
     id: 'dr2',
     name: 'High Priority Backup',
-    delegateTo: mockTeamMembers[1],
+    delegateTo: mockTeamMembers[1]!,
     triggerType: 'condition',
     approvalTypes: ['contract', 'termination'],
     priority: 'high',

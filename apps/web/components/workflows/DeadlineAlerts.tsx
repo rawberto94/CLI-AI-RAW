@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 // Framer Motion typing workaround
-const MotionDiv = motion.div as React.ComponentType<
+const MotionDiv = motion.div as unknown as React.ComponentType<
   React.HTMLAttributes<HTMLDivElement> & {
     initial?: object;
     animate?: object;
@@ -85,6 +85,9 @@ export function DeadlineAlertBanner({ items, onDismiss, className }: DeadlineAle
           primaryItem.priority === 'urgent' ? 'bg-red-50 border-red-300' : 'bg-amber-50 border-amber-300',
           className
         )}
+        role="alert"
+        aria-live="polite"
+        aria-label={`${visibleItems.length} deadline alert${visibleItems.length > 1 ? 's' : ''}`}
       >
         <div className="px-4 py-3">
           <div className="flex items-center justify-between gap-4">

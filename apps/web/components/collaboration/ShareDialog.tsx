@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 
 interface ShareDialogProps {
   isOpen: boolean;
@@ -65,10 +66,13 @@ export function ShareDialog({
   const [shares, setShares] = useState<ShareEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [showPermissionDropdown, setShowPermissionDropdown] = useState<string | null>(null);
   
   const { toast } = useToast();
+  const { copied: linkCopied, copy: copyLink } = useCopyToClipboard({
+    showToast: false, // We use custom toast here
+    resetDelay: 2000,
+  });
 
   const fetchShares = useCallback(async () => {
     setLoading(true);
@@ -202,16 +206,12 @@ export function ShareDialog({
 
   const handleCopyLink = async () => {
     const shareLink = `${window.location.origin}/${documentType}s/${documentId}`;
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
+    const success = await copyLink(shareLink);
+    if (success) {
       toast({
         title: 'Link copied',
         description: 'Share link copied to clipboard',
       });
-    } catch (error) {
-      console.error('Failed to copy link:', error);
     }
   };
 

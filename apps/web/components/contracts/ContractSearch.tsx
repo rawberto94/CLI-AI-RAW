@@ -1,11 +1,12 @@
 "use client";
 
 import { Search, X, Loader2, Clock, TrendingUp } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useContractSearch } from "@/lib/contracts/search";
 import { fadeIn } from "@/lib/contracts/animations";
 import { cn } from "@/lib/utils";
+import { useOnClickOutsideMultiple } from "@/hooks/useEventListener";
 
 export interface ContractSearchProps {
   onSearch?: (query: string) => void;
@@ -41,20 +42,11 @@ export function ContractSearch({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        !inputRef.current?.contains(event.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+  const handleClickOutside = useCallback(() => {
+    setShowDropdown(false);
   }, []);
+  
+  useOnClickOutsideMultiple([dropdownRef, inputRef], handleClickOutside);
 
   // Get suggestions when query changes
   useEffect(() => {

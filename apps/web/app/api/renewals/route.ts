@@ -1,246 +1,311 @@
-import { NextRequest, NextResponse } from 'next/server';
+/**
+ * Renewals API - Fully Integrated with Real Contract Data
+ * 
+ * GET /api/renewals - Get upcoming contract renewals from database
+ * POST /api/renewals - Manage renewal actions
+ * PATCH /api/renewals - Update renewal status
+ */
 
-// Mock renewal data
-const mockRenewals = [
-  {
-    id: 'ren1',
-    contractId: 'contract-1',
-    contractName: 'Master Agreement - Acme Corp',
-    supplier: 'Acme Corporation',
-    currentValue: 1200000,
-    proposedValue: 1260000,
-    startDate: '2023-04-01',
-    expiryDate: '2024-04-01',
-    renewalDate: '2024-04-01',
-    daysUntilExpiry: 18,
-    status: 'in-negotiation',
-    priority: 'high',
-    autoRenewal: false,
-    noticePeriod: 60,
-    noticeDeadline: '2024-02-01',
-    noticeStatus: 'sent',
-    healthScore: 78,
-    riskLevel: 'medium',
-    assignedTo: {
-      id: 'user1',
-      name: 'Sarah Chen',
-      email: 'sarah.chen@company.com',
-    },
-    history: [
-      { date: '2024-01-15', action: 'Renewal process initiated', by: 'System' },
-      { date: '2024-01-20', action: 'Notice sent to vendor', by: 'Sarah Chen' },
-      { date: '2024-02-01', action: 'Vendor responded with proposal', by: 'Acme Corp' },
-      { date: '2024-02-15', action: 'Counter-proposal sent', by: 'Sarah Chen' },
-    ],
-    terms: {
-      currentTermLength: 12,
-      proposedTermLength: 24,
-      priceChange: '+5%',
-      newClauses: ['Extended SLA guarantees', 'Enhanced support tier'],
-      removedClauses: [],
-    },
-    recommendations: [
-      { type: 'action', text: 'Review vendor pricing against market benchmarks' },
-      { type: 'caution', text: 'Consider negotiating longer term for better pricing' },
-      { type: 'info', text: 'Vendor has history of 3% average annual increases' },
-    ],
-  },
-  {
-    id: 'ren2',
-    contractId: 'contract-2',
-    contractName: 'Cloud Services SLA',
-    supplier: 'CloudTech Solutions',
-    currentValue: 450000,
-    proposedValue: 450000,
-    startDate: '2023-06-01',
-    expiryDate: '2024-06-01',
-    renewalDate: '2024-06-01',
-    daysUntilExpiry: 79,
-    status: 'pending-review',
-    priority: 'medium',
-    autoRenewal: true,
-    noticePeriod: 30,
-    noticeDeadline: '2024-05-01',
-    noticeStatus: 'pending',
-    healthScore: 92,
-    riskLevel: 'low',
-    assignedTo: {
-      id: 'user2',
-      name: 'Mike Johnson',
-      email: 'mike.johnson@company.com',
-    },
-    history: [
-      { date: '2024-03-01', action: 'Auto-renewal reminder triggered', by: 'System' },
-    ],
-    terms: {
-      currentTermLength: 12,
-      proposedTermLength: 12,
-      priceChange: '0%',
-      newClauses: [],
-      removedClauses: [],
-    },
-    recommendations: [
-      { type: 'success', text: 'Contract performance has been excellent' },
-      { type: 'info', text: 'Consider multi-year commitment for discount' },
-    ],
-  },
-  {
-    id: 'ren3',
-    contractId: 'contract-3',
-    contractName: 'Software License Agreement',
-    supplier: 'SoftCorp Inc',
-    currentValue: 180000,
-    proposedValue: 210000,
-    startDate: '2022-03-15',
-    expiryDate: '2024-03-15',
-    renewalDate: '2024-03-15',
-    daysUntilExpiry: 1,
-    status: 'urgent',
-    priority: 'critical',
-    autoRenewal: false,
-    noticePeriod: 90,
-    noticeDeadline: '2023-12-15',
-    noticeStatus: 'overdue',
-    healthScore: 45,
-    riskLevel: 'critical',
-    assignedTo: {
-      id: 'user3',
-      name: 'Tom Wilson',
-      email: 'tom.wilson@company.com',
-    },
-    history: [
-      { date: '2023-11-01', action: 'Renewal reminder sent', by: 'System' },
-      { date: '2024-01-10', action: 'Escalation to manager', by: 'System' },
-      { date: '2024-02-20', action: 'Emergency review initiated', by: 'Tom Wilson' },
-    ],
-    terms: {
-      currentTermLength: 24,
-      proposedTermLength: 12,
-      priceChange: '+17%',
-      newClauses: ['New licensing model', 'Usage-based pricing'],
-      removedClauses: ['Unlimited users'],
-    },
-    recommendations: [
-      { type: 'warning', text: 'Critical: Contract expires in 1 day' },
-      { type: 'action', text: 'Execute emergency renewal or bridge agreement' },
-      { type: 'caution', text: 'Significant price increase proposed' },
-    ],
-  },
-  {
-    id: 'ren4',
-    contractId: 'contract-4',
-    contractName: 'Professional Services Agreement',
-    supplier: 'ConsultPro Ltd',
-    currentValue: 320000,
-    proposedValue: null,
-    startDate: '2023-09-01',
-    expiryDate: '2024-09-01',
-    renewalDate: '2024-09-01',
-    daysUntilExpiry: 171,
-    status: 'upcoming',
-    priority: 'low',
-    autoRenewal: false,
-    noticePeriod: 60,
-    noticeDeadline: '2024-07-01',
-    noticeStatus: 'not-due',
-    healthScore: 85,
-    riskLevel: 'low',
-    assignedTo: null,
-    history: [],
-    terms: {
-      currentTermLength: 12,
-      proposedTermLength: null,
-      priceChange: null,
-      newClauses: [],
-      removedClauses: [],
-    },
-    recommendations: [
-      { type: 'info', text: 'Begin renewal planning 90 days before expiry' },
-      { type: 'info', text: 'Current vendor performance is satisfactory' },
-    ],
-  },
-];
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getServerTenantId } from '@/lib/tenant-server';
+
+export const dynamic = 'force-dynamic';
+
+interface RenewalContract {
+  id: string;
+  contractId: string;
+  contractName: string;
+  supplier: string | null;
+  currentValue: number | null;
+  startDate: string | null;
+  expiryDate: string | null;
+  daysUntilExpiry: number;
+  status: 'urgent' | 'in-negotiation' | 'pending-review' | 'upcoming' | 'completed' | 'expired';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  autoRenewal: boolean;
+  noticePeriod: number;
+  noticeDeadline: string | null;
+  noticeStatus: 'overdue' | 'sent' | 'pending' | 'not-due';
+  healthScore: number;
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  contractType: string | null;
+  assignedTo: { id: string; name: string; email: string } | null;
+}
+
+function calculatePriority(daysUntilExpiry: number): RenewalContract['priority'] {
+  if (daysUntilExpiry <= 7) return 'critical';
+  if (daysUntilExpiry <= 30) return 'high';
+  if (daysUntilExpiry <= 60) return 'medium';
+  return 'low';
+}
+
+function calculateStatus(daysUntilExpiry: number, hasRenewalRecord: boolean): RenewalContract['status'] {
+  if (daysUntilExpiry < 0) return 'expired';
+  if (daysUntilExpiry <= 7) return 'urgent';
+  if (hasRenewalRecord) return 'in-negotiation';
+  if (daysUntilExpiry <= 30) return 'pending-review';
+  return 'upcoming';
+}
+
+function calculateNoticeStatus(daysUntilExpiry: number, noticePeriod: number): RenewalContract['noticeStatus'] {
+  const daysUntilNoticeDeadline = daysUntilExpiry - noticePeriod;
+  if (daysUntilNoticeDeadline < 0) return 'overdue';
+  if (daysUntilNoticeDeadline <= 7) return 'pending';
+  return 'not-due';
+}
+
+function calculateHealthScore(contract: any): number {
+  let score = 80; // Base score
+  
+  // Adjust based on artifacts
+  if (contract.artifacts?.length > 0) {
+    score += 5;
+    
+    // Check risk artifact
+    const riskArtifact = contract.artifacts.find((a: any) => a.type === 'RISK');
+    if (riskArtifact?.data) {
+      const riskData = riskArtifact.data as any;
+      if (riskData.overallScore !== undefined) {
+        // Invert risk score (low risk = high health)
+        score = Math.max(20, 100 - riskData.overallScore);
+      }
+    }
+  }
+  
+  return Math.min(100, Math.max(0, score));
+}
+
+function calculateRiskLevel(healthScore: number): RenewalContract['riskLevel'] {
+  if (healthScore >= 80) return 'low';
+  if (healthScore >= 60) return 'medium';
+  if (healthScore >= 40) return 'high';
+  return 'critical';
+}
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const daysUntilExpiry = searchParams.get('daysUntilExpiry');
-  const assignedTo = searchParams.get('assignedTo');
+  try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status');
+    const priority = searchParams.get('priority');
+    const daysFilter = searchParams.get('daysUntilExpiry');
+    const assignedTo = searchParams.get('assignedTo');
 
-  let renewals = [...mockRenewals];
+    const tenantId = await getServerTenantId();
+    const now = new Date();
 
-  if (status && status !== 'all') {
-    renewals = renewals.filter(r => r.status === status);
-  }
-  if (priority && priority !== 'all') {
-    renewals = renewals.filter(r => r.priority === priority);
-  }
-  if (daysUntilExpiry) {
-    const days = parseInt(daysUntilExpiry);
-    renewals = renewals.filter(r => r.daysUntilExpiry <= days);
-  }
-  if (assignedTo) {
-    renewals = renewals.filter(r => r.assignedTo?.id === assignedTo);
-  }
-
-  // Sort by urgency (days until expiry)
-  renewals.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
-
-  // Calculate stats
-  const stats = {
-    total: mockRenewals.length,
-    urgent: mockRenewals.filter(r => r.daysUntilExpiry <= 30).length,
-    inNegotiation: mockRenewals.filter(r => r.status === 'in-negotiation').length,
-    autoRenewal: mockRenewals.filter(r => r.autoRenewal).length,
-    totalValue: mockRenewals.reduce((sum, r) => sum + r.currentValue, 0),
-    avgHealthScore: Math.round(mockRenewals.reduce((sum, r) => sum + r.healthScore, 0) / mockRenewals.length),
-    expiringThisMonth: mockRenewals.filter(r => r.daysUntilExpiry <= 30).length,
-    expiringNext90Days: mockRenewals.filter(r => r.daysUntilExpiry <= 90).length,
-  };
-
-  // Timeline data for visualization
-  const timeline = mockRenewals.map(r => ({
-    id: r.id,
-    name: r.contractName,
-    expiryDate: r.expiryDate,
-    daysUntilExpiry: r.daysUntilExpiry,
-    status: r.status,
-    value: r.currentValue,
-  }));
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      renewals,
-      stats,
-      timeline,
-      filters: {
-        statuses: ['upcoming', 'pending-review', 'in-negotiation', 'completed', 'urgent'],
-        priorities: ['critical', 'high', 'medium', 'low'],
+    // Get contracts with end dates (upcoming renewals)
+    const contracts = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        status: { in: ['COMPLETED', 'ACTIVE'] },
+        OR: [
+          { endDate: { not: null } },
+          { expirationDate: { not: null } },
+        ],
       },
-    },
-  });
+      include: {
+        artifacts: {
+          where: { type: { in: ['RISK', 'OVERVIEW', 'FINANCIAL'] } },
+          select: { type: true, data: true },
+        },
+        contractMetadata: true,
+      },
+      orderBy: [
+        { endDate: 'asc' },
+        { expirationDate: 'asc' },
+      ],
+    });
+
+    // Transform to renewal records
+    let renewals: RenewalContract[] = contracts.map((contract) => {
+      // Use endDate or expirationDate
+      const expiryDate = contract.endDate || contract.expirationDate;
+      const daysUntilExpiry = expiryDate 
+        ? Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : 365; // Default to far future if no date
+
+      // Extract value from contract or financial artifact
+      let contractValue = contract.totalValue ? Number(contract.totalValue) : null;
+      const financialArtifact = contract.artifacts.find(a => a.type === 'FINANCIAL');
+      if (!contractValue && financialArtifact?.data) {
+        const financialData = financialArtifact.data as any;
+        contractValue = financialData.totalValue || financialData.contractValue || null;
+      }
+
+      // Extract supplier from contract or overview artifact
+      let supplier = contract.supplierName || null;
+      const overviewArtifact = contract.artifacts.find(a => a.type === 'OVERVIEW');
+      if (!supplier && overviewArtifact?.data) {
+        const overviewData = overviewArtifact.data as any;
+        const vendorParty = overviewData.parties?.find((p: any) => 
+          p.role?.toLowerCase().includes('vendor') || 
+          p.role?.toLowerCase().includes('provider') ||
+          p.role?.toLowerCase().includes('supplier')
+        );
+        supplier = vendorParty?.name || null;
+      }
+
+      const noticePeriod = 60; // Default 60 days
+      const healthScore = calculateHealthScore(contract);
+      const hasRenewalRecord = contract.renewalStatus === 'INITIATED';
+
+      return {
+        id: `renewal-${contract.id}`,
+        contractId: contract.id,
+        contractName: contract.contractTitle || contract.originalName || contract.fileName,
+        supplier,
+        currentValue: contractValue,
+        startDate: (contract.startDate || contract.effectiveDate)?.toISOString() || null,
+        expiryDate: expiryDate?.toISOString() || null,
+        daysUntilExpiry,
+        status: calculateStatus(daysUntilExpiry, hasRenewalRecord),
+        priority: calculatePriority(daysUntilExpiry),
+        autoRenewal: contract.autoRenewalEnabled || false,
+        noticePeriod,
+        noticeDeadline: expiryDate 
+          ? new Date(expiryDate.getTime() - noticePeriod * 24 * 60 * 60 * 1000).toISOString()
+          : null,
+        noticeStatus: calculateNoticeStatus(daysUntilExpiry, noticePeriod),
+        healthScore,
+        riskLevel: calculateRiskLevel(healthScore),
+        contractType: contract.contractType || contract.category || null,
+        assignedTo: null, // TODO: Link to user assignments
+      };
+    });
+
+    // Deduplicate by contractId (keep the first occurrence)
+    const seenContractIds = new Set<string>();
+    const seenContractNames = new Set<string>();
+    renewals = renewals.filter(renewal => {
+      // Skip if we've seen this contract ID
+      if (seenContractIds.has(renewal.contractId)) {
+        return false;
+      }
+      // Also skip if we've seen this exact contract name (likely a duplicate upload)
+      const normalizedName = renewal.contractName?.toLowerCase().trim();
+      if (normalizedName && seenContractNames.has(normalizedName)) {
+        return false;
+      }
+      seenContractIds.add(renewal.contractId);
+      if (normalizedName) {
+        seenContractNames.add(normalizedName);
+      }
+      return true;
+    });
+
+    // Apply filters
+    if (status && status !== 'all') {
+      renewals = renewals.filter(r => r.status === status);
+    }
+    if (priority && priority !== 'all') {
+      renewals = renewals.filter(r => r.priority === priority);
+    }
+    if (daysFilter) {
+      const days = parseInt(daysFilter);
+      renewals = renewals.filter(r => r.daysUntilExpiry <= days);
+    }
+    if (assignedTo) {
+      renewals = renewals.filter(r => r.assignedTo?.id === assignedTo);
+    }
+
+    // Sort by urgency (days until expiry)
+    renewals.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+
+    // Calculate stats
+    const stats = {
+      total: renewals.length,
+      urgent: renewals.filter(r => r.daysUntilExpiry <= 30 && r.daysUntilExpiry >= 0).length,
+      inNegotiation: renewals.filter(r => r.status === 'in-negotiation').length,
+      autoRenewal: renewals.filter(r => r.autoRenewal).length,
+      totalValue: renewals.reduce((sum, r) => sum + (r.currentValue || 0), 0),
+      avgHealthScore: renewals.length > 0 
+        ? Math.round(renewals.reduce((sum, r) => sum + r.healthScore, 0) / renewals.length)
+        : 0,
+      expiringThisMonth: renewals.filter(r => r.daysUntilExpiry <= 30 && r.daysUntilExpiry >= 0).length,
+      expiringNext90Days: renewals.filter(r => r.daysUntilExpiry <= 90 && r.daysUntilExpiry >= 0).length,
+      expired: renewals.filter(r => r.daysUntilExpiry < 0).length,
+    };
+
+    // Timeline data for visualization
+    const timeline = renewals.slice(0, 20).map(r => ({
+      id: r.id,
+      contractId: r.contractId,
+      name: r.contractName,
+      expiryDate: r.expiryDate,
+      daysUntilExpiry: r.daysUntilExpiry,
+      status: r.status,
+      value: r.currentValue,
+      priority: r.priority,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        renewals,
+        stats,
+        timeline,
+        filters: {
+          statuses: ['urgent', 'pending-review', 'in-negotiation', 'upcoming', 'completed', 'expired'],
+          priorities: ['critical', 'high', 'medium', 'low'],
+        },
+      },
+      meta: {
+        source: 'database',
+        timestamp: now.toISOString(),
+        tenantId,
+      },
+    });
+  } catch (error) {
+    console.error('Renewals API error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch renewals' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, renewalId, renewalData } = body;
+    const { action, renewalId, contractId, renewalData } = body;
+    const tenantId = await getServerTenantId();
+
+    // Extract contract ID from renewal ID if needed
+    const actualContractId = contractId || renewalId?.replace('renewal-', '');
 
     if (action === 'initiate') {
+      // Update contract to track renewal initiation
+      await prisma.contract.update({
+        where: { id: actualContractId },
+        data: {
+          renewalStatus: 'INITIATED',
+          renewalInitiatedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Renewal process initiated',
         data: {
-          renewalId: renewalId || `ren-${Date.now()}`,
-          status: 'pending-review',
+          renewalId: `renewal-${actualContractId}`,
+          status: 'in-negotiation',
           initiatedAt: new Date().toISOString(),
         },
       });
     }
 
     if (action === 'send-notice') {
+      // Track notice sent via renewal notes
+      await prisma.contract.update({
+        where: { id: actualContractId },
+        data: {
+          renewalNotes: `Notice sent on ${new Date().toISOString()}`,
+          updatedAt: new Date(),
+        },
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Renewal notice sent to vendor',
@@ -252,32 +317,41 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (action === 'update-terms') {
-      return NextResponse.json({
-        success: true,
-        message: 'Renewal terms updated',
+    if (action === 'toggle-auto-renewal') {
+      const contract = await prisma.contract.findUnique({
+        where: { id: actualContractId },
+        select: { autoRenewalEnabled: true },
+      });
+
+      await prisma.contract.update({
+        where: { id: actualContractId },
         data: {
-          renewalId,
-          terms: renewalData?.terms,
-          updatedAt: new Date().toISOString(),
+          autoRenewalEnabled: !contract?.autoRenewalEnabled,
+          updatedAt: new Date(),
         },
       });
-    }
 
-    if (action === 'toggle-auto-renewal') {
-      const renewal = mockRenewals.find(r => r.id === renewalId);
       return NextResponse.json({
         success: true,
-        message: `Auto-renewal ${renewal?.autoRenewal ? 'disabled' : 'enabled'}`,
+        message: `Auto-renewal ${contract?.autoRenewalEnabled ? 'disabled' : 'enabled'}`,
         data: {
           renewalId,
-          autoRenewal: !renewal?.autoRenewal,
+          autoRenewal: !contract?.autoRenewalEnabled,
           updatedAt: new Date().toISOString(),
         },
       });
     }
 
     if (action === 'complete') {
+      await prisma.contract.update({
+        where: { id: actualContractId },
+        data: {
+          renewalStatus: 'COMPLETED',
+          renewalCompletedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Renewal completed successfully',
@@ -285,23 +359,33 @@ export async function POST(request: NextRequest) {
           renewalId,
           status: 'completed',
           completedAt: new Date().toISOString(),
-          newContractId: `contract-${Date.now()}`,
         },
       });
     }
 
-    if (action === 'assign') {
-      const { assigneeId, assigneeName } = renewalData;
+    if (action === 'set-dates') {
+      // Update contract dates
+      const { startDate, endDate } = renewalData || {};
+      
+      if (startDate || endDate) {
+        await prisma.contract.update({
+          where: { id: actualContractId },
+          data: {
+            ...(startDate && { startDate: new Date(startDate), effectiveDate: new Date(startDate) }),
+            ...(endDate && { endDate: new Date(endDate), expirationDate: new Date(endDate) }),
+            updatedAt: new Date(),
+          },
+        });
+      }
+
       return NextResponse.json({
         success: true,
-        message: `Assigned to ${assigneeName}`,
+        message: 'Contract dates updated',
         data: {
-          renewalId,
-          assignedTo: {
-            id: assigneeId,
-            name: assigneeName,
-          },
-          assignedAt: new Date().toISOString(),
+          contractId: actualContractId,
+          startDate,
+          endDate,
+          updatedAt: new Date().toISOString(),
         },
       });
     }
@@ -311,9 +395,10 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
+    console.error('Renewals POST error:', error);
     return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
+      { success: false, error: 'Failed to process renewal action' },
+      { status: 500 }
     );
   }
 }
@@ -321,13 +406,48 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { renewalId, updates } = body;
+    const { renewalId, contractId, updates } = body;
+    const tenantId = await getServerTenantId();
 
-    if (!renewalId) {
+    const actualContractId = contractId || renewalId?.replace('renewal-', '');
+
+    if (!actualContractId) {
       return NextResponse.json(
-        { success: false, error: 'Renewal ID is required' },
+        { success: false, error: 'Contract ID is required' },
         { status: 400 }
       );
+    }
+
+    // Update contract fields if provided
+    if (updates.endDate || updates.startDate || updates.value) {
+      await prisma.contract.update({
+        where: { id: actualContractId },
+        data: {
+          ...(updates.startDate && { 
+            startDate: new Date(updates.startDate),
+            effectiveDate: new Date(updates.startDate),
+          }),
+          ...(updates.endDate && { 
+            endDate: new Date(updates.endDate),
+            expirationDate: new Date(updates.endDate),
+          }),
+          ...(updates.value && { totalValue: updates.value }),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    // Update contract renewal fields if provided
+    if (updates.autoRenewal !== undefined || updates.noticePeriod || updates.renewalStatus) {
+      await prisma.contract.update({
+        where: { id: actualContractId },
+        data: {
+          ...(updates.autoRenewal !== undefined && { autoRenewalEnabled: updates.autoRenewal }),
+          ...(updates.noticePeriod && { noticePeriodDays: updates.noticePeriod }),
+          ...(updates.renewalStatus && { renewalStatus: updates.renewalStatus }),
+          updatedAt: new Date(),
+        },
+      });
     }
 
     return NextResponse.json({
@@ -335,14 +455,16 @@ export async function PATCH(request: NextRequest) {
       message: 'Renewal updated',
       data: {
         renewalId,
+        contractId: actualContractId,
         updates,
         updatedAt: new Date().toISOString(),
       },
     });
   } catch (error) {
+    console.error('Renewals PATCH error:', error);
     return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
+      { success: false, error: 'Failed to update renewal' },
+      { status: 500 }
     );
   }
 }

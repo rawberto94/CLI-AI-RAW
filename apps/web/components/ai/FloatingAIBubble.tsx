@@ -97,7 +97,8 @@ import {
   Clock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 // Types
 interface Message {
@@ -214,6 +215,21 @@ const formatContent = (content: string) => {
 
 export function FloatingAIBubble() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
+  // Extract contract ID from current page URL
+  const currentContractId = useMemo(() => {
+    // Check if we're on a contract detail page: /contracts/[id]
+    const contractMatch = pathname?.match(/\/contracts\/([^\/]+)/);
+    if (contractMatch) return contractMatch[1];
+    
+    // Check query params for contractId
+    const queryContractId = searchParams?.get('contractId');
+    if (queryContractId) return queryContractId;
+    
+    return null;
+  }, [pathname, searchParams]);
   
   // Core state
   const [isOpen, setIsOpen] = useState(false);
@@ -274,6 +290,16 @@ export function FloatingAIBubble() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
+  // Listen for custom event to open chatbot from other components
+  useEffect(() => {
+    const handleOpenChatbot = () => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener("openAIChatbot", handleOpenChatbot);
+    return () => window.removeEventListener("openAIChatbot", handleOpenChatbot);
+  }, []);
+
   // Initialize speech recognition
   useEffect(() => {
     if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
@@ -318,16 +344,16 @@ export function FloatingAIBubble() {
     }
   }, [isListening]);
 
+  const { copy } = useCopyToClipboard({ successMessage: 'Message copied!' });
+
   // Copy message to clipboard
   const copyMessage = useCallback(async (id: string, content: string) => {
-    try {
-      await navigator.clipboard.writeText(content);
+    const success = await copy(content);
+    if (success) {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
-    } catch (error) {
-      console.error("Failed to copy:", error);
     }
-  }, []);
+  }, [copy]);
 
   // React to message
   const reactToMessage = useCallback((id: string, reaction: "like" | "dislike") => {
@@ -423,7 +449,11 @@ export function FloatingAIBubble() {
             role: m.role,
             content: m.content,
           })),
-          context: conversationContext,
+          context: {
+            ...conversationContext,
+            contractId: currentContractId,
+            context: currentContractId ? 'contract-detail' : 'global',
+          },
           useMock: false, // Use real OpenAI
         }),
       });

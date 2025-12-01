@@ -52,10 +52,18 @@ const publicApiPaths = [
   "/api/healthz",
   "/api/web-health",
   "/api/auth",
+  "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
+  "/api/ai", // Allow AI chat endpoints
   "/api/events", // Allow SSE endpoint for real-time updates
   "/api/contracts", // Allow contract endpoints (includes artifact streams)
-  "/api/dashboard/stats", // Allow dashboard stats for testing (remove in production if needed)
+  "/api/dashboard/stats", // Allow dashboard stats for testing
   "/api/dashboard/renewals", // Allow dashboard renewals for testing
+  "/api/renewals", // Allow renewals for testing
+  "/api/approvals", // Allow approvals for testing
+  "/api/governance", // Allow governance for testing
+  "/api/intelligence", // Allow intelligence for testing
+  "/api/workflows", // Allow workflows for testing
+  "/api/sharing", // Allow sharing for testing
 ];
 
 export default auth((req) => {

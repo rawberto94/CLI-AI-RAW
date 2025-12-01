@@ -10,6 +10,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
 import { Bookmark, Trash2, Share2, Users } from 'lucide-react';
 import { RateCardFilterCriteria } from './RateCardFilters';
 
@@ -30,6 +32,9 @@ interface SavedFiltersProps {
 export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [filterToDelete, setFilterToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchSavedFilters();
@@ -52,23 +57,36 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
 
   const handleApplyFilter = (filter: SavedFilter) => {
     onApplyFilter(filter.filters);
+    toast.success(`Filter "${filter.name}" applied`);
   };
 
-  const handleDeleteFilter = async (filterId: string) => {
-    if (!confirm('Are you sure you want to delete this filter?')) {
-      return;
-    }
+  const openDeleteDialog = (filterId: string) => {
+    setFilterToDelete(filterId);
+    setDeleteDialogOpen(true);
+  };
 
+  const handleDeleteFilter = async () => {
+    if (!filterToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/rate-cards/filters/${filterId}`, {
+      const response = await fetch(`/api/rate-cards/filters/${filterToDelete}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        setSavedFilters(prev => prev.filter(f => f.id !== filterId));
+        setSavedFilters(prev => prev.filter(f => f.id !== filterToDelete));
+        toast.success('Filter deleted successfully');
+      } else {
+        toast.error('Failed to delete filter');
       }
     } catch (error) {
       console.error('Error deleting filter:', error);
+      toast.error('Failed to delete filter');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setFilterToDelete(null);
     }
   };
 
@@ -188,7 +206,7 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDeleteFilter(filter.id)}
+                    onClick={() => openDeleteDialog(filter.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -201,6 +219,17 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
             </div>
           ))}
         </div>
+
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Filter"
+          description="Are you sure you want to delete this saved filter? This action cannot be undone."
+          confirmLabel="Delete"
+          variant="destructive"
+          isLoading={isDeleting}
+          onConfirm={handleDeleteFilter}
+        />
       </CardContent>
     </Card>
   );

@@ -81,6 +81,15 @@ function getUserColor(userId: string): string {
   return colors[hash % colors.length]!;
 }
 
+// Helper to dispatch real-time events to query cache sync
+function dispatchRealTimeEvent(type: string, data?: Record<string, unknown>) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('realtime-event', { 
+      detail: { type, data } 
+    }));
+  }
+}
+
 // =====================
 // Provider
 // =====================
@@ -192,6 +201,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         data: notification,
         timestamp: new Date(),
       }));
+      // Dispatch to query cache sync
+      dispatchRealTimeEvent('approval:submitted', { 
+        approvalId: notification.approvalId,
+        contractId: notification.contractId,
+      });
     });
 
     newSocket.on('approval:completed', (notification: ApprovalNotification) => {
@@ -203,6 +217,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         data: notification,
         timestamp: new Date(),
       }));
+      // Dispatch to query cache sync
+      dispatchRealTimeEvent('approval:completed', { 
+        approvalId: notification.approvalId,
+        contractId: notification.contractId,
+      });
     });
 
     newSocket.on('approval:update', (notification: ApprovalNotification) => {
@@ -214,6 +233,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         data: notification,
         timestamp: new Date(),
       }));
+      // Dispatch to query cache sync
+      dispatchRealTimeEvent('approval:completed', { 
+        approvalId: notification.approvalId,
+        contractId: notification.contractId,
+      });
     });
 
     setSocket(newSocket);

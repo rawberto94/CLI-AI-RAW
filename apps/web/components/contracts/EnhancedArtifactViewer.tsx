@@ -20,6 +20,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import { 
   FileText, DollarSign, Shield, AlertTriangle, CheckCircle2, 
   Calendar, Users, MapPin, Clock, TrendingUp, AlertCircle,
@@ -48,9 +49,14 @@ export function EnhancedArtifactViewer({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   const handleCopy = async (content: string, sectionName: string) => {
-    await navigator.clipboard.writeText(content);
-    setCopiedSection(sectionName);
-    setTimeout(() => setCopiedSection(null), 2000);
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedSection(sectionName);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopiedSection(null), 2000);
+    } catch (err) {
+      toast.error('Failed to copy');
+    }
   };
 
   const toggleSection = (sectionId: string) => {

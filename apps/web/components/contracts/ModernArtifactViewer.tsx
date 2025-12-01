@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { toast } from 'sonner'
 import {
   FileText,
   DollarSign,
@@ -50,9 +51,11 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
     try {
       await navigator.clipboard.writeText(JSON.stringify(content, null, 2))
       setCopiedSection(section)
+      toast.success('Copied to clipboard')
       setTimeout(() => setCopiedSection(null), 2000)
     } catch (err) {
       console.error('Failed to copy:', err)
+      toast.error('Failed to copy to clipboard')
     }
   }
 

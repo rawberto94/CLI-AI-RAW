@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
+import { useCrossModuleInvalidation } from '@/hooks/use-queries';
 
 // ============================================================================
 // Types
@@ -46,6 +47,7 @@ import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForAppr
 
 interface RenewalContract {
   id: string;
+  contractId: string;
   contractName: string;
   supplierName: string;
   currentValue: number;
@@ -88,6 +90,7 @@ interface RenewalEvent {
 const mockRenewals: RenewalContract[] = [
   {
     id: 'r1',
+    contractId: 'contract-r1',
     contractName: 'Master Agreement - Acme Corp',
     supplierName: 'Acme Corporation',
     currentValue: 1200000,
@@ -112,6 +115,7 @@ const mockRenewals: RenewalContract[] = [
   },
   {
     id: 'r2',
+    contractId: 'contract-r2',
     contractName: 'Procurement Agreement - GlobalSupply',
     supplierName: 'GlobalSupply Ltd',
     currentValue: 780000,
@@ -136,6 +140,7 @@ const mockRenewals: RenewalContract[] = [
   },
   {
     id: 'r3',
+    contractId: 'contract-r3',
     contractName: 'Cloud Services SLA',
     supplierName: 'Acme Corporation',
     currentValue: 450000,
@@ -155,6 +160,7 @@ const mockRenewals: RenewalContract[] = [
   },
   {
     id: 'r4',
+    contractId: 'contract-r4',
     contractName: 'NDA - TechFlow Inc',
     supplierName: 'TechFlow Inc',
     currentValue: 0,
@@ -172,6 +178,7 @@ const mockRenewals: RenewalContract[] = [
   },
   {
     id: 'r5',
+    contractId: 'contract-r5',
     contractName: 'Maintenance Contract - Acme',
     supplierName: 'Acme Corporation',
     currentValue: 120000,
@@ -204,6 +211,7 @@ const getStatusConfig = (status: RenewalContract['status']) => {
     case 'completed': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' };
     case 'lapsed': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Lapsed' };
     case 'terminated': return { color: 'bg-slate-100 text-slate-700', icon: XCircle, label: 'Terminated' };
+    default: return { color: 'bg-slate-100 text-slate-700', icon: Clock, label: 'Unknown' };
   }
 };
 
@@ -213,6 +221,7 @@ const getRecommendationConfig = (rec: RenewalContract['recommendation']) => {
     case 'renegotiate': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Edit, label: 'Renegotiate' };
     case 'terminate': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: 'Terminate' };
     case 'review': return { color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Eye, label: 'Review' };
+    default: return { color: 'bg-slate-100 text-slate-700 border-slate-200', icon: Eye, label: 'Unknown' };
   }
 };
 
@@ -434,6 +443,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 
 export const RenewalManager: React.FC = () => {
   const { isMockData } = useDataMode();
+  const crossModule = useCrossModuleInvalidation();
   const [renewals, setRenewals] = useState<RenewalContract[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'urgent' | 'auto-renew' | 'action-needed'>('all');
@@ -460,8 +470,10 @@ export const RenewalManager: React.FC = () => {
     } else if (filteredRenewals.length > 0) {
       // Auto-select the most urgent renewal
       const mostUrgent = filteredRenewals[0];
-      setSelectedRenewalForInitiate(mostUrgent);
-      setInitiateModalOpen(true);
+      if (mostUrgent) {
+        setSelectedRenewalForInitiate(mostUrgent);
+        setInitiateModalOpen(true);
+      }
     } else {
       toast.error('No renewals available', {
         description: 'Please add contracts with upcoming renewals first',
@@ -477,6 +489,10 @@ export const RenewalManager: React.FC = () => {
           ? { ...r, status: 'in-progress' as const }
           : r
       ));
+      
+      // Invalidate related caches
+      crossModule.onRenewalChange(selectedRenewalForInitiate.contractId);
+      
       toast.success('Renewal initiated', {
         description: `${selectedRenewalForInitiate.contractName} renewal process started`,
       });
@@ -497,6 +513,10 @@ export const RenewalManager: React.FC = () => {
           ? { ...r, approvalStatus: 'pending' as const, approvalProgress: 0 }
           : r
       ));
+      
+      // Invalidate approvals and related caches
+      crossModule.onRenewalChange(renewalForApproval.contractId);
+      
       toast.success('Renewal submitted for approval', {
         description: `${renewalForApproval.contractName} has been sent for review`,
       });
@@ -505,53 +525,49 @@ export const RenewalManager: React.FC = () => {
     setRenewalForApproval(null);
   };
 
-  // Fetch renewals from API or use mock data based on mode
+  // Fetch renewals from API - always use real data
   useEffect(() => {
     async function fetchRenewals() {
-      // If in demo mode, always use mock data
-      if (isMockData) {
-        setRenewals(mockRenewals);
-        setLoading(false);
-        return;
-      }
-      
       try {
         const res = await fetch('/api/renewals');
         const json = await res.json();
-        if (json.success && json.data?.contracts?.length > 0) {
-          const mapped = json.data.contracts.map((item: any) => ({
-            id: item.id,
+        // Support both old format (data.contracts) and new format (data.renewals)
+        const renewalData = json.data?.renewals || json.data?.contracts || [];
+        if (json.success) {
+          const mapped = renewalData.map((item: any) => ({
+            id: item.id || item.contractId,
+            contractId: item.contractId || item.id?.replace('renewal-', '') || item.id,
             contractName: item.contractName || item.name || 'Unknown Contract',
-            supplierName: item.counterparty || item.vendor || 'Unknown',
-            currentValue: item.contractValue || item.value || 0,
-            projectedValue: item.projectedValue || item.contractValue || 0,
-            renewalDate: item.endDate || item.renewalDate,
+            supplierName: item.supplier || item.counterparty || item.vendor || 'Unknown',
+            currentValue: item.currentValue || item.contractValue || item.value || 0,
+            projectedValue: item.projectedValue || item.currentValue || item.contractValue || 0,
+            renewalDate: item.expiryDate || item.endDate || item.renewalDate,
             autoRenewal: item.autoRenewal ?? false,
             noticeDeadline: item.noticeDeadline,
             status: item.status || 'upcoming',
             renewalType: item.autoRenewal ? 'auto' : 'manual',
             healthScore: item.healthScore || 75,
-            daysUntilRenewal: item.daysUntilRenewal || Math.max(0, Math.round((new Date(item.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
+            daysUntilRenewal: item.daysUntilExpiry ?? item.daysUntilRenewal ?? Math.max(0, Math.round((new Date(item.expiryDate || item.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))),
             lastRenewalDate: item.lastRenewalDate,
             renewalHistory: item.history || [],
-            recommendation: item.recommendation || 'review',
-            risks: item.risks || [],
+            recommendation: item.recommendation || (item.daysUntilExpiry <= 30 ? 'review' : 'renew'),
+            risks: item.risks || (item.riskLevel === 'high' || item.riskLevel === 'critical' ? ['High risk score'] : []),
             savings: item.savings,
-            assignee: item.assignee,
+            assignee: item.assignedTo,
           }));
           setRenewals(mapped);
         } else {
-          setRenewals(mockRenewals);
+          setRenewals([]); // No data available
         }
       } catch (error) {
-        console.log('Using mock renewals data');
-        setRenewals(mockRenewals);
+        console.error('Error fetching renewals:', error);
+        setRenewals([]); // Error state - empty data
       } finally {
         setLoading(false);
       }
     }
     fetchRenewals();
-  }, [isMockData]);
+  }, []);
 
   const selectedRenewal = renewals.find(r => r.id === selectedId);
 
@@ -781,7 +797,7 @@ export const RenewalManager: React.FC = () => {
             setApprovalModalOpen(false);
             setRenewalForApproval(null);
           }}
-          contractId={renewalForApproval.id}
+          contractId={renewalForApproval.contractId}
           contractTitle={`Renewal: ${renewalForApproval.contractName}`}
           onSuccess={handleApprovalSubmit}
         />

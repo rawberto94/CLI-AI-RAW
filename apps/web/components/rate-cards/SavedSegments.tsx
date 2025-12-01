@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
 import { 
   Folder, 
   Share2, 
@@ -54,6 +56,9 @@ export function SavedSegments({
   const [segments, setSegments] = useState<Segment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showShared, setShowShared] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [segmentToDelete, setSegmentToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadSegments();
@@ -102,31 +107,45 @@ export function SavedSegments({
       );
 
       if (response.ok) {
+        toast.success('Segment unshared');
         loadSegments();
         onRefresh?.();
       }
     } catch (error) {
       console.error('Error unsharing segment:', error);
+      toast.error('Failed to unshare segment');
     }
   };
 
-  const handleDelete = async (segmentId: string) => {
-    if (!confirm('Are you sure you want to delete this segment?')) {
-      return;
-    }
+  const openDeleteDialog = (segmentId: string) => {
+    setSegmentToDelete(segmentId);
+    setDeleteDialogOpen(true);
+  };
 
+  const handleDelete = async () => {
+    if (!segmentToDelete) return;
+    
+    setIsDeleting(true);
     try {
       const response = await fetch(
-        `/api/rate-cards/segments/${segmentId}?tenantId=${tenantId}&userId=${userId}`,
+        `/api/rate-cards/segments/${segmentToDelete}?tenantId=${tenantId}&userId=${userId}`,
         { method: 'DELETE' }
       );
 
       if (response.ok) {
+        toast.success('Segment deleted successfully');
         loadSegments();
         onRefresh?.();
+      } else {
+        toast.error('Failed to delete segment');
       }
     } catch (error) {
       console.error('Error deleting segment:', error);
+      toast.error('Failed to delete segment');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setSegmentToDelete(null);
     }
   };
 
@@ -262,7 +281,7 @@ export function SavedSegments({
                           className="text-destructive"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(segment.id);
+                            openDeleteDialog(segment.id);
                           }}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -345,6 +364,17 @@ export function SavedSegments({
             )}
           </>
         )}
+
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Segment"
+          description="Are you sure you want to delete this segment? This action cannot be undone."
+          confirmLabel="Delete"
+          variant="destructive"
+          isLoading={isDeleting}
+          onConfirm={handleDelete}
+        />
       </CardContent>
     </Card>
   );

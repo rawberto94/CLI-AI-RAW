@@ -64,7 +64,7 @@ export async function POST(
         workflowId,
         contractId,
         status: 'IN_PROGRESS',
-        currentStep: 0,
+        currentStep: '0',
         startedBy: initiatedBy || userId,
         dueDate: calculatedDueDate,
         metadata: { ...(metadata || {}), priority: priority || 'medium' },
@@ -110,23 +110,16 @@ export async function POST(
 
     // Update contract status to indicate workflow in progress
     try {
+      // Contract metadata is stored in a separate relation, just update status
       await prisma.contract.update({
         where: { id: contractId },
         data: {
-          metadata: {
-            ...(await prisma.contract.findUnique({ where: { id: contractId } }))?.metadata as object,
-            activeWorkflow: {
-              executionId: execution.id,
-              workflowId,
-              workflowName: workflow.name,
-              startedAt: new Date().toISOString(),
-            },
-          },
+          status: 'PENDING',
         },
       });
     } catch (e) {
       // Contract update is optional, don't fail the execution
-      console.warn('Could not update contract metadata:', e);
+      console.warn('Could not update contract status:', e);
     }
 
     return NextResponse.json({
@@ -183,7 +176,7 @@ export async function GET(
           select: { name: true, type: true },
         },
         contract: {
-          select: { title: true, counterparty: true },
+          select: { contractTitle: true, supplierName: true },
         },
         stepExecutions: {
           orderBy: { stepOrder: 'asc' },
@@ -197,9 +190,9 @@ export async function GET(
       executions: executions.map((exec) => ({
         ...exec,
         progress: {
-          completed: exec.stepExecutions.filter(s => s.status === 'COMPLETED').length,
+          completed: exec.stepExecutions.filter((s: { status: string }) => s.status === 'COMPLETED').length,
           total: exec.stepExecutions.length,
-          currentStep: exec.stepExecutions.find(s => s.status === 'PENDING')?.stepName || 'Complete',
+          currentStep: exec.stepExecutions.find((s: { status: string }) => s.status === 'PENDING')?.stepName || 'Complete',
         },
       })),
       total: executions.length,

@@ -6,6 +6,7 @@ import { getQueueService } from '../../utils/src/queue/queue-service';
 import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';
+import { registerRAGIndexingWorker } from './rag-indexing-worker';
 import pino from 'pino';
 
 const logger = pino({
@@ -46,6 +47,7 @@ async function startWorkers() {
     const ocrArtifactWorker = registerOCRArtifactWorker();
     const artifactWorker = registerArtifactGeneratorWorker();
     const webhookWorker = registerWebhookWorker();
+    const ragWorker = registerRAGIndexingWorker();
 
     logger.info('✅ All workers registered successfully');
     logger.info({
@@ -53,6 +55,7 @@ async function startWorkers() {
         'ocr-artifact-processing (contract-processing queue)',
         'artifact-generation',
         'webhook-delivery',
+        'rag-indexing (auto-embeddings)',
       ],
     }, 'Active workers');
 
@@ -64,6 +67,7 @@ async function startWorkers() {
         ocrArtifactWorker.close(),
         artifactWorker.close(),
         webhookWorker.close(),
+        ragWorker.close(),
       ]);
 
       const queueService = getQueueService();

@@ -81,6 +81,7 @@ import {
   Info
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 // ============ TYPES ============
 
@@ -537,7 +538,10 @@ function EditableFieldComponent({
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(String(field.value))}>
+                    <DropdownMenuItem onClick={() => {
+                      navigator.clipboard.writeText(String(field.value));
+                      toast.success('Value copied!');
+                    }}>
                       <Copy className="h-4 w-4 mr-2" />
                       Copy Value
                     </DropdownMenuItem>

@@ -68,7 +68,7 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
     const textBeforeCursor = value.substring(0, cursorPosition);
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     
-    if (mentionMatch) {
+    if (mentionMatch && mentionMatch[1] !== undefined) {
       setShowMentions(true);
       setMentionSearch(mentionMatch[1]);
       setMentionPosition(cursorPosition - mentionMatch[0].length);
@@ -94,7 +94,9 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
     const mentions: string[] = [];
     let match;
     while ((match = mentionRegex.exec(newComment)) !== null) {
-      mentions.push(match[1].trim());
+      if (match[1]) {
+        mentions.push(match[1].trim());
+      }
     }
 
     try {

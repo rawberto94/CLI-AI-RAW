@@ -14,6 +14,7 @@ import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import { QueryProvider } from "@/lib/query-client";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
+import { RealTimeSyncProvider } from "@/components/providers/RealTimeSyncProvider";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -35,30 +36,43 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-slate-50 font-sans antialiased">
+        {/* Skip to main content link for accessibility */}
+        <a 
+          href="#main-content" 
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+        >
+          Skip to main content
+        </a>
         <GlobalErrorBoundary>
           <QueryProvider>
             <WebSocketProvider>
-              <DataModeProvider>
-                <ToastProvider>
-                  <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
-                    <ModuleProvider>
-                      <FeedbackProvider>
-                        <GlobalKeyboardShortcuts>
-                          <HealthBanner />
-                          <EnhancedNavigation />
-                          <main className="min-h-screen lg:pl-72 pt-16 lg:pt-0 bg-slate-50 overflow-x-hidden">
-                            <div className="h-full w-full max-w-full">
-                              {children}
-                            </div>
-                          </main>
-                          <FloatingDataModeToggle />
-                          <FloatingAIBubble />
-                        </GlobalKeyboardShortcuts>
-                      </FeedbackProvider>
-                    </ModuleProvider>
-                  </RealTimeProvider>
-                </ToastProvider>
-              </DataModeProvider>
+              <RealTimeSyncProvider>
+                <DataModeProvider>
+                  <ToastProvider>
+                    <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                      <ModuleProvider>
+                        <FeedbackProvider>
+                          <GlobalKeyboardShortcuts>
+                            <HealthBanner />
+                            <EnhancedNavigation />
+                            <main 
+                              id="main-content"
+                              className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-slate-50 overflow-x-hidden"
+                              tabIndex={-1}
+                            >
+                              <div className="h-full w-full max-w-full">
+                                {children}
+                              </div>
+                            </main>
+                            <FloatingDataModeToggle />
+                            <FloatingAIBubble />
+                          </GlobalKeyboardShortcuts>
+                        </FeedbackProvider>
+                      </ModuleProvider>
+                    </RealTimeProvider>
+                  </ToastProvider>
+                </DataModeProvider>
+              </RealTimeSyncProvider>
             </WebSocketProvider>
           </QueryProvider>
         </GlobalErrorBoundary>

@@ -11,6 +11,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
+import { copyToClipboard } from '@/hooks/useCopyToClipboard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +55,9 @@ interface SavedComparisonsProps {
 export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
   const [comparisons, setComparisons] = useState<SavedComparison[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [comparisonToDelete, setComparisonToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchComparisons();
@@ -90,13 +96,14 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
 
       if (response.ok) {
         const data = await response.json();
-        navigator.clipboard.writeText(window.location.origin + data.shareUrl);
-        alert('Share link copied to clipboard!');
+        copyToClipboard(window.location.origin + data.shareUrl, {
+          successMessage: 'Share link copied to clipboard!',
+        });
         fetchComparisons(); // Refresh to show updated share status
       }
     } catch (error) {
       console.error('Error sharing comparison:', error);
-      alert('Failed to share comparison');
+      toast.error('Failed to share comparison');
     }
   };
 
@@ -114,34 +121,44 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        toast.success('CSV exported successfully');
       } else if (format === 'pdf') {
         // For PDF, we would need to implement client-side PDF generation
-        alert('PDF export coming soon!');
+        toast.info('PDF export coming soon!');
       }
     } catch (error) {
       console.error('Error exporting comparison:', error);
-      alert('Failed to export comparison');
+      toast.error('Failed to export comparison');
     }
   };
 
-  const handleDelete = async (comparisonId: string) => {
-    if (!confirm('Are you sure you want to delete this comparison?')) {
-      return;
-    }
+  const openDeleteDialog = (comparisonId: string) => {
+    setComparisonToDelete(comparisonId);
+    setDeleteDialogOpen(true);
+  };
 
+  const handleDelete = async () => {
+    if (!comparisonToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/rate-cards/comparisons/${comparisonId}`, {
+      const response = await fetch(`/api/rate-cards/comparisons/${comparisonToDelete}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
+        toast.success('Comparison deleted successfully');
         fetchComparisons(); // Refresh list
       } else {
-        alert('Failed to delete comparison');
+        toast.error('Failed to delete comparison');
       }
     } catch (error) {
       console.error('Error deleting comparison:', error);
-      alert('Failed to delete comparison');
+      toast.error('Failed to delete comparison');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setComparisonToDelete(null);
     }
   };
 
@@ -275,7 +292,7 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
                         Export PDF
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => handleDelete(comparison.id)}
+                        onClick={() => openDeleteDialog(comparison.id)}
                         className="text-red-600"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
@@ -289,6 +306,17 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Comparison"
+        description="Are you sure you want to delete this comparison? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

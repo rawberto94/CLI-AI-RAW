@@ -176,34 +176,46 @@ function useDashboardData() {
     
     async function fetchData() {
       try {
-        const [statsRes, approvalsRes, renewalsRes] = await Promise.all([
+        const [statsRes, approvalsRes, expirationsRes, healthRes] = await Promise.all([
           fetch('/api/dashboard/stats'),
           fetch('/api/approvals?limit=5'),
-          fetch('/api/renewals?limit=3'),
+          fetch('/api/contracts/expirations?limit=5&expired=false'),
+          fetch('/api/contracts/health-scores'),
         ]);
 
-        const [statsJson, approvalsJson, renewalsJson] = await Promise.all([
+        const [statsJson, approvalsJson, expirationsJson, healthJson] = await Promise.all([
           statsRes.json(),
           approvalsRes.json(),
-          renewalsRes.json(),
+          expirationsRes.json(),
+          healthRes.json(),
         ]);
 
         // Map API data to metrics
         if (statsJson.success && statsJson.data) {
           const d = statsJson.data;
+          
+          // Use health score data if available
+          const avgHealthScore = d.health?.averageScore || healthJson.data?.stats?.averageScore || 66;
+          const riskScore = 100 - avgHealthScore; // Invert health to get risk
+          
           setMetrics({
             totalContracts: d.overview?.totalContracts ?? mockMetrics.totalContracts,
             activeContracts: d.overview?.activeContracts ?? mockMetrics.activeContracts,
             totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
-            avgRiskScore: d.riskScore ?? mockMetrics.avgRiskScore,
+            avgRiskScore: riskScore,
             pendingApprovals: approvalsJson.data?.items?.length ?? mockMetrics.pendingApprovals,
-            expiringThisMonth: d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth,
+            expiringThisMonth: (d.expirations?.criticalRisk + d.expirations?.highRisk) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
             contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
             aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
-            trends: mockMetrics.trends, // Keep mock trends for now
+            trends: {
+              contracts: mockMetrics.trends.contracts,
+              value: mockMetrics.trends.value,
+              risk: d.health?.trends?.improving > 0 ? -5 : d.health?.trends?.declining > 0 ? 5 : 0,
+              compliance: d.health?.averageScore ? (d.health.averageScore - 60) : mockMetrics.trends.compliance,
+            },
           });
 
-          // Map breakdown to chart
+          // Map breakdown to chart with health score distribution
           if (d.breakdown?.byType) {
             setChartData(prev => ({
               ...prev,
@@ -213,17 +225,30 @@ function useDashboardData() {
               })),
             }));
           }
+
+          // Map health score distribution to risk chart
+          if (d.health?.byAlertLevel) {
+            const alertLevels = d.health.byAlertLevel;
+            setChartData(prev => ({
+              ...prev,
+              riskDistribution: [
+                { name: 'Low Risk', value: (alertLevels.healthy || 0) + (alertLevels.medium || 0), color: '#10b981' },
+                { name: 'Medium Risk', value: alertLevels.high || 0, color: '#f59e0b' },
+                { name: 'High Risk', value: alertLevels.critical || 0, color: '#f43f5e' },
+              ],
+            }));
+          }
         }
 
-        // Map renewals to expirations
-        if (renewalsJson.success && renewalsJson.data?.contracts) {
-          setExpirations(renewalsJson.data.contracts.slice(0, 3).map((c: any, i: number) => ({
-            id: c.id || String(i + 1),
-            name: c.contractName || c.name || 'Contract',
-            client: c.counterparty || c.vendor || 'Unknown',
-            expiresAt: c.endDate || c.renewalDate,
-            daysRemaining: c.daysUntilRenewal || Math.round((new Date(c.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-            value: c.contractValue || c.value || 0,
+        // Map expirations data to upcoming expirations
+        if (expirationsJson.success && expirationsJson.data?.expirations?.length > 0) {
+          setExpirations(expirationsJson.data.expirations.slice(0, 3).map((e: any, i: number) => ({
+            id: e.contractId || String(i + 1),
+            name: e.contractName || 'Contract',
+            client: e.owner || 'Unknown',
+            expiresAt: e.expiryDate,
+            daysRemaining: e.daysUntilExpiry || 0,
+            value: e.contractValue || 0,
           })));
         }
 
@@ -585,6 +610,145 @@ function PendingApprovalsWidget() {
                 </motion.div>
               );
             })}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+// ============ PORTFOLIO HEALTH WIDGET ============
+
+function PortfolioHealthWidget() {
+  const [healthData, setHealthData] = useState<{
+    averageScore: number;
+    byAlertLevel: { critical: number; high: number; medium: number; healthy: number };
+    trends: { improving: number; declining: number };
+    contractsWithScores: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const response = await fetch('/api/contracts/health-scores');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.stats) {
+            setHealthData({
+              averageScore: data.data.stats.averageScore || 0,
+              byAlertLevel: {
+                critical: data.data.stats.byAlertLevel?.critical || 0,
+                high: data.data.stats.byAlertLevel?.high || 0,
+                medium: data.data.stats.byAlertLevel?.medium || 0,
+                healthy: data.data.stats.byAlertLevel?.healthy || 0,
+              },
+              trends: {
+                improving: data.data.stats.trends?.improving || 0,
+                declining: data.data.stats.trends?.declining || 0,
+              },
+              contractsWithScores: data.data.stats.total || 0,
+            });
+          }
+        }
+      } catch (error) {
+        console.log('Health data fetch error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHealth();
+  }, []);
+
+  if (loading || !healthData) {
+    return null;
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 75) return 'text-green-600';
+    if (score >= 50) return 'text-amber-600';
+    return 'text-red-600';
+  };
+
+  const getScoreBg = (score: number) => {
+    if (score >= 75) return 'from-green-500 to-emerald-500';
+    if (score >= 50) return 'from-amber-500 to-orange-500';
+    return 'from-red-500 to-rose-500';
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.82 }}
+    >
+      <Card className="border-slate-200/80">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Activity className="h-5 w-5 text-blue-600" />
+              Portfolio Health
+            </CardTitle>
+            <Button variant="ghost" size="sm" className="text-blue-600" asChild>
+              <Link href="/intelligence/health">
+                Details
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6">
+            {/* Score Ring */}
+            <div className="relative">
+              <div className={cn(
+                "w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-br shadow-lg",
+                getScoreBg(healthData.averageScore)
+              )}>
+                <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center">
+                  <span className={cn("text-2xl font-bold", getScoreColor(healthData.averageScore))}>
+                    {healthData.averageScore}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Stats */}
+            <div className="flex-1 grid grid-cols-2 gap-3">
+              <div className="p-2 bg-green-50 rounded-lg">
+                <div className="text-xl font-bold text-green-600">{healthData.byAlertLevel.healthy}</div>
+                <div className="text-xs text-green-600">Healthy</div>
+              </div>
+              <div className="p-2 bg-amber-50 rounded-lg">
+                <div className="text-xl font-bold text-amber-600">{healthData.byAlertLevel.medium}</div>
+                <div className="text-xs text-amber-600">Medium</div>
+              </div>
+              <div className="p-2 bg-orange-50 rounded-lg">
+                <div className="text-xl font-bold text-orange-600">{healthData.byAlertLevel.high}</div>
+                <div className="text-xs text-orange-600">High Risk</div>
+              </div>
+              <div className="p-2 bg-red-50 rounded-lg">
+                <div className="text-xl font-bold text-red-600">{healthData.byAlertLevel.critical}</div>
+                <div className="text-xs text-red-600">Critical</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Trends */}
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 text-sm">
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                <span className="text-green-600 font-medium">{healthData.trends.improving}</span>
+                <span className="text-slate-500">improving</span>
+              </div>
+              <div className="flex items-center gap-1 text-sm">
+                <TrendingDown className="h-4 w-4 text-red-500" />
+                <span className="text-red-600 font-medium">{healthData.trends.declining}</span>
+                <span className="text-slate-500">declining</span>
+              </div>
+            </div>
+            <span className="text-xs text-slate-400">{healthData.contractsWithScores} contracts scored</span>
           </div>
         </CardContent>
       </Card>
@@ -973,8 +1137,11 @@ export function ProfessionalDashboard() {
         </motion.div>
       </div>
 
-      {/* Pending Approvals Widget */}
-      <PendingApprovalsWidget />
+      {/* Portfolio Health & Pending Approvals Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <PortfolioHealthWidget />
+        <PendingApprovalsWidget />
+      </div>
 
       {/* Contract Types Bar Chart */}
       <motion.div

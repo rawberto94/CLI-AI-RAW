@@ -2,6 +2,24 @@
  * Vitest setup file for web app
  */
 import { vi } from 'vitest';
+import '@testing-library/jest-dom';
+
+// Mock Next.js navigation hooks
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
+  redirect: vi.fn(),
+  notFound: vi.fn(),
+}));
 
 // Mock Next.js server-side modules
 vi.mock('next/server', async () => {

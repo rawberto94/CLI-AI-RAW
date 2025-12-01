@@ -231,7 +231,8 @@ export function NotificationCenter({ maxHeight = '400px', onClose, className }: 
         ) : (
           <AnimatePresence mode="popLayout">
             {filteredNotifications.map((notification) => {
-              const config = notificationTypeConfig[notification.type] || notificationTypeConfig.SYSTEM;
+              const config = notificationTypeConfig[notification.type] ?? notificationTypeConfig.SYSTEM;
+              if (!config) return null;
               const Icon = config.icon;
 
               return (

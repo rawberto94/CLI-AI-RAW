@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   FileText,
   Plus,
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { useTemplates, useDeleteTemplate, useCreateTemplate } from '@/hooks/use-queries'
+import { useTemplates, useDeleteTemplate, useCreateTemplate, useCrossModuleInvalidation } from '@/hooks/use-queries'
 import { toast } from 'sonner'
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
 
@@ -53,11 +54,16 @@ export default function TemplatesPage() {
   // Approval modal state
   const [approvalModalOpen, setApprovalModalOpen] = useState(false)
   const [templateForApproval, setTemplateForApproval] = useState<ContractTemplate | null>(null)
+  
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [templateToDelete, setTemplateToDelete] = useState<{ id: string; name: string } | null>(null)
 
   // Use React Query for data fetching with caching
   const { data: templatesData, isLoading: loading, refetch } = useTemplates()
   const deleteTemplateMutation = useDeleteTemplate()
   const createTemplateMutation = useCreateTemplate()
+  const crossModule = useCrossModuleInvalidation()
 
   // Handle submit for approval
   const handleSubmitForApproval = (template: ContractTemplate) => {
@@ -92,20 +98,26 @@ export default function TemplatesPage() {
     }
   }
 
-  // Handle template deletion
-  const handleDelete = async (templateId: string, templateName: string) => {
-    if (!confirm(`Are you sure you want to delete "${templateName}"? This action cannot be undone.`)) {
-      return
-    }
+  // Handle template deletion - open confirmation dialog
+  const handleDeleteClick = (templateId: string, templateName: string) => {
+    setTemplateToDelete({ id: templateId, name: templateName })
+    setDeleteDialogOpen(true)
+  }
+  
+  // Confirm delete action
+  const handleConfirmDelete = async () => {
+    if (!templateToDelete) return
     
     try {
       toast.info('Deleting template...')
-      await deleteTemplateMutation.mutateAsync(templateId)
+      await deleteTemplateMutation.mutateAsync(templateToDelete.id)
       toast.success('Template deleted successfully')
       refetch()
     } catch (error) {
       console.error('Delete error:', error)
       toast.error('Failed to delete template')
+    } finally {
+      setTemplateToDelete(null)
     }
   }
 
@@ -487,7 +499,7 @@ export default function TemplatesPage() {
                       variant="outline" 
                       size="sm" 
                       className="text-red-600 hover:text-red-700"
-                      onClick={() => handleDelete(template.id, template.name)}
+                      onClick={() => handleDeleteClick(template.id, template.name)}
                       disabled={deleteTemplateMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -498,6 +510,18 @@ export default function TemplatesPage() {
             ))}
           </div>
         )}
+        
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Template"
+          description={`Are you sure you want to delete "${templateToDelete?.name}"? This action cannot be undone.`}
+          variant="destructive"
+          confirmLabel="Delete"
+          onConfirm={handleConfirmDelete}
+          isLoading={deleteTemplateMutation.isPending}
+        />
         
         {/* Submit for Approval Modal */}
         {templateForApproval && (

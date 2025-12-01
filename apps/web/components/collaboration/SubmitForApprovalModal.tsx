@@ -196,7 +196,9 @@ export function SubmitForApprovalModal({
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit for approval');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', response.status, errorData);
+        throw new Error(errorData.error || `Failed to submit for approval: ${response.status}`);
       }
 
       toast.success('Submitted for approval', {

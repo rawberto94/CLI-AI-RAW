@@ -7,6 +7,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { copyToClipboard } from './useCopyToClipboard';
 
 // =====================
 // Types
@@ -370,8 +371,8 @@ export function useContractActions(contractId: string) {
     // Navigation actions
     viewDetails: () => router.push(`/contracts/${contractId}`),
     viewAIAnalysis: () => router.push(`/contracts/${contractId}?tab=artifacts`),
-    compare: () => router.push(`/ai/compare?contracts=${contractId}`),
-    askAI: () => router.push(`/ai/chat?contractId=${contractId}`),
+    viewVersions: () => router.push(`/contracts/${contractId}/versions`),
+    askAI: () => window.dispatchEvent(new CustomEvent('openAIChatbot')),
     
     // Sharing
     share: (emails: string[], permission: 'view' | 'comment' | 'edit' = 'view') => {
@@ -404,8 +405,9 @@ export function useContractActions(contractId: string) {
     
     // Copy link
     copyLink: () => {
-      navigator.clipboard.writeText(`${window.location.origin}/contracts/${contractId}`);
-      toast.success('Link copied to clipboard');
+      copyToClipboard(`${window.location.origin}/contracts/${contractId}`, {
+        successMessage: 'Link copied to clipboard',
+      });
     },
     
     // Download

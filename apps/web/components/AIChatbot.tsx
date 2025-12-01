@@ -31,10 +31,15 @@ import {
   User,
   Lightbulb,
   BookOpen,
+  Play,
+  FileEdit,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface Message {
   id: string;
@@ -46,6 +51,12 @@ interface Message {
     label: string;
     action: string;
   }>;
+  workflow?: {
+    ready: boolean;
+    contractId: string;
+    contractName: string;
+    action: string;
+  };
 }
 
 interface AIChatbotProps {
@@ -54,26 +65,29 @@ interface AIChatbotProps {
 }
 
 export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [useMockMode, setUseMockMode] = useState(true);
+  // Default to real API mode for production - set to true only for testing
+  const [useMockMode, setUseMockMode] = useState(false);
+  const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const contextualSuggestions: Record<string, string[]> = {
     global: [
-      'Show me all high-risk contracts',
+      'I need to renew a contract',
       'What contracts expire in the next 30 days?',
-      'Summarize my pending approvals',
-      'Which templates are most popular?',
+      'Show me all high-risk contracts',
+      'Start an approval workflow',
     ],
     contracts: [
       'Summarize this contract',
       'What are the key risks?',
-      'Who needs to sign this?',
+      'Start the renewal process',
       'When does this expire?',
     ],
     templates: [
@@ -85,7 +99,7 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
     deadlines: [
       'What deadlines are overdue?',
       'Show upcoming renewals',
-      'Send reminders for expiring contracts',
+      'Start renewal for expiring contracts',
       'Create deadline report',
     ],
   };
@@ -100,12 +114,16 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
           role: 'assistant',
           content: `Hi! I'm your AI assistant for Contract Lifecycle Management. I can help you with:
 
-• Searching and analyzing contracts
-• Managing deadlines and renewals
-• Creating templates and clauses
-• Identifying risks and compliance issues
-• Workflow approvals and signatures
-• Generating reports and insights
+• **Search & Analyze** - Find contracts, summarize terms, identify risks
+• **Renewals & Deadlines** - Track expirations, start renewal workflows
+• **Approvals & Workflows** - Initiate approvals, check status, delegate tasks
+• **Contract Generation** - Draft new contracts from templates
+• **Reports & Insights** - Analytics, compliance checks, portfolio health
+
+**Try saying:**
+- "I need to renew contract X with supplier Y"
+- "Start the approval flow for the Acme MSA"
+- "What contracts expire in 30 days?"
 
 How can I help you today?`,
           timestamp: new Date(),
@@ -194,10 +212,134 @@ How can I help you today?`,
     handleSend(suggestion);
   };
 
-  const handleActionClick = (action: string) => {
+  const handleActionClick = async (action: string) => {
     // Parse and execute suggested actions
     console.log('Executing action:', action);
-    // Could navigate to specific pages or trigger specific functions
+    
+    // Handle workflow actions
+    if (action.startsWith('start-renewal:')) {
+      const contractId = action.split(':')[1];
+      setIsStartingWorkflow(true);
+      
+      try {
+        // Start the renewal workflow
+        const response = await fetch('/api/workflows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'Contract Renewal',
+            type: 'RENEWAL',
+            description: 'Standard contract renewal approval workflow',
+            steps: [
+              { name: 'Legal Review', type: 'APPROVAL', assignedRole: 'legal', order: 0 },
+              { name: 'Finance Review', type: 'APPROVAL', assignedRole: 'finance', order: 1 },
+              { name: 'VP Approval', type: 'APPROVAL', assignedRole: 'vp', order: 2 },
+            ],
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          toast.success('Renewal workflow started!', {
+            description: 'The approval process has been initiated.',
+          });
+          
+          // Add confirmation message
+          const confirmMessage: Message = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: `✅ **Renewal workflow started successfully!**
+
+The approval workflow has been created and is now active. Here's what happens next:
+
+1. **Legal Review** - Legal team will review the renewal terms
+2. **Finance Review** - Finance will verify budget and pricing
+3. **VP Approval** - Final sign-off from VP
+
+You can track progress in the [Approvals Dashboard](/approvals).
+
+Would you like me to notify the first approver or do anything else?`,
+            timestamp: new Date(),
+            suggestedActions: [
+              { label: '📋 View in Approvals', action: 'navigate:/approvals' },
+              { label: '📧 Notify Approvers', action: 'notify-approvers' },
+            ],
+          };
+          setMessages((prev) => [...prev, confirmMessage]);
+        } else {
+          throw new Error('Failed to start workflow');
+        }
+      } catch (error) {
+        console.error('Workflow error:', error);
+        toast.error('Failed to start workflow');
+        
+        const errorMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: `❌ I encountered an issue starting the workflow. Would you like to try again or navigate to the contracts page to start manually?`,
+          timestamp: new Date(),
+          suggestedActions: [
+            { label: '🔄 Try Again', action: action },
+            { label: '📋 Go to Contracts', action: 'navigate:/contracts' },
+          ],
+        };
+        setMessages((prev) => [...prev, errorMessage]);
+      } finally {
+        setIsStartingWorkflow(false);
+      }
+      return;
+    }
+
+    if (action.startsWith('draft-renewal:')) {
+      const contractId = action.split(':')[1];
+      router.push(`/drafting?contractId=${contractId}&mode=renewal`);
+      toast.info('Opening contract drafting...', {
+        description: 'Preparing renewal contract template',
+      });
+      return;
+    }
+
+    if (action.startsWith('schedule-meeting:')) {
+      const contractId = action.split(':')[1];
+      toast.info('Opening calendar...', {
+        description: 'Schedule a renewal discussion meeting',
+      });
+      // Could integrate with calendar API
+      return;
+    }
+
+    if (action.startsWith('navigate:')) {
+      const path = action.split(':')[1] ?? '/dashboard';
+      router.push(path);
+      return;
+    }
+
+    // Handle other common actions
+    switch (action) {
+      case 'search-contracts':
+        router.push('/contracts');
+        break;
+      case 'view-dashboard':
+        router.push('/dashboard');
+        break;
+      case 'view-expiring':
+        router.push('/contracts?filter=expiring');
+        break;
+      case 'view-high-risk':
+        router.push('/contracts?filter=high-risk');
+        break;
+      case 'create-contract':
+        router.push('/drafting/new');
+        break;
+      case 'bulk-approve':
+        router.push('/approvals?action=bulk');
+        break;
+      case 'review-urgent':
+        router.push('/approvals?filter=urgent');
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
   };
 
   if (!isOpen) {

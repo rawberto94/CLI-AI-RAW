@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -101,15 +102,16 @@ export function BulkEditModal({
       });
 
       if (response.ok) {
+        toast.success(`Updated ${selectedIds.length} rate card(s) successfully`);
         onSuccess();
         handleClose();
       } else {
         const error = await response.json();
-        alert(`Error: ${error.error || 'Failed to update rate cards'}`);
+        toast.error(`Error: ${error.error || 'Failed to update rate cards'}`);
       }
     } catch (error) {
       console.error('Error bulk updating:', error);
-      alert('Failed to update rate cards');
+      toast.error('Failed to update rate cards');
     } finally {
       setLoading(false);
     }

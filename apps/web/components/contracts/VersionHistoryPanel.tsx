@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +35,8 @@ export function VersionHistoryPanel({
   const [isReverting, setIsReverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<any | null>(null);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [versionToRevert, setVersionToRevert] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -62,17 +66,20 @@ export function VersionHistoryPanel({
     }
   };
 
-  const handleRevert = async (version: number) => {
-    if (!confirm(`Are you sure you want to revert to version ${version}?`)) {
-      return;
-    }
+  const openRevertDialog = (version: number) => {
+    setVersionToRevert(version);
+    setRevertDialogOpen(true);
+  };
 
+  const handleRevert = async () => {
+    if (versionToRevert === null) return;
+    
     setIsReverting(true);
     setError(null);
 
     try {
       const response = await fetch(
-        `/api/contracts/${contractId}/artifacts/${artifactId}/revert/${version}`,
+        `/api/contracts/${contractId}/artifacts/${artifactId}/revert/${versionToRevert}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -86,14 +93,19 @@ export function VersionHistoryPanel({
         throw new Error('Failed to revert to version');
       }
 
+      toast.success(`Reverted to version ${versionToRevert}`);
+      setRevertDialogOpen(false);
       setIsOpen(false);
       if (onRevert) {
-        await onRevert(version);
+        await onRevert(versionToRevert);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revert');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to revert';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsReverting(false);
+      setVersionToRevert(null);
     }
   };
 
@@ -229,7 +241,7 @@ export function VersionHistoryPanel({
               </div>
 
               <Button
-                onClick={() => handleRevert(selectedVersion.version)}
+                onClick={() => openRevertDialog(selectedVersion.version)}
                 disabled={isReverting}
                 className="w-full"
               >
@@ -245,6 +257,17 @@ export function VersionHistoryPanel({
                   </>
                 )}
               </Button>
+
+              <ConfirmDialog
+                open={revertDialogOpen}
+                onOpenChange={setRevertDialogOpen}
+                title="Revert to Previous Version"
+                description={`Are you sure you want to revert to version ${versionToRevert}? Current changes will be preserved in version history.`}
+                confirmLabel="Revert"
+                variant="warning"
+                isLoading={isReverting}
+                onConfirm={handleRevert}
+              />
             </div>
           ) : (
             <div className="space-y-2">
@@ -316,7 +339,7 @@ export function VersionHistoryPanel({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleRevert(version.version)}
+                          onClick={() => openRevertDialog(version.version)}
                           disabled={isReverting}
                         >
                           <RotateCcw className="w-4 h-4" />

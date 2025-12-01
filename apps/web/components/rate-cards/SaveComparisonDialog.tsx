@@ -21,6 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+import { copyToClipboard } from '@/hooks/useCopyToClipboard';
 import { Save, Share2, CheckCircle } from 'lucide-react';
 
 interface SaveComparisonDialogProps {
@@ -47,7 +49,7 @@ export function SaveComparisonDialog({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('Please enter a name for this comparison');
+      toast.error('Please enter a name for this comparison');
       return;
     }
 
@@ -85,11 +87,11 @@ export function SaveComparisonDialog({
         }, 2000);
       } else {
         const error = await response.json();
-        alert(`Failed to save comparison: ${error.error}`);
+        toast.error(`Failed to save comparison: ${error.error}`);
       }
     } catch (error) {
       console.error('Error saving comparison:', error);
-      alert('Failed to save comparison');
+      toast.error('Failed to save comparison');
     } finally {
       setSaving(false);
     }
@@ -108,12 +110,13 @@ export function SaveComparisonDialog({
       if (response.ok) {
         const data = await response.json();
         // Copy share URL to clipboard
-        navigator.clipboard.writeText(window.location.origin + data.shareUrl);
-        alert('Share link copied to clipboard!');
+        copyToClipboard(window.location.origin + data.shareUrl, {
+          successMessage: 'Share link copied to clipboard!',
+        });
       }
     } catch (error) {
       console.error('Error sharing comparison:', error);
-      alert('Failed to share comparison');
+      toast.error('Failed to share comparison');
     }
   };
 

@@ -2,12 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { TemplateManager, type MappingTemplate } from '@/lib/import/template-manager';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { toast } from 'sonner';
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<MappingTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<MappingTemplate | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [importJson, setImportJson] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -18,13 +23,28 @@ export default function TemplatesPage() {
     setTemplates(loaded);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+  const openDeleteDialog = (id: string) => {
+    setTemplateToDelete(id);
+    setDeleteDialogOpen(true);
+  };
 
-    await TemplateManager.deleteTemplate(id);
-    loadTemplates();
-    if (selectedTemplate?.id === id) {
-      setSelectedTemplate(null);
+  const handleDelete = async () => {
+    if (!templateToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await TemplateManager.deleteTemplate(templateToDelete);
+      loadTemplates();
+      if (selectedTemplate?.id === templateToDelete) {
+        setSelectedTemplate(null);
+      }
+      toast.success('Template deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete template');
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setTemplateToDelete(null);
     }
   };
 
@@ -45,9 +65,9 @@ export default function TemplatesPage() {
       loadTemplates();
       setShowImport(false);
       setImportJson('');
-      alert(`Template "${template.name}" imported successfully!`);
+      toast.success(`Template "${template.name}" imported successfully!`);
     } catch (error) {
-      alert('Failed to import template: ' + (error instanceof Error ? error.message : 'Invalid JSON'));
+      toast.error('Failed to import template: ' + (error instanceof Error ? error.message : 'Invalid JSON'));
     }
   };
 
@@ -180,7 +200,7 @@ export default function TemplatesPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(template.id);
+                          openDeleteDialog(template.id);
                         }}
                         className="p-2 text-red-600 hover:text-red-800"
                         title="Delete"
@@ -278,6 +298,17 @@ export default function TemplatesPage() {
             )}
           </div>
         </div>
+
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Template"
+          description="Are you sure you want to delete this template? This action cannot be undone."
+          confirmLabel="Delete"
+          variant="destructive"
+          isLoading={isDeleting}
+          onConfirm={handleDelete}
+        />
       </div>
     </div>
   );

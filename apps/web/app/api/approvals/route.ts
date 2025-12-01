@@ -109,6 +109,57 @@ const mockApprovals = [
   },
 ];
 
+// Helper to calculate SLA metrics
+function calculateSLAMetrics(createdAt: Date, dueDate: Date | null) {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const due = dueDate ? new Date(dueDate) : new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
+  
+  const totalDuration = due.getTime() - created.getTime();
+  const elapsed = now.getTime() - created.getTime();
+  const remaining = due.getTime() - now.getTime();
+  
+  const percentUsed = Math.min(100, Math.round((elapsed / totalDuration) * 100));
+  const isOverdue = remaining < 0;
+  const hoursRemaining = Math.round(remaining / (1000 * 60 * 60));
+  
+  let slaStatus: 'on_track' | 'at_risk' | 'critical' | 'overdue' = 'on_track';
+  if (isOverdue) slaStatus = 'overdue';
+  else if (percentUsed >= 90) slaStatus = 'critical';
+  else if (percentUsed >= 75) slaStatus = 'at_risk';
+  
+  return {
+    startTime: created.toISOString(),
+    targetTime: due.toISOString(),
+    percentUsed,
+    hoursRemaining,
+    isOverdue,
+    slaStatus,
+  };
+}
+
+// Helper to calculate AI risk score
+function calculateRiskScore(value: number, daysOverdue: number, deviations: number): { score: number; level: 'low' | 'medium' | 'high' | 'critical' } {
+  let score = 20; // Base score
+  
+  // Value-based risk
+  if (value > 500000) score += 30;
+  else if (value > 100000) score += 20;
+  else if (value > 50000) score += 10;
+  
+  // Overdue risk
+  if (daysOverdue > 7) score += 30;
+  else if (daysOverdue > 3) score += 20;
+  else if (daysOverdue > 0) score += 10;
+  
+  // Deviation-based risk
+  score += Math.min(20, deviations * 5);
+  
+  const level = score >= 80 ? 'critical' : score >= 60 ? 'high' : score >= 40 ? 'medium' : 'low';
+  
+  return { score: Math.min(100, score), level };
+}
+
 export async function GET(request: NextRequest) {
   const tenantId = request.headers.get('x-tenant-id') || 'demo';
   const userId = request.headers.get('x-user-id') || 'current-user';
@@ -117,6 +168,8 @@ export async function GET(request: NextRequest) {
   const priority = searchParams.get('priority');
   const type = searchParams.get('type');
   const assignedTo = searchParams.get('assignedTo');
+  const sortBy = searchParams.get('sortBy') || 'dueDate'; // dueDate, priority, value, createdAt
+  const sortOrder = searchParams.get('sortOrder') || 'asc';
 
   // Try database first
   try {
@@ -132,6 +185,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             contractTitle: true,
+            fileName: true,
             supplierName: true,
             totalValue: true,
             status: true,
@@ -146,33 +200,57 @@ export async function GET(request: NextRequest) {
 
     // Transform to approvals format
     const dbApprovals = workflowExecutions.map((exec) => {
-      const currentStep = exec.stepExecutions.find(s => s.status === 'PENDING');
+      const currentStep = exec.stepExecutions.find(s => s.status === 'PENDING' || s.status === 'IN_PROGRESS');
       const completedSteps = exec.stepExecutions.filter(s => s.status === 'COMPLETED').length;
+      
+      const contractName = exec.contract?.contractTitle || exec.contract?.fileName || 'Unknown Contract';
+      const metadata = exec.metadata as Record<string, unknown> | null;
+      const contractValue = exec.contract?.totalValue ? Number(exec.contract.totalValue) : 0;
+      
+      // Calculate SLA metrics
+      const dueDate = (metadata?.dueDate as string) || exec.dueDate?.toISOString() || null;
+      const slaMetrics = calculateSLAMetrics(exec.createdAt, dueDate ? new Date(dueDate) : null);
+      
+      // Calculate risk score
+      const daysOverdue = slaMetrics.isOverdue ? Math.abs(slaMetrics.hoursRemaining / 24) : 0;
+      const riskAssessment = calculateRiskScore(contractValue, daysOverdue, 0);
       
       return {
         id: exec.id,
-        type: exec.workflow?.type?.toLowerCase() || 'contract',
-        title: `${exec.workflow?.name || 'Workflow'} - ${exec.contract?.contractTitle || 'Contract'}`,
-        description: exec.workflow?.description || '',
-        contractName: exec.contract?.contractTitle || 'Unknown Contract',
+        contractId: exec.contractId,
+        type: (metadata?.type as string) || exec.workflow?.type?.toLowerCase() || 'contract',
+        title: `${exec.workflow?.name || 'Approval'} - ${contractName}`,
+        description: (metadata?.notes as string) || exec.workflow?.description || '',
+        contractName: contractName,
         supplierName: exec.contract?.supplierName || 'Unknown',
         requestedBy: {
-          id: exec.startedBy || 'system',
-          name: exec.startedBy || 'System',
-          email: `${exec.startedBy || 'system'}@company.com`,
+          id: exec.initiatedBy || exec.startedBy || 'system',
+          name: exec.initiatedBy || exec.startedBy || 'System',
+          email: `${exec.initiatedBy || exec.startedBy || 'system'}@company.com`,
         },
         requestedAt: exec.createdAt.toISOString(),
-        dueDate: exec.dueDate?.toISOString() || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        priority: (exec.metadata as Record<string, string>)?.priority || 'medium',
-        status: exec.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
-        value: exec.contract?.totalValue ? Number(exec.contract.totalValue) : 0,
-        riskLevel: 'medium',
+        dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        priority: (metadata?.priority as string) || 'medium',
+        status: exec.status.toLowerCase() === 'in_progress' ? 'pending' : exec.status.toLowerCase() as 'pending' | 'approved' | 'rejected',
+        value: contractValue,
+        riskLevel: riskAssessment.level,
+        riskScore: riskAssessment.score,
+        slaMetrics,
         stage: currentStep?.stepName || 'initial-review',
         assignedTo: currentStep ? {
           id: currentStep.assignedTo || 'unassigned',
           name: currentStep.assignedTo || 'Unassigned',
           email: `${currentStep.assignedTo || 'unassigned'}@company.com`,
         } : undefined,
+        approvers: exec.stepExecutions.map((step, idx) => ({
+          id: step.id,
+          name: step.assignedTo || 'Unassigned',
+          email: `${step.assignedTo || 'unassigned'}@company.com`,
+          role: step.stepName,
+          status: step.status.toLowerCase() === 'in_progress' ? 'pending' : step.status.toLowerCase(),
+          respondedAt: step.completedAt?.toISOString(),
+          isCurrent: step.status === 'IN_PROGRESS' || (step.status === 'PENDING' && idx === completedSteps),
+        })),
         approvalChain: exec.stepExecutions.map((step, idx) => ({
           step: idx + 1,
           role: step.stepName,
@@ -183,7 +261,10 @@ export async function GET(request: NextRequest) {
         currentStep: completedSteps + 1,
         totalSteps: exec.stepExecutions.length,
         documents: [],
-        healthScore: 75,
+        comments: [],
+        attachments: [],
+        riskFlags: [],
+        healthScore: 100 - riskAssessment.score,
         deviations: 0,
       };
     });
@@ -199,14 +280,37 @@ export async function GET(request: NextRequest) {
       if (type && type !== 'all') {
         approvals = approvals.filter(a => a.type === type);
       }
+      
+      // Sort approvals
+      const priorityOrder = { critical: 0, urgent: 0, high: 1, medium: 2, low: 3 };
+      approvals.sort((a, b) => {
+        switch (sortBy) {
+          case 'priority':
+            const pA = priorityOrder[a.priority as keyof typeof priorityOrder] ?? 2;
+            const pB = priorityOrder[b.priority as keyof typeof priorityOrder] ?? 2;
+            return sortOrder === 'asc' ? pA - pB : pB - pA;
+          case 'value':
+            return sortOrder === 'asc' ? a.value - b.value : b.value - a.value;
+          case 'createdAt':
+            return sortOrder === 'asc' 
+              ? new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime()
+              : new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime();
+          case 'dueDate':
+          default:
+            return sortOrder === 'asc'
+              ? new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+              : new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+        }
+      });
 
       const stats = {
         total: dbApprovals.length,
         pending: dbApprovals.filter(a => a.status === 'pending').length,
         approved: dbApprovals.filter(a => a.status === 'approved').length,
         rejected: dbApprovals.filter(a => a.status === 'rejected').length,
-        critical: dbApprovals.filter(a => a.priority === 'critical').length,
-        overdue: dbApprovals.filter(a => new Date(a.dueDate) < new Date()).length,
+        critical: dbApprovals.filter(a => a.priority === 'critical' || a.priority === 'urgent').length,
+        overdue: dbApprovals.filter(a => a.slaMetrics.isOverdue).length,
+        atRisk: dbApprovals.filter(a => a.slaMetrics.slaStatus === 'at_risk' || a.slaMetrics.slaStatus === 'critical').length,
         avgProcessingTime: '2.1 days',
         totalValue: dbApprovals.reduce((sum, a) => sum + a.value, 0),
       };
@@ -226,52 +330,38 @@ export async function GET(request: NextRequest) {
         source: 'database',
       });
     }
-  } catch (dbError) {
-    console.warn('Database lookup failed, using mock:', dbError);
-  }
-
-  // Fallback to mock data
-  let approvals = [...mockApprovals];
-
-  if (status && status !== 'all') {
-    approvals = approvals.filter(a => a.status === status);
-  }
-  if (priority && priority !== 'all') {
-    approvals = approvals.filter(a => a.priority === priority);
-  }
-  if (type && type !== 'all') {
-    approvals = approvals.filter(a => a.type === type);
-  }
-  if (assignedTo) {
-    approvals = approvals.filter(a => a.assignedTo?.id === assignedTo);
-  }
-
-  // Calculate stats
-  const stats = {
-    total: mockApprovals.length,
-    pending: mockApprovals.filter(a => a.status === 'pending').length,
-    approved: mockApprovals.filter(a => a.status === 'approved').length,
-    rejected: mockApprovals.filter(a => a.status === 'rejected').length,
-    critical: mockApprovals.filter(a => a.priority === 'critical').length,
-    overdue: mockApprovals.filter(a => new Date(a.dueDate) < new Date()).length,
-    avgProcessingTime: '2.3 days',
-    totalValue: mockApprovals.reduce((sum, a) => sum + a.value, 0),
-  };
-
-  return NextResponse.json({
-    success: true,
-    data: {
-      items: approvals,
-      approvals,
-      stats,
-      filters: {
-        statuses: ['pending', 'approved', 'rejected', 'on-hold'],
-        priorities: ['critical', 'high', 'medium', 'low'],
-        types: ['contract', 'amendment', 'renewal', 'termination'],
+    
+    // No approvals in database - return empty list
+    return NextResponse.json({
+      success: true,
+      data: {
+        items: [],
+        approvals: [],
+        stats: {
+          total: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          critical: 0,
+          overdue: 0,
+          avgProcessingTime: '0 days',
+          totalValue: 0,
+        },
+        filters: {
+          statuses: ['pending', 'approved', 'rejected', 'on-hold'],
+          priorities: ['critical', 'high', 'medium', 'low'],
+          types: ['contract', 'amendment', 'renewal', 'termination'],
+        },
       },
-    },
-    source: 'mock',
-  });
+      source: 'database',
+    });
+  } catch (dbError) {
+    console.error('Database lookup failed:', dbError);
+    return NextResponse.json(
+      { success: false, error: 'Database error', details: String(dbError) },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

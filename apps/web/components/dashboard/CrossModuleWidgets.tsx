@@ -76,35 +76,30 @@ export function IntelligenceWidget({
   useEffect(() => {
     if (initialData) return;
     
-    // If in demo mode, use mock data
-    if (isMockData) {
-      setHealthSummary({ healthy: 18, atRisk: 4, critical: 2, avgScore: 72 });
-      setLoading(false);
-      return;
-    }
-    
     async function fetchData() {
       try {
         const res = await fetch('/api/intelligence/health');
         const json = await res.json();
         if (json.success && json.data?.stats) {
           setHealthSummary({
-            healthy: json.data.stats.healthy ?? 18,
-            atRisk: json.data.stats.atRisk ?? 4,
-            critical: json.data.stats.critical ?? 2,
-            avgScore: json.data.stats.averageScore ?? 72,
+            healthy: json.data.stats.healthy ?? 0,
+            atRisk: json.data.stats.atRisk ?? 0,
+            critical: json.data.stats.critical ?? 0,
+            avgScore: json.data.stats.averageScore ?? 0,
           });
+        } else {
+          // No data - show zeros
+          setHealthSummary({ healthy: 0, atRisk: 0, critical: 0, avgScore: 0 });
         }
       } catch (err) {
         setError('Failed to load');
-        // Use defaults on error
-        setHealthSummary({ healthy: 18, atRisk: 4, critical: 2, avgScore: 72 });
+        setHealthSummary({ healthy: 0, atRisk: 0, critical: 0, avgScore: 0 });
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [initialData, isMockData]);
+  }, [initialData]);
 
   if (loading) {
     return <WidgetSkeleton color="purple" />;
@@ -207,55 +202,36 @@ export function ApprovalsWidget({
   useEffect(() => {
     if (initialPending !== undefined) return;
     
-    // If in demo mode, use mock data
-    if (isMockData) {
-      setData({
-        pendingCount: 4,
-        urgentCount: 2,
-        items: [
-          { id: '1', title: 'CloudTech MSA Approval', type: 'contract', priority: 'urgent', dueDate: '2024-03-18' },
-          { id: '2', title: 'GlobalSupply Renewal Decision', type: 'renewal', priority: 'urgent', dueDate: '2024-03-15' },
-        ],
-      });
-      setLoading(false);
-      return;
-    }
-    
     async function fetchData() {
       try {
         const res = await fetch('/api/approvals');
         const json = await res.json();
         if (json.success && json.data) {
-          const approvals = json.data.approvals || [];
+          const approvals = json.data.items || json.data.approvals || [];
           const stats = json.data.stats || {};
           setData({
             pendingCount: stats.pending ?? approvals.filter((a: any) => a.status === 'pending').length,
             urgentCount: stats.critical ?? approvals.filter((a: any) => a.priority === 'critical' || a.priority === 'urgent').length,
             items: approvals.slice(0, 3).map((a: any) => ({
               id: a.id,
-              title: a.title,
+              title: a.title || a.contractName,
               type: a.type,
               priority: a.priority,
               dueDate: a.dueDate?.split('T')[0] || 'N/A',
             })),
           });
+        } else {
+          setData({ pendingCount: 0, urgentCount: 0, items: [] });
         }
       } catch (err) {
-        // Use defaults on error
-        setData({
-          pendingCount: 4,
-          urgentCount: 2,
-          items: [
-            { id: '1', title: 'CloudTech MSA Approval', type: 'contract', priority: 'urgent', dueDate: '2024-03-18' },
-            { id: '2', title: 'GlobalSupply Renewal Decision', type: 'renewal', priority: 'urgent', dueDate: '2024-03-15' },
-          ],
-        });
+        console.error('Error fetching approvals:', err);
+        setData({ pendingCount: 0, urgentCount: 0, items: [] });
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [initialPending, isMockData]);
+  }, [initialPending]);
 
   if (loading) {
     return <WidgetSkeleton color="amber" />;
@@ -355,20 +331,6 @@ export function RenewalsWidget({
   useEffect(() => {
     if (initialUpcoming !== undefined) return;
     
-    // If in demo mode, use mock data
-    if (isMockData) {
-      setData({
-        upcomingCount: 5,
-        urgentCount: 1,
-        items: [
-          { id: '1', contractName: 'GlobalSupply Procurement', daysUntil: 17, value: 780000, autoRenewal: true },
-          { id: '2', contractName: 'Acme Corp MSA', daysUntil: 92, value: 1200000, autoRenewal: false },
-        ],
-      });
-      setLoading(false);
-      return;
-    }
-    
     async function fetchData() {
       try {
         const res = await fetch('/api/renewals');
@@ -380,30 +342,26 @@ export function RenewalsWidget({
             upcomingCount: stats.total ?? renewals.length,
             urgentCount: stats.urgent ?? renewals.filter((r: any) => r.daysUntilExpiry <= 30).length,
             items: renewals.slice(0, 3).map((r: any) => ({
-              id: r.id,
-              contractName: r.contractName,
+              id: r.id || r.contractId,
+              contractName: r.contractName || r.name,
               daysUntil: r.daysUntilExpiry,
               value: r.currentValue,
               autoRenewal: r.autoRenewal,
             })),
           });
+        } else {
+          // No data - show empty state
+          setData({ upcomingCount: 0, urgentCount: 0, items: [] });
         }
       } catch (err) {
-        // Use defaults on error
-        setData({
-          upcomingCount: 5,
-          urgentCount: 1,
-          items: [
-            { id: '1', contractName: 'GlobalSupply Procurement', daysUntil: 17, value: 780000, autoRenewal: true },
-            { id: '2', contractName: 'Acme Corp MSA', daysUntil: 92, value: 1200000, autoRenewal: false },
-          ],
-        });
+        console.error('Error fetching renewals:', err);
+        setData({ upcomingCount: 0, urgentCount: 0, items: [] });
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [initialUpcoming, isMockData]);
+  }, [initialUpcoming]);
 
   if (loading) {
     return <WidgetSkeleton color="green" />;
@@ -505,41 +463,28 @@ export function GovernanceWidget({
   useEffect(() => {
     if (initialViolations !== undefined) return;
     
-    // If in demo mode, use mock data
-    if (isMockData) {
-      setData({
-        policyViolations: 3,
-        pendingReviews: 7,
-        complianceScore: 94,
-      });
-      setLoading(false);
-      return;
-    }
-    
     async function fetchData() {
       try {
         const res = await fetch('/api/governance');
         const json = await res.json();
         if (json.success) {
           setData({
-            policyViolations: json.data?.violations?.length ?? 3,
-            pendingReviews: json.data?.pendingReviews ?? 7,
-            complianceScore: json.data?.complianceScore ?? 94,
+            policyViolations: json.data?.violations?.length ?? 0,
+            pendingReviews: json.data?.pendingReviews ?? 0,
+            complianceScore: json.data?.complianceScore ?? 0,
           });
+        } else {
+          setData({ policyViolations: 0, pendingReviews: 0, complianceScore: 0 });
         }
       } catch (err) {
-        // Use defaults on error
-        setData({
-          policyViolations: 3,
-          pendingReviews: 7,
-          complianceScore: 94,
-        });
+        console.error('Error fetching governance:', err);
+        setData({ policyViolations: 0, pendingReviews: 0, complianceScore: 0 });
       } finally {
         setLoading(false);
       }
     }
     fetchData();
-  }, [initialViolations, isMockData]);
+  }, [initialViolations]);
 
   if (loading) {
     return <WidgetSkeleton color="slate" />;

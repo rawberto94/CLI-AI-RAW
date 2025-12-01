@@ -58,10 +58,11 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
-import { useContracts, type Contract } from "@/hooks/use-queries";
+import { useContracts, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
 import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForApprovalModal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // Filter configuration
 const CONTRACT_TYPES = [
@@ -114,6 +115,11 @@ export default function ContractsPage() {
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [approvalContractId, setApprovalContractId] = useState<string | null>(null);
   const [approvalContractTitle, setApprovalContractTitle] = useState<string>("");
+  
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
   // Use React Query for data fetching with caching
   const { 
@@ -124,6 +130,8 @@ export default function ContractsPage() {
   } = useContracts({
     status: statusFilter === 'all' ? undefined : statusFilter,
   });
+  
+  const crossModule = useCrossModuleInvalidation();
 
   const contracts: Contract[] = contractsData?.contracts || [];
   
@@ -248,27 +256,71 @@ export default function ContractsPage() {
     refetch();
   }, [approvalContractTitle, refetch]);
 
-  const handleDelete = useCallback(async (contractId: string) => {
-    if (!confirm('Are you sure you want to delete this contract? This action cannot be undone.')) {
-      return;
-    }
+  // Open delete confirmation dialog
+  const handleDeleteClick = useCallback((contractId: string, contractTitle: string) => {
+    setContractToDelete({ id: contractId, title: contractTitle });
+    setDeleteDialogOpen(true);
+  }, []);
+
+  // Confirm single delete
+  const handleConfirmDelete = useCallback(async () => {
+    if (!contractToDelete) return;
     
     try {
       toast.info('Deleting contract...');
-      const response = await fetch(`/api/contracts/${contractId}`, {
+      const response = await fetch(`/api/contracts/${contractToDelete.id}`, {
         method: 'DELETE',
         headers: { 'x-tenant-id': 'demo' },
       });
 
       if (!response.ok) throw new Error('Delete failed');
       
+      // Invalidate related caches
+      crossModule.onContractChange(contractToDelete.id);
+      
       toast.success('Contract deleted successfully');
       refetch();
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Failed to delete contract');
+    } finally {
+      setContractToDelete(null);
     }
-  }, [refetch]);
+  }, [contractToDelete, crossModule, refetch]);
+
+  // Bulk delete handler
+  const handleBulkDeleteClick = useCallback(() => {
+    if (selectedContracts.size === 0) return;
+    setBulkDeleteDialogOpen(true);
+  }, [selectedContracts.size]);
+
+  const handleConfirmBulkDelete = useCallback(async () => {
+    if (selectedContracts.size === 0) return;
+    
+    setIsProcessingBulk(true);
+    try {
+      const deletePromises = Array.from(selectedContracts).map(id =>
+        fetch(`/api/contracts/${id}`, {
+          method: 'DELETE',
+          headers: { 'x-tenant-id': 'demo' },
+        })
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Invalidate all related caches
+      crossModule.onContractChange();
+      
+      toast.success(`Deleted ${selectedContracts.size} contracts`);
+      setSelectedContracts(new Set());
+      refetch();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete some contracts');
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  }, [selectedContracts, crossModule, refetch]);
 
   // Check if any filters are active
   const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || Object.keys(advancedFilters).length > 0;
@@ -291,8 +343,8 @@ export default function ContractsPage() {
       // Risk level filter
       const matchesRisk = riskFilters.length === 0 || riskFilters.some(risk => {
         const level = RISK_LEVELS.find(l => l.value === risk);
-        if (!level || !contract.riskScore) return false;
-        return contract.riskScore >= level.range[0] && contract.riskScore < level.range[1];
+        if (!level?.range || contract.riskScore === undefined || contract.riskScore === null) return false;
+        return contract.riskScore >= (level.range[0] ?? 0) && contract.riskScore < (level.range[1] ?? 100);
       });
 
       // Approval status filter  
@@ -515,11 +567,7 @@ export default function ContractsPage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => {
-                              if (confirm(`Delete ${selectedContracts.size} contracts? This cannot be undone.`)) {
-                                performBulkAction('delete');
-                              }
-                            }}
+                            onClick={handleBulkDeleteClick}
                             disabled={isProcessingBulk}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1040,9 +1088,9 @@ export default function ContractsPage() {
                             <Brain className="h-4 w-4 mr-2" />
                             AI Analysis
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/ai/compare?contracts=${contract.id}`)}>
+                          <DropdownMenuItem onClick={() => router.push(`/contracts/${contract.id}/versions`)}>
                             <GitCompare className="h-4 w-4 mr-2" />
-                            Compare
+                            Version History
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleDownload(contract.id)}>
@@ -1058,7 +1106,7 @@ export default function ContractsPage() {
                             Request Approval
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(contract.id)}>
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(contract.id, contract.title || 'Contract')}>
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete
                           </DropdownMenuItem>
@@ -1125,6 +1173,29 @@ export default function ContractsPage() {
           onSuccess={handleApprovalSuccess}
         />
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Contract"
+        description={`Are you sure you want to delete "${contractToDelete?.title}"? This action cannot be undone.`}
+        variant="destructive"
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
+      />
+      
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkDeleteDialogOpen}
+        onOpenChange={setBulkDeleteDialogOpen}
+        title="Delete Multiple Contracts"
+        description={`Are you sure you want to delete ${selectedContracts.size} contracts? This action cannot be undone.`}
+        variant="destructive"
+        confirmLabel="Delete All"
+        onConfirm={handleConfirmBulkDelete}
+        isLoading={isProcessingBulk}
+      />
     </div>
     </TooltipProvider>
   );

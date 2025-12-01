@@ -161,40 +161,75 @@ export class DatabaseAdaptor {
       const where: Prisma.ContractWhereInput = {
         tenantId: query.tenantId,
         status: { not: "DELETED" },
+        // Text search
         ...(query.search && {
           OR: [
-            {
-              contractTitle: { contains: query.search, mode: "insensitive" },
-            },
+            { contractTitle: { contains: query.search, mode: "insensitive" } },
             { clientName: { contains: query.search, mode: "insensitive" } },
             { supplierName: { contains: query.search, mode: "insensitive" } },
             { description: { contains: query.search, mode: "insensitive" } },
+            { fileName: { contains: query.search, mode: "insensitive" } },
+            { originalName: { contains: query.search, mode: "insensitive" } },
+            { category: { contains: query.search, mode: "insensitive" } },
+            { contractType: { contains: query.search, mode: "insensitive" } },
           ],
         }),
-        ...(query.status &&
-          query.status.length > 0 && { status: { in: query.status as any } }),
-        ...(query.clientName &&
-          query.clientName.length > 0 && {
-            clientName: { in: query.clientName },
-          }),
-        ...(query.supplierName &&
-          query.supplierName.length > 0 && {
-            supplierName: { in: query.supplierName },
-          }),
-        ...(query.category &&
-          query.category.length > 0 && { category: { in: query.category } }),
+        // Status filter
+        ...(query.status && query.status.length > 0 && { 
+          status: { in: query.status as any } 
+        }),
+        // Party filters
+        ...(query.clientName && query.clientName.length > 0 && {
+          clientName: { in: query.clientName },
+        }),
+        ...(query.supplierName && query.supplierName.length > 0 && {
+          supplierName: { in: query.supplierName },
+        }),
+        // Category filters
+        ...(query.category && query.category.length > 0 && { 
+          category: { in: query.category } 
+        }),
+        ...((query as any).contractType && (query as any).contractType.length > 0 && { 
+          contractType: { in: (query as any).contractType } 
+        }),
+        // Value range
         ...(query.minValue && { totalValue: { gte: query.minValue } }),
         ...(query.maxValue && { totalValue: { lte: query.maxValue } }),
+        // Date filters
         ...(query.startDateFrom && { startDate: { gte: query.startDateFrom } }),
         ...(query.startDateTo && { startDate: { lte: query.startDateTo } }),
+        ...((query as any).expirationDateFrom && { 
+          expirationDate: { gte: (query as any).expirationDateFrom } 
+        }),
+        ...((query as any).expirationDateTo && { 
+          expirationDate: { lte: (query as any).expirationDateTo } 
+        }),
+        ...((query as any).effectiveDateFrom && { 
+          effectiveDate: { gte: (query as any).effectiveDateFrom } 
+        }),
+        ...((query as any).effectiveDateTo && { 
+          effectiveDate: { lte: (query as any).effectiveDateTo } 
+        }),
+        ...((query as any).uploadedAfter && { 
+          uploadedAt: { gte: (query as any).uploadedAfter } 
+        }),
+        ...((query as any).uploadedBefore && { 
+          uploadedAt: { lte: (query as any).uploadedBefore } 
+        }),
       };
 
+      // Build include for relations if requested
+      const include: Prisma.ContractInclude | undefined = 
+        (query as any).includeMetadata ? { contractMetadata: true } : undefined;
+
+      // Execute query with optimized pagination
       const [contracts, total] = await Promise.all([
         this.prisma.contract.findMany({
           where,
           skip: (query.page - 1) * query.limit,
           take: query.limit,
           orderBy: { [query.sortBy]: query.sortOrder },
+          ...(include && { include }),
         }),
         this.prisma.contract.count({ where }),
       ]);
@@ -202,7 +237,13 @@ export class DatabaseAdaptor {
       const totalPages = Math.ceil(total / query.limit);
       const hasMore = query.page < totalPages;
 
-      logger.info({ total, page: query.page }, "Contracts queried");
+      logger.info({ 
+        total, 
+        page: query.page, 
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        filters: Object.keys(where).length - 2, // Exclude tenantId and status != DELETED
+      }, "Contracts queried");
 
       return {
         contracts: contracts.map(convertContract),

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
@@ -30,7 +30,15 @@ import {
   CheckCheck,
   Loader2,
   UserPlus,
+  Edit3,
+  ExternalLink,
+  GitBranch,
+  Sparkles,
+  RefreshCw,
+  TrendingUp,
+  Shield,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { useApprovalFlow } from '@/hooks/use-collaboration';
 import { toast } from 'sonner';
@@ -47,13 +55,27 @@ import { DeadlineIndicator } from './DeadlineAlerts';
 import { CommentsThread } from './CommentsThread';
 import { DelegationRulesModal } from './DelegationRulesModal';
 import { MobileApprovalActions } from './MobileApprovalActions';
+import { WorkflowProgressBar, SLAIndicator } from './WorkflowProgressStepper';
+import { AIRiskBadge, RiskScoreGauge } from './AIRiskAssessment';
+import { BulkActionBar } from './BulkActionBar';
+import { useCrossModuleInvalidation } from '@/hooks/use-queries';
 
 // ============================================================================
 // Types
 // ============================================================================
 
+interface SLAMetrics {
+  startTime: string;
+  targetTime: string;
+  percentUsed: number;
+  hoursRemaining: number;
+  isOverdue: boolean;
+  slaStatus: 'on_track' | 'at_risk' | 'critical' | 'overdue';
+}
+
 interface ApprovalRequest {
   id: string;
+  contractId?: string; // Optional - if different from id
   type: 'contract' | 'amendment' | 'renewal' | 'termination';
   title: string;
   description: string;
@@ -75,6 +97,9 @@ interface ApprovalRequest {
   comments: Comment[];
   attachments: string[];
   riskFlags?: string[];
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+  riskScore?: number;
+  slaMetrics?: SLAMetrics;
 }
 
 interface Approver {
@@ -103,11 +128,12 @@ interface Comment {
 const mockApprovals: ApprovalRequest[] = [
   {
     id: 'a1',
+    contractId: 'contract-005', // Link to actual contract
     type: 'contract',
-    title: 'New Master Agreement Approval',
-    description: 'Review and approve the new master services agreement with CloudTech Solutions for enterprise software licensing.',
-    contractName: 'Master Services Agreement',
-    supplierName: 'CloudTech Solutions',
+    title: 'Contract Approval - Manufacturing Equipment Supply',
+    description: 'Standard approval workflow.',
+    contractName: 'Manufacturing Equipment Supply',
+    supplierName: 'Unknown',
     requestedBy: { name: 'Sarah Johnson', email: 'sarah@company.com' },
     requestedAt: '2024-03-14T10:30:00',
     dueDate: '2024-03-18',
@@ -129,6 +155,7 @@ const mockApprovals: ApprovalRequest[] = [
   },
   {
     id: 'a2',
+    contractId: 'contract-006', // Link to Hardware Procurement contract
     type: 'renewal',
     title: 'Urgent: Auto-Renewal Decision Required',
     description: 'Decision required for GlobalSupply contract renewal. Auto-renewal deadline in 5 days.',
@@ -205,28 +232,96 @@ const mockApprovals: ApprovalRequest[] = [
 
 const getPriorityConfig = (priority: ApprovalRequest['priority']) => {
   switch (priority) {
-    case 'urgent': return { color: 'bg-red-100 text-red-700 border-red-200', icon: AlertTriangle };
-    case 'high': return { color: 'bg-orange-100 text-orange-700 border-orange-200', icon: AlertTriangle };
-    case 'medium': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock };
-    case 'low': return { color: 'bg-green-100 text-green-700 border-green-200', icon: Clock };
+    case 'urgent': return { 
+      color: 'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200/50', 
+      icon: AlertTriangle,
+      glow: 'shadow-red-100'
+    };
+    case 'high': return { 
+      color: 'bg-gradient-to-r from-orange-100 to-orange-50 text-orange-700 border-orange-200/50', 
+      icon: AlertTriangle,
+      glow: 'shadow-orange-100'
+    };
+    case 'medium': return { 
+      color: 'bg-gradient-to-r from-amber-100 to-amber-50 text-amber-700 border-amber-200/50', 
+      icon: Clock,
+      glow: 'shadow-amber-100'
+    };
+    case 'low': return { 
+      color: 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200/50', 
+      icon: Clock,
+      glow: 'shadow-green-100'
+    };
+    default: return { 
+      color: 'bg-gradient-to-r from-slate-100 to-slate-50 text-slate-700 border-slate-200/50', 
+      icon: Clock,
+      glow: 'shadow-slate-100'
+    };
   }
 };
 
 const getTypeConfig = (type: ApprovalRequest['type']) => {
   switch (type) {
-    case 'contract': return { color: 'bg-blue-100 text-blue-700', label: 'New Contract', icon: FileText };
-    case 'amendment': return { color: 'bg-purple-100 text-purple-700', label: 'Amendment', icon: FileText };
-    case 'renewal': return { color: 'bg-green-100 text-green-700', label: 'Renewal', icon: RotateCcw };
-    case 'termination': return { color: 'bg-red-100 text-red-700', label: 'Termination', icon: XCircle };
+    case 'contract': return { 
+      color: 'bg-gradient-to-br from-blue-500 to-indigo-600', 
+      badgeColor: 'bg-blue-100/80 text-blue-700',
+      label: 'New Contract', 
+      icon: FileText 
+    };
+    case 'amendment': return { 
+      color: 'bg-gradient-to-br from-purple-500 to-fuchsia-600', 
+      badgeColor: 'bg-purple-100/80 text-purple-700',
+      label: 'Amendment', 
+      icon: FileText 
+    };
+    case 'renewal': return { 
+      color: 'bg-gradient-to-br from-emerald-500 to-teal-600', 
+      badgeColor: 'bg-green-100/80 text-green-700',
+      label: 'Renewal', 
+      icon: RotateCcw 
+    };
+    case 'termination': return { 
+      color: 'bg-gradient-to-br from-red-500 to-rose-600', 
+      badgeColor: 'bg-red-100/80 text-red-700',
+      label: 'Termination', 
+      icon: XCircle 
+    };
+    default: return { 
+      color: 'bg-gradient-to-br from-slate-500 to-slate-600', 
+      badgeColor: 'bg-slate-100/80 text-slate-700',
+      label: type || 'Unknown', 
+      icon: FileText 
+    };
   }
 };
 
 const getStatusConfig = (status: ApprovalRequest['status']) => {
   switch (status) {
-    case 'pending': return { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Pending' };
-    case 'approved': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Approved' };
-    case 'rejected': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rejected' };
-    case 'escalated': return { color: 'bg-purple-100 text-purple-700', icon: ArrowRight, label: 'Escalated' };
+    case 'pending': return { 
+      color: 'bg-amber-100/80 text-amber-700 border border-amber-200/50', 
+      icon: Clock, 
+      label: 'Pending' 
+    };
+    case 'approved': return { 
+      color: 'bg-green-100/80 text-green-700 border border-green-200/50', 
+      icon: CheckCircle2, 
+      label: 'Approved' 
+    };
+    case 'rejected': return { 
+      color: 'bg-red-100/80 text-red-700 border border-red-200/50', 
+      icon: XCircle, 
+      label: 'Rejected' 
+    };
+    case 'escalated': return { 
+      color: 'bg-purple-100/80 text-purple-700 border border-purple-200/50', 
+      icon: ArrowRight, 
+      label: 'Escalated' 
+    };
+    default: return { 
+      color: 'bg-slate-100/80 text-slate-700 border border-slate-200/50', 
+      icon: Clock, 
+      label: status || 'Unknown' 
+    };
   }
 };
 
@@ -259,14 +354,15 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onSelect}
-      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+      className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 backdrop-blur-sm ${
         isSelected
-          ? 'border-blue-500 bg-blue-50/50 shadow-lg'
+          ? 'border-indigo-400 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 shadow-lg shadow-indigo-100/50 ring-2 ring-indigo-200/50'
           : approval.priority === 'urgent'
-          ? 'border-red-200 bg-red-50/30 hover:border-red-300'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+          ? 'border-red-200/50 bg-gradient-to-r from-red-50/50 to-rose-50/30 hover:border-red-300/70 hover:shadow-md hover:shadow-red-100/50'
+          : 'border-slate-200/50 bg-white/80 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-100/30'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -274,63 +370,92 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
         {approval.status === 'pending' && (
           <button
             onClick={onToggleCheck}
-            className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all mt-2.5 ${
+            className={`w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all mt-2.5 ${
               isChecked
-                ? 'bg-blue-500 border-blue-500 text-white'
-                : 'border-slate-300 hover:border-blue-400'
+                ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-transparent text-white shadow-sm'
+                : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
             }`}
           >
             {isChecked && <CheckCircle2 className="w-3 h-3" />}
           </button>
         )}
         
-        <div className={`w-10 h-10 rounded-lg ${type.color} flex items-center justify-center flex-shrink-0`}>
-          <TypeIcon className="w-5 h-5" />
+        <div className={`w-11 h-11 rounded-xl ${type.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+          <TypeIcon className="w-5 h-5 text-white" />
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${type.color}`}>
+          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-md text-xs font-medium backdrop-blur-sm ${type.badgeColor}`}>
               {type.label}
             </span>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${priority.color} capitalize`}>
+            <span className={`px-2 py-0.5 rounded-md text-xs font-medium capitalize backdrop-blur-sm ${priority.color}`}>
               {approval.priority}
             </span>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${status.color}`}>
+            <span className={`px-2 py-0.5 rounded-md text-xs font-medium flex items-center gap-1 ${status.color}`}>
               <StatusIcon className="w-3 h-3" />
               {status.label}
             </span>
+            {/* AI Risk Badge */}
+            {approval.riskLevel && (
+              <AIRiskBadge riskLevel={approval.riskLevel} size="sm" />
+            )}
           </div>
 
-          <h3 className="font-semibold text-slate-900 truncate">{approval.title}</h3>
-          <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
-            <Building2 className="w-3 h-3" />
-            {approval.supplierName}
+          <h3 className="font-semibold text-slate-900 truncate leading-snug">{approval.title}</h3>
+          <p className="text-sm text-slate-500 flex items-center gap-2 mt-1.5">
+            <span className="flex items-center gap-1.5 bg-slate-100/60 px-2 py-0.5 rounded-md">
+              <Building2 className="w-3 h-3" />
+              {approval.supplierName}
+            </span>
             {approval.value && (
-              <>
-                <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1 bg-emerald-50/80 text-emerald-700 px-2 py-0.5 rounded-md">
                 <DollarSign className="w-3 h-3" />
-                ${approval.value.toLocaleString()}
-              </>
+                {approval.value.toLocaleString()}
+              </span>
             )}
           </p>
+          
+          {/* SLA Progress Bar */}
+          {approval.slaMetrics && approval.status === 'pending' && (
+            <div className="mt-2">
+              <SLAIndicator
+                startTime={new Date(approval.slaMetrics.startTime)}
+                targetTime={new Date(approval.slaMetrics.targetTime)}
+                label="SLA"
+              />
+            </div>
+          )}
         </div>
 
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-1.5">
           <DeadlineIndicator dueDate={new Date(approval.dueDate)} size="sm" />
-          <div className="text-xs text-slate-400 mt-1">
-            Step {approval.currentStep}/{approval.totalSteps}
+          
+          {/* Workflow Progress */}
+          <div className="w-24">
+            <WorkflowProgressBar
+              currentStep={approval.currentStep}
+              totalSteps={approval.totalSteps}
+              status={approval.status === 'pending' ? 'in_progress' : approval.status === 'approved' ? 'completed' : 'rejected'}
+            />
           </div>
           
+          {/* Risk Score Gauge (if available) */}
+          {approval.riskScore !== undefined && (
+            <div className="mt-1">
+              <RiskScoreGauge score={approval.riskScore} size="sm" showLabel={false} />
+            </div>
+          )}
+          
           {/* Approver Avatars */}
-          <div className="flex items-center justify-end mt-2 -space-x-2">
+          <div className="flex items-center justify-end mt-1 -space-x-2">
             {approval.approvers.slice(0, 3).map((approver, idx) => (
               <div
                 key={approver.id}
-                className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium ${
-                  approver.status === 'approved' ? 'bg-green-500 text-white' :
-                  approver.status === 'rejected' ? 'bg-red-500 text-white' :
-                  approver.isCurrent ? 'bg-blue-500 text-white' :
+                className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium shadow-sm transition-transform hover:scale-110 hover:z-10 ${
+                  approver.status === 'approved' ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white' :
+                  approver.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-rose-500 text-white' :
+                  approver.isCurrent ? 'bg-gradient-to-br from-indigo-400 to-purple-500 text-white ring-2 ring-indigo-200' :
                   'bg-slate-200 text-slate-600'
                 }`}
                 title={`${approver.name} - ${approver.status}`}
@@ -344,9 +469,9 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
 
       {/* Risk Flags */}
       {approval.riskFlags && approval.riskFlags.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1">
+        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-1.5">
           {approval.riskFlags.map((flag, idx) => (
-            <span key={idx} className="px-2 py-0.5 bg-red-50 text-red-600 text-xs rounded-full flex items-center gap-1">
+            <span key={idx} className="px-2 py-0.5 bg-gradient-to-r from-red-50 to-rose-50 text-red-600 text-xs rounded-full flex items-center gap-1 border border-red-100/50">
               <AlertTriangle className="w-3 h-3" />
               {flag}
             </span>
@@ -377,47 +502,92 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
   const currentApprover = approval.approvers.find(a => a.isCurrent);
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-indigo-50/20">
       {/* Header */}
-      <div className="p-6 border-b border-slate-200">
+      <div className="p-6 bg-white/80 backdrop-blur-sm border-b border-slate-200/50">
         <div className="flex items-start gap-4">
-          <div className={`w-12 h-12 rounded-xl ${type.color} flex items-center justify-center`}>
-            <TypeIcon className="w-6 h-6" />
+          <div className={`w-14 h-14 rounded-xl ${type.color} flex items-center justify-center shadow-lg`}>
+            <TypeIcon className="w-7 h-7 text-white" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-slate-900">{approval.title}</h2>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">{approval.title}</h2>
             <p className="text-slate-500 mt-1">{approval.description}</p>
           </div>
         </div>
 
         {/* Quick Info */}
         <div className="grid grid-cols-3 gap-4 mt-6">
-          <div className="p-3 bg-slate-50 rounded-lg">
-            <div className="text-xs text-slate-500 uppercase mb-1">Supplier</div>
-            <div className="font-medium text-slate-900">{approval.supplierName}</div>
+          <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/50">
+            <div className="flex items-center gap-2 mb-1">
+              <Building2 className="w-4 h-4 text-slate-400" />
+              <span className="text-xs text-slate-500 uppercase font-medium">Supplier</span>
+            </div>
+            <div className="font-semibold text-slate-900">{approval.supplierName}</div>
           </div>
-          <div className="p-3 bg-slate-50 rounded-lg">
-            <div className="text-xs text-slate-500 uppercase mb-1">Contract Value</div>
-            <div className="font-medium text-slate-900">${approval.value?.toLocaleString() || 'N/A'}</div>
+          <div className="p-4 bg-gradient-to-br from-emerald-50 to-green-50/50 rounded-xl border border-emerald-200/50">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs text-emerald-600 uppercase font-medium">Value</span>
+            </div>
+            <div className="font-semibold text-emerald-700">${approval.value?.toLocaleString() || 'N/A'}</div>
           </div>
-          <div className="p-3 bg-slate-50 rounded-lg">
-            <div className="text-xs text-slate-500 uppercase mb-1">Due Date</div>
-            <div className="font-medium text-slate-900">{approval.dueDate}</div>
+          <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-xl border border-amber-200/50">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="w-4 h-4 text-amber-500" />
+              <span className="text-xs text-amber-600 uppercase font-medium">Due Date</span>
+            </div>
+            <div className="font-semibold text-amber-700">{approval.dueDate}</div>
           </div>
+        </div>
+
+        {/* Contract Actions */}
+        <div className="flex items-center gap-2 mt-5 flex-wrap">
+          <Link href={`/contracts/${approval.contractId || approval.id}`}>
+            <button className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all font-medium flex items-center gap-2 text-sm">
+              <Eye className="w-4 h-4" />
+              View Contract
+            </button>
+          </Link>
+          <Link href={`/contracts/${approval.contractId || approval.id}/redline`}>
+            <button className="px-4 py-2.5 bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white rounded-xl hover:shadow-lg hover:shadow-purple-200 transition-all font-medium flex items-center gap-2 text-sm">
+              <Edit3 className="w-4 h-4" />
+              Redline / Edit
+            </button>
+          </Link>
+          <Link href={`/contracts/${approval.contractId || approval.id}/workflow`}>
+            <button className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:shadow-amber-200 transition-all font-medium flex items-center gap-2 text-sm">
+              <GitBranch className="w-4 h-4" />
+              Edit Workflow
+            </button>
+          </Link>
+          <Link href={`/contracts/${approval.contractId || approval.id}`} target="_blank">
+            <button className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all flex items-center gap-1 text-sm">
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </Link>
         </div>
       </div>
 
       {/* Approval Timeline */}
-      <div className="p-6 border-b border-slate-200">
-        <h3 className="text-sm font-medium text-slate-500 uppercase mb-4">Approval Workflow</h3>
+      <div className="p-6 border-b border-slate-200/50 bg-white/50">
+        <h3 className="text-sm font-semibold text-slate-700 uppercase mb-4 flex items-center gap-2">
+          <GitBranch className="w-4 h-4 text-indigo-500" />
+          Approval Workflow
+        </h3>
         <div className="space-y-4">
           {approval.approvers.map((approver, idx) => (
-            <div key={approver.id} className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                approver.status === 'approved' ? 'bg-green-100 text-green-700' :
-                approver.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                approver.isCurrent ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500 ring-offset-2' :
-                'bg-slate-100 text-slate-500'
+            <motion.div 
+              key={approver.id} 
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.1 }}
+              className="flex items-center gap-3"
+            >
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-semibold shadow-md transition-all ${
+                approver.status === 'approved' ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white' :
+                approver.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-rose-500 text-white' :
+                approver.isCurrent ? 'bg-gradient-to-br from-indigo-400 to-purple-500 text-white ring-4 ring-indigo-200/50' :
+                'bg-slate-100 text-slate-400'
               }`}>
                 {approver.status === 'approved' ? <CheckCircle2 className="w-5 h-5" /> :
                  approver.status === 'rejected' ? <XCircle className="w-5 h-5" /> :
@@ -425,23 +595,25 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-slate-900">{approver.name}</span>
+                  <span className="font-semibold text-slate-900">{approver.name}</span>
                   {approver.isCurrent && (
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Current</span>
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 text-xs rounded-full font-medium">
+                      Current Approver
+                    </span>
                   )}
                 </div>
                 <div className="text-sm text-slate-500">{approver.role}</div>
               </div>
               <div className="text-right">
                 {approver.respondedAt ? (
-                  <span className="text-sm text-slate-500">
+                  <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">
                     {new Date(approver.respondedAt).toLocaleDateString()}
                   </span>
                 ) : (
-                  <span className="text-sm text-slate-400">Pending</span>
+                  <span className="text-sm text-slate-400 italic">Pending</span>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -456,41 +628,42 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
 
       {/* Actions */}
       {approval.status === 'pending' && currentApprover && (
-        <div className="p-6 border-t border-slate-200 bg-slate-50">
+        <div className="p-6 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-indigo-50/30">
           <div className="mb-4">
+            <label className="text-sm font-medium text-slate-600 mb-2 block">Add a comment (optional)</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Add a comment (optional)..."
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Write your comment here..."
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-300 transition-all bg-white/80 backdrop-blur-sm"
               rows={2}
             />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={onApprove}
-              className="flex-1 min-w-[120px] px-4 py-2.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center justify-center gap-2"
+              className="flex-1 min-w-[140px] px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200 transition-all font-semibold flex items-center justify-center gap-2 text-sm"
             >
               <ThumbsUp className="w-4 h-4" />
               Approve
             </button>
             <button
               onClick={onReject}
-              className="flex-1 min-w-[120px] px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center justify-center gap-2"
+              className="flex-1 min-w-[140px] px-5 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:shadow-lg hover:shadow-red-200 transition-all font-semibold flex items-center justify-center gap-2 text-sm"
             >
               <ThumbsDown className="w-4 h-4" />
               Reject
             </button>
             <button
               onClick={onDelegate}
-              className="px-4 py-2.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors font-medium flex items-center gap-2"
+              className="px-5 py-3 bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-700 rounded-xl hover:shadow-md transition-all font-semibold flex items-center gap-2 text-sm border border-indigo-200/50"
             >
               <UserPlus className="w-4 h-4" />
               Delegate
             </button>
             <button
               onClick={onEscalate}
-              className="px-4 py-2.5 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium flex items-center gap-2"
+              className="px-5 py-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all font-semibold flex items-center gap-2 text-sm border border-slate-200/50"
             >
               <ArrowRight className="w-4 h-4" />
               Escalate
@@ -508,18 +681,75 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
 
 export const ApprovalsQueue: React.FC = () => {
   const { isMockData } = useDataMode();
+  const crossModule = useCrossModuleInvalidation();
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [delegateModalOpen, setDelegateModalOpen] = useState(false);
   const [delegationRulesOpen, setDelegationRulesOpen] = useState(false);
   const [delegateTarget, setDelegateTarget] = useState('');
   const [delegateNote, setDelegateNote] = useState('');
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // Rejection dialog state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<'single' | 'bulk'>('single');
+  // Approve confirmation state
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+
+  // Refresh approvals function
+  const refreshApprovals = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/approvals', { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && json.data?.items) {
+        const mapped = json.data.items.map((item: any) => ({
+          id: item.id,
+          contractId: item.contractId,
+          type: item.type || 'contract',
+          title: item.title || `${item.type || 'Contract'} Approval`,
+          description: item.description || '',
+          contractName: item.contractName || item.title || 'Unknown Contract',
+          supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
+          requestedBy: { 
+            name: item.requestedBy?.name || 'System', 
+            email: item.requestedBy?.email || 'system@company.com' 
+          },
+          requestedAt: item.requestedAt || item.createdAt || new Date().toISOString(),
+          dueDate: item.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          priority: item.priority || 'medium',
+          status: item.status || 'pending',
+          value: item.contractValue || item.value || 0,
+          currentStep: item.currentStep || 1,
+          totalSteps: item.totalSteps || 2,
+          approvers: item.approvers || [],
+          comments: item.comments || [],
+          attachments: item.attachments || [],
+          riskFlags: item.riskFlags || [],
+          riskLevel: item.riskLevel,
+          riskScore: item.riskScore,
+          slaMetrics: item.slaMetrics,
+        }));
+        setApprovals(mapped);
+        setLastUpdated(new Date());
+        toast.success('Approvals refreshed');
+      }
+    } catch (error) {
+      console.error('Refresh error:', error);
+      toast.error('Failed to refresh approvals');
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   // Toggle single item selection for bulk actions
   const toggleSelection = (id: string, e: React.MouseEvent) => {
@@ -555,17 +785,9 @@ export const ApprovalsQueue: React.FC = () => {
     { id: 'alex', name: 'Alex Williams', email: 'alex@company.com', role: 'CFO' },
   ];
 
-  // Fetch approvals from API or use mock data based on mode
+  // Fetch approvals from API - always use real data
   useEffect(() => {
     async function fetchApprovals() {
-      // If in demo mode, always use mock data
-      if (isMockData) {
-        setApprovals(mockApprovals);
-        setSelectedId(mockApprovals[0]?.id ?? null);
-        setLoading(false);
-        return;
-      }
-      
       try {
         const res = await fetch('/api/approvals');
         const json = await res.json();
@@ -573,16 +795,17 @@ export const ApprovalsQueue: React.FC = () => {
           // Map API data to ApprovalRequest format
           const mapped = json.data.items.map((item: any) => ({
             id: item.id,
+            contractId: item.contractId,
             type: item.type || 'contract',
             title: item.title || `${item.type || 'Contract'} Approval`,
             description: item.description || '',
             contractName: item.contractName || item.title || 'Unknown Contract',
-            supplierName: item.counterparty || item.vendor || 'Unknown',
+            supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
             requestedBy: { 
               name: item.requestedBy?.name || 'System', 
               email: item.requestedBy?.email || 'system@company.com' 
             },
-            requestedAt: item.createdAt || new Date().toISOString(),
+            requestedAt: item.requestedAt || item.createdAt || new Date().toISOString(),
             dueDate: item.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             priority: item.priority || 'medium',
             status: item.status || 'pending',
@@ -593,24 +816,27 @@ export const ApprovalsQueue: React.FC = () => {
             comments: item.comments || [],
             attachments: item.attachments || [],
             riskFlags: item.riskFlags || [],
+            riskLevel: item.riskLevel,
+            riskScore: item.riskScore,
+            slaMetrics: item.slaMetrics,
           }));
           setApprovals(mapped);
           if (mapped.length > 0) setSelectedId(mapped[0].id);
         } else {
-          // Fallback to mock data
-          setApprovals(mockApprovals);
-          setSelectedId(mockApprovals[0]?.id ?? null);
+          // No approvals in database
+          setApprovals([]);
+          setSelectedId(null);
         }
       } catch (error) {
-        console.log('Using mock approvals data');
-        setApprovals(mockApprovals);
-        setSelectedId(mockApprovals[0]?.id ?? null);
+        console.error('Error fetching approvals:', error);
+        setApprovals([]);
+        setSelectedId(null);
       } finally {
         setLoading(false);
       }
     }
     fetchApprovals();
-  }, [isMockData]);
+  }, []);
 
   // Derive these before the keyboard effect uses them
   const selectedApproval = approvals.find(a => a.id === selectedId);
@@ -663,17 +889,17 @@ export const ApprovalsQueue: React.FC = () => {
 
       // Actions (only if an item is selected and pending)
       if (selectedId && selectedApproval?.status === 'pending') {
-        // Approve with 'a'
+        // Approve with 'a' - shows confirmation for important items
         if (e.key === 'a' && !e.metaKey && !e.ctrlKey) {
           e.preventDefault();
-          handleApprove();
+          openApproveConfirm();
           return;
         }
         
-        // Reject with 'r'
+        // Reject with 'r' - opens dialog
         if (e.key === 'r' && !e.metaKey && !e.ctrlKey) {
           e.preventDefault();
-          handleReject();
+          openRejectModal();
           return;
         }
         
@@ -699,12 +925,17 @@ export const ApprovalsQueue: React.FC = () => {
         return;
       }
 
-      // Escape to clear selection or close modal
+      // Escape to clear selection or close modals (in priority order)
       if (e.key === 'Escape') {
-        if (showShortcuts) {
-          setShowShortcuts(false);
+        if (rejectModalOpen) {
+          setRejectModalOpen(false);
+          setRejectReason('');
+        } else if (approveConfirmOpen) {
+          setApproveConfirmOpen(false);
         } else if (delegateModalOpen) {
           setDelegateModalOpen(false);
+        } else if (showShortcuts) {
+          setShowShortcuts(false);
         }
         return;
       }
@@ -712,7 +943,7 @@ export const ApprovalsQueue: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId, selectedApproval, filteredApprovals, showShortcuts, delegateModalOpen]);
+  }, [selectedId, selectedApproval, filteredApprovals, showShortcuts, delegateModalOpen, rejectModalOpen, approveConfirmOpen]);
 
   const stats = useMemo(() => ({
     total: approvals.length,
@@ -752,9 +983,26 @@ export const ApprovalsQueue: React.FC = () => {
     }
   };
 
+  // Open approval confirmation for high-value items
+  const openApproveConfirm = () => {
+    if (!selectedId || !selectedApproval) return;
+    
+    // For high-value or critical items, show confirmation
+    const isHighValue = (selectedApproval.value || 0) > 100000;
+    const isCritical = selectedApproval.priority === 'urgent' || selectedApproval.priority === 'high';
+    
+    if (isHighValue || isCritical) {
+      setApproveConfirmOpen(true);
+    } else {
+      handleApprove();
+    }
+  };
+
   const handleApprove = async () => {
     if (!selectedId) return;
     
+    setIsApproving(true);
+    setApproveConfirmOpen(false);
     const selectedApprovalTitle = selectedApproval?.title || 'Approval';
     
     try {
@@ -779,6 +1027,8 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'approved' as const } : a
         ));
+        // Invalidate related caches for seamless data flow
+        crossModule.onApprovalComplete(selectedApproval?.contractId);
         // Send notification to requester
         if (selectedApproval) {
           sendNotification('approval_completed', selectedApproval, 'Approved via approvals queue');
@@ -793,6 +1043,8 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'approved' as const } : a
       ));
+      // Invalidate related caches for seamless data flow
+      crossModule.onApprovalComplete(selectedApproval?.contractId);
       // Still send notification
       if (selectedApproval) {
         sendNotification('approval_completed', selectedApproval, 'Approved via approvals queue');
@@ -800,20 +1052,33 @@ export const ApprovalsQueue: React.FC = () => {
       toast.success('Approval completed', {
         description: `"${selectedApprovalTitle}" has been approved.`,
       });
+    } finally {
+      setIsApproving(false);
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedId) return;
+  // Open rejection dialog instead of window.prompt
+  const openRejectModal = () => {
+    setRejectTarget('single');
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
+
+  // Submit rejection with reason from dialog
+  const handleRejectSubmit = async () => {
+    if (rejectTarget === 'bulk') {
+      await handleBulkRejectSubmit();
+      return;
+    }
     
-    const reason = window.prompt('Please provide a reason for rejection:');
-    if (!reason) {
-      toast.info('Rejection cancelled', {
-        description: 'A reason is required to reject an approval.',
+    if (!selectedId || !rejectReason.trim()) {
+      toast.error('Rejection reason required', {
+        description: 'Please provide a reason for the rejection.',
       });
       return;
     }
     
+    setIsRejecting(true);
     const selectedApprovalTitle = selectedApproval?.title || 'Approval';
     
     try {
@@ -826,7 +1091,7 @@ export const ApprovalsQueue: React.FC = () => {
         body: JSON.stringify({
           action: 'reject',
           approvalId: selectedId,
-          reason,
+          reason: rejectReason,
         }),
       });
 
@@ -838,13 +1103,17 @@ export const ApprovalsQueue: React.FC = () => {
         setApprovals(prev => prev.map(a => 
           a.id === selectedId ? { ...a, status: 'rejected' as const } : a
         ));
+        // Invalidate related caches for seamless data flow
+        crossModule.onApprovalComplete(selectedApproval?.contractId);
         // Send notification to requester
         if (selectedApproval) {
-          sendNotification('approval_rejected', selectedApproval, reason);
+          sendNotification('approval_rejected', selectedApproval, rejectReason);
         }
         toast.success('Approval rejected', {
           description: `"${selectedApprovalTitle}" has been rejected.`,
         });
+        setRejectModalOpen(false);
+        setRejectReason('');
       }
     } catch (error) {
       console.error('Reject error:', error);
@@ -852,13 +1121,19 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'rejected' as const } : a
       ));
+      // Invalidate related caches for seamless data flow
+      crossModule.onApprovalComplete(selectedApproval?.contractId);
       // Still send notification
       if (selectedApproval) {
-        sendNotification('approval_rejected', selectedApproval, reason);
+        sendNotification('approval_rejected', selectedApproval, rejectReason);
       }
       toast.success('Approval rejected', {
         description: `"${selectedApprovalTitle}" has been rejected.`,
       });
+      setRejectModalOpen(false);
+      setRejectReason('');
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -980,6 +1255,9 @@ export const ApprovalsQueue: React.FC = () => {
         selectedIds.has(a.id) ? { ...a, status: 'approved' as const } : a
       ));
       
+      // Invalidate all related caches after bulk operation
+      crossModule.onApprovalComplete();
+      
       toast.success(`${ids.length} approvals completed`, {
         description: `Successfully approved ${ids.length} items.`,
       });
@@ -991,6 +1269,8 @@ export const ApprovalsQueue: React.FC = () => {
       setApprovals(prev => prev.map(a => 
         selectedIds.has(a.id) ? { ...a, status: 'approved' as const } : a
       ));
+      // Invalidate all related caches after bulk operation
+      crossModule.onApprovalComplete();
       toast.success(`${ids.length} approvals completed`, {
         description: `Approved ${ids.length} items.`,
       });
@@ -1000,18 +1280,26 @@ export const ApprovalsQueue: React.FC = () => {
     }
   };
 
-  // Bulk reject selected items
-  const handleBulkReject = async () => {
+  // Open bulk reject modal
+  const openBulkRejectModal = () => {
+    if (selectedIds.size === 0) return;
+    setRejectTarget('bulk');
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
+
+  // Bulk reject submit handler (called from dialog)
+  const handleBulkRejectSubmit = async () => {
     if (selectedIds.size === 0) return;
     
-    const reason = window.prompt(`Please provide a reason for rejecting ${selectedIds.size} items:`);
-    if (!reason) {
-      toast.info('Rejection cancelled', {
-        description: 'A reason is required to reject approvals.',
+    if (!rejectReason.trim()) {
+      toast.error('Rejection reason required', {
+        description: 'Please provide a reason for the rejection.',
       });
       return;
     }
     
+    setIsRejecting(true);
     setBulkProcessing(true);
     const ids = Array.from(selectedIds);
     
@@ -1027,7 +1315,7 @@ export const ApprovalsQueue: React.FC = () => {
           body: JSON.stringify({
             action: 'reject',
             approvalId: id,
-            reason,
+            reason: rejectReason,
           }),
         });
       }
@@ -1037,100 +1325,166 @@ export const ApprovalsQueue: React.FC = () => {
         selectedIds.has(a.id) ? { ...a, status: 'rejected' as const } : a
       ));
       
+      // Invalidate all related caches after bulk rejection
+      crossModule.onApprovalComplete();
+      
       toast.success(`${ids.length} approvals rejected`, {
         description: `Successfully rejected ${ids.length} items.`,
       });
       
       clearSelection();
+      setRejectModalOpen(false);
+      setRejectReason('');
     } catch (error) {
       console.error('Bulk reject error:', error);
       toast.error('Some rejections failed', {
         description: 'Please try again or reject individually.',
       });
     } finally {
+      setIsRejecting(false);
       setBulkProcessing(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
-          <p className="text-slate-600">Loading approvals...</p>
-        </div>
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200/50">
+            <Loader2 className="w-8 h-8 text-white animate-spin" />
+          </div>
+          <p className="text-slate-600 font-medium">Loading workflow queue...</p>
+          <p className="text-sm text-slate-400 mt-1">Fetching pending approvals</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/10">
       {/* Header */}
-      <div className="flex-none p-6 bg-white border-b border-slate-200">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <CheckCheck className="w-5 h-5 text-blue-500" />
-              Approvals Queue
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">Review and action pending approval requests</p>
+      <div className="flex-none p-6 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200/50">
+              <CheckCheck className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent flex items-center gap-2">
+                Workflow Queue
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">
+                  <Sparkles className="w-3 h-3 inline mr-1" />
+                  AI-Powered
+                </span>
+              </h1>
+              <p className="text-sm text-slate-500 mt-0.5">Review and action pending approval requests</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <ApprovalNotificationBell />
+            {/* Refresh Button */}
+            <button
+              onClick={refreshApprovals}
+              disabled={refreshing}
+              className="p-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all border border-slate-200/50 disabled:opacity-50"
+              title="Refresh approvals"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
             <button 
               onClick={() => setDelegationRulesOpen(true)}
-              className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2"
+              className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all font-medium flex items-center gap-2 border border-slate-200/50"
             >
               <UserPlus className="w-4 h-4" />
               Delegation
             </button>
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2">
+            <button className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all font-medium flex items-center gap-2">
               <History className="w-4 h-4" />
               History
             </button>
           </div>
         </div>
+        
+        {/* Last Updated Indicator */}
+        {lastUpdated && (
+          <div className="flex items-center justify-end mb-2 text-xs text-slate-400">
+            <Clock className="w-3 h-3 mr-1" />
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </div>
+        )}
 
-        {/* Stats */}
+        {/* Enhanced Stats */}
         <div className="grid grid-cols-5 gap-4">
-          <div className="p-3 bg-slate-50 rounded-lg text-center">
-            <div className="text-xl font-bold text-slate-900">{stats.total}</div>
-            <div className="text-xs text-slate-500">Total</div>
-          </div>
-          <div className="p-3 bg-amber-50 rounded-lg text-center">
-            <div className="text-xl font-bold text-amber-600">{stats.pending}</div>
-            <div className="text-xs text-amber-600">Pending</div>
-          </div>
-          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
-            <div className="text-xl font-bold text-red-600">{stats.urgent}</div>
-            <div className="text-xs text-red-600">Urgent</div>
-          </div>
-          <div className="p-3 bg-green-50 rounded-lg text-center">
-            <div className="text-xl font-bold text-green-600">{stats.approved}</div>
-            <div className="text-xs text-green-600">Approved</div>
-          </div>
-          <div className="p-3 bg-slate-100 rounded-lg text-center">
-            <div className="text-xl font-bold text-slate-600">{stats.rejected}</div>
-            <div className="text-xs text-slate-600">Rejected</div>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0 }}
+            className="p-4 bg-gradient-to-br from-slate-50 to-slate-100/80 rounded-xl text-center border border-slate-200/50 hover:shadow-md transition-all"
+          >
+            <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
+            <div className="text-xs text-slate-500 font-medium mt-1">Total</div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-xl text-center border border-amber-200/50 hover:shadow-md hover:shadow-amber-100 transition-all"
+          >
+            <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+            <div className="text-xs text-amber-600 font-medium mt-1">Pending</div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="p-4 bg-gradient-to-br from-red-50 to-rose-50/80 rounded-xl text-center border border-red-200/50 ring-1 ring-red-100 hover:shadow-md hover:shadow-red-100 transition-all"
+          >
+            <div className="text-2xl font-bold text-red-600 flex items-center justify-center gap-1">
+              <AlertTriangle className="w-5 h-5" />
+              {stats.urgent}
+            </div>
+            <div className="text-xs text-red-600 font-medium mt-1">Urgent</div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="p-4 bg-gradient-to-br from-green-50 to-emerald-50/80 rounded-xl text-center border border-green-200/50 hover:shadow-md hover:shadow-green-100 transition-all"
+          >
+            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
+            <div className="text-xs text-green-600 font-medium mt-1">Approved</div>
+          </motion.div>
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="p-4 bg-gradient-to-br from-slate-100 to-slate-50 rounded-xl text-center border border-slate-200/50 hover:shadow-md transition-all"
+          >
+            <div className="text-2xl font-bold text-slate-600">{stats.rejected}</div>
+            <div className="text-xs text-slate-600 font-medium mt-1">Rejected</div>
+          </motion.div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* List Panel */}
-        <div className="w-[450px] flex-none border-r border-slate-200 bg-white flex flex-col">
+        <div className="w-[460px] flex-none border-r border-slate-200/50 bg-white/60 backdrop-blur-sm flex flex-col">
           {/* Filters */}
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4 border-b border-slate-100/80 bg-white/80">
             <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 data-search-input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search approvals... (press /)"
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 bg-white/80 backdrop-blur-sm transition-all placeholder:text-slate-400"
               />
             </div>
             <div className="flex items-center justify-between mb-2">
@@ -1139,10 +1493,10 @@ export const ApprovalsQueue: React.FC = () => {
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+                    className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
                     filter === f
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-200/50'
+                      : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-800'
                   }`}
                 >
                   {f}
@@ -1151,11 +1505,11 @@ export const ApprovalsQueue: React.FC = () => {
               </div>
               <button
                 onClick={() => setShowShortcuts(true)}
-                className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+                className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1.5 transition-colors"
                 title="Keyboard shortcuts"
               >
-                <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono">?</kbd>
-                Shortcuts
+                <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono border border-slate-200">?</kbd>
+                <span className="hidden sm:inline">Shortcuts</span>
               </button>
             </div>
           </div>
@@ -1165,22 +1519,22 @@ export const ApprovalsQueue: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 border-b border-blue-200 bg-blue-50"
+              className="p-3 border-b border-indigo-200/50 bg-gradient-to-r from-indigo-50 to-purple-50"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-blue-800">
+                  <span className="text-sm font-semibold text-indigo-800">
                     {selectedIds.size} selected
                   </span>
                   <button
                     onClick={selectAllPending}
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium"
                   >
-                    Select all pending
+                    Select all
                   </button>
                   <button
                     onClick={clearSelection}
-                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium"
                   >
                     Clear
                   </button>
@@ -1189,7 +1543,7 @@ export const ApprovalsQueue: React.FC = () => {
                   <button
                     onClick={handleBulkApprove}
                     disabled={bulkProcessing}
-                    className="px-3 py-1.5 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm rounded-lg hover:shadow-lg hover:shadow-green-200 transition-all font-medium flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {bulkProcessing ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1199,9 +1553,9 @@ export const ApprovalsQueue: React.FC = () => {
                     Approve All
                   </button>
                   <button
-                    onClick={handleBulkReject}
+                    onClick={openBulkRejectModal}
                     disabled={bulkProcessing}
-                    className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-gradient-to-r from-red-500 to-rose-600 text-white text-sm rounded-lg hover:shadow-lg hover:shadow-red-200 transition-all font-medium flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {bulkProcessing ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1217,16 +1571,58 @@ export const ApprovalsQueue: React.FC = () => {
 
           {/* List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {filteredApprovals.map(approval => (
-              <ApprovalCard
-                key={approval.id}
-                approval={approval}
-                isSelected={selectedId === approval.id}
-                isChecked={selectedIds.has(approval.id)}
-                onSelect={() => setSelectedId(approval.id)}
-                onToggleCheck={(e) => toggleSelection(approval.id, e)}
-              />
-            ))}
+            {filteredApprovals.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-center py-12"
+                >
+                  <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-100/50">
+                    <CheckCircle2 className="w-10 h-10 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-900 mb-2">
+                    {filter === 'pending' ? 'All caught up!' : 'No approvals found'}
+                  </h3>
+                  <p className="text-sm text-slate-500 max-w-xs mx-auto">
+                    {filter === 'pending' 
+                      ? 'You have no pending approvals at the moment. New requests will appear here.'
+                      : searchQuery 
+                        ? `No approvals match "${searchQuery}". Try a different search.`
+                        : 'No approvals match the current filter.'}
+                  </p>
+                  {filter !== 'all' && (
+                    <button
+                      onClick={() => { setFilter('all'); setSearchQuery(''); }}
+                      className="mt-5 text-sm text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1.5 mx-auto"
+                    >
+                      View all approvals
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
+                </motion.div>
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {filteredApprovals.map((approval, index) => (
+                  <motion.div
+                    key={approval.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ delay: index * 0.03 }}
+                  >
+                    <ApprovalCard
+                      approval={approval}
+                      isSelected={selectedId === approval.id}
+                      isChecked={selectedIds.has(approval.id)}
+                      onSelect={() => setSelectedId(approval.id)}
+                      onToggleCheck={(e) => toggleSelection(approval.id, e)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            )}
           </div>
         </div>
 
@@ -1235,17 +1631,40 @@ export const ApprovalsQueue: React.FC = () => {
           {selectedApproval ? (
             <DetailPanel
               approval={selectedApproval}
-              onApprove={handleApprove}
-              onReject={handleReject}
+              onApprove={openApproveConfirm}
+              onReject={openRejectModal}
               onEscalate={handleEscalate}
               onDelegate={openDelegateModal}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-slate-400">
-              <div className="text-center">
-                <FileText className="w-12 h-12 mx-auto mb-3" />
-                <p>Select an approval to view details</p>
-              </div>
+            <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center p-8"
+              >
+                <div className="w-24 h-24 bg-white rounded-2xl shadow-xl shadow-indigo-100/50 flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                  <FileText className="w-12 h-12 text-slate-300" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-700 mb-2">No Approval Selected</h3>
+                <p className="text-sm text-slate-500 max-w-xs mx-auto mb-6">
+                  Select an approval from the list to view details and take action.
+                </p>
+                <div className="flex flex-col items-center gap-3 text-xs text-slate-400 bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-slate-100">
+                  <p className="font-medium text-slate-500 mb-1">Quick keyboard shortcuts</p>
+                  <div className="flex items-center gap-3">
+                    <kbd className="px-2.5 py-1.5 bg-slate-100 rounded-lg shadow-sm font-mono text-slate-600 border border-slate-200">j</kbd>
+                    <kbd className="px-2.5 py-1.5 bg-slate-100 rounded-lg shadow-sm font-mono text-slate-600 border border-slate-200">k</kbd>
+                    <span className="text-slate-500">Navigate list</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <kbd className="px-2.5 py-1.5 bg-green-100 rounded-lg shadow-sm font-mono text-green-700 border border-green-200">a</kbd>
+                    <span className="text-slate-500">Approve</span>
+                    <kbd className="px-2.5 py-1.5 bg-red-100 rounded-lg shadow-sm font-mono text-red-700 border border-red-200">r</kbd>
+                    <span className="text-slate-500">Reject</span>
+                  </div>
+                </div>
+              </motion.div>
             </div>
           )}
         </div>
@@ -1254,10 +1673,11 @@ export const ApprovalsQueue: React.FC = () => {
       {/* Mobile Approval Actions - Fixed at bottom */}
       {selectedApproval && selectedApproval.status === 'pending' && (
         <MobileApprovalActions
-          onApprove={handleApprove}
-          onReject={handleReject}
+          onApprove={openApproveConfirm}
+          onReject={openRejectModal}
           onDelegate={openDelegateModal}
           onEscalate={handleEscalate}
+          isProcessing={isApproving || isRejecting}
         />
       )}
 
@@ -1430,6 +1850,175 @@ export const ApprovalsQueue: React.FC = () => {
       <DelegationRulesModal
         isOpen={delegationRulesOpen}
         onClose={() => setDelegationRulesOpen(false)}
+      />
+      
+      {/* Rejection Reason Dialog */}
+      <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <XCircle className="w-5 h-5" />
+              {rejectTarget === 'bulk' 
+                ? `Reject ${selectedIds.size} Approval${selectedIds.size > 1 ? 's' : ''}`
+                : 'Reject Approval'}
+            </DialogTitle>
+            <DialogDescription>
+              {rejectTarget === 'bulk'
+                ? `You are about to reject ${selectedIds.size} approval${selectedIds.size > 1 ? 's' : ''}. This action cannot be undone.`
+                : 'Please provide a reason for the rejection. This will be shared with the requester.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <label className="text-sm font-medium text-slate-700 mb-2 block">
+              Rejection Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter the reason for rejection..."
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-300 transition-all"
+              rows={4}
+              autoFocus
+              aria-label="Rejection reason"
+              aria-required="true"
+            />
+            <p className="text-xs text-slate-400 mt-2">
+              Provide a clear reason to help the requester understand the decision.
+            </p>
+          </div>
+          
+          {/* Common rejection reasons quick buttons */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <span className="text-xs text-slate-500">Quick reasons:</span>
+            {[
+              'Missing documentation',
+              'Budget not approved',
+              'Terms not acceptable',
+              'Duplicate request',
+            ].map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => setRejectReason(reason)}
+                className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setRejectModalOpen(false);
+                setRejectReason('');
+              }}
+              disabled={isRejecting}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleRejectSubmit}
+              disabled={!rejectReason.trim() || isRejecting}
+              className="px-4 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-lg hover:shadow-lg hover:shadow-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isRejecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Rejecting...
+                </>
+              ) : (
+                <>
+                  <ThumbsDown className="w-4 h-4" />
+                  {rejectTarget === 'bulk' ? `Reject ${selectedIds.size} Items` : 'Reject'}
+                </>
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Approval Confirmation Dialog - For high-value/critical items */}
+      <Dialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="w-5 h-5" />
+              Confirm Approval
+            </DialogTitle>
+            <DialogDescription>
+              {selectedApproval && (
+                <>
+                  You are about to approve <strong>"{selectedApproval.title}"</strong>
+                  {selectedApproval.value && selectedApproval.value > 100000 && (
+                    <span className="block mt-2 text-amber-600 font-medium">
+                      ⚠️ High-value item: ${selectedApproval.value.toLocaleString()}
+                    </span>
+                  )}
+                  {(selectedApproval.priority === 'urgent' || selectedApproval.priority === 'high') && (
+                    <span className="block mt-1 text-amber-600 font-medium">
+                      ⚠️ Priority: {selectedApproval.priority.toUpperCase()}
+                    </span>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <p className="text-sm text-green-800">
+                By approving, you confirm that you have reviewed the contract terms, pricing, 
+                and compliance requirements.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <button
+              type="button"
+              onClick={() => setApproveConfirmOpen(false)}
+              disabled={isApproving}
+              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={isApproving}
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg hover:shadow-green-200 transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {isApproving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Approving...
+                </>
+              ) : (
+                <>
+                  <ThumbsUp className="w-4 h-4" />
+                  Confirm Approval
+                </>
+              )}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Floating Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        totalCount={filteredApprovals.filter(a => a.status === 'pending').length}
+        onApprove={handleBulkApprove}
+        onReject={openBulkRejectModal}
+        onSelectAll={selectAllPending}
+        onClearSelection={clearSelection}
+        isProcessing={bulkProcessing}
+        processingAction={bulkProcessing ? 'Processing' : undefined}
       />
     </div>
   );

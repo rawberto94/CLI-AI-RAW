@@ -1,0 +1,262 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+/**
+ * LEAN API: Quick approval actions
+ * 
+ * Instead of complex workflow management, provide simple one-click actions:
+ * - POST /api/approvals/quick with { contractId, action: 'approve' | 'reject' | 'skip' }
+ * 
+ * Smart defaults:
+ * - Auto-creates simple approval workflow if none exists
+ * - Moves to next step automatically
+ * - Sends notifications (when configured)
+ */
+
+export const dynamic = 'force-dynamic'
+
+interface QuickActionBody {
+  contractId: string
+  action: 'approve' | 'reject' | 'request-changes'
+  comment?: string
+}
+
+// Default workflow template - no configuration needed
+const DEFAULT_WORKFLOW = {
+  name: 'Quick Approval',
+  type: 'APPROVAL',
+  steps: [
+    { name: 'Review & Approve', type: 'APPROVAL', assignedRole: 'Approver' },
+  ],
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001'
+    const userId = request.headers.get('x-user-id') || 'system'
+    const body: QuickActionBody = await request.json()
+
+    const { contractId, action, comment } = body
+
+    if (!contractId || !action) {
+      return NextResponse.json(
+        { error: 'contractId and action required' },
+        { status: 400 }
+      )
+    }
+
+    // Find contract
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true, contractTitle: true, fileName: true, status: true },
+    })
+
+    if (!contract) {
+      return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
+    }
+
+    // Find or create workflow execution
+    let execution = await prisma.workflowExecution.findFirst({
+      where: { contractId, tenantId },
+      include: {
+        workflow: true,
+        stepExecutions: { orderBy: { stepOrder: 'asc' } },
+      },
+    })
+
+    // Auto-create simple workflow if none exists
+    if (!execution) {
+      const workflow = await prisma.workflow.create({
+        data: {
+          tenantId,
+          name: DEFAULT_WORKFLOW.name,
+          type: DEFAULT_WORKFLOW.type,
+          isActive: true,
+          steps: {
+            create: DEFAULT_WORKFLOW.steps.map((step, i) => ({
+              name: step.name,
+              type: step.type,
+              assignedRole: step.assignedRole,
+              order: i,
+              isRequired: true,
+            })),
+          },
+        },
+        include: { steps: true },
+      })
+
+      execution = await prisma.workflowExecution.create({
+        data: {
+          tenantId,
+          workflowId: workflow.id,
+          contractId,
+          status: 'IN_PROGRESS',
+          currentStep: '0',
+          stepExecutions: {
+            create: workflow.steps.map((step, i) => ({
+              stepId: step.id,
+              stepOrder: i,
+              stepName: step.name,
+              status: i === 0 ? 'IN_PROGRESS' : 'PENDING',
+              assignedTo: userId,
+            })),
+          },
+        },
+        include: {
+          workflow: true,
+          stepExecutions: { orderBy: { stepOrder: 'asc' } },
+        },
+      })
+    }
+
+    // Find current step
+    const currentStepExec = execution.stepExecutions.find(
+      se => se.status === 'IN_PROGRESS' || se.status === 'WAITING'
+    ) || execution.stepExecutions[0]
+
+    if (!currentStepExec) {
+      return NextResponse.json(
+        { error: 'No active step found' },
+        { status: 400 }
+      )
+    }
+
+    // Process action
+    const now = new Date()
+    let newStatus: string
+    let stepStatus: string
+    let contractStatus: string | undefined
+
+    switch (action) {
+      case 'approve':
+        stepStatus = 'COMPLETED'
+        // Check if this was the last step
+        const nextStep = execution.stepExecutions.find(
+          se => se.stepOrder > currentStepExec.stepOrder && se.status === 'PENDING'
+        )
+        if (nextStep) {
+          newStatus = 'IN_PROGRESS'
+          // Activate next step
+          await prisma.workflowStepExecution.update({
+            where: { id: nextStep.id },
+            data: { status: 'IN_PROGRESS', startedAt: now },
+          })
+        } else {
+          newStatus = 'COMPLETED'
+          contractStatus = 'APPROVED'
+        }
+        break
+      case 'reject':
+        stepStatus = 'REJECTED'
+        newStatus = 'FAILED'
+        contractStatus = 'REJECTED'
+        break
+      case 'request-changes':
+        stepStatus = 'WAITING'
+        newStatus = 'IN_PROGRESS'
+        break
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    }
+
+    // Update step execution
+    await prisma.workflowStepExecution.update({
+      where: { id: currentStepExec.id },
+      data: {
+        status: stepStatus,
+        completedBy: userId,
+        completedAt: stepStatus !== 'WAITING' ? now : null,
+        result: comment ? { comment, action } : { action },
+      },
+    })
+
+    // Update workflow execution
+    await prisma.workflowExecution.update({
+      where: { id: execution.id },
+      data: {
+        status: newStatus,
+        currentStep: String(currentStepExec.stepOrder + 1),
+        completedAt: newStatus === 'COMPLETED' || newStatus === 'FAILED' ? now : null,
+      },
+    })
+
+    // Optionally update contract status
+    if (contractStatus) {
+      await prisma.contract.update({
+        where: { id: contractId },
+        data: { status: contractStatus as any },
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      action,
+      message: action === 'approve' 
+        ? (newStatus === 'COMPLETED' ? 'Contract approved!' : 'Step approved, moving to next')
+        : action === 'reject'
+        ? 'Contract rejected'
+        : 'Changes requested',
+      workflowStatus: newStatus,
+      contractStatus,
+    })
+  } catch (error) {
+    console.error('Quick action error:', error)
+    return NextResponse.json(
+      { error: 'Failed to process action' },
+      { status: 500 }
+    )
+  }
+}
+
+// GET - List pending approvals with simplified response
+export async function GET(request: NextRequest) {
+  try {
+    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001'
+
+    const pendingExecutions = await prisma.workflowExecution.findMany({
+      where: {
+        tenantId,
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+      },
+      include: {
+        contract: {
+          select: {
+            id: true,
+            contractTitle: true,
+            fileName: true,
+            totalValue: true,
+            status: true,
+          },
+        },
+        stepExecutions: {
+          where: { status: { in: ['IN_PROGRESS', 'WAITING'] } },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+
+    const simplified = pendingExecutions.map(exec => ({
+      id: exec.id,
+      contractId: exec.contractId,
+      contractName: exec.contract.contractTitle || exec.contract.fileName,
+      value: exec.contract.totalValue,
+      currentStep: exec.stepExecutions[0]?.stepName || 'Pending',
+      status: exec.status,
+      createdAt: exec.createdAt,
+    }))
+
+    return NextResponse.json({
+      success: true,
+      count: simplified.length,
+      approvals: simplified,
+    })
+  } catch (error) {
+    console.error('List approvals error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch approvals' },
+      { status: 500 }
+    )
+  }
+}

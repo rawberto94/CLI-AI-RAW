@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Framer Motion typing workaround
-const MotionDiv = motion.div as React.ComponentType<
+const MotionDiv = motion.div as unknown as React.ComponentType<
   React.HTMLAttributes<HTMLDivElement> & {
     initial?: object;
     animate?: object;
@@ -39,17 +39,17 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
   const getIcon = () => {
     switch (notification.type) {
       case 'new_approval':
-        return <Clock className="w-4 h-4 text-amber-500" />;
+        return <Clock className="w-4 h-4 text-amber-500" aria-hidden="true" />;
       case 'approval_completed':
-        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+        return <CheckCircle2 className="w-4 h-4 text-green-500" aria-hidden="true" />;
       case 'approval_rejected':
-        return <XCircle className="w-4 h-4 text-red-500" />;
+        return <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />;
       case 'step_completed':
-        return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
+        return <CheckCircle2 className="w-4 h-4 text-blue-500" aria-hidden="true" />;
       case 'deadline_reminder':
-        return <AlertTriangle className="w-4 h-4 text-orange-500" />;
+        return <AlertTriangle className="w-4 h-4 text-orange-500" aria-hidden="true" />;
       default:
-        return <Bell className="w-4 h-4 text-gray-500" />;
+        return <Bell className="w-4 h-4 text-gray-500" aria-hidden="true" />;
     }
   };
 
@@ -82,6 +82,8 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
+      role="article"
+      aria-label={`${notification.title}: ${notification.message}`}
       className={cn(
         "p-3 bg-white border-l-4 rounded-r-lg hover:bg-gray-50 transition-colors",
         getPriorityColor()
@@ -101,23 +103,24 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
           
           {/* Quick action buttons for new approvals */}
           {canQuickApprove && onQuickApprove && onQuickReject && (
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2" role="group" aria-label="Quick actions">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onQuickApprove(notification.approvalId);
                 }}
                 disabled={isProcessing}
+                aria-label="Quick approve"
                 className={cn(
                   "flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors",
-                  "bg-green-50 text-green-700 hover:bg-green-100",
+                  "bg-green-50 text-green-700 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500",
                   isProcessing && "opacity-50 cursor-not-allowed"
                 )}
               >
                 {isProcessing ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
                 ) : (
-                  <Check className="w-3 h-3" />
+                  <Check className="w-3 h-3" aria-hidden="true" />
                 )}
                 Approve
               </button>
@@ -127,16 +130,17 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
                   onQuickReject(notification.approvalId);
                 }}
                 disabled={isProcessing}
+                aria-label="Quick reject"
                 className={cn(
                   "flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md transition-colors",
-                  "bg-red-50 text-red-700 hover:bg-red-100",
+                  "bg-red-50 text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500",
                   isProcessing && "opacity-50 cursor-not-allowed"
                 )}
               >
                 {isProcessing ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
                 ) : (
-                  <ThumbsDown className="w-3 h-3" />
+                  <ThumbsDown className="w-3 h-3" aria-hidden="true" />
                 )}
                 Reject
               </button>
@@ -149,9 +153,10 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
             </span>
             <Link 
               href={`/approvals?id=${notification.approvalId}`}
-              className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 focus:outline-none focus:underline"
+              aria-label={`View ${notification.title}`}
             >
-              <Eye className="w-3 h-3" />
+              <Eye className="w-3 h-3" aria-hidden="true" />
               View
             </Link>
           </div>
@@ -161,9 +166,10 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
             e.stopPropagation();
             onDismiss(notification.id);
           }}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded"
+          className="p-1 text-gray-400 hover:text-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-gray-400"
+          aria-label={`Dismiss notification: ${notification.title}`}
         >
-          <X className="w-3 h-3" />
+          <X className="w-3 h-3" aria-hidden="true" />
         </button>
       </div>
     </MotionDiv>

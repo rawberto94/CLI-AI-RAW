@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from 'sonner';
 import {
   X,
   Download,
@@ -51,12 +52,12 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
 
   const handleSave = () => {
     saveComparison(comparison);
-    alert("Comparison saved!");
+    toast.success("Comparison saved!");
   };
 
   const handleExport = () => {
     // TODO: Implement export functionality
-    alert("Export functionality coming soon!");
+    toast.info("Export functionality coming soon!");
   };
 
   const handleSyncScroll = (index: number, scrollTop: number) => {

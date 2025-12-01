@@ -16,12 +16,17 @@ interface DataModeContextType {
 const DataModeContext = createContext<DataModeContextType | undefined>(undefined)
 
 export function DataModeProvider({ children }: { children: React.ReactNode }) {
+  // Always default to 'real' mode - no mock data
   const [dataMode, setDataModeState] = useState<DataMode>('real')
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount, but override mock with real
   useEffect(() => {
     const saved = localStorage.getItem('dataMode') as DataMode
-    if (saved && ['real', 'mock', 'ai-generated'].includes(saved)) {
+    // Force real mode - no mock data fallback
+    if (saved === 'mock') {
+      localStorage.setItem('dataMode', 'real')
+      setDataModeState('real')
+    } else if (saved && ['real', 'ai-generated'].includes(saved)) {
       setDataModeState(saved)
     }
   }, [])
@@ -36,7 +41,7 @@ export function DataModeProvider({ children }: { children: React.ReactNode }) {
     dataMode,
     setDataMode,
     isRealData: dataMode === 'real',
-    isMockData: dataMode === 'mock',
+    isMockData: false, // Always false - mock mode disabled
     isAIGenerated: dataMode === 'ai-generated',
     useRealData: dataMode === 'real'
   }

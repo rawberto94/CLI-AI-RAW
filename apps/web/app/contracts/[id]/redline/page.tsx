@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, use } from 'react';
 import { RedlineEditor } from '@/components/contracts/RedlineEditor';
 import { PageBreadcrumb } from '@/components/navigation';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,8 @@ Each party agrees to maintain in confidence all Confidential Information disclos
 
 IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO THIS AGREEMENT.`;
 
-export default function RedlinePage({ params }: { params: { id: string } }) {
+export default function RedlinePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const currentUser = {
     id: 'current-user',
     name: 'You',
@@ -40,7 +41,7 @@ export default function RedlinePage({ params }: { params: { id: string } }) {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/contracts/${params.id}`}>
+              <Link href={`/contracts/${id}`}>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <ArrowLeft className="w-4 h-4" />
                   Back to Contract
@@ -75,7 +76,7 @@ export default function RedlinePage({ params }: { params: { id: string } }) {
       {/* Editor */}
       <div className="max-w-7xl mx-auto px-6 py-6">
         <RedlineEditor
-          documentId={params.id}
+          documentId={id}
           initialContent={mockContent}
           currentUser={currentUser}
           onSave={(content, changes) => {

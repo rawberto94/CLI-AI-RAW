@@ -1,6 +1,6 @@
 /**
  * Enhanced Navigation Component
- * Features: Global search bar, notification badges, user menu, command palette trigger
+ * Clean, professional sidebar with grouped navigation
  */
 
 'use client';
@@ -16,6 +16,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator';
 import { NotificationBell } from '@/components/collaboration/NotificationCenter';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useOnClickOutside } from '@/hooks/useEventListener';
 import {
   LayoutDashboard,
   FileText,
@@ -49,6 +50,8 @@ import {
   Link2,
   Building2,
   Shield,
+  FolderKanban,
+  Brain,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -62,193 +65,220 @@ interface NavigationItem {
   isNew?: boolean;
 }
 
-const navigationItems: NavigationItem[] = [
+interface NavigationGroup {
+  id: string;
+  label: string;
+  items: NavigationItem[];
+}
+
+// Streamlined navigation - grouped and organized
+const navigationGroups: NavigationGroup[] = [
   {
-    name: 'Dashboard',
-    href: '/',
-    icon: LayoutDashboard,
-    description: 'Overview & insights'
-  },
-  {
-    name: 'Contracts',
-    href: '/contracts',
-    icon: FileText,
-    description: 'Manage contracts',
-    badge: 6
-  },
-  {
-    name: 'Upload',
-    href: '/upload',
-    icon: Upload,
-    description: 'Upload contracts'
-  },
-  {
-    name: 'Analytics',
-    href: '/dashboard',
-    icon: BarChart3,
-    description: 'Analytics & reports'
-  },
-  {
-    name: 'Rate Cards',
-    href: '/rate-cards',
-    icon: CreditCard,
-    description: 'Rate benchmarking',
-    children: [
-      {
-        name: 'Dashboard',
-        href: '/rate-cards/dashboard',
-        icon: LayoutDashboard,
-        description: 'Overview'
-      },
-      {
-        name: 'All Entries',
-        href: '/rate-cards/entries',
-        icon: FileText,
-        description: 'Browse entries'
-      },
-      {
-        name: 'Benchmarking',
-        href: '/rate-cards/benchmarking',
-        icon: Target,
-        description: 'Compare rates'
-      },
-      {
-        name: 'Opportunities',
-        href: '/rate-cards/opportunities',
-        icon: TrendingUp,
-        description: 'Savings potential',
-        isNew: true
-      }
+    id: 'main',
+    label: 'Main',
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard, description: 'Overview & insights' },
+      { name: 'Contracts', href: '/contracts', icon: FileText, description: 'All contracts' },
+      { name: 'Upload', href: '/upload', icon: Upload, description: 'Add new contracts' },
     ]
   },
   {
-    name: 'Generate',
-    href: '/generate',
-    icon: Sparkles,
-    description: 'Create contracts',
-    isNew: true,
-    children: [
-      {
-        name: 'New Contract',
-        href: '/generate',
-        icon: FileText,
-        description: 'Create new contract'
-      },
-      {
-        name: 'Templates',
-        href: '/generate/templates',
-        icon: FileText,
-        description: 'Template library'
-      },
-      {
-        name: 'Workflows',
-        href: '/generate/workflows',
-        icon: Activity,
-        description: 'Approval workflows'
-      }
+    id: 'workflow',
+    label: 'Workflow',
+    items: [
+      { name: 'Approvals', href: '/approvals', icon: CheckCircle2, badge: 4, badgeVariant: 'warning' as const, description: 'Pending reviews' },
+      { name: 'Renewals', href: '/renewals', icon: Calendar, badge: 2, badgeVariant: 'error' as const, description: 'Upcoming renewals' },
+      { name: 'Drafting', href: '/drafting', icon: Edit3, description: 'Create & edit' },
     ]
   },
   {
-    name: 'Intelligence',
-    href: '/intelligence',
-    icon: Zap,
-    description: 'AI-powered insights',
-    isNew: true,
-    children: [
-      {
-        name: 'Overview',
-        href: '/intelligence',
-        icon: LayoutDashboard,
-        description: 'Intelligence hub'
+    id: 'intelligence',
+    label: 'Intelligence',
+    items: [
+      { 
+        name: 'AI Hub', 
+        href: '/intelligence', 
+        icon: Brain,
+        isNew: true,
+        description: 'AI-powered insights',
+        children: [
+          { name: 'Overview', href: '/intelligence', icon: LayoutDashboard, description: 'Intelligence dashboard' },
+          { name: 'Health Scores', href: '/intelligence/health', icon: Target, description: 'Contract health' },
+          { name: 'Search', href: '/intelligence/search', icon: Search, description: 'Natural language search' },
+        ]
       },
-      {
-        name: 'Knowledge Graph',
-        href: '/intelligence/graph',
-        icon: Activity,
-        description: 'Contract relationships'
-      },
-      {
-        name: 'Health Scores',
-        href: '/intelligence/health',
-        icon: Target,
-        description: 'Contract health'
-      },
-      {
-        name: 'AI Search',
-        href: '/intelligence/search',
-        icon: Search,
-        description: 'Natural language search'
-      },
-      {
-        name: 'Negotiation',
-        href: '/intelligence/negotiate',
-        icon: Briefcase,
-        description: 'Negotiation co-pilot'
-      }
+      { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Predictions & trends' },
+      { name: 'Generate', href: '/generate', icon: Sparkles, isNew: true, description: 'AI contract generation' },
     ]
   },
   {
-    name: 'Approvals',
-    href: '/approvals',
-    icon: CheckCircle2,
-    description: 'Pending approvals',
-    badge: 4,
-    badgeVariant: 'warning'
+    id: 'analytics',
+    label: 'Analytics',
+    items: [
+      { 
+        name: 'Rate Cards', 
+        href: '/rate-cards', 
+        icon: CreditCard, 
+        description: 'Rate management',
+        children: [
+          { name: 'Dashboard', href: '/rate-cards/dashboard', icon: LayoutDashboard, description: 'Overview' },
+          { name: 'Entries', href: '/rate-cards/entries', icon: FileText, description: 'All rates' },
+          { name: 'Benchmarks', href: '/benchmarks', icon: Target, description: 'Compare rates' },
+        ]
+      },
+      { name: 'Reports', href: '/analytics', icon: BarChart3, description: 'Analytics & reports' },
+    ]
   },
   {
-    name: 'Renewals',
-    href: '/renewals',
-    icon: Calendar,
-    description: 'Renewal management',
-    badge: 2,
-    badgeVariant: 'error'
-  },
-  {
-    name: 'Forecast',
-    href: '/forecast',
-    icon: TrendingUp,
-    description: 'Predictive analytics',
-    isNew: true
-  },
-  {
-    name: 'Drafting',
-    href: '/drafting',
-    icon: Edit3,
-    description: 'Smart drafting canvas',
-    isNew: true
-  },
-  {
-    name: 'Portal',
-    href: '/portal',
-    icon: Building2,
-    description: 'Supplier collaboration'
-  },
-  {
-    name: 'Integrations',
-    href: '/integrations',
-    icon: Link2,
-    description: 'S2P integration hub'
-  },
-  {
-    name: 'Governance',
-    href: '/governance',
-    icon: Shield,
-    description: 'AI guardrails & policies',
-    isNew: true
-  },
-  {
-    name: 'Search',
-    href: '/search',
-    icon: Search,
-    description: 'Find contracts'
+    id: 'settings',
+    label: 'System',
+    items: [
+      { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies & compliance' },
+      { name: 'Integrations', href: '/integrations', icon: Link2, description: 'Connected systems' },
+    ]
   }
 ];
+
+// Render a single navigation item
+function NavItem({ 
+  item, 
+  isActive, 
+  isChildActive, 
+  isExpanded, 
+  onToggle, 
+  onMobileClose 
+}: { 
+  item: NavigationItem;
+  isActive: (href: string) => boolean;
+  isChildActive: (children?: NavigationItem[]) => boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onMobileClose: () => void;
+}) {
+  const hasChildren = item.children && item.children.length > 0;
+  const itemActive = isActive(item.href);
+  const hasActiveChild = isChildActive(item.children);
+  
+  const getBadgeStyles = (variant?: string) => {
+    switch (variant) {
+      case 'error':
+        return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+      case 'warning':
+        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'success':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+      default:
+        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    }
+  };
+
+  if (hasChildren) {
+    return (
+      <div>
+        <button
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          aria-controls={`nav-children-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
+          className={cn(
+            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-all',
+            (itemActive || hasActiveChild)
+              ? 'bg-blue-50/80 text-blue-700'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          )}
+        >
+          <div className="flex items-center gap-2.5">
+            <item.icon className={cn(
+              'h-4 w-4',
+              (itemActive || hasActiveChild) ? 'text-blue-600' : 'text-gray-400'
+            )} />
+            <span className="font-medium">{item.name}</span>
+            {item.isNew && (
+              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded-full">
+                NEW
+              </span>
+            )}
+          </div>
+          <ChevronDown className={cn(
+            'h-4 w-4 text-gray-400 transition-transform duration-200',
+            isExpanded && 'rotate-180'
+          )} aria-hidden="true" />
+        </button>
+        
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="overflow-hidden"
+              id={`nav-children-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
+              role="group"
+              aria-label={`${item.name} submenu`}
+            >
+              <div className="ml-6 mt-1 space-y-0.5 border-l border-gray-200 pl-3">
+                {item.children?.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    onClick={onMobileClose}
+                    className={cn(
+                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors',
+                      isActive(child.href)
+                        ? 'bg-blue-50 text-blue-700 font-medium'
+                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                    )}
+                  >
+                    <child.icon className="h-3.5 w-3.5" />
+                    <span>{child.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onMobileClose}
+      className={cn(
+        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
+        itemActive
+          ? 'bg-blue-50/80 text-blue-700'
+          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+      )}
+    >
+      <item.icon className={cn(
+        'h-4 w-4',
+        itemActive ? 'text-blue-600' : 'text-gray-400'
+      )} />
+      <span className="font-medium">{item.name}</span>
+      {item.isNew && (
+        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded-full">
+          NEW
+        </span>
+      )}
+      {item.badge && (
+        <Badge className={cn(
+          'ml-auto text-[10px] px-1.5 h-5 border-0',
+          getBadgeStyles(item.badgeVariant)
+        )}>
+          {item.badge}
+        </Badge>
+      )}
+    </Link>
+  );
+}
 
 function EnhancedNavigation() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>(['Rate Cards']);
+  const [expandedItems, setExpandedItems] = useState<string[]>(['AI Hub']);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -274,16 +304,11 @@ function EnhancedNavigation() {
   }, []);
 
   // Close dropdowns on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+  const closeUserMenu = useCallback(() => {
+    setShowUserMenu(false);
   }, []);
+  
+  useOnClickOutside(userMenuRef, closeUserMenu);
 
   const toggleExpanded = useCallback((name: string) => {
     setExpandedItems(prev =>
@@ -298,8 +323,8 @@ function EnhancedNavigation() {
     return pathname.startsWith(href);
   }, [pathname]);
 
-  const isChildActive = useCallback((children?: NavigationItem[]) => {
-    return children?.some(child => isActive(child.href));
+  const isChildActive = useCallback((children?: NavigationItem[]): boolean => {
+    return children?.some(child => isActive(child.href)) ?? false;
   }, [isActive]);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
@@ -314,25 +339,22 @@ function EnhancedNavigation() {
   return (
     <TooltipProvider>
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg p-1.5">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/60 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg p-1.5 shadow-sm">
             <FileText className="h-5 w-5 text-white" />
           </div>
-          <span className="font-semibold text-gray-900">Contract AI</span>
+          <span className="font-semibold text-gray-900">PactumAI</span>
         </div>
         <div className="flex items-center gap-2">
-          <CompactConnectionStatus />
+          <NotificationBell />
           <Button
             variant="ghost"
             size="sm"
+            className="h-9 w-9 p-0"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
       </div>
@@ -340,280 +362,119 @@ function EnhancedNavigation() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-30 h-screen transition-all duration-300 bg-white border-r border-gray-200/80 shadow-xl',
-          'lg:translate-x-0 w-72',
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          'fixed top-0 left-0 z-30 h-screen transition-transform duration-300 ease-out',
+          'bg-white/95 backdrop-blur-md border-r border-gray-200/60',
+          'lg:translate-x-0 w-64',
+          isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
         )}
+        role="navigation"
+        aria-label="Main navigation"
       >
-        {/* Logo & Search */}
-        <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+        <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-2.5 shadow-lg shadow-blue-500/20">
-              <FileText className="h-6 w-6 text-white" />
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-2 shadow-lg shadow-blue-500/20">
+              <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900">PactumAI</h1>
-              <p className="text-xs text-gray-500">AI Contract Management</p>
+              <h1 className="font-bold text-gray-900 text-sm">PactumAI</h1>
+              <p className="text-[10px] text-gray-500">Contract Intelligence</p>
             </div>
           </div>
 
-          {/* Global Search */}
-          <form onSubmit={handleSearch} className="relative">
-            <div 
-              className={cn(
-                'relative transition-all duration-200',
-                searchFocused && 'ring-2 ring-blue-500 ring-offset-1 rounded-lg'
-              )}
-            >
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search contracts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                className="w-full h-10 pl-10 pr-12 bg-gray-50 border border-gray-200 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-blue-300 transition-colors"
-              />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 px-1.5 py-0.5 text-xs text-gray-400 bg-gray-100 rounded">
-                <Command className="h-3 w-3" />K
-              </kbd>
-            </div>
-          </form>
-        </div>
-
-        {/* User & Notifications Bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-          {/* User Menu */}
-          <div ref={userMenuRef} className="relative">
-            <button
-              onClick={() => {
-                setShowUserMenu(!showUserMenu);
-              }}
-              className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium text-sm">
-                JD
+          {/* Search */}
+          <div className="px-3 py-3">
+            <form onSubmit={handleSearch}>
+              <div className={cn(
+                'relative transition-all duration-200 rounded-lg',
+                searchFocused && 'ring-2 ring-blue-500/30'
+              )}>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => setSearchFocused(false)}
+                  className="w-full h-9 pl-9 pr-10 bg-gray-50/80 border border-gray-200/60 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-blue-300 transition-all"
+                />
+                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:flex items-center px-1.5 py-0.5 text-[10px] text-gray-400 bg-white border border-gray-200 rounded font-mono">
+                  ⌘K
+                </kbd>
               </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">Roberto Ostojic</p>
-                <p className="text-xs text-gray-500">Admin</p>
-              </div>
-              <ChevronDown className="h-4 w-4 text-gray-400" />
-            </button>
-
-            <AnimatePresence>
-              {showUserMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute left-0 top-full mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
-                >
-                  <Link
-                    href="/settings/profile"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <User className="h-4 w-4" />
-                    Profile
-                  </Link>
-                  <Link
-                    href="/settings"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </Link>
-                  <Link
-                    href="/help"
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                    Help & Support
-                  </Link>
-                  <hr className="my-1" />
-                  <button 
-                    onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 w-full"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            </form>
           </div>
 
-          {/* Notifications - Using real NotificationBell component */}
-          <NotificationBell />
-        </div>
+          {/* Navigation Groups */}
+          <nav className="flex-1 overflow-y-auto px-3 pb-3">
+            {navigationGroups.map((group, groupIndex) => (
+              <div key={group.id} className={cn(groupIndex > 0 && 'mt-5')}>
+                <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                  {group.label}
+                </h3>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => (
+                    <NavItem
+                      key={item.name}
+                      item={item}
+                      isActive={isActive}
+                      isChildActive={isChildActive}
+                      isExpanded={expandedItems.includes(item.name)}
+                      onToggle={() => toggleExpanded(item.name)}
+                      onMobileClose={() => setIsMobileMenuOpen(false)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {navigationItems.map((item) => {
-            const hasChildren = item.children && item.children.length > 0;
-            const isExpanded = expandedItems.includes(item.name);
-            const isItemActive = isActive(item.href);
-            const hasActiveChild = isChildActive(item.children);
+          {/* Footer */}
+          <div className="border-t border-gray-100 p-3 space-y-3">
+            {/* User */}
+            <div ref={userMenuRef} className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-medium text-xs shadow-sm">
+                  RO
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">Roberto Ostojic</p>
+                  <p className="text-[10px] text-gray-500">Admin</p>
+                </div>
+                <Settings className="h-4 w-4 text-gray-400" />
+              </button>
 
-            return (
-              <div key={item.name}>
-                {hasChildren ? (
-                  <>
-                    <button
-                      data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}-button`}
-                      onClick={() => toggleExpanded(item.name)}
-                      className={cn(
-                        'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-                        (isItemActive || hasActiveChild)
-                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-100'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          'p-1.5 rounded-lg',
-                          (isItemActive || hasActiveChild)
-                            ? 'bg-blue-100 text-blue-600'
-                            : 'bg-gray-100 text-gray-500'
-                        )}>
-                          <item.icon className="h-4 w-4" />
-                        </div>
-                        <span>{item.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {item.badge && (
-                          <Badge 
-                            variant="secondary" 
-                            className="text-[10px] px-1.5 py-0 h-5 bg-blue-100 text-blue-700"
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                        <motion.div
-                          animate={{ rotate: isExpanded ? 180 : 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <ChevronDown className="h-4 w-4 text-gray-400" />
-                        </motion.div>
-                      </div>
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
+                  >
+                    <Link href="/settings/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      <User className="h-4 w-4" /> Profile
+                    </Link>
+                    <Link href="/settings" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      <Settings className="h-4 w-4" /> Settings
+                    </Link>
+                    <hr className="my-1" />
+                    <button onClick={() => signOut({ callbackUrl: '/auth/signin' })} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
+                      <LogOut className="h-4 w-4" /> Sign Out
                     </button>
-
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="ml-5 mt-1 space-y-0.5 border-l-2 border-gray-200 pl-3">
-                            {item.children?.map((child, childIndex) => (
-                              <Link
-                                key={`${child.name}-${childIndex}`}
-                                href={child.href}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={cn(
-                                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200',
-                                  isActive(child.href)
-                                    ? 'bg-blue-50 text-blue-700 font-medium'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                )}
-                              >
-                                <child.icon className="h-4 w-4 flex-shrink-0" />
-                                <span>{child.name}</span>
-                                {child.isNew && (
-                                  <Badge className="ml-auto text-[10px] px-1.5 py-0 h-4 bg-green-100 text-green-700 border-0">
-                                    NEW
-                                  </Badge>
-                                )}
-                              </Link>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </>
-                ) : (
-                  <Link
-                    data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}-link`}
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
-                      isItemActive
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-100'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    )}
-                  >
-                    <div className={cn(
-                      'p-1.5 rounded-lg',
-                      isItemActive
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'bg-gray-100 text-gray-500'
-                    )}>
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <span>{item.name}</span>
-                    {item.badge && (
-                      <Badge 
-                        variant="secondary" 
-                        className="ml-auto text-[10px] px-1.5 py-0 h-5 bg-blue-100 text-blue-700"
-                      >
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </Link>
+                  </motion.div>
                 )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Footer */}
-        <div className="border-t border-gray-100 p-3">
-          {/* Keyboard Shortcuts Hint */}
-          <button
-            onClick={() => {
-              // Trigger the ? shortcut programmatically
-              const event = new KeyboardEvent('keydown', {
-                key: '?',
-                shiftKey: true,
-                bubbles: true
-              });
-              document.dispatchEvent(event);
-            }}
-            className="w-full mb-3 p-2.5 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Command className="h-4 w-4 text-gray-500 group-hover:text-gray-700" />
-                <span className="text-xs font-medium text-gray-600 group-hover:text-gray-800">Keyboard Shortcuts</span>
-              </div>
-              <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-white border border-gray-300 rounded text-gray-500">?</kbd>
+              </AnimatePresence>
             </div>
-          </button>
 
-          {/* AI Status */}
-          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-            <div className="flex items-center gap-2 mb-1">
-              <Zap className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-purple-900">AI Ready</span>
-            </div>
-            <p className="text-xs text-purple-700/70">All analysis features active</p>
-          </div>
-
-          {/* Version & Status */}
-          <div className="text-xs text-gray-500 space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Version</span>
-              <span className="font-medium text-gray-700">2.0.0</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Real-time</span>
+            {/* Status */}
+            <div className="flex items-center justify-between px-2 text-[10px] text-gray-400">
+              <span>v2.0.0</span>
               <CompactConnectionStatus />
             </div>
           </div>
@@ -627,7 +488,7 @@ function EnhancedNavigation() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 lg:hidden"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-20 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}

@@ -82,8 +82,8 @@ export async function GET(
             description: true
           }
         },
-        steps: {
-          orderBy: { startedAt: 'asc' },
+        stepExecutions: {
+          orderBy: { stepOrder: 'asc' },
           include: {
             step: {
               select: { name: true, order: true, assignedRole: true }
@@ -101,15 +101,14 @@ export async function GET(
       status: exec.status.toLowerCase(),
       startedAt: exec.startedAt.toISOString(),
       completedAt: exec.completedAt?.toISOString(),
-      currentStep: exec.steps.find(s => s.status === 'IN_PROGRESS')?.step?.name,
+      currentStep: exec.stepExecutions.find((s: { status: string }) => s.status === 'IN_PROGRESS')?.step?.name,
       initiatedBy: exec.initiatedBy || 'System',
-      steps: exec.steps.map(stepExec => ({
+      steps: exec.stepExecutions.map((stepExec: { id: string; step?: { name?: string; order?: number; assignedRole?: string | null } | null; assignedTo?: string | null; status: string; completedAt?: Date | null }) => ({
         id: stepExec.id,
         name: stepExec.step?.name || 'Unknown',
         assignedTo: stepExec.assignedTo || stepExec.step?.assignedRole || 'Unassigned',
         status: stepExec.status.toLowerCase().replace('_', '_'),
         completedAt: stepExec.completedAt?.toISOString(),
-        comment: stepExec.comments || undefined,
         order: stepExec.step?.order || 0
       }))
     }));
@@ -204,19 +203,21 @@ export async function POST(
         status: 'IN_PROGRESS',
         startedAt: new Date(),
         initiatedBy: initiatedBy || 'System',
-        steps: {
+        stepExecutions: {
           create: workflow.steps.map((step, index) => ({
             stepId: step.id,
+            stepOrder: index,
+            stepName: step.name,
             status: index === 0 ? 'IN_PROGRESS' : 'PENDING',
-            assignedTo: step.assignedUser || step.assignedRole,
+            assignedTo: step.assignedUser || step.assignedRole || undefined,
             startedAt: index === 0 ? new Date() : undefined
           }))
         }
       },
       include: {
         workflow: true,
-        steps: {
-          orderBy: { startedAt: 'asc' }
+        stepExecutions: {
+          orderBy: { stepOrder: 'asc' }
         }
       }
     });

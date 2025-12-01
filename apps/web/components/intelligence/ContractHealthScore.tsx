@@ -31,8 +31,19 @@ import {
   Edit3,
   Building2,
   Loader2,
+  Heart,
+  Sparkles,
+  PieChart,
+  ArrowRight,
+  Filter,
+  Search,
+  Download,
+  Settings2,
+  ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { Input } from '@/components/ui/input';
 
 // ============================================================================
 // Types
@@ -378,30 +389,51 @@ const mockHealthData: ContractHealth[] = [
 // ============================================================================
 
 const getScoreColor = (score: number) => {
-  if (score >= 80) return { bg: 'bg-green-500', text: 'text-green-600', light: 'bg-green-50' };
-  if (score >= 60) return { bg: 'bg-amber-500', text: 'text-amber-600', light: 'bg-amber-50' };
-  return { bg: 'bg-red-500', text: 'text-red-600', light: 'bg-red-50' };
+  if (score >= 80) return { 
+    bg: 'bg-emerald-500', 
+    text: 'text-emerald-600', 
+    light: 'bg-emerald-50',
+    gradient: 'from-emerald-500 to-teal-500',
+    ring: 'ring-emerald-500/20',
+    border: 'border-emerald-200',
+  };
+  if (score >= 60) return { 
+    bg: 'bg-amber-500', 
+    text: 'text-amber-600', 
+    light: 'bg-amber-50',
+    gradient: 'from-amber-500 to-orange-500',
+    ring: 'ring-amber-500/20',
+    border: 'border-amber-200',
+  };
+  return { 
+    bg: 'bg-rose-500', 
+    text: 'text-rose-600', 
+    light: 'bg-rose-50',
+    gradient: 'from-rose-500 to-red-500',
+    ring: 'ring-rose-500/20',
+    border: 'border-rose-200',
+  };
 };
 
 const getStatusBadge = (status: ContractHealth['status']) => {
   switch (status) {
     case 'healthy':
-      return { icon: CheckCircle2, color: 'bg-green-100 text-green-700', label: 'Healthy' };
+      return { icon: CheckCircle2, color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Healthy', dotColor: 'bg-emerald-500' };
     case 'at-risk':
-      return { icon: AlertTriangle, color: 'bg-amber-100 text-amber-700', label: 'At Risk' };
+      return { icon: AlertTriangle, color: 'bg-amber-100 text-amber-700 border-amber-200', label: 'At Risk', dotColor: 'bg-amber-500' };
     case 'critical':
-      return { icon: XCircle, color: 'bg-red-100 text-red-700', label: 'Critical' };
+      return { icon: XCircle, color: 'bg-rose-100 text-rose-700 border-rose-200', label: 'Critical', dotColor: 'bg-rose-500' };
   }
 };
 
 const getTrendIcon = (trend: 'improving' | 'stable' | 'declining') => {
   switch (trend) {
     case 'improving':
-      return { icon: TrendingUp, color: 'text-green-500' };
+      return { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50', label: 'Improving' };
     case 'stable':
-      return { icon: Minus, color: 'text-slate-400' };
+      return { icon: Minus, color: 'text-slate-400', bg: 'bg-slate-50', label: 'Stable' };
     case 'declining':
-      return { icon: TrendingDown, color: 'text-red-500' };
+      return { icon: TrendingDown, color: 'text-rose-500', bg: 'bg-rose-50', label: 'Declining' };
   }
 };
 
@@ -415,25 +447,37 @@ const getCategoryIcon = (category: HealthFactor['category']) => {
   }
 };
 
+const getCategoryColor = (category: HealthFactor['category']) => {
+  switch (category) {
+    case 'risk': return 'text-rose-500 bg-rose-50';
+    case 'compliance': return 'text-violet-500 bg-violet-50';
+    case 'financial': return 'text-emerald-500 bg-emerald-50';
+    case 'operational': return 'text-blue-500 bg-blue-50';
+    case 'relationship': return 'text-amber-500 bg-amber-50';
+  }
+};
+
 // ============================================================================
 // Score Ring Component
 // ============================================================================
 
 interface ScoreRingProps {
   score: number;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   showLabel?: boolean;
   previousScore?: number;
+  showGlow?: boolean;
 }
 
-const ScoreRing: React.FC<ScoreRingProps> = ({ score, size = 'md', showLabel = true, previousScore }) => {
+const ScoreRing: React.FC<ScoreRingProps> = ({ score, size = 'md', showLabel = true, previousScore, showGlow = false }) => {
   const sizes = {
-    sm: { ring: 48, stroke: 4, text: 'text-sm' },
-    md: { ring: 80, stroke: 6, text: 'text-xl' },
-    lg: { ring: 120, stroke: 8, text: 'text-3xl' },
+    sm: { ring: 52, stroke: 5, text: 'text-sm', label: 'text-[10px]' },
+    md: { ring: 88, stroke: 7, text: 'text-2xl', label: 'text-xs' },
+    lg: { ring: 130, stroke: 9, text: 'text-4xl', label: 'text-sm' },
+    xl: { ring: 160, stroke: 10, text: 'text-5xl', label: 'text-base' },
   };
 
-  const { ring, stroke, text } = sizes[size];
+  const { ring, stroke, text, label: labelSize } = sizes[size];
   const radius = (ring - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
@@ -441,8 +485,9 @@ const ScoreRing: React.FC<ScoreRingProps> = ({ score, size = 'md', showLabel = t
   const change = previousScore ? score - previousScore : 0;
 
   return (
-    <div className="relative inline-flex items-center justify-center">
+    <div className={`relative inline-flex items-center justify-center ${showGlow ? `ring-8 ${colors.ring} rounded-full` : ''}`}>
       <svg width={ring} height={ring} className="-rotate-90">
+        {/* Background track */}
         <circle
           cx={ring / 2}
           cy={ring / 2}
@@ -450,29 +495,50 @@ const ScoreRing: React.FC<ScoreRingProps> = ({ score, size = 'md', showLabel = t
           fill="none"
           stroke="#E2E8F0"
           strokeWidth={stroke}
+          className="opacity-50"
         />
+        {/* Progress arc with gradient */}
+        <defs>
+          <linearGradient id={`scoreGradient-${score}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" className={colors.text} stopColor="currentColor" />
+            <stop offset="100%" className={colors.text} stopColor="currentColor" stopOpacity="0.7" />
+          </linearGradient>
+        </defs>
         <motion.circle
           cx={ring / 2}
           cy={ring / 2}
           r={radius}
           fill="none"
-          stroke="currentColor"
+          stroke={`url(#scoreGradient-${score})`}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: circumference - progress }}
-          transition={{ duration: 1, ease: 'easeOut' }}
+          transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] }}
           className={colors.text}
         />
       </svg>
       {showLabel && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`font-bold ${text} ${colors.text}`}>{score}</span>
+          <motion.span 
+            className={`font-bold ${text} ${colors.text}`}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+          >
+            {score}
+          </motion.span>
           {previousScore !== undefined && change !== 0 && (
-            <span className={`text-xs font-medium ${change > 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <motion.span 
+              className={`${labelSize} font-semibold flex items-center gap-0.5 ${change > 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              {change > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
               {change > 0 ? '+' : ''}{change}
-            </span>
+            </motion.span>
           )}
         </div>
       )}
@@ -496,32 +562,36 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
   const colors = getScoreColor(factor.score);
   const trend = getTrendIcon(factor.trend);
   const TrendIcon = trend.icon;
+  const categoryColor = getCategoryColor(factor.category);
 
   return (
     <motion.div
       layout
-      className="bg-white rounded-lg border border-slate-200 overflow-hidden"
+      className="bg-white rounded-xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
     >
       <button
         onClick={onToggle}
-        className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors"
+        className="w-full p-5 flex items-center gap-4 hover:bg-slate-50/50 transition-colors"
       >
-        <div className={`w-10 h-10 rounded-lg ${colors.light} flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 ${colors.text}`} />
+        <div className={`w-12 h-12 rounded-xl ${categoryColor} flex items-center justify-center shadow-sm`}>
+          <Icon className="w-6 h-6" />
         </div>
         
         <div className="flex-1 text-left">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-slate-900">{factor.name}</span>
-            <span className="text-xs text-slate-400">({factor.weight}% weight)</span>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="font-semibold text-slate-900">{factor.name}</span>
+            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{factor.weight}% weight</span>
           </div>
-          <p className="text-sm text-slate-500 truncate">{factor.details}</p>
+          <p className="text-sm text-slate-500 line-clamp-1">{factor.details}</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <TrendIcon className={`w-4 h-4 ${trend.color}`} />
+        <div className="flex items-center gap-4">
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${trend.bg}`}>
+            <TrendIcon className={`w-3.5 h-3.5 ${trend.color}`} />
+            <span className={`text-xs font-medium ${trend.color}`}>{trend.label}</span>
+          </div>
           <ScoreRing score={factor.score} size="sm" showLabel={true} />
-          <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
@@ -531,33 +601,42 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="border-t border-slate-100"
           >
-            <div className="p-4 space-y-4 bg-slate-50">
-              <p className="text-sm text-slate-600">{factor.details}</p>
+            <div className="p-5 space-y-4 bg-gradient-to-b from-slate-50/50 to-white">
+              <p className="text-sm text-slate-600 leading-relaxed">{factor.details}</p>
               
               {factor.recommendations && factor.recommendations.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-medium text-slate-500 uppercase flex items-center gap-1">
-                    <Zap className="w-3 h-3" />
-                    Recommendations
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    AI Recommendations
                   </h4>
-                  <ul className="space-y-1">
+                  <div className="space-y-2">
                     {factor.recommendations.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm">
-                        <ArrowUpRight className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-slate-700">{rec}</span>
-                      </li>
+                      <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200/60 hover:border-blue-200 transition-colors group">
+                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-blue-500 transition-colors">
+                          <ArrowRight className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+                        </div>
+                        <span className="text-sm text-slate-700">{rec}</span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>Last updated: {factor.lastUpdated}</span>
-                <button onClick={onRefresh} className="text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" />
-                  Refresh
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  Last updated: {factor.lastUpdated}
+                </span>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onRefresh?.(); }} 
+                  className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 text-sm hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Refresh Analysis
                 </button>
               </div>
             </div>
@@ -580,9 +659,27 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
   const [showActions, setShowActions] = useState(false);
   
   const typeStyles = {
-    urgent: { bg: 'bg-red-50 border-red-200', icon: AlertCircle, iconColor: 'text-red-500', badge: 'bg-red-100 text-red-700' },
-    recommended: { bg: 'bg-amber-50 border-amber-200', icon: AlertTriangle, iconColor: 'text-amber-500', badge: 'bg-amber-100 text-amber-700' },
-    optional: { bg: 'bg-blue-50 border-blue-200', icon: Info, iconColor: 'text-blue-500', badge: 'bg-blue-100 text-blue-700' },
+    urgent: { 
+      bg: 'bg-gradient-to-br from-rose-50 to-red-50 border-rose-200/80', 
+      icon: AlertCircle, 
+      iconColor: 'text-rose-500 bg-rose-100', 
+      badge: 'bg-rose-100 text-rose-700 border border-rose-200',
+      glow: 'shadow-rose-100',
+    },
+    recommended: { 
+      bg: 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200/80', 
+      icon: AlertTriangle, 
+      iconColor: 'text-amber-500 bg-amber-100', 
+      badge: 'bg-amber-100 text-amber-700 border border-amber-200',
+      glow: 'shadow-amber-100',
+    },
+    optional: { 
+      bg: 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/80', 
+      icon: Info, 
+      iconColor: 'text-blue-500 bg-blue-100', 
+      badge: 'bg-blue-100 text-blue-700 border border-blue-200',
+      glow: 'shadow-blue-100',
+    },
   };
 
   const style = typeStyles[item.type];
@@ -618,29 +715,37 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
   };
 
   return (
-    <div className={`p-4 rounded-lg border ${style.bg}`}>
-      <div className="flex items-start gap-3">
-        <Icon className={`w-5 h-5 ${style.iconColor} flex-shrink-0 mt-0.5`} />
+    <motion.div 
+      className={`p-5 rounded-xl border ${style.bg} shadow-sm ${style.glow}`}
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="flex items-start gap-4">
+        <div className={`w-10 h-10 rounded-xl ${style.iconColor} flex items-center justify-center flex-shrink-0 shadow-sm`}>
+          <Icon className="w-5 h-5" />
+        </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${style.badge} capitalize`}>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${style.badge} capitalize`}>
               {item.type}
             </span>
             {item.dueDate && (
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <Clock className="w-3 h-3" />
+              <span className="text-xs text-slate-500 flex items-center gap-1.5 bg-white/60 px-2 py-1 rounded-lg">
+                <Clock className="w-3.5 h-3.5" />
                 Due: {item.dueDate}
               </span>
             )}
           </div>
-          <h4 className="font-medium text-slate-900">{item.title}</h4>
-          <p className="text-sm text-slate-600 mt-1">{item.description}</p>
-          <div className="flex items-center gap-4 mt-2">
-            <span className="text-xs text-slate-500">
-              Impact: <span className="font-medium capitalize">{item.impact}</span>
+          <h4 className="font-semibold text-slate-900 text-base">{item.title}</h4>
+          <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">{item.description}</p>
+          <div className="flex items-center gap-4 mt-3">
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <Target className="w-3.5 h-3.5" />
+              Impact: <span className="font-semibold capitalize text-slate-700">{item.impact}</span>
             </span>
-            <span className="text-xs text-slate-500">
-              Effort: <span className="font-medium capitalize">{item.effort}</span>
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5" />
+              Effort: <span className="font-semibold capitalize text-slate-700">{item.effort}</span>
             </span>
           </div>
           
@@ -651,9 +756,12 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="mt-3 pt-3 border-t border-slate-200/50 overflow-hidden"
+                className="mt-4 pt-4 border-t border-slate-200/50 overflow-hidden"
               >
-                <p className="text-xs text-slate-500 mb-2">Quick Actions:</p>
+                <p className="text-xs font-medium text-slate-500 mb-3 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                  Quick Actions
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {getActionLinks().map((link, linkIndex) => {
                     const LinkIcon = link.icon;
@@ -661,11 +769,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
                       <Link
                         key={`${link.label}-${linkIndex}`}
                         href={link.href}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-white border border-slate-200 text-slate-700 rounded-md hover:bg-slate-50 hover:border-blue-200 hover:text-blue-700 transition-colors"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all shadow-sm"
                       >
-                        <LinkIcon className="w-3.5 h-3.5" />
+                        <LinkIcon className="w-4 h-4" />
                         {link.label}
-                        <ChevronRight className="w-3 h-3" />
+                        <ExternalLink className="w-3 h-3 opacity-50" />
                       </Link>
                     );
                   })}
@@ -676,16 +784,16 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
         </div>
         <button 
           onClick={() => setShowActions(!showActions)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+          className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all shadow-sm ${
             showActions 
-              ? 'bg-blue-500 text-white hover:bg-blue-600' 
-              : 'bg-white border border-slate-200 hover:bg-slate-50'
+              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200' 
+              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
           }`}
         >
           {showActions ? 'Close' : 'Take Action'}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -705,39 +813,59 @@ const ContractHealthCard: React.FC<ContractHealthCardProps> = ({ health, onSelec
   const trend = getTrendIcon(health.trend);
   const TrendIcon = trend.icon;
   const colors = getScoreColor(health.overallScore);
+  const urgentCount = health.actionItems.filter(a => a.type === 'urgent').length;
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.99 }}
       onClick={onSelect}
-      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+      className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
         isSelected
-          ? 'border-blue-500 bg-blue-50/50 shadow-lg'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+          ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50/50 shadow-lg shadow-blue-100/50 ring-4 ring-blue-100'
+          : 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg hover:shadow-slate-100/50'
       }`}
     >
       <div className="flex items-center gap-4">
-        <ScoreRing score={health.overallScore} size="md" previousScore={health.previousScore} />
+        <div className="relative">
+          <ScoreRing score={health.overallScore} size="md" previousScore={health.previousScore} />
+          {/* Status indicator dot */}
+          <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full ${statusBadge.dotColor} border-2 border-white flex items-center justify-center`}>
+            <StatusIcon className="w-3 h-3 text-white" />
+          </div>
+        </div>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${statusBadge.color}`}>
-              <StatusIcon className="w-3 h-3" />
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 border ${statusBadge.color}`}>
               {statusBadge.label}
             </span>
-            <TrendIcon className={`w-4 h-4 ${trend.color}`} />
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${trend.bg}`}>
+              <TrendIcon className={`w-3 h-3 ${trend.color}`} />
+              <span className={`text-xs font-medium ${trend.color}`}>{trend.label}</span>
+            </div>
           </div>
-          <h3 className="font-semibold text-slate-900 truncate">{health.contractName}</h3>
-          <p className="text-sm text-slate-500">{health.supplierName}</p>
+          <h3 className="font-semibold text-slate-900 truncate text-base">{health.contractName}</h3>
+          <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
+            <Building2 className="w-3.5 h-3.5" />
+            {health.supplierName}
+          </p>
         </div>
 
-        <div className="text-right">
-          <div className="text-xs text-slate-400 mb-1">Next Review</div>
-          <div className="text-sm font-medium text-slate-600">{health.nextReview}</div>
-          {health.actionItems.filter(a => a.type === 'urgent').length > 0 && (
-            <div className="mt-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
-              {health.actionItems.filter(a => a.type === 'urgent').length} Urgent
-            </div>
+        <div className="text-right flex flex-col items-end gap-2">
+          <div className="text-xs text-slate-400 flex items-center gap-1">
+            <Calendar className="w-3 h-3" />
+            {health.nextReview}
+          </div>
+          {urgentCount > 0 && (
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="px-2.5 py-1 bg-rose-100 text-rose-700 rounded-lg text-xs font-semibold flex items-center gap-1 border border-rose-200"
+            >
+              <AlertCircle className="w-3 h-3" />
+              {urgentCount} Urgent
+            </motion.div>
           )}
         </div>
       </div>
@@ -893,145 +1021,307 @@ export const ContractHealthScore: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-3" />
-          <p className="text-slate-600">Loading contract health data...</p>
-        </div>
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+        <motion.div 
+          className="text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
+              <Heart className="w-8 h-8 text-white animate-pulse" />
+            </div>
+            <motion.div 
+              className="absolute -inset-2 rounded-3xl border-2 border-blue-300 opacity-50"
+              animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.2, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          </div>
+          <p className="text-slate-600 font-medium">Analyzing contract health...</p>
+          <p className="text-sm text-slate-400 mt-1">This may take a moment</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
       {/* Header */}
-      <div className="flex-none p-6 bg-white border-b border-slate-200">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-blue-500" />
-              Contract Health Dashboard
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Monitor and improve contract performance across your portfolio
-            </p>
+      <div className="flex-none px-6 py-5 bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200/50">
+              <Heart className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                Contract Health Dashboard
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                  AI-Powered
+                </span>
+              </h2>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Monitor and optimize contract performance across your entire portfolio
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleRefreshAll} className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input 
+                placeholder="Search contracts..." 
+                className="pl-10 w-64 bg-white/80"
+              />
+            </div>
+            <button 
+              onClick={handleRefreshAll} 
+              className="px-4 py-2.5 text-sm font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 shadow-sm"
+            >
               <RefreshCw className="w-4 h-4" />
               Refresh All
             </button>
-            <button onClick={handleExportReport} className="px-3 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
+            <button 
+              onClick={handleExportReport} 
+              className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200/50"
+            >
+              <Download className="w-4 h-4" />
               Export Report
             </button>
           </div>
         </div>
 
-        {/* Portfolio Stats */}
+        {/* Portfolio Stats - Enhanced */}
         <div className="grid grid-cols-6 gap-4">
-          <div className="p-4 bg-slate-50 rounded-xl">
-            <div className="text-2xl font-bold text-slate-900">{portfolioStats.avgScore}</div>
-            <div className="text-sm text-slate-500">Avg Health Score</div>
-          </div>
-          <div className="p-4 bg-slate-50 rounded-xl">
-            <div className="text-2xl font-bold text-slate-900">{portfolioStats.total}</div>
-            <div className="text-sm text-slate-500">Total Contracts</div>
-          </div>
-          <div className="p-4 bg-green-50 rounded-xl">
-            <div className="text-2xl font-bold text-green-600">{portfolioStats.healthy}</div>
-            <div className="text-sm text-green-600">Healthy</div>
-          </div>
-          <div className="p-4 bg-amber-50 rounded-xl">
-            <div className="text-2xl font-bold text-amber-600">{portfolioStats.atRisk}</div>
-            <div className="text-sm text-amber-600">At Risk</div>
-          </div>
-          <div className="p-4 bg-red-50 rounded-xl">
-            <div className="text-2xl font-bold text-red-600">{portfolioStats.critical}</div>
-            <div className="text-sm text-red-600">Critical</div>
-          </div>
-          <div className="p-4 bg-red-50 rounded-xl border-2 border-red-200">
-            <div className="text-2xl font-bold text-red-600">{portfolioStats.urgentActions}</div>
-            <div className="text-sm text-red-600">Urgent Actions</div>
-          </div>
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-slate-50 to-slate-100/80 rounded-xl border border-slate-200/60 relative overflow-hidden"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 bg-slate-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center">
+                <PieChart className="w-5 h-5 text-slate-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-900">{portfolioStats.avgScore}</div>
+                <div className="text-xs text-slate-500 font-medium">Avg Health Score</div>
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50/80 rounded-xl border border-blue-200/60 relative overflow-hidden"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-blue-700">{portfolioStats.total}</div>
+                <div className="text-xs text-blue-600 font-medium">Total Contracts</div>
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50/80 rounded-xl border border-emerald-200/60 relative overflow-hidden"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-emerald-700">{portfolioStats.healthy}</div>
+                <div className="text-xs text-emerald-600 font-medium">Healthy</div>
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/80 rounded-xl border border-amber-200/60 relative overflow-hidden"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-amber-700">{portfolioStats.atRisk}</div>
+                <div className="text-xs text-amber-600 font-medium">At Risk</div>
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-rose-50 to-red-50/80 rounded-xl border border-rose-200/60 relative overflow-hidden"
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 bg-rose-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-rose-100 flex items-center justify-center">
+                <XCircle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-rose-700">{portfolioStats.critical}</div>
+                <div className="text-xs text-rose-600 font-medium">Critical</div>
+              </div>
+            </div>
+          </motion.div>
+          
+          <motion.div 
+            className="p-4 bg-gradient-to-br from-rose-50 to-red-50/80 rounded-xl border-2 border-rose-300 relative overflow-hidden shadow-lg shadow-rose-100/50"
+            whileHover={{ scale: 1.02 }}
+            animate={{ borderColor: portfolioStats.urgentActions > 0 ? ['rgb(253, 164, 175)', 'rgb(251, 113, 133)', 'rgb(253, 164, 175)'] : 'rgb(253, 164, 175)' }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="absolute top-0 right-0 w-16 h-16 bg-rose-200/40 rounded-full -mr-4 -mt-4" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-rose-200 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-rose-700" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-rose-700">{portfolioStats.urgentActions}</div>
+                <div className="text-xs text-rose-600 font-medium">Urgent Actions</div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Contract List */}
-        <div className="w-96 flex-none border-r border-slate-200 bg-white overflow-y-auto p-4 space-y-3">
-          <h3 className="text-sm font-medium text-slate-500 uppercase mb-3">Contracts</h3>
-          {healthData.map(health => (
-            <ContractHealthCard
-              key={health.contractId}
-              health={health}
-              isSelected={selectedContract?.contractId === health.contractId}
-              onSelect={() => setSelectedContract(health)}
-            />
-          ))}
+        <div className="w-[420px] flex-none border-r border-slate-200/60 bg-white/60 backdrop-blur-sm overflow-y-auto">
+          <div className="p-4 border-b border-slate-200/60 bg-white/80 sticky top-0 z-10">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-400" />
+                Contracts
+              </h3>
+              <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                {healthData.length} total
+              </span>
+            </div>
+            {/* Filter Buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg border border-blue-200">All</button>
+              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">Healthy</button>
+              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">At Risk</button>
+              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">Critical</button>
+            </div>
+          </div>
+          <div className="p-4 space-y-3">
+            {healthData.map(health => (
+              <ContractHealthCard
+                key={health.contractId}
+                health={health}
+                isSelected={selectedContract?.contractId === health.contractId}
+                onSelect={() => setSelectedContract(health)}
+              />
+            ))}
+            {healthData.length === 0 && (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No contracts found</p>
+                <p className="text-sm text-slate-400">Upload contracts to see health analysis</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Detail Panel */}
         {selectedContract && (
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Contract Header */}
-            <div className="bg-white rounded-xl border border-slate-200 p-6 mb-6">
-              <div className="flex items-center gap-6">
-                <ScoreRing
-                  score={selectedContract.overallScore}
-                  size="lg"
-                  previousScore={selectedContract.previousScore}
-                />
+          <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-slate-50/50 to-white">
+            {/* Contract Header - Enhanced */}
+            <motion.div 
+              className="bg-white rounded-2xl border border-slate-200/80 p-6 mb-6 shadow-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center gap-8">
+                <div className="relative">
+                  <ScoreRing
+                    score={selectedContract.overallScore}
+                    size="xl"
+                    previousScore={selectedContract.previousScore}
+                    showGlow={true}
+                  />
+                </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-slate-900">{selectedContract.contractName}</h3>
-                  <p className="text-slate-500">{selectedContract.supplierName}</p>
-                  <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     {(() => {
                       const badge = getStatusBadge(selectedContract.status);
                       const BadgeIcon = badge.icon;
+                      const trend = getTrendIcon(selectedContract.trend);
+                      const TrendIcon = trend.icon;
                       return (
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1.5 ${badge.color}`}>
-                          <BadgeIcon className="w-4 h-4" />
-                          {badge.label}
-                        </span>
+                        <>
+                          <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-1.5 border ${badge.color}`}>
+                            <BadgeIcon className="w-4 h-4" />
+                            {badge.label}
+                          </span>
+                          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${trend.bg}`}>
+                            <TrendIcon className={`w-4 h-4 ${trend.color}`} />
+                            <span className={`text-sm font-medium ${trend.color}`}>{trend.label}</span>
+                          </div>
+                        </>
                       );
                     })()}
-                    <span className="text-sm text-slate-500 flex items-center gap-1">
+                  </div>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-1">{selectedContract.contractName}</h3>
+                  <p className="text-slate-500 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    {selectedContract.supplierName}
+                  </p>
+                  <div className="flex items-center gap-6 mt-4">
+                    <span className="text-sm text-slate-500 flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg">
                       <Calendar className="w-4 h-4" />
                       Last assessed: {selectedContract.lastAssessed}
                     </span>
-                    <span className="text-sm text-slate-500 flex items-center gap-1">
+                    <span className="text-sm text-slate-500 flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg">
                       <Clock className="w-4 h-4" />
                       Next review: {selectedContract.nextReview}
                     </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => handleViewContract(selectedContract.contractId)} className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                  <button 
+                    onClick={() => handleViewContract(selectedContract.contractId)} 
+                    className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200/50"
+                  >
                     <Eye className="w-4 h-4" />
                     View Contract
                   </button>
-                  <button onClick={() => handleReassess(selectedContract.contractId, selectedContract.contractName)} className="px-4 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+                  <button 
+                    onClick={() => handleReassess(selectedContract.contractId, selectedContract.contractName)} 
+                    className="px-5 py-2.5 text-sm font-semibold bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2"
+                  >
                     <RefreshCw className="w-4 h-4" />
-                    Reassess
+                    Reassess Now
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* View Toggle */}
-            <div className="flex items-center gap-2 mb-4">
+            {/* View Toggle - Enhanced */}
+            <div className="flex items-center gap-1 mb-5 p-1 bg-slate-100 rounded-xl w-fit">
               {(['overview', 'factors', 'actions'] as const).map(v => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all capitalize ${
                     view === v
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
+                  {v === 'overview' && <PieChart className="w-4 h-4 inline mr-2" />}
+                  {v === 'factors' && <Activity className="w-4 h-4 inline mr-2" />}
+                  {v === 'actions' && <Zap className="w-4 h-4 inline mr-2" />}
                   {v}
                 </button>
               ))}
@@ -1048,26 +1338,44 @@ export const ContractHealthScore: React.FC = () => {
                   className="space-y-6"
                 >
                   {/* Factor Summary Chart */}
-                  <div className="bg-white rounded-xl border border-slate-200 p-6">
-                    <h4 className="text-lg font-semibold text-slate-900 mb-4">Health Factor Breakdown</h4>
+                  <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-5">
+                      <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <PieChart className="w-5 h-5 text-blue-500" />
+                        Health Factor Breakdown
+                      </h4>
+                      <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                        {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).length} factors analyzed
+                      </span>
+                    </div>
                     <div className="space-y-4">
-                      {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).map(factor => {
+                      {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).map((factor, index) => {
                         const colors = getScoreColor(factor.score);
+                        const Icon = getCategoryIcon(factor.category);
                         return (
-                          <div key={factor.id} className="space-y-1">
+                          <motion.div 
+                            key={factor.id} 
+                            className="space-y-2"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                          >
                             <div className="flex items-center justify-between text-sm">
-                              <span className="font-medium text-slate-700">{factor.name}</span>
-                              <span className={colors.text}>{factor.score}/100</span>
+                              <span className="font-semibold text-slate-700 flex items-center gap-2">
+                                <Icon className={`w-4 h-4 ${colors.text}`} />
+                                {factor.name}
+                              </span>
+                              <span className={`font-bold ${colors.text}`}>{factor.score}/100</span>
                             </div>
-                            <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                               <motion.div
-                                className={`h-full ${colors.bg} rounded-full`}
+                                className={`h-full bg-gradient-to-r ${colors.gradient} rounded-full`}
                                 initial={{ width: 0 }}
                                 animate={{ width: `${factor.score}%` }}
-                                transition={{ duration: 0.8, ease: 'easeOut' }}
+                                transition={{ duration: 0.8, delay: index * 0.1, ease: [0.4, 0, 0.2, 1] }}
                               />
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
                     </div>
@@ -1075,12 +1383,15 @@ export const ContractHealthScore: React.FC = () => {
 
                   {/* Urgent Actions */}
                   {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).filter(a => a.type === 'urgent').length > 0 && (
-                    <div className="bg-white rounded-xl border border-slate-200 p-6">
-                      <h4 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
+                    <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
+                      <h4 className="text-lg font-bold text-slate-900 mb-5 flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-rose-500" />
                         Urgent Actions Required
+                        <span className="ml-2 px-2 py-0.5 bg-rose-100 text-rose-700 text-xs font-semibold rounded-full">
+                          {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).filter(a => a.type === 'urgent').length}
+                        </span>
                       </h4>
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : [])
                           .filter(a => a.type === 'urgent')
                           .map(item => (
@@ -1098,16 +1409,22 @@ export const ContractHealthScore: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="space-y-3"
+                  className="space-y-4"
                 >
-                  {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).map(factor => (
-                    <HealthFactorCard
+                  {(Array.isArray(selectedContract.factors) ? selectedContract.factors : []).map((factor, index) => (
+                    <motion.div
                       key={factor.id}
-                      factor={factor}
-                      expanded={expandedFactors.has(factor.id)}
-                      onToggle={() => toggleFactor(factor.id)}
-                      onRefresh={() => toast.info(`Refreshing ${factor.name}...`)}
-                    />
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <HealthFactorCard
+                        factor={factor}
+                        expanded={expandedFactors.has(factor.id)}
+                        onToggle={() => toggleFactor(factor.id)}
+                        onRefresh={() => toast.info(`Refreshing ${factor.name}...`)}
+                      />
+                    </motion.div>
                   ))}
                 </motion.div>
               )}
@@ -1118,17 +1435,30 @@ export const ContractHealthScore: React.FC = () => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="space-y-3"
+                  className="space-y-4"
                 >
-                  {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).map(item => (
-                    <ActionItemCard key={item.id} item={item} />
+                  {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <ActionItemCard item={item} />
+                    </motion.div>
                   ))}
                   {(Array.isArray(selectedContract.actionItems) ? selectedContract.actionItems : []).length === 0 && (
-                    <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-                      <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                      <h4 className="text-lg font-semibold text-slate-900">All Clear!</h4>
-                      <p className="text-slate-500">No action items for this contract</p>
-                    </div>
+                    <motion.div 
+                      className="text-center py-16 bg-white rounded-2xl border border-slate-200/80 shadow-sm"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                      </div>
+                      <h4 className="text-xl font-bold text-slate-900 mb-2">All Clear!</h4>
+                      <p className="text-slate-500">No action items for this contract. Great job maintaining it!</p>
+                    </motion.div>
                   )}
                 </motion.div>
               )}

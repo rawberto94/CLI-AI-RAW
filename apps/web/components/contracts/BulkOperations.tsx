@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { toast } from 'sonner'
 import {
   Upload,
   Download,
@@ -38,6 +40,7 @@ export function BulkOperations() {
   ])
   const [isProcessing, setIsProcessing] = useState(false)
   const [operation, setOperation] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const selectedCount = contracts.filter(c => c.selected).length
   const selectedValue = contracts.filter(c => c.selected).reduce((sum, c) => sum + c.value, 0)
@@ -81,13 +84,13 @@ export function BulkOperations() {
       }
 
       // Show success
-      alert(`Successfully ${op}ed ${selectedCount} contracts`)
+      toast.success(`Successfully ${op}ed ${selectedCount} contracts`)
 
       // Clear selection
       setContracts(prev => prev.map(c => ({ ...c, selected: false })))
     } catch (error) {
       console.error('Bulk operation error:', error)
-      alert('Operation failed. Please try again.')
+      toast.error('Operation failed. Please try again.')
     } finally {
       setIsProcessing(false)
       setOperation(null)
@@ -154,11 +157,7 @@ export function BulkOperations() {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => {
-                    if (confirm(`Delete ${selectedCount} contracts? This cannot be undone.`)) {
-                      performBulkOperation('delete')
-                    }
-                  }}
+                  onClick={() => setDeleteDialogOpen(true)}
                   disabled={isProcessing}
                 >
                   {isProcessing && operation === 'delete' ? (
@@ -168,6 +167,17 @@ export function BulkOperations() {
                   )}
                   Delete
                 </Button>
+
+                <ConfirmDialog
+                  open={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                  title="Delete Contracts"
+                  description={`Are you sure you want to delete ${selectedCount} contracts? This action cannot be undone.`}
+                  confirmLabel="Delete All"
+                  variant="destructive"
+                  isLoading={isProcessing && operation === 'delete'}
+                  onConfirm={() => performBulkOperation('delete')}
+                />
               </div>
             </div>
           </CardContent>

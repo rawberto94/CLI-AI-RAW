@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import { 
   GitCompare, 
   X, 
@@ -130,7 +131,7 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
 
   const handleCompare = () => {
     if (selectedIds.size < 2) {
-      alert('Please select at least 2 rate cards to compare');
+      toast.warning('Please select at least 2 rate cards to compare');
       return;
     }
     

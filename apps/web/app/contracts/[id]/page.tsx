@@ -27,7 +27,6 @@ import {
   FileText,
   DollarSign,
   Shield,
-  FileCheck,
   Download,
   Sparkles,
   Clock,
@@ -51,11 +50,11 @@ import {
   X,
   Tag,
   GitCompare,
-  History,
-  Edit3
+  History
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactViewer'
 import { GenerationFlowVisualization } from '@/components/artifacts/GenerationFlowVisualization'
 import { ScoreRing } from '@/components/artifacts/ArtifactCards'
@@ -63,6 +62,7 @@ import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
 import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
 import { useWebSocket } from '@/contexts/websocket-context'
+import { useCrossModuleInvalidation } from '@/hooks/use-queries'
 import { formatCurrency, formatDate } from '@/lib/design-tokens'
 import {
   DropdownMenu,
@@ -432,10 +432,11 @@ function StatusBadge({ status }: { status: string }) {
   };
   
   const Icon = statusConfig.icon;
+  const shouldAnimate = 'animate' in statusConfig && statusConfig.animate;
   
   return (
     <Badge variant="outline" className={cn("gap-1.5 font-medium border", statusConfig.bg, statusConfig.text)}>
-      <Icon className={cn("h-3 w-3", statusConfig.animate && "animate-spin")} />
+      <Icon className={cn("h-3 w-3", shouldAnimate && "animate-spin")} />
       {statusConfig.label}
     </Badge>
   );
@@ -538,6 +539,7 @@ export default function ContractDetailPage() {
   const searchParams = useSearchParams()
   const { dataMode } = useDataMode()
   const { joinDocument, leaveDocument } = useWebSocket()
+  const crossModule = useCrossModuleInvalidation()
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -581,6 +583,10 @@ export default function ContractDetailPage() {
         headers: { 'x-data-mode': dataMode }
       })
       
+      if (response.status === 404) {
+        throw new Error('Contract not found. It may have been deleted or the ID is invalid.')
+      }
+      
       if (!response.ok) {
         throw new Error(`Failed to load contract: ${response.status}`)
       }
@@ -611,12 +617,12 @@ export default function ContractDetailPage() {
       const financialData = contract.extractedData?.financial
       setMetadata({
         contractType: overviewData?.contractType || '',
-        effectiveDate: overviewData?.effectiveDate ? new Date(overviewData.effectiveDate).toISOString().split('T')[0] : '',
-        expirationDate: overviewData?.expirationDate ? new Date(overviewData.expirationDate).toISOString().split('T')[0] : '',
+        effectiveDate: overviewData?.effectiveDate ? new Date(overviewData.effectiveDate).toISOString().split('T')[0] ?? '' : '',
+        expirationDate: overviewData?.expirationDate ? new Date(overviewData.expirationDate).toISOString().split('T')[0] ?? '' : '',
         totalValue: financialData?.totalValue?.toString() || '',
         currency: financialData?.currency || 'USD',
-        clientName: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || '',
-        supplierName: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || '',
+        clientName: String(overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name ?? ''),
+        supplierName: String(overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name ?? ''),
         description: overviewData?.summary || '',
         tags: Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : []
       })
@@ -640,6 +646,32 @@ export default function ContractDetailPage() {
   const handleRemoveTag = (tagToRemove: string) => {
     setMetadata(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tagToRemove) }))
   }
+
+  // Download contract
+  const handleDownload = useCallback(async () => {
+    try {
+      toast.info('Preparing download...')
+      const response = await fetch(`/api/contracts/${params.id}/export?format=pdf`, {
+        headers: { 'x-tenant-id': 'demo' },
+      })
+      
+      if (!response.ok) throw new Error('Export failed')
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `contract-${params.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Download started')
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('Failed to download contract')
+    }
+  }, [params.id])
 
   // Save metadata
   const handleSaveMetadata = async () => {
@@ -670,6 +702,9 @@ export default function ContractDetailPage() {
         throw new Error('Failed to save metadata')
       }
       
+      // Invalidate related caches across modules
+      crossModule.onContractChange(params.id as string)
+      
       setSaveSuccess(true)
       setIsEditing(false)
       await loadContract() // Refresh contract data
@@ -692,12 +727,12 @@ export default function ContractDetailPage() {
       const financialData = contract.extractedData?.financial
       setMetadata({
         contractType: overviewData?.contractType || '',
-        effectiveDate: overviewData?.effectiveDate ? new Date(overviewData.effectiveDate).toISOString().split('T')[0] : '',
-        expirationDate: overviewData?.expirationDate ? new Date(overviewData.expirationDate).toISOString().split('T')[0] : '',
+        effectiveDate: overviewData?.effectiveDate ? (new Date(overviewData.effectiveDate).toISOString().split('T')[0] ?? '') : '',
+        expirationDate: overviewData?.expirationDate ? (new Date(overviewData.expirationDate).toISOString().split('T')[0] ?? '') : '',
         totalValue: financialData?.totalValue?.toString() || '',
         currency: financialData?.currency || 'USD',
-        clientName: overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || '',
-        supplierName: overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || '',
+        clientName: String(overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name ?? ''),
+        supplierName: String(overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name ?? ''),
         description: overviewData?.summary || '',
         tags: Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : []
       })
@@ -732,25 +767,32 @@ export default function ContractDetailPage() {
 
   // Error state
   if (error) {
+    const isNotFound = error.includes('not found') || error.includes('404');
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center">
-              <div className="mx-auto w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
+                isNotFound ? 'bg-amber-100' : 'bg-red-100'
+              }`}>
+                <AlertCircle className={`h-6 w-6 ${isNotFound ? 'text-amber-600' : 'text-red-600'}`} />
               </div>
-              <h2 className="text-lg font-semibold text-slate-900 mb-2">Error Loading Contract</h2>
+              <h2 className="text-lg font-semibold text-slate-900 mb-2">
+                {isNotFound ? 'Contract Not Found' : 'Error Loading Contract'}
+              </h2>
               <p className="text-sm text-slate-600 mb-6">{error}</p>
               <div className="flex gap-3 justify-center">
-                <Button onClick={loadContract} size="sm">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Retry
-                </Button>
-                <Button variant="outline" size="sm" asChild>
+                {!isNotFound && (
+                  <Button onClick={loadContract} size="sm">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry
+                  </Button>
+                )}
+                <Button variant={isNotFound ? "default" : "outline"} size="sm" asChild>
                   <Link href="/contracts">
                     <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
+                    Back to Contracts
                   </Link>
                 </Button>
               </div>
@@ -951,15 +993,13 @@ export default function ContractDetailPage() {
                           variant="outline" 
                           size="sm" 
                           className="bg-white hover:bg-indigo-50 hover:border-indigo-300"
-                          asChild
+                          onClick={handleDownload}
                         >
-                          <Link href={`/contracts/${params.id}/redline`}>
-                            <Edit3 className="h-4 w-4 mr-1.5 text-indigo-600" />
-                            Redline
-                          </Link>
+                          <Download className="h-4 w-4 mr-1.5 text-indigo-600" />
+                          Download
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Edit with track changes</TooltipContent>
+                      <TooltipContent>Download original document</TooltipContent>
                     </Tooltip>
                     
                     <Tooltip>
@@ -985,12 +1025,13 @@ export default function ContractDetailPage() {
                           variant="outline" 
                           size="sm" 
                           className="bg-white hover:bg-purple-50 hover:border-purple-300"
-                          asChild
+                          onClick={() => {
+                            // Open the floating AI chatbot
+                            window.dispatchEvent(new CustomEvent('openAIChatbot'));
+                          }}
                         >
-                          <Link href={`/ai/chat?contractId=${params.id}`}>
-                            <Sparkles className="h-4 w-4 mr-1.5 text-purple-600" />
-                            Ask AI
-                          </Link>
+                          <Sparkles className="h-4 w-4 mr-1.5 text-purple-600" />
+                          Ask AI
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Chat with AI about this contract</TooltipContent>
@@ -1001,16 +1042,16 @@ export default function ContractDetailPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="bg-white hover:bg-blue-50 hover:border-blue-300"
+                          className="bg-white hover:bg-amber-50 hover:border-amber-300"
                           asChild
                         >
-                          <Link href={`/ai/compare?contracts=${params.id}`}>
-                            <FileCheck className="h-4 w-4 mr-1.5 text-blue-600" />
-                            Compare
+                          <Link href="/renewals">
+                            <Clock className="h-4 w-4 mr-1.5 text-amber-600" />
+                            Renewals
                           </Link>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Compare with similar contracts</TooltipContent>
+                      <TooltipContent>Manage renewal schedule</TooltipContent>
                     </Tooltip>
                     
                     <Tooltip>
@@ -1025,7 +1066,7 @@ export default function ContractDetailPage() {
                           Share
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Share or request approval</TooltipContent>
+                      <TooltipContent>Share with team members</TooltipContent>
                     </Tooltip>
                     
                     <Tooltip>
@@ -1033,11 +1074,11 @@ export default function ContractDetailPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="bg-white hover:bg-amber-50 hover:border-amber-300"
+                          className="bg-white hover:bg-blue-50 hover:border-blue-300"
                           onClick={() => setShowApprovalModal(true)}
                         >
-                          <CheckCircle2 className="h-4 w-4 mr-1.5 text-amber-600" />
-                          Submit for Approval
+                          <CheckCircle2 className="h-4 w-4 mr-1.5 text-blue-600" />
+                          Submit to Workflow
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Submit contract for approval workflow</TooltipContent>

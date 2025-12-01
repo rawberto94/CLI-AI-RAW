@@ -302,6 +302,54 @@ export const oauthProviders: Record<string, OAuthProvider> = {
       ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/hellosign`
       : 'http://localhost:3000/api/auth/callback/hellosign',
   },
+  'google-drive': {
+    id: 'google-drive',
+    name: 'Google Drive',
+    icon: '📁',
+    description: 'Import documents from Google Drive',
+    scopes: ['drive.readonly', 'drive.file', 'userinfo.email'],
+    authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    clientId: process.env.GOOGLE_DRIVE_CLIENT_ID || '',
+    redirectUri: process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/google-drive`
+      : 'http://localhost:3000/api/auth/callback/google-drive',
+  },
+  'sharepoint': {
+    id: 'sharepoint',
+    name: 'SharePoint / OneDrive',
+    icon: '📂',
+    description: 'Import documents from Microsoft 365',
+    scopes: ['Files.Read', 'Files.ReadWrite', 'User.Read'],
+    authorizationUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    clientId: process.env.MICROSOFT_CLIENT_ID || '',
+    redirectUri: process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/sharepoint`
+      : 'http://localhost:3000/api/auth/callback/sharepoint',
+  },
+  'dropbox': {
+    id: 'dropbox',
+    name: 'Dropbox',
+    icon: '📦',
+    description: 'Import documents from Dropbox',
+    scopes: ['files.metadata.read', 'files.content.read'],
+    authorizationUrl: 'https://www.dropbox.com/oauth2/authorize',
+    clientId: process.env.DROPBOX_CLIENT_ID || '',
+    redirectUri: process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/dropbox`
+      : 'http://localhost:3000/api/auth/callback/dropbox',
+  },
+  'box': {
+    id: 'box',
+    name: 'Box',
+    icon: '📋',
+    description: 'Import documents from Box',
+    scopes: ['root_readonly'],
+    authorizationUrl: 'https://account.box.com/api/oauth2/authorize',
+    clientId: process.env.BOX_CLIENT_ID || '',
+    redirectUri: process.env.NEXT_PUBLIC_APP_URL 
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/box`
+      : 'http://localhost:3000/api/auth/callback/box',
+  },
 };
 
 // =====================

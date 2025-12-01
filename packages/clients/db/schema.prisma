@@ -214,11 +214,60 @@ model Contract {
   textVector      Unsupported("tsvector")?
   viewCount       Int                      @default(0)
 
+  // Soft Delete Support
+  deletedAt DateTime?
+  deletedBy String?
+  isDeleted Boolean   @default(false)
+
   // Procurement Classification
   procurementCategoryId String?
   categoryL1            String?
   categoryL2            String?
   spendType             String? @default("INDIRECT")
+
+  // Financial Breakdown
+  annualValue      Decimal? @db.Decimal(15, 2)
+  monthlyValue     Decimal? @db.Decimal(15, 2)
+  paymentTerms     String? // Net30, Net60, Net90, etc.
+  paymentFrequency String? // MONTHLY, QUARTERLY, ANNUALLY, ONE_TIME
+  billingCycle     String? // ADVANCE, ARREARS
+
+  // Renewal & Expiration Tracking
+  renewalTerms        Json? // { periods: 2, duration: 12, noticeDays: 90 }
+  terminationClause   String?   @db.Text
+  noticePeriodDays    Int?
+  autoRenewalEnabled  Boolean   @default(false)
+  renewalStatus       String?   @default("PENDING") // PENDING, UPCOMING, INITIATED, IN_PROGRESS, COMPLETED, DECLINED, EXPIRED
+  renewalInitiatedAt  DateTime?
+  renewalInitiatedBy  String?
+  renewalCompletedAt  DateTime?
+  renewalNotes        String?   @db.Text
+  expirationAlertSent Boolean   @default(false)
+  expirationAlertAt   DateTime?
+
+  // Expiration Status (computed/tracked)
+  isExpired       Boolean   @default(false)
+  expiredAt       DateTime?
+  daysUntilExpiry Int? // Cached for performance, updated by job
+  expirationRisk  String?   @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL, EXPIRED
+
+  // Source Tracking
+  importSource   String? // UPLOAD, GOOGLE_DRIVE, SHAREPOINT, EMAIL, API, OCR
+  externalId     String? // ID from source system
+  externalUrl    String? // Link to source document
+  sourceMetadata Json? // Source-specific data
+  importedAt     DateTime?
+  lastSyncedAt   DateTime?
+
+  // Contract Hierarchy (Parent-Child Relationships)
+  parentContractId String? // Reference to parent contract (e.g., MSA for a SoW)
+  parentContract   Contract?  @relation("ContractHierarchy", fields: [parentContractId], references: [id])
+  childContracts   Contract[] @relation("ContractHierarchy")
+
+  // Relationship metadata
+  relationshipType String? // SOW_UNDER_MSA, AMENDMENT, ADDENDUM, RENEWAL, CHANGE_ORDER
+  relationshipNote String?   @db.Text
+  linkedAt         DateTime? // When the link was established
 
   artifacts           Artifact[]
   clauses             Clause[]
@@ -258,6 +307,41 @@ model Contract {
   @@index([tenantId, clientName])
   @@index([tenantId, supplierName])
   @@index([tenantId, categoryL1, categoryL2])
+  // Enhanced indexes for better sorting and filtering
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, uploadedAt(sort: Desc)])
+  @@index([tenantId, totalValue(sort: Desc)])
+  @@index([tenantId, expirationDate])
+  @@index([tenantId, effectiveDate])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@index([tenantId, contractType, createdAt(sort: Desc)])
+  @@index([tenantId, category, createdAt(sort: Desc)])
+  @@index([uploadedAt(sort: Desc)])
+  @@index([totalValue(sort: Desc)])
+  @@index([expirationDate])
+  @@index([effectiveDate])
+  @@index([viewCount(sort: Desc)])
+  @@index([lastViewedAt(sort: Desc)])
+  @@index([checksum])
+  // Soft delete & full-text search indexes
+  @@index([tenantId, isDeleted])
+  @@index([tenantId, isDeleted, status])
+  @@index([tenantId, isDeleted, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  // Renewal & Expiration indexes
+  @@index([renewalStatus])
+  @@index([tenantId, renewalStatus])
+  @@index([tenantId, isExpired])
+  @@index([tenantId, expirationRisk])
+  @@index([tenantId, daysUntilExpiry])
+  @@index([autoRenewalEnabled])
+  @@index([renewalInitiatedAt])
+  @@index([importSource])
+  @@index([externalId])
+  // Contract Hierarchy indexes
+  @@index([parentContractId])
+  @@index([tenantId, parentContractId])
+  @@index([relationshipType])
 }
 
 model ContractMetadata {
@@ -281,6 +365,78 @@ model ContractMetadata {
   ragSyncedAt        DateTime?
   analyticsUpdatedAt DateTime?
 
+  // Organization & Classification
+  priority     Int     @default(0) // 0=normal, 1=low, 2=medium, 3=high, 4=critical
+  importance   String? // low, medium, high, critical
+  department   String? // Finance, Legal, HR, IT, etc.
+  projectCode  String? // For project association
+  costCenter   String? // For financial tracking
+  businessUnit String? // For organizational structure
+
+  // Lifecycle tracking
+  renewalReminder DateTime?
+  reviewDate      DateTime?
+  archiveDate     DateTime?
+  retentionPeriod Int? // Days to retain after expiration
+
+  // Compliance & Audit
+  complianceStatus String?   @default("pending") // pending, compliant, non-compliant, needs-review
+  lastAuditDate    DateTime?
+  nextAuditDate    DateTime?
+  auditNotes       String?
+
+  // Analytics
+  riskScore       Int? @default(0) // 0-100
+  valueScore      Int? @default(0) // 0-100 importance/value score
+  complexityScore Int? @default(0) // 0-100
+  accessCount     Int  @default(0)
+
+  // Renewal Tracking (extended)
+  renewalPriority      String?   @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
+  renewalOwner         String? // User ID responsible for renewal
+  renewalDeadline      DateTime? // Internal deadline before contract expires
+  renewalChecklistDone Boolean   @default(false)
+  renewalChecklist     Json?     @default("[]") // { item: string, done: boolean, doneAt: DateTime }[]
+  lastRenewalDate      DateTime?
+  renewalCount         Int       @default(0) // How many times renewed
+
+  // Negotiation Tracking
+  negotiationStatus    String? // DRAFT, IN_NEGOTIATION, PENDING_SIGNATURE, EXECUTED, TERMINATED
+  negotiationStartedAt DateTime?
+  negotiationRound     Int       @default(0)
+  negotiationNotes     String?   @db.Text
+  lastNegotiatedBy     String?
+  lastNegotiatedAt     DateTime?
+
+  // Performance Tracking
+  performanceScore  Int?      @default(0) // 0-100 based on SLA compliance
+  slaComplianceRate Decimal?  @db.Decimal(5, 2) // Percentage
+  issueCount        Int       @default(0)
+  activeIssues      Int       @default(0)
+  resolvedIssues    Int       @default(0)
+  lastIssueAt       DateTime?
+  performanceNotes  String?   @db.Text
+
+  // AI/RAG Metadata
+  aiSummary         String?   @db.Text // Cached AI-generated summary
+  aiKeyInsights     Json?     @default("[]") // Key points extracted by AI
+  aiRiskFactors     Json?     @default("[]") // AI-identified risks
+  aiRecommendations Json?     @default("[]") // AI suggestions
+  lastAiAnalysis    DateTime?
+  aiAnalysisVersion String? // Model version used
+  embeddingVersion  String? // Track embedding model version
+  embeddingCount    Int       @default(0)
+  lastEmbeddingAt   DateTime?
+
+  // Expiration & Archive
+  expirationHandled  Boolean   @default(false)
+  expirationAction   String? // RENEWED, TERMINATED, ARCHIVED, EXTENDED
+  expirationActionAt DateTime?
+  expirationActionBy String?
+  archiveReason      String?
+  archivedAt         DateTime?
+  archivedBy         String?
+
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
@@ -288,6 +444,26 @@ model ContractMetadata {
   @@index([tags])
   @@index([dataQualityScore])
   @@index([indexedAt])
+  @@index([tenantId, priority(sort: Desc)])
+  @@index([tenantId, department])
+  @@index([tenantId, projectCode])
+  @@index([tenantId, complianceStatus])
+  @@index([renewalReminder])
+  @@index([reviewDate])
+  @@index([riskScore(sort: Desc)])
+  @@index([valueScore(sort: Desc)])
+  // Enhanced indexes
+  @@index([renewalPriority])
+  @@index([renewalOwner])
+  @@index([renewalDeadline])
+  @@index([negotiationStatus])
+  @@index([performanceScore(sort: Desc)])
+  @@index([tenantId, renewalPriority])
+  @@index([tenantId, negotiationStatus])
+  @@index([tenantId, performanceScore(sort: Desc)])
+  @@index([lastAiAnalysis])
+  @@index([expirationHandled])
+  @@index([archivedAt])
   @@map("contract_metadata")
 }
 
@@ -472,6 +648,36 @@ model Artifact {
   lastPropagatedAt  DateTime?
   propagationStatus String?   @default("synced")
 
+  // Version Tracking
+  generationVersion  Int       @default(1)
+  parentArtifactId   String? // For derived artifacts
+  regeneratedAt      DateTime?
+  regeneratedBy      String?
+  regenerationReason String?
+
+  // Quality Metrics
+  qualityScore      Int? @default(0) // 0-100
+  completenessScore Int? @default(0) // How complete is the extraction
+  accuracyScore     Int? @default(0) // Accuracy of extracted data
+
+  // User Feedback
+  userRating     Int? // 1-5 stars
+  feedbackNotes  String?   @db.Text
+  feedbackBy     String?
+  feedbackAt     DateTime?
+  isUserVerified Boolean   @default(false)
+  verifiedBy     String?
+  verifiedAt     DateTime?
+
+  // Processing Context
+  modelUsed      String? // gpt-4o-mini, gpt-4, claude-3, etc.
+  promptVersion  String? // Track prompt template version
+  tokensUsed     Int?
+  processingCost Decimal?  @db.Decimal(10, 6) // Cost in USD
+  errorCount     Int       @default(0)
+  lastError      String?
+  lastErrorAt    DateTime?
+
   // Relations
   contract    Contract                 @relation(fields: [contractId], references: [id], onDelete: Cascade)
   editHistory ArtifactEdit[]
@@ -488,6 +694,14 @@ model Artifact {
   @@index([lastPropagatedAt])
   @@index([propagationStatus])
   @@index([lastEditedAt])
+  // Enhanced indexes
+  @@index([generationVersion])
+  @@index([qualityScore(sort: Desc)])
+  @@index([userRating(sort: Desc)])
+  @@index([isUserVerified])
+  @@index([modelUsed])
+  @@index([tenantId, qualityScore(sort: Desc)])
+  @@index([tenantId, isUserVerified])
 }
 
 model ArtifactEdit {
@@ -2728,16 +2942,27 @@ model WorkflowStepExecution {
 // ============================================
 
 model Integration {
-  id                 String    @id @default(cuid())
-  tenantId           String    @map("tenant_id")
-  name               String
-  description        String?
-  type               String // ERP, PROCUREMENT, SIGNATURE, CLM, ANALYTICS, AI, CLOUD
-  provider           String // SAP, Coupa, DocuSign, etc.
-  status             String    @default("DISCONNECTED") // CONNECTED, DISCONNECTED, ERROR, SYNCING
-  version            String?
-  config             Json? // Connection configuration (encrypted credentials)
-  credentials        Json? // Encrypted credentials
+  id          String  @id @default(cuid())
+  tenantId    String  @map("tenant_id")
+  name        String
+  description String?
+  type        String // ERP, PROCUREMENT, SIGNATURE, CLM, ANALYTICS, AI, CLOUD, STORAGE
+  provider    String // SAP, Coupa, DocuSign, google-drive, sharepoint, dropbox, etc.
+  status      String  @default("disconnected") // connected, disconnected, error, syncing
+  version     String?
+  config      Json? // Connection configuration (encrypted credentials)
+  credentials Json? // Encrypted credentials
+
+  // OAuth tokens for cloud storage integrations
+  accessToken    String?   @map("access_token")
+  refreshToken   String?   @map("refresh_token")
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  scope          String?
+  accountEmail   String?   @map("account_email")
+  accountName    String?   @map("account_name")
+  connectedAt    DateTime? @map("connected_at")
+  connectedBy    String?   @map("connected_by")
+
   lastSyncAt         DateTime? @map("last_sync_at")
   lastHealthCheck    DateTime? @map("last_health_check")
   healthStatus       String?   @default("UNKNOWN") // HEALTHY, DEGRADED, DOWN, UNKNOWN
@@ -2841,4 +3066,250 @@ model DocumentShare {
   @@index([sharedWith])
   @@index([accessToken])
   @@map("document_shares")
+}
+
+// ============================================
+// Contract Health & Expiration Tracking Models
+// ============================================
+
+model ContractHealthScore {
+  id         String @id @default(cuid())
+  contractId String @unique @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Component Scores (0-100)
+  overallScore     Int @default(0) @map("overall_score")
+  riskScore        Int @default(0) @map("risk_score")
+  complianceScore  Int @default(0) @map("compliance_score")
+  financialScore   Int @default(0) @map("financial_score")
+  operationalScore Int @default(0) @map("operational_score")
+  renewalReadiness Int @default(0) @map("renewal_readiness") // How ready for renewal
+  documentQuality  Int @default(0) @map("document_quality") // Quality of contract doc
+
+  // Score Breakdown
+  factors       Json @default("[]") // Detailed factor breakdown
+  strengths     Json @default("[]") // Contract strengths
+  weaknesses    Json @default("[]") // Areas of concern
+  opportunities Json @default("[]") // Improvement opportunities
+
+  // Trend Tracking
+  previousScore  Int?   @map("previous_score")
+  scoreChange    Int    @default(0) @map("score_change")
+  trendDirection String @default("stable") @map("trend_direction") // improving, declining, stable
+  trendHistory   Json   @default("[]") @map("trend_history") // Last 12 scores
+
+  // Alerts
+  alertLevel   String    @default("none") @map("alert_level") // none, low, medium, high, critical
+  activeAlerts Json      @default("[]") @map("active_alerts")
+  alertCount   Int       @default(0) @map("alert_count")
+  lastAlertAt  DateTime? @map("last_alert_at")
+
+  // Benchmarking
+  industryAverage Int? @map("industry_average")
+  percentileRank  Int? @map("percentile_rank") // Where this contract ranks
+
+  calculatedAt DateTime @default(now()) @map("calculated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([overallScore(sort: Desc)])
+  @@index([alertLevel])
+  @@index([calculatedAt])
+  @@index([tenantId, overallScore(sort: Desc)])
+  @@index([tenantId, alertLevel])
+  @@index([trendDirection])
+  @@index([riskScore(sort: Desc)])
+  @@index([renewalReadiness(sort: Desc)])
+  @@map("contract_health_scores")
+}
+
+model ContractExpiration {
+  id         String @id @default(cuid())
+  contractId String @unique @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Expiration Details
+  expirationDate  DateTime  @map("expiration_date")
+  daysUntilExpiry Int       @map("days_until_expiry")
+  isExpired       Boolean   @default(false) @map("is_expired")
+  expiredAt       DateTime? @map("expired_at")
+
+  // Risk Assessment
+  expirationRisk String @default("LOW") @map("expiration_risk") // LOW, MEDIUM, HIGH, CRITICAL, EXPIRED
+  riskFactors    Json   @default("[]") @map("risk_factors")
+  impactScore    Int    @default(0) @map("impact_score") // Business impact 0-100
+
+  // Value at Risk
+  contractValue Decimal? @map("contract_value") @db.Decimal(15, 2)
+  annualValue   Decimal? @map("annual_value") @db.Decimal(15, 2)
+  valueAtRisk   Decimal? @map("value_at_risk") @db.Decimal(15, 2)
+
+  // Renewal Status
+  renewalStatus      String   @default("PENDING") @map("renewal_status") // PENDING, UPCOMING, INITIATED, IN_PROGRESS, COMPLETED, DECLINED, EXPIRED, NOT_RENEWING
+  renewalProbability Decimal? @map("renewal_probability") @db.Decimal(5, 2) // AI-predicted probability
+  recommendedAction  String?  @map("recommended_action") // RENEW, RENEGOTIATE, TERMINATE, REPLACE
+
+  // Ownership & Assignment
+  ownerId    String?   @map("owner_id")
+  ownerName  String?   @map("owner_name")
+  assignedTo String?   @map("assigned_to")
+  assignedAt DateTime? @map("assigned_at")
+
+  // Alert Tracking
+  alertsSent    Json      @default("[]") @map("alerts_sent") // { type, sentAt, sentTo }[]
+  lastAlertSent DateTime? @map("last_alert_sent")
+  nextAlertDue  DateTime? @map("next_alert_due")
+  alertsEnabled Boolean   @default(true) @map("alerts_enabled")
+
+  // Notice Period
+  noticePeriodDays Int?      @map("notice_period_days")
+  noticeDeadline   DateTime? @map("notice_deadline")
+  noticeGiven      Boolean   @default(false) @map("notice_given")
+  noticeGivenAt    DateTime? @map("notice_given_at")
+  noticeGivenBy    String?   @map("notice_given_by")
+
+  // Auto-Renewal
+  autoRenewalEnabled Boolean @default(false) @map("auto_renewal_enabled")
+  autoRenewalTerms   Json?   @map("auto_renewal_terms")
+
+  // Resolution
+  resolution      String? // RENEWED, TERMINATED, REPLACED, ARCHIVED, EXTENDED
+  resolutionDate  DateTime? @map("resolution_date")
+  resolutionBy    String?   @map("resolution_by")
+  resolutionNotes String?   @map("resolution_notes") @db.Text
+  newContractId   String?   @map("new_contract_id") // If replaced/renewed
+
+  // Contract Reference
+  contractTitle String? @map("contract_title")
+  supplierName  String? @map("supplier_name")
+  clientName    String? @map("client_name")
+  contractType  String? @map("contract_type")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([expirationDate])
+  @@index([daysUntilExpiry])
+  @@index([isExpired])
+  @@index([expirationRisk])
+  @@index([renewalStatus])
+  @@index([ownerId])
+  @@index([assignedTo])
+  @@index([resolution])
+  @@index([tenantId, isExpired])
+  @@index([tenantId, expirationRisk])
+  @@index([tenantId, renewalStatus])
+  @@index([tenantId, daysUntilExpiry])
+  @@index([tenantId, expirationDate])
+  @@index([noticePeriodDays])
+  @@index([noticeDeadline])
+  @@index([nextAlertDue])
+  @@index([valueAtRisk(sort: Desc)])
+  @@map("contract_expirations")
+}
+
+model ExpirationAlert {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Alert Details
+  alertType String @map("alert_type") // EXPIRATION_30_DAYS, EXPIRATION_60_DAYS, EXPIRATION_90_DAYS, NOTICE_DEADLINE, EXPIRED, CUSTOM
+  severity  String @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  title     String
+  message   String @db.Text
+
+  // Recipients
+  recipients Json @default("[]") // { userId, email, name }[]
+  sentTo     Json @default("[]") @map("sent_to") // Actual recipients
+
+  // Delivery Status
+  status        String    @default("PENDING") // PENDING, SENT, DELIVERED, FAILED, ACKNOWLEDGED
+  sentAt        DateTime? @map("sent_at")
+  deliveredAt   DateTime? @map("delivered_at")
+  failedAt      DateTime? @map("failed_at")
+  failureReason String?   @map("failure_reason")
+
+  // Acknowledgment
+  acknowledgedBy     String?   @map("acknowledged_by")
+  acknowledgedAt     DateTime? @map("acknowledged_at")
+  acknowledgedAction String?   @map("acknowledged_action") // DISMISS, SNOOZE, ASSIGN, TAKE_ACTION
+  snoozeUntil        DateTime? @map("snooze_until")
+
+  // Scheduling
+  scheduledFor     DateTime @map("scheduled_for")
+  daysBeforeExpiry Int      @map("days_before_expiry")
+
+  // Metadata
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([alertType])
+  @@index([severity])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([tenantId, status])
+  @@index([tenantId, alertType])
+  @@index([acknowledgedAt])
+  @@map("expiration_alerts")
+}
+
+model RenewalHistory {
+  id         String @id @default(cuid())
+  contractId String @map("contract_id")
+  tenantId   String @map("tenant_id")
+
+  // Renewal Details
+  renewalNumber Int    @map("renewal_number") // 1st renewal, 2nd renewal, etc.
+  renewalType   String @map("renewal_type") // STANDARD, RENEGOTIATED, EXTENDED, AUTO_RENEWED
+
+  // Previous Terms
+  previousStartDate DateTime? @map("previous_start_date")
+  previousEndDate   DateTime? @map("previous_end_date")
+  previousValue     Decimal?  @map("previous_value") @db.Decimal(15, 2)
+  previousTerms     Json?     @map("previous_terms")
+
+  // New Terms
+  newStartDate DateTime @map("new_start_date")
+  newEndDate   DateTime @map("new_end_date")
+  newValue     Decimal? @map("new_value") @db.Decimal(15, 2)
+  newTerms     Json?    @map("new_terms")
+
+  // Value Change
+  valueChange        Decimal? @map("value_change") @db.Decimal(15, 2)
+  valueChangePercent Decimal? @map("value_change_percent") @db.Decimal(5, 2)
+  termExtension      Int?     @map("term_extension") // Days extended
+
+  // Negotiation Summary
+  negotiationDays   Int?  @map("negotiation_days")
+  negotiationRounds Int?  @map("negotiation_rounds")
+  keyChanges        Json? @default("[]") @map("key_changes")
+
+  // People
+  initiatedBy String?   @map("initiated_by")
+  initiatedAt DateTime? @map("initiated_at")
+  approvedBy  String?   @map("approved_by")
+  approvedAt  DateTime? @map("approved_at")
+  completedBy String?   @map("completed_by")
+  completedAt DateTime  @map("completed_at")
+
+  // Status
+  status String  @default("COMPLETED") // COMPLETED, CANCELLED, SUPERSEDED
+  notes  String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([renewalType])
+  @@index([completedAt])
+  @@index([tenantId, contractId])
+  @@index([valueChange(sort: Desc)])
+  @@map("renewal_history")
 }

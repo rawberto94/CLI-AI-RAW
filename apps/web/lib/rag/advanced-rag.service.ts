@@ -223,7 +223,9 @@ Focus on:
       max_tokens: 200,
     });
     
-    const content = response.choices[0]?.message?.content || '[]';
+    let content = response.choices[0]?.message?.content || '[]';
+    // Strip markdown code blocks if present
+    content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const variations = JSON.parse(content) as string[];
     return [query, ...variations.slice(0, 3)];
   } catch (error) {
@@ -448,7 +450,9 @@ Return relevance scores as JSON array:`,
       max_tokens: 200,
     });
     
-    const content = response.choices[0]?.message?.content || '[]';
+    let content = response.choices[0]?.message?.content || '[]';
+    // Strip markdown code blocks if present
+    content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const scores = JSON.parse(content) as number[];
     
     const reranked = candidates.map((c, i) => ({
