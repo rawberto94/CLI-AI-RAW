@@ -1024,6 +1024,23 @@ export default function ContractDetailPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
+                          className="bg-white hover:bg-red-50 hover:border-red-300"
+                          asChild
+                        >
+                          <Link href={`/contracts/${params.id}/redline`}>
+                            <GitCompare className="h-4 w-4 mr-1.5 text-red-600" />
+                            Redline
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit and redline this contract</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
                           className="bg-white hover:bg-purple-50 hover:border-purple-300"
                           onClick={() => {
                             // Open the floating AI chatbot
@@ -1082,6 +1099,40 @@ export default function ContractDetailPage() {
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Submit contract for approval workflow</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-indigo-50 hover:border-indigo-300"
+                          asChild
+                        >
+                          <Link href={`/contracts/${params.id}/sign`}>
+                            <Pencil className="h-4 w-4 mr-1.5 text-indigo-600" />
+                            Signatures
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Collect signatures for this contract</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="bg-white hover:bg-emerald-50 hover:border-emerald-300"
+                          asChild
+                        >
+                          <Link href={`/contracts/${params.id}/store`}>
+                            <Shield className="h-4 w-4 mr-1.5 text-emerald-600" />
+                            Finalize & Store
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Finalize and archive the contract</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>

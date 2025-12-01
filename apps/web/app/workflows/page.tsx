@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { WorkflowBuilder } from '@/components/workflows/WorkflowBuilder'
-import { ApprovalsQueue } from '@/components/workflows/ApprovalsQueue'
+import { SimpleApprovalsQueue } from '@/components/workflows/SimpleApprovalsQueue'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -310,7 +310,7 @@ function WorkflowsPageContent() {
                 transition={{ duration: 0.2 }}
                 className="h-[calc(100vh-220px)]"
               >
-                <ApprovalsQueue />
+                <SimpleApprovalsQueue />
               </motion.div>
             )}
 
