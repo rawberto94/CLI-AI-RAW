@@ -308,17 +308,41 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
 
     setSending(true);
     
-    // Simulate sending
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Update all signers to 'sent'
-    setSigners(prev => prev.map(s => ({ ...s, status: 'sent' as const })));
-    
-    toast.success('Contract sent for signatures!', {
-      description: `${signers.length} signer(s) have been notified.`,
-    });
-    
-    setSending(false);
+    try {
+      // Create signature request via API
+      const response = await fetch('/api/signatures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractId: id,
+          signers: signers.map(s => ({
+            name: s.name,
+            email: s.email,
+            role: s.role,
+            order: s.order,
+          })),
+          message: 'Please review and sign this contract',
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send signature request');
+      }
+      
+      // Update all signers to 'sent'
+      setSigners(prev => prev.map(s => ({ ...s, status: 'sent' as const })));
+      
+      toast.success('Contract sent for signatures!', {
+        description: `${signers.length} signer(s) have been notified.`,
+      });
+    } catch (error) {
+      console.error('Error sending signature request:', error);
+      toast.error('Failed to send signature request');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleCompleteSignatures = () => {

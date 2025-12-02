@@ -69,6 +69,7 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [showShortcuts, setShowShortcuts] = useState(false)
 
   // Define all available commands
   const allCommands: Command[] = useMemo(() => [
@@ -391,8 +392,8 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
       shortcut: '?',
       keywords: ['help', 'shortcuts', 'keyboard'],
       action: () => {
-        // TODO: Show shortcuts help
-        console.log('Show shortcuts')
+        setShowShortcuts(true)
+        setOpen(false)
       },
     },
     {
@@ -607,8 +608,104 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Keyboard Shortcuts Help Dialog */}
+      <Dialog open={showShortcuts} onOpenChange={setShowShortcuts}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+                <CommandIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Keyboard Shortcuts</h2>
+                <p className="text-sm text-gray-500">Navigate faster with these shortcuts</p>
+              </div>
+            </div>
+
+            {/* Global */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                Global
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <ShortcutRow keys={['⌘', 'K']} description="Open command palette" />
+                <ShortcutRow keys={['?']} description="Show this help" />
+                <ShortcutRow keys={['Esc']} description="Close modal/cancel" />
+                <ShortcutRow keys={['/']} description="Focus search" />
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500" />
+                Navigation
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <ShortcutRow keys={['g', 'd']} description="Go to Dashboard" />
+                <ShortcutRow keys={['g', 'c']} description="Go to Contracts" />
+                <ShortcutRow keys={['g', 'u']} description="Upload Contract" />
+                <ShortcutRow keys={['g', 'a']} description="Go to Analytics" />
+                <ShortcutRow keys={['g', 'w']} description="Go to Workflows" />
+                <ShortcutRow keys={['g', 'r']} description="Go to Rate Cards" />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                Actions
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <ShortcutRow keys={['⌘', 'S']} description="Save changes" />
+                <ShortcutRow keys={['⌘', 'Z']} description="Undo" />
+                <ShortcutRow keys={['⌘', '⇧', 'Z']} description="Redo" />
+                <ShortcutRow keys={['⌘', 'E']} description="Export document" />
+                <ShortcutRow keys={['⌘', '⇧', 'S']} description="Share" />
+                <ShortcutRow keys={['⌘', '↵']} description="Submit/confirm" />
+              </div>
+            </div>
+
+            {/* Contract Context */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                Contract Actions
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <ShortcutRow keys={['e']} description="Edit metadata" />
+                <ShortcutRow keys={['r']} description="Open redline editor" />
+                <ShortcutRow keys={['a']} description="View AI analysis" />
+                <ShortcutRow keys={['v']} description="Compare versions" />
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
+}
+
+// Shortcut display row
+function ShortcutRow({ keys, description }: { keys: string[]; description: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-gray-50">
+      <span className="text-sm text-gray-600">{description}</span>
+      <div className="flex items-center gap-1">
+        {keys.map((key, i) => (
+          <kbd
+            key={i}
+            className="px-2 py-1 text-xs font-mono bg-gray-100 border border-gray-300 rounded min-w-[24px] text-center"
+          >
+            {key}
+          </kbd>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function CommandItem({

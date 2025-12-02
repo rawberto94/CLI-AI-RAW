@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, use, useCallback } from 'react';
+import React, { useState, use, useCallback, useEffect } from 'react';
 import { RedlineEditor, type Change } from '@/components/contracts/RedlineEditor';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, FileText, Clock, Users, Shield, Download, Share2, MoreHorizontal, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileText, Clock, Users, Shield, Download, Share2, MoreHorizontal, CheckCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -15,8 +15,8 @@ import {
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
-// Mock document content
-const mockContent = `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below. This Agreement shall govern all services provided.
+// Fallback content if contract text unavailable
+const fallbackContent = `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below. This Agreement shall govern all services provided.
 
 1. Term and Termination
 
@@ -38,12 +38,45 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
   const { id } = use(params);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [documentStatus, setDocumentStatus] = useState<'draft' | 'review' | 'approved'>('review');
+  const [content, setContent] = useState<string>(fallbackContent);
+  const [contractTitle, setContractTitle] = useState<string>('Contract - Redline');
+  const [loading, setLoading] = useState(true);
   
   const currentUser = {
     id: 'current-user',
     name: 'You',
     avatar: undefined,
   };
+
+  // Fetch contract content
+  useEffect(() => {
+    async function fetchContractContent() {
+      try {
+        const response = await fetch(`/api/contracts/${id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.contract) {
+            setContractTitle(data.contract.contractTitle || data.contract.filename || 'Contract - Redline');
+            
+            // Try to get text content from various sources
+            const rawText = data.contract.rawText 
+              || data.contract.extractedData?.rawText 
+              || data.contract.extractedData?.overview?.summary
+              || null;
+            
+            if (rawText && rawText.length > 100) {
+              setContent(rawText);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching contract:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchContractContent();
+  }, [id]);
 
   const handleSave = useCallback((content: string, changes: Change[]) => {
     console.log('Saving document:', { content, changes });
@@ -66,6 +99,17 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
     });
   }, []);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+          <p className="text-slate-500">Loading contract...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
@@ -83,7 +127,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
               <div>
                 <h1 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-blue-500" />
-                  Master Services Agreement - Redline
+                  {contractTitle}
                 </h1>
                 <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
                   <span className="flex items-center gap-1">
@@ -155,7 +199,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
       <div className="flex-1 max-w-[1600px] w-full mx-auto px-6 py-6">
         <RedlineEditor
           documentId={id}
-          initialContent={mockContent}
+          initialContent={content}
           currentUser={currentUser}
           onSave={handleSave}
           className="h-[calc(100vh-180px)]"
