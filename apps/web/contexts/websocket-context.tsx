@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { io, type Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 
 // =====================
 // Types
@@ -206,6 +207,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         approvalId: notification.approvalId,
         contractId: notification.contractId,
       });
+      // Show toast notification
+      toast.info(notification.title, {
+        description: notification.message,
+        action: notification.contractId ? {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${notification.contractId}`,
+        } : undefined,
+      });
     });
 
     newSocket.on('approval:completed', (notification: ApprovalNotification) => {
@@ -222,6 +231,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         approvalId: notification.approvalId,
         contractId: notification.contractId,
       });
+      // Show success toast
+      toast.success(notification.title, {
+        description: notification.message,
+        action: notification.contractId ? {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${notification.contractId}`,
+        } : undefined,
+      });
     });
 
     newSocket.on('approval:update', (notification: ApprovalNotification) => {
@@ -237,6 +254,45 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       dispatchRealTimeEvent('approval:completed', { 
         approvalId: notification.approvalId,
         contractId: notification.contractId,
+      });
+      // Show update toast
+      toast(notification.title, {
+        description: notification.message,
+        action: notification.contractId ? {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${notification.contractId}`,
+        } : undefined,
+      });
+    });
+
+    // Handle signature notifications
+    newSocket.on('signature:requested', (data: { contractId: string; signerEmail: string; title: string }) => {
+      toast.info('Signature Requested', {
+        description: `${data.signerEmail} has been invited to sign "${data.title}"`,
+        action: {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${data.contractId}/sign`,
+        },
+      });
+    });
+
+    newSocket.on('signature:completed', (data: { contractId: string; signerName: string; title: string }) => {
+      toast.success('Signature Received', {
+        description: `${data.signerName} has signed "${data.title}"`,
+        action: {
+          label: 'View',
+          onClick: () => window.location.href = `/contracts/${data.contractId}/sign`,
+        },
+      });
+    });
+
+    newSocket.on('signature:all_completed', (data: { contractId: string; title: string }) => {
+      toast.success('All Signatures Complete! 🎉', {
+        description: `"${data.title}" is ready to be finalized`,
+        action: {
+          label: 'Finalize',
+          onClick: () => window.location.href = `/contracts/${data.contractId}/store`,
+        },
       });
     });
 
