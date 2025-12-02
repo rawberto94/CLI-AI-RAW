@@ -2898,6 +2898,7 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
     let ragContext = '';
     let ragSources: string[] = [];
     let contractContext = '';
+    let ragSearchResults: any[] = []; // Store actual RAG results
 
     // If we have a specific contract ID, fetch its details directly
     if (context?.contractId) {
@@ -2910,7 +2911,7 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
     if (needsRAG) {
       try {
         // Use advanced RAG to find relevant contract content
-        const ragResults = await hybridSearch(message, {
+        const searchResults = await hybridSearch(message, {
           mode: 'hybrid',
           k: 5,
           rerank: true,
@@ -2918,12 +2919,13 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
           filters: context?.tenantId ? { tenantId: context.tenantId } : {},
         });
 
-        if (ragResults.length > 0) {
-          ragContext = `\n\n**Relevant Contract Information Found:**\n${ragResults.map((r, i) => 
+        if (searchResults.length > 0) {
+          ragSearchResults = searchResults; // Store for returning to frontend
+          ragContext = `\n\n**Relevant Contract Information Found:**\n${searchResults.map((r, i) => 
             `[${i + 1}] From "${r.contractName}" (${Math.round(r.score * 100)}% match):\n${r.text.slice(0, 500)}...`
           ).join('\n\n')}`;
           
-          ragSources = [...ragSources, ...ragResults.map(r => `Contract: ${r.contractName} (ID: ${r.contractId})`)];
+          ragSources = [...ragSources, ...searchResults.map(r => `Contract: ${r.contractName} (ID: ${r.contractId})`)];
         }
       } catch (ragError) {
         console.error('RAG search error:', ragError);
@@ -2981,9 +2983,25 @@ When answering:
 
     const responseContent = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
 
+    // Format RAG results for frontend - use actual search results
+    const formattedRagResults = ragSearchResults.length > 0 
+      ? ragSearchResults.slice(0, 5).map(r => ({
+          contractId: r.contractId,
+          contractName: r.contractName || 'Unknown Contract',
+          score: r.score || 0.85,
+          text: r.text?.slice(0, 200) + '...' || '',
+          chunkType: r.chunkType || 'content',
+        }))
+      : [];
+
     return {
       response: responseContent,
       sources: ragSources.length > 0 ? ragSources : ['AI-generated response', 'CLM Database'],
+      ragResults: formattedRagResults.length > 0 ? formattedRagResults : undefined,
+      usedRAG: ragSearchResults.length > 0,
+      ragSearchCount: ragSearchResults.length,
+      confidence: ragSearchResults.length > 0 ? 0.95 : 0.85,
+      intent: { type: context?.intent?.type || 'general' },
       suggestedActions: [
         { label: '🔍 Search Contracts', action: 'search-contracts' },
         { label: '📊 View Dashboard', action: 'view-dashboard' },

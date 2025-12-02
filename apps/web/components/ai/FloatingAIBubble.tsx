@@ -114,7 +114,17 @@ interface Message {
     source?: string;
     confidence?: number;
     processingTime?: number;
+    ragSources?: RAGSource[];
+    usedRAG?: boolean;
+    intent?: string;
   };
+}
+
+interface RAGSource {
+  contractId: string;
+  contractName: string;
+  score: number;
+  snippet?: string;
 }
 
 interface ActionButton {
@@ -212,6 +222,26 @@ const formatContent = (content: string) => {
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\n/g, "<br />");
 };
+
+// Get page context for better RAG targeting
+function getPageContext(pathname: string | null): string {
+  if (!pathname) return 'dashboard';
+  
+  if (pathname.includes('/contracts/') && pathname.includes('/redline')) return 'contract-redline';
+  if (pathname.includes('/contracts/') && pathname.includes('/sign')) return 'contract-signatures';
+  if (pathname.includes('/contracts/') && pathname.includes('/store')) return 'contract-storage';
+  if (pathname.includes('/contracts/') && pathname.includes('/versions')) return 'contract-versions';
+  if (pathname.match(/\/contracts\/[^\/]+$/)) return 'contract-detail';
+  if (pathname === '/contracts') return 'contracts-list';
+  if (pathname === '/workflows') return 'workflows';
+  if (pathname === '/renewals') return 'renewals';
+  if (pathname === '/analytics') return 'analytics';
+  if (pathname === '/suppliers') return 'suppliers';
+  if (pathname === '/templates') return 'templates';
+  if (pathname === '/settings') return 'settings';
+  
+  return 'dashboard';
+}
 
 export function FloatingAIBubble() {
   const router = useRouter();
@@ -440,6 +470,10 @@ export function FloatingAIBubble() {
     try {
       // Call real AI API with RAG integration
       const startTime = Date.now();
+      
+      // Detect page context for better RAG targeting
+      const pageContext = getPageContext(pathname);
+      
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -453,7 +487,10 @@ export function FloatingAIBubble() {
             ...conversationContext,
             contractId: currentContractId,
             context: currentContractId ? 'contract-detail' : 'global',
+            pageContext,
+            currentPage: pathname,
           },
+          useRAG: true, // Always use RAG for smart responses
           useMock: false, // Use real OpenAI
         }),
       });
@@ -471,6 +508,14 @@ export function FloatingAIBubble() {
         variant: a.action.includes('view') ? 'primary' : 'default',
       })) || [];
 
+      // Parse RAG sources from API response
+      const ragSources: RAGSource[] = data.ragResults?.map((r: any) => ({
+        contractId: r.contractId,
+        contractName: r.contractName,
+        score: r.score,
+        snippet: r.text?.slice(0, 150),
+      })) || [];
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -479,9 +524,12 @@ export function FloatingAIBubble() {
         suggestions: data.suggestions,
         actions: actions.length > 0 ? actions : undefined,
         metadata: {
-          confidence: 0.95,
+          confidence: data.confidence || 0.95,
           processingTime,
           source: data.sources?.[0] || "ai",
+          ragSources: ragSources.length > 0 ? ragSources : undefined,
+          usedRAG: data.usedRAG || ragSources.length > 0,
+          intent: data.intent?.type,
         },
       };
 
@@ -989,13 +1037,44 @@ export function FloatingAIBubble() {
                                         minute: "2-digit",
                                       })}
                                     </span>
-                                    {message.metadata?.confidence && message.role === "assistant" && (
-                                      <span className="text-xs opacity-50 flex items-center gap-1.5">
-                                        <Zap className="w-3 h-3" />
-                                        {Math.round(message.metadata.confidence * 100)}% confident
-                                      </span>
-                                    )}
+                                    <div className="flex items-center gap-3">
+                                      {/* RAG indicator */}
+                                      {message.metadata?.usedRAG && (
+                                        <span className="text-xs text-blue-400 flex items-center gap-1">
+                                          <Search className="w-3 h-3" />
+                                          RAG
+                                        </span>
+                                      )}
+                                      {message.metadata?.confidence && message.role === "assistant" && (
+                                        <span className="text-xs opacity-50 flex items-center gap-1.5">
+                                          <Zap className="w-3 h-3" />
+                                          {Math.round(message.metadata.confidence * 100)}%
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
+                                  
+                                  {/* RAG Sources - collapsible */}
+                                  {message.metadata?.ragSources && message.metadata.ragSources.length > 0 && (
+                                    <div className="mt-3 pt-3 border-t border-white/10">
+                                      <details className="text-xs">
+                                        <summary className="cursor-pointer text-blue-400 hover:text-blue-300 flex items-center gap-1.5">
+                                          <FileText className="w-3 h-3" />
+                                          {message.metadata.ragSources.length} source(s) used
+                                        </summary>
+                                        <ul className="mt-2 space-y-1.5 text-slate-400">
+                                          {message.metadata.ragSources.slice(0, 3).map((src, i) => (
+                                            <li key={i} className="flex items-center justify-between gap-2 bg-white/5 rounded px-2 py-1">
+                                              <span className="truncate">{src.contractName}</span>
+                                              <span className="text-green-400 flex-shrink-0">
+                                                {Math.round(src.score * 100)}%
+                                              </span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </details>
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* Message actions - show on hover */}
