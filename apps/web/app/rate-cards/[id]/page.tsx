@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { EnhancedRateCardEditor } from '@/components/rate-cards/EnhancedRateCardEditor';
 import { AuditLogViewer } from '@/components/rate-cards/AuditLogViewer';
@@ -9,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, History, FileText } from 'lucide-react';
+import { ArrowLeft, History, FileText, CreditCard, Loader2 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
 
 export default function RateCardDetailPage() {
@@ -69,56 +70,108 @@ export default function RateCardDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+        <div className="container mx-auto p-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-24"
+          >
+            <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/25 mb-6">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            </div>
+            <p className="text-slate-600 font-medium">Loading rate card...</p>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   if (!rateCard) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-12">Rate card not found</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/30 to-rose-50/20">
+        <div className="container mx-auto p-6">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-24"
+          >
+            <div className="p-4 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl shadow-lg shadow-red-500/25 mb-6">
+              <CreditCard className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Rate Card Not Found</h2>
+            <p className="text-slate-600 mb-6">The requested rate card could not be located.</p>
+            <Button 
+              onClick={() => router.push('/rate-cards')}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Rate Cards
+            </Button>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <RateCardBreadcrumbs />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="container mx-auto p-6 space-y-6">
+        <RateCardBreadcrumbs />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.back()}
+            className="hover:bg-white/80"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+            <CreditCard className="w-6 h-6 text-white" />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold">Rate Card Details</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              Rate Card Details
+            </h1>
+            <p className="text-slate-600 mt-1">
               {rateCard.roleStandardized || rateCard.roleOriginal} - {rateCard.supplierName}
             </p>
           </div>
         </div>
         {!editMode && (
-          <Button onClick={() => setEditMode(true)}>
+          <Button 
+            onClick={() => setEditMode(true)}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25"
+          >
             Edit Rate Card
           </Button>
         )}
-      </div>
+      </motion.div>
 
       {/* Client & Status Section */}
       {!editMode && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Client & Status Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-500" />
+                Client & Status Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm text-muted-foreground">Client</div>
@@ -182,36 +235,45 @@ export default function RateCardDetailPage() {
             )}
 
             {rateCard.editedAt && (
-              <div className="pt-4 border-t text-sm text-muted-foreground">
+              <div className="pt-4 border-t text-sm text-slate-500">
                 Last edited by {rateCard.editedBy || 'Unknown'} on{' '}
                 {new Date(rateCard.editedAt).toLocaleString()}
               </div>
             )}
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue={editMode ? 'edit' : 'details'} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="details" disabled={editMode}>
-            <FileText className="h-4 w-4 mr-2" />
-            Details
-          </TabsTrigger>
-          <TabsTrigger value="edit">
-            Edit
-          </TabsTrigger>
-          <TabsTrigger value="history" disabled={editMode}>
-            <History className="h-4 w-4 mr-2" />
-            History
-          </TabsTrigger>
-        </TabsList>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <Tabs defaultValue={editMode ? 'edit' : 'details'} className="space-y-6">
+          <TabsList className="bg-white/80 backdrop-blur-sm border border-white/50 p-1">
+            <TabsTrigger value="details" disabled={editMode} className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <FileText className="h-4 w-4 mr-2" />
+              Details
+            </TabsTrigger>
+            <TabsTrigger value="edit" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Edit
+            </TabsTrigger>
+            <TabsTrigger value="history" disabled={editMode} className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <History className="h-4 w-4 mr-2" />
+              History
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="details">
-          <Card>
-            <CardHeader>
-              <CardTitle>Rate Card Information</CardTitle>
-            </CardHeader>
+          <TabsContent value="details">
+            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-500" />
+                  Rate Card Information
+                </CardTitle>
+              </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 <div>
@@ -231,8 +293,8 @@ export default function RateCardDetailPage() {
                   <div className="font-medium">{rateCard.country}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Daily Rate</div>
-                  <div className="font-medium text-lg">
+                  <div className="text-sm text-slate-500">Daily Rate</div>
+                  <div className="font-semibold text-lg bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                     {new Intl.NumberFormat('en-US', {
                       style: 'currency',
                       currency: rateCard.currency || 'USD',
@@ -240,8 +302,8 @@ export default function RateCardDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Effective Date</div>
-                  <div className="font-medium">
+                  <div className="text-sm text-slate-500">Effective Date</div>
+                  <div className="font-medium text-slate-900">
                     {rateCard.effectiveDate
                       ? new Date(rateCard.effectiveDate).toLocaleDateString()
                       : 'N/A'}
@@ -267,6 +329,8 @@ export default function RateCardDetailPage() {
           />
         </TabsContent>
       </Tabs>
+      </motion.div>
+    </div>
     </div>
   );
 }

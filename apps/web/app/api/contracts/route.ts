@@ -326,32 +326,65 @@ async function handler(request: NextRequest) {
 
       const totalPages = Math.ceil(total / limit);
 
+      // Fetch category details for contracts that have categories
+      const categoryNames = [...new Set(contracts.filter(c => c.category).map(c => c.category!))];
+      let categoryMap: Map<string, { id: string; name: string; color: string; icon: string; path: string }> = new Map();
+      
+      if (categoryNames.length > 0) {
+        const taxonomyCategories = await prisma.taxonomyCategory.findMany({
+          where: {
+            tenantId,
+            name: { in: categoryNames },
+          },
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            icon: true,
+            path: true,
+          },
+        });
+        
+        for (const cat of taxonomyCategories) {
+          categoryMap.set(cat.name, cat);
+        }
+      }
+
       return {
         success: true,
         data: {
-          contracts: contracts.map((contract) => ({
-            id: contract.id,
-            title: contract.contractTitle || contract.originalName || contract.fileName,
-            filename: contract.fileName,
-            originalName: contract.originalName || contract.fileName,
-            status: contract.status.toLowerCase(),
-            fileSize: contract.fileSize.toString(),
-            mimeType: contract.mimeType,
-            uploadedAt: contract.uploadedAt?.toISOString() || contract.createdAt.toISOString(),
-            createdAt: contract.createdAt.toISOString(),
-            contractType: contract.contractType || "Unknown",
-            clientName: contract.clientName,
-            supplierName: contract.supplierName,
-            category: contract.category,
-            totalValue: contract.totalValue ? Number(contract.totalValue) : null,
-            currency: contract.currency,
-            effectiveDate: contract.effectiveDate?.toISOString(),
-            expirationDate: contract.expirationDate?.toISOString(),
-            description: contract.description,
-            tags: contract.tags,
-            viewCount: contract.viewCount,
-            lastViewedAt: contract.lastViewedAt?.toISOString(),
-          })),
+          contracts: contracts.map((contract) => {
+            const categoryInfo = contract.category ? categoryMap.get(contract.category) : null;
+            return {
+              id: contract.id,
+              title: contract.contractTitle || contract.originalName || contract.fileName,
+              filename: contract.fileName,
+              originalName: contract.originalName || contract.fileName,
+              status: contract.status.toLowerCase(),
+              fileSize: contract.fileSize.toString(),
+              mimeType: contract.mimeType,
+              uploadedAt: contract.uploadedAt?.toISOString() || contract.createdAt.toISOString(),
+              createdAt: contract.createdAt.toISOString(),
+              contractType: contract.contractType || "Unknown",
+              clientName: contract.clientName,
+              supplierName: contract.supplierName,
+              category: categoryInfo ? {
+                id: categoryInfo.id,
+                name: categoryInfo.name,
+                color: categoryInfo.color,
+                icon: categoryInfo.icon,
+                path: categoryInfo.path,
+              } : null,
+              totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+              currency: contract.currency,
+              effectiveDate: contract.effectiveDate?.toISOString(),
+              expirationDate: contract.expirationDate?.toISOString(),
+              description: contract.description,
+              tags: contract.tags,
+              viewCount: contract.viewCount,
+              lastViewedAt: contract.lastViewedAt?.toISOString(),
+            };
+          }),
           pagination: {
             total,
             limit,

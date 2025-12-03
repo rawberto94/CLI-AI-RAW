@@ -184,3 +184,15 @@ export * from './usePaginatedData';
 
 // Toast (re-export)
 export * from './use-toast';
+
+// Contracts page hooks
+export * from './use-contract-filters';
+export * from './use-contract-sorting';
+export * from './use-pagination';
+export * from './use-contract-selection';
+export * from './use-bulk-operations';
+export * from './use-contracts-keyboard-shortcuts';
+export * from './use-contracts-page';
+export * from './use-saved-filters';
+export * from './use-contract-analytics';
+export * from './use-contract-export';

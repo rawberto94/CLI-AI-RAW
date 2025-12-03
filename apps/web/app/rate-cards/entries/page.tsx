@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { EnhancedRateCardFilters } from '@/components/rate-cards/EnhancedRateCardFilters';
 import { RateCardTable } from '@/components/rate-cards/RateCardTable';
 import { BulkEditModal } from '@/components/rate-cards/BulkEditModal';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, FileText, Database } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDataMode } from '@/contexts/DataModeContext';
@@ -120,63 +121,91 @@ export default function RateCardEntriesPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <RateCardBreadcrumbs />
-      
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Rate Card Entries</h1>
-          <p className="text-muted-foreground">
-            View, filter, and manage all rate card entries
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/rate-cards/upload">
-            <Button variant="outline">
-              <Upload className="h-4 w-4 mr-2" />
-              Upload CSV
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
+      <div className="container mx-auto p-6 space-y-6">
+        <RateCardBreadcrumbs />
+        
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/25">
+              <Database className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                Rate Card Entries
+              </h1>
+              <p className="text-slate-600">
+                View, filter, and manage all rate card entries
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/rate-cards/upload">
+              <Button variant="outline" className="bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white">
+                <Upload className="h-4 w-4 mr-2" />
+                Upload CSV
+              </Button>
+            </Link>
+            <Button 
+              onClick={() => router.push('/rate-cards/new')}
+              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Rate Card
             </Button>
-          </Link>
-          <Button onClick={() => router.push('/rate-cards/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Rate Card
-          </Button>
-        </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <EnhancedRateCardFilters 
+            onFilterChange={setFilters}
+            matchCount={matchCount}
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <RateCardTable
+            data={rateCards}
+            onEdit={handleEdit}
+            onView={handleView}
+            onDelete={handleDeleteClick}
+            onBulkEdit={handleBulkEdit}
+            loading={isLoading}
+            showClientColumn={true}
+            showBaselineColumn={true}
+            showNegotiatedColumn={true}
+          />
+        </motion.div>
+
+        <BulkEditModal
+          open={bulkEditOpen}
+          onClose={() => setBulkEditOpen(false)}
+          selectedIds={selectedIds}
+          onSuccess={handleBulkEditSuccess}
+        />
+
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title="Delete Rate Card"
+          description="Are you sure you want to delete this rate card? This action cannot be undone."
+          variant="destructive"
+          confirmLabel="Delete"
+          onConfirm={handleConfirmDelete}
+        />
       </div>
-
-      <EnhancedRateCardFilters 
-        onFilterChange={setFilters}
-        matchCount={matchCount}
-      />
-
-      <RateCardTable
-        data={rateCards}
-        onEdit={handleEdit}
-        onView={handleView}
-        onDelete={handleDeleteClick}
-        onBulkEdit={handleBulkEdit}
-        loading={isLoading}
-        showClientColumn={true}
-        showBaselineColumn={true}
-        showNegotiatedColumn={true}
-      />
-
-      <BulkEditModal
-        open={bulkEditOpen}
-        onClose={() => setBulkEditOpen(false)}
-        selectedIds={selectedIds}
-        onSuccess={handleBulkEditSuccess}
-      />
-
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        title="Delete Rate Card"
-        description="Are you sure you want to delete this rate card? This action cannot be undone."
-        variant="destructive"
-        confirmLabel="Delete"
-        onConfirm={handleConfirmDelete}
-      />
     </div>
   );
 }

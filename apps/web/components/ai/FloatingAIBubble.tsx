@@ -184,6 +184,13 @@ const QUICK_ACTIONS = [
     color: "from-emerald-500 to-green-500",
     description: "Spending breakdown",
   },
+  {
+    icon: FileText,
+    label: "Categories",
+    query: "Show me all procurement categories",
+    color: "from-indigo-500 to-violet-500",
+    description: "Taxonomy & categorization",
+  },
 ];
 
 const KEYBOARD_SHORTCUTS = [
@@ -897,37 +904,37 @@ export function FloatingAIBubble() {
                   : "bottom-4 right-4 w-[560px] h-[780px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)]"
               }`}
             >
-              <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-purple-500/20 border border-white/20">
-                {/* Glass background - cleaner gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+              <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-gray-400/30 border border-gray-200">
+                {/* White/Light background */}
+                <div className="absolute inset-0 bg-white" />
                 
-                {/* Subtle animated border glow */}
-                <div className="absolute inset-0 rounded-3xl opacity-50 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10" />
+                {/* Subtle gradient accent at top */}
+                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
 
                 {/* Content */}
                 <div className="relative h-full flex flex-col">
-                  {/* Header - Cleaner and more spacious */}
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/5">
+                  {/* Header - Clean white theme */}
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gray-50/80">
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
                           <Bot className="w-6 h-6 text-white" />
                         </div>
                         <motion.span
                           animate={{ scale: [1, 1.2, 1] }}
                           transition={{ repeat: Infinity, duration: 2 }}
-                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-3 border-slate-900"
+                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white"
                         />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                           Contract AI Assistant
-                          <Badge className="bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-purple-200 text-xs border-purple-500/40 px-2">
+                          <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-xs border-purple-200 px-2">
                             <Zap className="w-3 h-3 mr-1" />
                             Pro
                           </Badge>
                         </h3>
-                        <p className="text-sm text-slate-400 flex items-center gap-2 mt-0.5">
+                        <p className="text-sm text-gray-500 flex items-center gap-2 mt-0.5">
                           {isTyping ? (
                             <span className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
@@ -950,26 +957,26 @@ export function FloatingAIBubble() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 rounded-xl text-slate-400 hover:text-white hover:bg-white/10"
+                            className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                           >
                             <Settings className="w-5 h-5" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-slate-900 border-slate-700 text-white min-w-[200px]">
-                          <DropdownMenuItem onClick={() => setIsSoundEnabled(!isSoundEnabled)} className="hover:bg-slate-800 cursor-pointer py-3">
+                        <DropdownMenuContent align="end" className="bg-white border-gray-200 text-gray-900 min-w-[200px] shadow-lg">
+                          <DropdownMenuItem onClick={() => setIsSoundEnabled(!isSoundEnabled)} className="hover:bg-gray-100 cursor-pointer py-3">
                             {isSoundEnabled ? <Volume2 className="w-4 h-4 mr-3" /> : <VolumeX className="w-4 h-4 mr-3" />}
                             {isSoundEnabled ? "Mute sounds" : "Enable sounds"}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setShowShortcuts(true)} className="hover:bg-slate-800 cursor-pointer py-3">
+                          <DropdownMenuItem onClick={() => setShowShortcuts(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Keyboard className="w-4 h-4 mr-3" />
                             Keyboard shortcuts
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-slate-700" />
-                          <DropdownMenuItem onClick={exportChat} className="hover:bg-slate-800 cursor-pointer py-3">
+                          <DropdownMenuSeparator className="bg-gray-200" />
+                          <DropdownMenuItem onClick={exportChat} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Download className="w-4 h-4 mr-3" />
                             Export chat
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={handleClearChat} className="hover:bg-slate-800 text-red-400 cursor-pointer py-3">
+                          <DropdownMenuItem onClick={handleClearChat} className="hover:bg-gray-100 text-red-600 cursor-pointer py-3">
                             <Trash2 className="w-4 h-4 mr-3" />
                             Clear conversation
                           </DropdownMenuItem>
@@ -979,7 +986,7 @@ export function FloatingAIBubble() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-xl text-slate-400 hover:text-white hover:bg-white/10"
+                        className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                         onClick={() => setIsExpanded(!isExpanded)}
                       >
                         {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
@@ -987,7 +994,7 @@ export function FloatingAIBubble() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-xl text-slate-400 hover:text-white hover:bg-white/10"
+                        className="h-10 w-10 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                         onClick={toggleOpen}
                       >
                         <X className="w-5 h-5" />
@@ -996,7 +1003,7 @@ export function FloatingAIBubble() {
                   </div>
 
                   {/* Messages - More spacious */}
-                  <div className="flex-1 overflow-hidden">
+                  <div className="flex-1 overflow-hidden bg-gray-50/50">
                     <ScrollArea className="h-full">
                       <div ref={scrollRef} className="p-6 space-y-6">
                         {messages.map((message) => (
@@ -1012,7 +1019,7 @@ export function FloatingAIBubble() {
                               }`}
                             >
                               {message.role === "assistant" && (
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-3 flex-shrink-0 shadow-lg">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-3 flex-shrink-0 shadow-md">
                                   <Sparkles className="w-5 h-5 text-white" />
                                 </div>
                               )}
@@ -1020,8 +1027,8 @@ export function FloatingAIBubble() {
                                 <div
                                   className={`rounded-2xl px-5 py-4 ${
                                     message.role === "user"
-                                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-br-lg"
-                                      : "bg-white/10 text-slate-100 rounded-bl-lg backdrop-blur-sm border border-white/5"
+                                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-br-lg shadow-md"
+                                      : "bg-white text-gray-800 rounded-bl-lg shadow-sm border border-gray-100"
                                   }`}
                                 >
                                   <div
@@ -1030,8 +1037,8 @@ export function FloatingAIBubble() {
                                   />
                                   
                                   {/* Metadata footer */}
-                                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/10">
-                                    <span className="text-xs opacity-50">
+                                  <div className={`flex items-center justify-between mt-3 pt-3 border-t ${message.role === "user" ? "border-white/20" : "border-gray-100"}`}>
+                                    <span className={`text-xs ${message.role === "user" ? "text-white/60" : "text-gray-400"}`}>
                                       {message.timestamp.toLocaleTimeString([], {
                                         hour: "2-digit",
                                         minute: "2-digit",
@@ -1040,13 +1047,13 @@ export function FloatingAIBubble() {
                                     <div className="flex items-center gap-3">
                                       {/* RAG indicator */}
                                       {message.metadata?.usedRAG && (
-                                        <span className="text-xs text-blue-400 flex items-center gap-1">
+                                        <span className="text-xs text-blue-500 flex items-center gap-1">
                                           <Search className="w-3 h-3" />
                                           RAG
                                         </span>
                                       )}
                                       {message.metadata?.confidence && message.role === "assistant" && (
-                                        <span className="text-xs opacity-50 flex items-center gap-1.5">
+                                        <span className="text-xs text-gray-400 flex items-center gap-1.5">
                                           <Zap className="w-3 h-3" />
                                           {Math.round(message.metadata.confidence * 100)}%
                                         </span>
@@ -1056,17 +1063,17 @@ export function FloatingAIBubble() {
                                   
                                   {/* RAG Sources - collapsible */}
                                   {message.metadata?.ragSources && message.metadata.ragSources.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-white/10">
+                                    <div className="mt-3 pt-3 border-t border-gray-100">
                                       <details className="text-xs">
-                                        <summary className="cursor-pointer text-blue-400 hover:text-blue-300 flex items-center gap-1.5">
+                                        <summary className="cursor-pointer text-blue-500 hover:text-blue-600 flex items-center gap-1.5">
                                           <FileText className="w-3 h-3" />
                                           {message.metadata.ragSources.length} source(s) used
                                         </summary>
-                                        <ul className="mt-2 space-y-1.5 text-slate-400">
+                                        <ul className="mt-2 space-y-1.5 text-gray-600">
                                           {message.metadata.ragSources.slice(0, 3).map((src, i) => (
-                                            <li key={i} className="flex items-center justify-between gap-2 bg-white/5 rounded px-2 py-1">
+                                            <li key={i} className="flex items-center justify-between gap-2 bg-gray-50 rounded px-2 py-1">
                                               <span className="truncate">{src.contractName}</span>
-                                              <span className="text-green-400 flex-shrink-0">
+                                              <span className="text-green-600 flex-shrink-0">
                                                 {Math.round(src.score * 100)}%
                                               </span>
                                             </li>
@@ -1084,7 +1091,7 @@ export function FloatingAIBubble() {
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={() => copyMessage(message.id, message.content)}
-                                          className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors shadow-lg"
+                                          className="w-8 h-8 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors shadow-md border border-gray-200"
                                         >
                                           {copiedId === message.id ? (
                                             <Check className="w-4 h-4 text-green-500" />
@@ -1099,10 +1106,10 @@ export function FloatingAIBubble() {
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={() => reactToMessage(message.id, "like")}
-                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-lg ${
+                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-md border ${
                                             message.reaction === "like"
-                                              ? "bg-green-500/20 text-green-500"
-                                              : "bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                                              ? "bg-green-50 text-green-600 border-green-200"
+                                              : "bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900 border-gray-200"
                                           }`}
                                         >
                                           <ThumbsUp className="w-4 h-4" />
@@ -1114,10 +1121,10 @@ export function FloatingAIBubble() {
                                       <TooltipTrigger asChild>
                                         <button
                                           onClick={() => reactToMessage(message.id, "dislike")}
-                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-lg ${
+                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-md border ${
                                             message.reaction === "dislike"
-                                              ? "bg-red-500/20 text-red-500"
-                                              : "bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+                                              ? "bg-red-50 text-red-600 border-red-200"
+                                              : "bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900 border-gray-200"
                                           }`}
                                         >
                                           <ThumbsDown className="w-4 h-4" />
@@ -1143,7 +1150,7 @@ export function FloatingAIBubble() {
                                     className={`text-sm px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
                                       action.variant === "primary"
                                         ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-purple-500/25"
-                                        : "bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10"
+                                        : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200 shadow-sm"
                                     }`}
                                   >
                                     {action.icon && <action.icon className="w-4 h-4" />}
@@ -1164,7 +1171,7 @@ export function FloatingAIBubble() {
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ delay: idx * 0.05 }}
                                     onClick={() => handleSendMessage(suggestion)}
-                                    className="text-sm px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 hover:border-white/20 transition-all"
+                                    className="text-sm px-4 py-2 rounded-full bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
                                   >
                                     {suggestion}
                                   </motion.button>
@@ -1181,25 +1188,25 @@ export function FloatingAIBubble() {
                             animate={{ opacity: 1 }}
                             className="flex items-center gap-3"
                           >
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
                               <Loader2 className="w-5 h-5 text-white animate-spin" />
                             </div>
-                            <div className="bg-white/10 rounded-2xl rounded-bl-lg px-5 py-4 backdrop-blur-sm border border-white/5">
+                            <div className="bg-white rounded-2xl rounded-bl-lg px-5 py-4 shadow-sm border border-gray-100">
                               <div className="flex gap-2">
                                 <motion.span
                                   animate={{ y: [0, -5, 0] }}
                                   transition={{ repeat: Infinity, duration: 0.6 }}
-                                  className="w-2.5 h-2.5 bg-slate-400 rounded-full"
+                                  className="w-2.5 h-2.5 bg-gray-400 rounded-full"
                                 />
                                 <motion.span
                                   animate={{ y: [0, -5, 0] }}
                                   transition={{ repeat: Infinity, duration: 0.6, delay: 0.1 }}
-                                  className="w-2.5 h-2.5 bg-slate-400 rounded-full"
+                                  className="w-2.5 h-2.5 bg-gray-400 rounded-full"
                                 />
                                 <motion.span
                                   animate={{ y: [0, -5, 0] }}
                                   transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                                  className="w-2.5 h-2.5 bg-slate-400 rounded-full"
+                                  className="w-2.5 h-2.5 bg-gray-400 rounded-full"
                                 />
                               </div>
                             </div>
@@ -1211,8 +1218,8 @@ export function FloatingAIBubble() {
 
                   {/* Quick Actions - Show when conversation just started */}
                   {messages.length === 1 && (
-                    <div className="px-6 pb-3">
-                      <p className="text-sm text-slate-500 mb-3 flex items-center gap-2 font-medium">
+                    <div className="px-6 pb-3 bg-white">
+                      <p className="text-sm text-gray-500 mb-3 flex items-center gap-2 font-medium">
                         <Zap className="w-4 h-4" />
                         Quick Actions
                       </p>
@@ -1224,18 +1231,18 @@ export function FloatingAIBubble() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
                             onClick={() => handleSendMessage(action.query)}
-                            className="group flex items-center gap-3 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all text-left"
+                            className="group flex items-center gap-3 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-100 hover:border-gray-200 transition-all text-left"
                           >
                             <div
-                              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-lg`}
+                              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-md`}
                             >
                               <action.icon className="w-5 h-5 text-white" />
                             </div>
                             <div className="min-w-0">
-                              <span className="text-sm font-medium text-slate-200 group-hover:text-white block truncate">
+                              <span className="text-sm font-medium text-gray-800 group-hover:text-gray-900 block truncate">
                                 {action.label}
                               </span>
-                              <span className="text-xs text-slate-500 block truncate">
+                              <span className="text-xs text-gray-500 block truncate">
                                 {action.description}
                               </span>
                             </div>
@@ -1245,8 +1252,8 @@ export function FloatingAIBubble() {
                     </div>
                   )}
 
-                  {/* Input area - Cleaner and more spacious */}
-                  <div className="p-6 border-t border-white/10 bg-white/5">
+                  {/* Input area - Clean white theme */}
+                  <div className="p-6 border-t border-gray-200 bg-white">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -1261,7 +1268,7 @@ export function FloatingAIBubble() {
                           onChange={(e) => setInput(e.target.value)}
                           placeholder="Ask anything about your contracts..."
                           disabled={isLoading}
-                          className="w-full bg-white/10 border-white/10 text-white placeholder:text-slate-500 rounded-2xl pr-24 focus:border-purple-500/50 focus:ring-purple-500/20 h-14 text-base px-5"
+                          className="w-full bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-2xl pr-24 focus:border-purple-500 focus:ring-purple-500/20 h-14 text-base px-5"
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                           {/* Voice input button */}
@@ -1272,8 +1279,8 @@ export function FloatingAIBubble() {
                                 onClick={toggleVoiceInput}
                                 className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
                                   isListening
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "hover:bg-white/10 text-slate-500 hover:text-white"
+                                    ? "bg-red-100 text-red-600"
+                                    : "hover:bg-gray-100 text-gray-500 hover:text-gray-900"
                                 }`}
                               >
                                 {isListening ? (
@@ -1293,7 +1300,7 @@ export function FloatingAIBubble() {
                         type="submit"
                         size="icon"
                         disabled={!input.trim() || isLoading}
-                        className="h-11 w-11 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-11 w-11 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -1303,10 +1310,10 @@ export function FloatingAIBubble() {
                       </Button>
                     </form>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-[10px] text-slate-500">
-                        Press <kbd className="px-1 py-0.5 bg-slate-800 rounded text-[9px]">Enter</kbd> to send
+                      <p className="text-[10px] text-gray-500">
+                        Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] text-gray-600">Enter</kbd> to send
                       </p>
-                      <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <p className="text-[10px] text-gray-500 flex items-center gap-1">
                         <Sparkles className="w-2.5 h-2.5" />
                         Powered by AI
                       </p>
@@ -1332,17 +1339,17 @@ export function FloatingAIBubble() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-80 shadow-2xl"
+                className="bg-white border border-gray-200 rounded-2xl p-6 w-80 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-white font-semibold flex items-center gap-2">
+                  <h3 className="text-gray-900 font-semibold flex items-center gap-2">
                     <Keyboard className="w-5 h-5" />
                     Keyboard Shortcuts
                   </h3>
                   <button
                     onClick={() => setShowShortcuts(false)}
-                    className="text-slate-400 hover:text-white"
+                    className="text-gray-400 hover:text-gray-900"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1350,8 +1357,8 @@ export function FloatingAIBubble() {
                 <div className="space-y-3">
                   {KEYBOARD_SHORTCUTS.map((shortcut, idx) => (
                     <div key={idx} className="flex items-center justify-between">
-                      <span className="text-sm text-slate-400">{shortcut.action}</span>
-                      <kbd className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-mono">
+                      <span className="text-sm text-gray-600">{shortcut.action}</span>
+                      <kbd className="px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded text-xs font-mono">
                         {shortcut.key}
                       </kbd>
                     </div>

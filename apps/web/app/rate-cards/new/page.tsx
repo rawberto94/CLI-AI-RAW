@@ -1,8 +1,9 @@
 'use client'
 import React, { useState } from 'react'
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Save, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 
 interface RoleRate {
   id: string
@@ -115,50 +116,68 @@ export default function AddRateCardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
-        <div className="mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
           <Link href="/rate-cards">
-            <button className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900">
+            <button className="mb-4 flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back to Rate Cards
             </button>
           </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Add New Rate Card</h1>
-          <p className="text-gray-600 mt-1">
-            Create a new rate card with supplier rates
-          </p>
-        </div>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+              <FileText className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                Add New Rate Card
+              </h1>
+              <p className="text-slate-600 mt-1">
+                Create a new rate card with supplier rates
+              </p>
+            </div>
+          </div>
+        </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6"
+          >
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Basic Information</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Supplier Name *
                   </label>
                   <input
                     type="text"
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     placeholder="e.g., TechStaff Solutions"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Client Name
                   </label>
                   <input
                     type="text"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     placeholder="e.g., SwissBank AG"
                   />
                 </div>
@@ -166,13 +185,13 @@ export default function AddRateCardPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Currency
                   </label>
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
                     <option value="CHF">CHF</option>
                     <option value="EUR">EUR</option>
@@ -180,33 +199,38 @@ export default function AddRateCardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Valid From
                   </label>
                   <input
                     type="date"
                     value={validFrom}
                     onChange={(e) => setValidFrom(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
                     Valid To
                   </label>
                   <input
                     type="date"
                     value={validTo}
                     onChange={(e) => setValidTo(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   />
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Roles and Rates */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-white/50 p-6"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Roles and Rates</h2>
               <button

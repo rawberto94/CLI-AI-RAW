@@ -468,21 +468,24 @@ model ContractMetadata {
 }
 
 model TaxonomyCategory {
-  id          String             @id @default(cuid())
-  tenantId    String
-  name        String
-  description String?
-  parentId    String?
-  level       Int                @default(0)
-  path        String
-  color       String             @default("#3B82F6")
-  icon        String             @default("folder")
-  isActive    Boolean            @default(true)
-  metadata    Json               @default("{}")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  parent      TaxonomyCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children    TaxonomyCategory[] @relation("CategoryHierarchy")
+  id                     String             @id @default(cuid())
+  tenantId               String
+  name                   String
+  description            String?
+  parentId               String?
+  level                  Int                @default(0)
+  path                   String
+  color                  String             @default("#3B82F6")
+  icon                   String             @default("folder")
+  sortOrder              Int                @default(0)
+  isActive               Boolean            @default(true)
+  keywords               String[]           @default([])
+  aiClassificationPrompt String?
+  metadata               Json               @default("{}")
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  parent                 TaxonomyCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children               TaxonomyCategory[] @relation("CategoryHierarchy")
 
   @@unique([tenantId, name])
   @@index([tenantId])

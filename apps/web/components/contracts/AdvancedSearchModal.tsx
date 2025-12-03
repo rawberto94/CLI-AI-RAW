@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, DollarSign, Building2, Truck, FileText, Sparkles } from 'lucide-react';
 
 export interface AdvancedSearchFilters {
   query?: string;
@@ -44,77 +44,115 @@ export function AdvancedSearchModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Advanced Search
+      <DialogContent className="sm:max-w-[640px] bg-white/95 backdrop-blur-xl border-slate-200/80 shadow-2xl rounded-2xl">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-lg shadow-blue-500/25">
+              <Search className="h-5 w-5" />
+            </div>
+            <div>
+              <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent font-semibold">
+                Advanced Search
+              </span>
+              <p className="text-sm font-normal text-slate-500 mt-0.5">Find contracts with precision</p>
+            </div>
           </DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-5 py-4">
           <div className="space-y-2">
-            <Label htmlFor="query">Search Query</Label>
+            <Label htmlFor="query" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+              <FileText className="h-4 w-4 text-slate-400" />
+              Search Query
+            </Label>
             <Input
               id="query"
-              placeholder="Search contracts..."
+              placeholder="Search contracts by title, content..."
               value={filters.query || ''}
               onChange={(e) => setFilters({ ...filters, query: e.target.value })}
+              className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="clientName">Client Name</Label>
+              <Label htmlFor="clientName" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-cyan-500" />
+                Client Name
+              </Label>
               <Input
                 id="clientName"
                 placeholder="Filter by client..."
                 value={filters.clientName || ''}
                 onChange={(e) => setFilters({ ...filters, clientName: e.target.value })}
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="supplierName">Supplier Name</Label>
+              <Label htmlFor="supplierName" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <Truck className="h-4 w-4 text-teal-500" />
+                Supplier Name
+              </Label>
               <Input
                 id="supplierName"
                 placeholder="Filter by supplier..."
                 value={filters.supplierName || ''}
                 onChange={(e) => setFilters({ ...filters, supplierName: e.target.value })}
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="minValue">Min Value</Label>
+              <Label htmlFor="minValue" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-green-500" />
+                Min Value
+              </Label>
               <Input
                 id="minValue"
                 type="number"
                 placeholder="0"
                 value={filters.minValue || ''}
                 onChange={(e) => setFilters({ ...filters, minValue: e.target.value ? Number(e.target.value) : undefined })}
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxValue">Max Value</Label>
+              <Label htmlFor="maxValue" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-green-500" />
+                Max Value
+              </Label>
               <Input
                 id="maxValue"
                 type="number"
                 placeholder="No limit"
                 value={filters.maxValue || ''}
                 onChange={(e) => setFilters({ ...filters, maxValue: e.target.value ? Number(e.target.value) : undefined })}
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
               />
             </div>
           </div>
         </div>
-        <div className="flex justify-between">
-          <Button variant="outline" onClick={handleClear}>
+        <div className="flex justify-between pt-2 border-t border-slate-100">
+          <Button 
+            variant="outline" 
+            onClick={handleClear}
+            className="rounded-xl border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+          >
             <X className="mr-2 h-4 w-4" />
             Clear All
           </Button>
-          <div className="space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange?.(false)}>
+          <div className="space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={() => onOpenChange?.(false)}
+              className="rounded-xl border-slate-200 hover:bg-slate-100"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSearch}>
-              <Filter className="mr-2 h-4 w-4" />
+            <Button 
+              onClick={handleSearch}
+              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all"
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
               Apply Filters
             </Button>
           </div>

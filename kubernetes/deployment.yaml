@@ -376,3 +376,200 @@ spec:
   selector:
     matchLabels:
       app: contract-intel-app
+---
+# Workers Deployment for background jobs
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workers
+  namespace: contract-intel
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: contract-intel-workers
+  template:
+    metadata:
+      labels:
+        app: contract-intel-workers
+    spec:
+      containers:
+        - name: workers
+          image: ghcr.io/rawberto94/cli-ai-raw/workers:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          env:
+            - name: WORKER_CONCURRENCY
+              value: "5"
+            - name: WORKER_TYPE
+              value: "all"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          livenessProbe:
+            exec:
+              command: ["node", "-e", "process.exit(0)"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["node", "-e", "process.exit(0)"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# HorizontalPodAutoscaler for workers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: workers-hpa
+  namespace: contract-intel
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: workers
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+# MinIO StatefulSet for S3-compatible storage
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: contract-intel
+spec:
+  serviceName: minio-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          args: ["server", "/data", "--console-address", ":9001"]
+          ports:
+            - containerPort: 9000
+              name: api
+            - containerPort: 9001
+              name: console
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_SECRET_KEY
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: minio-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: contract-intel
+spec:
+  selector:
+    app: minio
+  ports:
+    - port: 9000
+      targetPort: 9000
+      name: api
+    - port: 9001
+      targetPort: 9001
+      name: console
+---
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: contract-intel
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-ingress
+  namespace: contract-intel
+spec:
+  podSelector:
+    matchLabels:
+      app: contract-intel-app
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal
+  namespace: contract-intel
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector: {}

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 import {
   Home,
   FolderOpen,
@@ -127,30 +127,45 @@ const navigationGroups: NavGroup[] = [
     icon: Wrench,
     items: [
       { href: "/drafts", label: "Draft Editor", icon: FileEdit },
-      { href: "/taxonomy", label: "Taxonomy", icon: Tag },
+      { href: "/settings/taxonomy", label: "Taxonomy", icon: Tag },
       { href: "/automation", label: "Automation", icon: Sparkles },
       { href: "/runs", label: "Pipeline Runs", icon: Layers },
     ],
   },
 ];
 
-// Collapsible nav group component
-function NavGroupSection({ group, pathname }: { group: NavGroup; pathname: string }) {
+// Collapsible nav group component - memoized for performance
+const NavGroupSection = memo(function NavGroupSection({ 
+  group, 
+  pathname 
+}: { 
+  group: NavGroup; 
+  pathname: string 
+}) {
   const [isOpen, setIsOpen] = useState(group.defaultOpen ?? false);
-  const hasActiveItem = group.items.some(item => pathname === item.href);
+  
+  // Memoize active state calculation
+  const hasActiveItem = useMemo(
+    () => group.items.some(item => pathname === item.href),
+    [group.items, pathname]
+  );
+  
+  const toggleOpen = useCallback(() => setIsOpen(prev => !prev), []);
   const Icon = group.icon;
 
   return (
     <div className="mb-1">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         className={cn(
-          "flex items-center w-full gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-          "hover:bg-slate-100 dark:hover:bg-slate-800",
-          hasActiveItem ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"
+          "flex items-center w-full gap-2.5 px-3 py-2.5 text-sm font-semibold rounded-xl transition-all",
+          "hover:bg-slate-100/80",
+          hasActiveItem 
+            ? "text-blue-700 bg-blue-50/50" 
+            : "text-slate-600"
         )}
       >
-        <Icon className="h-4 w-4" />
+        <Icon className={cn("h-4 w-4", hasActiveItem && "text-blue-600")} />
         <span className="flex-1 text-left">{group.label}</span>
         {isOpen ? (
           <ChevronDown className="h-4 w-4 text-slate-400" />
@@ -160,60 +175,70 @@ function NavGroupSection({ group, pathname }: { group: NavGroup; pathname: strin
       </button>
       
       {isOpen && (
-        <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-200 dark:border-slate-700 pl-2">
-          {group.items.map((item) => {
-            const active = pathname === item.href;
-            const ItemIcon = item.icon;
-            
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2.5 px-2.5 py-1.5 text-sm rounded-md transition-colors",
-                  active 
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium" 
-                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-                )}
-              >
-                <ItemIcon className="h-3.5 w-3.5" />
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <Badge 
-                    variant={item.badgeVariant || "secondary"} 
-                    className={cn(
-                      "h-5 px-1.5 text-[10px] font-semibold",
-                      item.badgeVariant === 'destructive' 
-                        ? "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400" 
-                        : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                    )}
-                  >
-                    {item.badge}
-                  </Badge>
-                )}
-              </Link>
-            );
-          })}
+        <div className="ml-4 mt-1.5 space-y-0.5 border-l-2 border-slate-200/60 pl-2">
+          {group.items.map((item) => (
+            <NavItem key={item.href} item={item} pathname={pathname} />
+          ))}
         </div>
       )}
     </div>
   );
-}
+});
+
+// Memoized nav item component
+const NavItem = memo(function NavItem({ 
+  item, 
+  pathname 
+}: { 
+  item: NavItem; 
+  pathname: string 
+}) {
+  const active = pathname === item.href;
+  const ItemIcon = item.icon;
+  
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all",
+        active 
+          ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-semibold shadow-sm" 
+          : "text-slate-600 hover:bg-slate-100/60 hover:text-slate-900"
+      )}
+    >
+      <ItemIcon className={cn("h-3.5 w-3.5", active && "text-blue-600")} />
+      <span className="flex-1">{item.label}</span>
+      {item.badge && (
+        <Badge 
+          variant={item.badgeVariant || "secondary"} 
+          className={cn(
+            "h-5 px-1.5 text-[10px] font-bold rounded-full",
+            item.badgeVariant === 'destructive' 
+              ? "bg-gradient-to-r from-rose-100 to-red-100 text-rose-700" 
+              : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
+          )}
+        >
+          {item.badge}
+        </Badge>
+      )}
+    </Link>
+  );
+});
 
 export function Sidebar() {
   const pathname = usePathname();
   
   return (
-    <aside className="hidden border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 md:block">
+    <aside className="hidden border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/50 md:block shadow-sm">
       <div className="flex h-full max-h-screen flex-col">
         {/* Header */}
-        <div className="flex h-14 items-center border-b border-slate-200 dark:border-slate-800 px-4 lg:h-[60px] lg:px-5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-              <FileText className="h-4 w-4 text-white" />
+        <div className="flex h-14 items-center border-b border-slate-200/60 px-4 lg:h-[60px] lg:px-5 bg-white/80 backdrop-blur-sm">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
+              <FileText className="h-4.5 w-4.5 text-white" />
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-sm text-slate-900 dark:text-white">PactumAI</span>
+              <span className="font-bold text-sm bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">PactumAI</span>
               <span className="text-[10px] text-slate-500 -mt-0.5">Contract Intelligence</span>
             </div>
           </Link>
@@ -223,7 +248,7 @@ export function Sidebar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="ml-auto h-8 w-8 text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  className="ml-auto h-8 w-8 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                 >
                   <Bell className="h-4 w-4" />
                   <span className="sr-only">Notifications</span>
@@ -235,20 +260,20 @@ export function Sidebar() {
         </div>
 
         {/* Quick Actions - Featured Demo */}
-        <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="p-3 border-b border-slate-200/60">
           <Link
             href="/futuristic-contracts"
             className={cn(
-              "flex items-center gap-3 p-3 rounded-xl transition-all",
+              "flex items-center gap-3 p-3.5 rounded-xl transition-all",
               "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700",
-              "text-white shadow-lg shadow-blue-500/25"
+              "text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02]"
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
               <Zap className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">AI Intelligence Hub</div>
+              <div className="font-bold text-sm">AI Intelligence Hub</div>
               <div className="text-[11px] text-blue-100">Full AI-powered experience</div>
             </div>
             <Sparkles className="h-4 w-4 animate-pulse" />
@@ -265,9 +290,9 @@ export function Sidebar() {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <div className="p-3 border-t border-slate-200/60 space-y-2 bg-white/50">
           <Link href="/upload" className="block">
-            <Button size="sm" className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100">
+            <Button size="sm" className="w-full bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 rounded-xl shadow-lg shadow-slate-900/20">
               <Upload className="mr-2 h-4 w-4" />
               Upload Contract
             </Button>

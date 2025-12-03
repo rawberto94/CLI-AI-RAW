@@ -26,6 +26,15 @@ export interface Contract {
     progress: number;
     currentStage: string;
   };
+  category?: {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+    path: string;
+  } | null;
+  type?: string;
+  createdAt?: string;
 }
 
 export interface Workflow {

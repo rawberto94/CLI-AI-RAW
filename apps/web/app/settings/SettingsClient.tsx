@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useCallback } from "react";
+import Link from "next/link";
 import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   Settings,
@@ -25,6 +27,8 @@ import {
   Save,
   RefreshCw,
   CheckCircle,
+  Tag,
+  FolderTree,
 } from "lucide-react";
 
 // Mock settings data (kept local to the client component)
@@ -129,69 +133,140 @@ export default function SettingsClient() {
       name: "Integrations",
       icon: <Globe className="w-4 h-4" />,
     },
+    {
+      id: "taxonomy",
+      name: "Taxonomy",
+      icon: <FolderTree className="w-4 h-4" />,
+      href: "/settings/taxonomy",
+    },
   ];
 
   return (
-    <div className="space-y-6">
-      <PageBreadcrumb />
-      
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Settings className="w-8 h-8 text-blue-600" />
-            System Settings
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Configure system parameters and preferences
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={handleResetDefaults}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Reset to Defaults
-          </Button>
-          <Button onClick={handleSaveChanges}>
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
-          </Button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30">
+      <div className="p-6 space-y-6">
+        <PageBreadcrumb />
+        
+        {/* Header */}
+        <motion.div 
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="flex items-center gap-4">
+            <motion.div 
+              className="p-4 rounded-2xl bg-gradient-to-br from-slate-600 via-slate-700 to-slate-800 text-white shadow-xl shadow-slate-500/30"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Settings className="w-8 h-8" />
+            </motion.div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
+                System Settings
+              </h1>
+              <p className="text-slate-600 mt-1">
+                Configure system parameters and preferences
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleResetDefaults}
+                className="bg-white/80 backdrop-blur-sm border-slate-200/60 hover:bg-white shadow-sm"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reset to Defaults
+              </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                onClick={handleSaveChanges}
+                className="bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 shadow-lg shadow-slate-500/25"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save Changes
+              </Button>
+            </motion.div>
+          </div>
+        </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Settings Navigation */}
-        <div className="lg:col-span-1">
-          <Card>
-            <CardContent className="p-4">
-              <nav className="space-y-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-colors ${
-                      activeTab === tab.id
-                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {tab.icon}
-                    {tab.name}
-                  </button>
-                ))}
-              </nav>
-            </CardContent>
-          </Card>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Settings Navigation */}
+          <motion.div 
+            className="lg:col-span-1"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <CardContent className="p-4">
+                <nav className="space-y-2">
+                  {tabs.map((tab, index) => {
+                    // External link tabs (like Taxonomy)
+                    if ('href' in tab && tab.href) {
+                      return (
+                        <motion.div
+                          key={tab.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.1 + index * 0.05 }}
+                        >
+                          <Link
+                            href={tab.href}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all duration-200 text-slate-600 hover:bg-slate-100/80"
+                          >
+                            {tab.icon}
+                            {tab.name}
+                            <span className="ml-auto text-xs text-slate-400">→</span>
+                          </Link>
+                        </motion.div>
+                      );
+                    }
+                    
+                    // Regular tab buttons
+                    return (
+                      <motion.button
+                        key={tab.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + index * 0.05 }}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all duration-200 ${
+                          activeTab === tab.id
+                            ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg shadow-slate-500/25"
+                            : "text-slate-600 hover:bg-slate-100/80"
+                        }`}
+                      >
+                        {tab.icon}
+                        {tab.name}
+                      </motion.button>
+                    );
+                  })}
+                </nav>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-        {/* Settings Content */}
-        <div className="lg:col-span-3 space-y-6">
+          {/* Settings Content */}
+          <motion.div 
+            className="lg:col-span-3 space-y-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
           {/* General Settings */}
           {activeTab === "general" && (
             <>
-              <Card>
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="w-6 h-6 text-blue-600" />
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/25">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
                     User Profile
                   </CardTitle>
                 </CardHeader>
@@ -231,19 +306,21 @@ export default function SettingsClient() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-600">Last Login:</span>
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex items-center justify-between p-3 bg-slate-50/80 rounded-lg">
+                    <span className="text-sm text-slate-600">Last Login:</span>
+                    <span className="text-sm font-medium text-slate-900">
                       {settingsData.user.lastLogin}
                     </span>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Globe className="w-6 h-6 text-green-600" />
+                    <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg shadow-lg shadow-green-500/25">
+                      <Globe className="w-5 h-5 text-white" />
+                    </div>
                     System Preferences
                   </CardTitle>
                 </CardHeader>
@@ -304,10 +381,12 @@ export default function SettingsClient() {
           {/* Security Settings */}
           {activeTab === "security" && (
             <>
-              <Card>
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Lock className="w-6 h-6 text-red-600" />
+                    <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg shadow-lg shadow-red-500/25">
+                      <Lock className="w-5 h-5 text-white" />
+                    </div>
                     Authentication & Security
                   </CardTitle>
                 </CardHeader>
@@ -369,10 +448,12 @@ export default function SettingsClient() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Key className="w-6 h-6 text-blue-600" />
+                    <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-lg shadow-blue-500/25">
+                      <Key className="w-5 h-5 text-white" />
+                    </div>
                     API Access
                   </CardTitle>
                 </CardHeader>
@@ -423,10 +504,12 @@ export default function SettingsClient() {
 
           {/* Notifications Settings */}
           {activeTab === "notifications" && (
-            <Card>
+            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Bell className="w-6 h-6 text-yellow-600" />
+                  <div className="p-2 bg-gradient-to-br from-yellow-500 to-amber-500 rounded-lg shadow-lg shadow-yellow-500/25">
+                    <Bell className="w-5 h-5 text-white" />
+                  </div>
                   Notification Preferences
                 </CardTitle>
               </CardHeader>
@@ -494,10 +577,12 @@ export default function SettingsClient() {
 
           {/* Processing Settings */}
           {activeTab === "processing" && (
-            <Card>
+            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-6 h-6 text-purple-600" />
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow-lg shadow-purple-500/25">
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
                   Processing Configuration
                 </CardTitle>
               </CardHeader>
@@ -589,10 +674,12 @@ export default function SettingsClient() {
 
           {/* Integrations Settings */}
           {activeTab === "integrations" && (
-            <Card>
+            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Globe className="w-6 h-6 text-green-600" />
+                  <div className="p-2 bg-gradient-to-br from-green-500 to-teal-500 rounded-lg shadow-lg shadow-green-500/25">
+                    <Globe className="w-5 h-5 text-white" />
+                  </div>
                   Third-Party Integrations
                 </CardTitle>
               </CardHeader>
@@ -676,8 +763,9 @@ export default function SettingsClient() {
               </CardContent>
             </Card>
           )}
-        </div>
+        </motion.div>
       </div>
+    </div>
     </div>
   );
 }

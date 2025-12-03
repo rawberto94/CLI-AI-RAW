@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { SupplierRankings } from '@/components/rate-cards/SupplierRankings';
 import { SupplierComparisonView } from '@/components/rate-cards/SupplierComparisonView';
+import { Users } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Supplier Performance | Procurement Intelligence',
@@ -10,19 +11,28 @@ export const metadata: Metadata = {
 
 export default function SuppliersPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <RateCardBreadcrumbs />
-      
-      <div>
-        <h1 className="text-3xl font-bold">Supplier Performance</h1>
-        <p className="text-muted-foreground">
-          Track supplier competitiveness and performance metrics
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-emerald-50/20">
+      <div className="container mx-auto p-6 space-y-6">
+        <RateCardBreadcrumbs />
+        
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg shadow-green-500/25">
+            <Users className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              Supplier Performance
+            </h1>
+            <p className="text-slate-600">
+              Track supplier competitiveness and performance metrics
+            </p>
+          </div>
+        </div>
 
-      <div className="space-y-6">
-        <SupplierRankings />
-        <SupplierComparisonView supplierIds={[]} />
+        <div className="space-y-6">
+          <SupplierRankings />
+          <SupplierComparisonView supplierIds={[]} />
+        </div>
       </div>
     </div>
   );

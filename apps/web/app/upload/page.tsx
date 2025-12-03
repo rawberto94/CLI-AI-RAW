@@ -291,7 +291,7 @@ export default function UploadPage() {
   const EngineIcon = currentEngine.icon;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-x-hidden">
       <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
         <PageBreadcrumb />
         
@@ -303,10 +303,15 @@ export default function UploadPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">
-                Upload Contracts
-              </h1>
-              <p className="mt-2 text-slate-600">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/25">
+                  <Upload className="h-6 w-6 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                  Upload Contracts
+                </h1>
+              </div>
+              <p className="text-slate-600 text-lg">
                 AI-powered extraction generates structured artifacts from your documents
               </p>
             </div>
@@ -317,13 +322,13 @@ export default function UploadPage() {
                 variant="outline"
                 onClick={() => setShowEngineSelector(!showEngineSelector)}
                 className={cn(
-                  "h-11 px-4 gap-2 border-2 transition-all",
+                  "h-12 px-5 gap-2.5 border-2 transition-all rounded-xl shadow-sm hover:shadow-md",
                   currentEngine.borderColor,
                   currentEngine.bgColor
                 )}
               >
-                <EngineIcon className={cn("h-4 w-4", currentEngine.textColor)} />
-                <span className={cn("font-medium", currentEngine.textColor)}>
+                <EngineIcon className={cn("h-4.5 w-4.5", currentEngine.textColor)} />
+                <span className={cn("font-semibold", currentEngine.textColor)}>
                   {currentEngine.name}
                 </span>
                 <Settings2 className="h-4 w-4 text-slate-400" />
@@ -339,10 +344,10 @@ export default function UploadPage() {
                     transition={{ duration: 0.15 }}
                     className="absolute right-0 top-full mt-2 w-80 z-20"
                   >
-                    <Card className="shadow-xl border-slate-200/80">
+                    <Card className="shadow-2xl border-slate-200/80 bg-white/95 backdrop-blur-md rounded-xl">
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-slate-600">
-                          OCR Engine
+                        <CardTitle className="text-sm font-semibold text-slate-700">
+                          Select OCR Engine
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-2">
@@ -357,28 +362,28 @@ export default function UploadPage() {
                                 setShowEngineSelector(false);
                               }}
                               className={cn(
-                                "w-full p-3 rounded-lg flex items-start gap-3 transition-all text-left",
+                                "w-full p-3.5 rounded-xl flex items-start gap-3 transition-all text-left",
                                 isSelected 
-                                  ? cn(engine.bgColor, "ring-2", engine.borderColor.replace('border-', 'ring-'))
+                                  ? cn(engine.bgColor, "ring-2", engine.borderColor.replace('border-', 'ring-'), "shadow-md")
                                   : "hover:bg-slate-50"
                               )}
                             >
                               <div className={cn(
-                                "p-2 rounded-lg bg-gradient-to-br shadow-sm",
+                                "p-2.5 rounded-xl bg-gradient-to-br shadow-lg",
                                 engine.color
                               )}>
                                 <Icon className="h-4 w-4 text-white" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-medium text-slate-900">
+                                  <span className="font-semibold text-slate-900">
                                     {engine.name}
                                   </span>
                                   {engine.badge && (
                                     <Badge 
                                       variant="secondary" 
                                       className={cn(
-                                        "text-[10px] px-1.5 py-0",
+                                        "text-[10px] px-2 py-0.5 rounded-full font-semibold shadow-sm",
                                         engine.bgColor,
                                         engine.textColor
                                       )}
@@ -394,9 +399,15 @@ export default function UploadPage() {
                                   {engine.description}
                                 </p>
                                 <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                                  <span>{engine.accuracy}% accuracy</span>
+                                  <span className="flex items-center gap-1">
+                                    <Shield className="h-3 w-3" />
+                                    {engine.accuracy}% accuracy
+                                  </span>
                                   <span>•</span>
-                                  <span>~{engine.baseTime}s base</span>
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    ~{engine.baseTime}s base
+                                  </span>
                                 </div>
                               </div>
                             </button>
@@ -429,65 +440,66 @@ export default function UploadPage() {
             {...getRootProps()}
             className={cn(
               "relative overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer",
-              "bg-white hover:bg-slate-50/50",
-              isDragActive && "border-indigo-400 bg-indigo-50/50",
-              isDragAccept && "border-green-400 bg-green-50/50",
-              isDragReject && "border-red-400 bg-red-50/50",
-              !isDragActive && "border-slate-200 hover:border-slate-300"
+              "bg-white/80 backdrop-blur-sm hover:bg-white shadow-lg shadow-slate-200/30",
+              isDragActive && "border-indigo-400 bg-indigo-50/70 shadow-indigo-200/40",
+              isDragAccept && "border-green-400 bg-green-50/70 shadow-green-200/40",
+              isDragReject && "border-red-400 bg-red-50/70 shadow-red-200/40",
+              !isDragActive && "border-slate-200 hover:border-indigo-300 hover:shadow-xl"
             )}
           >
             <input {...getInputProps()} />
             
-            <div className="p-12 text-center">
+            <div className="p-14 text-center">
               <motion.div
                 animate={{ 
-                  scale: isDragActive ? 1.1 : 1,
-                  y: isDragActive ? -8 : 0
+                  scale: isDragActive ? 1.15 : 1,
+                  y: isDragActive ? -10 : 0,
+                  rotate: isDragActive ? 5 : 0
                 }}
                 transition={{ type: "spring", stiffness: 300 }}
                 className={cn(
-                  "mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-6",
-                  "bg-gradient-to-br shadow-lg",
+                  "mx-auto w-20 h-20 rounded-2xl flex items-center justify-center mb-6",
+                  "bg-gradient-to-br shadow-xl",
                   isDragActive 
-                    ? "from-indigo-500 to-purple-600 shadow-indigo-200"
-                    : "from-slate-100 to-slate-200 shadow-slate-100"
+                    ? "from-indigo-500 to-purple-600 shadow-indigo-300/50"
+                    : "from-slate-100 to-slate-200 shadow-slate-200/50"
                 )}
               >
                 <Upload className={cn(
-                  "h-7 w-7 transition-colors",
+                  "h-8 w-8 transition-colors",
                   isDragActive ? "text-white" : "text-slate-500"
                 )} />
               </motion.div>
               
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
                 {isDragActive 
                   ? "Drop files to upload" 
                   : "Drop contract files here"}
               </h3>
-              <p className="text-sm text-slate-500 mb-4">
-                or <span className="text-indigo-600 font-medium">browse</span> to select files
+              <p className="text-base text-slate-500 mb-6">
+                or <span className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors">browse</span> to select files
               </p>
               
-              <div className="flex items-center justify-center gap-6 text-xs text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5" />
+              <div className="flex items-center justify-center gap-8 text-sm text-slate-400">
+                <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full">
+                  <FileText className="h-4 w-4" />
                   PDF, DOC, DOCX
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5" />
+                <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-full">
+                  <Shield className="h-4 w-4" />
                   Max 100MB
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <span className="flex items-center gap-2 bg-gradient-to-r from-indigo-50 to-purple-50 px-3 py-1.5 rounded-full text-indigo-600">
+                  <Sparkles className="h-4 w-4" />
                   AI-powered
                 </span>
               </div>
             </div>
             
             {/* Decorative gradient */}
-            <div className="absolute inset-0 pointer-events-none opacity-30">
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full blur-3xl" />
-              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full blur-3xl" />
+            <div className="absolute inset-0 pointer-events-none opacity-40">
+              <div className="absolute -top-32 -right-32 w-80 h-80 bg-gradient-to-br from-indigo-200 to-purple-200 rounded-full blur-3xl" />
+              <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-gradient-to-br from-blue-200 to-cyan-200 rounded-full blur-3xl" />
             </div>
           </div>
         </motion.div>

@@ -16,14 +16,23 @@ export default async function EmergingTrendsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
-      <Suspense fallback={<div>Loading emerging trends...</div>}>
-        <EmergingTrendsPanel 
-          tenantId={(session.user as any).tenantId || 'default'} 
-          autoRefresh={true}
-          refreshInterval={300000}
-        />
-      </Suspense>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20">
+      <div className="container mx-auto py-6">
+        <Suspense fallback={
+          <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 animate-pulse shadow-lg" />
+              <p className="text-slate-600">Loading emerging trends...</p>
+            </div>
+          </div>
+        }>
+          <EmergingTrendsPanel 
+            tenantId={(session.user as any).tenantId || 'default'} 
+            autoRefresh={true}
+            refreshInterval={300000}
+          />
+        </Suspense>
+      </div>
     </div>
   );
 }

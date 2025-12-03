@@ -8,6 +8,8 @@ import { TrendVisualization } from '@/components/rate-cards/TrendVisualization';
 import { CohortInformation } from '@/components/rate-cards/CohortInformation';
 import { AdvancedFilters, FilterCriteria } from '@/components/rate-cards/AdvancedFilters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion';
+import { BarChart3 } from 'lucide-react';
 
 // Lazy load heavy components for better performance
 import {
@@ -53,52 +55,70 @@ export default function RateBenchmarkingPage() {
   }, []);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <RateCardBreadcrumbs />
-      
-      <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Rate Benchmarking</h1>
-            <p className="text-muted-foreground">
-              Analyze rates against market benchmarks and identify savings opportunities
-            </p>
-          </div>
-          
-          {/* Import Actions */}
-          <div className="flex gap-2 flex-wrap">
-            <ManualRateCardInput onSuccess={handleDataRefresh} />
-            <BulkCSVUpload onSuccess={handleDataRefresh} />
-            <ExtractFromContracts onSuccess={handleDataRefresh} />
-          </div>
-        </div>
-      </div>
-
-      {/* Client & Status Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Client & Status Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clientFilter">Filter by Client</Label>
-              <Input
-                id="clientFilter"
-                placeholder="Enter client name..."
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-              />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="container mx-auto p-6 space-y-6">
+        <RateCardBreadcrumbs />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-4"
+        >
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+                <BarChart3 className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                  Rate Benchmarking
+                </h1>
+                <p className="text-slate-600">
+                  Analyze rates against market benchmarks and identify savings opportunities
+                </p>
+              </div>
             </div>
-            <div className="flex items-center space-x-2 pt-8">
-              <Checkbox
-                id="baselineOnly"
-                checked={showBaselineOnly}
-                onCheckedChange={(checked) => setShowBaselineOnly(checked as boolean)}
-              />
-              <Label htmlFor="baselineOnly" className="cursor-pointer">
-                <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
-                  ⭐ Baseline Only
+            
+            {/* Import Actions */}
+            <div className="flex gap-2 flex-wrap">
+              <ManualRateCardInput onSuccess={handleDataRefresh} />
+              <BulkCSVUpload onSuccess={handleDataRefresh} />
+              <ExtractFromContracts onSuccess={handleDataRefresh} />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Client & Status Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-lg">Client & Status Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientFilter" className="text-slate-700">Filter by Client</Label>
+                  <Input
+                    id="clientFilter"
+                    placeholder="Enter client name..."
+                    value={clientFilter}
+                    onChange={(e) => setClientFilter(e.target.value)}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="flex items-center space-x-2 pt-8">
+                  <Checkbox
+                    id="baselineOnly"
+                    checked={showBaselineOnly}
+                    onCheckedChange={(checked) => setShowBaselineOnly(checked as boolean)}
+                  />
+                  <Label htmlFor="baselineOnly" className="cursor-pointer">
+                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                      ⭐ Baseline Only
                 </Badge>
               </Label>
             </div>
@@ -152,13 +172,13 @@ export default function RateBenchmarkingPage() {
             
             {/* Baseline Comparison View */}
             {showBaselineOnly && (
-              <Card>
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle>Baseline Comparison</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ComparisonBarChart data={[]} />
-                  <p className="text-sm text-muted-foreground mt-4">
+                  <p className="text-sm text-slate-500 mt-4">
                     Comparing baseline rates vs actual rates vs market benchmarks
                   </p>
                 </CardContent>
@@ -170,7 +190,7 @@ export default function RateBenchmarkingPage() {
             
             {/* Geographic Heat Map */}
             {clientFilter && (
-              <Card>
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle>Geographic Distribution - {clientFilter}</CardTitle>
                 </CardHeader>
@@ -186,6 +206,7 @@ export default function RateBenchmarkingPage() {
           <RateCardDataRepository filters={filters} key={refreshKey} />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

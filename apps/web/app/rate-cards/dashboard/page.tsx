@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { RateCardBreadcrumbs } from '@/components/rate-cards/RateCardBreadcrumbs';
 import { DashboardKPICards } from '@/components/rate-cards/DashboardKPICards';
 import { FinancialMetricsCards } from '@/components/rate-cards/FinancialMetricsCards';
@@ -13,7 +14,7 @@ import { NegotiationStatusWidget } from '@/components/rate-cards/NegotiationStat
 import { useRouter } from 'next/navigation';
 import { useRealTimeEvents } from '@/contexts/RealTimeContext';
 import { Button } from '@/components/ui/button';
-import { Upload, Plus, RefreshCw } from 'lucide-react';
+import { Upload, Plus, RefreshCw, DollarSign } from 'lucide-react';
 import { useRateCardDashboardMetrics } from '@/hooks/use-queries';
 
 export default function RateCardDashboardPage() {
@@ -55,28 +56,62 @@ export default function RateCardDashboardPage() {
     <div className="container mx-auto p-6 space-y-6">
       <RateCardBreadcrumbs />
       
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Rate Card Dashboard</h1>
-          <p className="text-muted-foreground">
-            Monitor portfolio health and identify savings opportunities
-          </p>
+      <motion.div 
+        className="flex items-center justify-between"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="flex items-center gap-4">
+          <motion.div 
+            className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 text-white shadow-xl shadow-emerald-500/30"
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <DollarSign className="h-8 w-8" />
+          </motion.div>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent">
+              Rate Card Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Monitor portfolio health and identify savings opportunities
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => router.push('/rate-cards/import')} variant="outline">
-            <Upload className="h-4 w-4 mr-2" />
-            Import Rate Cards
-          </Button>
-          <Button onClick={() => router.push('/rate-cards/create')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Rate Card
-          </Button>
+        <div className="flex gap-3">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button 
+              onClick={() => router.push('/rate-cards/import')} 
+              variant="outline"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 shadow-sm"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import Rate Cards
+            </Button>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button 
+              onClick={() => router.push('/rate-cards/create')}
+              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg shadow-emerald-500/25"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Rate Card
+            </Button>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Client, Baseline, and Negotiation Widgets */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4">Client & Negotiation Overview</h2>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-emerald-500 to-green-500" />
+          Client & Negotiation Overview
+        </h2>
         <div className="grid gap-6 lg:grid-cols-3">
           {clientMetrics && (
             <ClientOverviewWidget metrics={clientMetrics} loading={loading} />
@@ -92,28 +127,54 @@ export default function RateCardDashboardPage() {
             />
           )}
         </div>
-      </section>
+      </motion.section>
 
       {/* KPI Cards */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4">Portfolio Overview</h2>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-blue-500 to-cyan-500" />
+          Portfolio Overview
+        </h2>
         <DashboardKPICards />
-      </section>
+      </motion.section>
 
       {/* Financial Metrics */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4">Financial Performance</h2>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+          Financial Performance
+        </h2>
         <FinancialMetricsCards />
-      </section>
+      </motion.section>
 
       {/* Performance Indicators */}
-      <section>
-        <h2 className="text-lg font-semibold mb-4">Performance Indicators</h2>
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-purple-500 to-pink-500" />
+          Performance Indicators
+        </h2>
         <PerformanceIndicators />
-      </section>
+      </motion.section>
 
       {/* Top Opportunities and Trends */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <motion.div 
+        className="grid gap-6 lg:grid-cols-2"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+      >
         <section>
           <TopOpportunitiesWidget />
         </section>
@@ -122,7 +183,7 @@ export default function RateCardDashboardPage() {
             <DashboardTrendCharts />
           </div>
         </section>
-      </div>
+      </motion.div>
     </div>
   );
 }

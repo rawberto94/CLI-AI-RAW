@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
 import {
   Users,
   Handshake,
@@ -16,7 +17,8 @@ import {
   ArrowRight,
   BarChart3,
   Target,
-  AlertCircle
+  AlertCircle,
+  LineChart
 } from 'lucide-react';
 
 export default function ProcurementAnalyticsHub() {
@@ -126,77 +128,110 @@ export default function ProcurementAnalyticsHub() {
   ];
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold text-gray-900">
-          Procurement Intelligence
-        </h1>
-        <p className="text-lg text-gray-600">
-          Comprehensive analytics and insights for strategic procurement decisions
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+      <div className="container mx-auto py-8 space-y-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/25">
+              <LineChart className="w-7 h-7 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              Procurement Intelligence
+            </h1>
+          </div>
+          <p className="text-lg text-slate-600 pl-16">
+            Comprehensive analytics and insights for strategic procurement decisions
+          </p>
+        </motion.div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {quickStats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {stat.label}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-3xl font-bold">{stat.value}</p>
-                  <span className={`text-sm font-medium ${
-                    stat.trend === 'up' ? 'text-green-600' :
-                    stat.trend === 'down' ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {stat.change}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Analytics Modules */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Analytics Modules</h2>
-          <Badge variant="outline" className="text-sm">
-            {analyticsModules.filter(m => m.status === 'active').length} Active
-          </Badge>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {quickStats.map((stat, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ scale: 1.02, y: -2 }}
+            >
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl transition-all">
+                <CardContent className="pt-6">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-500">
+                      {stat.label}
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+                        {stat.value}
+                      </p>
+                      <span className={`text-sm font-medium ${
+                        stat.trend === 'up' ? 'text-emerald-600' :
+                        stat.trend === 'down' ? 'text-red-600' : 'text-slate-600'
+                      }`}>
+                        {stat.change}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {analyticsModules.map((module) => {
-            const Icon = module.icon;
-            return (
-              <Card key={module.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 bg-gradient-to-br ${module.color} rounded-lg`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <Badge variant="default" className="bg-green-500">
-                      {module.status}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl">{module.title}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {module.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    {module.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                        <span>{feature}</span>
+        {/* Analytics Modules */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              Analytics Modules
+            </h2>
+            <Badge variant="outline" className="text-sm bg-white/80 backdrop-blur-sm border-white/50">
+              {analyticsModules.filter(m => m.status === 'active').length} Active
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {analyticsModules.map((module, index) => {
+              const Icon = module.icon;
+              return (
+                <motion.div
+                  key={module.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 + index * 0.1 }}
+                  whileHover={{ scale: 1.02, y: -4 }}
+                >
+                  <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl transition-all h-full">
+                    <CardHeader>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className={`p-3 bg-gradient-to-br ${module.color} rounded-xl shadow-lg`}>
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                        <Badge variant="default" className="bg-gradient-to-r from-emerald-500 to-teal-600">
+                          {module.status}
+                        </Badge>
                       </div>
-                    ))}
+                      <CardTitle className="text-xl">{module.title}</CardTitle>
+                      <CardDescription className="text-sm text-slate-600">
+                        {module.description}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        {module.features.map((feature, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-sm text-slate-500">
+                            <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-br ${module.color}`} />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
                   </div>
                   <Link href={module.route}>
                     <Button className="w-full" variant="outline">
@@ -257,45 +292,46 @@ export default function ProcurementAnalyticsHub() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-sm font-medium">API Services</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-sm font-medium text-slate-700">API Services</span>
               </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                 Operational
               </Badge>
             </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-sm font-medium">Mock Data</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-sm font-medium text-slate-700">Mock Data</span>
               </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                 Available
               </Badge>
             </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-yellow-500" />
-                <span className="text-sm font-medium">Real Data</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-sm font-medium text-slate-700">Real Data</span>
               </div>
-              <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
                 Pending
               </Badge>
             </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="text-sm font-medium">Data Providers</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-sm font-medium text-slate-700">Data Providers</span>
               </div>
-              <Badge variant="outline" className="bg-green-50 text-green-700">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                 5/5 Active
               </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

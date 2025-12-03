@@ -12,6 +12,7 @@ import { DataModeToggle } from '@/components/analytics/DataModeToggle';
 import { useSupplierAnalytics, type DataMode } from '@/hooks/useProcurementIntelligence';
 import { Skeleton } from '@/components/ui/skeleton-loader';
 import { Breadcrumbs } from '@/components/analytics/Breadcrumbs';
+import { motion } from 'framer-motion';
 import {
   Users,
   TrendingUp,
@@ -82,68 +83,85 @@ export default function SupplierAnalyticsPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <Breadcrumbs />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg">
-              <Users className="w-8 h-8 text-white" />
-            </div>
-            Supplier Analytics
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Comprehensive supplier performance and relationship analytics
-          </p>
-          {metadata && (
-            <p className="text-xs text-gray-500 mt-1">
-              Data source: {metadata.source} • Last updated: {new Date(metadata.lastUpdated).toLocaleString()}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-teal-50/20">
+      <div className="container mx-auto py-8 space-y-6">
+        <Breadcrumbs />
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl shadow-lg shadow-green-500/25">
+                <Users className="w-7 h-7 text-white" />
+              </div>
+              Supplier Analytics
+            </h1>
+            <p className="text-slate-600 mt-2">
+              Comprehensive supplier performance and relationship analytics
+            </p>
+            {metadata && (
+              <p className="text-xs text-slate-500 mt-1">
+                Data source: {metadata.source} • Last updated: {new Date(metadata.lastUpdated).toLocaleString()}
             </p>
           )}
         </div>
         <div className="flex gap-2">
           <DataModeToggle currentMode={mode} onModeChange={(newMode) => setMode(newMode as 'real' | 'mock')} />
-          <Button variant="outline" onClick={handleRefresh}>
+          <Button variant="outline" onClick={handleRefresh} className="bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white">
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" onClick={handleExport}>
+          <Button 
+            variant="outline" 
+            onClick={handleExport}
+            className="bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white"
+          >
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Search Suppliers</label>
-              <Input
-                placeholder="Search by name or ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Supplier ID</label>
-              <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Suppliers</SelectItem>
-                  <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
-                  <SelectItem value="SUP002">Global IT Services</SelectItem>
-                  <SelectItem value="SUP003">Innovation Partners</SelectItem>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-1.5 bg-slate-100 rounded-lg">
+                <Filter className="w-4 h-4 text-slate-600" />
+              </div>
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block text-slate-700">Search Suppliers</label>
+                <Input
+                  placeholder="Search by name or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-white"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block text-slate-700">Supplier ID</label>
+                <Select value={selectedSupplier} onValueChange={setSelectedSupplier}>
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Select supplier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Suppliers</SelectItem>
+                    <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
+                    <SelectItem value="SUP002">Global IT Services</SelectItem>
+                    <SelectItem value="SUP003">Innovation Partners</SelectItem>
                   <SelectItem value="SUP004">Digital Dynamics</SelectItem>
                   <SelectItem value="SUP005">NextGen Technologies</SelectItem>
                 </SelectContent>

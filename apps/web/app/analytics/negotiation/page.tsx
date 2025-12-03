@@ -12,6 +12,7 @@ import { DataModeToggle } from '@/components/analytics/DataModeToggle';
 import { useNegotiationPrep, type DataMode } from '@/hooks/useProcurementIntelligence';
 import { Skeleton } from '@/components/ui/skeleton-loader';
 import { Breadcrumbs } from '@/components/analytics/Breadcrumbs';
+import { motion } from 'framer-motion';
 import {
   Handshake,
   Target,
@@ -105,79 +106,96 @@ export default function NegotiationPrepPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <Breadcrumbs />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
-              <Handshake className="w-8 h-8 text-white" />
-            </div>
-            Negotiation Preparation
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Strategic insights and leverage points for successful negotiations
-          </p>
-          {metadata && (
-            <p className="text-xs text-gray-500 mt-1">
-              Data source: {metadata.source} • Last updated: {new Date(metadata.lastUpdated).toLocaleString()}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
+      <div className="container mx-auto py-8 space-y-6">
+        <Breadcrumbs />
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/25">
+                <Handshake className="w-7 h-7 text-white" />
+              </div>
+              Negotiation Preparation
+            </h1>
+            <p className="text-slate-600 mt-2">
+              Strategic insights and leverage points for successful negotiations
             </p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <DataModeToggle currentMode={mode} onModeChange={(newMode) => setMode(newMode as 'real' | 'mock')} />
-          <Button variant="outline" onClick={handleRefresh}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </div>
+            {metadata && (
+              <p className="text-xs text-slate-500 mt-1">
+                Data source: {metadata.source} • Last updated: {new Date(metadata.lastUpdated).toLocaleString()}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <DataModeToggle currentMode={mode} onModeChange={(newMode) => setMode(newMode as 'real' | 'mock')} />
+            <Button variant="outline" onClick={handleRefresh} className="bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleExport}
+              className="bg-white/80 backdrop-blur-sm border-white/50 hover:bg-white"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+          </div>
+        </motion.div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Negotiation Context
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Contract ID</label>
-              <Input
-                placeholder="Enter contract ID..."
-                value={contractId}
-                onChange={(e) => setContractId(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Supplier</label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select supplier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Suppliers</SelectItem>
-                  <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
-                  <SelectItem value="SUP002">Global IT Services</SelectItem>
-                  <SelectItem value="SUP003">Innovation Partners</SelectItem>
-                  <SelectItem value="SUP004">Digital Dynamics</SelectItem>
-                  <SelectItem value="SUP005">NextGen Technologies</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Category</label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <div className="p-1.5 bg-slate-100 rounded-lg">
+                  <Filter className="w-4 h-4 text-slate-600" />
+                </div>
+                Negotiation Context
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-slate-700">Contract ID</label>
+                  <Input
+                    placeholder="Enter contract ID..."
+                    value={contractId}
+                    onChange={(e) => setContractId(e.target.value)}
+                    className="bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-slate-700">Supplier</label>
+                  <Select value={supplierId} onValueChange={setSupplierId}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select supplier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Suppliers</SelectItem>
+                      <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
+                      <SelectItem value="SUP002">Global IT Services</SelectItem>
+                      <SelectItem value="SUP003">Innovation Partners</SelectItem>
+                      <SelectItem value="SUP004">Digital Dynamics</SelectItem>
+                      <SelectItem value="SUP005">NextGen Technologies</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block text-slate-700">Category</label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All Categories</SelectItem>
                   <SelectItem value="Software Development">Software Development</SelectItem>
@@ -400,6 +418,7 @@ export default function NegotiationPrepPage() {
           </Card>
         </>
       )}
+      </div>
     </div>
   );
 }

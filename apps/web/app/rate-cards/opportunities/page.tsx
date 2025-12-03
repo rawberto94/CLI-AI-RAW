@@ -8,117 +8,148 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, AlertTriangle, FileText, Calendar } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { TrendingUp, AlertTriangle, FileText, Calendar, Sparkles } from 'lucide-react';
 
 export default function OpportunitiesPage() {
   const [clientFilter, setClientFilter] = useState('');
   const [opportunityType, setOpportunityType] = useState<string>('all');
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <RateCardBreadcrumbs />
-      
-      <div>
-        <h1 className="text-3xl font-bold">Savings Opportunities</h1>
-        <p className="text-muted-foreground">
-          Identify, track, and realize cost savings opportunities
-        </p>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="clientFilter">Filter by Client</Label>
-              <Input
-                id="clientFilter"
-                placeholder="Enter client name..."
-                value={clientFilter}
-                onChange={(e) => setClientFilter(e.target.value)}
-              />
-            </div>
-            {clientFilter && (
-              <div className="flex items-center pt-8">
-                <Badge variant="outline">Client: {clientFilter}</Badge>
-              </div>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/30 to-orange-50/20">
+      <div className="container mx-auto p-6 space-y-6">
+        <RateCardBreadcrumbs />
+        
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4"
+        >
+          <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg shadow-amber-500/25">
+            <Sparkles className="w-7 h-7 text-white" />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+              Savings Opportunities
+            </h1>
+            <p className="text-slate-600">
+              Identify, track, and realize cost savings opportunities
+            </p>
+          </div>
+        </motion.div>
 
-      {/* Opportunity Types */}
-      <Tabs value={opportunityType} onValueChange={setOpportunityType}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">
-            All Opportunities
-          </TabsTrigger>
-          <TabsTrigger value="above-baseline">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Above Baseline
-          </TabsTrigger>
-          <TabsTrigger value="negotiation-due">
-            <TrendingUp className="h-4 w-4 mr-2" />
-            Negotiation Due
-          </TabsTrigger>
-          <TabsTrigger value="msa-renewal">
-            <Calendar className="h-4 w-4 mr-2" />
-            MSA Renewal
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-6">
-          <OpportunitiesList />
-        </TabsContent>
-
-        <TabsContent value="above-baseline" className="space-y-6">
-          <Card>
+        {/* Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
-                Above Baseline Opportunities
-              </CardTitle>
+              <CardTitle className="text-lg">Filters</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Rate cards that exceed their baseline thresholds, indicating potential for cost reduction
-              </p>
-              <OpportunitiesList />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientFilter" className="text-slate-700">Filter by Client</Label>
+                  <Input
+                    id="clientFilter"
+                    placeholder="Enter client name..."
+                    value={clientFilter}
+                    onChange={(e) => setClientFilter(e.target.value)}
+                    className="bg-white"
+                  />
+                </div>
+                {clientFilter && (
+                  <div className="flex items-center pt-8">
+                    <Badge variant="outline" className="bg-white">Client: {clientFilter}</Badge>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </motion.div>
 
-        <TabsContent value="negotiation-due" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-                Negotiation Opportunities
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Rates significantly above market median that present negotiation opportunities
-              </p>
+        {/* Opportunity Types */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Tabs value={opportunityType} onValueChange={setOpportunityType}>
+            <TabsList className="grid w-full grid-cols-4 bg-white/90 backdrop-blur-sm border border-white/50">
+              <TabsTrigger value="all">
+                All Opportunities
+              </TabsTrigger>
+              <TabsTrigger value="above-baseline">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Above Baseline
+              </TabsTrigger>
+              <TabsTrigger value="negotiation-due">
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Negotiation Due
+              </TabsTrigger>
+              <TabsTrigger value="msa-renewal">
+                <Calendar className="h-4 w-4 mr-2" />
+                MSA Renewal
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="all" className="space-y-6">
               <OpportunitiesList />
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </TabsContent>
 
-        <TabsContent value="msa-renewal" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
-                MSA Renewal Opportunities
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Upcoming MSA renewals in the next 90 days that require attention
+            <TabsContent value="above-baseline" className="space-y-6">
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-1.5 bg-orange-100 rounded-lg">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                    </div>
+                    Above Baseline Opportunities
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Rate cards that exceed their baseline thresholds, indicating potential for cost reduction
+                  </p>
+                  <OpportunitiesList />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="negotiation-due" className="space-y-6">
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-100 rounded-lg">
+                      <TrendingUp className="h-5 w-5 text-blue-600" />
+                    </div>
+                    Negotiation Opportunities
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Rates significantly above market median that present negotiation opportunities
+                  </p>
+                  <OpportunitiesList />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="msa-renewal" className="space-y-6">
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-1.5 bg-purple-100 rounded-lg">
+                      <Calendar className="h-5 w-5 text-purple-600" />
+                    </div>
+                    MSA Renewal Opportunities
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-slate-500 mb-4">
+                    Upcoming MSA renewals in the next 90 days that require attention
               </p>
               <OpportunitiesList />
             </CardContent>
@@ -134,22 +165,25 @@ export default function OpportunitiesPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 rounded-lg bg-orange-50">
-                <div className="text-2xl font-bold text-orange-600">12</div>
+              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100/50">
+                <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">12</div>
                 <div className="text-sm text-orange-700">Above Baseline</div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-blue-50">
-                <div className="text-2xl font-bold text-blue-600">8</div>
+              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100/50">
+                <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">8</div>
                 <div className="text-sm text-blue-700">Negotiation Due</div>
               </div>
-              <div className="text-center p-4 rounded-lg bg-purple-50">
-                <div className="text-2xl font-bold text-purple-600">3</div>
+              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100/50">
+                <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">3</div>
                 <div className="text-sm text-purple-700">MSA Renewals</div>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+          </Tabs>
+        </motion.div>
+      </div>
     </div>
   );
 }

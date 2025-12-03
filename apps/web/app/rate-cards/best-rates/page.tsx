@@ -5,7 +5,7 @@
  */
 
 import { Metadata } from 'next';
-import { BestRatesView } from '@/components/rate-cards/BestRatesView';
+import { BestRatesPageContent } from './page-content';
 
 export const metadata: Metadata = {
   title: 'Best Rates | Rate Card Benchmarking',
@@ -13,9 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function BestRatesPage() {
-  return (
-    <div className="container mx-auto py-8 px-4">
-      <BestRatesView />
-    </div>
-  );
+  return <BestRatesPageContent />;
 }

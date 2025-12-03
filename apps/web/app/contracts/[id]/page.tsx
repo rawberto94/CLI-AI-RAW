@@ -77,8 +77,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector } from '@/components/contracts'
 
 // ============ TYPES ============
+
+interface CategoryInfo {
+  id: string
+  name: string
+  color: string
+  icon: string
+  path: string
+}
 
 interface ContractData {
   id: string
@@ -92,6 +101,8 @@ interface ContractData {
   artifactCount?: number
   summary?: any
   insights?: any[]
+  category?: CategoryInfo | null
+  aiSuggestedCategory?: CategoryInfo | null
   processing?: {
     progress: number
     currentStage: string
@@ -495,31 +506,52 @@ function StatCard({
   color?: 'emerald' | 'amber' | 'red' | 'blue' | 'purple' | 'slate'
   score?: number
 }) {
-  const colorClasses = {
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
-    amber: 'bg-amber-50 text-amber-600 border-amber-100',
-    red: 'bg-red-50 text-red-600 border-red-100',
-    blue: 'bg-blue-50 text-blue-600 border-blue-100',
-    purple: 'bg-purple-50 text-purple-600 border-purple-100',
-    slate: 'bg-slate-50 text-slate-600 border-slate-100'
+  const gradientClasses = {
+    emerald: 'from-emerald-500 to-teal-600',
+    amber: 'from-amber-500 to-orange-600',
+    red: 'from-red-500 to-rose-600',
+    blue: 'from-blue-500 to-indigo-600',
+    purple: 'from-purple-500 to-violet-600',
+    slate: 'from-slate-500 to-gray-600'
+  };
+
+  const bgClasses = {
+    emerald: 'bg-emerald-50/50 border-emerald-100/50',
+    amber: 'bg-amber-50/50 border-amber-100/50',
+    red: 'bg-red-50/50 border-red-100/50',
+    blue: 'bg-blue-50/50 border-blue-100/50',
+    purple: 'bg-purple-50/50 border-purple-100/50',
+    slate: 'bg-slate-50/50 border-slate-100/50'
   };
   
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors">
+    <motion.div 
+      whileHover={{ scale: 1.02, y: -2 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className={cn(
+        "bg-white/90 backdrop-blur-sm rounded-xl border p-4 transition-all duration-300 hover:shadow-lg",
+        bgClasses[color]
+      )}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className={cn("inline-flex items-center justify-center w-8 h-8 rounded-lg mb-3", colorClasses[color])}>
-            <Icon className="h-4 w-4" />
+          <div className={cn(
+            "inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 shadow-lg",
+            `bg-gradient-to-br ${gradientClasses[color]}`
+          )}>
+            <Icon className="h-5 w-5 text-white" />
           </div>
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-          <p className="text-xl font-bold text-slate-900 mt-1">{value}</p>
+          <p className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent mt-1">
+            {value}
+          </p>
           {subValue && <p className="text-xs text-slate-500 mt-0.5">{subValue}</p>}
         </div>
         {score !== undefined && (
           <ScoreRing score={score} size="sm" />
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -546,6 +578,17 @@ export default function ContractDetailPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showShareDialog, setShowShareDialog] = useState(false)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
+  
+  // AI Summarizer state
+  const [showAISummarizer, setShowAISummarizer] = useState(false)
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+  
+  // Contract Comparison state
+  const [showComparison, setShowComparison] = useState(false)
+  
+  // Category state
+  const [showCategorySelector, setShowCategorySelector] = useState(false)
+  const [isSavingCategory, setIsSavingCategory] = useState(false)
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
@@ -739,6 +782,66 @@ export default function ContractDetailPage() {
     }
   }
 
+  // Handle category selection
+  const handleCategorySelect = async (categoryId: string) => {
+    setIsSavingCategory(true)
+    try {
+      const response = await fetch(`/api/contracts/${params.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo'
+        },
+        body: JSON.stringify({ categoryId })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to update category')
+      }
+      
+      toast.success('Category updated successfully')
+      setShowCategorySelector(false)
+      await loadContract()
+    } catch (err) {
+      console.error('Failed to update category:', err)
+      toast.error('Failed to update category')
+    } finally {
+      setIsSavingCategory(false)
+    }
+  }
+
+  // Handle AI category suggestion
+  const handleAICategorize = async () => {
+    try {
+      const response = await fetch('/api/contracts/categorize', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-tenant-id': 'demo'
+        },
+        body: JSON.stringify({ 
+          contractIds: [params.id],
+          force: true 
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to categorize')
+      }
+      
+      const data = await response.json()
+      if (data.data?.results?.[0]?.success) {
+        toast.success('Contract categorized by AI')
+        await loadContract()
+      } else {
+        toast.warning('AI could not determine a category')
+      }
+    } catch (err) {
+      console.error('AI categorization failed:', err)
+      toast.error('Failed to run AI categorization')
+    }
+  }
+
   // Extract data helpers
   const overviewData = contract?.extractedData?.overview
   const financialData = contract?.extractedData?.financial
@@ -769,36 +872,54 @@ export default function ContractDetailPage() {
   if (error) {
     const isNotFound = error.includes('not found') || error.includes('404');
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
-                isNotFound ? 'bg-amber-100' : 'bg-red-100'
-              }`}>
-                <AlertCircle className={`h-6 w-6 ${isNotFound ? 'text-amber-600' : 'text-red-600'}`} />
-              </div>
-              <h2 className="text-lg font-semibold text-slate-900 mb-2">
-                {isNotFound ? 'Contract Not Found' : 'Error Loading Contract'}
-              </h2>
-              <p className="text-sm text-slate-600 mb-6">{error}</p>
-              <div className="flex gap-3 justify-center">
-                {!isNotFound && (
-                  <Button onClick={loadContract} size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/30 to-orange-50/20 flex items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        >
+          <Card className="max-w-md w-full bg-white/90 backdrop-blur-xl border-white/50 shadow-xl">
+            <CardContent className="pt-8 pb-8">
+              <div className="text-center">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.1 }}
+                  className={cn(
+                    "mx-auto w-16 h-16 rounded-2xl flex items-center justify-center mb-5 shadow-lg",
+                    isNotFound 
+                      ? "bg-gradient-to-br from-amber-500 to-orange-600" 
+                      : "bg-gradient-to-br from-red-500 to-rose-600"
+                  )}
+                >
+                  <AlertCircle className="h-8 w-8 text-white" />
+                </motion.div>
+                <h2 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent mb-2">
+                  {isNotFound ? 'Contract Not Found' : 'Error Loading Contract'}
+                </h2>
+                <p className="text-sm text-slate-600 mb-6 max-w-[280px] mx-auto">{error}</p>
+                <div className="flex gap-3 justify-center">
+                  {!isNotFound && (
+                    <Button 
+                      onClick={loadContract} 
+                      size="sm"
+                      className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
+                  )}
+                  <Button variant={isNotFound ? "default" : "outline"} size="sm" asChild>
+                    <Link href="/contracts">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Contracts
+                    </Link>
                   </Button>
-                )}
-                <Button variant={isNotFound ? "default" : "outline"} size="sm" asChild>
-                  <Link href="/contracts">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Contracts
-                  </Link>
-                </Button>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     )
   }
@@ -806,17 +927,33 @@ export default function ContractDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header skeleton */}
-          <div className="flex items-center gap-4 mb-8">
-            <div className="h-8 w-20 bg-slate-200 rounded animate-pulse" />
-            <div className="h-6 w-48 bg-slate-200 rounded animate-pulse" />
-          </div>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-4 mb-8"
+          >
+            <div className="h-8 w-20 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg animate-pulse" />
+            <div className="h-6 w-48 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg animate-pulse" />
+          </motion.div>
           {/* Stats skeleton */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-28 bg-white border border-slate-200 rounded-xl animate-pulse" />
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="h-28 bg-white/80 backdrop-blur-sm border border-white/50 rounded-xl shadow-sm animate-pulse"
+              >
+                <div className="p-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-100 rounded-xl mb-3" />
+                  <div className="h-4 w-20 bg-slate-200 rounded mb-2" />
+                  <div className="h-6 w-16 bg-slate-200 rounded" />
+                </div>
+              </motion.div>
             ))}
           </div>
           {/* Content skeleton */}
@@ -833,14 +970,14 @@ export default function ContractDetailPage() {
   const riskScore = getRiskScore();
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <div className="bg-white/90 backdrop-blur-xl border-b border-white/50 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Back + Title */}
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" asChild className="text-slate-600">
+              <Button variant="ghost" size="sm" asChild className="text-slate-600 hover:bg-white/50">
                 <Link href="/contracts">
                   <ArrowLeft className="h-4 w-4 mr-1.5" />
                   Contracts
@@ -848,11 +985,11 @@ export default function ContractDetailPage() {
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-                  <FileText className="h-4 w-4 text-white" />
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
+                  <FileText className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-base font-semibold text-slate-900 line-clamp-1">
+                  <h1 className="text-base font-semibold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent line-clamp-1">
                     {contract?.filename || 'Contract Details'}
                   </h1>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -900,6 +1037,10 @@ export default function ContractDetailPage() {
                   <DropdownMenuItem>
                     <Eye className="h-4 w-4 mr-2" />
                     View Original
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowComparison(true)}>
+                    <GitCompare className="h-4 w-4 mr-2" />
+                    Compare Versions
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>
@@ -971,6 +1112,66 @@ export default function ContractDetailPage() {
             subValue="Generated"
             color="purple"
           />
+        </motion.div>
+
+        {/* Category Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.03 }}
+          className="mb-6"
+        >
+          <Card className="bg-white/90 backdrop-blur-sm border-slate-200">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm font-medium text-slate-600">Category:</span>
+                  </div>
+                  
+                  {contract?.category ? (
+                    <CategoryBadge
+                      category={contract.category}
+                      showPath={true}
+                      onClick={() => setShowCategorySelector(true)}
+                    />
+                  ) : (
+                    <span className="text-sm text-slate-400 italic">Uncategorized</span>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {!contract?.category && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleAICategorize}
+                            className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
+                          >
+                            <Sparkles className="h-4 w-4 mr-1.5 text-purple-600" />
+                            AI Categorize
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Let AI suggest a category based on contract content</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowCategorySelector(true)}
+                  >
+                    {contract?.category ? 'Change' : 'Assign'} Category
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Cross-Module Quick Actions */}
@@ -1350,6 +1551,20 @@ export default function ContractDetailPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* AI Insights Card */}
+              <AIInsightsCard
+                contractId={params.id as string}
+                onRefresh={() => {
+                  toast.info('Refreshing AI insights...');
+                }}
+              />
+
+              {/* Contract Health Score */}
+              <ContractHealthScore
+                contractId={params.id as string}
+                variant="full"
+              />
             </TabsContent>
 
             {/* AI Analysis Tab */}
@@ -1735,6 +1950,45 @@ export default function ContractDetailPage() {
         onClose={() => setShowApprovalModal(false)}
         contractId={params.id as string}
         contractTitle={contract?.filename || 'Contract'}
+      />
+
+      {/* AI Summarizer FAB */}
+      <QuickSummarizeButton
+        onClick={() => {
+          setIsGeneratingSummary(true);
+          setShowAISummarizer(true);
+          // Simulate loading, then stop after modal opens
+          setTimeout(() => setIsGeneratingSummary(false), 500);
+        }}
+        isLoading={isGeneratingSummary}
+      />
+
+      {/* AI Summarizer Modal */}
+      <AISummarizer
+        contractId={params.id as string}
+        contractTitle={contract?.filename || 'Contract'}
+        isOpen={showAISummarizer}
+        onClose={() => setShowAISummarizer(false)}
+      />
+
+      {/* Contract Comparison Modal */}
+      <ContractComparison
+        contractId={params.id as string}
+        versions={[
+          { id: 'v2', version: 'v2.0', title: 'Current Version', createdAt: new Date(), createdBy: 'System', status: 'active' as const },
+          { id: 'v1', version: 'v1.0', title: 'Initial Version', createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), createdBy: 'System', status: 'archived' as const },
+        ]}
+        isOpen={showComparison}
+        onClose={() => setShowComparison(false)}
+      />
+
+      {/* Category Selector Modal */}
+      <CategorySelector
+        isOpen={showCategorySelector}
+        onClose={() => setShowCategorySelector(false)}
+        onSelect={handleCategorySelect}
+        currentCategoryId={contract?.category?.id}
+        tenantId="demo"
       />
     </div>
   )

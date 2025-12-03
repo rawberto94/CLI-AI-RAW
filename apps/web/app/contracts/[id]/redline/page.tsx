@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, use, useCallback, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { RedlineEditor, type Change } from '@/components/contracts/RedlineEditor';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, FileText, Clock, Users, Shield, Download, Share2, MoreHorizontal, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileText, Clock, Users, Shield, Download, Share2, MoreHorizontal, CheckCircle, Loader2, Sparkles, GitCompare, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -101,68 +102,102 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-          <p className="text-slate-500">Loading contract...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/30 to-rose-50/20 flex items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-red-200 border-t-red-600 rounded-full animate-spin" />
+            <Edit3 className="w-6 h-6 text-red-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="text-slate-600 font-medium">Loading redline editor...</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
-      <div className="flex-none bg-white border-b border-slate-200 px-6 py-4">
-        <div className="max-w-[1600px] mx-auto">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-50/30 to-rose-50/20 flex flex-col">
+      {/* Premium Header */}
+      <div className="flex-none bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 shadow-xl">
+        <div className="max-w-[1600px] mx-auto px-6 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between"
+          >
             <div className="flex items-center gap-4">
               <Link href={`/contracts/${id}`}>
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/20 gap-2">
                   <ArrowLeft className="w-4 h-4" />
                   Back to Contract
                 </Button>
               </Link>
-              <div className="h-6 w-px bg-slate-200" />
-              <div>
-                <h1 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-500" />
-                  {contractTitle}
-                </h1>
-                <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {lastSaved ? `Last saved ${formatTimeAgo(lastSaved)}` : 'Last edited 2 hours ago'}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    3 collaborators
-                  </span>
-                  <Badge 
-                    variant={documentStatus === 'approved' ? 'default' : 'secondary'} 
-                    className={documentStatus === 'approved' ? 'bg-green-100 text-green-700' : documentStatus === 'review' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}
-                  >
-                    <Shield className="w-3 h-3 mr-1" />
-                    {documentStatus === 'approved' ? 'Approved' : documentStatus === 'review' ? 'In Review' : 'Draft'}
-                  </Badge>
+              <div className="h-6 w-px bg-white/30" />
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                  <GitCompare className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-white flex items-center gap-2">
+                    {contractTitle}
+                  </h1>
+                  <div className="flex items-center gap-4 mt-0.5 text-sm text-white/80">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {lastSaved ? `Last saved ${formatTimeAgo(lastSaved)}` : 'Last edited 2 hours ago'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      3 collaborators
+                    </span>
+                    <Badge 
+                      className={
+                        documentStatus === 'approved' 
+                          ? 'bg-green-500/30 text-white border-green-300/30' 
+                          : documentStatus === 'review' 
+                          ? 'bg-amber-500/30 text-white border-amber-300/30' 
+                          : 'bg-white/20 text-white border-white/30'
+                      }
+                    >
+                      <Shield className="w-3 h-3 mr-1" />
+                      {documentStatus === 'approved' ? 'Approved' : documentStatus === 'review' ? 'In Review' : 'Draft'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               {/* Quick Actions */}
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => handleExport('redline')}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-white/20 gap-2"
+                onClick={() => handleExport('redline')}
+              >
                 <Download className="w-4 h-4" />
                 Export
               </Button>
               
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.success('Share dialog opened')}>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-white hover:bg-white/20 gap-2"
+                onClick={() => toast.success('Share dialog opened')}
+              >
                 <Share2 className="w-4 h-4" />
                 Share
               </Button>
 
               {documentStatus !== 'approved' && (
-                <Button size="sm" className="gap-2 bg-green-600 hover:bg-green-700" onClick={handleFinalize}>
+                <Button 
+                  size="sm" 
+                  className="bg-white text-red-600 hover:bg-white/90 shadow-lg gap-2"
+                  onClick={handleFinalize}
+                >
                   <CheckCircle className="w-4 h-4" />
                   Finalize
                 </Button>
@@ -170,11 +205,11 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-md border-slate-200/80 shadow-xl">
                   <DropdownMenuItem onClick={() => handleExport('clean')}>
                     Export clean copy
                   </DropdownMenuItem>
@@ -191,12 +226,17 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Editor - Full Height */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto px-6 py-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex-1 max-w-[1600px] w-full mx-auto px-6 py-6"
+      >
         <RedlineEditor
           documentId={id}
           initialContent={content}
@@ -204,7 +244,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
           onSave={handleSave}
           className="h-[calc(100vh-180px)]"
         />
-      </div>
+      </motion.div>
     </div>
   );
 }

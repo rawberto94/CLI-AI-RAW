@@ -134,7 +134,7 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
       className={`flex items-center space-x-1 text-sm ${className}`}
       aria-label="Breadcrumb"
     >
-      <ol className="flex items-center space-x-1">
+      <ol className="flex items-center space-x-1 bg-white/60 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/50 shadow-sm">
         {breadcrumbs.map((crumb, index) => {
           const Icon = crumb.icon;
           const isLast = index === breadcrumbs.length - 1;
@@ -142,18 +142,18 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
           return (
             <li key={`${crumb.label}-${index}`} className="flex items-center">
               {index > 0 && (
-                <ChevronRight className="h-4 w-4 text-slate-400 mx-1 flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-slate-300 mx-1.5 flex-shrink-0" />
               )}
               
               {isLast ? (
-                <span className="flex items-center gap-1.5 px-2 py-1 text-slate-700 font-medium bg-slate-100 rounded-md">
-                  {Icon && <Icon className="h-3.5 w-3.5 text-slate-500" />}
+                <span className="flex items-center gap-1.5 px-2.5 py-1 text-slate-800 font-semibold bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg shadow-sm">
+                  {Icon && <Icon className="h-3.5 w-3.5 text-blue-600" />}
                   {crumb.label}
                 </span>
               ) : (
                 <Link
                   href={crumb.href}
-                  className="flex items-center gap-1.5 px-2 py-1 text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-md transition-colors"
+                  className="flex items-center gap-1.5 px-2 py-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all duration-200"
                 >
                   {Icon && <Icon className="h-3.5 w-3.5" />}
                   {crumb.label}

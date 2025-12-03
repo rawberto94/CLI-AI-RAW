@@ -9,10 +9,12 @@ const openai = new OpenAI({
 
 // Intent detection for actionable requests
 interface DetectedIntent {
-  type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement';
+  type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy';
   action?: 'renew' | 'generate' | 'approve' | 'create' | 'start_workflow' | 'list_by_supplier' | 'list_expiring' | 'list_by_status' | 'list_by_value' | 'count' | 'summarize' | 'create_linked' | 'link_contracts' | 'show_hierarchy' | 'find_master' | 
     // New procurement actions
-    'spend_analysis' | 'cost_savings' | 'rate_comparison' | 'risk_assessment' | 'compliance_check' | 'compliance_status' | 'budget_status' | 'supplier_performance' | 'negotiate_terms' | 'category_spend' | 'top_suppliers' | 'savings_opportunities' | 'contract_risks' | 'auto_renewals' | 'payment_terms';
+    'spend_analysis' | 'cost_savings' | 'rate_comparison' | 'risk_assessment' | 'compliance_check' | 'compliance_status' | 'budget_status' | 'supplier_performance' | 'negotiate_terms' | 'category_spend' | 'top_suppliers' | 'savings_opportunities' | 'contract_risks' | 'auto_renewals' | 'payment_terms' |
+    // Taxonomy actions
+    'list_categories' | 'browse_taxonomy' | 'categorize_contract' | 'category_details' | 'suggest_category';
   entities: {
     contractName?: string;
     supplierName?: string;
@@ -343,6 +345,65 @@ function detectIntent(query: string): DetectedIntent {
       action: 'category_spend',
       entities: {},
       confidence: 0.9,
+    };
+  }
+
+  // ============================================
+  // TAXONOMY/CATEGORY PATTERNS
+  // ============================================
+
+  // Pattern: "show categories" or "list categories" or "what categories do we have"
+  const listCategoriesPattern = /(?:show|list|what|get|display)\s+(?:are\s+)?(?:the\s+)?(?:all\s+)?(?:taxonomy\s+)?(?:procurement\s+)?categories|category\s+(?:list|tree|structure)|what\s+categories\s+(?:do\s+we\s+have|exist)|browse\s+(?:the\s+)?taxonomy/i;
+  match = query.match(listCategoriesPattern);
+  if (match) {
+    console.log('[AI Chat] Detected list categories intent');
+    return {
+      type: 'taxonomy',
+      action: 'list_categories',
+      entities: {},
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "what category is [contract]" or "categorize [contract]"
+  const categorizeContractPattern = /(?:what|which)\s+category\s+(?:is|for|should)\s+(.+?)(?:\?|$)|categorize\s+(?:the\s+)?(.+?)(?:\s+contract)?(?:\?|$)|suggest\s+category\s+for\s+(.+)/i;
+  match = query.match(categorizeContractPattern);
+  if (match) {
+    const contractName = (match[1] || match[2] || match[3])?.trim();
+    console.log('[AI Chat] Detected categorize contract intent:', { contractName });
+    return {
+      type: 'taxonomy',
+      action: 'suggest_category',
+      entities: { contractName },
+      confidence: 0.85,
+    };
+  }
+
+  // Pattern: "show [category] details" or "tell me about [category] category"
+  const categoryDetailsPattern = /(?:show|tell\s+me\s+about|details\s+(?:of|for)|info\s+on)\s+(?:the\s+)?(.+?)\s+category|category\s+details?\s+(?:for\s+)?(.+)/i;
+  match = query.match(categoryDetailsPattern);
+  if (match) {
+    const category = (match[1] || match[2])?.trim();
+    console.log('[AI Chat] Detected category details intent:', { category });
+    return {
+      type: 'taxonomy',
+      action: 'category_details',
+      entities: { category },
+      confidence: 0.85,
+    };
+  }
+
+  // Pattern: "contracts in [category]" or "[category] contracts"
+  const contractsInCategoryPattern = /(?:contracts?|items?)\s+(?:in|under|for)\s+(?:the\s+)?(.+?)\s+category|(?:show|list|get)\s+(.+?)\s+(?:category\s+)?contracts/i;
+  match = query.match(contractsInCategoryPattern);
+  if (match) {
+    const category = (match[1] || match[2])?.trim();
+    console.log('[AI Chat] Detected contracts in category intent:', { category });
+    return {
+      type: 'taxonomy',
+      action: 'browse_taxonomy',
+      entities: { category },
+      confidence: 0.85,
     };
   }
 
@@ -1167,6 +1228,241 @@ async function getRateComparison(tenantId: string, supplierName?: string) {
   } catch (e) {
     console.error('[AI Chat] Error getting rate comparison:', e);
     return { rateCards: [], totalRates: 0 };
+  }
+}
+
+// ============================================
+// TAXONOMY/CATEGORY QUERY FUNCTIONS
+// ============================================
+
+// Get all taxonomy categories with hierarchy
+async function getTaxonomyCategories(tenantId: string) {
+  try {
+    const categories = await prisma.taxonomyCategory.findMany({
+      where: { tenantId },
+      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+      include: {
+        parent: { select: { id: true, name: true } },
+        children: { select: { id: true, name: true, code: true } },
+        _count: { select: { contracts: true } },
+      },
+    });
+
+    // Get top-level categories (L1)
+    const topLevel = categories.filter(c => !c.parentId);
+    
+    // Build hierarchical structure
+    const hierarchy = topLevel.map(parent => ({
+      id: parent.id,
+      name: parent.name,
+      code: parent.code,
+      description: parent.description,
+      level: parent.level,
+      contractCount: parent._count.contracts,
+      children: categories
+        .filter(c => c.parentId === parent.id)
+        .map(child => ({
+          id: child.id,
+          name: child.name,
+          code: child.code,
+          description: child.description,
+          contractCount: child._count.contracts,
+          children: categories
+            .filter(c => c.parentId === child.id)
+            .map(grandchild => ({
+              id: grandchild.id,
+              name: grandchild.name,
+              code: grandchild.code,
+              contractCount: grandchild._count.contracts,
+            })),
+        })),
+    }));
+
+    // Calculate totals
+    const totalCategories = categories.length;
+    const totalL1 = topLevel.length;
+    const totalL2 = categories.filter(c => c.level === 2).length;
+    const totalL3 = categories.filter(c => c.level === 3).length;
+    const totalContracts = categories.reduce((sum, c) => sum + c._count.contracts, 0);
+
+    return {
+      hierarchy,
+      categories,
+      stats: {
+        totalCategories,
+        totalL1,
+        totalL2,
+        totalL3,
+        totalContracts,
+      },
+    };
+  } catch (e) {
+    console.error('[AI Chat] Error getting taxonomy categories:', e);
+    return { hierarchy: [], categories: [], stats: { totalCategories: 0, totalL1: 0, totalL2: 0, totalL3: 0, totalContracts: 0 } };
+  }
+}
+
+// Get category details with contracts
+async function getCategoryDetails(categoryName: string, tenantId: string) {
+  try {
+    // Find category by name (fuzzy match)
+    const category = await prisma.taxonomyCategory.findFirst({
+      where: {
+        tenantId,
+        name: { contains: categoryName, mode: 'insensitive' },
+      },
+      include: {
+        parent: { select: { id: true, name: true } },
+        children: {
+          select: { id: true, name: true, code: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+        contracts: {
+          take: 10,
+          orderBy: { totalValue: 'desc' },
+          select: {
+            id: true,
+            contractTitle: true,
+            supplierName: true,
+            totalValue: true,
+            status: true,
+          },
+        },
+        _count: { select: { contracts: true } },
+      },
+    });
+
+    if (!category) {
+      return null;
+    }
+
+    // Get spend totals for this category
+    const totalSpend = category.contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
+
+    return {
+      id: category.id,
+      name: category.name,
+      code: category.code,
+      description: category.description,
+      level: category.level,
+      parent: category.parent,
+      children: category.children,
+      contractCount: category._count.contracts,
+      totalSpend,
+      sampleContracts: category.contracts,
+    };
+  } catch (e) {
+    console.error('[AI Chat] Error getting category details:', e);
+    return null;
+  }
+}
+
+// Suggest category for a contract based on title/description
+async function suggestCategoryForContract(contractName: string, tenantId: string) {
+  try {
+    // Find the contract
+    const contract = await prisma.contract.findFirst({
+      where: {
+        tenantId,
+        OR: [
+          { contractTitle: { contains: contractName, mode: 'insensitive' } },
+          { supplierName: { contains: contractName, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        contractTitle: true,
+        supplierName: true,
+        categoryL1: true,
+        categoryL2: true,
+        taxonomyCategory: { select: { id: true, name: true } },
+      },
+    });
+
+    // Get all categories for suggestion
+    const categories = await prisma.taxonomyCategory.findMany({
+      where: { tenantId, level: { lte: 2 } },
+      orderBy: [{ level: 'asc' }, { name: 'asc' }],
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        level: true,
+        keywords: true,
+        _count: { select: { contracts: true } },
+      },
+    });
+
+    // Simple keyword matching for suggestions
+    const contractText = (contract?.contractTitle || contractName).toLowerCase();
+    const suggestions = categories
+      .filter(cat => {
+        const keywords = cat.keywords || [];
+        return keywords.some(kw => contractText.includes(kw.toLowerCase())) ||
+          contractText.includes(cat.name.toLowerCase());
+      })
+      .slice(0, 5);
+
+    return {
+      contract,
+      currentCategory: contract?.taxonomyCategory || null,
+      suggestions: suggestions.length > 0 ? suggestions : categories.slice(0, 5),
+      allCategories: categories,
+    };
+  } catch (e) {
+    console.error('[AI Chat] Error suggesting category:', e);
+    return { contract: null, currentCategory: null, suggestions: [], allCategories: [] };
+  }
+}
+
+// Get contracts in a specific category
+async function getContractsInCategory(categoryName: string, tenantId: string) {
+  try {
+    // Find category
+    const category = await prisma.taxonomyCategory.findFirst({
+      where: {
+        tenantId,
+        name: { contains: categoryName, mode: 'insensitive' },
+      },
+    });
+
+    if (!category) {
+      return null;
+    }
+
+    // Get contracts in this category
+    const contracts = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        taxonomyCategoryId: category.id,
+      },
+      orderBy: { totalValue: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        contractTitle: true,
+        supplierName: true,
+        totalValue: true,
+        status: true,
+        expirationDate: true,
+      },
+    });
+
+    const totalValue = contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
+
+    return {
+      category: {
+        id: category.id,
+        name: category.name,
+        code: category.code,
+      },
+      contracts,
+      totalContracts: contracts.length,
+      totalValue,
+    };
+  } catch (e) {
+    console.error('[AI Chat] Error getting contracts in category:', e);
+    return null;
   }
 }
 
@@ -2619,6 +2915,235 @@ What would you like to do?`,
     };
   },
 
+  // ============================================
+  // TAXONOMY/CATEGORY RESPONSES
+  // ============================================
+
+  'list-categories': (query, context) => {
+    const { taxonomyData } = context;
+    if (!taxonomyData || !taxonomyData.hierarchy || taxonomyData.hierarchy.length === 0) {
+      return {
+        response: `📂 **Taxonomy Categories**\n\nNo taxonomy categories have been set up yet.\n\n**Get Started:**\n• Go to Settings → Taxonomy Management to configure your procurement categories\n• Or let me help you create a standard indirect procurement taxonomy`,
+        sources: ['Taxonomy Database'],
+        suggestedActions: [
+          { label: '⚙️ Setup Taxonomy', action: '/settings/taxonomy' },
+          { label: '📥 Import Standard', action: 'import-taxonomy' },
+        ],
+        suggestions: [
+          'Create standard indirect procurement taxonomy',
+          'What categories should I use?',
+          'Show me sample taxonomy structures',
+        ],
+      };
+    }
+
+    const { stats, hierarchy } = taxonomyData;
+    
+    // Format the hierarchy nicely
+    const categoryList = hierarchy.slice(0, 8).map((cat: any, i: number) => {
+      const childCount = cat.children?.length || 0;
+      const contractCount = cat.contractCount || 0;
+      return `${i + 1}. **${cat.name}** (${cat.code || 'N/A'})\n   • ${childCount} subcategories | ${contractCount} contracts`;
+    }).join('\n\n');
+
+    return {
+      response: `📂 **Procurement Taxonomy**
+
+**Overview:**
+• Total Categories: ${stats.totalCategories}
+• L1 Categories: ${stats.totalL1}
+• L2 Subcategories: ${stats.totalL2}
+• L3 Detailed: ${stats.totalL3}
+• Categorized Contracts: ${stats.totalContracts}
+
+**Top-Level Categories:**
+${categoryList}
+
+💡 *Click on a category to see subcategories and contracts.*`,
+      sources: ['Taxonomy Database'],
+      suggestedActions: [
+        { label: '⚙️ Manage Taxonomy', action: '/settings/taxonomy' },
+        { label: '📊 Category Spend', action: 'category-spend' },
+        { label: '📋 Uncategorized', action: 'uncategorized-contracts' },
+      ],
+      suggestions: [
+        'Show IT & Technology categories',
+        'What contracts are in Professional Services?',
+        'Show spend by category',
+      ],
+    };
+  },
+
+  'category-details': (query, context) => {
+    const { categoryDetails, categoryName } = context;
+    if (!categoryDetails) {
+      return {
+        response: `🔍 **Category Search**\n\nI couldn't find a category matching "${categoryName}".\n\nTry searching with a different name or browse all categories.`,
+        sources: ['Taxonomy Database'],
+        suggestedActions: [
+          { label: '📂 Browse All Categories', action: 'list-categories' },
+        ],
+        suggestions: [
+          'Show all categories',
+          'What categories exist?',
+          'List IT categories',
+        ],
+      };
+    }
+
+    const { name, code, description, level, parent, children, contractCount, totalSpend, sampleContracts } = categoryDetails;
+    
+    const parentInfo = parent ? `Part of: **${parent.name}**` : 'Top-level category';
+    const childList = children && children.length > 0 
+      ? children.slice(0, 5).map((c: any) => `• ${c.name} (${c.code})`).join('\n')
+      : 'No subcategories';
+    
+    const contractList = sampleContracts && sampleContracts.length > 0
+      ? sampleContracts.slice(0, 3).map((c: any, i: number) => 
+          `${i + 1}. ${c.contractTitle} - $${Number(c.totalValue || 0).toLocaleString()}`
+        ).join('\n')
+      : 'No contracts in this category';
+
+    return {
+      response: `📋 **${name}** (${code || 'No code'})
+
+${description || 'No description available.'}
+
+**Hierarchy:** ${parentInfo}
+**Level:** L${level}
+
+**Statistics:**
+• Contracts: ${contractCount}
+• Total Spend: $${totalSpend.toLocaleString()}
+
+**Subcategories:**
+${childList}
+
+**Sample Contracts:**
+${contractList}`,
+      sources: ['Taxonomy Database', 'Contract Analytics'],
+      suggestedActions: [
+        { label: '📋 View All Contracts', action: `category-contracts:${name}` },
+        { label: '📊 Category Analytics', action: `category-analytics:${name}` },
+        { label: '✏️ Edit Category', action: `/settings/taxonomy?edit=${categoryDetails.id}` },
+      ],
+      suggestions: [
+        `Show all contracts in ${name}`,
+        `What's the spend breakdown for ${name}?`,
+        'Show parent category',
+      ],
+    };
+  },
+
+  'suggest-category': (query, context) => {
+    const { categorySuggestion, contractName } = context;
+    if (!categorySuggestion) {
+      return {
+        response: `🏷️ **Category Suggestion**\n\nI couldn't analyze "${contractName}". Make sure the contract exists in the system.`,
+        sources: [],
+        suggestedActions: [],
+        suggestions: ['Show all contracts', 'List categories'],
+      };
+    }
+
+    const { contract, currentCategory, suggestions, allCategories } = categorySuggestion;
+    
+    if (currentCategory) {
+      return {
+        response: `🏷️ **Current Category for "${contract?.contractTitle || contractName}"**
+
+**Current Assignment:** ${currentCategory.name}
+
+This contract is already categorized. Would you like to change it?
+
+**Other Options:**
+${suggestions.slice(0, 3).map((s: any, i: number) => `${i + 1}. ${s.name} (${s.code})`).join('\n')}`,
+        sources: ['Taxonomy Database'],
+        suggestedActions: [
+          { label: '✏️ Change Category', action: `change-category:${contract?.id}` },
+          { label: '📂 View Category', action: `category-details:${currentCategory.name}` },
+        ],
+        suggestions: [
+          'Show category details',
+          'List all categories',
+        ],
+      };
+    }
+
+    const suggestionList = suggestions.length > 0
+      ? suggestions.slice(0, 5).map((s: any, i: number) => 
+          `${i + 1}. **${s.name}** (${s.code})\n   • ${s._count?.contracts || 0} existing contracts`
+        ).join('\n\n')
+      : 'No strong matches found. Browse all categories to assign.';
+
+    return {
+      response: `🏷️ **Category Suggestions for "${contract?.contractTitle || contractName}"**
+
+This contract is currently uncategorized.
+
+**Suggested Categories:**
+${suggestionList}
+
+💡 *Select a category or browse all to assign.*`,
+      sources: ['Taxonomy Database', 'AI Analysis'],
+      suggestedActions: [
+        { label: '📂 Browse All', action: 'list-categories' },
+        ...(suggestions[0] ? [{ label: `✅ Assign ${suggestions[0].name}`, action: `assign-category:${contract?.id}:${suggestions[0].id}` }] : []),
+      ],
+      suggestions: [
+        'Show all categories',
+        'What category fits IT services?',
+        'Browse Professional Services',
+      ],
+    };
+  },
+
+  'browse-taxonomy': (query, context) => {
+    const { categoryContracts, categoryName } = context;
+    if (!categoryContracts) {
+      return {
+        response: `📋 **Contracts in Category**\n\nNo category found matching "${categoryName}" or no contracts assigned to it.`,
+        sources: ['Taxonomy Database'],
+        suggestedActions: [
+          { label: '📂 Browse Categories', action: 'list-categories' },
+        ],
+        suggestions: ['Show all categories', 'List uncategorized contracts'],
+      };
+    }
+
+    const { category, contracts, totalContracts, totalValue } = categoryContracts;
+    
+    const contractList = contracts.slice(0, 10).map((c: any, i: number) => {
+      const statusIcon = c.status === 'ACTIVE' ? '🟢' : c.status === 'EXPIRED' ? '🔴' : '🟡';
+      const value = c.totalValue ? `$${Number(c.totalValue).toLocaleString()}` : 'N/A';
+      return `${i + 1}. ${statusIcon} **${c.contractTitle}**\n   • ${c.supplierName} | ${value}`;
+    }).join('\n\n');
+
+    return {
+      response: `📋 **${category.name}** Contracts
+
+**Summary:**
+• Total Contracts: ${totalContracts}
+• Total Value: $${totalValue.toLocaleString()}
+
+**Contracts:**
+${contractList}
+
+${totalContracts > 10 ? `\n*Showing 10 of ${totalContracts} contracts.*` : ''}`,
+      sources: ['Contract Database', 'Taxonomy'],
+      suggestedActions: [
+        { label: '📊 Category Analytics', action: `category-analytics:${category.name}` },
+        { label: '📤 Export List', action: `export-category:${category.id}` },
+        { label: '⬆️ Parent Category', action: 'list-categories' },
+      ],
+      suggestions: [
+        `Show spend breakdown for ${category.name}`,
+        `High-value ${category.name} contracts`,
+        'Show all categories',
+      ],
+    };
+  },
+
   'default': (query, context) => ({
     response: `I understand you're asking about "${query}". 
 
@@ -2789,6 +3314,47 @@ function selectResponse(query: string, context: any) {
       return mockAIResponses['negotiate-terms']?.(query, {
         ...context,
         supplierName: context.intent.entities.supplierName,
+      });
+    }
+  }
+
+  // ============================================
+  // TAXONOMY INTENTS
+  // ============================================
+  
+  if (context.intent?.type === 'taxonomy') {
+    // List all categories
+    if (context.intent.action === 'list_categories' && context.taxonomyData) {
+      return mockAIResponses['list-categories']?.(query, {
+        ...context,
+        taxonomyData: context.taxonomyData,
+      });
+    }
+    
+    // Category details
+    if (context.intent.action === 'category_details' && context.categoryDetails) {
+      return mockAIResponses['category-details']?.(query, {
+        ...context,
+        categoryDetails: context.categoryDetails,
+        categoryName: context.intent.entities.category,
+      });
+    }
+    
+    // Suggest category for contract
+    if (context.intent.action === 'suggest_category' && context.categorySuggestion) {
+      return mockAIResponses['suggest-category']?.(query, {
+        ...context,
+        categorySuggestion: context.categorySuggestion,
+        contractName: context.intent.entities.contractName,
+      });
+    }
+    
+    // Browse taxonomy / contracts in category
+    if (context.intent.action === 'browse_taxonomy' && context.categoryContracts) {
+      return mockAIResponses['browse-taxonomy']?.(query, {
+        ...context,
+        categoryContracts: context.categoryContracts,
+        categoryName: context.intent.entities.category,
       });
     }
   }
@@ -3246,6 +3812,65 @@ export async function POST(request: NextRequest) {
           additionalContext += `\n\nContracts:\n${autoRenewalContracts.slice(0, 8).map((c: any) => 
             `- ${c.contractTitle} (Supplier: ${c.supplierName}, Renews: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'})`
           ).join('\n')}`;
+        }
+      }
+    }
+
+    // For taxonomy intents
+    if (intent.type === 'taxonomy') {
+      if (intent.action === 'list_categories') {
+        const taxonomyData = await getTaxonomyCategories(tenantId);
+        additionalContext += `\n\n**Taxonomy Categories:**`;
+        additionalContext += `\n- Total Categories: ${taxonomyData.stats.totalCategories}`;
+        additionalContext += `\n- L1 Categories: ${taxonomyData.stats.totalL1}`;
+        additionalContext += `\n- L2 Subcategories: ${taxonomyData.stats.totalL2}`;
+        if (taxonomyData.hierarchy.length > 0) {
+          additionalContext += `\n\nTop-Level Categories:\n${taxonomyData.hierarchy.slice(0, 10).map((cat: any, i: number) => 
+            `${i + 1}. ${cat.name} (${cat.code || 'N/A'}) - ${cat.children?.length || 0} subcategories, ${cat.contractCount || 0} contracts`
+          ).join('\n')}`;
+        }
+        context = { ...context, taxonomyData };
+      } else if (intent.action === 'category_details' && intent.entities.category) {
+        const categoryDetails = await getCategoryDetails(intent.entities.category, tenantId);
+        if (categoryDetails) {
+          additionalContext += `\n\n**Category Details for ${categoryDetails.name}:**`;
+          additionalContext += `\n- Code: ${categoryDetails.code || 'N/A'}`;
+          additionalContext += `\n- Level: L${categoryDetails.level}`;
+          additionalContext += `\n- Contracts: ${categoryDetails.contractCount}`;
+          additionalContext += `\n- Total Spend: $${categoryDetails.totalSpend.toLocaleString()}`;
+          if (categoryDetails.children && categoryDetails.children.length > 0) {
+            additionalContext += `\n\nSubcategories: ${categoryDetails.children.map((c: any) => c.name).join(', ')}`;
+          }
+          context = { ...context, categoryDetails };
+        }
+      } else if (intent.action === 'suggest_category' && intent.entities.contractName) {
+        const categorySuggestion = await suggestCategoryForContract(intent.entities.contractName, tenantId);
+        if (categorySuggestion) {
+          additionalContext += `\n\n**Category Suggestion for "${intent.entities.contractName}":**`;
+          if (categorySuggestion.currentCategory) {
+            additionalContext += `\n- Current Category: ${categorySuggestion.currentCategory.name}`;
+          } else {
+            additionalContext += `\n- Currently uncategorized`;
+          }
+          if (categorySuggestion.suggestions.length > 0) {
+            additionalContext += `\n\nSuggested Categories:\n${categorySuggestion.suggestions.slice(0, 5).map((s: any, i: number) => 
+              `${i + 1}. ${s.name} (${s.code})`
+            ).join('\n')}`;
+          }
+          context = { ...context, categorySuggestion };
+        }
+      } else if (intent.action === 'browse_taxonomy' && intent.entities.category) {
+        const categoryContracts = await getContractsInCategory(intent.entities.category, tenantId);
+        if (categoryContracts) {
+          additionalContext += `\n\n**Contracts in ${categoryContracts.category.name}:**`;
+          additionalContext += `\n- Total Contracts: ${categoryContracts.totalContracts}`;
+          additionalContext += `\n- Total Value: $${categoryContracts.totalValue.toLocaleString()}`;
+          if (categoryContracts.contracts.length > 0) {
+            additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: any, i: number) => 
+              `${i + 1}. ${c.contractTitle} - ${c.supplierName} - $${Number(c.totalValue || 0).toLocaleString()}`
+            ).join('\n')}`;
+          }
+          context = { ...context, categoryContracts };
         }
       }
     }

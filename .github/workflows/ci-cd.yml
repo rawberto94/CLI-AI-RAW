@@ -177,10 +177,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
+
+      - name: Update image tags
+        run: |
+          cd kubernetes
+          sed -i "s|ghcr.io/rawberto94/cli-ai-raw/web:latest|ghcr.io/rawberto94/cli-ai-raw/web:develop-${{ github.sha }}|g" deployment.yaml
+          sed -i "s|ghcr.io/rawberto94/cli-ai-raw/workers:latest|ghcr.io/rawberto94/cli-ai-raw/workers:develop-${{ github.sha }}|g" deployment.yaml
+
       - name: Deploy to staging
         run: |
-          echo "Deploying to staging environment"
-          # Add deployment commands here (kubectl, helm, etc.)
+          kubectl apply -f kubernetes/deployment.yaml --namespace=contract-intel-staging
+          kubectl rollout status deployment/app --namespace=contract-intel-staging --timeout=300s
+          kubectl rollout status deployment/workers --namespace=contract-intel-staging --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods --namespace=contract-intel-staging
+          kubectl get services --namespace=contract-intel-staging
 
   deploy-production:
     needs: [build-web, build-workers]
@@ -191,7 +213,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
+
+      - name: Update image tags
+        run: |
+          cd kubernetes
+          sed -i "s|ghcr.io/rawberto94/cli-ai-raw/web:latest|ghcr.io/rawberto94/cli-ai-raw/web:main-${{ github.sha }}|g" deployment.yaml
+          sed -i "s|ghcr.io/rawberto94/cli-ai-raw/workers:latest|ghcr.io/rawberto94/cli-ai-raw/workers:main-${{ github.sha }}|g" deployment.yaml
+
       - name: Deploy to production
         run: |
-          echo "Deploying to production environment"
-          # Add deployment commands here (kubectl, helm, etc.)
+          kubectl apply -f kubernetes/deployment.yaml --namespace=contract-intel
+          kubectl rollout status deployment/app --namespace=contract-intel --timeout=300s
+          kubectl rollout status deployment/workers --namespace=contract-intel --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods --namespace=contract-intel
+          kubectl get services --namespace=contract-intel
+
+      - name: Run smoke tests
+        run: |
+          APP_URL=$(kubectl get ingress contract-intel-ingress -n contract-intel -o jsonpath='{.spec.rules[0].host}')
+          curl -f "https://${APP_URL}/api/health" || exit 1
+          echo "Smoke tests passed!"
