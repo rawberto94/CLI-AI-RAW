@@ -195,15 +195,16 @@ export function CommandEmpty({ children, className, ...props }: CommandEmptyProp
 
 interface CommandGroupProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  heading?: string;
+  heading?: React.ReactNode;
 }
 
 export function CommandGroup({ children, heading, className, ...props }: CommandGroupProps) {
+  const headingLabel = typeof heading === 'string' ? heading : undefined;
   return (
     <div
       className={cn("overflow-hidden p-1", className)}
       role="group"
-      aria-label={heading}
+      aria-label={headingLabel}
       {...props}
     >
       {heading && (

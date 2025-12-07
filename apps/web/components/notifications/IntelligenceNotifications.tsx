@@ -152,7 +152,7 @@ export function IntelligenceNotifications() {
   };
 
   const getConfig = (type: string) => {
-    return notificationTypeConfig[type] || notificationTypeConfig.SYSTEM;
+    return notificationTypeConfig[type] ?? notificationTypeConfig['SYSTEM']!;
   };
 
   return (

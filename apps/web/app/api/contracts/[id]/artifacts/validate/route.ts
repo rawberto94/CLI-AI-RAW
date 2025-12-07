@@ -7,6 +7,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { artifactValidationService } from 'data-orchestration/services';
 
+// Type for the validation service (mirrors artifact-validation.service.ts)
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  issues?: { field: string; message: string; severity: string; type?: string; suggestedFix?: string }[];
+  criticalIssues?: number;
+  canAutoFix?: boolean;
+}
+
 /**
  * POST /api/contracts/[id]/artifacts/validate
  * Validate all artifacts or specific artifact type
@@ -27,15 +37,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
 
     if (artifactType && artifactData) {
       // Validate specific artifact
-      const validation = await artifactValidationService.validateArtifact(
+      const validation = await (artifactValidationService as any).validateArtifact(
         artifactType,
         artifactData
-      );
+      ) as ValidationResult;
 
       // Try auto-fix if there are issues
       let autoFixResult = null;
       if (!validation.valid && validation.canAutoFix) {
-        autoFixResult = await artifactValidationService.autoFix(
+        autoFixResult = await (artifactValidationService as any).autoFix(
           artifactData,
           validation.issues ?? []
         );

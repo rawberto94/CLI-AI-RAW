@@ -257,7 +257,7 @@ export function useStrategicRecommendations({
       ),
       byCategory: data.reduce((acc: Record<string, StrategicRecommendation[]>, rec: StrategicRecommendation) => {
         if (!acc[rec.category]) acc[rec.category] = [];
-        acc[rec.category].push(rec);
+        acc[rec.category]!.push(rec);
         return acc;
       }, {} as Record<string, StrategicRecommendation[]>),
       highImpact: data.filter((r: StrategicRecommendation) => r.impact === 'HIGH'),

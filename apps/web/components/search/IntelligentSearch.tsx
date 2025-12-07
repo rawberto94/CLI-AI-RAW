@@ -146,10 +146,12 @@ export function IntelligentSearch() {
         e.preventDefault();
         if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
           const selected = suggestions[selectedIndex];
-          saveRecentSearch(query);
-          router.push(selected.href);
-          setIsOpen(false);
-          setQuery('');
+          if (selected) {
+            saveRecentSearch(query);
+            router.push(selected.href);
+            setIsOpen(false);
+            setQuery('');
+          }
         } else if (query.trim()) {
           saveRecentSearch(query);
           router.push(`/search?q=${encodeURIComponent(query)}`);
