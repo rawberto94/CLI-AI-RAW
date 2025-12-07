@@ -26,6 +26,7 @@ import {
 } from "./ui/tooltip";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { ConTigoLogoSVG } from "./ui/ConTigoLogo";
 import { cn } from "@/lib/utils";
 
 // Navigation group type
@@ -196,13 +197,7 @@ export function Sidebar() {
       <div className="flex h-full max-h-screen flex-col">
         {/* Header */}
         <div className="flex h-14 items-center border-b border-slate-200/60 px-4 lg:h-[60px] lg:px-5 bg-white/80 backdrop-blur-sm">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <img 
-              src="/logo-final.png" 
-              alt="ConTigo" 
-              className="h-12 w-auto group-hover:scale-105 transition-transform"
-            />
-          </Link>
+          <ConTigoLogoSVG size="md" />
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

@@ -3,20 +3,17 @@ import { Inter } from "next/font/google";
 import { Suspense } from "react";
 
 import { HealthBanner } from "./health-banner";
-import EnhancedNavigation from "@/components/layout/EnhancedNavigation";
+import { ConditionalLayout } from "@/components/layout/ConditionalLayout";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { RealTimeProvider } from "@/contexts/RealTimeContext";
 import { ModuleProvider } from "@/contexts/ModuleContext";
 import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
-import { FloatingDataModeToggle } from "@/components/ui/DataModeToggle";
 import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import { QueryProvider } from "@/lib/query-client";
 import { WebSocketProvider } from "@/contexts/websocket-context";
-import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
 import { RealTimeSyncProvider } from "@/components/providers/RealTimeSyncProvider";
-import { WelcomeTutorial } from "@/components/WelcomeTutorial";
 import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 
@@ -62,23 +59,9 @@ export default function RootLayout({
                               <TenantContextBanner />
                             </Suspense>
                             <HealthBanner />
-                            <EnhancedNavigation />
-                            <main 
-                              id="main-content"
-                              className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-slate-50 overflow-x-hidden"
-                              tabIndex={-1}
-                            >
-                              <div className="h-full w-full max-w-full">
-                                {children}
-                              </div>
-                            </main>
-                            <FloatingDataModeToggle />
-                            <Suspense fallback={null}>
-                              <FloatingAIBubble />
-                            </Suspense>
-                            <Suspense fallback={null}>
-                              <WelcomeTutorial />
-                            </Suspense>
+                            <ConditionalLayout>
+                              {children}
+                            </ConditionalLayout>
                             </GlobalKeyboardShortcuts>
                           </FeedbackProvider>
                         </ModuleProvider>

@@ -9,6 +9,58 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 
+// ConTigo Logo SVG Component
+function ConTigoLogo({ size = 'lg' }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {
+  const sizes = {
+    sm: { height: 40, fontSize: 24 },
+    md: { height: 56, fontSize: 32 },
+    lg: { height: 72, fontSize: 40 },
+    xl: { height: 96, fontSize: 52 },
+  };
+  const s = sizes[size];
+
+  return (
+    <div className="flex items-center gap-3">
+      <svg 
+        width={s.height} 
+        height={s.height} 
+        viewBox="0 0 100 100" 
+        className="flex-shrink-0"
+      >
+        <defs>
+          <linearGradient id="loginDocGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#2DD4BF" />
+            <stop offset="100%" stopColor="#0F766E" />
+          </linearGradient>
+          <linearGradient id="loginPenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#0F766E" />
+            <stop offset="100%" stopColor="#065F5B" />
+          </linearGradient>
+        </defs>
+        
+        {/* Document body */}
+        <rect x="10" y="5" width="55" height="70" rx="8" fill="url(#loginDocGradient)" />
+        
+        {/* Document lines */}
+        <rect x="20" y="18" width="22" height="6" rx="3" fill="white" opacity="0.9" />
+        <rect x="20" y="32" width="35" height="6" rx="3" fill="white" opacity="0.9" />
+        <rect x="20" y="46" width="18" height="6" rx="3" fill="white" opacity="0.7" />
+        
+        {/* Pen */}
+        <g transform="translate(55, 55) rotate(-45)">
+          <rect x="-6" y="0" width="12" height="35" rx="2" fill="url(#loginPenGradient)" />
+          <polygon points="-6,35 0,48 6,35" fill="url(#loginPenGradient)" />
+          <rect x="-5" y="3" width="10" height="5" rx="1" fill="#065F5B" />
+        </g>
+      </svg>
+      <span className="font-bold tracking-tight" style={{ fontSize: s.fontSize }}>
+        <span className="text-slate-800">Con</span>
+        <span className="text-teal-600">Tigo</span>
+      </span>
+    </div>
+  );
+}
+
 // SSO Provider Icons
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -103,22 +155,48 @@ function SignInForm() {
   const hasSSO = providers.some(p => p !== "credentials");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
-      <Card className="w-full max-w-md p-8 card-elevated">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">C</span>
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              ConTigo
-            </span>
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-          <p className="text-muted-foreground">
-            Sign in to your contract intelligence platform
-          </p>
+    <div className="min-h-screen flex">
+      {/* Left side - Branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 p-12 flex-col justify-between">
+        <div>
+          <ConTigoLogo size="lg" />
         </div>
+        <div className="text-white">
+          <h2 className="text-4xl font-bold mb-4">Contract Intelligence Platform</h2>
+          <p className="text-teal-100 text-lg leading-relaxed">
+            Manage, analyze, and optimize your contracts with AI-powered insights. 
+            Streamline your procurement processes and never miss a deadline.
+          </p>
+          <div className="mt-8 grid grid-cols-2 gap-4">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <div className="text-3xl font-bold">415K+</div>
+              <div className="text-teal-200 text-sm">Lines of Code</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <div className="text-3xl font-bold">AI</div>
+              <div className="text-teal-200 text-sm">Powered Analysis</div>
+            </div>
+          </div>
+        </div>
+        <div className="text-teal-200 text-sm">
+          © 2025 ConTigo. All rights reserved.
+        </div>
+      </div>
+
+      {/* Right side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-white">
+        <Card className="w-full max-w-md p-8 shadow-xl border-0 bg-white">
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-8">
+            <ConTigoLogo size="md" />
+          </div>
+
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome Back</h1>
+            <p className="text-slate-500">
+              Sign in to your account to continue
+            </p>
+          </div>
 
         {registered && (
           <div className="mb-4 p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">
@@ -227,20 +305,22 @@ function SignInForm() {
           </Button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-muted-foreground">
+        <div className="mt-6 text-center text-sm text-slate-500">
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-primary hover:underline font-medium">
+          <Link href="/auth/signup" className="text-teal-600 hover:text-teal-700 hover:underline font-medium">
             Sign up
           </Link>
         </div>
 
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          <p>Demo Accounts (password: password123):</p>
-          <p className="font-mono text-xs mt-1">
-            admin@acme.com (Admin) | roberto@acme.com (Manager)
+        <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
+          <p>Demo Accounts:</p>
+          <p className="font-mono mt-1">
+            admin@acme.com | roberto@acme.com
           </p>
+          <p className="mt-1">Password: password123</p>
         </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

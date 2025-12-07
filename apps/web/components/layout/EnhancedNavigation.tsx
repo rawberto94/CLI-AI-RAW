@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator';
 import { NotificationBell } from '@/components/collaboration/NotificationCenter';
+import { ConTigoLogoSVG } from '@/components/ui/ConTigoLogo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnClickOutside } from '@/hooks/useEventListener';
 import {
@@ -388,13 +389,7 @@ function EnhancedNavigation() {
     <TooltipProvider>
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/60 px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center">
-          <img 
-            src="/logo-final.png" 
-            alt="ConTigo" 
-            className="h-12 w-auto"
-          />
-        </Link>
+        <ConTigoLogoSVG size="md" />
         <div className="flex items-center gap-2">
           <NotificationBell />
           <Button
@@ -422,13 +417,7 @@ function EnhancedNavigation() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-            <Link href="/" className="flex items-center gap-2 group">
-              <img 
-                src="/logo-final.png" 
-                alt="ConTigo" 
-                className="h-14 w-auto group-hover:scale-105 transition-transform"
-              />
-            </Link>
+            <ConTigoLogoSVG size="lg" />
           </div>
 
           {/* Search */}
