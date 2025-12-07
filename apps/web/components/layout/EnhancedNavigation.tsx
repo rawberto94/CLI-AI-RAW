@@ -388,12 +388,13 @@ function EnhancedNavigation() {
     <TooltipProvider>
       {/* Mobile Header */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/60 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg p-1.5 shadow-sm">
-            <FileText className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-semibold text-gray-900">ConTigo</span>
-        </div>
+        <Link href="/" className="flex items-center">
+          <img 
+            src="/logo-final.png" 
+            alt="ConTigo" 
+            className="h-12 w-auto"
+          />
+        </Link>
         <div className="flex items-center gap-2">
           <NotificationBell />
           <Button
@@ -420,14 +421,14 @@ function EnhancedNavigation() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl p-2 shadow-lg shadow-blue-500/20">
-              <FileText className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-gray-900 text-sm">ConTigo</h1>
-              <p className="text-[10px] text-gray-500">Contract Intelligence</p>
-            </div>
+          <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
+            <Link href="/" className="flex items-center gap-2 group">
+              <img 
+                src="/logo-final.png" 
+                alt="ConTigo" 
+                className="h-14 w-auto group-hover:scale-105 transition-transform"
+              />
+            </Link>
           </div>
 
           {/* Search */}

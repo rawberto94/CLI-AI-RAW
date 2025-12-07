@@ -197,13 +197,11 @@ export function Sidebar() {
         {/* Header */}
         <div className="flex h-14 items-center border-b border-slate-200/60 px-4 lg:h-[60px] lg:px-5 bg-white/80 backdrop-blur-sm">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
-              <FileText className="h-4.5 w-4.5 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-sm bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">PactumAI</span>
-              <span className="text-[10px] text-slate-500 -mt-0.5">Contract Intelligence</span>
-            </div>
+            <img 
+              src="/logo-final.png" 
+              alt="ConTigo" 
+              className="h-12 w-auto group-hover:scale-105 transition-transform"
+            />
           </Link>
           <TooltipProvider>
             <Tooltip>
@@ -237,7 +235,7 @@ export function Sidebar() {
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">Welcome to PactumAI!</h3>
+                  <h3 className="font-bold text-sm text-slate-900">Welcome to ConTigo!</h3>
                   <p className="text-xs text-slate-600 mt-1">
                     Start by uploading a contract or ask the AI Chatbot to help you analyze your documents.
                   </p>

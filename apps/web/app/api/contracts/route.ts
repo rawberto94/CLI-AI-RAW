@@ -368,9 +368,19 @@ async function handler(request: NextRequest) {
               mimeType: contract.mimeType,
               uploadedAt: contract.uploadedAt?.toISOString() || contract.createdAt.toISOString(),
               createdAt: contract.createdAt.toISOString(),
+              // Type field for frontend compatibility
+              type: contract.contractType || "Unknown",
               contractType: contract.contractType || "Unknown",
+              // Parties object for frontend compatibility
+              parties: {
+                client: contract.clientName || null,
+                supplier: contract.supplierName || null,
+              },
               clientName: contract.clientName,
               supplierName: contract.supplierName,
+              // Map to vendor/counterparty for UI compatibility
+              vendor: contract.supplierName || contract.clientName,
+              counterparty: contract.clientName || contract.supplierName,
               category: categoryInfo ? {
                 id: categoryInfo.id,
                 name: categoryInfo.name,
@@ -378,6 +388,8 @@ async function handler(request: NextRequest) {
                 icon: categoryInfo.icon,
                 path: categoryInfo.path,
               } : null,
+              // Value field for frontend compatibility
+              value: contract.totalValue ? Number(contract.totalValue) : null,
               totalValue: contract.totalValue ? Number(contract.totalValue) : null,
               currency: contract.currency,
               effectiveDate: contract.effectiveDate?.toISOString(),

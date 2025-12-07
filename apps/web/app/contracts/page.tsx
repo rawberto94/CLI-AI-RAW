@@ -220,7 +220,7 @@ const CompactContractRow = memo(function CompactContractRow({
       {/* Party */}
       <div className="hidden md:flex items-center gap-2 min-w-0">
         <span className="text-sm text-slate-600 truncate">
-          {contract.parties?.client || '—'}
+          {contract.parties?.supplier || contract.parties?.client || '—'}
         </span>
       </div>
 
