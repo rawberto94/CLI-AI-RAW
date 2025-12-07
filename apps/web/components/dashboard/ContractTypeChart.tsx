@@ -106,7 +106,7 @@ export function ContractTypeChart({ data }: ContractTypeChartProps) {
                       {chartData.map((entry, index) => (
                         <Cell 
                           key={`cell-${index}`} 
-                          fill={COLORS[index % COLORS.length].fill}
+                          fill={COLORS[index % COLORS.length]?.fill ?? '#8884d8'}
                           className="hover:opacity-80 transition-opacity cursor-pointer"
                         />
                       ))}
@@ -139,7 +139,7 @@ export function ContractTypeChart({ data }: ContractTypeChartProps) {
                   >
                     <div className="flex items-center gap-2">
                       <div 
-                        className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${COLORS[index % COLORS.length].gradient} shadow-sm`}
+                        className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${COLORS[index % COLORS.length]?.gradient ?? 'from-gray-400 to-gray-600'} shadow-sm`}
                       />
                       <span className="text-muted-foreground">{item.type}</span>
                     </div>

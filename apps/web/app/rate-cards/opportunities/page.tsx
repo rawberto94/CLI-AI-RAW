@@ -181,7 +181,6 @@ export default function OpportunitiesPage() {
           </CardContent>
         </Card>
       )}
-          </Tabs>
         </motion.div>
       </div>
     </div>

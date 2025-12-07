@@ -107,6 +107,9 @@ export interface Artifact {
   data: OverviewData | ClausesData | FinancialData | RiskData | ComplianceData;
   confidence?: number;
   model?: string;
+  isEdited?: boolean;
+  editCount?: number;
+  lastEditedAt?: string;
 }
 
 export interface Contract {

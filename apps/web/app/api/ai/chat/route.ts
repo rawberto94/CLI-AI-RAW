@@ -14,7 +14,11 @@ interface DetectedIntent {
     // New procurement actions
     'spend_analysis' | 'cost_savings' | 'rate_comparison' | 'risk_assessment' | 'compliance_check' | 'compliance_status' | 'budget_status' | 'supplier_performance' | 'negotiate_terms' | 'category_spend' | 'top_suppliers' | 'savings_opportunities' | 'contract_risks' | 'auto_renewals' | 'payment_terms' |
     // Taxonomy actions
-    'list_categories' | 'browse_taxonomy' | 'categorize_contract' | 'category_details' | 'suggest_category';
+    'list_categories' | 'browse_taxonomy' | 'categorize_contract' | 'category_details' | 'suggest_category' |
+    // Advanced AI agent actions
+    'deep_analysis' |
+    // Contract comparison actions
+    'compare_contracts' | 'compare_clauses' | 'compare_groups';
   entities: {
     contractName?: string;
     supplierName?: string;
@@ -30,10 +34,38 @@ interface DetectedIntent {
     relationshipType?: string;
     // Procurement entities
     category?: string;
-    timePeriod?: string;  // 'this_year', 'last_year', 'q1', 'q2', etc.
+    timePeriod?: string;  // 'this_year', 'last_year', 'q1', 'q2', '2024', etc.
     riskLevel?: string;   // 'high', 'medium', 'low', 'critical'
     savingsCategory?: string;
     topN?: number;        // For "top 5 suppliers", "top 10 contracts"
+    // Advanced analysis aspects
+    analysisAspects?: {
+      value?: boolean;
+      duration?: boolean;
+      categories?: boolean;
+      supplierDetails?: boolean;
+      risk?: boolean;
+      terms?: boolean;
+    };
+    // Contract comparison entities
+    comparisonEntities?: string[];  // Array of supplier/contract names to compare
+    clauseType?: string;            // Type of clause to compare (termination, liability, etc.)
+    comparisonAspects?: {           // What aspects to focus on in comparison
+      value?: boolean;
+      duration?: boolean;
+      terms?: boolean;
+      risk?: boolean;
+      rates?: boolean;
+      clauses?: boolean;
+      count?: boolean;
+      avgValue?: boolean;
+    };
+    // Multi-group comparison entities
+    comparisonGroups?: Array<{
+      supplier?: string;
+      year?: string;
+      category?: string;
+    }>;
   };
   confidence: number;
 }
@@ -548,6 +580,202 @@ function detectIntent(query: string): DetectedIntent {
       action: 'start_workflow',
       entities: { workflowType: 'approval' },
       confidence: 0.8,
+    };
+  }
+
+  // ============================================
+  // ADVANCED AI AGENT: DEEP ANALYSIS PATTERNS
+  // ============================================
+  
+  // Extract year if mentioned (e.g., "in 2024", "from 2023", "2024 contracts")
+  const yearMatch = query.match(/(?:in|from|for|during)\s+(\d{4})|(\d{4})\s+contracts/i);
+  const year = yearMatch ? (yearMatch[1] || yearMatch[2]) : undefined;
+  
+  // Extract supplier name from various patterns
+  const supplierPatterns = [
+    /(?:from|with|by|for)\s+(?:supplier\s+)?([A-Z][a-zA-Z\s&]+?)(?:\s+in\s+\d{4}|\s+contracts|\s+and|\s*,|\s*$)/i,
+    /(?:contracts?\s+(?:from|with|by))\s+([A-Z][a-zA-Z\s&]+?)(?:\s+in|\s+and|\s*,|\s*$)/i,
+  ];
+  
+  for (const pattern of supplierPatterns) {
+    const supplierMatch = query.match(pattern);
+    if (supplierMatch && !supplierName) {
+      supplierName = supplierMatch[1]?.trim().replace(/\s+contracts?$/i, '');
+    }
+  }
+  
+  // Extract category if mentioned
+  const categoryMatch = query.match(/(?:in\s+(?:the\s+)?|for\s+|under\s+)([A-Z][a-zA-Z\s]+?)\s+category/i);
+  const category = categoryMatch ? categoryMatch[1]?.trim() : undefined;
+
+  // Pattern: Complex analysis queries - summarize, analyze, understand, give me an understanding
+  const deepAnalysisPattern = /(?:summarize?|summari[sz]e|analyze?|analyse|understand|give\s+me\s+(?:an?\s+)?(?:understanding|overview|summary|analysis)|tell\s+me\s+about|what\s+(?:can\s+you\s+tell\s+me\s+about|do\s+you\s+know\s+about)|break\s*down|deep\s+dive|report\s+on)/i;
+  
+  // Check if query mentions specific analysis aspects
+  const wantsValue = /value|worth|amount|cost|spend|price/i.test(query);
+  const wantsDuration = /duration|length|term|period|how\s+long/i.test(query);
+  const wantsCategories = /categor|type|kind|classification/i.test(query);
+  const wantsSupplierDetails = /supplier|vendor|provider|partner/i.test(query);
+  const wantsRisk = /risk|expir|renew|concern/i.test(query);
+  const wantsTerms = /terms|condition|clause|obligation/i.test(query);
+  
+  // ============================================
+  // MULTI-CONTRACT GROUP COMPARISON PATTERNS
+  // ============================================
+  
+  // Pattern: "compare all X 2024 contracts vs Y 2024" / "compare X in 2024 versus Y in 2024"
+  // This detects group-level comparisons (e.g., all Deloitte 2024 vs all Accenture 2024)
+  const groupComparePattern = /(?:compare|contrast|analyze)\s+(?:all\s+)?(.+?)\s+(?:in\s+)?(\d{4})?\s*(?:contracts?)?\s*(?:vs\.?|versus|against|with|to|and)\s+(?:all\s+)?(.+?)\s+(?:in\s+)?(\d{4})?\s*(?:contracts?)?(?:\s*$|\s+(?:in\s+terms\s+of|regarding|for))/i;
+  match = query.match(groupComparePattern);
+  if (match) {
+    const group1 = match[1]?.trim().replace(/\s+contracts?$/i, '').replace(/^\s*the\s+/i, '');
+    const year1 = match[2] || year;
+    const group2 = match[3]?.trim().replace(/\s+contracts?$/i, '').replace(/^\s*the\s+/i, '');
+    const year2 = match[4] || year;
+    
+    console.log('[AI Chat] Detected group comparison intent:', { group1, year1, group2, year2 });
+    return {
+      type: 'analytics',
+      action: 'compare_groups',
+      entities: { 
+        comparisonGroups: [
+          { supplier: group1, year: year1 },
+          { supplier: group2, year: year2 },
+        ],
+        comparisonAspects: {
+          value: true,
+          duration: true,
+          count: true,
+          avgValue: true,
+          terms: wantsTerms,
+          risk: wantsRisk,
+          rates: /rate|pricing|cost/i.test(query),
+        },
+      },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "compare X and Y" / "compare X vs Y" / "compare X with Y"
+  const comparePattern = /(?:compare|contrast|diff(?:erence)?|versus|vs\.?)\s+(.+?)\s+(?:and|vs\.?|versus|with|to|against)\s+(.+?)(?:\s+contracts?)?(?:\s*$|\s+(?:in\s+terms\s+of|regarding|for|on))/i;
+  match = query.match(comparePattern);
+  if (match) {
+    const entity1 = (match[1]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '').replace(/\s+contracts?$/i, '')) || '';
+    const entity2 = (match[2]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '').replace(/\s+contracts?$/i, '')) || '';
+    
+    console.log('[AI Chat] Detected comparison intent:', { entity1, entity2 });
+    return {
+      type: 'analytics',
+      action: 'compare_contracts',
+      entities: { 
+        comparisonEntities: [entity1, entity2].filter(Boolean),
+        comparisonAspects: {
+          value: wantsValue || true, // Default to comparing values
+          duration: wantsDuration || true,
+          terms: wantsTerms,
+          risk: wantsRisk,
+          rates: /rate|pricing|cost/i.test(query),
+          clauses: /clause|term|condition|obligation|liability|termination|indemnif/i.test(query),
+        },
+      },
+      confidence: 0.95,
+    };
+  }
+  
+  // Pattern: "what's the difference between X and Y"
+  const differencePattern = /(?:what(?:'s|s)?|show|tell\s+me)\s+(?:the\s+)?(?:difference|differences|comparison)\s+(?:between|of)\s+(.+?)\s+(?:and|vs\.?|versus)\s+(.+?)(?:\s*\?|\s*$)/i;
+  match = query.match(differencePattern);
+  if (match) {
+    const entity1 = (match[1]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '')) || '';
+    const entity2 = (match[2]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '')) || '';
+    
+    console.log('[AI Chat] Detected difference intent:', { entity1, entity2 });
+    return {
+      type: 'analytics',
+      action: 'compare_contracts',
+      entities: { 
+        comparisonEntities: [entity1, entity2].filter(Boolean),
+        comparisonAspects: {
+          value: true,
+          duration: true,
+          terms: true,
+          risk: true,
+          rates: true,
+          clauses: true,
+        },
+      },
+      confidence: 0.95,
+    };
+  }
+  
+  // Pattern: "how does X compare to Y" / "X vs Y"
+  const howComparePattern = /how\s+(?:does|do)\s+(.+?)\s+compare\s+(?:to|with|against)\s+(.+?)(?:\s*\?|\s*$)/i;
+  match = query.match(howComparePattern);
+  if (match) {
+    const entity1 = match[1]?.trim() || '';
+    const entity2 = match[2]?.trim() || '';
+    
+    console.log('[AI Chat] Detected how compare intent:', { entity1, entity2 });
+    return {
+      type: 'analytics',
+      action: 'compare_contracts',
+      entities: { 
+        comparisonEntities: [entity1, entity2].filter(Boolean),
+        comparisonAspects: {
+          value: true,
+          duration: true,
+          terms: true,
+          risk: true,
+          rates: true,
+          clauses: true,
+        },
+      },
+      confidence: 0.95,
+    };
+  }
+  
+  // Pattern: Compare specific clauses - "compare termination clauses in X and Y"
+  const compareClausesPattern = /compare\s+(?:the\s+)?(.+?)\s+(?:clause|clauses|terms?|section|provisions?)\s+(?:in|between|of|for)\s+(.+?)\s+(?:and|vs\.?|versus)\s+(.+?)(?:\s*\?|\s*$)/i;
+  match = query.match(compareClausesPattern);
+  if (match) {
+    const clauseType = match[1]?.trim() || 'termination';
+    const entity1 = match[2]?.trim() || '';
+    const entity2 = match[3]?.trim() || '';
+    
+    console.log('[AI Chat] Detected clause comparison intent:', { clauseType, entity1, entity2 });
+    return {
+      type: 'analytics',
+      action: 'compare_clauses',
+      entities: { 
+        comparisonEntities: [entity1, entity2].filter(Boolean),
+        clauseType,
+        comparisonAspects: {
+          clauses: true,
+        },
+      },
+      confidence: 0.95,
+    };
+  }
+
+  if (deepAnalysisPattern.test(lowerQuery) && (supplierName || category || year)) {
+    console.log('[AI Chat] Detected deep analysis intent:', { supplierName, category, year, wantsValue, wantsDuration, wantsCategories });
+    return {
+      type: 'analytics',
+      action: 'deep_analysis',
+      entities: { 
+        supplierName, 
+        category,
+        timePeriod: year,
+        analysisAspects: {
+          value: wantsValue,
+          duration: wantsDuration,
+          categories: wantsCategories,
+          supplierDetails: wantsSupplierDetails,
+          risk: wantsRisk,
+          terms: wantsTerms,
+        },
+      },
+      confidence: 0.95,
     };
   }
 
@@ -1187,6 +1415,267 @@ async function getSupplierPerformance(tenantId: string, supplierName: string) {
   }
 }
 
+// ============================================
+// ADVANCED AI AGENT: DEEP ANALYSIS FUNCTION
+// ============================================
+
+interface DeepAnalysisResult {
+  summary: {
+    totalContracts: number;
+    activeContracts: number;
+    totalValue: number;
+    averageValue: number;
+    averageDurationMonths: number;
+    shortestDurationMonths: number;
+    longestDurationMonths: number;
+  };
+  contracts: Array<{
+    id: string;
+    title: string;
+    supplierName: string;
+    value: number;
+    status: string;
+    effectiveDate: Date | null;
+    expirationDate: Date | null;
+    durationMonths: number;
+    category: string;
+    daysUntilExpiry: number | null;
+  }>;
+  byCategory: Record<string, { count: number; value: number; contracts: string[] }>;
+  byStatus: Record<string, number>;
+  byYear: Record<string, { count: number; value: number }>;
+  riskAnalysis: {
+    expiringIn30Days: number;
+    expiringIn90Days: number;
+    autoRenewalCount: number;
+    highValueAtRisk: number;
+  };
+  filters: {
+    supplierName?: string;
+    category?: string;
+    year?: string;
+  };
+}
+
+/**
+ * Perform deep analysis on contracts matching the given criteria
+ * This is the core AI agent capability for complex queries
+ */
+async function performDeepAnalysis(
+  tenantId: string,
+  options: {
+    supplierName?: string;
+    category?: string;
+    year?: string;
+    analysisAspects?: {
+      value?: boolean;
+      duration?: boolean;
+      categories?: boolean;
+      supplierDetails?: boolean;
+      risk?: boolean;
+      terms?: boolean;
+    };
+  }
+): Promise<DeepAnalysisResult> {
+  const { supplierName, category, year, analysisAspects } = options;
+  
+  try {
+    // Build dynamic query
+    const where: any = { tenantId };
+    
+    if (supplierName) {
+      where.supplierName = { contains: supplierName, mode: 'insensitive' };
+    }
+    
+    if (category) {
+      where.OR = [
+        { categoryL1: { contains: category, mode: 'insensitive' } },
+        { categoryL2: { contains: category, mode: 'insensitive' } },
+        { procurementCategory: { name: { contains: category, mode: 'insensitive' } } },
+      ];
+    }
+    
+    // Filter by year if specified
+    if (year) {
+      const yearNum = parseInt(year);
+      where.AND = [
+        {
+          OR: [
+            { effectiveDate: { gte: new Date(`${yearNum}-01-01`), lte: new Date(`${yearNum}-12-31`) } },
+            { 
+              AND: [
+                { effectiveDate: { lte: new Date(`${yearNum}-12-31`) } },
+                { expirationDate: { gte: new Date(`${yearNum}-01-01`) } },
+              ]
+            },
+          ]
+        }
+      ];
+    }
+    
+    console.log('[AI Deep Analysis] Query filters:', { supplierName, category, year });
+    
+    const contracts = await prisma.contract.findMany({
+      where,
+      orderBy: { totalValue: 'desc' },
+      take: 100, // Limit for performance
+    });
+    
+    console.log(`[AI Deep Analysis] Found ${contracts.length} contracts`);
+    
+    if (contracts.length === 0) {
+      return {
+        summary: {
+          totalContracts: 0,
+          activeContracts: 0,
+          totalValue: 0,
+          averageValue: 0,
+          averageDurationMonths: 0,
+          shortestDurationMonths: 0,
+          longestDurationMonths: 0,
+        },
+        contracts: [],
+        byCategory: {},
+        byStatus: {},
+        byYear: {},
+        riskAnalysis: {
+          expiringIn30Days: 0,
+          expiringIn90Days: 0,
+          autoRenewalCount: 0,
+          highValueAtRisk: 0,
+        },
+        filters: { supplierName, category, year },
+      };
+    }
+    
+    // Calculate durations
+    const contractsWithDuration = contracts.map(c => {
+      const effectiveDate = c.effectiveDate ? new Date(c.effectiveDate) : null;
+      const expirationDate = c.expirationDate ? new Date(c.expirationDate) : null;
+      const durationMonths = effectiveDate && expirationDate
+        ? Math.round((expirationDate.getTime() - effectiveDate.getTime()) / (1000 * 60 * 60 * 24 * 30))
+        : 0;
+      const daysUntilExpiry = expirationDate 
+        ? Math.ceil((expirationDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+      
+      return {
+        id: c.id,
+        title: c.contractTitle || 'Untitled',
+        supplierName: c.supplierName || 'Unknown',
+        value: Number(c.totalValue) || 0,
+        status: c.status,
+        effectiveDate,
+        expirationDate,
+        durationMonths,
+        category: c.categoryL1 || 'Uncategorized',
+        daysUntilExpiry,
+      };
+    });
+    
+    // Calculate summary stats
+    const totalValue = contractsWithDuration.reduce((sum, c) => sum + c.value, 0);
+    const durations = contractsWithDuration.filter(c => c.durationMonths > 0).map(c => c.durationMonths);
+    const avgDuration = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+    const activeContracts = contractsWithDuration.filter(c => c.status === 'ACTIVE').length;
+    
+    // Group by category
+    const byCategory: Record<string, { count: number; value: number; contracts: string[] }> = {};
+    contractsWithDuration.forEach(c => {
+      const cat = c.category;
+      if (!byCategory[cat]) {
+        byCategory[cat] = { count: 0, value: 0, contracts: [] };
+      }
+      byCategory[cat].count++;
+      byCategory[cat].value += c.value;
+      byCategory[cat].contracts.push(c.title);
+    });
+    
+    // Group by status
+    const byStatus: Record<string, number> = {};
+    contractsWithDuration.forEach(c => {
+      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    });
+    
+    // Group by year
+    const byYear: Record<string, { count: number; value: number }> = {};
+    contractsWithDuration.forEach(c => {
+      const contractYear = c.effectiveDate?.getFullYear()?.toString() || 'Unknown';
+      if (!byYear[contractYear]) {
+        byYear[contractYear] = { count: 0, value: 0 };
+      }
+      byYear[contractYear].count++;
+      byYear[contractYear].value += c.value;
+    });
+    
+    // Risk analysis
+    const now = Date.now();
+    const in30Days = now + (30 * 24 * 60 * 60 * 1000);
+    const in90Days = now + (90 * 24 * 60 * 60 * 1000);
+    
+    const expiringIn30Days = contractsWithDuration.filter(c => 
+      c.daysUntilExpiry !== null && c.daysUntilExpiry > 0 && c.daysUntilExpiry <= 30
+    ).length;
+    
+    const expiringIn90Days = contractsWithDuration.filter(c => 
+      c.daysUntilExpiry !== null && c.daysUntilExpiry > 0 && c.daysUntilExpiry <= 90
+    ).length;
+    
+    const autoRenewalCount = contracts.filter(c => c.autoRenewalEnabled).length;
+    
+    const highValueAtRisk = contractsWithDuration.filter(c => 
+      c.daysUntilExpiry !== null && c.daysUntilExpiry > 0 && c.daysUntilExpiry <= 90 && c.value > 100000
+    ).length;
+    
+    return {
+      summary: {
+        totalContracts: contracts.length,
+        activeContracts,
+        totalValue,
+        averageValue: contracts.length > 0 ? totalValue / contracts.length : 0,
+        averageDurationMonths: Math.round(avgDuration),
+        shortestDurationMonths: durations.length > 0 ? Math.min(...durations) : 0,
+        longestDurationMonths: durations.length > 0 ? Math.max(...durations) : 0,
+      },
+      contracts: contractsWithDuration.slice(0, 20), // Top 20 by value
+      byCategory,
+      byStatus,
+      byYear,
+      riskAnalysis: {
+        expiringIn30Days,
+        expiringIn90Days,
+        autoRenewalCount,
+        highValueAtRisk,
+      },
+      filters: { supplierName, category, year },
+    };
+  } catch (e) {
+    console.error('[AI Deep Analysis] Error:', e);
+    return {
+      summary: {
+        totalContracts: 0,
+        activeContracts: 0,
+        totalValue: 0,
+        averageValue: 0,
+        averageDurationMonths: 0,
+        shortestDurationMonths: 0,
+        longestDurationMonths: 0,
+      },
+      contracts: [],
+      byCategory: {},
+      byStatus: {},
+      byYear: {},
+      riskAnalysis: {
+        expiringIn30Days: 0,
+        expiringIn90Days: 0,
+        autoRenewalCount: 0,
+        highValueAtRisk: 0,
+      },
+      filters: { supplierName, category, year },
+    };
+  }
+}
+
 // Get rate comparison data
 async function getRateComparison(tenantId: string, supplierName?: string) {
   try {
@@ -1232,6 +1721,1006 @@ async function getRateComparison(tenantId: string, supplierName?: string) {
 }
 
 // ============================================
+// MULTI-CONTRACT COMPARISON FUNCTIONS
+// ============================================
+
+interface ContractComparisonData {
+  id: string;
+  contractTitle: string;
+  supplierName: string;
+  status: string;
+  totalValue: number;
+  annualValue: number;
+  effectiveDate: Date | null;
+  expirationDate: Date | null;
+  durationMonths: number;
+  categoryL1: string | null;
+  categoryL2: string | null;
+  paymentTerms: string | null;
+  paymentFrequency: string | null;
+  autoRenewalEnabled: boolean;
+  noticePeriodDays: number | null;
+  terminationClause: string | null;
+  currency: string | null;
+  artifacts: Array<{
+    id: string;
+    type: string;
+    title: string;
+    content: any;
+  }>;
+  metadata: any;
+  keyTerms: string[];
+  clauses: Record<string, string | null>;
+  rates?: Array<{
+    roleName: string;
+    rate: number;
+    currency: string;
+    unit: string;
+  }>;
+}
+
+interface ComparisonResult {
+  entity1: ContractComparisonData | null;
+  entity2: ContractComparisonData | null;
+  entity1Name: string;
+  entity2Name: string;
+  differences: {
+    field: string;
+    label: string;
+    value1: any;
+    value2: any;
+    analysis: string;
+  }[];
+  similarities: {
+    field: string;
+    label: string;
+    sharedValue: any;
+  }[];
+  summary: string;
+  keyInsights: string[];
+  recommendation: string;
+}
+
+/**
+ * Find contracts matching a supplier or contract name for comparison
+ */
+async function findContractsForComparison(
+  searchTerm: string,
+  tenantId: string
+): Promise<ContractComparisonData[]> {
+  try {
+    console.log(`[AI Comparison] Searching for contracts matching: "${searchTerm}"`);
+    
+    // Search by supplier name OR contract title
+    const contracts = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { supplierName: { contains: searchTerm, mode: 'insensitive' } },
+          { contractTitle: { contains: searchTerm, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        contractMetadata: true,
+      },
+      orderBy: { totalValue: 'desc' },
+      take: 5, // Get top 5 by value
+    });
+    
+    console.log(`[AI Comparison] Found ${contracts.length} contracts for "${searchTerm}"`);
+    
+    // For each contract, get artifacts and rate cards
+    const contractsWithData: ContractComparisonData[] = [];
+    
+    for (const contract of contracts) {
+      // Get artifacts
+      const artifacts = await prisma.artifact.findMany({
+        where: { contractId: contract.id },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          data: true,
+          status: true,
+        },
+        take: 20,
+      });
+      
+      // Get rate card entries
+      const rateCards = await prisma.rateCardEntry.findMany({
+        where: { contractId: contract.id },
+        select: {
+          roleStandardized: true,
+          roleOriginal: true,
+          dailyRate: true,
+          currency: true,
+          unit: true,
+        },
+        take: 20,
+      });
+      
+      // Extract key terms from metadata
+      const metadata = contract.aiMetadata || {};
+      const keyTerms: string[] = [];
+      
+      // Parse metadata for key terms
+      if (typeof metadata === 'object') {
+        const meta = metadata as any;
+        if (meta.termination_clause) keyTerms.push(`Termination: ${meta.termination_clause}`);
+        if (meta.liability_cap) keyTerms.push(`Liability Cap: ${meta.liability_cap}`);
+        if (meta.indemnification) keyTerms.push(`Indemnification: ${meta.indemnification}`);
+        if (meta.sla_terms) keyTerms.push(`SLA: ${meta.sla_terms}`);
+        if (meta.payment_terms) keyTerms.push(`Payment: ${meta.payment_terms}`);
+      }
+      
+      // Build clauses object from artifacts
+      const clauses: Record<string, string | null> = {
+        termination: null,
+        liability: null,
+        indemnification: null,
+        confidentiality: null,
+        intellectualProperty: null,
+        sla: null,
+        warranty: null,
+        insurance: null,
+      };
+      
+      // Extract clauses from artifacts
+      for (const artifact of artifacts) {
+        if (artifact.type === 'TERMINATION_CLAUSE' || artifact.title?.toLowerCase().includes('termination')) {
+          clauses.termination = typeof artifact.data === 'string' 
+            ? artifact.data 
+            : JSON.stringify(artifact.data).substring(0, 500);
+        }
+        if (artifact.type === 'LIABILITY_CLAUSE' || artifact.title?.toLowerCase().includes('liability')) {
+          clauses.liability = typeof artifact.data === 'string' 
+            ? artifact.data 
+            : JSON.stringify(artifact.data).substring(0, 500);
+        }
+        if (artifact.title?.toLowerCase().includes('indemnif')) {
+          clauses.indemnification = typeof artifact.data === 'string' 
+            ? artifact.data 
+            : JSON.stringify(artifact.data).substring(0, 500);
+        }
+        if (artifact.title?.toLowerCase().includes('confidential')) {
+          clauses.confidentiality = typeof artifact.data === 'string' 
+            ? artifact.data 
+            : JSON.stringify(artifact.data).substring(0, 500);
+        }
+        if (artifact.title?.toLowerCase().includes('intellectual') || artifact.title?.toLowerCase().includes('ip')) {
+          clauses.intellectualProperty = typeof artifact.data === 'string' 
+            ? artifact.data 
+            : JSON.stringify(artifact.data).substring(0, 500);
+        }
+        if (artifact.type === 'SLA_TERMS' || artifact.title?.toLowerCase().includes('sla')) {
+          clauses.sla = typeof artifact.data === 'string' 
+            ? artifact.data 
+            : JSON.stringify(artifact.data).substring(0, 500);
+        }
+      }
+      
+      // Calculate duration
+      const effectiveDate = contract.effectiveDate ? new Date(contract.effectiveDate) : null;
+      const expirationDate = contract.expirationDate ? new Date(contract.expirationDate) : null;
+      const durationMonths = effectiveDate && expirationDate
+        ? Math.round((expirationDate.getTime() - effectiveDate.getTime()) / (1000 * 60 * 60 * 24 * 30))
+        : 0;
+      
+      contractsWithData.push({
+        id: contract.id,
+        contractTitle: contract.contractTitle || 'Untitled Contract',
+        supplierName: contract.supplierName || 'Unknown Supplier',
+        status: contract.status,
+        totalValue: Number(contract.totalValue) || 0,
+        annualValue: Number(contract.annualValue) || 0,
+        effectiveDate,
+        expirationDate,
+        durationMonths,
+        categoryL1: contract.categoryL1,
+        categoryL2: contract.categoryL2,
+        paymentTerms: contract.paymentTerms,
+        paymentFrequency: contract.paymentFrequency,
+        autoRenewalEnabled: contract.autoRenewalEnabled || false,
+        noticePeriodDays: contract.noticePeriodDays,
+        terminationClause: contract.terminationClause,
+        currency: contract.currency,
+        artifacts: artifacts.map(a => ({
+          id: a.id,
+          type: a.type,
+          title: a.title || 'Untitled',
+          content: a.data,
+        })),
+        metadata,
+        keyTerms,
+        clauses,
+        rates: rateCards.map(r => ({
+          roleName: r.roleStandardized || r.roleOriginal || 'Unknown Role',
+          rate: Number(r.dailyRate) || 0,
+          currency: r.currency || 'USD',
+          unit: r.unit || 'day',
+        })),
+      });
+    }
+    
+    return contractsWithData;
+  } catch (e) {
+    console.error('[AI Comparison] Error finding contracts:', e);
+    return [];
+  }
+}
+
+/**
+ * Perform comprehensive comparison between two entities (suppliers or contracts)
+ */
+async function performContractComparison(
+  entity1Name: string,
+  entity2Name: string,
+  tenantId: string,
+  aspectsToCompare?: {
+    value?: boolean;
+    duration?: boolean;
+    terms?: boolean;
+    risk?: boolean;
+    rates?: boolean;
+    clauses?: boolean;
+  }
+): Promise<ComparisonResult> {
+  console.log(`[AI Comparison] Comparing "${entity1Name}" vs "${entity2Name}"`);
+  
+  // Find contracts for both entities
+  const [contracts1, contracts2] = await Promise.all([
+    findContractsForComparison(entity1Name, tenantId),
+    findContractsForComparison(entity2Name, tenantId),
+  ]);
+  
+  // Get the top contract for each entity (highest value)
+  const contract1 = contracts1[0] || null;
+  const contract2 = contracts2[0] || null;
+  
+  const differences: ComparisonResult['differences'] = [];
+  const similarities: ComparisonResult['similarities'] = [];
+  const keyInsights: string[] = [];
+  
+  // Helper function to format currency
+  const formatCurrency = (value: number, currency: string = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+  
+  // Helper function to analyze difference
+  const analyzeDifference = (field: string, val1: any, val2: any): string => {
+    if (val1 === null && val2 === null) return 'Both contracts are missing this information';
+    if (val1 === null) return `Only ${entity2Name} has this defined`;
+    if (val2 === null) return `Only ${entity1Name} has this defined`;
+    
+    if (typeof val1 === 'number' && typeof val2 === 'number') {
+      const diff = val1 - val2;
+      const pct = val2 !== 0 ? Math.round((diff / val2) * 100) : 0;
+      if (diff > 0) {
+        return `${entity1Name} is ${Math.abs(pct)}% higher`;
+      } else if (diff < 0) {
+        return `${entity2Name} is ${Math.abs(pct)}% higher`;
+      }
+      return 'Both are equal';
+    }
+    
+    return 'Values differ';
+  };
+  
+  if (contract1 && contract2) {
+    // Compare values
+    if (aspectsToCompare?.value !== false) {
+      if (contract1.totalValue !== contract2.totalValue) {
+        differences.push({
+          field: 'totalValue',
+          label: 'Total Contract Value',
+          value1: formatCurrency(contract1.totalValue, contract1.currency || 'USD'),
+          value2: formatCurrency(contract2.totalValue, contract2.currency || 'USD'),
+          analysis: analyzeDifference('totalValue', contract1.totalValue, contract2.totalValue),
+        });
+        
+        // Generate insight
+        const valueDiff = Math.abs(contract1.totalValue - contract2.totalValue);
+        if (valueDiff > 100000) {
+          keyInsights.push(`Significant value difference of ${formatCurrency(valueDiff)} between contracts`);
+        }
+      } else {
+        similarities.push({
+          field: 'totalValue',
+          label: 'Total Contract Value',
+          sharedValue: formatCurrency(contract1.totalValue, contract1.currency || 'USD'),
+        });
+      }
+      
+      // Annual value
+      if (contract1.annualValue !== contract2.annualValue) {
+        differences.push({
+          field: 'annualValue',
+          label: 'Annual Value',
+          value1: formatCurrency(contract1.annualValue, contract1.currency || 'USD'),
+          value2: formatCurrency(contract2.annualValue, contract2.currency || 'USD'),
+          analysis: analyzeDifference('annualValue', contract1.annualValue, contract2.annualValue),
+        });
+      }
+    }
+    
+    // Compare duration
+    if (aspectsToCompare?.duration !== false) {
+      if (contract1.durationMonths !== contract2.durationMonths) {
+        differences.push({
+          field: 'duration',
+          label: 'Contract Duration',
+          value1: `${contract1.durationMonths} months`,
+          value2: `${contract2.durationMonths} months`,
+          analysis: contract1.durationMonths > contract2.durationMonths
+            ? `${entity1Name} has a longer commitment (${contract1.durationMonths - contract2.durationMonths} months more)`
+            : `${entity2Name} has a longer commitment (${contract2.durationMonths - contract1.durationMonths} months more)`,
+        });
+      } else if (contract1.durationMonths > 0) {
+        similarities.push({
+          field: 'duration',
+          label: 'Contract Duration',
+          sharedValue: `${contract1.durationMonths} months`,
+        });
+      }
+    }
+    
+    // Compare payment terms
+    if (aspectsToCompare?.terms !== false) {
+      if (contract1.paymentTerms !== contract2.paymentTerms) {
+        differences.push({
+          field: 'paymentTerms',
+          label: 'Payment Terms',
+          value1: contract1.paymentTerms || 'Not specified',
+          value2: contract2.paymentTerms || 'Not specified',
+          analysis: 'Different payment terms may affect cash flow planning',
+        });
+      } else if (contract1.paymentTerms) {
+        similarities.push({
+          field: 'paymentTerms',
+          label: 'Payment Terms',
+          sharedValue: contract1.paymentTerms,
+        });
+      }
+      
+      // Notice period
+      if (contract1.noticePeriodDays !== contract2.noticePeriodDays) {
+        differences.push({
+          field: 'noticePeriod',
+          label: 'Notice Period',
+          value1: contract1.noticePeriodDays ? `${contract1.noticePeriodDays} days` : 'Not specified',
+          value2: contract2.noticePeriodDays ? `${contract2.noticePeriodDays} days` : 'Not specified',
+          analysis: 'Different notice periods affect exit flexibility',
+        });
+      }
+    }
+    
+    // Compare risk factors
+    if (aspectsToCompare?.risk !== false) {
+      // Auto-renewal comparison
+      if (contract1.autoRenewalEnabled !== contract2.autoRenewalEnabled) {
+        differences.push({
+          field: 'autoRenewal',
+          label: 'Auto-Renewal',
+          value1: contract1.autoRenewalEnabled ? 'Enabled' : 'Disabled',
+          value2: contract2.autoRenewalEnabled ? 'Enabled' : 'Disabled',
+          analysis: contract1.autoRenewalEnabled
+            ? `${entity1Name} auto-renews - monitor notice period`
+            : `${entity2Name} auto-renews - monitor notice period`,
+        });
+        
+        if (contract1.autoRenewalEnabled || contract2.autoRenewalEnabled) {
+          keyInsights.push('Auto-renewal is enabled on one contract - ensure timely review before renewal date');
+        }
+      }
+      
+      // Expiration dates
+      if (contract1.expirationDate && contract2.expirationDate) {
+        const now = Date.now();
+        const days1 = Math.ceil((contract1.expirationDate.getTime() - now) / (1000 * 60 * 60 * 24));
+        const days2 = Math.ceil((contract2.expirationDate.getTime() - now) / (1000 * 60 * 60 * 24));
+        
+        if (days1 <= 90 || days2 <= 90) {
+          if (days1 <= 90) {
+            keyInsights.push(`⚠️ ${entity1Name} contract expires in ${days1} days`);
+          }
+          if (days2 <= 90) {
+            keyInsights.push(`⚠️ ${entity2Name} contract expires in ${days2} days`);
+          }
+        }
+      }
+    }
+    
+    // Compare rates if available
+    if (aspectsToCompare?.rates !== false && contract1.rates && contract2.rates) {
+      const roles1 = new Map(contract1.rates.map(r => [r.roleName.toLowerCase(), r]));
+      const roles2 = new Map(contract2.rates.map(r => [r.roleName.toLowerCase(), r]));
+      
+      // Find common roles and compare
+      const roles1Entries = Array.from(roles1.entries());
+      for (const [roleName, rate1] of roles1Entries) {
+        const rate2 = roles2.get(roleName);
+        if (rate2) {
+          if (rate1.rate !== rate2.rate) {
+            const diff = rate1.rate - rate2.rate;
+            const pctDiff = rate2.rate > 0 ? Math.round((diff / rate2.rate) * 100) : 0;
+            differences.push({
+              field: `rate_${roleName}`,
+              label: `Rate: ${rate1.roleName}`,
+              value1: `${formatCurrency(rate1.rate)}/${rate1.unit}`,
+              value2: `${formatCurrency(rate2.rate)}/${rate2.unit}`,
+              analysis: diff > 0
+                ? `${entity1Name} is ${Math.abs(pctDiff)}% more expensive for this role`
+                : `${entity2Name} is ${Math.abs(pctDiff)}% more expensive for this role`,
+            });
+          }
+        }
+      }
+      
+      // Overall rate comparison insight
+      const avgRate1 = contract1.rates.length > 0
+        ? contract1.rates.reduce((sum, r) => sum + r.rate, 0) / contract1.rates.length
+        : 0;
+      const avgRate2 = contract2.rates.length > 0
+        ? contract2.rates.reduce((sum, r) => sum + r.rate, 0) / contract2.rates.length
+        : 0;
+      
+      if (avgRate1 > 0 && avgRate2 > 0) {
+        const avgDiff = Math.round(((avgRate1 - avgRate2) / avgRate2) * 100);
+        if (Math.abs(avgDiff) > 5) {
+          keyInsights.push(
+            avgDiff > 0
+              ? `Average rates with ${entity1Name} are ${avgDiff}% higher than ${entity2Name}`
+              : `Average rates with ${entity2Name} are ${Math.abs(avgDiff)}% higher than ${entity1Name}`
+          );
+        }
+      }
+    }
+    
+    // Compare clauses
+    if (aspectsToCompare?.clauses !== false) {
+      const clauseLabels: Record<string, string> = {
+        termination: 'Termination Clause',
+        liability: 'Liability Clause',
+        indemnification: 'Indemnification',
+        confidentiality: 'Confidentiality',
+        intellectualProperty: 'Intellectual Property',
+        sla: 'Service Level Agreement',
+      };
+      
+      for (const [clauseKey, label] of Object.entries(clauseLabels)) {
+        const clause1 = contract1.clauses[clauseKey];
+        const clause2 = contract2.clauses[clauseKey];
+        
+        if (clause1 && clause2 && clause1 !== clause2) {
+          differences.push({
+            field: `clause_${clauseKey}`,
+            label,
+            value1: clause1.substring(0, 200) + (clause1.length > 200 ? '...' : ''),
+            value2: clause2.substring(0, 200) + (clause2.length > 200 ? '...' : ''),
+            analysis: 'Clause text differs - recommend legal review',
+          });
+        } else if (clause1 && !clause2) {
+          differences.push({
+            field: `clause_${clauseKey}`,
+            label,
+            value1: clause1.substring(0, 200) + (clause1.length > 200 ? '...' : ''),
+            value2: 'Not found in contract',
+            analysis: `${entity2Name} contract is missing this clause`,
+          });
+        } else if (!clause1 && clause2) {
+          differences.push({
+            field: `clause_${clauseKey}`,
+            label,
+            value1: 'Not found in contract',
+            value2: clause2.substring(0, 200) + (clause2.length > 200 ? '...' : ''),
+            analysis: `${entity1Name} contract is missing this clause`,
+          });
+        }
+      }
+    }
+    
+    // Category comparison
+    if (contract1.categoryL1 !== contract2.categoryL1) {
+      differences.push({
+        field: 'category',
+        label: 'Category',
+        value1: contract1.categoryL1 || 'Uncategorized',
+        value2: contract2.categoryL1 || 'Uncategorized',
+        analysis: 'Contracts are in different categories',
+      });
+    } else if (contract1.categoryL1) {
+      similarities.push({
+        field: 'category',
+        label: 'Category',
+        sharedValue: contract1.categoryL1,
+      });
+    }
+  }
+  
+  // Generate summary and recommendation
+  let summary = '';
+  let recommendation = '';
+  
+  if (!contract1 && !contract2) {
+    summary = `Could not find contracts matching "${entity1Name}" or "${entity2Name}". Please check the supplier or contract names.`;
+    recommendation = 'Try searching with more specific names or check the contract database.';
+  } else if (!contract1) {
+    summary = `Could not find contracts for "${entity1Name}". Found ${contracts2.length} contract(s) for "${entity2Name}".`;
+    recommendation = `Consider verifying the name "${entity1Name}" or searching in the contracts list.`;
+  } else if (!contract2) {
+    summary = `Could not find contracts for "${entity2Name}". Found ${contracts1.length} contract(s) for "${entity1Name}".`;
+    recommendation = `Consider verifying the name "${entity2Name}" or searching in the contracts list.`;
+  } else {
+    // Generate comprehensive summary
+    const valueDiff = contract1.totalValue - contract2.totalValue;
+    const valueWinner = valueDiff > 0 ? entity1Name : entity2Name;
+    const durationDiff = contract1.durationMonths - contract2.durationMonths;
+    
+    summary = `**Comparison: ${contract1.supplierName} vs ${contract2.supplierName}**\n\n`;
+    summary += `Found **${differences.length}** key differences and **${similarities.length}** similarities between the contracts.\n\n`;
+    
+    if (valueDiff !== 0) {
+      summary += `💰 **Value**: ${valueWinner} has a ${formatCurrency(Math.abs(valueDiff))} ${valueDiff > 0 ? 'higher' : 'lower'} total contract value.\n`;
+    }
+    
+    if (durationDiff !== 0) {
+      const durationWinner = durationDiff > 0 ? entity1Name : entity2Name;
+      summary += `📅 **Duration**: ${durationWinner} has a ${Math.abs(durationDiff)} month longer commitment.\n`;
+    }
+    
+    // Build recommendation based on findings
+    const recommendations: string[] = [];
+    
+    if (contract1.autoRenewalEnabled || contract2.autoRenewalEnabled) {
+      recommendations.push('Review auto-renewal terms before expiration to avoid unwanted extensions');
+    }
+    
+    if (differences.some(d => d.field.startsWith('rate_'))) {
+      recommendations.push('Consider rate renegotiation based on the rate comparison');
+    }
+    
+    if (differences.some(d => d.field.startsWith('clause_'))) {
+      recommendations.push('Recommend legal review of clause differences between contracts');
+    }
+    
+    recommendation = recommendations.length > 0
+      ? recommendations.join('. ') + '.'
+      : 'Both contracts are similar in key terms. Monitor expiration dates for timely renewal decisions.';
+  }
+  
+  return {
+    entity1: contract1,
+    entity2: contract2,
+    entity1Name,
+    entity2Name,
+    differences,
+    similarities,
+    summary,
+    keyInsights,
+    recommendation,
+  };
+}
+
+/**
+ * Compare specific clauses between two contracts using RAG
+ */
+async function compareContractClauses(
+  entity1Name: string,
+  entity2Name: string,
+  clauseType: string,
+  tenantId: string
+): Promise<{
+  entity1Clause: string | null;
+  entity2Clause: string | null;
+  analysis: string;
+  differences: string[];
+  recommendation: string;
+}> {
+  console.log(`[AI Comparison] Comparing ${clauseType} clauses between "${entity1Name}" and "${entity2Name}"`);
+  
+  // Find contracts
+  const [contracts1, contracts2] = await Promise.all([
+    findContractsForComparison(entity1Name, tenantId),
+    findContractsForComparison(entity2Name, tenantId),
+  ]);
+  
+  const contract1 = contracts1[0];
+  const contract2 = contracts2[0];
+  
+  if (!contract1 || !contract2) {
+    return {
+      entity1Clause: contract1 ? 'Contract found but clause not extracted' : null,
+      entity2Clause: contract2 ? 'Contract found but clause not extracted' : null,
+      analysis: `Could not find one or both contracts. ${entity1Name}: ${contract1 ? 'found' : 'not found'}, ${entity2Name}: ${contract2 ? 'found' : 'not found'}`,
+      differences: [],
+      recommendation: 'Please verify the contract/supplier names.',
+    };
+  }
+  
+  // Map clause type to key
+  const clauseKeyMap: Record<string, string> = {
+    'termination': 'termination',
+    'terminate': 'termination',
+    'liability': 'liability',
+    'limit': 'liability',
+    'indemnif': 'indemnification',
+    'indemnity': 'indemnification',
+    'confidential': 'confidentiality',
+    'nda': 'confidentiality',
+    'intellectual': 'intellectualProperty',
+    'ip': 'intellectualProperty',
+    'sla': 'sla',
+    'service level': 'sla',
+    'warranty': 'warranty',
+    'insurance': 'insurance',
+  };
+  
+  const clauseKey = Object.entries(clauseKeyMap).find(([pattern]) => 
+    clauseType.toLowerCase().includes(pattern)
+  )?.[1] || 'termination';
+  
+  const clause1 = contract1.clauses[clauseKey];
+  const clause2 = contract2.clauses[clauseKey];
+  
+  const differences: string[] = [];
+  let analysis = '';
+  
+  if (clause1 && clause2) {
+    analysis = `Both contracts have ${clauseType} clauses defined. `;
+    
+    // Simple text comparison
+    if (clause1.length !== clause2.length) {
+      const lengthDiff = Math.abs(clause1.length - clause2.length);
+      analysis += `${entity1Name}'s clause is ${clause1.length > clause2.length ? 'more' : 'less'} detailed (${lengthDiff} characters ${clause1.length > clause2.length ? 'longer' : 'shorter'}). `;
+      differences.push(`Clause length differs by ${lengthDiff} characters`);
+    }
+    
+    // Check for key terms
+    const keyTermsToCheck = ['days', 'notice', 'liability', 'cap', 'limit', 'indemnify', 'material breach', 'convenience'];
+    for (const term of keyTermsToCheck) {
+      const in1 = clause1.toLowerCase().includes(term);
+      const in2 = clause2.toLowerCase().includes(term);
+      if (in1 && !in2) {
+        differences.push(`"${term}" mentioned in ${entity1Name} but not in ${entity2Name}`);
+      } else if (!in1 && in2) {
+        differences.push(`"${term}" mentioned in ${entity2Name} but not in ${entity1Name}`);
+      }
+    }
+  } else if (clause1 && !clause2) {
+    analysis = `Only ${entity1Name} has the ${clauseType} clause defined. ${entity2Name} contract is missing this clause.`;
+    differences.push(`${entity2Name} is missing the ${clauseType} clause entirely`);
+  } else if (!clause1 && clause2) {
+    analysis = `Only ${entity2Name} has the ${clauseType} clause defined. ${entity1Name} contract is missing this clause.`;
+    differences.push(`${entity1Name} is missing the ${clauseType} clause entirely`);
+  } else {
+    analysis = `Neither contract has the ${clauseType} clause extracted. This may indicate the clauses exist but weren't automatically detected.`;
+  }
+  
+  const recommendation = differences.length > 0
+    ? `Review the ${clauseType} clause differences with legal counsel. Key differences: ${differences.slice(0, 3).join('; ')}.`
+    : `Both contracts appear similar for ${clauseType} terms. Verify with legal review if needed.`;
+  
+  return {
+    entity1Clause: clause1 ?? null,
+    entity2Clause: clause2 ?? null,
+    analysis,
+    differences,
+    recommendation,
+  };
+}
+
+// ============================================
+// MULTI-CONTRACT GROUP COMPARISON
+// ============================================
+
+interface GroupComparisonResult {
+  groups: Array<{
+    label: string;
+    supplier?: string;
+    year?: string;
+    category?: string;
+    contractCount: number;
+    totalValue: number;
+    avgValue: number;
+    avgDurationMonths: number;
+    activeCount: number;
+    expiringSoonCount: number;
+    contracts: Array<{ id: string; title: string; value: number }>;
+  }>;
+  categoryBreakdown?: Record<string, Array<{ count: number; value: number }>>;
+  rateComparison?: Array<{ role: string; rates: number[] }>;
+  insights: string[];
+  recommendation: string;
+}
+
+/**
+ * Compare multiple groups of contracts (e.g., all Deloitte 2024 contracts vs Accenture 2024)
+ */
+async function performGroupComparison(
+  groups: Array<{ supplier?: string; year?: string; category?: string; name?: string }>,
+  tenantId: string
+): Promise<GroupComparisonResult> {
+  console.log('[AI Group Comparison] Comparing groups:', groups);
+  
+  const formatCurrency = (val: number, curr: string = 'USD') =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+  
+  const now = new Date();
+  const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  
+  // Helper to convert Decimal to number
+  const toNumber = (val: any): number => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return val;
+    return parseFloat(String(val)) || 0;
+  };
+  
+  // Helper to compute duration in months from dates
+  const computeDurationMonths = (startDate: Date | null, endDate: Date | null): number => {
+    if (!startDate || !endDate) return 0;
+    const diffMs = endDate.getTime() - startDate.getTime();
+    return Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24 * 30)));
+  };
+  
+  const result: GroupComparisonResult = {
+    groups: [],
+    categoryBreakdown: {},
+    rateComparison: [],
+    insights: [],
+    recommendation: '',
+  };
+  
+  // Fetch contracts for each group
+  for (const group of groups) {
+    const whereClause: any = { tenantId };
+    
+    // Build filter based on group criteria
+    if (group.supplier) {
+      whereClause.supplierName = { contains: group.supplier, mode: 'insensitive' };
+    }
+    
+    if (group.year) {
+      const year = parseInt(group.year);
+      whereClause.startDate = {
+        gte: new Date(`${year}-01-01`),
+        lte: new Date(`${year}-12-31`),
+      };
+    }
+    
+    if (group.category) {
+      whereClause.OR = [
+        { categoryL1: { contains: group.category, mode: 'insensitive' } },
+        { categoryL2: { contains: group.category, mode: 'insensitive' } },
+      ];
+    }
+    
+    const contracts = await prisma.contract.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        contractTitle: true,
+        supplierName: true,
+        totalValue: true,
+        annualValue: true,
+        startDate: true,
+        endDate: true,
+        expirationDate: true,
+        status: true,
+        categoryL1: true,
+        categoryL2: true,
+        currency: true,
+      },
+      orderBy: { totalValue: 'desc' },
+    });
+    
+    // Calculate aggregates
+    const totalValue = contracts.reduce((sum, c) => sum + toNumber(c.totalValue), 0);
+    const avgValue = contracts.length > 0 ? totalValue / contracts.length : 0;
+    
+    // Calculate average duration
+    const durations = contracts.map(c => computeDurationMonths(c.startDate, c.endDate || c.expirationDate));
+    const avgDuration = contracts.length > 0
+      ? durations.reduce((sum, d) => sum + d, 0) / contracts.length
+      : 0;
+    
+    const activeCount = contracts.filter(c => c.status === 'ACTIVE').length;
+    const expiringSoonCount = contracts.filter(c => {
+      if (!c.expirationDate) return false;
+      return c.expirationDate >= now && c.expirationDate <= thirtyDaysLater;
+    }).length;
+    
+    // Build group label
+    const label = group.name || [
+      group.supplier,
+      group.year,
+      group.category,
+    ].filter(Boolean).join(' ');
+    
+    result.groups.push({
+      label,
+      supplier: group.supplier,
+      year: group.year,
+      category: group.category,
+      contractCount: contracts.length,
+      totalValue,
+      avgValue,
+      avgDurationMonths: avgDuration,
+      activeCount,
+      expiringSoonCount,
+      contracts: contracts.slice(0, 10).map(c => ({
+        id: c.id,
+        title: c.contractTitle || c.supplierName || 'Untitled',
+        value: toNumber(c.totalValue),
+      })),
+    });
+    
+    // Build category breakdown
+    for (const contract of contracts) {
+      const cat = contract.categoryL1 || 'Uncategorized';
+      if (!result.categoryBreakdown![cat]) {
+        result.categoryBreakdown![cat] = groups.map(() => ({ count: 0, value: 0 }));
+      }
+      const groupIndex = result.groups.length - 1;
+      if (result.categoryBreakdown![cat][groupIndex]) {
+        result.categoryBreakdown![cat][groupIndex].count++;
+        result.categoryBreakdown![cat][groupIndex].value += toNumber(contract.totalValue);
+      }
+    }
+  }
+  
+  // Fetch rates for comparison
+  if (result.groups.length >= 2) {
+    const roleRates: Record<string, number[]> = {};
+    
+    for (let i = 0; i < result.groups.length; i++) {
+      const group = result.groups[i];
+      if (!group) continue;
+      const contractIds = group.contracts.map(c => c.id);
+      
+      if (contractIds.length > 0) {
+        const rates = await prisma.rateCardEntry.findMany({
+          where: {
+            contractId: { in: contractIds },
+          },
+          select: {
+            roleStandardized: true,
+            dailyRateUSD: true,
+          },
+        });
+        
+        // Aggregate rates by role
+        const roleAvgRates: Record<string, { sum: number; count: number }> = {};
+        for (const rate of rates) {
+          const role = rate.roleStandardized.toLowerCase();
+          if (!roleAvgRates[role]) {
+            roleAvgRates[role] = { sum: 0, count: 0 };
+          }
+          roleAvgRates[role].sum += toNumber(rate.dailyRateUSD);
+          roleAvgRates[role].count++;
+        }
+        
+        // Store average rates for this group
+        for (const [role, data] of Object.entries(roleAvgRates)) {
+          if (!roleRates[role]) {
+            roleRates[role] = groups.map(() => 0);
+          }
+          roleRates[role][i] = data.sum / data.count;
+        }
+      }
+    }
+    
+    // Convert to array format
+    result.rateComparison = Object.entries(roleRates)
+      .filter(([, rates]) => rates.some(r => r > 0))
+      .map(([role, rates]) => ({
+        role: role.charAt(0).toUpperCase() + role.slice(1),
+        rates,
+      }))
+      .sort((a, b) => (b.rates[0] ?? 0) - (a.rates[0] ?? 0));
+  }
+  
+  // Generate insights
+  if (result.groups.length >= 2) {
+    const g1 = result.groups[0]!;
+    const g2 = result.groups[1]!;
+    
+    // Contract count insight
+    if (g1.contractCount !== g2.contractCount) {
+      const diff = Math.abs(g1.contractCount - g2.contractCount);
+      const higher = g1.contractCount > g2.contractCount ? g1 : g2;
+      result.insights.push(`${higher.label} has ${diff} more contracts`);
+    }
+    
+    // Total value insight
+    if (g1.totalValue !== g2.totalValue) {
+      const diff = Math.abs(g1.totalValue - g2.totalValue);
+      const higher = g1.totalValue > g2.totalValue ? g1 : g2;
+      const pctDiff = g2.totalValue > 0 ? Math.round((diff / g2.totalValue) * 100) : 0;
+      result.insights.push(`${higher.label} represents ${formatCurrency(diff)} (${pctDiff}%) more in total value`);
+    }
+    
+    // Average value insight
+    if (g1.avgValue !== g2.avgValue && g1.contractCount > 0 && g2.contractCount > 0) {
+      const diff = Math.abs(g1.avgValue - g2.avgValue);
+      const higher = g1.avgValue > g2.avgValue ? g1 : g2;
+      result.insights.push(`${higher.label} has ${formatCurrency(diff)} higher average contract value`);
+    }
+    
+    // Duration insight
+    if (Math.abs(g1.avgDurationMonths - g2.avgDurationMonths) > 3) {
+      const longer = g1.avgDurationMonths > g2.avgDurationMonths ? g1 : g2;
+      result.insights.push(`${longer.label} contracts average ${Math.abs(g1.avgDurationMonths - g2.avgDurationMonths).toFixed(1)} months longer duration`);
+    }
+    
+    // Expiring soon warning
+    if (g1.expiringSoonCount > 0 || g2.expiringSoonCount > 0) {
+      result.insights.push(`⚠️ ${g1.expiringSoonCount + g2.expiringSoonCount} contracts expiring in the next 30 days`);
+    }
+    
+    // Rate comparison insights
+    if (result.rateComparison && result.rateComparison.length > 0) {
+      const avgRateDiffs = result.rateComparison
+        .filter(r => (r.rates[0] ?? 0) > 0 && (r.rates[1] ?? 0) > 0)
+        .map(r => (((r.rates[0] ?? 0) - (r.rates[1] ?? 1)) / (r.rates[1] ?? 1)) * 100);
+      
+      if (avgRateDiffs.length > 0) {
+        const avgDiff = avgRateDiffs.reduce((a, b) => a + b, 0) / avgRateDiffs.length;
+        if (Math.abs(avgDiff) > 5) {
+          const cheaper = avgDiff > 0 ? g2 : g1;
+          result.insights.push(`💰 ${cheaper.label} averages ${Math.abs(avgDiff).toFixed(1)}% lower rates across comparable roles`);
+        }
+      }
+    }
+  }
+  
+  // Generate recommendation
+  if (result.groups.length === 0 || result.groups.every(g => g.contractCount === 0)) {
+    result.recommendation = 'No contracts found matching the specified criteria. Try broader search terms or verify supplier names.';
+  } else if (result.groups.length >= 2) {
+    const g1 = result.groups[0]!;
+    const g2 = result.groups[1]!;
+    
+    const recommendations: string[] = [];
+    
+    // Value-based recommendation
+    if (g1.totalValue > g2.totalValue * 1.5) {
+      recommendations.push(`Consider negotiating volume discounts with ${g1.label} given the larger portfolio`);
+    } else if (g2.totalValue > g1.totalValue * 1.5) {
+      recommendations.push(`Consider negotiating volume discounts with ${g2.label} given the larger portfolio`);
+    }
+    
+    // Rate-based recommendation
+    if (result.rateComparison && result.rateComparison.length > 0) {
+      const roleDiffs = result.rateComparison
+        .filter(r => (r.rates[0] ?? 0) > 0 && (r.rates[1] ?? 0) > 0)
+        .map(r => ({ role: r.role, diff: (((r.rates[0] ?? 0) - (r.rates[1] ?? 1)) / (r.rates[1] ?? 1)) * 100 }));
+      
+      const significantDiffs = roleDiffs.filter(r => Math.abs(r.diff) > 10);
+      if (significantDiffs.length > 0) {
+        recommendations.push(`Review rate differences for ${significantDiffs.slice(0, 3).map(r => r.role).join(', ')} - potential for rate optimization`);
+      }
+    }
+    
+    // Expiration warning
+    if (g1.expiringSoonCount > 0 || g2.expiringSoonCount > 0) {
+      recommendations.push('Prioritize renewal discussions for contracts expiring soon');
+    }
+    
+    result.recommendation = recommendations.length > 0
+      ? recommendations.join('. ') + '.'
+      : 'Both groups show comparable metrics. Continue monitoring and evaluate consolidation opportunities.';
+  } else {
+    result.recommendation = `Found ${result.groups[0]?.contractCount || 0} contracts for ${result.groups[0]?.label || 'unknown'}. Add another group to enable comparison.`;
+  }
+  
+  return result;
+}
+
+// ============================================
 // TAXONOMY/CATEGORY QUERY FUNCTIONS
 // ============================================
 
@@ -1243,8 +2732,7 @@ async function getTaxonomyCategories(tenantId: string) {
       orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         parent: { select: { id: true, name: true } },
-        children: { select: { id: true, name: true, code: true } },
-        _count: { select: { contracts: true } },
+        children: { select: { id: true, name: true } },
       },
     });
 
@@ -1255,25 +2743,22 @@ async function getTaxonomyCategories(tenantId: string) {
     const hierarchy = topLevel.map(parent => ({
       id: parent.id,
       name: parent.name,
-      code: parent.code,
+      path: parent.path,
       description: parent.description,
       level: parent.level,
-      contractCount: parent._count.contracts,
       children: categories
         .filter(c => c.parentId === parent.id)
         .map(child => ({
           id: child.id,
           name: child.name,
-          code: child.code,
+          path: child.path,
           description: child.description,
-          contractCount: child._count.contracts,
           children: categories
             .filter(c => c.parentId === child.id)
             .map(grandchild => ({
               id: grandchild.id,
               name: grandchild.name,
-              code: grandchild.code,
-              contractCount: grandchild._count.contracts,
+              path: grandchild.path,
             })),
         })),
     }));
@@ -1283,7 +2768,6 @@ async function getTaxonomyCategories(tenantId: string) {
     const totalL1 = topLevel.length;
     const totalL2 = categories.filter(c => c.level === 2).length;
     const totalL3 = categories.filter(c => c.level === 3).length;
-    const totalContracts = categories.reduce((sum, c) => sum + c._count.contracts, 0);
 
     return {
       hierarchy,
@@ -1293,7 +2777,6 @@ async function getTaxonomyCategories(tenantId: string) {
         totalL1,
         totalL2,
         totalL3,
-        totalContracts,
       },
     };
   } catch (e) {
@@ -1314,21 +2797,9 @@ async function getCategoryDetails(categoryName: string, tenantId: string) {
       include: {
         parent: { select: { id: true, name: true } },
         children: {
-          select: { id: true, name: true, code: true },
+          select: { id: true, name: true, path: true },
           orderBy: { sortOrder: 'asc' },
         },
-        contracts: {
-          take: 10,
-          orderBy: { totalValue: 'desc' },
-          select: {
-            id: true,
-            contractTitle: true,
-            supplierName: true,
-            totalValue: true,
-            status: true,
-          },
-        },
-        _count: { select: { contracts: true } },
       },
     });
 
@@ -1336,20 +2807,14 @@ async function getCategoryDetails(categoryName: string, tenantId: string) {
       return null;
     }
 
-    // Get spend totals for this category
-    const totalSpend = category.contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
-
     return {
       id: category.id,
       name: category.name,
-      code: category.code,
+      path: category.path,
       description: category.description,
       level: category.level,
-      parent: category.parent,
+      parentId: category.parentId,
       children: category.children,
-      contractCount: category._count.contracts,
-      totalSpend,
-      sampleContracts: category.contracts,
     };
   } catch (e) {
     console.error('[AI Chat] Error getting category details:', e);
@@ -1375,7 +2840,7 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
         supplierName: true,
         categoryL1: true,
         categoryL2: true,
-        taxonomyCategory: { select: { id: true, name: true } },
+        procurementCategoryId: true,
       },
     });
 
@@ -1386,10 +2851,9 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
       select: {
         id: true,
         name: true,
-        code: true,
+        path: true,
         level: true,
         keywords: true,
-        _count: { select: { contracts: true } },
       },
     });
 
@@ -1405,7 +2869,7 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
 
     return {
       contract,
-      currentCategory: contract?.taxonomyCategory || null,
+      currentCategory: contract?.procurementCategoryId ? { id: contract.procurementCategoryId, name: contract.categoryL1 || 'Uncategorized' } : null,
       suggestions: suggestions.length > 0 ? suggestions : categories.slice(0, 5),
       allCategories: categories,
     };
@@ -1430,11 +2894,11 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
       return null;
     }
 
-    // Get contracts in this category
+    // Get contracts in this category using procurementCategoryId
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        taxonomyCategoryId: category.id,
+        procurementCategoryId: category.id,
       },
       orderBy: { totalValue: 'desc' },
       take: 20,
@@ -1454,7 +2918,7 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
       category: {
         id: category.id,
         name: category.name,
-        code: category.code,
+        path: category.path,
       },
       contracts,
       totalContracts: contracts.length,
@@ -1817,7 +3281,7 @@ Would you like me to:
       const value = c.value ? `$${Number(c.value).toLocaleString()}` : 'N/A';
       const expiryText = expiry ? `${expiry.toLocaleDateString()} (${daysLeft} days)` : 'No expiry';
       
-      return `${i + 1}. ${urgency} **${c.contractTitle || c.name}**
+      return `${i + 1}. ${urgency} [📄 ${c.contractTitle || c.name}](/contracts/${c.id})
    • Status: ${c.status} | Value: ${value}
    • Expires: ${expiryText}`;
     }).join('\n\n');
@@ -1883,7 +3347,7 @@ Your procurement portfolio is in good shape for now!`,
       const value = c.value ? `$${Number(c.value).toLocaleString()}` : 'N/A';
       
       return `${i + 1}. ${urgency}
-   **${c.contractTitle || c.name}**
+   [📄 ${c.contractTitle || c.name}](/contracts/${c.id})
    • Supplier: ${c.supplierName || 'N/A'} | Value: ${value}
    • Expires: ${expiry?.toLocaleDateString()} (${daysLeft} days left)`;
     }).join('\n\n');
@@ -1931,7 +3395,7 @@ I recommend starting the renewal process for critical contracts immediately.`,
 
     const contractList = contracts.slice(0, 10).map((c: any, i: number) => {
       const value = c.value ? `$${Number(c.value).toLocaleString()}` : 'N/A';
-      return `${i + 1}. **${c.contractTitle || c.name}**
+      return `${i + 1}. [📄 ${c.contractTitle || c.name}](/contracts/${c.id})
    • Supplier: ${c.supplierName || 'N/A'} | Value: ${value}`;
     }).join('\n\n');
 
@@ -2172,7 +3636,7 @@ ${supplierList}
 
     const riskList = riskData.contracts.slice(0, 5).map((c: any, i: number) => {
       const riskIcon = c.expirationRisk === 'CRITICAL' ? '🔴' : c.expirationRisk === 'HIGH' ? '🟠' : '🟡';
-      return `${i + 1}. ${riskIcon} **${c.contractTitle}**\n   • Risk: ${c.expirationRisk || 'HIGH'} | Days Left: ${c.daysUntilExpiry || 'N/A'}\n   • Supplier: ${c.supplierName || 'Unknown'}\n   • Auto-Renew: ${c.autoRenewalEnabled ? '⚠️ Yes' : 'No'}`;
+      return `${i + 1}. ${riskIcon} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • Risk: ${c.expirationRisk || 'HIGH'} | Days Left: ${c.daysUntilExpiry || 'N/A'}\n   • Supplier: ${c.supplierName || 'Unknown'}\n   • Auto-Renew: ${c.autoRenewalEnabled ? '⚠️ Yes' : 'No'}`;
     }).join('\n\n');
 
     return {
@@ -2215,7 +3679,7 @@ ${riskList}
     const contractList = autoRenewalData.contracts.slice(0, 8).map((c: any, i: number) => {
       const expiry = c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A';
       const urgent = c.daysUntilExpiry && c.daysUntilExpiry <= 30 ? '⚠️' : '';
-      return `${i + 1}. ${urgent} **${c.contractTitle}**\n   • Supplier: ${c.supplierName} | Renews: ${expiry}`;
+      return `${i + 1}. ${urgent} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • Supplier: ${c.supplierName} | Renews: ${expiry}`;
     }).join('\n\n');
 
     return {
@@ -2329,7 +3793,7 @@ ${termsList}
 
     const issueList = complianceData.contracts.slice(0, 5).map((c: any, i: number) => {
       const issueIcon = c.complianceScore < 60 ? '🔴' : c.complianceScore < 80 ? '🟠' : '🟡';
-      return `${i + 1}. ${issueIcon} **${c.contractTitle}**\n   • Score: ${c.complianceScore}% | Issues: ${c.issueCount}\n   • Supplier: ${c.supplierName || 'Unknown'}\n   • Last Audit: ${c.lastAuditDate || 'Never'}`;
+      return `${i + 1}. ${issueIcon} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • Score: ${c.complianceScore}% | Issues: ${c.issueCount}\n   • Supplier: ${c.supplierName || 'Unknown'}\n   • Last Audit: ${c.lastAuditDate || 'Never'}`;
     }).join('\n\n');
 
     return {
@@ -3000,7 +4464,7 @@ ${categoryList}
     
     const contractList = sampleContracts && sampleContracts.length > 0
       ? sampleContracts.slice(0, 3).map((c: any, i: number) => 
-          `${i + 1}. ${c.contractTitle} - $${Number(c.totalValue || 0).toLocaleString()}`
+          `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n')
       : 'No contracts in this category';
 
@@ -3116,7 +4580,7 @@ ${suggestionList}
     const contractList = contracts.slice(0, 10).map((c: any, i: number) => {
       const statusIcon = c.status === 'ACTIVE' ? '🟢' : c.status === 'EXPIRED' ? '🔴' : '🟡';
       const value = c.totalValue ? `$${Number(c.totalValue).toLocaleString()}` : 'N/A';
-      return `${i + 1}. ${statusIcon} **${c.contractTitle}**\n   • ${c.supplierName} | ${value}`;
+      return `${i + 1}. ${statusIcon} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • ${c.supplierName} | ${value}`;
     }).join('\n\n');
 
     return {
@@ -3499,37 +4963,57 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
       }
     }
 
-    const systemPrompt = `You are an AI assistant for a Contract Lifecycle Management (CLM) system. You help users with:
-- Searching and analyzing contracts
-- Managing deadlines and renewals
-- Creating templates and clauses
-- Identifying risks and compliance issues
-- Workflow approvals and signatures
-- Generating reports and insights
-- **Starting contract renewals and approval workflows**
+    const systemPrompt = `You are ConTigo AI, an intelligent contract analysis agent for the ConTigo Contract Management platform. You are a powerful AI assistant that can deeply analyze, summarize, and provide insights about contracts.
 
-Current context: ${context?.context || 'global'}
-Contract ID: ${context?.contractId || 'none'}
-Detected Intent: ${context?.intent ? JSON.stringify(context.intent) : 'general inquiry'}
-${contractContext}
-${ragContext}
-${context?.additionalContext || ''}
+**🤖 YOUR CAPABILITIES AS AN AI AGENT:**
 
-**IMPORTANT: You can help users start contract renewal and approval workflows!**
+1. **Deep Contract Analysis**
+   - Analyze contracts by supplier, category, year, status, or any combination
+   - Provide comprehensive summaries with value analysis, duration insights, and risk assessment
+   - Compare contracts across time periods or categories
+   - Identify patterns and trends in contract data
 
-When a user wants to:
-1. **Renew a contract**: Search for the contract, show details, and offer to start the renewal workflow
-2. **Start an approval flow**: Find the relevant contract and initiate the approval process
-3. **Generate a new contract**: Help them choose a template and start the drafting process
+2. **Intelligent Search & Retrieval**
+   - Find specific contracts by name, supplier, terms, or content
+   - Search within contract text using semantic understanding
+   - Link directly to relevant contracts for easy access
 
-When answering:
-1. Be concise and actionable
-2. Use markdown formatting (bold, bullets, headers)
-3. Reference specific contracts when relevant - if you have contract details above, use them!
-4. Suggest next steps or related queries
-5. If you found contract information above, cite it in your response
-6. If the user wants to start a workflow, confirm the contract and offer action buttons
-7. Always provide clear next steps for workflow actions`;
+3. **Business Intelligence**
+   - Spending analysis by supplier, category, or time period
+   - Duration and renewal pattern analysis
+   - Risk identification (expiring contracts, auto-renewals, high-value at risk)
+   - Category breakdown and supplier concentration analysis
+
+4. **Natural Language Understanding**
+   - Understand complex queries like "summarize all Deloitte contracts from 2024 with their durations and values"
+   - Handle multi-criteria filters naturally
+   - Provide context-aware responses based on what you find
+
+**📊 ANALYSIS DATA PROVIDED:**
+${context?.additionalContext || 'No specific analysis data available - I will search for relevant information.'}
+
+**🔍 RAG SEARCH RESULTS:**
+${ragContext || 'No semantic search results available.'}
+
+**📄 CURRENT CONTRACT CONTEXT:**
+${contractContext || 'No specific contract selected.'}
+
+**DETECTED INTENT:** ${context?.intent ? JSON.stringify(context.intent) : 'general inquiry'}
+
+**📝 RESPONSE GUIDELINES:**
+1. When analysis data is provided above, USE IT to give detailed, data-driven responses
+2. Always include clickable links to contracts: [Contract Name](/contracts/ID)
+3. Structure responses with clear sections using markdown (##, **, bullets)
+4. For summaries, organize by: Overview → Value Analysis → Duration → Categories → Risks
+5. Provide actionable insights and recommendations
+6. Suggest relevant follow-up questions
+7. If data shows risks or issues, highlight them prominently
+8. Be conversational but professional - you're a trusted advisor
+
+**🚫 OUT OF SCOPE:**
+- Workflow approvals/signatures (coming soon)
+- Contract creation (use Upload feature)
+- Legal advice (consult legal team)`;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
@@ -3544,7 +5028,7 @@ When answering:
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.7,
-      max_tokens: 1000,
+      max_tokens: 1500,
     });
 
     const responseContent = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
@@ -3602,7 +5086,8 @@ function shouldUseRAG(query: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, contractId, context, conversationHistory } = await request.json()
+    const { message, contractId, context: initialContext, conversationHistory } = await request.json()
+    let context = initialContext || {};
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -3633,22 +5118,22 @@ export async function POST(request: NextRequest) {
       if (intent.action === 'list_by_supplier' && intent.entities.supplierName) {
         contracts = await listContractsBySupplier(intent.entities.supplierName, tenantId);
         additionalContext = `\n\n**Contracts with ${intent.entities.supplierName}:**\n${contracts.map(c => 
-          `- ${c.contractTitle} (ID: ${c.id}, Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()}, Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'})`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()}, Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}`
         ).join('\n') || 'No contracts found.'}`;
       } else if (intent.action === 'list_expiring') {
         contracts = await listExpiringContracts(intent.entities.daysUntilExpiry || 30, tenantId, intent.entities.supplierName);
         additionalContext = `\n\n**Contracts Expiring in ${intent.entities.daysUntilExpiry || 30} Days:**\n${contracts.map(c => 
-          `- ${c.contractTitle} (Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}, Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()})`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}, Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No expiring contracts found.'}`;
       } else if (intent.action === 'list_by_status' && intent.entities.status) {
         contracts = await listContractsByStatus(intent.entities.status, tenantId);
         additionalContext = `\n\n**${intent.entities.status} Contracts:**\n${contracts.map(c => 
-          `- ${c.contractTitle} (Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()})`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No contracts found.'}`;
       } else if (intent.action === 'list_by_value') {
         contracts = await listHighValueContracts(intent.entities.valueThreshold || 100000, tenantId);
         additionalContext = `\n\n**High Value Contracts (>$${(intent.entities.valueThreshold || 100000).toLocaleString()}):**\n${contracts.map(c => 
-          `- ${c.contractTitle} (Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()})`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No high-value contracts found.'}`;
       }
     }
@@ -3663,22 +5148,412 @@ export async function POST(request: NextRequest) {
         if (summary) {
           additionalContext = `\n\n**Supplier Summary for ${summary.supplierName}:**\n- Total Contracts: ${summary.totalContracts}\n- Active Contracts: ${summary.activeContracts}\n- Total Value: $${summary.totalValue.toLocaleString()}\n- Expiring in 90 Days: ${summary.expiringIn90Days}\n- Contract Types: ${summary.contractTypes?.join(', ') || 'Various'}`;
         }
+      } else if (intent.action === 'deep_analysis') {
+        // ADVANCED AI AGENT: Deep Analysis
+        const analysis = await performDeepAnalysis(tenantId, {
+          supplierName: intent.entities.supplierName,
+          category: intent.entities.category,
+          year: intent.entities.timePeriod,
+          analysisAspects: intent.entities.analysisAspects,
+        });
+        
+        // Build comprehensive analysis context
+        const filterDesc = [
+          intent.entities.supplierName && `Supplier: ${intent.entities.supplierName}`,
+          intent.entities.category && `Category: ${intent.entities.category}`,
+          intent.entities.timePeriod && `Year: ${intent.entities.timePeriod}`,
+        ].filter(Boolean).join(' | ') || 'All Contracts';
+        
+        additionalContext = `\n\n**📊 Deep Analysis Report**\n*Filters: ${filterDesc}*\n`;
+        
+        if (analysis.summary.totalContracts === 0) {
+          additionalContext += `\nNo contracts found matching the specified criteria.`;
+        } else {
+          // Summary Section
+          additionalContext += `\n**Summary:**\n`;
+          additionalContext += `- Total Contracts: ${analysis.summary.totalContracts}\n`;
+          additionalContext += `- Active Contracts: ${analysis.summary.activeContracts}\n`;
+          additionalContext += `- Total Value: $${analysis.summary.totalValue.toLocaleString()}\n`;
+          additionalContext += `- Average Value: $${Math.round(analysis.summary.averageValue).toLocaleString()}\n`;
+          
+          // Duration Analysis
+          if (analysis.summary.averageDurationMonths > 0) {
+            additionalContext += `\n**Duration Analysis:**\n`;
+            additionalContext += `- Average Duration: ${analysis.summary.averageDurationMonths} months\n`;
+            additionalContext += `- Shortest: ${analysis.summary.shortestDurationMonths} months\n`;
+            additionalContext += `- Longest: ${analysis.summary.longestDurationMonths} months\n`;
+          }
+          
+          // Category Breakdown
+          const categories = Object.entries(analysis.byCategory);
+          if (categories.length > 0) {
+            additionalContext += `\n**By Category:**\n`;
+            categories.slice(0, 8).forEach(([cat, data]) => {
+              additionalContext += `- ${cat}: ${data.count} contracts, $${data.value.toLocaleString()}\n`;
+            });
+          }
+          
+          // Status Breakdown
+          const statuses = Object.entries(analysis.byStatus);
+          if (statuses.length > 0) {
+            additionalContext += `\n**By Status:**\n`;
+            statuses.forEach(([status, count]) => {
+              additionalContext += `- ${status}: ${count} contracts\n`;
+            });
+          }
+          
+          // Risk Analysis
+          if (analysis.riskAnalysis.expiringIn90Days > 0 || analysis.riskAnalysis.autoRenewalCount > 0) {
+            additionalContext += `\n**⚠️ Risk Alerts:**\n`;
+            if (analysis.riskAnalysis.expiringIn30Days > 0) {
+              additionalContext += `- 🔴 Expiring in 30 days: ${analysis.riskAnalysis.expiringIn30Days}\n`;
+            }
+            if (analysis.riskAnalysis.expiringIn90Days > 0) {
+              additionalContext += `- 🟠 Expiring in 90 days: ${analysis.riskAnalysis.expiringIn90Days}\n`;
+            }
+            if (analysis.riskAnalysis.autoRenewalCount > 0) {
+              additionalContext += `- 🔄 Auto-renewal enabled: ${analysis.riskAnalysis.autoRenewalCount}\n`;
+            }
+            if (analysis.riskAnalysis.highValueAtRisk > 0) {
+              additionalContext += `- 💰 High-value at risk: ${analysis.riskAnalysis.highValueAtRisk}\n`;
+            }
+          }
+          
+          // Top Contracts with Links
+          if (analysis.contracts.length > 0) {
+            additionalContext += `\n**Top Contracts by Value:**\n`;
+            analysis.contracts.slice(0, 10).forEach((c, i) => {
+              additionalContext += `${i + 1}. [📄 ${c.title}](/contracts/${c.id}) - $${c.value.toLocaleString()}`;
+              if (c.durationMonths > 0) additionalContext += ` (${c.durationMonths} mo)`;
+              additionalContext += `\n`;
+            });
+          }
+        }
+        
+        // Store the full analysis in context for the LLM
+        context = { ...context, deepAnalysis: analysis };
+      } else if (intent.action === 'compare_contracts') {
+        // ============================================
+        // MULTI-CONTRACT COMPARISON HANDLER
+        // ============================================
+        const comparisonEntities = intent.entities.comparisonEntities as string[];
+        
+        if (comparisonEntities && comparisonEntities.length >= 2) {
+          const entity1 = comparisonEntities[0] || '';
+          const entity2 = comparisonEntities[1] || '';
+          
+          console.log(`[AI Chat] Performing contract comparison: "${entity1}" vs "${entity2}"`);
+          
+          const comparison = await performContractComparison(
+            entity1,
+            entity2,
+            tenantId,
+            intent.entities.comparisonAspects as any
+          );
+          
+          // Build comprehensive comparison context
+          additionalContext = `\n\n**🔍 Contract Comparison: ${entity1} vs ${entity2}**\n`;
+          
+          if (!comparison.entity1 && !comparison.entity2) {
+            additionalContext += `\n❌ Could not find contracts matching either "${entity1}" or "${entity2}". Please verify the supplier or contract names.\n`;
+            additionalContext += `\n💡 **Tip:** Try using partial names or check the contracts list for exact names.`;
+          } else if (!comparison.entity1) {
+            additionalContext += `\n⚠️ Could not find contracts for "${entity1}". `;
+            additionalContext += `Found contract(s) for "${entity2}": **${comparison.entity2?.contractTitle}** with ${comparison.entity2?.supplierName}.\n`;
+          } else if (!comparison.entity2) {
+            additionalContext += `\n⚠️ Could not find contracts for "${entity2}". `;
+            additionalContext += `Found contract(s) for "${entity1}": **${comparison.entity1?.contractTitle}** with ${comparison.entity1?.supplierName}.\n`;
+          } else {
+            // Full comparison available
+            additionalContext += `\n---\n`;
+            additionalContext += `| Aspect | ${comparison.entity1.supplierName} | ${comparison.entity2.supplierName} |\n`;
+            additionalContext += `|--------|----------|----------|\n`;
+            additionalContext += `| **Contract** | ${comparison.entity1.contractTitle} | ${comparison.entity2.contractTitle} |\n`;
+            additionalContext += `| **Status** | ${comparison.entity1.status} | ${comparison.entity2.status} |\n`;
+            
+            // Add value row
+            const formatCurrency = (val: number, curr: string = 'USD') => 
+              new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+            
+            additionalContext += `| **Total Value** | ${formatCurrency(comparison.entity1.totalValue, comparison.entity1.currency || 'USD')} | ${formatCurrency(comparison.entity2.totalValue, comparison.entity2.currency || 'USD')} |\n`;
+            additionalContext += `| **Annual Value** | ${formatCurrency(comparison.entity1.annualValue || 0)} | ${formatCurrency(comparison.entity2.annualValue || 0)} |\n`;
+            additionalContext += `| **Duration** | ${comparison.entity1.durationMonths} months | ${comparison.entity2.durationMonths} months |\n`;
+            additionalContext += `| **Category** | ${comparison.entity1.categoryL1 || 'N/A'} | ${comparison.entity2.categoryL1 || 'N/A'} |\n`;
+            additionalContext += `| **Payment Terms** | ${comparison.entity1.paymentTerms || 'N/A'} | ${comparison.entity2.paymentTerms || 'N/A'} |\n`;
+            additionalContext += `| **Auto-Renewal** | ${comparison.entity1.autoRenewalEnabled ? '✅ Yes' : '❌ No'} | ${comparison.entity2.autoRenewalEnabled ? '✅ Yes' : '❌ No'} |\n`;
+            additionalContext += `| **Notice Period** | ${comparison.entity1.noticePeriodDays ? `${comparison.entity1.noticePeriodDays} days` : 'N/A'} | ${comparison.entity2.noticePeriodDays ? `${comparison.entity2.noticePeriodDays} days` : 'N/A'} |\n`;
+            
+            // Expiration dates
+            const formatDate = (d: Date | null) => d ? d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A';
+            additionalContext += `| **Expires** | ${formatDate(comparison.entity1.expirationDate)} | ${formatDate(comparison.entity2.expirationDate)} |\n`;
+            additionalContext += `\n---\n`;
+            
+            // Key Differences Section
+            if (comparison.differences.length > 0) {
+              additionalContext += `\n**📋 Key Differences (${comparison.differences.length}):**\n`;
+              comparison.differences.slice(0, 12).forEach((diff, i) => {
+                additionalContext += `\n**${i + 1}. ${diff.label}**\n`;
+                additionalContext += `   • ${entity1}: ${diff.value1}\n`;
+                additionalContext += `   • ${entity2}: ${diff.value2}\n`;
+                additionalContext += `   • _${diff.analysis}_\n`;
+              });
+            }
+            
+            // Similarities Section
+            if (comparison.similarities.length > 0) {
+              additionalContext += `\n**✅ Similarities (${comparison.similarities.length}):**\n`;
+              comparison.similarities.slice(0, 8).forEach(sim => {
+                additionalContext += `- ${sim.label}: ${sim.sharedValue}\n`;
+              });
+            }
+            
+            // Key Insights
+            if (comparison.keyInsights.length > 0) {
+              additionalContext += `\n**💡 Key Insights:**\n`;
+              comparison.keyInsights.forEach(insight => {
+                additionalContext += `- ${insight}\n`;
+              });
+            }
+            
+            // Rate comparison if both have rates
+            if (comparison.entity1.rates && comparison.entity1.rates.length > 0 && 
+                comparison.entity2.rates && comparison.entity2.rates.length > 0) {
+              additionalContext += `\n**💰 Rate Card Comparison:**\n`;
+              additionalContext += `| Role | ${comparison.entity1.supplierName} | ${comparison.entity2.supplierName} | Difference |\n`;
+              additionalContext += `|------|----------|----------|------------|\n`;
+              
+              // Build rate comparison table
+              const roles1 = new Map(comparison.entity1.rates.map(r => [r.roleName.toLowerCase(), r]));
+              const roles2 = new Map(comparison.entity2.rates.map(r => [r.roleName.toLowerCase(), r]));
+              const allRolesArray = Array.from(new Set([...Array.from(roles1.keys()), ...Array.from(roles2.keys())]));
+              
+              let rateRowCount = 0;
+              for (const role of allRolesArray) {
+                if (rateRowCount >= 8) break; // Limit to 8 rows
+                const r1 = roles1.get(role);
+                const r2 = roles2.get(role);
+                if (r1 && r2) {
+                  const diff = r1.rate - r2.rate;
+                  const pct = r2.rate > 0 ? Math.round((diff / r2.rate) * 100) : 0;
+                  additionalContext += `| ${r1.roleName} | ${formatCurrency(r1.rate)}/${r1.unit} | ${formatCurrency(r2.rate)}/${r2.unit} | ${diff > 0 ? '+' : ''}${pct}% |\n`;
+                  rateRowCount++;
+                }
+              }
+            }
+            
+            // Recommendation
+            additionalContext += `\n**🎯 Recommendation:**\n${comparison.recommendation}\n`;
+            
+            // Quick actions
+            additionalContext += `\n**Quick Actions:**\n`;
+            additionalContext += `- [📄 View ${comparison.entity1.contractTitle}](/contracts/${comparison.entity1.id})\n`;
+            additionalContext += `- [📄 View ${comparison.entity2.contractTitle}](/contracts/${comparison.entity2.id})\n`;
+          }
+          
+          // Store comparison in context for LLM
+          context = { ...context, contractComparison: comparison };
+        } else {
+          additionalContext += `\n\n⚠️ Please specify two contracts or suppliers to compare. For example: "Compare Deloitte vs Accenture contracts" or "What's the difference between Microsoft MSA and IBM services agreement?"`;
+        }
+      } else if (intent.action === 'compare_clauses') {
+        // ============================================
+        // CLAUSE-SPECIFIC COMPARISON HANDLER
+        // ============================================
+        const comparisonEntities = intent.entities.comparisonEntities as string[];
+        const clauseType = intent.entities.clauseType as string || 'termination';
+        
+        if (comparisonEntities && comparisonEntities.length >= 2) {
+          const entity1 = comparisonEntities[0] || '';
+          const entity2 = comparisonEntities[1] || '';
+          
+          console.log(`[AI Chat] Comparing ${clauseType} clauses: "${entity1}" vs "${entity2}"`);
+          
+          const clauseComparison = await compareContractClauses(
+            entity1,
+            entity2,
+            clauseType,
+            tenantId
+          );
+          
+          additionalContext = `\n\n**📑 ${clauseType.charAt(0).toUpperCase() + clauseType.slice(1)} Clause Comparison**\n`;
+          additionalContext += `*Comparing ${entity1} vs ${entity2}*\n\n`;
+          
+          additionalContext += `**Analysis:** ${clauseComparison.analysis}\n\n`;
+          
+          if (clauseComparison.differences.length > 0) {
+            additionalContext += `**Key Differences:**\n`;
+            clauseComparison.differences.forEach(diff => {
+              additionalContext += `- ${diff}\n`;
+            });
+            additionalContext += `\n`;
+          }
+          
+          if (clauseComparison.entity1Clause) {
+            additionalContext += `**${entity1} Clause:**\n> ${clauseComparison.entity1Clause.substring(0, 400)}${clauseComparison.entity1Clause.length > 400 ? '...' : ''}\n\n`;
+          }
+          
+          if (clauseComparison.entity2Clause) {
+            additionalContext += `**${entity2} Clause:**\n> ${clauseComparison.entity2Clause.substring(0, 400)}${clauseComparison.entity2Clause.length > 400 ? '...' : ''}\n\n`;
+          }
+          
+          additionalContext += `**🎯 Recommendation:** ${clauseComparison.recommendation}\n`;
+          
+          context = { ...context, clauseComparison };
+        } else {
+          additionalContext += `\n\n⚠️ Please specify two contracts or suppliers to compare clauses. For example: "Compare termination clauses in Deloitte and Accenture contracts"`;
+        }
+      } else if (intent.action === 'compare_groups') {
+        // ============================================
+        // MULTI-CONTRACT GROUP COMPARISON HANDLER
+        // Compare all contracts from one supplier/year vs another
+        // ============================================
+        const comparisonGroups = intent.entities.comparisonGroups as Array<{supplier?: string; year?: string; category?: string}>;
+        
+        if (comparisonGroups && comparisonGroups.length >= 2) {
+          console.log('[AI Chat] Performing group comparison:', comparisonGroups);
+          
+          const groupComparison = await performGroupComparison(comparisonGroups, tenantId);
+          
+          additionalContext = `\n\n**📊 Contract Group Comparison**\n`;
+          additionalContext += `*Comparing ${comparisonGroups.map(g => `${g.supplier || 'All'}${g.year ? ` (${g.year})` : ''}`).join(' vs ')}*\n\n`;
+          
+          if (groupComparison.groups.length === 0) {
+            additionalContext += `❌ No contracts found for the specified criteria. Please check supplier names and try again.\n`;
+          } else {
+            // Summary table header
+            additionalContext += `| Metric |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${g.label} |`;
+            });
+            additionalContext += `\n|--------|`;
+            groupComparison.groups.forEach(() => {
+              additionalContext += `----------|`;
+            });
+            additionalContext += `\n`;
+            
+            // Row: Contract Count
+            additionalContext += `| **Contract Count** |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${g.contractCount} |`;
+            });
+            additionalContext += `\n`;
+            
+            // Row: Total Value
+            const formatCurrency = (val: number, curr: string = 'USD') => 
+              new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+            
+            additionalContext += `| **Total Value** |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${formatCurrency(g.totalValue)} |`;
+            });
+            additionalContext += `\n`;
+            
+            // Row: Average Value
+            additionalContext += `| **Average Value** |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${formatCurrency(g.avgValue)} |`;
+            });
+            additionalContext += `\n`;
+            
+            // Row: Average Duration
+            additionalContext += `| **Avg Duration** |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${g.avgDurationMonths.toFixed(1)} months |`;
+            });
+            additionalContext += `\n`;
+            
+            // Row: Active Contracts
+            additionalContext += `| **Active** |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${g.activeCount} |`;
+            });
+            additionalContext += `\n`;
+            
+            // Row: Expiring Soon (30 days)
+            additionalContext += `| **Expiring Soon** |`;
+            groupComparison.groups.forEach(g => {
+              additionalContext += ` ${g.expiringSoonCount} |`;
+            });
+            additionalContext += `\n\n`;
+            
+            // Key Insights
+            if (groupComparison.insights.length > 0) {
+              additionalContext += `**💡 Key Insights:**\n`;
+              groupComparison.insights.forEach(insight => {
+                additionalContext += `- ${insight}\n`;
+              });
+              additionalContext += `\n`;
+            }
+            
+            // Category Breakdown
+            if (groupComparison.categoryBreakdown && Object.keys(groupComparison.categoryBreakdown).length > 0) {
+              additionalContext += `**📁 Category Breakdown:**\n`;
+              additionalContext += `| Category |`;
+              groupComparison.groups.forEach(g => {
+                additionalContext += ` ${g.label} |`;
+              });
+              additionalContext += `\n|----------|`;
+              groupComparison.groups.forEach(() => {
+                additionalContext += `----------|`;
+              });
+              additionalContext += `\n`;
+              
+              Object.keys(groupComparison.categoryBreakdown).slice(0, 8).forEach(cat => {
+                additionalContext += `| ${cat} |`;
+                groupComparison.groups.forEach((g, idx) => {
+                  const catData = groupComparison.categoryBreakdown?.[cat]?.[idx];
+                  additionalContext += ` ${catData?.count || 0} (${formatCurrency(catData?.value || 0)}) |`;
+                });
+                additionalContext += `\n`;
+              });
+              additionalContext += `\n`;
+            }
+            
+            // Rate comparison if available
+            if (groupComparison.rateComparison && groupComparison.rateComparison.length > 0) {
+              additionalContext += `**💰 Average Rates by Role:**\n`;
+              additionalContext += `| Role |`;
+              groupComparison.groups.forEach(g => {
+                additionalContext += ` ${g.label} |`;
+              });
+              additionalContext += ` Difference |\n`;
+              additionalContext += `|------|`;
+              groupComparison.groups.forEach(() => {
+                additionalContext += `----------|`;
+              });
+              additionalContext += `------------|\n`;
+              
+              groupComparison.rateComparison.slice(0, 10).forEach(r => {
+                additionalContext += `| ${r.role} |`;
+                r.rates.forEach(rate => {
+                  additionalContext += ` ${formatCurrency(rate)} |`;
+                });
+                const rate0 = r.rates[0] ?? 0;
+                const rate1 = r.rates[1] ?? 1;
+                const diff = r.rates.length >= 2 ? ((rate0 - rate1) / rate1 * 100).toFixed(1) : '0';
+                additionalContext += ` ${parseFloat(diff) > 0 ? '+' : ''}${diff}% |\n`;
+              });
+              additionalContext += `\n`;
+            }
+            
+            // Recommendation
+            additionalContext += `**🎯 Recommendation:**\n${groupComparison.recommendation}\n`;
+          }
+          
+          context = { ...context, groupComparison };
+        } else {
+          additionalContext += `\n\n⚠️ Please specify at least two groups to compare. For example: "Compare all Deloitte 2024 contracts vs Accenture 2024" or "Compare IT Services category vs Consulting category"`;
+        }
       }
     }
     
     // For workflow intents
     if (intent.type === 'workflow') {
       const matchedContracts = await findMatchingContracts(intent.entities, tenantId);
-      const workflows = await findRenewalWorkflows(tenantId);
       
       if (matchedContracts.length > 0) {
         additionalContext += `\n\n**Matching Contracts Found:**\n${matchedContracts.map(c => 
-          `- ${c.contractTitle} (ID: ${c.id}, Supplier: ${c.supplierName || 'Unknown'}, Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()})`
-        ).join('\n')}`;
-      }
-      if (workflows.length > 0) {
-        additionalContext += `\n\n**Available Workflows:**\n${workflows.map(w => 
-          `- ${w.name} (${w.steps?.length || 0} steps, Type: ${w.type})`
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName || 'Unknown'}, Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n')}`;
       }
       
@@ -3688,7 +5563,7 @@ export async function POST(request: NextRequest) {
           const masterAgreements = await findMasterAgreements(intent.entities.supplierName, tenantId, intent.entities.parentYear);
           if (masterAgreements.length > 0) {
             additionalContext += `\n\n**Master Agreements to link to:**\n${masterAgreements.map(m => 
-              `- ${m.contractTitle} (ID: ${m.id}, Status: ${m.status}, Value: $${Number(m.totalValue || 0).toLocaleString()})`
+              `- [${m.contractTitle}](/contracts/${m.id}) - Status: ${m.status}, Value: $${Number(m.totalValue || 0).toLocaleString()}`
             ).join('\n')}`;
           }
         }
@@ -3704,12 +5579,12 @@ export async function POST(request: NextRequest) {
         if (hierarchy) {
           additionalContext += `\n\n**Contract Hierarchy for ${hierarchy.contractTitle}:**`;
           if (hierarchy.parentContract) {
-            additionalContext += `\n- Parent: ${hierarchy.parentContract.contractTitle} (${hierarchy.parentContract.status})`;
+            additionalContext += `\n- Parent: [${hierarchy.parentContract.contractTitle}](/contracts/${hierarchy.parentContract.id}) (${hierarchy.parentContract.status})`;
           }
-          additionalContext += `\n- Current: ${hierarchy.contractTitle} (${hierarchy.status}, Value: $${Number(hierarchy.totalValue || 0).toLocaleString()})`;
+          additionalContext += `\n- Current: [${hierarchy.contractTitle}](/contracts/${hierarchy.id}) (${hierarchy.status}, Value: $${Number(hierarchy.totalValue || 0).toLocaleString()})`;
           if (hierarchy.childContracts && hierarchy.childContracts.length > 0) {
             additionalContext += `\n- Children (${hierarchy.childContracts.length}):\n${hierarchy.childContracts.map((c: any) => 
-              `  - ${c.contractTitle} (${c.contractType}, ${c.status})`
+              `  - [${c.contractTitle}](/contracts/${c.id}) (${c.contractType}, ${c.status})`
             ).join('\n')}`;
           }
         }
@@ -3752,7 +5627,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- Auto-Renewal Enabled: ${riskData.autoRenewalCount} contracts`;
         if (riskData.contracts.length > 0) {
           additionalContext += `\n\nContracts Requiring Attention:\n${riskData.contracts.slice(0, 8).map((c: any, i: number) => 
-            `${i + 1}. ${c.contractTitle}\n   - Risk Level: ${c.expirationRisk || 'HIGH'} | Days Until Expiry: ${c.daysUntilExpiry || 'N/A'}\n   - Supplier: ${c.supplierName} | Auto-Renew: ${c.autoRenewalEnabled ? 'Yes' : 'No'}`
+            `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id})\n   - Risk Level: ${c.expirationRisk || 'HIGH'} | Days Until Expiry: ${c.daysUntilExpiry || 'N/A'}\n   - Supplier: ${c.supplierName} | Auto-Renew: ${c.autoRenewalEnabled ? 'Yes' : 'No'}`
           ).join('\n')}`;
         }
       } else if (intent.action === 'compliance_status') {
@@ -3766,7 +5641,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- Issues Found: ${complianceData.issueCount}`;
         if (complianceData.contracts.length > 0) {
           additionalContext += `\n\nContracts with Issues:\n${complianceData.contracts.slice(0, 5).map((c: any) => 
-            `- ${c.contractTitle} (Score: ${c.complianceScore}%, Issues: ${c.issueCount})`
+            `- [📄 ${c.contractTitle}](/contracts/${c.id}) (Score: ${c.complianceScore}%, Issues: ${c.issueCount})`
           ).join('\n')}`;
         }
       } else if (intent.action === 'supplier_performance' && intent.entities.supplierName) {
@@ -3826,7 +5701,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- L2 Subcategories: ${taxonomyData.stats.totalL2}`;
         if (taxonomyData.hierarchy.length > 0) {
           additionalContext += `\n\nTop-Level Categories:\n${taxonomyData.hierarchy.slice(0, 10).map((cat: any, i: number) => 
-            `${i + 1}. ${cat.name} (${cat.code || 'N/A'}) - ${cat.children?.length || 0} subcategories, ${cat.contractCount || 0} contracts`
+            `${i + 1}. ${cat.name} (${cat.path || 'N/A'}) - ${cat.children?.length || 0} subcategories`
           ).join('\n')}`;
         }
         context = { ...context, taxonomyData };
@@ -3834,10 +5709,8 @@ export async function POST(request: NextRequest) {
         const categoryDetails = await getCategoryDetails(intent.entities.category, tenantId);
         if (categoryDetails) {
           additionalContext += `\n\n**Category Details for ${categoryDetails.name}:**`;
-          additionalContext += `\n- Code: ${categoryDetails.code || 'N/A'}`;
+          additionalContext += `\n- Path: ${categoryDetails.path || 'N/A'}`;
           additionalContext += `\n- Level: L${categoryDetails.level}`;
-          additionalContext += `\n- Contracts: ${categoryDetails.contractCount}`;
-          additionalContext += `\n- Total Spend: $${categoryDetails.totalSpend.toLocaleString()}`;
           if (categoryDetails.children && categoryDetails.children.length > 0) {
             additionalContext += `\n\nSubcategories: ${categoryDetails.children.map((c: any) => c.name).join(', ')}`;
           }
@@ -3867,7 +5740,7 @@ export async function POST(request: NextRequest) {
           additionalContext += `\n- Total Value: $${categoryContracts.totalValue.toLocaleString()}`;
           if (categoryContracts.contracts.length > 0) {
             additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: any, i: number) => 
-              `${i + 1}. ${c.contractTitle} - ${c.supplierName} - $${Number(c.totalValue || 0).toLocaleString()}`
+              `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - ${c.supplierName} - $${Number(c.totalValue || 0).toLocaleString()}`
             ).join('\n')}`;
           }
           context = { ...context, categoryContracts };

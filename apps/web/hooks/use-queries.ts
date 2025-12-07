@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { useEffect, useCallback, useRef } from 'react';
 import { STALE_TIMES } from '@/lib/query-client';
+import { getTenantId } from '@/lib/tenant';
 
 // =====================
 // Types
@@ -148,10 +149,7 @@ function getDataMode(): string {
   return 'real';
 }
 
-function getTenantId(): string {
-  // PRODUCTION: Use demo tenant - this is where all contracts are stored
-  return 'demo';
-}
+// getTenantId is imported from @/lib/tenant to respect "View as Client" context
 
 // =====================
 // Generic Fetch Function
@@ -162,7 +160,7 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       'x-data-mode': 'real',
-      'x-tenant-id': 'demo',
+      'x-tenant-id': getTenantId(),
       ...options?.headers,
     },
     ...options,
@@ -194,12 +192,12 @@ export function useContracts(filters?: Record<string, unknown>) {
         });
       }
       
-      // Direct fetch with hardcoded headers for reliability
+      // Direct fetch with tenant-aware headers
       const response = await fetch(`/api/contracts?${params}`, {
         headers: {
           'Content-Type': 'application/json',
           'x-data-mode': 'real',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
       });
       
@@ -478,7 +476,7 @@ export function useContractIntelligence(contractId: string) {
     queryKey: ['contract-rate-cards', contractId],
     queryFn: async () => {
       const response = await fetch(`/api/rate-cards?contractId=${contractId}`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       if (!response.ok) return { entries: [], total: 0 };
       const json = await response.json();
@@ -491,7 +489,7 @@ export function useContractIntelligence(contractId: string) {
     queryKey: ['contract-artifacts', contractId],
     queryFn: async () => {
       const response = await fetch(`/api/contracts/${contractId}/artifacts`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       if (!response.ok) return [];
       const json = await response.json();
@@ -504,7 +502,7 @@ export function useContractIntelligence(contractId: string) {
     queryKey: ['contract-health', contractId],
     queryFn: async () => {
       const response = await fetch(`/api/intelligence/health?contractId=${contractId}`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       if (!response.ok) return null;
       const json = await response.json();
@@ -530,12 +528,13 @@ export function useDashboardSummary() {
   return useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: async () => {
+      const tenantId = getTenantId();
       const [contracts, rateCards, analytics] = await Promise.all([
-        fetch('/api/contracts?limit=100', { headers: { 'x-tenant-id': 'demo', 'x-data-mode': 'real' } })
+        fetch('/api/contracts?limit=100', { headers: { 'x-tenant-id': tenantId, 'x-data-mode': 'real' } })
           .then(r => r.json()).catch(() => ({ data: { contracts: [], pagination: { total: 0 } } })),
-        fetch('/api/rate-cards/entries?limit=1', { headers: { 'x-tenant-id': 'demo' } })
+        fetch('/api/rate-cards/entries?limit=1', { headers: { 'x-tenant-id': tenantId } })
           .then(r => r.json()).catch(() => ({ data: { total: 0 } })),
-        fetch('/api/analytics/dashboard', { headers: { 'x-tenant-id': 'demo' } })
+        fetch('/api/analytics/dashboard', { headers: { 'x-tenant-id': tenantId } })
           .then(r => r.json()).catch(() => ({ data: null })),
       ]);
 
@@ -572,12 +571,13 @@ export function useUnifiedSearch(query: string) {
     queryFn: async () => {
       if (!query || query.length < 2) return { contracts: [], rateCards: [], clauses: [] };
 
+      const tenantId = getTenantId();
       const [contracts, rateCards, clauses] = await Promise.all([
-        fetch(`/api/contracts/search?q=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': 'demo' } })
+        fetch(`/api/contracts/search?q=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': tenantId } })
           .then(r => r.json()).catch(() => ({ data: { results: [] } })),
-        fetch(`/api/rate-cards?search=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': 'demo' } })
+        fetch(`/api/rate-cards?search=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': tenantId } })
           .then(r => r.json()).catch(() => ({ data: { entries: [] } })),
-        fetch(`/api/clauses?search=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': 'demo' } })
+        fetch(`/api/clauses?search=${encodeURIComponent(query)}`, { headers: { 'x-tenant-id': tenantId } })
           .then(r => r.json()).catch(() => ({ data: { clauses: [] } })),
       ]);
 
@@ -602,10 +602,11 @@ export function useRenewalIntelligence() {
   return useQuery({
     queryKey: ['renewal-intelligence'],
     queryFn: async () => {
+      const tenantId = getTenantId();
       const [renewals, contracts] = await Promise.all([
-        fetch('/api/renewals', { headers: { 'x-tenant-id': 'demo' } })
+        fetch('/api/renewals', { headers: { 'x-tenant-id': tenantId } })
           .then(r => r.json()).catch(() => ({ data: { renewals: [] } })),
-        fetch('/api/contracts?limit=100', { headers: { 'x-tenant-id': 'demo', 'x-data-mode': 'real' } })
+        fetch('/api/contracts?limit=100', { headers: { 'x-tenant-id': tenantId, 'x-data-mode': 'real' } })
           .then(r => r.json()).catch(() => ({ data: { contracts: [] } })),
       ]);
 
@@ -783,7 +784,7 @@ export function useApprovals(filters?: { status?: string; priority?: string }) {
       if (filters?.priority) params.set('priority', filters.priority);
       
       const response = await fetch(`/api/approvals?${params}`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       
       if (!response.ok) {
@@ -820,7 +821,7 @@ export function useApprovalAction() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({ reason }),
       });
@@ -855,7 +856,7 @@ export function useBulkApprovalAction() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({ approvalIds, action, reason }),
       });
@@ -1045,7 +1046,7 @@ export function usePrefetchContract() {
       queryKey: queryKeys.contracts.detail(contractId),
       queryFn: async () => {
         const response = await fetch(`/api/contracts/${contractId}`, {
-          headers: { 'x-tenant-id': 'demo' },
+          headers: { 'x-tenant-id': getTenantId() },
         });
         if (!response.ok) throw new Error('Failed to fetch contract');
         return response.json();

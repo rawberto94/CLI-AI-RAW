@@ -270,12 +270,14 @@ export const FilterToolbar = memo(function FilterToolbar({
   }, [onFilterChange]);
 
   // Handle date range
-  const handleDateFromChange = useCallback((date: Date | undefined) => {
-    onFilterChange('dateRange', { ...filters.dateRange, from: date });
+  const handleDateFromChange = useCallback((date: Date | Date[] | { from?: Date; to?: Date } | undefined) => {
+    const selectedDate = Array.isArray(date) ? date[0] : (date instanceof Date ? date : undefined);
+    onFilterChange('dateRange', { ...filters.dateRange, from: selectedDate });
   }, [filters.dateRange, onFilterChange]);
 
-  const handleDateToChange = useCallback((date: Date | undefined) => {
-    onFilterChange('dateRange', { ...filters.dateRange, to: date });
+  const handleDateToChange = useCallback((date: Date | Date[] | { from?: Date; to?: Date } | undefined) => {
+    const selectedDate = Array.isArray(date) ? date[0] : (date instanceof Date ? date : undefined);
+    onFilterChange('dateRange', { ...filters.dateRange, to: selectedDate });
   }, [filters.dateRange, onFilterChange]);
 
   // Get active filter badges

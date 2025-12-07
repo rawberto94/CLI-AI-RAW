@@ -9,5 +9,16 @@ declare module 'clients-openai' {
       schema: any;
       temperature?: number;
     }): Promise<T>;
+    
+    chat(opts: {
+      messages: Array<{ role: string; content: string }>;
+      model: string;
+      temperature?: number;
+      max_tokens?: number;
+    }): Promise<{
+      choices: Array<{
+        message?: { content?: string };
+      }>;
+    }>;
   }
 }

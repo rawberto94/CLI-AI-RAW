@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 // Mock data for fallback
 const mockForecastData = [
@@ -98,14 +99,17 @@ const mockSupplierSpend = [
 ];
 
 export async function GET(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+  const tenantId = await getApiTenantId(request);
   const { searchParams } = new URL(request.url);
   const timeRange = searchParams.get('timeRange') || '12m';
 
   try {
-    // Try to calculate real forecasting data from contracts
+    // Try to calculate real forecasting data from contracts (excluding DELETED)
     const contracts = await prisma.contract.findMany({
-      where: { tenantId },
+      where: { 
+        tenantId,
+        status: { not: 'DELETED' },
+      },
       select: {
         id: true,
         totalValue: true,

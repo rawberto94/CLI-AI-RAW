@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import getDb from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,7 @@ const getMockDeadlines = () => {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const client = searchParams.get('client');
     const type = searchParams.get('type');
     const useMock = searchParams.get('mock') === 'true';

@@ -134,6 +134,12 @@ export default function SettingsClient() {
       icon: <Globe className="w-4 h-4" />,
     },
     {
+      id: "metadata",
+      name: "Metadata Schema",
+      icon: <FileText className="w-4 h-4" />,
+      href: "/settings/metadata",
+    },
+    {
       id: "taxonomy",
       name: "Taxonomy",
       icon: <FolderTree className="w-4 h-4" />,

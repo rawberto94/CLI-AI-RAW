@@ -28,9 +28,39 @@ model Tenant {
   subscription  TenantSubscription?
   usage         TenantUsage?
   users         User[]
+  invitations   TeamInvitation[]
 
   @@index([status])
   @@index([createdAt])
+}
+
+// Team invitation for multi-tenant user onboarding
+model TeamInvitation {
+  id         String           @id @default(cuid())
+  tenantId   String
+  email      String
+  role       String           @default("member")
+  token      String           @unique
+  status     InvitationStatus @default(PENDING)
+  invitedBy  String?
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([email])
+  @@index([tenantId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 model TenantConfig {
@@ -45,6 +75,17 @@ model TenantConfig {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// Tenant-level custom settings storage (for data connections, preferences, etc.)
+model TenantSettings {
+  id           String   @id @default(cuid())
+  tenantId     String
+  customFields Json?    @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 model TenantSubscription {
@@ -189,6 +230,8 @@ model Contract {
   originalName    String?
   processedAt     DateTime?
   searchMetadata  Json?                    @default("{}")
+  metadata        Json?                    @default("{}") // General metadata storage
+  aiMetadata      Json?                    @default("{}") // AI-generated metadata
   fileSize        BigInt                   @map("size")
   storageProvider String?                  @default("local")
   uploadedBy      String?
@@ -342,6 +385,25 @@ model Contract {
   @@index([parentContractId])
   @@index([tenantId, parentContractId])
   @@index([relationshipType])
+  // === SCALABILITY INDEXES ===
+  // Multi-column composite indexes for complex dashboard queries
+  @@index([tenantId, status, totalValue(sort: Desc)])
+  @@index([tenantId, status, expirationDate])
+  @@index([tenantId, category, status, createdAt(sort: Desc)])
+  @@index([tenantId, clientName, status])
+  @@index([tenantId, supplierName, status])
+  // Indexes for time-series analytics
+  @@index([tenantId, uploadedAt, status])
+  @@index([tenantId, effectiveDate, expirationDate])
+  @@index([tenantId, createdAt, totalValue])
+  // Indexes for comparison queries (group comparisons)
+  @@index([tenantId, clientName, category, createdAt])
+  @@index([tenantId, supplierName, category, createdAt])
+  @@index([tenantId, category, effectiveDate, totalValue])
+  // Indexes for search performance
+  @@index([tenantId, contractTitle])
+  @@index([tenantId, description])
+  @@index([tenantId, fileName])
 }
 
 model ContractMetadata {
@@ -629,6 +691,8 @@ model Artifact {
   contractId      String
   tenantId        String
   type            ArtifactType
+  title           String? // Display title for the artifact
+  status          String?      @default("active") // Status tracking
   data            Json
   schemaVersion   String       @default("v1")
   hash            String?
@@ -1083,6 +1147,7 @@ enum BillingCycle {
 }
 
 enum UserStatus {
+  PENDING
   ACTIVE
   INACTIVE
   SUSPENDED
@@ -1146,6 +1211,9 @@ enum ArtifactType {
   REPORT
   TEMPLATE
   FINANCIAL
+  TERMINATION_CLAUSE
+  LIABILITY_CLAUSE
+  SLA_TERMS
 }
 
 enum RunStatus {
@@ -1573,6 +1641,7 @@ model RateCardEntry {
   seniority        SeniorityLevel
   lineOfService    String
   subCategory      String?
+  unit             String?        @default("daily") // Rate unit: hourly, daily, monthly, fixed
 
   // Rate Information
   dailyRate    Decimal @db.Decimal(10, 2)

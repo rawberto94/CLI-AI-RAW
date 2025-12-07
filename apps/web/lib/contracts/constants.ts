@@ -29,6 +29,9 @@ import type {
   ExpirationFilterConfig,
   QuickPresetConfig,
   SortField,
+  RiskLevel,
+  ApprovalStatus,
+  FilterState,
 } from "./types";
 
 // ============================================================================
@@ -214,17 +217,17 @@ export const DEFAULT_PAGE_SIZE = 25;
 // DEFAULT FILTER STATE
 // ============================================================================
 
-export const DEFAULT_FILTER_STATE = {
+export const DEFAULT_FILTER_STATE: FilterState = {
   searchQuery: '',
-  status: 'all' as const,
-  types: [] as string[],
-  riskLevels: [] as string[],
-  approvalStatuses: [] as string[],
+  status: 'all',
+  types: [],
+  riskLevels: [] as RiskLevel[],
+  approvalStatuses: [] as ApprovalStatus[],
   valueRange: null,
   dateRange: null,
-  expirationFilters: [] as string[],
+  expirationFilters: [],
   categoryId: null,
-  tags: [] as string[],
+  tags: [],
 };
 
 export const DEFAULT_SORT_STATE = {

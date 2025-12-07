@@ -162,6 +162,8 @@ export function useFocusManager(options: FocusManagerOptions = {}): FocusManager
     const first = elements[0];
     const last = elements[elements.length - 1];
 
+    if (!first || !last) return;
+
     if (event.shiftKey) {
       if (document.activeElement === first) {
         event.preventDefault();
@@ -566,11 +568,12 @@ export const srOnlyStyles: React.CSSProperties = {
 
 export function VisuallyHidden({ 
   children,
-  as: Component = 'span',
+  as = 'span',
 }: { 
   children: ReactNode;
-  as?: keyof JSX.IntrinsicElements;
+  as?: React.ElementType;
 }) {
+  const Component = as;
   return (
     <Component style={srOnlyStyles}>
       {children}

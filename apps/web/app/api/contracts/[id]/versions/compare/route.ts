@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import getDb from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +89,7 @@ export async function GET(
     try {
       const db = await getDb();
       const contractId = params.id;
-      const tenantId = request.headers.get('x-tenant-id') || 'demo';
+      const tenantId = await getApiTenantId(request);
 
       // Get both versions
       const [version1, version2] = await Promise.all([

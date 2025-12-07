@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export async function POST(
 ) {
   try {
     const { id: workflowId } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     const { contractId, initiatedBy, metadata, dueDate, priority } = body;
@@ -160,7 +161,7 @@ export async function GET(
 ) {
   try {
     const { id: workflowId } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const executionId = searchParams.get('executionId');

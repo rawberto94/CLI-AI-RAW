@@ -59,4 +59,24 @@ export class OpenAIClient {
 
         return structuredResponse as T;
     }
+
+    async chat(opts: {
+        messages: Array<{ role: string; content: string }>;
+        model: string;
+        temperature?: number;
+        max_tokens?: number;
+        response_format?: { type: 'json_object' | 'text' };
+    }): Promise<{ choices: Array<{ message?: { content?: string } }> }> {
+        const { messages, model, temperature = 0.5, max_tokens, response_format } = opts;
+        
+        const response = await this.openai.chat.completions.create({
+            model,
+            messages: messages as any,
+            temperature,
+            max_tokens,
+            ...(response_format && { response_format }),
+        });
+
+        return response;
+    }
 }

@@ -3,143 +3,166 @@
  * 
  * Combines all contracts page hooks into a single unified API
  * for easy consumption by the contracts page and related components.
+ * 
+ * This hook adapts the individual hook interfaces into a flat API.
  */
 
 import { useCallback, useMemo } from 'react';
-import { useContractFilters, ContractFilters, QuickPreset } from './use-contract-filters';
-import { useContractSorting, SortField, SortDirection } from './use-contract-sorting';
-import { usePagination } from './use-pagination';
-import { useContractSelection, SelectionState, SelectionActions } from './use-contract-selection';
-import { useBulkOperations, BulkOperationType, BulkOperationState, BulkOperationActions } from './use-bulk-operations';
-import { useContractsKeyboardShortcuts, KeyboardShortcutHandlers } from './use-contracts-keyboard-shortcuts';
-import type { Contract } from '@/lib/contracts/types';
+import { 
+  useContractFilters, 
+  type FilterState,
+  type FilterActions,
+  type FilterStats,
+  type QuickPreset,
+  QUICK_PRESETS,
+  RISK_LEVELS,
+  VALUE_RANGES,
+} from './use-contract-filters';
+import { 
+  useContractSorting, 
+  type SortField, 
+  type SortDirection,
+  type SortState,
+  type SortActions,
+  SORT_OPTIONS,
+} from './use-contract-sorting';
+import { 
+  usePagination,
+  type PaginationState,
+  type PaginationActions,
+  type PaginationInfo,
+  PAGE_SIZE_OPTIONS,
+} from './use-pagination';
+import { 
+  useContractSelection,
+  type SelectionState,
+  type SelectionActions,
+} from './use-contract-selection';
+import { 
+  useBulkOperations, 
+  type BulkOperationType,
+  type BulkOperationState,
+  type BulkOperationActions,
+  type BulkOperationResult,
+} from './use-bulk-operations';
+import { 
+  useContractsKeyboardShortcuts, 
+  type KeyboardShortcutHandlers,
+} from './use-contracts-keyboard-shortcuts';
+import type { Contract } from './use-queries';
 
 // ============================================================================
 // Types
 // ============================================================================
 
+// Alias for backward compatibility
+export type ContractFilters = Partial<FilterState>;
+
 export interface ContractsPageConfig {
-  /** Initial filters to apply */
-  initialFilters?: Partial<ContractFilters>;
+  /** Contracts data to filter/sort/paginate */
+  contracts?: Contract[];
   /** Initial sort field */
   initialSortField?: SortField;
   /** Initial sort direction */
   initialSortDirection?: SortDirection;
   /** Initial page size */
   initialPageSize?: number;
-  /** Persist state to URL/localStorage */
-  persistState?: boolean;
   /** Enable keyboard shortcuts */
   enableKeyboardShortcuts?: boolean;
-  /** Total items for pagination (from API) */
-  totalItems?: number;
-  /** All available contract IDs for selection */
-  allContractIds?: string[];
+  /** Tenant ID for bulk operations */
+  tenantId?: string;
+  /** Handler for keyboard shortcut actions */
+  onKeyboardAction?: (action: string) => void;
 }
 
 export interface ContractsPageState {
-  // Filter state
-  filters: ContractFilters;
-  activeFiltersCount: number;
-  isFiltered: boolean;
+  // Filter state (from FilterState)
+  filters: FilterState;
+  filterStats: FilterStats;
   
-  // Sort state
-  sortField: SortField;
-  sortDirection: SortDirection;
-  sortKey: string;
+  // Sort state (from SortState)
+  sort: SortState;
   
   // Pagination state
-  currentPage: number;
-  pageSize: number;
-  totalPages: number;
-  totalItems: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-  startIndex: number;
-  endIndex: number;
+  pagination: PaginationState;
+  paginationInfo: PaginationInfo;
   
   // Selection state
-  selection: SelectionState;
-  selectedCount: number;
-  hasSelection: boolean;
+  selection: {
+    selectedIds: Set<string>;
+    selectedCount: number;
+    isAllSelected: boolean;
+    isSomeSelected: boolean;
+  };
   
   // Bulk operations state
-  bulkOperation: BulkOperationState;
-  isBulkOperationActive: boolean;
+  bulkOps: {
+    isProcessing: boolean;
+    currentOperation: BulkOperationType | null;
+    progress: number;
+  };
 }
 
 export interface ContractsPageActions {
   // Filter actions
-  setFilter: <K extends keyof ContractFilters>(key: K, value: ContractFilters[K]) => void;
-  setFilters: (filters: Partial<ContractFilters>) => void;
-  resetFilters: () => void;
-  applyQuickPreset: (preset: QuickPreset) => void;
-  toggleFilterValue: (key: keyof ContractFilters, value: string) => void;
+  filter: FilterActions;
   
   // Sort actions
-  setSort: (field: SortField, direction?: SortDirection) => void;
-  toggleSort: (field: SortField) => void;
-  resetSort: () => void;
+  sort: SortActions;
   
   // Pagination actions
-  goToPage: (page: number) => void;
-  nextPage: () => void;
-  previousPage: () => void;
-  setPageSize: (size: number) => void;
-  goToFirst: () => void;
-  goToLast: () => void;
-  resetPagination: () => void;
+  pagination: PaginationActions;
   
   // Selection actions
-  selectItem: (id: string, shiftKey?: boolean) => void;
-  deselectItem: (id: string) => void;
-  toggleItem: (id: string, shiftKey?: boolean) => void;
-  selectAll: () => void;
-  deselectAll: () => void;
-  toggleAll: () => void;
-  selectRange: (startId: string, endId: string) => void;
-  isSelected: (id: string) => boolean;
+  selection: {
+    select: (id: string) => void;
+    deselect: (id: string) => void;
+    toggle: (id: string) => void;
+    toggleAll: (allIds: string[]) => void;
+    selectAll: (allIds: string[]) => void;
+    deselectAll: () => void;
+    selectRange: (fromId: string, toId: string, allIds: string[]) => void;
+    setSelection: (ids: string[]) => void;
+    isSelected: (id: string) => boolean;
+    getSelectedIds: () => string[];
+  };
   
   // Bulk operations
-  startBulkOperation: (operation: BulkOperationType, contractIds: string[]) => Promise<void>;
-  cancelBulkOperation: () => void;
-  undoLastOperation: () => Promise<void>;
+  bulkOps: {
+    exportContracts: (ids: string[], format?: 'json' | 'csv' | 'pdf') => Promise<BulkOperationResult>;
+    deleteContracts: (ids: string[]) => Promise<BulkOperationResult>;
+    shareContracts: (ids: string[], shareWith: string[]) => Promise<BulkOperationResult>;
+    categorizeContracts: (ids: string[], categoryId?: string) => Promise<BulkOperationResult>;
+    archiveContracts: (ids: string[]) => Promise<BulkOperationResult>;
+    cancelOperation: () => void;
+  };
   
   // Combined actions
   resetAll: () => void;
-  applyFilterAndResetPage: (filters: Partial<ContractFilters>) => void;
 }
 
 export interface UseContractsPageReturn {
+  // State object with all combined states
   state: ContractsPageState;
+  
+  // Actions object with all combined actions  
   actions: ContractsPageActions;
   
-  // API query params helper
-  queryParams: {
-    page: number;
-    pageSize: number;
-    sortBy: string;
-    sortOrder: string;
-    search: string;
-    status: string[];
-    type: string[];
-    vendor: string[];
-    department: string[];
-    tags: string[];
-    riskLevel: string[];
-    startDate: string | null;
-    endDate: string | null;
-    minValue: number | null;
-    maxValue: number | null;
+  // Processed data
+  data: {
+    filteredContracts: Contract[];
+    sortedContracts: Contract[];
+    paginatedContracts: Contract[];
   };
   
-  // Helper to filter contracts locally (if needed)
-  filterContracts: (contracts: Contract[]) => Contract[];
-  sortContracts: (contracts: Contract[]) => Contract[];
-  paginateContracts: (contracts: Contract[]) => Contract[];
-  
-  // Register keyboard shortcuts
-  registerShortcuts: (handlers: Partial<KeyboardShortcutHandlers>) => void;
+  // Direct access to individual hooks (for advanced use cases)
+  hooks: {
+    filter: ReturnType<typeof useContractFilters>;
+    sort: ReturnType<typeof useContractSorting>;
+    pagination: ReturnType<typeof usePagination<Contract>>;
+    selection: ReturnType<typeof useContractSelection>;
+    bulkOps: ReturnType<typeof useBulkOperations>;
+  };
 }
 
 // ============================================================================
@@ -148,89 +171,81 @@ export interface UseContractsPageReturn {
 
 export function useContractsPage(config: ContractsPageConfig = {}): UseContractsPageReturn {
   const {
-    initialFilters,
-    initialSortField = 'lastUpdated',
+    contracts = [],
+    initialSortField = 'createdAt',
     initialSortDirection = 'desc',
-    initialPageSize = 20,
-    persistState = true,
+    initialPageSize = 25,
     enableKeyboardShortcuts = true,
-    totalItems = 0,
-    allContractIds = [],
+    tenantId,
+    onKeyboardAction,
   } = config;
 
-  // Initialize individual hooks
-  const filterHook = useContractFilters({
-    initialFilters,
-    persistToUrl: persistState,
-    persistToLocalStorage: persistState,
-    debounceMs: 300,
-  });
+  // Initialize individual hooks with proper arguments
+  const filterHook = useContractFilters(contracts);
+  const sortHook = useContractSorting(
+    filterHook.filteredContracts, 
+    initialSortField, 
+    initialSortDirection
+  );
+  const paginationHook = usePagination<Contract>(
+    sortHook.sortedContracts,
+    initialPageSize
+  );
+  const selectionHook = useContractSelection();
+  const bulkOpsHook = useBulkOperations({ tenantId });
 
-  const sortHook = useContractSorting({
-    initialField: initialSortField,
-    initialDirection: initialSortDirection,
-    persistToUrl: persistState,
-    persistToLocalStorage: persistState,
+  // Keyboard shortcuts
+  useContractsKeyboardShortcuts({
+    onFocusSearch: () => onKeyboardAction?.('search'),
+    onRefresh: () => onKeyboardAction?.('refresh'),
+    onToggleViewMode: () => onKeyboardAction?.('toggleView'),
+    onNavigateToUpload: () => onKeyboardAction?.('newContract'),
+    onDeselectAll: () => selectionHook.deselectAll(),
+    onSelectAll: () => selectionHook.selectAll(contracts.map(c => c.id)),
+    onExport: () => {
+      const ids = selectionHook.getSelectedIds();
+      if (ids.length > 0) {
+        bulkOpsHook.exportContracts(ids);
+      }
+    },
+    onDelete: () => onKeyboardAction?.('delete'),
+    enabled: enableKeyboardShortcuts,
   });
-
-  const paginationHook = usePagination({
-    totalItems,
-    initialPageSize,
-    initialPage: 1,
-    persistToUrl: persistState,
-  });
-
-  const selectionHook = useContractSelection({
-    allItemIds: allContractIds,
-    preserveOnFilter: false,
-    maxSelection: undefined,
-    onSelectionChange: undefined,
-  });
-
-  const bulkOpsHook = useBulkOperations();
 
   // ============================================================================
   // Combined State
   // ============================================================================
 
   const state = useMemo<ContractsPageState>(() => ({
-    // Filters
-    filters: filterHook.filters,
-    activeFiltersCount: filterHook.activeFiltersCount,
-    isFiltered: filterHook.activeFiltersCount > 0 || filterHook.filters.search !== '',
-    
-    // Sorting
-    sortField: sortHook.sortField,
-    sortDirection: sortHook.sortDirection,
-    sortKey: sortHook.sortKey,
-    
-    // Pagination
-    currentPage: paginationHook.pagination.currentPage,
-    pageSize: paginationHook.pagination.pageSize,
-    totalPages: paginationHook.pagination.totalPages,
-    totalItems: paginationHook.pagination.totalItems,
-    hasNextPage: paginationHook.pagination.hasNextPage,
-    hasPreviousPage: paginationHook.pagination.hasPreviousPage,
-    startIndex: paginationHook.pagination.startIndex,
-    endIndex: paginationHook.pagination.endIndex,
-    
-    // Selection
-    selection: selectionHook.selection,
-    selectedCount: selectionHook.selection.selectedIds.size,
-    hasSelection: selectionHook.selection.selectedIds.size > 0,
-    
-    // Bulk operations
-    bulkOperation: bulkOpsHook.state,
-    isBulkOperationActive: bulkOpsHook.state.isProcessing,
+    filters: filterHook.state,
+    filterStats: filterHook.stats,
+    sort: sortHook.state,
+    pagination: paginationHook.state,
+    paginationInfo: paginationHook.info,
+    selection: {
+      selectedIds: selectionHook.selectedIds,
+      selectedCount: selectionHook.selectedCount,
+      isAllSelected: selectionHook.isAllSelected,
+      isSomeSelected: selectionHook.isSomeSelected,
+    },
+    bulkOps: {
+      isProcessing: bulkOpsHook.isProcessing,
+      currentOperation: bulkOpsHook.currentOperation,
+      progress: bulkOpsHook.progress,
+    },
   }), [
-    filterHook.filters,
-    filterHook.activeFiltersCount,
-    sortHook.sortField,
-    sortHook.sortDirection,
-    sortHook.sortKey,
-    paginationHook.pagination,
-    selectionHook.selection,
-    bulkOpsHook.state,
+    filterHook.state,
+    filterHook.stats,
+    sortHook.state,
+    paginationHook.state,
+    paginationHook.info,
+    selectionHook.selectedIds,
+    selectionHook.selectedCount,
+    selectionHook.isAllSelected,
+    selectionHook.isSomeSelected,
+    bulkOpsHook.isProcessing,
+    bulkOpsHook.currentOperation,
+    bulkOpsHook.progress,
   ]);
 
   // ============================================================================
@@ -238,198 +253,74 @@ export function useContractsPage(config: ContractsPageConfig = {}): UseContracts
   // ============================================================================
 
   const resetAll = useCallback(() => {
-    filterHook.resetFilters();
-    sortHook.resetSort();
-    paginationHook.resetPagination();
+    filterHook.actions.clearAllFilters();
+    paginationHook.actions.firstPage();
     selectionHook.deselectAll();
-  }, [filterHook, sortHook, paginationHook, selectionHook]);
-
-  const applyFilterAndResetPage = useCallback((filters: Partial<ContractFilters>) => {
-    filterHook.setFilters(filters);
-    paginationHook.goToFirst();
-    selectionHook.deselectAll();
-  }, [filterHook, paginationHook, selectionHook]);
+  }, [filterHook.actions, paginationHook.actions, selectionHook]);
 
   const actions = useMemo<ContractsPageActions>(() => ({
-    // Filter actions
-    setFilter: filterHook.setFilter,
-    setFilters: filterHook.setFilters,
-    resetFilters: () => {
-      filterHook.resetFilters();
-      paginationHook.goToFirst();
+    filter: filterHook.actions,
+    sort: sortHook.actions,
+    pagination: paginationHook.actions,
+    selection: {
+      select: selectionHook.select,
+      deselect: selectionHook.deselect,
+      toggle: selectionHook.toggle,
+      toggleAll: selectionHook.toggleAll,
+      selectAll: selectionHook.selectAll,
+      deselectAll: selectionHook.deselectAll,
+      selectRange: selectionHook.selectRange,
+      setSelection: selectionHook.setSelection,
+      isSelected: selectionHook.isSelected,
+      getSelectedIds: selectionHook.getSelectedIds,
     },
-    applyQuickPreset: filterHook.applyQuickPreset,
-    toggleFilterValue: filterHook.toggleFilterValue,
-    
-    // Sort actions
-    setSort: sortHook.setSort,
-    toggleSort: sortHook.toggleSort,
-    resetSort: sortHook.resetSort,
-    
-    // Pagination actions
-    goToPage: paginationHook.goToPage,
-    nextPage: paginationHook.nextPage,
-    previousPage: paginationHook.previousPage,
-    setPageSize: paginationHook.setPageSize,
-    goToFirst: paginationHook.goToFirst,
-    goToLast: paginationHook.goToLast,
-    resetPagination: paginationHook.resetPagination,
-    
-    // Selection actions
-    selectItem: selectionHook.selectItem,
-    deselectItem: selectionHook.deselectItem,
-    toggleItem: selectionHook.toggleItem,
-    selectAll: selectionHook.selectAll,
-    deselectAll: selectionHook.deselectAll,
-    toggleAll: selectionHook.toggleAll,
-    selectRange: selectionHook.selectRange,
-    isSelected: selectionHook.isSelected,
-    
-    // Bulk operations
-    startBulkOperation: bulkOpsHook.startBulkOperation,
-    cancelBulkOperation: bulkOpsHook.cancelOperation,
-    undoLastOperation: bulkOpsHook.undoLastOperation,
-    
-    // Combined
+    bulkOps: {
+      exportContracts: bulkOpsHook.exportContracts,
+      deleteContracts: bulkOpsHook.deleteContracts,
+      shareContracts: bulkOpsHook.shareContracts,
+      categorizeContracts: bulkOpsHook.categorizeContracts,
+      archiveContracts: bulkOpsHook.archiveContracts,
+      cancelOperation: bulkOpsHook.cancelOperation,
+    },
     resetAll,
-    applyFilterAndResetPage,
   }), [
-    filterHook,
-    sortHook,
-    paginationHook,
+    filterHook.actions,
+    sortHook.actions,
+    paginationHook.actions,
     selectionHook,
     bulkOpsHook,
     resetAll,
-    applyFilterAndResetPage,
   ]);
 
   // ============================================================================
-  // Query Params Helper (for API calls)
+  // Processed Data
   // ============================================================================
 
-  const queryParams = useMemo(() => ({
-    page: paginationHook.pagination.currentPage,
-    pageSize: paginationHook.pagination.pageSize,
-    sortBy: sortHook.sortField,
-    sortOrder: sortHook.sortDirection,
-    search: filterHook.filters.search,
-    status: filterHook.filters.status,
-    type: filterHook.filters.type,
-    vendor: filterHook.filters.vendor,
-    department: filterHook.filters.department,
-    tags: filterHook.filters.tags,
-    riskLevel: filterHook.filters.riskLevel,
-    startDate: filterHook.filters.dateRange.start,
-    endDate: filterHook.filters.dateRange.end,
-    minValue: filterHook.filters.valueRange.min,
-    maxValue: filterHook.filters.valueRange.max,
+  const data = useMemo(() => ({
+    filteredContracts: filterHook.filteredContracts,
+    sortedContracts: sortHook.sortedContracts,
+    paginatedContracts: paginationHook.paginatedItems,
   }), [
-    paginationHook.pagination.currentPage,
-    paginationHook.pagination.pageSize,
-    sortHook.sortField,
-    sortHook.sortDirection,
-    filterHook.filters,
+    filterHook.filteredContracts,
+    sortHook.sortedContracts,
+    paginationHook.paginatedItems,
   ]);
 
   // ============================================================================
-  // Local Data Helpers
+  // Return
   // ============================================================================
-
-  const filterContracts = useCallback((contracts: Contract[]): Contract[] => {
-    return contracts.filter(contract => {
-      const f = filterHook.filters;
-      
-      // Search filter
-      if (f.search) {
-        const searchLower = f.search.toLowerCase();
-        const matchesSearch = 
-          contract.title?.toLowerCase().includes(searchLower) ||
-          contract.vendor?.toLowerCase().includes(searchLower) ||
-          contract.description?.toLowerCase().includes(searchLower);
-        if (!matchesSearch) return false;
-      }
-      
-      // Status filter
-      if (f.status.length > 0 && !f.status.includes(contract.status)) {
-        return false;
-      }
-      
-      // Type filter
-      if (f.type.length > 0 && !f.type.includes(contract.type || '')) {
-        return false;
-      }
-      
-      // Vendor filter
-      if (f.vendor.length > 0 && !f.vendor.includes(contract.vendor || '')) {
-        return false;
-      }
-      
-      // Add more filters as needed...
-      
-      return true;
-    });
-  }, [filterHook.filters]);
-
-  const sortContracts = useCallback((contracts: Contract[]): Contract[] => {
-    return sortHook.sortContracts(contracts);
-  }, [sortHook]);
-
-  const paginateContracts = useCallback((contracts: Contract[]): Contract[] => {
-    const { startIndex, endIndex } = paginationHook.pagination;
-    return contracts.slice(startIndex, endIndex);
-  }, [paginationHook.pagination]);
-
-  // ============================================================================
-  // Keyboard Shortcuts Registration
-  // ============================================================================
-
-  const registerShortcuts = useCallback((handlers: Partial<KeyboardShortcutHandlers>) => {
-    // This would be called by the component to set up shortcuts
-    // The actual hook handles the event listeners
-  }, []);
-
-  // Initialize keyboard shortcuts if enabled
-  if (enableKeyboardShortcuts) {
-    useContractsKeyboardShortcuts({
-      onSearch: () => {
-        // Focus search input - component should handle this
-      },
-      onRefresh: () => {
-        // Trigger refresh - component should handle this
-      },
-      onToggleView: () => {
-        // Toggle view mode - component should handle this
-      },
-      onNewContract: () => {
-        // Open new contract dialog - component should handle this
-      },
-      onEscape: () => {
-        selectionHook.deselectAll();
-      },
-      onSelectAll: () => {
-        selectionHook.selectAll();
-      },
-      onExport: () => {
-        if (selectionHook.selection.selectedIds.size > 0) {
-          const ids = Array.from(selectionHook.selection.selectedIds);
-          bulkOpsHook.startBulkOperation('export', ids);
-        }
-      },
-      onDelete: () => {
-        // Component should handle delete confirmation
-      },
-      enabled: enableKeyboardShortcuts,
-    });
-  }
 
   return {
     state,
     actions,
-    queryParams,
-    filterContracts,
-    sortContracts,
-    paginateContracts,
-    registerShortcuts,
+    data,
+    hooks: {
+      filter: filterHook,
+      sort: sortHook,
+      pagination: paginationHook,
+      selection: selectionHook,
+      bulkOps: bulkOpsHook,
+    },
   };
 }
 
@@ -438,18 +329,23 @@ export function useContractsPage(config: ContractsPageConfig = {}): UseContracts
 // ============================================================================
 
 export type {
-  ContractFilters,
+  FilterState,
+  FilterActions,
+  FilterStats,
   QuickPreset,
 } from './use-contract-filters';
 
 export type {
   SortField,
   SortDirection,
+  SortState,
+  SortActions,
 } from './use-contract-sorting';
 
 export type {
   PaginationState,
   PaginationActions,
+  PaginationInfo,
 } from './use-pagination';
 
 export type {
@@ -461,6 +357,7 @@ export type {
   BulkOperationType,
   BulkOperationState,
   BulkOperationActions,
+  BulkOperationResult,
 } from './use-bulk-operations';
 
 export type {

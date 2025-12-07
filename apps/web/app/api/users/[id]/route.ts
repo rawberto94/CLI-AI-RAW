@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
 
     // Try database first
     try {

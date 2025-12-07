@@ -487,7 +487,10 @@ export function SimpleApprovalsQueue() {
           }));
           setItems(mapped);
           if (mapped.length > 0 && !selectedId) {
-            setSelectedId(mapped[0].id);
+            const firstItem = mapped[0];
+            if (firstItem) {
+              setSelectedId(firstItem.id);
+            }
           }
         }
       } catch (error) {
@@ -553,11 +556,15 @@ export function SimpleApprovalsQueue() {
     
     setIsProcessing(true);
     try {
-      await fetch('/api/approvals', {
+      const response = await fetch('/api/approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'approve', approvalId: selectedId }),
       });
+      
+      if (!response.ok) {
+        throw new Error('Failed to approve contract');
+      }
       
       setItems(prev => prev.map(i => 
         i.id === selectedId ? { ...i, status: 'approved' as const } : i
@@ -566,11 +573,10 @@ export function SimpleApprovalsQueue() {
         description: 'Ready for signatures.',
       });
     } catch (error) {
-      // Update locally anyway for demo
-      setItems(prev => prev.map(i => 
-        i.id === selectedId ? { ...i, status: 'approved' as const } : i
-      ));
-      toast.success('Contract approved!');
+      console.error('Approval failed:', error);
+      toast.error('Failed to approve contract', {
+        description: 'Please try again or contact support.',
+      });
     } finally {
       setIsProcessing(false);
     }

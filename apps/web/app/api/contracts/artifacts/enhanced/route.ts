@@ -13,6 +13,7 @@ import { parallelArtifactGeneratorService } from 'data-orchestration/services';
 import { confidenceScoringService } from 'data-orchestration/services';
 import { artifactVersioningService } from 'data-orchestration/services';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/tenant-server';
 import { dataSanitizationService } from 'data-orchestration/services';
 import { auditTrailService } from 'data-orchestration/services';
 
@@ -154,7 +155,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get confidence score
-      const tenantId = request.headers.get('x-tenant-id') || 'demo';
+      const tenantId = await getApiTenantId(request);
       const confidence = await confidenceScoringService.getArtifactConfidence(sanitizedArtifactId, tenantId);
       result.confidence = confidence;
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import getDb from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function GET(
 ) {
   try {
     const contractId = params.id;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const useMock = request.nextUrl.searchParams.get('mock') === 'true';
 
     // Return mock data if requested or if database query fails
@@ -139,7 +140,7 @@ export async function POST(
 ) {
   try {
     const contractId = params.id;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const useMock = request.nextUrl.searchParams.get('mock') === 'true';
     const body = await request.json();
     const { content, author, authorEmail, parentId, mentions } = body;

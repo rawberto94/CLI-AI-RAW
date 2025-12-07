@@ -216,7 +216,7 @@ export async function GET(request: Request) {
     })),
   ];
 
-  const [databaseCheck, redisCheck, storageCheck] = await Promise.all(checkPromises);
+  const [databaseCheck, redisCheck, storageCheck] = await Promise.all(checkPromises) as [DependencyCheck, DependencyCheck, DependencyCheck];
   const memoryCheck = checkMemory();
   const diskCheck = checkDiskSpace();
 
@@ -233,7 +233,8 @@ export async function GET(request: Request) {
   const hasDegraded = checks.some(c => c.status === 'degraded');
 
   // Database is critical - if it's down, we're not ready
-  const isCriticalDown = databaseCheck.status === 'unhealthy';
+  const dbCheck = databaseCheck as DependencyCheck;
+  const isCriticalDown = dbCheck.status === 'unhealthy';
 
   let overallStatus: ReadinessResponse['status'];
   if (isCriticalDown || hasUnhealthy) {

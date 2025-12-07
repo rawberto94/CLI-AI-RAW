@@ -7,10 +7,13 @@
  * - Uses selective field projection to minimize data transfer
  * - Implements efficient pagination with cursor-based approach
  * - Standardized error handling and response format
+ * 
+ * MULTI-TENANT: Uses getTenantIdFromRequest for proper tenant isolation
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { withCache, CacheKeys } from "@/lib/cache";
+import { getTenantIdFromRequest } from "@/lib/tenant-server";
 import {
   getApiContext,
   parseQueryParams,
@@ -156,8 +159,8 @@ async function handler(request: NextRequest) {
     return returnMockContracts(searchParams);
   }
 
-  // Parse query parameters - check header first, then query param, then default
-  const tenantId = request.headers.get("x-tenant-id") || searchParams.get("tenantId") || "demo";
+  // Use proper tenant resolution (session > header > query > demo in dev only)
+  const tenantId = await getTenantIdFromRequest(request);
   const search = searchParams.get("search") || undefined;
   const statuses = searchParams.getAll("status");
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;

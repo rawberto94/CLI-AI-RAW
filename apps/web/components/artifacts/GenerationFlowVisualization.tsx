@@ -34,6 +34,8 @@ type ProcessingStage =
   | 'TEXT_EXTRACTION'
   | 'RAG_INDEXING'
   | 'ARTIFACT_GENERATION'
+  | 'METADATA_EXTRACTION'
+  | 'CATEGORIZATION'
   | 'OVERVIEW'
   | 'CLAUSES'
   | 'FINANCIAL'
@@ -86,6 +88,20 @@ const PIPELINE_STAGES = [
     description: 'Generating intelligent artifacts',
     icon: Brain,
     color: 'purple'
+  },
+  {
+    id: 'METADATA_EXTRACTION',
+    label: 'Metadata',
+    description: 'Extracting contract fields',
+    icon: Sparkles,
+    color: 'amber'
+  },
+  {
+    id: 'CATEGORIZATION',
+    label: 'Categorizing',
+    description: 'AI contract classification',
+    icon: Search,
+    color: 'cyan'
   }
 ] as const;
 

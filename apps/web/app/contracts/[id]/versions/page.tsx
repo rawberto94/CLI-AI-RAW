@@ -167,7 +167,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
             <div className="hidden md:flex items-center gap-3">
               <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2">
                 <Clock className="w-4 h-4 mr-2" />
-                Last updated {mockVersions[mockVersions.length - 1].timestamp.toLocaleDateString()}
+                Last updated {mockVersions[mockVersions.length - 1]?.timestamp.toLocaleDateString() ?? 'N/A'}
               </Badge>
               <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2">
                 <Sparkles className="w-4 h-4 mr-2" />

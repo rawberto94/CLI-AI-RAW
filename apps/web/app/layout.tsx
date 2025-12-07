@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 
 import { HealthBanner } from "./health-banner";
 import EnhancedNavigation from "@/components/layout/EnhancedNavigation";
@@ -15,6 +16,9 @@ import { QueryProvider } from "@/lib/query-client";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
 import { RealTimeSyncProvider } from "@/components/providers/RealTimeSyncProvider";
+import { WelcomeTutorial } from "@/components/WelcomeTutorial";
+import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -24,7 +28,7 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "PactumAI - AI Contract Management",
+  title: "ConTigo - AI Contract Management",
   description: "AI-powered contract management and analysis platform",
 };
 
@@ -44,15 +48,19 @@ export default function RootLayout({
           Skip to main content
         </a>
         <GlobalErrorBoundary>
-          <QueryProvider>
-            <WebSocketProvider>
-              <RealTimeSyncProvider>
-                <DataModeProvider>
-                  <ToastProvider>
-                    <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
-                      <ModuleProvider>
-                        <FeedbackProvider>
-                          <GlobalKeyboardShortcuts>
+          <AuthProvider>
+            <QueryProvider>
+              <WebSocketProvider>
+                <RealTimeSyncProvider>
+                  <DataModeProvider>
+                    <ToastProvider>
+                      <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                        <ModuleProvider>
+                          <FeedbackProvider>
+                            <GlobalKeyboardShortcuts>
+                            <Suspense fallback={null}>
+                              <TenantContextBanner />
+                            </Suspense>
                             <HealthBanner />
                             <EnhancedNavigation />
                             <main 
@@ -65,16 +73,22 @@ export default function RootLayout({
                               </div>
                             </main>
                             <FloatingDataModeToggle />
-                            <FloatingAIBubble />
-                          </GlobalKeyboardShortcuts>
-                        </FeedbackProvider>
-                      </ModuleProvider>
-                    </RealTimeProvider>
-                  </ToastProvider>
-                </DataModeProvider>
-              </RealTimeSyncProvider>
-            </WebSocketProvider>
-          </QueryProvider>
+                            <Suspense fallback={null}>
+                              <FloatingAIBubble />
+                            </Suspense>
+                            <Suspense fallback={null}>
+                              <WelcomeTutorial />
+                            </Suspense>
+                            </GlobalKeyboardShortcuts>
+                          </FeedbackProvider>
+                        </ModuleProvider>
+                      </RealTimeProvider>
+                    </ToastProvider>
+                  </DataModeProvider>
+                </RealTimeSyncProvider>
+              </WebSocketProvider>
+            </QueryProvider>
+          </AuthProvider>
         </GlobalErrorBoundary>
       </body>
     </html>

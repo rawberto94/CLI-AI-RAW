@@ -89,13 +89,13 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         fileName: true,
-        title: true,
+        contractTitle: true,
         rawText: true,
         status: true,
         totalValue: true,
-        riskLevel: true,
+        expirationRisk: true,
         contractType: true,
-        vendor: true,
+        supplierName: true,
         expirationDate: true,
         startDate: true,
         createdAt: true,
@@ -120,10 +120,10 @@ export async function POST(request: NextRequest) {
     // Prepare contract summaries for AI
     const contractSummaries: ContractSummary[] = contracts.map(c => ({
       id: c.id,
-      fileName: c.title || c.fileName,
+      fileName: c.contractTitle || c.fileName,
       status: c.status,
-      totalValue: c.totalValue,
-      riskLevel: c.riskLevel,
+      totalValue: c.totalValue ? Number(c.totalValue) : null,
+      riskLevel: c.expirationRisk,
       expirationDate: c.expirationDate,
       textExcerpt: c.rawText?.slice(0, 1500) || 'No text available',
     }));
@@ -136,13 +136,17 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
-    const result: AIReportResult = {
+    const result = {
       reportId: `report-${Date.now()}`,
       generatedAt: new Date().toISOString(),
       contractCount: contracts.length,
-      ...aiReport,
+      executiveSummary: aiReport.executiveSummary || '',
+      keyFindings: aiReport.keyFindings || [],
+      contractHighlights: aiReport.contractHighlights || [],
+      actionItems: aiReport.actionItems || [],
+      recommendations: aiReport.recommendations || [],
       portfolioAnalysis: portfolioStats,
-    };
+    } satisfies AIReportResult;
 
     console.log(`✅ AI Report generated in ${processingTime}ms`);
 

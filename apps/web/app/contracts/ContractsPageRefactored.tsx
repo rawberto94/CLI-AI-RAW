@@ -212,13 +212,13 @@ const ContractRow = memo(function ContractRow({
         <div className="flex items-center gap-2 mb-1">
           <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           <span className="font-medium truncate">{contract.title}</span>
-          {contract.hasArtifacts && (
+          {(contract as any).hasArtifacts && (
             <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
           )}
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          {contract.parties?.vendor && (
-            <span className="truncate">{contract.parties.vendor}</span>
+          {(contract.parties?.supplier || contract.parties?.client) && (
+            <span className="truncate">{contract.parties?.supplier || contract.parties?.client}</span>
           )}
           {contract.expirationDate && (
             <span>{formatDate(contract.expirationDate)}</span>
@@ -228,8 +228,8 @@ const ContractRow = memo(function ContractRow({
 
       {contract.category && (
         <CategoryBadge
-          categoryName={contract.category.name}
-          color={contract.category.color}
+          category={typeof contract.category === 'string' ? contract.category : contract.category.name}
+          color={typeof contract.category === 'string' ? undefined : contract.category.color}
           size="sm"
         />
       )}
@@ -298,7 +298,9 @@ export default function ContractsPageRefactored() {
   
   // Data fetching
   const { data: contractsData, isLoading, error, refetch } = useContracts();
-  const contracts = contractsData || [];
+  const contracts = Array.isArray(contractsData) 
+    ? contractsData 
+    : (contractsData?.contracts || []);
 
   // View state
   const [viewMode, setViewMode] = useState<ViewMode>('compact');
@@ -412,7 +414,7 @@ export default function ContractsPageRefactored() {
 
   // Uncategorized count
   const uncategorizedCount = useMemo(() => {
-    return contracts.filter(c => !c.category).length;
+    return contracts.filter((c: Contract) => !c.category).length;
   }, [contracts]);
 
   // Selection handlers
@@ -609,8 +611,8 @@ export default function ContractsPageRefactored() {
             onCategorize={() => {
               // Select uncategorized contracts and trigger bulk categorize
               const uncategorizedIds = contracts
-                .filter(c => !c.category)
-                .map(c => c.id);
+                .filter((c: Contract) => !c.category)
+                .map((c: Contract) => c.id);
               setSelectedIds(new Set(uncategorizedIds));
             }}
           />
@@ -882,8 +884,8 @@ export default function ContractsPageRefactored() {
                     </Badge>
                     {contract.category && (
                       <CategoryBadge
-                        categoryName={contract.category.name}
-                        color={contract.category.color}
+                        category={typeof contract.category === 'string' ? contract.category : contract.category.name}
+                        color={typeof contract.category === 'string' ? undefined : contract.category.color}
                         size="sm"
                       />
                     )}
@@ -904,12 +906,12 @@ export default function ContractsPageRefactored() {
         ) : viewMode === 'timeline' ? (
           <ContractTimeline
             contracts={paginatedItems as any}
-            onContractClick={(c) => handleView(c.id)}
+            onContractClick={(contractId) => handleView(contractId)}
           />
         ) : (
           <ContractKanban
             contracts={paginatedItems as any}
-            onContractClick={(c) => router.push(`/contracts/${c.id}`)}
+            onContractClick={(contractId) => router.push(`/contracts/${contractId}`)}
             onStatusChange={async (id, status) => {
               // Handle status change
               toast.info('Status update not implemented');
@@ -933,9 +935,9 @@ export default function ContractsPageRefactored() {
         <ShareDialog
           isOpen={shareDialogOpen}
           onClose={() => setShareDialogOpen(false)}
-          resourceType="contract"
-          resourceId={shareContractId || ''}
-          resourceTitle={shareContractTitle}
+          documentType="contract"
+          documentId={shareContractId || ''}
+          documentTitle={shareContractTitle}
         />
 
         <SubmitForApprovalModal
@@ -943,7 +945,7 @@ export default function ContractsPageRefactored() {
           onClose={() => setApprovalModalOpen(false)}
           contractId={approvalContractId || ''}
           contractTitle={approvalContractTitle}
-          onSubmit={() => {
+          onSuccess={() => {
             refetch();
             setApprovalModalOpen(false);
           }}

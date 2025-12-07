@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);
     
     const limit = parseInt(searchParams.get('limit') || '50');

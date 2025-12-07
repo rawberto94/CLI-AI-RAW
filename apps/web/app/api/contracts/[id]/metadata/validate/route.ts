@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -55,7 +56,7 @@ export async function POST(
   try {
     const body: ValidationRequest = await request.json();
     const { fields, contractText, validateAll = true, fieldsToValidate } = body;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
 
     if (!fields || Object.keys(fields).length === 0) {
       return NextResponse.json(
@@ -119,7 +120,7 @@ export async function PUT(
   try {
     const body = await request.json();
     const { fieldKey, action, newValue, reason, allFields } = body;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
 
     // If allFields is provided, save all validated metadata
     if (allFields && typeof allFields === 'object') {

@@ -46,20 +46,16 @@ export default function ImprovedAnalyticsPage() {
 
   // Real-time updates for analytics
   const eventHandlers = useMemo(() => ({
-    'contract:completed': (data: any) => {
-      console.log('[Analytics] Contract completed, refreshing analytics:', data);
+    'contract:completed': () => {
       setRefreshKey(prev => prev + 1); // Trigger refresh
     },
-    'artifact:generated': (data: any) => {
-      console.log('[Analytics] Artifact generated, refreshing analytics:', data);
+    'artifact:generated': () => {
       setRefreshKey(prev => prev + 1);
     },
-    'ratecard:created': (data: any) => {
-      console.log('[Analytics] Rate card created, refreshing analytics:', data);
+    'ratecard:created': () => {
       setRefreshKey(prev => prev + 1);
     },
-    'ratecard:updated': (data: any) => {
-      console.log('[Analytics] Rate card updated, refreshing analytics:', data);
+    'ratecard:updated': () => {
       setRefreshKey(prev => prev + 1);
     },
   }), []);

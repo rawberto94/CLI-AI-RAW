@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
@@ -50,13 +50,15 @@ import {
   X,
   Tag,
   GitCompare,
-  History
+  History,
+  PanelLeftClose,
+  PanelRightClose,
+  FileType
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactViewer'
-import { GenerationFlowVisualization } from '@/components/artifacts/GenerationFlowVisualization'
 import { ScoreRing } from '@/components/artifacts/ArtifactCards'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
@@ -77,7 +79,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector } from '@/components/contracts'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog } from '@/components/contracts'
+import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 
 // ============ TYPES ============
 
@@ -108,6 +117,16 @@ interface ContractData {
     currentStage: string
     status: string
   }
+  // Contract metadata fields
+  totalValue?: number | string | null
+  currency?: string | null
+  contractType?: string | null
+  effectiveDate?: string | null
+  expirationDate?: string | null
+  clientName?: string | null
+  supplierName?: string | null
+  description?: string | null
+  tags?: string[] | null
 }
 
 interface ContractMetadata {
@@ -139,71 +158,6 @@ const CONTRACT_TYPES = [
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR']
 
 // ============ HELPER COMPONENTS ============
-
-function ApprovalStatusBadge({ contractId }: { contractId: string }) {
-  const [status, setStatus] = useState<{
-    hasActiveApproval: boolean;
-    status: string;
-    currentStep?: number;
-    totalSteps?: number;
-    currentApprover?: string;
-  } | null>(null);
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const response = await fetch(`/api/approvals?contractId=${contractId}`);
-        if (response.ok) {
-          const data = await response.json();
-          const items = data.data?.items || [];
-          const activeApproval = items.find((item: { status: string }) => 
-            item.status === 'pending' || item.status === 'in_progress'
-          );
-          if (activeApproval) {
-            setStatus({
-              hasActiveApproval: true,
-              status: activeApproval.status,
-              currentStep: activeApproval.currentStep,
-              totalSteps: activeApproval.totalSteps,
-              currentApprover: activeApproval.stage || activeApproval.assignedTo?.name,
-            });
-          }
-        }
-      } catch (e) {
-        console.log('Failed to fetch approval status');
-      }
-    };
-    fetchStatus();
-  }, [contractId]);
-
-  if (!status?.hasActiveApproval) {
-    return null;
-  }
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge 
-            variant="outline" 
-            className="bg-amber-50 border-amber-200 text-amber-700 gap-1.5"
-          >
-            <Clock className="h-3 w-3" />
-            Approval {status.currentStep}/{status.totalSteps}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="text-xs">
-            <p className="font-medium">Pending Approval</p>
-            {status.currentApprover && (
-              <p className="text-slate-400">Awaiting: {status.currentApprover}</p>
-            )}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 // Activity Tab Component
 function ActivityTab({ contractId }: { contractId: string }) {
@@ -263,17 +217,6 @@ function ActivityTab({ contractId }: { contractId: string }) {
     fetchActivity();
   }, [contractId]);
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'view': return Eye;
-      case 'edit': return Pencil;
-      case 'share': return Share2;
-      case 'upload': return FileText;
-      case 'approval': return CheckCircle2;
-      default: return FileText;
-    }
-  };
-
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
     if (seconds < 60) return 'Just now';
@@ -294,20 +237,19 @@ function ActivityTab({ contractId }: { contractId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Approval Workflow Status */}
-      {approvalHistory.length > 0 && (
+      {/* Approval Workflow Status - Hidden for now, will be enabled in future */}
+      {/* {approvalHistory.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-amber-600" />
+            <CardTitle className="text-base font-semibold">
               Approval Workflow
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {approvalHistory.map((approval: any) => (
-                <div key={approval.id} className="p-4 bg-slate-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
+                <div key={approval.id} className="p-3 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge 
                         variant="outline"
@@ -325,41 +267,17 @@ function ActivityTab({ contractId }: { contractId: string }) {
                       {formatTimeAgo(new Date(approval.requestedAt || approval.createdAt))}
                     </span>
                   </div>
-                  
-                  {/* Approval Chain Progress */}
-                  {approval.approvalChain && approval.approvalChain.length > 0 && (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                      {approval.approvalChain.map((step: any, idx: number) => (
-                        <React.Fragment key={idx}>
-                          <div className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap",
-                            step.status === 'completed' && 'bg-green-100 text-green-700',
-                            step.status === 'pending' && 'bg-amber-100 text-amber-700',
-                            step.status === 'waiting' && 'bg-slate-100 text-slate-500'
-                          )}>
-                            {step.status === 'completed' && <CheckCircle2 className="h-3 w-3" />}
-                            {step.status === 'pending' && <Clock className="h-3 w-3" />}
-                            {step.role}
-                          </div>
-                          {idx < approval.approvalChain.length - 1 && (
-                            <ArrowRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
+      )} */}
 
       {/* Recent Activity */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-600" />
+          <CardTitle className="text-base font-semibold">
             Recent Activity
           </CardTitle>
         </CardHeader>
@@ -367,24 +285,20 @@ function ActivityTab({ contractId }: { contractId: string }) {
           {activities.length > 0 ? (
             <div className="space-y-3">
               {activities.map((activity) => {
-                const Icon = getActivityIcon(activity.type);
                 return (
                   <div 
                     key={activity.id}
-                    className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors"
+                    className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                      <Icon className="h-4 w-4 text-slate-600" />
-                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-slate-900">
                         <span className="font-medium">{activity.user}</span>{' '}
                         {activity.action}
                       </p>
-                      <p className="text-xs text-slate-500">
-                        {formatTimeAgo(activity.timestamp)}
-                      </p>
                     </div>
+                    <p className="text-xs text-slate-500 ml-4">
+                      {formatTimeAgo(activity.timestamp)}
+                    </p>
                   </div>
                 );
               })}
@@ -589,9 +503,17 @@ export default function ContractDetailPage() {
   // Category state
   const [showCategorySelector, setShowCategorySelector] = useState(false)
   const [isSavingCategory, setIsSavingCategory] = useState(false)
+  const [pendingCategory, setPendingCategory] = useState<{ id: string; name: string } | null>(null)
+  const [showCategoryConfirm, setShowCategoryConfirm] = useState(false)
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false)
+  
+  // PDF Viewer state
+  const [showPdfViewer, setShowPdfViewer] = useState(false)
+  const [pdfSplitRatio, setPdfSplitRatio] = useState(45)
+  const [isResizingPanel, setIsResizingPanel] = useState(false)
+  const splitContainerRef = useRef<HTMLDivElement>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [metadata, setMetadata] = useState<ContractMetadata>({
@@ -606,6 +528,95 @@ export default function ContractDetailPage() {
     tags: []
   })
   const [newTag, setNewTag] = useState('')
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+      
+      // Tab navigation: 1-5 keys
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        switch (e.key) {
+          case '1':
+            setActiveTab('overview')
+            break
+          case '2':
+            setActiveTab('artifacts')
+            break
+          case '3':
+            setActiveTab('details')
+            break
+          case '4':
+            setActiveTab('reminders')
+            break
+          case '5':
+            setActiveTab('activity')
+            break
+          case 'p':
+            setShowPdfViewer(prev => !prev)
+            break
+          case 'e':
+            if (!isEditing) setIsEditing(true)
+            break
+          case 'Escape':
+            if (isEditing) handleCancelEdit()
+            if (showPdfViewer) setShowPdfViewer(false)
+            break
+        }
+      }
+      
+      // Cmd/Ctrl shortcuts
+      if (e.metaKey || e.ctrlKey) {
+        switch (e.key) {
+          case 's':
+            if (isEditing) {
+              e.preventDefault()
+              handleSaveMetadata()
+            }
+            break
+          case 'd':
+            e.preventDefault()
+            handleDownload()
+            break
+          case 'r':
+            e.preventDefault()
+            loadContract()
+            break
+        }
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isEditing, showPdfViewer])
+
+  // Handle panel resize mouse events
+  useEffect(() => {
+    if (!isResizingPanel) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!splitContainerRef.current) return;
+      const containerRect = splitContainerRef.current.getBoundingClientRect();
+      const newRatio = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+      // Clamp between 20% and 75%
+      setPdfSplitRatio(Math.max(20, Math.min(75, newRatio)));
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizingPanel(false);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingPanel]);
 
   // Join document for real-time collaboration
   useEffect(() => {
@@ -654,20 +665,47 @@ export default function ContractDetailPage() {
   }, [loadContract])
 
   // Initialize metadata when contract loads
+  // IMPORTANT: Prioritize user-edited metadata (from database) over AI-extracted data
   useEffect(() => {
     if (contract) {
       const overviewData = contract.extractedData?.overview
       const financialData = contract.extractedData?.financial
+      
+      // Helper to find supplier/vendor party (AI might use different role names)
+      const findSupplierParty = (parties: any[]) => parties?.find((p: any) => 
+        ['Supplier', 'Vendor', 'Service Provider', 'Provider', 'Contractor', 'Seller'].includes(p.role)
+      );
+      
+      // Helper to find client party
+      const findClientParty = (parties: any[]) => parties?.find((p: any) => 
+        ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(p.role)
+      );
+      
+      // Get total value - prioritize database field, fallback to AI extraction
+      const totalValue = contract.totalValue || financialData?.totalValue || overviewData?.totalValue || overviewData?.contractValue || '';
+      const currency = contract.currency || financialData?.currency || overviewData?.currency || 'USD';
+      
+      // Format date helper
+      const formatDate = (date: string | Date | null | undefined) => {
+        if (!date) return '';
+        try {
+          return new Date(date).toISOString().split('T')[0];
+        } catch {
+          return '';
+        }
+      };
+      
       setMetadata({
-        contractType: overviewData?.contractType || '',
-        effectiveDate: overviewData?.effectiveDate ? new Date(overviewData.effectiveDate).toISOString().split('T')[0] ?? '' : '',
-        expirationDate: overviewData?.expirationDate ? new Date(overviewData.expirationDate).toISOString().split('T')[0] ?? '' : '',
-        totalValue: financialData?.totalValue?.toString() || '',
-        currency: financialData?.currency || 'USD',
-        clientName: String(overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name ?? ''),
-        supplierName: String(overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name ?? ''),
-        description: overviewData?.summary || '',
-        tags: Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : []
+        // Prioritize database fields (user-edited), fallback to AI-extracted
+        contractType: contract.contractType || overviewData?.contractType || '',
+        effectiveDate: formatDate(contract.effectiveDate) || formatDate(overviewData?.effectiveDate) || '',
+        expirationDate: formatDate(contract.expirationDate) || formatDate(overviewData?.expirationDate) || '',
+        totalValue: totalValue?.toString() || '',
+        currency: currency,
+        clientName: contract.clientName || String(findClientParty(overviewData?.parties)?.name ?? ''),
+        supplierName: contract.supplierName || String(findSupplierParty(overviewData?.parties)?.name ?? ''),
+        description: contract.description || overviewData?.summary || '',
+        tags: contract.tags || (Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : [])
       })
     }
   }, [contract])
@@ -764,20 +802,45 @@ export default function ContractDetailPage() {
   // Cancel editing
   const handleCancelEdit = () => {
     setIsEditing(false)
-    // Reset metadata to current contract values
+    // Reset metadata to current contract values (prioritize database over AI-extracted)
     if (contract) {
       const overviewData = contract.extractedData?.overview
       const financialData = contract.extractedData?.financial
+      
+      // Helper to find supplier/vendor party
+      const findSupplierParty = (parties: any[]) => parties?.find((p: any) => 
+        ['Supplier', 'Vendor', 'Service Provider', 'Provider', 'Contractor', 'Seller'].includes(p.role)
+      );
+      
+      // Helper to find client party
+      const findClientParty = (parties: any[]) => parties?.find((p: any) => 
+        ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(p.role)
+      );
+      
+      // Get total value - prioritize database field
+      const totalValue = contract.totalValue || financialData?.totalValue || overviewData?.totalValue || '';
+      const currency = contract.currency || financialData?.currency || overviewData?.currency || 'USD';
+      
+      // Format date helper
+      const formatDate = (date: string | Date | null | undefined) => {
+        if (!date) return '';
+        try {
+          return new Date(date).toISOString().split('T')[0];
+        } catch {
+          return '';
+        }
+      };
+      
       setMetadata({
-        contractType: overviewData?.contractType || '',
-        effectiveDate: overviewData?.effectiveDate ? (new Date(overviewData.effectiveDate).toISOString().split('T')[0] ?? '') : '',
-        expirationDate: overviewData?.expirationDate ? (new Date(overviewData.expirationDate).toISOString().split('T')[0] ?? '') : '',
-        totalValue: financialData?.totalValue?.toString() || '',
-        currency: financialData?.currency || 'USD',
-        clientName: String(overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name ?? ''),
-        supplierName: String(overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name ?? ''),
-        description: overviewData?.summary || '',
-        tags: Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : []
+        contractType: contract.contractType || overviewData?.contractType || '',
+        effectiveDate: formatDate(contract.effectiveDate) || formatDate(overviewData?.effectiveDate) || '',
+        expirationDate: formatDate(contract.expirationDate) || formatDate(overviewData?.expirationDate) || '',
+        totalValue: totalValue?.toString() || '',
+        currency: currency,
+        clientName: contract.clientName || String(findClientParty(overviewData?.parties)?.name ?? ''),
+        supplierName: contract.supplierName || String(findSupplierParty(overviewData?.parties)?.name ?? ''),
+        description: contract.description || overviewData?.summary || '',
+        tags: contract.tags || (Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : [])
       })
     }
   }
@@ -785,6 +848,7 @@ export default function ContractDetailPage() {
   // Handle category selection
   const handleCategorySelect = async (categoryId: string) => {
     setIsSavingCategory(true)
+    const previousCategory = contract?.category?.name || 'None'
     try {
       const response = await fetch(`/api/contracts/${params.id}`, {
         method: 'PATCH',
@@ -797,6 +861,29 @@ export default function ContractDetailPage() {
       
       if (!response.ok) {
         throw new Error('Failed to update category')
+      }
+      
+      // Log to audit trail
+      try {
+        await fetch(`/api/contracts/${params.id}/audit`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-tenant-id': 'demo'
+          },
+          body: JSON.stringify({
+            action: 'categorize',
+            category: 'modification',
+            details: {
+              previousCategory,
+              newCategoryId: categoryId,
+              source: 'manual'
+            },
+            status: 'success'
+          })
+        })
+      } catch (auditErr) {
+        console.warn('Failed to log category change to audit trail:', auditErr)
       }
       
       toast.success('Category updated successfully')
@@ -996,21 +1083,26 @@ export default function ContractDetailPage() {
                     <CopyableId id={params.id as string} />
                     <span className="text-slate-300">•</span>
                     <StatusBadge status={contract?.status || 'unknown'} />
-                    <ApprovalStatusBadge contractId={params.id as string} />
                   </div>
                 </div>
               </div>
             </div>
             
-            {/* Right: Actions */}
+            {/* Right: Actions - Simplified */}
             <div className="flex items-center gap-2">
               {/* Collaboration Presence */}
-              <PresenceIndicator maxAvatars={3} showConnectionStatus={true} />
+              <PresenceIndicator maxAvatars={3} showConnectionStatus={false} />
               
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="sm" onClick={loadContract}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={loadContract} 
+                      className="h-9 w-9"
+                      aria-label="Refresh contract data"
+                    >
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -1018,35 +1110,54 @@ export default function ContractDetailPage() {
                 </Tooltip>
               </TooltipProvider>
               
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-1.5" />
-                Export
-              </Button>
-              
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
+                    Actions
+                    <ChevronDown className="h-4 w-4 ml-1.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => setShowPdfViewer(!showPdfViewer)}>
+                    <FileType className="h-4 w-4 mr-2" />
+                    {showPdfViewer ? 'Hide Original PDF' : 'View Original PDF'}
+                    <span className="ml-auto text-xs text-muted-foreground">P</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} disabled={isEditing}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit Metadata
+                    <span className="ml-auto text-xs text-muted-foreground">E</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                    <span className="ml-auto text-xs text-muted-foreground">⌘D</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowShareDialog(true)}>
                     <Share2 className="h-4 w-4 mr-2" />
                     Share
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Original
-                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {/* Submit for Approval - Hidden for now, will be enabled in future */}
+                  {/* <DropdownMenuItem onClick={() => setShowApprovalModal(true)}>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Submit for Approval
+                  </DropdownMenuItem> */}
                   <DropdownMenuItem onClick={() => setShowComparison(true)}>
                     <GitCompare className="h-4 w-4 mr-2" />
                     Compare Versions
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Open in New Tab
-                  </DropdownMenuItem>
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Keyboard Shortcuts</p>
+                    <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
+                      <span>1-5</span><span>Switch tabs</span>
+                      <span>⌘R</span><span>Refresh</span>
+                      <span>⌘S</span><span>Save (edit mode)</span>
+                      <span>Esc</span><span>Cancel/Close</span>
+                    </div>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1054,9 +1165,58 @@ export default function ContractDetailPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Processing Banner */}
+      {/* Main Content - Side by Side Layout */}
+      <div 
+        ref={splitContainerRef}
+        className={cn(
+          "flex",
+          showPdfViewer ? "h-[calc(100vh-4rem)]" : "",
+          isResizingPanel && "select-none"
+        )}
+      >
+        {/* PDF Viewer Panel */}
+        {showPdfViewer && (
+          <>
+            <div 
+              className="h-full bg-slate-100 flex-shrink-0 relative"
+              style={{ width: `${pdfSplitRatio}%`, minWidth: '300px' }}
+            >
+              <RobustPDFViewer
+                contractId={params.id as string}
+                filename={contract?.filename || 'Contract'}
+                height="100%"
+                onToggle={() => setShowPdfViewer(false)}
+                isExpanded={showPdfViewer}
+              />
+            </div>
+            
+            {/* Resize Handle */}
+            <div
+              className={cn(
+                "w-1.5 cursor-col-resize bg-slate-300 hover:bg-blue-500 transition-colors flex-shrink-0",
+                "flex items-center justify-center group",
+                isResizingPanel && "bg-blue-500"
+              )}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsResizingPanel(true);
+              }}
+            >
+              <div className="w-0.5 h-8 bg-slate-400 group-hover:bg-white rounded-full" />
+            </div>
+          </>
+        )}
+        
+        {/* Details Panel */}
+        <div 
+          className={cn(
+            "overflow-auto",
+            showPdfViewer ? "flex-1" : "w-full"
+          )}
+          style={showPdfViewer ? { minWidth: '400px' } : undefined}
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Processing Banner - Simple text status */}
         <AnimatePresence>
           {isProcessing && (
             <motion.div
@@ -1065,17 +1225,44 @@ export default function ContractDetailPage() {
               exit={{ opacity: 0, y: -10 }}
               className="mb-6"
             >
-              <GenerationFlowVisualization
-                contractId={params.id as string}
-                isConnected={true}
-                currentStage={(contract?.processing?.currentStage || 'ARTIFACT_GENERATION') as any}
-                progress={contract?.processing?.progress || 50}
-                artifacts={[]}
-                onRetry={loadContract}
-              />
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                    <div>
+                      <p className="font-medium text-blue-900">Processing Contract</p>
+                      <p className="text-sm text-blue-700">
+                        {contract?.processing?.currentStage || 'Generating artifacts...'} ({contract?.processing?.progress || 0}%)
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={loadContract} className="ml-auto">
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           )}
         </AnimatePresence>
+        
+        {/* PDF Viewer Toggle Button (when hidden) */}
+        {!showPdfViewer && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPdfViewer(true)}
+              className="gap-2"
+            >
+              <FileType className="h-4 w-4" />
+              View Original PDF
+            </Button>
+          </motion.div>
+        )}
 
         {/* Stats Grid */}
         <motion.div
@@ -1114,252 +1301,70 @@ export default function ContractDetailPage() {
           />
         </motion.div>
 
-        {/* Category Section */}
+        {/* Category & Status Bar - Compact inline design */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.03 }}
-          className="mb-6"
+          className="mb-6 flex flex-wrap items-center gap-4"
         >
-          <Card className="bg-white/90 backdrop-blur-sm border-slate-200">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Tag className="h-4 w-4 text-slate-500" />
-                    <span className="text-sm font-medium text-slate-600">Category:</span>
-                  </div>
-                  
-                  {contract?.category ? (
-                    <CategoryBadge
-                      category={contract.category}
-                      showPath={true}
-                      onClick={() => setShowCategorySelector(true)}
-                    />
-                  ) : (
-                    <span className="text-sm text-slate-400 italic">Uncategorized</span>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  {!contract?.category && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={handleAICategorize}
-                            className="bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 border-purple-200"
-                          >
-                            <Sparkles className="h-4 w-4 mr-1.5 text-purple-600" />
-                            AI Categorize
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Let AI suggest a category based on contract content</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowCategorySelector(true)}
-                  >
-                    {contract?.category ? 'Change' : 'Assign'} Category
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Cross-Module Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="mb-8"
-        >
-          <Card className="bg-gradient-to-r from-slate-50 to-blue-50 border-slate-200">
-            <CardContent className="py-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-slate-600 mr-2">Quick Actions:</span>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-indigo-50 hover:border-indigo-300"
-                          onClick={handleDownload}
-                        >
-                          <Download className="h-4 w-4 mr-1.5 text-indigo-600" />
-                          Download
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Download original document</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-cyan-50 hover:border-cyan-300"
-                          asChild
-                        >
-                          <Link href={`/contracts/${params.id}/versions`}>
-                            <History className="h-4 w-4 mr-1.5 text-cyan-600" />
-                            Versions
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Compare document versions</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-red-50 hover:border-red-300"
-                          asChild
-                        >
-                          <Link href={`/contracts/${params.id}/redline`}>
-                            <GitCompare className="h-4 w-4 mr-1.5 text-red-600" />
-                            Redline
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit and redline this contract</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-purple-50 hover:border-purple-300"
-                          onClick={() => {
-                            // Open the floating AI chatbot
-                            window.dispatchEvent(new CustomEvent('openAIChatbot'));
-                          }}
-                        >
-                          <Sparkles className="h-4 w-4 mr-1.5 text-purple-600" />
-                          Ask AI
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Chat with AI about this contract</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-amber-50 hover:border-amber-300"
-                          asChild
-                        >
-                          <Link href="/renewals">
-                            <Clock className="h-4 w-4 mr-1.5 text-amber-600" />
-                            Renewals
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Manage renewal schedule</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-green-50 hover:border-green-300"
-                          onClick={() => setShowShareDialog(true)}
-                        >
-                          <Share2 className="h-4 w-4 mr-1.5 text-green-600" />
-                          Share
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Share with team members</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-blue-50 hover:border-blue-300"
-                          onClick={() => setShowApprovalModal(true)}
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-1.5 text-blue-600" />
-                          Submit to Workflow
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Submit contract for approval workflow</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-indigo-50 hover:border-indigo-300"
-                          asChild
-                        >
-                          <Link href={`/contracts/${params.id}/sign`}>
-                            <Pencil className="h-4 w-4 mr-1.5 text-indigo-600" />
-                            Signatures
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Collect signatures for this contract</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="bg-white hover:bg-emerald-50 hover:border-emerald-300"
-                          asChild
-                        >
-                          <Link href={`/contracts/${params.id}/store`}>
-                            <Shield className="h-4 w-4 mr-1.5 text-emerald-600" />
-                            Finalize & Store
-                          </Link>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Finalize and archive the contract</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                
-                {/* Related Modules Summary */}
-                <div className="flex items-center gap-4 text-sm">
-                  {overviewData?.expirationDate && (
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Clock className="h-4 w-4 text-amber-500" />
-                      <span>
-                        {new Date(overviewData.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) 
-                          ? 'Renewal Soon' 
-                          : 'Active'}
-                      </span>
-                    </div>
-                  )}
-                  {riskLevel === 'high' && (
-                    <div className="flex items-center gap-1.5 text-red-600">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>High Risk</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Category */}
+          <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2">
+            <Tag className="h-4 w-4 text-slate-400" />
+            {contract?.category ? (
+              <button 
+                onClick={() => setShowCategorySelector(true)}
+                className="hover:opacity-80 transition-opacity"
+              >
+                <CategoryBadge
+                  category={contract.category.name}
+                  color={contract.category.color}
+                  icon={contract.category.icon}
+                  size="sm"
+                />
+              </button>
+            ) : (
+              <button 
+                onClick={() => setShowCategorySelector(true)}
+                className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1.5"
+              >
+                <span>Add category</span>
+              </button>
+            )}
+            {!contract?.category && (
+              <button 
+                onClick={handleAICategorize}
+                className="ml-1 text-purple-500 hover:text-purple-700"
+                title="AI suggest category"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          
+          {/* Quick Status Indicators */}
+          {overviewData?.expirationDate && new Date(overviewData.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
+            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm">
+              <Clock className="h-4 w-4" />
+              <span>Renewal Soon</span>
+            </div>
+          )}
+          
+          {riskLevel === 'high' && (
+            <div className="flex items-center gap-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
+              <AlertTriangle className="h-4 w-4" />
+              <span>High Risk</span>
+            </div>
+          )}
+          
+          {/* Ask AI - Single prominent action */}
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
+            className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-sm"
+          >
+            <Sparkles className="h-4 w-4" />
+            Ask AI
+          </button>
         </motion.div>
 
         {/* Main Tabs */}
@@ -1393,10 +1398,17 @@ export default function ContractDetailPage() {
                   Details
                 </TabsTrigger>
                 <TabsTrigger 
+                  value="reminders" 
+                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
+                >
+                  <Clock className="h-4 w-4 mr-2" />
+                  Reminders
+                </TabsTrigger>
+                <TabsTrigger 
                   value="activity" 
                   className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
                 >
-                  <Users className="h-4 w-4 mr-2" />
+                  <History className="h-4 w-4 mr-2" />
                   Activity
                 </TabsTrigger>
               </TabsList>
@@ -1451,11 +1463,11 @@ export default function ContractDetailPage() {
                           >
                             <div className={cn(
                               "w-10 h-10 rounded-full flex items-center justify-center",
-                              party.role === 'Client' || party.role === 'Buyer' 
+                              ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role)
                                 ? "bg-blue-100" 
                                 : "bg-purple-100"
                             )}>
-                              {party.role === 'Client' || party.role === 'Buyer' ? (
+                              {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
                                 <Building className="h-5 w-5 text-blue-600" />
                               ) : (
                                 <Users className="h-5 w-5 text-purple-600" />
@@ -1791,7 +1803,7 @@ export default function ContractDetailPage() {
                         />
                       ) : (
                         <p className="text-sm text-slate-900">
-                          {metadata.clientName || overviewData?.parties?.find((p: any) => p.role === 'Client' || p.role === 'Buyer')?.name || 'Not specified'}
+                          {metadata.clientName || overviewData?.parties?.find((p: any) => ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(p.role))?.name || 'Not specified'}
                         </p>
                       )}
                     </div>
@@ -1809,7 +1821,7 @@ export default function ContractDetailPage() {
                         />
                       ) : (
                         <p className="text-sm text-slate-900">
-                          {metadata.supplierName || overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || 'Not specified'}
+                          {metadata.supplierName || overviewData?.parties?.find((p: any) => ['Supplier', 'Vendor', 'Service Provider', 'Provider', 'Contractor', 'Seller'].includes(p.role))?.name || 'Not specified'}
                         </p>
                       )}
                     </div>
@@ -1927,12 +1939,25 @@ export default function ContractDetailPage() {
               )}
             </TabsContent>
 
+            {/* Reminders Tab */}
+            <TabsContent value="reminders" className="space-y-6">
+              <ContractReminders contractId={params.id as string} />
+            </TabsContent>
+
             {/* Activity Tab - Approval History & Collaboration */}
             <TabsContent value="activity" className="space-y-6">
               <ActivityTab contractId={params.id as string} />
+              
+              {/* Audit Log */}
+              <ContractAuditLog 
+                contractId={params.id as string}
+                maxHeight="400px"
+              />
             </TabsContent>
           </Tabs>
         </motion.div>
+      </div>
+        </div>
       </div>
 
       {/* Share Dialog */}
@@ -1944,13 +1969,13 @@ export default function ContractDetailPage() {
         documentTitle={contract?.filename || 'Contract'}
       />
 
-      {/* Submit for Approval Modal */}
-      <SubmitForApprovalModal
+      {/* Submit for Approval Modal - Hidden for now, will be enabled in future */}
+      {/* <SubmitForApprovalModal
         isOpen={showApprovalModal}
         onClose={() => setShowApprovalModal(false)}
         contractId={params.id as string}
         contractTitle={contract?.filename || 'Contract'}
-      />
+      /> */}
 
       {/* AI Summarizer FAB */}
       <QuickSummarizeButton
@@ -1983,13 +2008,64 @@ export default function ContractDetailPage() {
       />
 
       {/* Category Selector Modal */}
-      <CategorySelector
-        isOpen={showCategorySelector}
-        onClose={() => setShowCategorySelector(false)}
-        onSelect={handleCategorySelect}
-        currentCategoryId={contract?.category?.id}
-        tenantId="demo"
-      />
+      <Dialog open={showCategorySelector} onOpenChange={setShowCategorySelector}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Assign Category</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Select a category to organize this contract
+            </p>
+          </DialogHeader>
+          <div className="mt-2">
+            <CategorySelector
+              value={contract?.category?.id || null}
+              onChange={(category) => {
+                if (category) {
+                  setPendingCategory({ id: category.id, name: category.name });
+                  setShowCategorySelector(false);
+                  setShowCategoryConfirm(true);
+                }
+              }}
+              tenantId="demo"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category Change Confirmation Dialog */}
+      <Dialog open={showCategoryConfirm} onOpenChange={setShowCategoryConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Confirm Category Change</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Are you sure you want to change the category to <span className="font-medium text-foreground">"{pendingCategory?.name}"</span>?
+            </p>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCategoryConfirm(false);
+                setPendingCategory(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingCategory) {
+                  handleCategorySelect(pendingCategory.id);
+                }
+                setShowCategoryConfirm(false);
+                setPendingCategory(null);
+              }}
+              disabled={isSavingCategory}
+            >
+              {isSavingCategory ? "Saving..." : "Confirm"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

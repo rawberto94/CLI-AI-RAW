@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import type { Contract } from './use-contract-analytics';
+import type { Contract } from '@/types/artifacts';
 
 // ============================================================================
 // Types

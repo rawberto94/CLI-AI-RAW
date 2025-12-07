@@ -3,8 +3,7 @@
  */
 
 import { TableColumn, DEFAULT_COLUMNS } from './table-config'
-
-export type ViewMode = 'card' | 'table'
+import type { ViewMode } from './types'
 
 export interface ViewPreferences {
   viewMode: ViewMode
@@ -17,7 +16,7 @@ const VIEW_PREFS_KEY = 'contract-view-preferences'
 export function loadViewPreferences(): ViewPreferences {
   if (typeof window === 'undefined') {
     return {
-      viewMode: 'card',
+      viewMode: 'cards',
       columns: DEFAULT_COLUMNS,
       density: 'comfortable',
     }
@@ -28,7 +27,7 @@ export function loadViewPreferences(): ViewPreferences {
     if (stored) {
       const parsed = JSON.parse(stored)
       return {
-        viewMode: parsed.viewMode || 'card',
+        viewMode: parsed.viewMode || 'cards',
         columns: parsed.columns || DEFAULT_COLUMNS,
         density: parsed.density || 'comfortable',
       }
@@ -38,7 +37,7 @@ export function loadViewPreferences(): ViewPreferences {
   }
   
   return {
-    viewMode: 'card',
+    viewMode: 'cards',
     columns: DEFAULT_COLUMNS,
     density: 'comfortable',
   }

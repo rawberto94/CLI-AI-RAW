@@ -3,6 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 // File type validation
 const ALLOWED_FILE_TYPES = [
@@ -38,7 +39,7 @@ interface UploadResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<UploadResponse>> {
   try {
     // Get tenant ID from headers or session
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = await getApiTenantId(request);
     
     // Parse multipart form data
     const formData = await request.formData();
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
 // GET endpoint to check upload status
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
 

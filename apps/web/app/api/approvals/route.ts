@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,7 +162,7 @@ function calculateRiskScore(value: number, daysOverdue: number, deviations: numb
 }
 
 export async function GET(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id') || 'demo';
+  const tenantId = await getApiTenantId(request);
   const userId = request.headers.get('x-user-id') || 'current-user';
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
@@ -366,7 +367,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     const { action, approvalId, approvalIds, comment, delegateTo, reason } = body;

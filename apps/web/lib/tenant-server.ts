@@ -7,6 +7,7 @@
 
 import { getServerSession } from "@/lib/auth";
 import { headers } from "next/headers";
+import { NextRequest } from "next/server";
 
 // ============================================
 // Server-Side Tenant Context
@@ -17,6 +18,44 @@ export interface TenantContext {
   userId?: string;
   userEmail?: string;
   isAuthenticated: boolean;
+}
+
+/**
+ * Get tenant ID from a NextRequest (for API routes)
+ * Priority: session.user.tenantId > x-tenant-id header > demo (dev only)
+ * 
+ * USE THIS IN API ROUTES instead of direct header access
+ */
+export async function getTenantIdFromRequest(request: NextRequest): Promise<string> {
+  // Try session first
+  try {
+    const session = await getServerSession();
+    if (session?.user?.tenantId) {
+      return session.user.tenantId;
+    }
+  } catch {
+    // Session not available
+  }
+
+  // Try header
+  const headerTenantId = request.headers.get("x-tenant-id");
+  if (headerTenantId && headerTenantId !== "undefined") {
+    return headerTenantId;
+  }
+
+  // Try query param
+  const { searchParams } = new URL(request.url);
+  const queryTenantId = searchParams.get("tenantId");
+  if (queryTenantId && queryTenantId !== "undefined") {
+    return queryTenantId;
+  }
+
+  // Production safety check
+  if (process.env.NODE_ENV === "production" && process.env.REQUIRE_AUTH === "true") {
+    throw new Error("Tenant ID required. Please authenticate.");
+  }
+
+  return "demo";
 }
 
 /**
@@ -110,6 +149,10 @@ export async function validateTenantAccess(requestedTenantId: string): Promise<b
 export default {
   getTenantContext,
   getServerTenantId,
+  getTenantIdFromRequest,
   requireTenantContext,
   validateTenantAccess,
 };
+
+// Alias for API routes - preferred name
+export const getApiTenantId = getTenantIdFromRequest;

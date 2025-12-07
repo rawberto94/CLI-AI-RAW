@@ -32,6 +32,26 @@ export interface BulkOperationResult {
   data?: any;
 }
 
+// Alias types for backward compatibility with use-contracts-page
+export interface BulkOperationState {
+  isProcessing: boolean;
+  currentOperation: BulkOperationType | null;
+  progress: number;
+}
+
+export interface BulkOperationActions {
+  exportContracts: (contractIds: string[], format?: 'json' | 'csv' | 'pdf') => Promise<BulkOperationResult>;
+  deleteContracts: (contractIds: string[]) => Promise<BulkOperationResult>;
+  shareContracts: (contractIds: string[], shareWith: string[]) => Promise<BulkOperationResult>;
+  categorizeContracts: (contractIds: string[], categoryId?: string) => Promise<BulkOperationResult>;
+  autoCategorizeContracts: (contractIds: string[]) => Promise<BulkOperationResult>;
+  archiveContracts: (contractIds: string[]) => Promise<BulkOperationResult>;
+  restoreContracts: (contractIds: string[]) => Promise<BulkOperationResult>;
+  updateContractStatus: (contractIds: string[], status: string) => Promise<BulkOperationResult>;
+  generateArtifacts: (contractIds: string[]) => Promise<BulkOperationResult>;
+  cancelOperation: () => void;
+}
+
 export interface UseBulkOperationsOptions {
   /** Tenant ID for API calls */
   tenantId?: string;

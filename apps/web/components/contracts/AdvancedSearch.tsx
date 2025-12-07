@@ -236,9 +236,10 @@ export function AdvancedSearch({ onApplyFilters, onClearFilters }: AdvancedSearc
                       <Calendar
                         mode="single"
                         selected={filters.dateRange.start}
-                        onSelect={(date) =>
-                          setFilters({ ...filters, dateRange: { ...filters.dateRange, start: Array.isArray(date) ? date[0] : date } })
-                        }
+                        onSelect={(date) => {
+                          const selectedDate = Array.isArray(date) ? date[0] : (date instanceof Date ? date : undefined);
+                          setFilters({ ...filters, dateRange: { ...filters.dateRange, start: selectedDate } });
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
@@ -256,9 +257,10 @@ export function AdvancedSearch({ onApplyFilters, onClearFilters }: AdvancedSearc
                       <Calendar
                         mode="single"
                         selected={filters.dateRange.end}
-                        onSelect={(date) =>
-                          setFilters({ ...filters, dateRange: { ...filters.dateRange, end: Array.isArray(date) ? date[0] : date } })
-                        }
+                        onSelect={(date) => {
+                          const selectedDate = Array.isArray(date) ? date[0] : (date instanceof Date ? date : undefined);
+                          setFilters({ ...filters, dateRange: { ...filters.dateRange, end: selectedDate } });
+                        }}
                       />
                     </PopoverContent>
                   </Popover>

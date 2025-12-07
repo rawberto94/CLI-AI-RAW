@@ -8,7 +8,7 @@
 import React, { useState, useCallback, useEffect, memo, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,91 +52,84 @@ import {
   Shield,
   FolderKanban,
   Brain,
+  Database,
 } from 'lucide-react';
 
 interface NavigationItem {
   name: string;
-  href: string;
+  href?: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string | number;
   badgeVariant?: 'default' | 'success' | 'warning' | 'error';
   description?: string;
   children?: NavigationItem[];
   isNew?: boolean;
+  action?: 'openAIChatbot'; // Special actions handled in component
+  requiresAdmin?: boolean; // Only show for admin/owner users
 }
 
 interface NavigationGroup {
   id: string;
   label: string;
   items: NavigationItem[];
+  requiresAdmin?: boolean; // Only show entire group for admin/owner users
 }
 
-// Streamlined navigation - grouped and organized
+// Streamlined navigation - Core features only
 const navigationGroups: NavigationGroup[] = [
   {
     id: 'main',
     label: 'Main',
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard, description: 'Overview & insights' },
-      { name: 'Contracts', href: '/contracts', icon: FileText, description: 'All contracts' },
-      { name: 'Upload', href: '/upload', icon: Upload, description: 'Add new contracts' },
-    ]
-  },
-  {
-    id: 'workflow',
-    label: 'Workflow',
-    items: [
-      { name: 'Approvals', href: '/approvals', icon: CheckCircle2, badge: 4, badgeVariant: 'warning' as const, description: 'Pending reviews' },
-      { name: 'Renewals', href: '/renewals', icon: Calendar, badge: 2, badgeVariant: 'error' as const, description: 'Upcoming renewals' },
-      { name: 'Drafting', href: '/drafting', icon: Edit3, description: 'Create & edit' },
+      { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
+      { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison', isNew: true },
     ]
   },
   {
     id: 'intelligence',
-    label: 'Intelligence',
+    label: 'AI Intelligence',
     items: [
       { 
-        name: 'AI Hub', 
-        href: '/intelligence', 
-        icon: Brain,
-        isNew: true,
-        description: 'AI-powered insights',
-        children: [
-          { name: 'Overview', href: '/intelligence', icon: LayoutDashboard, description: 'Intelligence dashboard' },
-          { name: 'Health Scores', href: '/intelligence/health', icon: Target, description: 'Contract health' },
-          { name: 'Search', href: '/intelligence/search', icon: Search, description: 'Natural language search' },
-        ]
+        name: 'AI Chatbot', 
+        icon: Brain, 
+        description: 'Ask questions about your contracts',
+        action: 'openAIChatbot'
       },
-      { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Predictions & trends' },
-      { name: 'Generate', href: '/generate', icon: Sparkles, isNew: true, description: 'AI contract generation' },
+    ]
+  },
+  {
+    id: 'self-service',
+    label: 'Self-Service',
+    items: [
+      { 
+        name: 'AI Report Builder', 
+        href: '/reports/ai-builder', 
+        icon: FileBarChart, 
+        description: 'Generate AI-powered contract summaries',
+        isNew: true
+      },
     ]
   },
   {
     id: 'analytics',
     label: 'Analytics',
     items: [
-      { 
-        name: 'Rate Cards', 
-        href: '/rate-cards', 
-        icon: CreditCard, 
-        description: 'Rate management',
-        children: [
-          { name: 'Dashboard', href: '/rate-cards/dashboard', icon: LayoutDashboard, description: 'Overview' },
-          { name: 'Entries', href: '/rate-cards/entries', icon: FileText, description: 'All rates' },
-          { name: 'Benchmarks', href: '/benchmarks', icon: Target, description: 'Compare rates' },
-        ]
-      },
       { name: 'Reports', href: '/analytics', icon: BarChart3, description: 'Analytics & reports' },
     ]
   },
   {
-    id: 'settings',
-    label: 'System',
+    id: 'admin',
+    label: 'Administration',
+    requiresAdmin: true,
     items: [
-      { name: 'Governance', href: '/governance', icon: Shield, description: 'Policies & compliance' },
-      { name: 'Integrations', href: '/integrations', icon: Link2, description: 'Connected systems' },
+      { name: 'Clients', href: '/platform', icon: Users, description: 'Manage all client organizations', requiresAdmin: true, isNew: true },
+      { name: 'My Organization', href: '/admin', icon: Building2, description: 'Manage team & settings', requiresAdmin: true },
+      { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases', requiresAdmin: true, isNew: true },
+      { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues', requiresAdmin: true, isNew: true },
+      { name: 'Settings', href: '/settings', icon: Settings, description: 'System settings', requiresAdmin: true },
     ]
-  }
+  },
 ];
 
 // Render a single navigation item
@@ -146,17 +139,19 @@ function NavItem({
   isChildActive, 
   isExpanded, 
   onToggle, 
-  onMobileClose 
+  onMobileClose,
+  onAction
 }: { 
   item: NavigationItem;
-  isActive: (href: string) => boolean;
+  isActive: (href?: string) => boolean;
   isChildActive: (children?: NavigationItem[]) => boolean;
   isExpanded: boolean;
   onToggle: () => void;
   onMobileClose: () => void;
+  onAction: (action: string) => void;
 }) {
   const hasChildren = item.children && item.children.length > 0;
-  const itemActive = isActive(item.href);
+  const itemActive = item.href ? isActive(item.href) : false;
   const hasActiveChild = isChildActive(item.children);
   
   const getBadgeStyles = (variant?: string) => {
@@ -219,8 +214,8 @@ function NavItem({
               <div className="ml-6 mt-1 space-y-0.5 border-l border-gray-200 pl-3">
                 {item.children?.map((child) => (
                   <Link
-                    key={child.href}
-                    href={child.href}
+                    key={child.href || child.name}
+                    href={child.href || '#'}
                     onClick={onMobileClose}
                     className={cn(
                       'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors',
@@ -241,9 +236,33 @@ function NavItem({
     );
   }
 
+  // If item has action but no href, render as button
+  if (item.action && !item.href) {
+    return (
+      <button
+        onClick={() => {
+          onAction(item.action!);
+          onMobileClose();
+        }}
+        className={cn(
+          'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
+          'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+        )}
+      >
+        <item.icon className="h-4 w-4 text-gray-400" />
+        <span className="font-medium">{item.name}</span>
+        {item.isNew && (
+          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded-full">
+            NEW
+          </span>
+        )}
+      </button>
+    );
+  }
+
   return (
     <Link
-      href={item.href}
+      href={item.href || '/'}
       onClick={onMobileClose}
       className={cn(
         'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
@@ -277,6 +296,7 @@ function NavItem({
 function EnhancedNavigation() {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(['AI Hub']);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -284,6 +304,26 @@ function EnhancedNavigation() {
   const [searchFocused, setSearchFocused] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [isViewingAsClient, setIsViewingAsClient] = useState(false);
+
+  // Check if admin is viewing as a client (hide admin tabs in this mode)
+  useEffect(() => {
+    const viewAsTenantId = sessionStorage.getItem("viewAsTenantId");
+    setIsViewingAsClient(!!viewAsTenantId);
+  }, [pathname]); // Re-check on route changes
+
+  // Check if user is admin/owner (power user)
+  const userRole = session?.user?.role || 'member';
+  const isAdmin = (userRole === 'admin' || userRole === 'owner') && !isViewingAsClient;
+
+  // Filter navigation groups based on user role (hide admin when viewing as client)
+  const filteredNavigationGroups = navigationGroups
+    .filter(group => !group.requiresAdmin || isAdmin)
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.requiresAdmin || isAdmin)
+    }))
+    .filter(group => group.items.length > 0);
 
   // Keyboard shortcut for search (Cmd/Ctrl + K)
   useEffect(() => {
@@ -318,13 +358,14 @@ function EnhancedNavigation() {
     );
   }, []);
 
-  const isActive = useCallback((href: string) => {
+  const isActive = useCallback((href?: string) => {
+    if (!href) return false;
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   }, [pathname]);
 
   const isChildActive = useCallback((children?: NavigationItem[]): boolean => {
-    return children?.some(child => isActive(child.href)) ?? false;
+    return children?.some(child => child.href && isActive(child.href)) ?? false;
   }, [isActive]);
 
   const handleSearch = useCallback((e: React.FormEvent) => {
@@ -336,6 +377,13 @@ function EnhancedNavigation() {
     }
   }, [searchQuery, router]);
 
+  // Handle special navigation actions (like opening AI chatbot)
+  const handleNavAction = useCallback((action: string) => {
+    if (action === 'openAIChatbot') {
+      window.dispatchEvent(new CustomEvent('openAIChatbot'));
+    }
+  }, []);
+
   return (
     <TooltipProvider>
       {/* Mobile Header */}
@@ -344,7 +392,7 @@ function EnhancedNavigation() {
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg p-1.5 shadow-sm">
             <FileText className="h-5 w-5 text-white" />
           </div>
-          <span className="font-semibold text-gray-900">PactumAI</span>
+          <span className="font-semibold text-gray-900">ConTigo</span>
         </div>
         <div className="flex items-center gap-2">
           <NotificationBell />
@@ -377,7 +425,7 @@ function EnhancedNavigation() {
               <FileText className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-gray-900 text-sm">PactumAI</h1>
+              <h1 className="font-bold text-gray-900 text-sm">ConTigo</h1>
               <p className="text-[10px] text-gray-500">Contract Intelligence</p>
             </div>
           </div>
@@ -409,7 +457,7 @@ function EnhancedNavigation() {
 
           {/* Navigation Groups */}
           <nav className="flex-1 overflow-y-auto px-3 pb-3">
-            {navigationGroups.map((group, groupIndex) => (
+            {filteredNavigationGroups.map((group, groupIndex) => (
               <div key={group.id} className={cn(groupIndex > 0 && 'mt-5')}>
                 <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                   {group.label}
@@ -424,6 +472,7 @@ function EnhancedNavigation() {
                       isExpanded={expandedItems.includes(item.name)}
                       onToggle={() => toggleExpanded(item.name)}
                       onMobileClose={() => setIsMobileMenuOpen(false)}
+                      onAction={handleNavAction}
                     />
                   ))}
                 </div>

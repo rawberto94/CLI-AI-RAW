@@ -40,7 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import {
   useContractAnalytics,
-  type Contract,
+  type AnalyticsContract as Contract,
   type ContractInsight,
 } from '@/hooks/use-contract-analytics';
 
@@ -288,8 +288,8 @@ export function ContractAnalyticsCards({
   // Calculate trend from monthly data
   const calculateTrend = () => {
     if (monthlyTrends.length < 2) return null;
-    const current = monthlyTrends[monthlyTrends.length - 1].count;
-    const previous = monthlyTrends[monthlyTrends.length - 2].count;
+    const current = monthlyTrends[monthlyTrends.length - 1]?.count ?? 0;
+    const previous = monthlyTrends[monthlyTrends.length - 2]?.count ?? 0;
     if (previous === 0) return null;
     const change = ((current - previous) / previous) * 100;
     return { value: Math.round(change), isPositive: change >= 0 };

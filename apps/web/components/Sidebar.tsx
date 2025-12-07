@@ -1,42 +1,22 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, memo, useCallback, useMemo } from "react";
+import { useState, memo, useCallback, useMemo, useEffect } from "react";
 import {
   Home,
   FolderOpen,
-  Building2,
-  FileEdit,
-  Layers,
-  Percent,
-  ShieldAlert,
-  AlertTriangle,
-  Upload,
   Bell,
   FileText,
   Presentation,
   Sparkles,
-  Play,
-  Rocket,
-  Tag,
-  CreditCard,
-  CheckCircle,
-  GitBranch,
-  Clock,
-  Search,
   MessageSquare,
-  Brain,
-  Calendar,
-  Users,
   Settings,
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
-  Workflow,
   BarChart3,
-  Wrench,
-  Zap,
-  Heart,
+  HelpCircle,
+  X,
 } from "lucide-react";
 import {
   Tooltip,
@@ -63,9 +43,10 @@ interface NavItem {
   icon: React.ElementType;
   badge?: string;
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
+  description?: string;
 }
 
-// Consolidated navigation groups
+// Simplified navigation - Core features only
 const navigationGroups: NavGroup[] = [
   {
     id: 'core',
@@ -73,63 +54,26 @@ const navigationGroups: NavGroup[] = [
     icon: LayoutDashboard,
     defaultOpen: true,
     items: [
-      { href: "/", label: "Dashboard", icon: Home },
-      { href: "/contracts", label: "Contracts", icon: FolderOpen },
-      { href: "/upload", label: "Upload", icon: Upload },
-    ],
-  },
-  {
-    id: 'workflow',
-    label: 'Workflow',
-    icon: Workflow,
-    defaultOpen: true,
-    items: [
-      { href: "/workflows", label: "Workflows", icon: Workflow, badge: "4" },
-      { href: "/deadlines", label: "Deadlines", icon: Clock, badge: "5", badgeVariant: 'destructive' },
-      { href: "/renewals", label: "Renewals", icon: Calendar },
+      { href: "/", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics" },
+      { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts" },
     ],
   },
   {
     id: 'intelligence',
     label: 'AI Intelligence',
-    icon: Brain,
+    icon: MessageSquare,
     defaultOpen: true,
     items: [
-      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare },
-      { href: "/search/advanced", label: "Smart Search", icon: Search },
-      { href: "/ai/compare", label: "Compare", icon: Brain },
-      { href: "/intelligence/health", label: "Health Score", icon: Heart },
+      { href: "/ai/chat", label: "AI Chatbot", icon: MessageSquare, description: "Ask questions about your contracts" },
     ],
   },
   {
     id: 'analytics',
     label: 'Analytics',
     icon: BarChart3,
+    defaultOpen: true,
     items: [
-      { href: "/suppliers", label: "Suppliers", icon: Building2 },
-      { href: "/rate-cards", label: "Rate Cards", icon: CreditCard },
-      { href: "/benchmarks", label: "Benchmarks", icon: Percent },
-      { href: "/analytics", label: "Reports", icon: Presentation },
-    ],
-  },
-  {
-    id: 'compliance',
-    label: 'Compliance & Risk',
-    icon: ShieldAlert,
-    items: [
-      { href: "/compliance", label: "Compliance", icon: ShieldAlert },
-      { href: "/risk", label: "Risk Analysis", icon: AlertTriangle },
-    ],
-  },
-  {
-    id: 'tools',
-    label: 'Tools',
-    icon: Wrench,
-    items: [
-      { href: "/drafts", label: "Draft Editor", icon: FileEdit },
-      { href: "/settings/taxonomy", label: "Taxonomy", icon: Tag },
-      { href: "/automation", label: "Automation", icon: Sparkles },
-      { href: "/runs", label: "Pipeline Runs", icon: Layers },
+      { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports" },
     ],
   },
 ];
@@ -227,6 +171,25 @@ const NavItem = memo(function NavItem({
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [showTutorial, setShowTutorial] = useState(false);
+  
+  // Check if user is new (first visit)
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem('pactum-tutorial-seen');
+    if (!hasSeenTutorial) {
+      setShowTutorial(true);
+    }
+  }, []);
+
+  const dismissTutorial = useCallback(() => {
+    setShowTutorial(false);
+    localStorage.setItem('pactum-tutorial-seen', 'true');
+  }, []);
+
+  const resetTutorial = useCallback(() => {
+    localStorage.removeItem('pactum-tutorial-seen');
+    setShowTutorial(true);
+  }, []);
   
   return (
     <aside className="hidden border-r border-slate-200/80 bg-gradient-to-b from-white to-slate-50/50 md:block shadow-sm">
@@ -259,26 +222,44 @@ export function Sidebar() {
           </TooltipProvider>
         </div>
 
-        {/* Quick Actions - Featured Demo */}
-        <div className="p-3 border-b border-slate-200/60">
-          <Link
-            href="/futuristic-contracts"
-            className={cn(
-              "flex items-center gap-3 p-3.5 rounded-xl transition-all",
-              "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700",
-              "text-white shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-[1.02]"
-            )}
-          >
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Zap className="h-5 w-5" />
+        {/* Welcome Tutorial Banner */}
+        {showTutorial && (
+          <div className="p-3 border-b border-slate-200/60">
+            <div className="relative bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+              <button 
+                onClick={dismissTutorial}
+                className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">Welcome to PactumAI!</h3>
+                  <p className="text-xs text-slate-600 mt-1">
+                    Start by uploading a contract or ask the AI Chatbot to help you analyze your documents.
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Link href="/contracts">
+                      <Button size="sm" className="h-7 text-xs rounded-lg bg-blue-600 hover:bg-blue-700">
+                        <FolderOpen className="h-3 w-3 mr-1" />
+                        Explore Contracts
+                      </Button>
+                    </Link>
+                    <Link href="/ai/chat">
+                      <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg">
+                        <MessageSquare className="h-3 w-3 mr-1" />
+                        Try AI Chat
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-sm">AI Intelligence Hub</div>
-              <div className="text-[11px] text-blue-100">Full AI-powered experience</div>
-            </div>
-            <Sparkles className="h-4 w-4 animate-pulse" />
-          </Link>
-        </div>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-3 px-2">
@@ -289,14 +270,16 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer */}
         <div className="p-3 border-t border-slate-200/60 space-y-2 bg-white/50">
-          <Link href="/upload" className="block">
-            <Button size="sm" className="w-full bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 rounded-xl shadow-lg shadow-slate-900/20">
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Contract
-            </Button>
-          </Link>
+          {/* Help & Tutorial Button */}
+          <button
+            onClick={resetTutorial}
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span>Show Welcome Guide</span>
+          </button>
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] text-slate-400">v1.0.0</span>
             <Link href="/settings" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">

@@ -14,6 +14,7 @@ import type {
   ContractStats,
   FilteredStats,
   RiskLevel,
+  ApprovalStatus,
 } from './types';
 import {
   RISK_LEVELS,
@@ -162,10 +163,10 @@ export interface UseContractFiltersReturn {
   setStatus: (status: string) => void;
   toggleType: (type: string) => void;
   setTypes: (types: string[]) => void;
-  toggleRiskLevel: (level: string) => void;
-  setRiskLevels: (levels: string[]) => void;
-  toggleApprovalStatus: (status: string) => void;
-  setApprovalStatuses: (statuses: string[]) => void;
+  toggleRiskLevel: (level: RiskLevel) => void;
+  setRiskLevels: (levels: RiskLevel[]) => void;
+  toggleApprovalStatus: (status: ApprovalStatus) => void;
+  setApprovalStatuses: (statuses: ApprovalStatus[]) => void;
   setValueRange: (range: string | null) => void;
   setDateRange: (range: string | null) => void;
   toggleExpirationFilter: (filter: string) => void;
@@ -382,7 +383,7 @@ export function useContractFilters({
     setPagination(prev => ({ ...prev, page: 1 }));
   }, []);
   
-  const toggleRiskLevel = useCallback((level: string) => {
+  const toggleRiskLevel = useCallback((level: RiskLevel) => {
     setFilters(prev => ({
       ...prev,
       riskLevels: prev.riskLevels.includes(level)
@@ -392,12 +393,12 @@ export function useContractFilters({
     setPagination(prev => ({ ...prev, page: 1 }));
   }, []);
   
-  const setRiskLevels = useCallback((levels: string[]) => {
+  const setRiskLevels = useCallback((levels: RiskLevel[]) => {
     setFilters(prev => ({ ...prev, riskLevels: levels }));
     setPagination(prev => ({ ...prev, page: 1 }));
   }, []);
   
-  const toggleApprovalStatus = useCallback((status: string) => {
+  const toggleApprovalStatus = useCallback((status: ApprovalStatus) => {
     setFilters(prev => ({
       ...prev,
       approvalStatuses: prev.approvalStatuses.includes(status)
@@ -407,7 +408,7 @@ export function useContractFilters({
     setPagination(prev => ({ ...prev, page: 1 }));
   }, []);
   
-  const setApprovalStatuses = useCallback((statuses: string[]) => {
+  const setApprovalStatuses = useCallback((statuses: ApprovalStatus[]) => {
     setFilters(prev => ({ ...prev, approvalStatuses: statuses }));
     setPagination(prev => ({ ...prev, page: 1 }));
   }, []);

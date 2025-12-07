@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getApiTenantId } from '@/lib/tenant-server'
 
 // GET /api/templates - List all templates
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001'
+    const tenantId = await getApiTenantId(request)
     const { searchParams } = new URL(request.url)
     
     const category = searchParams.get('category')
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
 // POST /api/templates - Create a new template
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001'
+    const tenantId = await getApiTenantId(request)
     const body = await request.json()
 
     const {

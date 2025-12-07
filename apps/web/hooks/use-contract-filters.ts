@@ -107,6 +107,9 @@ export interface UseContractFiltersResult {
   filteredContracts: Contract[];
 }
 
+// Alias for backward compatibility
+export type ContractFilters = Partial<FilterState>;
+
 // ============================================================================
 // Quick Filter Presets
 // ============================================================================
@@ -116,6 +119,7 @@ export interface QuickPreset {
   label: string;
   description?: string;
   icon?: string;
+  color?: string;
   category?: 'risk' | 'time' | 'status' | 'value' | 'compliance' | 'workflow';
   filters: {
     status?: string;

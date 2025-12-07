@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 // ============================================================================
 // GET - Category Analytics
@@ -18,7 +19,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "30d"; // 7d, 30d, 90d, all
 
@@ -38,10 +39,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         break;
     }
 
-    // Get all contracts with their categories
+    // Get all contracts with their categories (excluding DELETED)
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
+        status: { not: 'DELETED' },
         ...(dateFrom && { createdAt: { gte: dateFrom } }),
       },
       select: {
@@ -98,8 +100,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           };
         }
 
-        categoryDistribution[contract.category].count++;
-        categoryDistribution[contract.category].value += value;
+        const catDist = categoryDistribution[contract.category];
+        if (catDist) {
+          catDist.count++;
+          catDist.value += value;
+        }
       } else {
         uncategorizedCount++;
         uncategorizedValue += value;
@@ -131,7 +136,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     for (let i = 6; i >= 0; i--) {
       const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = date.toISOString().split("T")[0] ?? '';
       const nextDate = new Date(date.getTime() + 24 * 60 * 60 * 1000);
 
       const dayContracts = contracts.filter((c) => {

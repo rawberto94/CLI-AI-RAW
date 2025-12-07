@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import getDb from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,7 @@ export async function GET(
 ) {
   try {
     const contractId = params.id;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const useMock = request.nextUrl.searchParams.get('mock') === 'true';
 
     // Return mock data if requested

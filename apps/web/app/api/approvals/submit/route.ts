@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,7 @@ const workflowTemplates = {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     
@@ -273,7 +274,7 @@ export async function POST(request: NextRequest) {
 
 // Get available workflow templates
 export async function GET(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id') || 'demo';
+  const tenantId = await getApiTenantId(request);
 
   try {
     // Try to get custom workflows from database

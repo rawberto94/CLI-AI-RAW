@@ -200,13 +200,54 @@ const KEYBOARD_SHORTCUTS = [
   { key: "⌘/Ctrl + L", action: "Clear chat" },
 ];
 
+// Example prompts to show users what's possible
+const EXAMPLE_PROMPTS = [
+  {
+    category: "Analysis",
+    icon: TrendingUp,
+    prompts: [
+      "Summarize all Deloitte contracts from 2024",
+      "What's our total contract value by supplier?",
+      "Show me contracts over $100,000",
+    ],
+  },
+  {
+    category: "Compare",
+    icon: DollarSign,
+    prompts: [
+      "Compare Deloitte vs Accenture contracts",
+      "What's the difference between Microsoft and AWS agreements?",
+      "Compare payment terms in IBM and Oracle contracts",
+      "Compare termination clauses between Deloitte and KPMG",
+    ],
+  },
+  {
+    category: "Risk & Renewals",
+    icon: Shield,
+    prompts: [
+      "What contracts expire in the next 30 days?",
+      "Show me contracts with auto-renewal clauses",
+      "Which contracts are high risk?",
+    ],
+  },
+  {
+    category: "Search",
+    icon: Search,
+    prompts: [
+      "Find all IT services contracts",
+      "Show me contracts with AWS",
+      "List active MSAs",
+    ],
+  },
+];
+
 const INITIAL_MESSAGE: Message = {
   id: "welcome",
   role: "assistant",
   content:
-    "👋 Hey there! I'm your AI contract assistant. I can help you with:\n\n• Contract summaries & analytics\n• Renewal tracking & reminders\n• Risk & compliance insights\n• Smart search & recommendations\n\nWhat would you like to explore?",
+    "👋 Hey! I'm **ConTigo AI**, your intelligent contract assistant powered by RAG technology.\n\n**What I can do:**\n• 🔍 **Smart Search** - Find contracts by supplier, type, value, or any criteria\n• 📊 **Deep Analysis** - Get summaries, spending insights, and duration patterns\n• 🔄 **Compare Contracts** - Side-by-side supplier comparison with rates and clauses\n• ⚠️ **Risk Alerts** - Track expirations, auto-renewals, and compliance\n\n**Pro Tips:**\n• Try: \"Compare Deloitte vs Accenture contracts\"\n• Ask follow-ups: I remember our conversation context\n• Click suggestions below or type anything!\n\nWhat would you like to explore?",
   timestamp: new Date(),
-  suggestions: ["Contract summary", "Expiring soon?", "Portfolio insights"],
+  suggestions: ["📊 Contract summary", "🔄 Compare suppliers", "⏰ Expiring soon", "💰 Top suppliers"],
   metadata: {
     confidence: 1,
     source: "system",
@@ -226,6 +267,12 @@ const sanitizeHtml = (str: string): string => {
 const formatContent = (content: string) => {
   const sanitized = sanitizeHtml(content);
   return sanitized
+    // Convert markdown links [text](/path) to clickable links
+    .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
+      '<a href="/contracts/$2" class="text-blue-600 hover:text-blue-800 underline font-medium" target="_blank">$1</a>')
+    // Convert other markdown links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
+      '<a href="$2" class="text-blue-600 hover:text-blue-800 underline" target="_blank">$1</a>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\n/g, "<br />");
 };
@@ -281,8 +328,10 @@ export function FloatingAIBubble() {
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showExamples, setShowExamples] = useState(false);
   const [conversationContext, setConversationContext] = useState<ConversationContext>({});
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string>("");
   
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -633,8 +682,8 @@ export function FloatingAIBubble() {
           "**🟡 Medium Priority (30-60 days):**\n" +
           "• Salesforce Enterprise - $32,000\n" +
           "  └ Expires: Jan 11, 2026\n\n" +
-          "**💡 Recommendation:** Start AWS renewal negotiations now to secure better terms.",
-        suggestions: ["Set reminders", "View AWS contract", "Negotiation tips", "All renewals"],
+          "**💡 Tip:** Review contract details and terms before renewal.",
+        suggestions: ["Set reminders", "View AWS contract", "View all renewals", "Contract details"],
         actions: [
           { label: "View Renewals", action: "view-renewals", icon: Calendar, variant: "primary" },
           { label: "Set Reminder", action: "set-reminder", icon: Clock },
@@ -660,10 +709,10 @@ export function FloatingAIBubble() {
           "• Single-vendor dependency: **Low**\n" +
           "• Compliance gaps: **None**\n\n" +
           "**🎯 Action Items:**\n" +
-          "1. Consolidate cloud services (save ~$8,000)\n" +
-          "2. Renegotiate Salesforce license\n" +
-          "3. Review IT services overlap",
-        suggestions: ["Cost breakdown", "Risk details", "Vendor analysis", "Savings opportunities"],
+          "1. Review cloud services contracts for consolidation opportunities\n" +
+          "2. Check Salesforce license terms before renewal\n" +
+          "3. Review IT services contracts for overlap",
+        suggestions: ["Cost breakdown", "Risk details", "Contracts by supplier", "Category analysis"],
         actions: [
           { label: "Full Analytics", action: "view-analytics", icon: TrendingUp, variant: "primary" },
         ],
@@ -928,22 +977,27 @@ export function FloatingAIBubble() {
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                          Contract AI Assistant
+                          ConTigo AI
                           <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-xs border-purple-200 px-2">
                             <Zap className="w-3 h-3 mr-1" />
-                            Pro
+                            RAG
                           </Badge>
                         </h3>
                         <p className="text-sm text-gray-500 flex items-center gap-2 mt-0.5">
                           {isTyping ? (
                             <span className="flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                              Thinking...
+                              Analyzing contracts...
                             </span>
+                          ) : currentContractId ? (
+                            <>
+                              <span className="w-2 h-2 bg-blue-500 rounded-full" />
+                              Viewing contract • Context-aware
+                            </>
                           ) : (
                             <>
                               <span className="w-2 h-2 bg-green-500 rounded-full" />
-                              Online • Ready to help
+                              Online • {messages.length - 1} messages
                             </>
                           )}
                         </p>
@@ -970,6 +1024,10 @@ export function FloatingAIBubble() {
                           <DropdownMenuItem onClick={() => setShowShortcuts(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Keyboard className="w-4 h-4 mr-3" />
                             Keyboard shortcuts
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setShowExamples(true)} className="hover:bg-gray-100 cursor-pointer py-3">
+                            <Sparkles className="w-4 h-4 mr-3" />
+                            Example prompts
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-gray-200" />
                           <DropdownMenuItem onClick={exportChat} className="hover:bg-gray-100 cursor-pointer py-3">
@@ -1181,34 +1239,62 @@ export function FloatingAIBubble() {
                           </motion.div>
                         ))}
 
-                        {/* Typing indicator */}
+                        {/* Typing indicator with thinking status */}
                         {isLoading && (
                           <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="flex items-center gap-3"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-start gap-3"
                           >
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
                               <Loader2 className="w-5 h-5 text-white animate-spin" />
                             </div>
-                            <div className="bg-white rounded-2xl rounded-bl-lg px-5 py-4 shadow-sm border border-gray-100">
-                              <div className="flex gap-2">
-                                <motion.span
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ repeat: Infinity, duration: 0.6 }}
-                                  className="w-2.5 h-2.5 bg-gray-400 rounded-full"
-                                />
-                                <motion.span
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ repeat: Infinity, duration: 0.6, delay: 0.1 }}
-                                  className="w-2.5 h-2.5 bg-gray-400 rounded-full"
-                                />
-                                <motion.span
-                                  animate={{ y: [0, -5, 0] }}
-                                  transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-                                  className="w-2.5 h-2.5 bg-gray-400 rounded-full"
-                                />
+                            <div className="bg-white rounded-2xl rounded-bl-lg px-5 py-4 shadow-sm border border-gray-100 min-w-[200px]">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="flex gap-1.5">
+                                  <motion.span
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ repeat: Infinity, duration: 0.8 }}
+                                    className="w-2 h-2 bg-purple-500 rounded-full"
+                                  />
+                                  <motion.span
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ repeat: Infinity, duration: 0.8, delay: 0.15 }}
+                                    className="w-2 h-2 bg-purple-400 rounded-full"
+                                  />
+                                  <motion.span
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ repeat: Infinity, duration: 0.8, delay: 0.3 }}
+                                    className="w-2 h-2 bg-purple-300 rounded-full"
+                                  />
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Thinking</span>
                               </div>
+                              <motion.div 
+                                className="space-y-1.5"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.3 }}
+                              >
+                                <motion.p 
+                                  className="text-xs text-gray-500 flex items-center gap-1.5"
+                                  initial={{ opacity: 0, x: -5 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: 0.4 }}
+                                >
+                                  <Search className="w-3 h-3" />
+                                  Searching contracts with RAG...
+                                </motion.p>
+                                <motion.p 
+                                  className="text-xs text-gray-400 flex items-center gap-1.5"
+                                  initial={{ opacity: 0, x: -5 }}
+                                  animate={{ opacity: 0.6, x: 0 }}
+                                  transition={{ delay: 0.8 }}
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  Analyzing relevant clauses...
+                                </motion.p>
+                              </motion.div>
                             </div>
                           </motion.div>
                         )}
@@ -1266,7 +1352,12 @@ export function FloatingAIBubble() {
                           ref={inputRef}
                           value={input}
                           onChange={(e) => setInput(e.target.value)}
-                          placeholder="Ask anything about your contracts..."
+                          placeholder={currentContractId 
+                            ? "Ask about this contract..." 
+                            : messages.length > 1 
+                              ? "Continue the conversation..." 
+                              : "Try: 'Summarize Deloitte contracts from 2024'"
+                          }
                           disabled={isLoading}
                           className="w-full bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-2xl pr-24 focus:border-purple-500 focus:ring-purple-500/20 h-14 text-base px-5"
                         />
@@ -1310,13 +1401,21 @@ export function FloatingAIBubble() {
                       </Button>
                     </form>
                     <div className="flex items-center justify-between mt-2">
-                      <p className="text-[10px] text-gray-500">
-                        Press <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] text-gray-600">Enter</kbd> to send
-                      </p>
-                      <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                      <div className="flex items-center gap-3">
+                        <p className="text-[10px] text-gray-500">
+                          <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] text-gray-600">Enter</kbd> send
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] text-gray-600">⌘K</kbd> toggle
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setShowExamples(true)}
+                        className="text-[10px] text-purple-500 hover:text-purple-700 flex items-center gap-1 transition-colors"
+                      >
                         <Sparkles className="w-2.5 h-2.5" />
-                        Powered by AI
-                      </p>
+                        View examples
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1363,6 +1462,75 @@ export function FloatingAIBubble() {
                       </kbd>
                     </div>
                   ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Example prompts modal */}
+        <AnimatePresence>
+          {showExamples && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setShowExamples(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-gray-900 font-semibold text-lg flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-500" />
+                    Example Prompts
+                  </h3>
+                  <button
+                    onClick={() => setShowExamples(false)}
+                    className="text-gray-400 hover:text-gray-900 p-1"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-sm text-gray-500 mb-6">
+                  Click any prompt to try it, or use these as inspiration for your own questions.
+                </p>
+                <div className="space-y-6">
+                  {EXAMPLE_PROMPTS.map((category, idx) => (
+                    <div key={idx}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <category.icon className="w-4 h-4 text-gray-400" />
+                        <h4 className="text-sm font-medium text-gray-700">{category.category}</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {category.prompts.map((prompt, pIdx) => (
+                          <button
+                            key={pIdx}
+                            onClick={() => {
+                              setShowExamples(false);
+                              handleSendMessage(prompt);
+                            }}
+                            className="w-full text-left px-4 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-100 hover:border-gray-200 text-sm text-gray-700 hover:text-gray-900 transition-all group"
+                          >
+                            <span className="flex items-center justify-between">
+                              {prompt}
+                              <Send className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-purple-500 transition-opacity" />
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-400 text-center">
+                    💡 Tip: The AI remembers context, so you can ask follow-up questions!
+                  </p>
                 </div>
               </motion.div>
             </motion.div>

@@ -70,7 +70,7 @@ export const formatDateRelative = (dateString?: string): string => {
 // RISK HELPERS
 // ============================================================================
 
-export const getRiskLevel = (score?: number): RiskLevel | undefined => {
+export const getRiskLevelFromScore = (score?: number): RiskLevel | undefined => {
   if (score === undefined || score === null) return undefined;
   if (score < 30) return 'low';
   if (score < 70) return 'medium';
@@ -78,13 +78,13 @@ export const getRiskLevel = (score?: number): RiskLevel | undefined => {
 };
 
 export const getRiskConfig = (score?: number) => {
-  const level = getRiskLevel(score);
+  const level = getRiskLevelFromScore(score);
   if (!level) return undefined;
   return RISK_LEVELS.find(l => l.value === level);
 };
 
 export const getRiskColor = (score?: number): string => {
-  const level = getRiskLevel(score);
+  const level = getRiskLevelFromScore(score);
   switch (level) {
     case 'low': return 'text-emerald-600';
     case 'medium': return 'text-amber-600';
@@ -94,7 +94,7 @@ export const getRiskColor = (score?: number): string => {
 };
 
 export const getRiskBgColor = (score?: number): string => {
-  const level = getRiskLevel(score);
+  const level = getRiskLevelFromScore(score);
   switch (level) {
     case 'low': return 'bg-emerald-50';
     case 'medium': return 'bg-amber-50';

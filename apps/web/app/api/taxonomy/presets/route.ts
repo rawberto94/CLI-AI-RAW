@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 // ============================================================================
 // PRESET TAXONOMIES
@@ -394,7 +395,7 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = await getApiTenantId(request);
     const body = await request.json();
     const { presetId, clearExisting = false } = body;
 
@@ -440,11 +441,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (category.children) {
         for (let i = 0; i < category.children.length; i++) {
           const child = category.children[i];
+          if (!child) continue;
           await prisma.taxonomyCategory.create({
             data: {
               tenantId,
               name: child.name,
-              description: child.description,
+              description: 'description' in child ? String(child.description) : null,
               icon: category.icon || "folder",
               color: category.color || "#3B82F6",
               level: 1,
@@ -452,7 +454,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               parentId: parent.id,
               sortOrder: i,
               keywords: child.keywords || [],
-              aiClassificationPrompt: child.aiClassificationPrompt,
+              aiClassificationPrompt: 'aiClassificationPrompt' in child ? String(child.aiClassificationPrompt) : null,
               isActive: true,
             },
           });

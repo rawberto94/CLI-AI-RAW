@@ -416,7 +416,9 @@ export default function ArtifactsAnalyticsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+        </motion.div>
+      </div>
     </div>
   );
 }

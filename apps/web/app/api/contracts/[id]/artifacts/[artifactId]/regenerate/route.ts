@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chunkText, embedChunks } from "clients-rag";
 import { AIArtifactGeneratorService } from "data-orchestration/services";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 const aiArtifactGenerator = AIArtifactGeneratorService.getInstance();
 
@@ -19,7 +20,7 @@ export async function POST(
   try {
     const contractId = params.id;
     const artifactId = params.artifactId;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
 
     // Validate contract exists
     const contract = await prisma.contract.findUnique({

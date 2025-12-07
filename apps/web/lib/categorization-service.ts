@@ -136,6 +136,228 @@ function calculateKeywordScore(
 }
 
 /**
+ * Get AI-extracted metadata from contract for smarter categorization
+ */
+async function getExtractedMetadata(
+  contractId: string,
+  tenantId: string
+): Promise<{
+  supplierName?: string;
+  contractType?: string;
+  totalValue?: number;
+  currency?: string;
+  serviceDescription?: string;
+  industry?: string;
+  keywords?: string[];
+  parties?: string[];
+  obligations?: string[];
+  deliverables?: string[];
+  lineOfService?: string;
+}> {
+  // Get contract with all extracted fields
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: {
+      supplierName: true,
+      contractType: true,
+      totalValue: true,
+      currency: true,
+      description: true,
+      keywords: true,
+      rawText: true,
+      // Extended metadata from JSON field if available
+      metadata: true,
+    },
+  });
+
+  if (!contract) {
+    return {};
+  }
+
+  // Get extracted artifacts (AI-generated insights)
+  const artifacts = await prisma.contractArtifact.findMany({
+    where: {
+      contractId,
+      type: {
+        in: [
+          'EXTRACTED_DATA', 
+          'SUMMARY', 
+          'KEY_TERMS', 
+          'ENTITIES', 
+          'OBLIGATIONS',
+          'RATES',
+          'FINANCIAL',
+          'OVERVIEW',
+          'CLAUSES',
+          'INGESTION',
+        ],
+      },
+    },
+    select: { type: true, value: true },
+  });
+
+  // Parse artifacts to extract useful categorization info
+  let serviceDescription = '';
+  let industry = '';
+  let parties: string[] = [];
+  let obligations: string[] = [];
+  let deliverables: string[] = [];
+  let lineOfService = '';
+  let extractedKeywords: string[] = [];
+  let serviceTypes: string[] = [];
+  let rateCategories: string[] = [];
+
+  for (const artifact of artifacts) {
+    const value = artifact.value as Record<string, any> | null;
+    if (!value) continue;
+
+    switch (artifact.type) {
+      case 'EXTRACTED_DATA':
+      case 'INGESTION':
+        serviceDescription = serviceDescription || value.serviceDescription || value.scopeOfWork || value.description || value.summary || '';
+        industry = industry || value.industry || value.sector || value.businessDomain || '';
+        lineOfService = lineOfService || value.lineOfService || value.serviceType || value.category || value.contractCategory || '';
+        if (Array.isArray(value.deliverables)) {
+          deliverables = [...deliverables, ...value.deliverables];
+        }
+        if (Array.isArray(value.keywords)) {
+          extractedKeywords = [...extractedKeywords, ...value.keywords];
+        }
+        if (Array.isArray(value.services)) {
+          serviceTypes = [...serviceTypes, ...value.services.map((s: any) => typeof s === 'string' ? s : s.name || s.type || '')];
+        }
+        // Extract from nested structures
+        if (value.contractInfo) {
+          industry = industry || value.contractInfo.industry || value.contractInfo.sector || '';
+          lineOfService = lineOfService || value.contractInfo.category || value.contractInfo.type || '';
+        }
+        if (value.analysis?.category) {
+          lineOfService = lineOfService || value.analysis.category;
+        }
+        break;
+        
+      case 'OVERVIEW':
+        serviceDescription = serviceDescription || value.summary || value.overview || value.description || '';
+        if (value.keyHighlights) {
+          extractedKeywords = [...extractedKeywords, ...Object.values(value.keyHighlights).filter(v => typeof v === 'string')];
+        }
+        if (value.contractType) {
+          lineOfService = lineOfService || value.contractType;
+        }
+        break;
+
+      case 'ENTITIES':
+        if (Array.isArray(value.parties)) {
+          parties = [...parties, ...value.parties.map((p: any) => typeof p === 'string' ? p : p.name || '')];
+        }
+        if (Array.isArray(value.organizations)) {
+          parties = [...parties, ...value.organizations];
+        }
+        if (Array.isArray(value.vendors)) {
+          parties = [...parties, ...value.vendors.map((v: any) => typeof v === 'string' ? v : v.name || '')];
+        }
+        break;
+        
+      case 'OBLIGATIONS':
+        if (Array.isArray(value.obligations)) {
+          obligations = [...obligations, ...value.obligations.map((o: any) => typeof o === 'string' ? o : o.description || o.text || o.obligation || '')];
+        }
+        if (Array.isArray(value.deliverables)) {
+          deliverables = [...deliverables, ...value.deliverables.map((d: any) => typeof d === 'string' ? d : d.description || d.name || '')];
+        }
+        break;
+        
+      case 'KEY_TERMS':
+      case 'CLAUSES':
+        if (Array.isArray(value.terms)) {
+          extractedKeywords = [...extractedKeywords, ...value.terms.map((t: any) => typeof t === 'string' ? t : t.term || t.name || '')];
+        }
+        if (Array.isArray(value.clauses)) {
+          // Extract clause types as they indicate contract nature
+          const clauseTypes = value.clauses.map((c: any) => c.type || c.category || c.name || '').filter(Boolean);
+          extractedKeywords = [...extractedKeywords, ...clauseTypes];
+        }
+        break;
+        
+      case 'RATES':
+        // Rate card data can indicate the type of service
+        if (Array.isArray(value.rates)) {
+          rateCategories = [...rateCategories, ...value.rates.map((r: any) => r.category || r.roleCategory || r.serviceType || '').filter(Boolean)];
+          serviceTypes = [...serviceTypes, ...value.rates.map((r: any) => r.serviceType || r.role || '').filter(Boolean)];
+        }
+        if (value.serviceCategory) {
+          lineOfService = lineOfService || value.serviceCategory;
+        }
+        break;
+        
+      case 'FINANCIAL':
+        // Financial data may indicate industry
+        if (value.paymentTerms) {
+          extractedKeywords.push(value.paymentTerms);
+        }
+        if (value.billingType) {
+          extractedKeywords.push(value.billingType);
+        }
+        break;
+        
+      case 'SUMMARY':
+        if (typeof value.summary === 'string') {
+          serviceDescription = serviceDescription || value.summary;
+        }
+        if (typeof value.contractType === 'string') {
+          lineOfService = lineOfService || value.contractType;
+        }
+        if (Array.isArray(value.keyPoints)) {
+          extractedKeywords = [...extractedKeywords, ...value.keyPoints];
+        }
+        break;
+    }
+  }
+
+  // Also check contract metadata JSON field for additional data
+  const metadata = contract.metadata as Record<string, any> | null;
+  if (metadata) {
+    industry = industry || metadata.industry || metadata.sector || '';
+    lineOfService = lineOfService || metadata.category || metadata.serviceType || metadata.lineOfService || '';
+    if (Array.isArray(metadata.tags)) {
+      extractedKeywords = [...extractedKeywords, ...metadata.tags];
+    }
+    if (metadata.aiAnalysis?.suggestedCategory) {
+      lineOfService = lineOfService || metadata.aiAnalysis.suggestedCategory;
+    }
+  }
+
+  // Deduplicate and clean arrays
+  const uniqueKeywords = [...new Set(extractedKeywords.filter(Boolean).map(k => k.toString().trim()))];
+  const uniqueParties = [...new Set(parties.filter(Boolean).map(p => p.toString().trim()))];
+  const uniqueObligations = [...new Set(obligations.filter(Boolean).map(o => o.toString().trim()))];
+  const uniqueDeliverables = [...new Set(deliverables.filter(Boolean).map(d => d.toString().trim()))];
+  const uniqueServiceTypes = [...new Set([...serviceTypes, ...rateCategories].filter(Boolean).map(s => s.toString().trim()))];
+
+  // Add service types to keywords for better matching
+  if (uniqueServiceTypes.length > 0) {
+    extractedKeywords.push(...uniqueServiceTypes);
+  }
+
+  return {
+    supplierName: contract.supplierName || undefined,
+    contractType: contract.contractType || undefined,
+    totalValue: contract.totalValue ? Number(contract.totalValue) : undefined,
+    currency: contract.currency || undefined,
+    serviceDescription: serviceDescription || contract.description || undefined,
+    industry,
+    keywords: [...new Set([
+      ...(Array.isArray(contract.keywords) ? (contract.keywords as string[]).filter((k): k is string => typeof k === 'string') : []),
+      ...uniqueKeywords,
+    ])].filter(Boolean).slice(0, 30),
+    parties: uniqueParties.slice(0, 10),
+    obligations: uniqueObligations.slice(0, 10),
+    deliverables: uniqueDeliverables.slice(0, 10),
+    lineOfService: lineOfService || (uniqueServiceTypes.length > 0 ? uniqueServiceTypes[0] : ''),
+  };
+}
+
+/**
  * Get contract text for categorization
  */
 async function getContractText(
@@ -151,8 +373,11 @@ async function getContractText(
     orderBy: { createdAt: "desc" },
   });
 
-  if (artifact?.content) {
-    return artifact.content;
+  if (artifact?.value && typeof artifact.value === 'string') {
+    return artifact.value;
+  }
+  if (artifact?.value && typeof artifact.value === 'object' && 'content' in artifact.value) {
+    return String((artifact.value as Record<string, unknown>).content);
   }
 
   // Fallback to contract metadata
@@ -175,7 +400,7 @@ async function getContractText(
     contract.contractTitle,
     contract.description,
     contract.rawText,
-    contract.keywords?.join(" "),
+    Array.isArray(contract.keywords) ? contract.keywords.join(" ") : null,
   ].filter(Boolean);
 
   return parts.join("\n\n");
@@ -215,7 +440,7 @@ async function categorizeByKeywords(
     return null;
   }
 
-  const best = scores[0];
+  const best = scores[0]!;
   const alternatives = scores.slice(1, 4).map((s) => ({
     category: s.category.name,
     categoryId: s.category.id,
@@ -240,11 +465,24 @@ async function categorizeByKeywords(
 // ============================================================================
 
 /**
- * Build prompt for AI categorization
+ * Build prompt for AI categorization using extracted metadata
  */
 function buildCategorizationPrompt(
   text: string,
-  categories: TaxonomyCategory[]
+  categories: TaxonomyCategory[],
+  extractedMetadata?: {
+    supplierName?: string;
+    contractType?: string;
+    totalValue?: number;
+    currency?: string;
+    serviceDescription?: string;
+    industry?: string;
+    keywords?: string[];
+    parties?: string[];
+    obligations?: string[];
+    deliverables?: string[];
+    lineOfService?: string;
+  }
 ): string {
   const flatCategories = flattenCategories([...categories]);
   
@@ -265,35 +503,92 @@ function buildCategorizationPrompt(
     })
     .join("\n\n");
 
+  // Build extracted metadata section for AI context
+  let metadataSection = '';
+  if (extractedMetadata) {
+    const metadataParts: string[] = [];
+    
+    if (extractedMetadata.supplierName) {
+      metadataParts.push(`- Supplier/Vendor: ${extractedMetadata.supplierName}`);
+    }
+    if (extractedMetadata.contractType) {
+      metadataParts.push(`- Contract Type: ${extractedMetadata.contractType}`);
+    }
+    if (extractedMetadata.totalValue && extractedMetadata.currency) {
+      metadataParts.push(`- Contract Value: ${extractedMetadata.currency} ${extractedMetadata.totalValue.toLocaleString()}`);
+    }
+    if (extractedMetadata.lineOfService) {
+      metadataParts.push(`- Line of Service: ${extractedMetadata.lineOfService}`);
+    }
+    if (extractedMetadata.industry) {
+      metadataParts.push(`- Industry/Sector: ${extractedMetadata.industry}`);
+    }
+    if (extractedMetadata.serviceDescription) {
+      metadataParts.push(`- Service Description: ${extractedMetadata.serviceDescription.substring(0, 500)}`);
+    }
+    if (extractedMetadata.parties && extractedMetadata.parties.length > 0) {
+      metadataParts.push(`- Parties Involved: ${extractedMetadata.parties.join(", ")}`);
+    }
+    if (extractedMetadata.deliverables && extractedMetadata.deliverables.length > 0) {
+      metadataParts.push(`- Key Deliverables: ${extractedMetadata.deliverables.slice(0, 5).join("; ")}`);
+    }
+    if (extractedMetadata.obligations && extractedMetadata.obligations.length > 0) {
+      metadataParts.push(`- Key Obligations: ${extractedMetadata.obligations.slice(0, 5).join("; ")}`);
+    }
+    if (extractedMetadata.keywords && extractedMetadata.keywords.length > 0) {
+      metadataParts.push(`- Extracted Keywords: ${extractedMetadata.keywords.join(", ")}`);
+    }
+
+    if (metadataParts.length > 0) {
+      metadataSection = `
+## AI-Extracted Contract Information:
+${metadataParts.join("\n")}
+
+Use the above extracted information as PRIMARY signals for categorization. The supplier name, service description, line of service, and deliverables are especially important for determining the correct category.
+`;
+    }
+  }
+
   // Truncate text if too long
-  const maxTextLength = 8000;
+  const maxTextLength = 6000; // Reduced to make room for metadata
   const truncatedText =
     text.length > maxTextLength
       ? text.substring(0, maxTextLength) + "...[truncated]"
       : text;
 
-  return `You are a contract classification expert. Analyze the following contract text and categorize it into one of the provided categories.
+  return `You are a contract classification expert. Analyze the following contract and categorize it into the most appropriate category.
 
 ## Available Categories:
 ${categoryList}
-
-## Contract Text:
+${metadataSection}
+## Contract Text Sample:
 ${truncatedText}
 
-## Instructions:
-1. Read the contract text carefully
-2. Consider the subject matter, parties involved, and contractual obligations
-3. Match the contract to the most appropriate category from the list above
-4. If the contract could fit multiple categories, choose the most specific one
-5. Provide a confidence score (0-100) for your categorization
-6. List up to 3 alternative categories if applicable
+## Classification Instructions:
+1. **PRIORITIZE the AI-extracted information** (supplier name, service description, line of service, deliverables) over raw text
+2. Match the contract to the most SPECIFIC and APPROPRIATE category based on:
+   - The type of services/products being provided
+   - The industry or business domain
+   - The supplier/vendor's typical business area
+3. Consider common category patterns:
+   - Software, IT, Technology contracts → IT & Technology, IT Services
+   - Consulting, Advisory services → Professional Services, Consulting
+   - Marketing, Advertising, PR → Marketing & Communications
+   - Legal services → Legal, Corporate Legal
+   - Construction, Facilities → Facilities, Real Estate
+   - Manufacturing, Equipment → Manufacturing, Industrial
+   - Insurance policies → Insurance
+   - HR, Staffing, Recruiting → Human Resources
+4. If deliverables mention software development, cloud services, or technology → IT category
+5. If deliverables mention consulting, strategy, advisory → Professional Services
+6. Provide a confidence score (0-100) based on how clearly the contract fits the category
 
 ## Response Format (JSON):
 {
   "category": "Category Name",
   "categoryPath": "/Parent/Child/Category",
   "confidence": 85,
-  "reasoning": "Brief explanation of why this category was chosen",
+  "reasoning": "Brief explanation citing specific extracted data that led to this categorization",
   "alternativeCategories": [
     {"category": "Alternative 1", "confidence": 60},
     {"category": "Alternative 2", "confidence": 45}
@@ -304,18 +599,31 @@ Respond with ONLY the JSON object, no additional text.`;
 }
 
 /**
- * Categorize using AI (OpenAI)
+ * Categorize using AI (OpenAI) with extracted metadata
  */
 async function categorizeByAI(
   text: string,
-  categories: TaxonomyCategory[]
+  categories: TaxonomyCategory[],
+  extractedMetadata?: {
+    supplierName?: string;
+    contractType?: string;
+    totalValue?: number;
+    currency?: string;
+    serviceDescription?: string;
+    industry?: string;
+    keywords?: string[];
+    parties?: string[];
+    obligations?: string[];
+    deliverables?: string[];
+    lineOfService?: string;
+  }
 ): Promise<CategorizationResult | null> {
   if (!openai) {
     console.warn("OpenAI client not initialized, skipping AI categorization");
     return null;
   }
 
-  const prompt = buildCategorizationPrompt(text, categories);
+  const prompt = buildCategorizationPrompt(text, categories, extractedMetadata);
 
   try {
     const response = await openai.chat({
@@ -516,12 +824,35 @@ export async function categorizeContract(
       };
     }
 
-    // Try AI categorization first
-    let result = await categorizeByAI(fullText, categoryTree);
+    // Get AI-extracted metadata for smarter categorization
+    console.log(`📊 Fetching AI-extracted metadata for contract ${contractId}...`);
+    const extractedMetadata = await getExtractedMetadata(contractId, tenantId);
+    
+    if (extractedMetadata.supplierName || extractedMetadata.serviceDescription || extractedMetadata.lineOfService) {
+      console.log(`✅ Found extracted metadata:`, {
+        supplier: extractedMetadata.supplierName,
+        lineOfService: extractedMetadata.lineOfService,
+        industry: extractedMetadata.industry,
+        keywordsCount: extractedMetadata.keywords?.length || 0,
+      });
+    }
 
-    // Fallback to keyword matching
+    // Try AI categorization first (with extracted metadata for better accuracy)
+    let result = await categorizeByAI(fullText, categoryTree, extractedMetadata);
+
+    // Fallback to keyword matching (also use extracted keywords)
     if (!result) {
-      result = await categorizeByKeywords(fullText, categoryTree);
+      // Enhance text with extracted keywords for better keyword matching
+      const enhancedText = [
+        fullText,
+        extractedMetadata.serviceDescription,
+        extractedMetadata.lineOfService,
+        extractedMetadata.industry,
+        ...(extractedMetadata.keywords || []),
+        ...(extractedMetadata.deliverables || []),
+      ].filter(Boolean).join(' ');
+      
+      result = await categorizeByKeywords(enhancedText, categoryTree);
     }
 
     if (!result) {

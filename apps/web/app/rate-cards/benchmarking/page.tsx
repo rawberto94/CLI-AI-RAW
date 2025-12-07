@@ -151,6 +151,7 @@ export default function RateBenchmarkingPage() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Advanced Filters */}
       <AdvancedFilters 

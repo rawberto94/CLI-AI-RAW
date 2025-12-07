@@ -11,6 +11,28 @@ import { useState, useCallback, useMemo } from 'react';
 // Types
 // ============================================================================
 
+// Alias types for backward compatibility with use-contracts-page
+export interface SelectionState {
+  selectedIds: Set<string>;
+  selectedCount: number;
+  isAllSelected: boolean;
+  isSomeSelected: boolean;
+  lastSelectedId?: string | null;
+}
+
+export interface SelectionActions {
+  select: (id: string) => void;
+  deselect: (id: string) => void;
+  toggle: (id: string) => void;
+  toggleAll: (allIds: string[]) => void;
+  selectAll: (allIds: string[]) => void;
+  deselectAll: () => void;
+  selectRange: (fromId: string, toId: string, allIds: string[]) => void;
+  setSelection: (ids: string[]) => void;
+  isSelected: (id: string) => boolean;
+  getSelectedIds: () => string[];
+}
+
 export interface UseContractSelectionOptions {
   /** Maximum number of items that can be selected */
   maxSelection?: number;

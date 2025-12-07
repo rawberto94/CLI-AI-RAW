@@ -6,9 +6,13 @@ import React from 'react';
 
 export interface CalendarProps {
   mode?: 'single' | 'multiple' | 'range';
-  selected?: Date | Date[];
-  onSelect?: (date: Date | Date[] | undefined) => void;
+  selected?: Date | Date[] | { from?: Date; to?: Date } | any;
+  onSelect?: (date: Date | Date[] | { from?: Date; to?: Date } | undefined) => void;
   className?: string;
+  initialFocus?: boolean;
+  disabled?: boolean | ((date: Date) => boolean);
+  defaultMonth?: Date;
+  numberOfMonths?: number;
 }
 
 export function Calendar({ mode = 'single', selected, onSelect, className }: CalendarProps) {

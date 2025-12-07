@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 // Base Skeleton
 // ============================================================================
 
-interface SkeletonProps {
+interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   className?: string;
   /** Animation variant */
   variant?: "pulse" | "wave" | "none";
@@ -36,9 +36,11 @@ export function Skeleton({
   className,
   variant = "pulse",
   shape = "rectangle",
+  ...props
 }: SkeletonProps) {
   return (
     <div
+      {...props}
       className={cn(
         "bg-gray-200 dark:bg-gray-700",
         variant === "pulse" && "animate-pulse",

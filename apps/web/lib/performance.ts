@@ -71,7 +71,7 @@ export function reportWebVitals(onReport: VitalsReporter): void {
   if (typeof window === "undefined") return;
 
   // Dynamically import web-vitals to avoid SSR issues
-  import("web-vitals").then(({ onCLS, onFID, onFCP, onLCP, onTTFB, onINP }) => {
+  import("web-vitals").then(({ onCLS, onFCP, onLCP, onTTFB, onINP }) => {
     const reporter = (metric: { name: string; value: number; delta: number; id: string }) => {
       const webVitalMetric: WebVitalMetric = {
         name: metric.name as WebVitalMetric["name"],
@@ -85,7 +85,7 @@ export function reportWebVitals(onReport: VitalsReporter): void {
     };
 
     onCLS(reporter);
-    onFID(reporter);
+    // Note: onFID was deprecated in web-vitals v5, replaced by onINP
     onFCP(reporter);
     onLCP(reporter);
     onTTFB(reporter);
@@ -180,10 +180,11 @@ export function getPerformanceSummary(): Record<string, { count: number; avg: nu
       };
     }
     
-    summary[entry.name].count++;
-    summary[entry.name].total += entry.duration;
-    summary[entry.name].min = Math.min(summary[entry.name].min, entry.duration);
-    summary[entry.name].max = Math.max(summary[entry.name].max, entry.duration);
+    const summaryEntry = summary[entry.name]!;
+    summaryEntry.count++;
+    summaryEntry.total += entry.duration;
+    summaryEntry.min = Math.min(summaryEntry.min, entry.duration);
+    summaryEntry.max = Math.max(summaryEntry.max, entry.duration);
   }
   
   return Object.fromEntries(

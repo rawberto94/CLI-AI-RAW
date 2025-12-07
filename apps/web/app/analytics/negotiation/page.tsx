@@ -181,7 +181,7 @@ export default function NegotiationPrepPage() {
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Suppliers</SelectItem>
+                      <SelectItem value="__all__">All Suppliers</SelectItem>
                       <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
                       <SelectItem value="SUP002">Global IT Services</SelectItem>
                       <SelectItem value="SUP003">Innovation Partners</SelectItem>
@@ -197,7 +197,7 @@ export default function NegotiationPrepPage() {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="__all__">All Categories</SelectItem>
                   <SelectItem value="Software Development">Software Development</SelectItem>
                   <SelectItem value="IT Services">IT Services</SelectItem>
                   <SelectItem value="Consulting">Consulting</SelectItem>
@@ -214,6 +214,7 @@ export default function NegotiationPrepPage() {
           </div>
         </CardContent>
       </Card>
+        </motion.div>
 
       {/* Loading State */}
       {loading && (

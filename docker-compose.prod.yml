@@ -109,7 +109,7 @@ services:
   # Background workers (scaled for bulk processing)
   workers:
     image: ${WORKERS_IMAGE:-ghcr.io/yourorg/cli-ai-raw/workers:latest}
-    container_name: contract-intelligence-workers
+    # Note: container_name removed to allow replicas scaling
     restart: unless-stopped
     deploy:
       replicas: ${WORKER_REPLICAS:-3}

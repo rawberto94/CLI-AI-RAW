@@ -210,7 +210,7 @@ export function QuickActionsPanel({
       icon: Brain,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50 hover:bg-purple-100',
-      onClick: () => onAnalyze?.() || toast.info('AI analysis started'),
+      onClick: () => { if (onAnalyze) onAnalyze(); else toast.info('AI analysis started'); },
       isPremium: true,
     },
     {
@@ -220,7 +220,7 @@ export function QuickActionsPanel({
       icon: Share2,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50 hover:bg-blue-100',
-      onClick: () => onShare?.(),
+      onClick: () => { if (onShare) onShare(); },
     },
     {
       id: 'download',
@@ -229,7 +229,7 @@ export function QuickActionsPanel({
       icon: Download,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50 hover:bg-emerald-100',
-      onClick: () => onDownload?.() || toast.info('Download started'),
+      onClick: () => { if (onDownload) onDownload(); else toast.info('Download started'); },
     },
   ];
 
@@ -257,7 +257,7 @@ export function QuickActionsPanel({
       icon: Send,
       color: 'text-amber-600',
       bgColor: 'bg-amber-50 hover:bg-amber-100',
-      onClick: () => onApproval?.(),
+      onClick: () => { if (onApproval) onApproval(); },
       disabled: contractStatus === 'approved',
       badge: contractStatus === 'approved' ? 'Approved' : undefined,
     },
@@ -267,7 +267,7 @@ export function QuickActionsPanel({
       icon: Bell,
       color: 'text-rose-600',
       bgColor: 'bg-rose-50 hover:bg-rose-100',
-      onClick: () => onReminder?.() || toast.info('Reminder dialog opened'),
+      onClick: () => { if (onReminder) onReminder(); else toast.info('Reminder dialog opened'); },
     },
   ];
 

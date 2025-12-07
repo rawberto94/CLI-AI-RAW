@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 // Types
 // ============================================================================
 
-export interface KeyboardShortcut {
+export interface ContractsKeyboardShortcut {
   key: string;
   description: string;
   category: 'navigation' | 'selection' | 'actions' | 'filters' | 'view';
@@ -25,6 +25,9 @@ export interface KeyboardShortcut {
   };
   action: () => void;
 }
+
+// Alias for backward compatibility
+type KeyboardShortcut = ContractsKeyboardShortcut;
 
 export interface UseContractsKeyboardShortcutsOptions {
   // Navigation
@@ -55,9 +58,12 @@ export interface UseContractsKeyboardShortcutsOptions {
 }
 
 export interface UseContractsKeyboardShortcutsResult {
-  shortcuts: KeyboardShortcut[];
-  getShortcutLabel: (shortcut: KeyboardShortcut) => string;
+  shortcuts: ContractsKeyboardShortcut[];
+  getShortcutLabel: (shortcut: ContractsKeyboardShortcut) => string;
 }
+
+// Alias for backward compatibility with consumers expecting this name
+export type KeyboardShortcutHandlers = UseContractsKeyboardShortcutsOptions;
 
 // ============================================================================
 // Helper Functions
@@ -119,7 +125,7 @@ export function useContractsKeyboardShortcuts(
   const router = useRouter();
 
   // Define shortcuts
-  const shortcuts = useMemo<KeyboardShortcut[]>(() => [
+  const shortcuts = useMemo<ContractsKeyboardShortcut[]>(() => [
     // Navigation
     {
       key: 'n',
@@ -269,7 +275,7 @@ export function useContractsKeyboardShortcuts(
   }, [enabled, handleKeyDown]);
 
   // Get human-readable shortcut label
-  const getShortcutLabel = useCallback((shortcut: KeyboardShortcut): string => {
+  const getShortcutLabel = useCallback((shortcut: ContractsKeyboardShortcut): string => {
     const modifier = getModifierLabel(shortcut.modifiers);
     const key = formatKey(shortcut.key);
     
@@ -286,8 +292,8 @@ export function useContractsKeyboardShortcuts(
 // Keyboard Shortcuts Help Component Data
 // ============================================================================
 
-export function getShortcutsByCategory(shortcuts: KeyboardShortcut[]): Record<string, KeyboardShortcut[]> {
-  const categories: Record<string, KeyboardShortcut[]> = {
+export function getShortcutsByCategory(shortcuts: ContractsKeyboardShortcut[]): Record<string, ContractsKeyboardShortcut[]> {
+  const categories: Record<string, ContractsKeyboardShortcut[]> = {
     navigation: [],
     selection: [],
     actions: [],
@@ -296,7 +302,10 @@ export function getShortcutsByCategory(shortcuts: KeyboardShortcut[]): Record<st
   };
 
   for (const shortcut of shortcuts) {
-    categories[shortcut.category].push(shortcut);
+    const category = categories[shortcut.category];
+    if (category) {
+      category.push(shortcut);
+    }
   }
 
   return categories;

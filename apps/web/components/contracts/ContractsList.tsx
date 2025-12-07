@@ -119,7 +119,7 @@ const getStatusColor = (status: string): string => {
     cancelled: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
     processing: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
   };
-  return colors[status.toLowerCase()] || colors.draft;
+  return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
 };
 
 const getDaysUntilExpiration = (endDate?: string | Date): number | null => {
@@ -305,7 +305,7 @@ const CompactRow = memo(function CompactRow({
       {contract.category && (
         <div className="flex-shrink-0 hidden sm:block">
           <CategoryBadge
-            categoryName={contract.category.name}
+            category={contract.category.name}
             color={contract.category.color}
             size="sm"
           />
@@ -421,7 +421,7 @@ const ContractCard = memo(function ContractCard({
               </Badge>
               {contract.category && (
                 <CategoryBadge
-                  categoryName={contract.category.name}
+                  category={contract.category.name}
                   color={contract.category.color}
                   size="sm"
                 />
@@ -560,7 +560,7 @@ const TimelineItem = memo(function TimelineItem({
           </div>
           {contract.category && (
             <CategoryBadge
-              categoryName={contract.category.name}
+              category={contract.category.name}
               color={contract.category.color}
               size="sm"
             />
@@ -725,7 +725,7 @@ const KanbanColumn = memo(function KanbanColumn({
                     {contract.category && (
                       <div className="mt-2">
                         <CategoryBadge
-                          categoryName={contract.category.name}
+                          category={contract.category.name}
                           color={contract.category.color}
                           size="sm"
                         />
@@ -781,7 +781,10 @@ const KanbanView = memo(function KanbanView({
         grouped[status].push(contract);
       } else {
         // Put unknown statuses in draft
-        grouped['draft'].push(contract);
+        const draftGroup = grouped['draft'];
+        if (draftGroup) {
+          draftGroup.push(contract);
+        }
       }
     });
     

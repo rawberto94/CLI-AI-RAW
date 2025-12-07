@@ -85,18 +85,23 @@ const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; rene
   const dataMode = typeof window !== 'undefined' ? localStorage.getItem('dataMode') || 'real' : 'real';
   const headers = { 'x-data-mode': dataMode };
   
-  const [statsRes, renewalsRes] = await Promise.all([
-    fetch('/api/dashboard/stats', { headers }),
-    fetch('/api/dashboard/renewals?days=90', { headers })
-  ]);
-  
-  const statsData = await statsRes.json();
-  const renewalsData = await renewalsRes.json();
-  
-  return {
-    stats: statsData.success ? statsData.data : null,
-    renewals: renewalsData.success ? renewalsData.data : []
-  };
+  try {
+    const [statsRes, renewalsRes] = await Promise.all([
+      fetch('/api/dashboard/stats', { headers }),
+      fetch('/api/dashboard/renewals?days=90', { headers })
+    ]);
+    
+    const statsData = statsRes.ok ? await statsRes.json() : { success: false };
+    const renewalsData = renewalsRes.ok ? await renewalsRes.json() : { success: false };
+    
+    return {
+      stats: statsData.success ? statsData.data : null,
+      renewals: renewalsData.success ? renewalsData.data : []
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    return { stats: null, renewals: [] };
+  }
 };
 
 export default function DashboardPage() {
@@ -114,20 +119,17 @@ export default function DashboardPage() {
 
   // Real-time updates for dashboard
   const eventHandlers = useMemo(() => ({
-    'contract:created': (eventData: any) => {
-      console.log('[Dashboard] New contract created:', eventData);
+    'contract:created': () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    'contract:completed': (eventData: any) => {
-      console.log('[Dashboard] Contract completed:', eventData);
+    'contract:completed': () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    'job:progress': (eventData: any) => {
-      console.log('[Dashboard] Job progress update:', eventData);
+    'job:progress': () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    'notification': (eventData: any) => {
-      console.log('[Dashboard] Notification received:', eventData);
+    'notification': () => {
+      // Handle notification silently
     },
   }), [queryClient]);
 

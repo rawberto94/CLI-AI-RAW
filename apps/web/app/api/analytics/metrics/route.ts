@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Real data from database
+    // Real data from database (excluding DELETED contracts)
     const [
       totalContracts,
       valueAggregate,
@@ -25,17 +25,19 @@ export async function GET(request: NextRequest) {
       artifacts,
       upcomingContracts
     ] = await Promise.all([
-      prisma.contract.count(),
+      prisma.contract.count({ where: { status: { not: 'DELETED' } } }),
       prisma.contract.aggregate({
+        where: { status: { not: 'DELETED' } },
         _sum: { totalValue: true }
       }),
       prisma.contract.groupBy({
         by: ['supplierName'],
-        where: { supplierName: { not: null } }
+        where: { supplierName: { not: null }, status: { not: 'DELETED' } }
       }),
       prisma.artifact.count(),
       prisma.contract.count({
         where: {
+          status: { not: 'DELETED' },
           endDate: {
             gte: new Date(),
             lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days

@@ -51,6 +51,20 @@ interface UploadFile {
 
 // OCR engine configurations
 const OCR_ENGINES = {
+  azure: {
+    id: 'azure',
+    name: 'Azure Document AI',
+    description: 'Enterprise security, Swiss/EU data residency, GDPR compliant',
+    icon: Shield,
+    color: 'from-blue-500 to-cyan-600',
+    bgColor: 'bg-blue-50',
+    textColor: 'text-blue-700',
+    borderColor: 'border-blue-200',
+    baseTime: 12,
+    perMbTime: 6,
+    accuracy: 97,
+    badge: 'Enterprise'
+  },
   gpt4: {
     id: 'gpt4',
     name: 'GPT-4 Vision',
@@ -81,8 +95,8 @@ const OCR_ENGINES = {
   },
   tesseract: {
     id: 'tesseract',
-    name: 'Tesseract',
-    description: 'Basic extraction, fastest speed',
+    name: 'Tesseract Local',
+    description: 'No data leaves your infrastructure',
     icon: Shield,
     color: 'from-slate-500 to-gray-600',
     bgColor: 'bg-slate-50',
@@ -91,7 +105,7 @@ const OCR_ENGINES = {
     baseTime: 5,
     perMbTime: 3,
     accuracy: 85,
-    badge: 'Basic'
+    badge: 'Privacy'
   }
 } as const;
 
@@ -232,9 +246,11 @@ export default function UploadPage() {
           } else {
             // Update progress
             const progressMap: Record<string, number> = {
-              'TEXT_EXTRACTION': 30,
-              'ARTIFACT_GENERATION': 60,
-              'RAG_INDEXING': 80,
+              'TEXT_EXTRACTION': 20,
+              'ARTIFACT_GENERATION': 40,
+              'RAG_INDEXING': 60,
+              'METADATA_EXTRACTION': 80,
+              'CATEGORIZATION': 95,
               'COMPLETED': 100
             }
             const progress = progressMap[statusData.currentStage] || 50

@@ -158,7 +158,7 @@ export default function SupplierAnalyticsPage() {
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Suppliers</SelectItem>
+                    <SelectItem value="__all__">All Suppliers</SelectItem>
                     <SelectItem value="SUP001">TechCorp Solutions</SelectItem>
                     <SelectItem value="SUP002">Global IT Services</SelectItem>
                     <SelectItem value="SUP003">Innovation Partners</SelectItem>
@@ -188,6 +188,7 @@ export default function SupplierAnalyticsPage() {
           </div>
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Loading State */}
       {loading && (
@@ -428,6 +429,7 @@ export default function SupplierAnalyticsPage() {
           </Card>
         </>
       )}
+      </div>
     </div>
   );
 }

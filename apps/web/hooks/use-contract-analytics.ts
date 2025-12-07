@@ -11,7 +11,7 @@ import { useMemo, useCallback } from 'react';
 // Types
 // ============================================================================
 
-export interface Contract {
+export interface AnalyticsContract {
   id: string;
   title: string;
   status: 'active' | 'pending' | 'expired' | 'draft' | 'cancelled';
@@ -52,7 +52,7 @@ export interface ExpirationForecast {
   month: string;
   count: number;
   value: number;
-  contracts: Contract[];
+  contracts: AnalyticsContract[];
 }
 
 export interface RiskDistribution {
@@ -113,10 +113,10 @@ export interface UseContractAnalyticsReturn {
   criticalInsights: ContractInsight[];
   
   // Utility functions
-  getContractsByMonth: (date: Date) => Contract[];
-  getExpiringBetween: (startDate: Date, endDate: Date) => Contract[];
-  getHighValueContracts: (threshold?: number) => Contract[];
-  getHighRiskContracts: () => Contract[];
+  getContractsByMonth: (date: Date) => AnalyticsContract[];
+  getExpiringBetween: (startDate: Date, endDate: Date) => AnalyticsContract[];
+  getHighValueContracts: (threshold?: number) => AnalyticsContract[];
+  getHighRiskContracts: () => AnalyticsContract[];
 }
 
 // ============================================================================
@@ -161,7 +161,7 @@ function isThisQuarter(date: Date): boolean {
 // Hook Implementation
 // ============================================================================
 
-export function useContractAnalytics(contracts: Contract[]): UseContractAnalyticsReturn {
+export function useContractAnalytics(contracts: AnalyticsContract[]): UseContractAnalyticsReturn {
   
   // ============================================================================
   // Summary Stats
@@ -308,7 +308,7 @@ export function useContractAnalytics(contracts: Contract[]): UseContractAnalytic
   // ============================================================================
   
   const expirationForecast = useMemo((): ExpirationForecast[] => {
-    const forecastMap = new Map<string, { count: number; value: number; contracts: Contract[] }>();
+    const forecastMap = new Map<string, { count: number; value: number; contracts: AnalyticsContract[] }>();
     
     // Get next 6 months
     const now = new Date();
@@ -557,7 +557,7 @@ export function useContractAnalytics(contracts: Contract[]): UseContractAnalytic
   // Utility Functions
   // ============================================================================
   
-  const getContractsByMonth = useCallback((date: Date): Contract[] => {
+  const getContractsByMonth = useCallback((date: Date): AnalyticsContract[] => {
     const targetMonth = getMonthKey(date);
     return contracts.filter((c) => {
       const createdDate = parseDate(c.createdAt);
@@ -565,20 +565,20 @@ export function useContractAnalytics(contracts: Contract[]): UseContractAnalytic
     });
   }, [contracts]);
 
-  const getExpiringBetween = useCallback((startDate: Date, endDate: Date): Contract[] => {
+  const getExpiringBetween = useCallback((startDate: Date, endDate: Date): AnalyticsContract[] => {
     return contracts.filter((c) => {
       const expDate = parseDate(c.endDate);
       return expDate && expDate >= startDate && expDate <= endDate && c.status === 'active';
     });
   }, [contracts]);
 
-  const getHighValueContracts = useCallback((threshold: number = 100000): Contract[] => {
+  const getHighValueContracts = useCallback((threshold: number = 100000): AnalyticsContract[] => {
     return contracts
       .filter((c) => (c.value || 0) >= threshold)
       .sort((a, b) => (b.value || 0) - (a.value || 0));
   }, [contracts]);
 
-  const getHighRiskContracts = useCallback((): Contract[] => {
+  const getHighRiskContracts = useCallback((): AnalyticsContract[] => {
     return contracts.filter((c) => c.riskLevel === 'high');
   }, [contracts]);
 

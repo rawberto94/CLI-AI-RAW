@@ -178,7 +178,7 @@ export default function SavingsPipelinePage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="__all__">All Categories</SelectItem>
                   <SelectItem value="Rate Optimization">Rate Optimization</SelectItem>
                   <SelectItem value="Contract Consolidation">Contract Consolidation</SelectItem>
                   <SelectItem value="Volume Discounts">Volume Discounts</SelectItem>
@@ -194,7 +194,7 @@ export default function SavingsPipelinePage() {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="__all__">All Statuses</SelectItem>
                   <SelectItem value="identified">Identified</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
                   <SelectItem value="realized">Realized</SelectItem>

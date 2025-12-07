@@ -11,8 +11,14 @@
 // ============================================
 
 // Get tenant ID from environment or default (client-side)
+// Priority: viewAsTenantId (admin viewing as client) > localStorage > env > default
 export function getTenantId(): string {
   if (typeof window !== "undefined") {
+    // First check if admin is viewing as a client
+    const viewAsTenantId = sessionStorage.getItem("viewAsTenantId");
+    if (viewAsTenantId) {
+      return viewAsTenantId;
+    }
     // Client-side: check localStorage or use default
     return (
       localStorage.getItem("tenantId") ||
@@ -22,6 +28,18 @@ export function getTenantId(): string {
   }
   // Server-side: use environment variable
   return process.env.NEXT_PUBLIC_TENANT_ID || "demo";
+}
+
+// Check if currently viewing as a different tenant (admin mode)
+export function isViewingAsClient(): boolean {
+  if (typeof window === "undefined") return false;
+  return !!sessionStorage.getItem("viewAsTenantId");
+}
+
+// Get the tenant name when viewing as client
+export function getViewAsClientName(): string | null {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem("viewAsTenantName");
 }
 
 // Set tenant ID (client-side only)
@@ -83,4 +101,6 @@ export default {
   ensureTenantId,
   tenantHeaders,
   getTenantConfig,
+  isViewingAsClient,
+  getViewAsClientName,
 };

@@ -232,19 +232,20 @@ export default function ProcurementAnalyticsHub() {
                             <span>{feature}</span>
                           </div>
                         ))}
-                  </div>
-                  <Link href={module.route}>
-                    <Button className="w-full" variant="outline">
-                      Open Module
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
+                      </div>
+                      <Link href={module.route}>
+                        <Button className="w-full" variant="outline">
+                          Open Module
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
 
       {/* Getting Started */}
       <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">

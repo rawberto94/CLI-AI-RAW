@@ -164,12 +164,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     this.setState({ errorInfo });
     this.props.onError?.(error, errorInfo);
   }
 
-  componentDidUpdate(prevProps: ErrorBoundaryProps): void {
+  override componentDidUpdate(prevProps: ErrorBoundaryProps): void {
     // Reset error state if resetKeys change
     if (this.state.hasError && this.props.resetKeys) {
       const hasKeyChanged = this.props.resetKeys.some(
@@ -190,7 +190,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     });
   };
 
-  render(): ReactNode {
+  override render(): ReactNode {
     const { hasError, error, errorInfo } = this.state;
     const { children, fallback, fallbackRender, showDetails } = this.props;
 

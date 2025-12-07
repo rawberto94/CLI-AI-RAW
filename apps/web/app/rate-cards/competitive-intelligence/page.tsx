@@ -295,6 +295,7 @@ export default function CompetitiveIntelligencePage() {
           </Card>
         </motion.div>
       )}
+      </div>
     </div>
   );
 }

@@ -344,7 +344,7 @@ export default function ContractDetailPage() {
                 {overviewData.parties?.map((party: any, idx: number) => (
                   <div key={idx} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
                     <div className="p-2 bg-white rounded-lg shadow-sm">
-                      {party.role === 'Client' || party.role === 'Buyer' ? (
+                      {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
                         <Building className="h-5 w-5 text-blue-600" />
                       ) : (
                         <Users className="h-5 w-5 text-purple-600" />

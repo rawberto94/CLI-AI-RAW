@@ -97,7 +97,7 @@ const DEFAULT_SAVED_FILTERS: SavedFilter[] = [
     icon: '⏰',
     color: '#f59e0b',
     filters: {
-      expiringWithin: 30,
+      expirationFilters: ['30-days'],
     },
     isPinned: true,
     createdAt: new Date().toISOString(),
@@ -111,7 +111,7 @@ const DEFAULT_SAVED_FILTERS: SavedFilter[] = [
     icon: '🔴',
     color: '#ef4444',
     filters: {
-      riskLevel: ['high'],
+      riskFilters: ['high'],
     },
     isPinned: true,
     createdAt: new Date().toISOString(),

@@ -4,8 +4,15 @@
  * Centralized exports for contract management functionality
  */
 
-// Types
-export * from './types';
+// Types (excluding SavedFilter which is in saved-filters.ts)
+export {
+  type SortField,
+  type SortDirection,
+  type ViewMode,
+  type FilterState,
+  type ContractStatus,
+  type Contract,
+} from './types';
 
 // Constants
 export * from './constants';

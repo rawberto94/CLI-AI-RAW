@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,7 @@ const getMockShares = (documentId: string): ShareSettings[] => [
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get('documentId');
     const documentType = searchParams.get('documentType') || 'contract';
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = await getApiTenantId(request);
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     

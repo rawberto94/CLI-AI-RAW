@@ -146,7 +146,8 @@ export function FilterPresetsDropdown({
   }, [searchQuery, savedFilters]);
 
   const handleApplyPreset = (preset: QuickPreset) => {
-    onApplyPreset(preset.filters);
+    // Convert preset.filters to FilterState format
+    onApplyPreset(preset.filters as unknown as Partial<FilterState>);
     setOpen(false);
     setSearchQuery('');
   };

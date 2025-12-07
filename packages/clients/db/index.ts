@@ -1,6 +1,18 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { performance } from 'perf_hooks';
 
+// ============================================================================
+// ADVANCED ARCHITECTURE EXPORTS
+// Re-export all advanced database patterns for easier imports
+// ============================================================================
+
+export * from './src/advanced';
+
+// ============================================================================
+// LEGACY DATABASE MANAGER (maintained for backward compatibility)
+// For new code, prefer using EnhancedDatabaseManager from './src/advanced'
+// ============================================================================
+
 // Database configuration interface
 export interface DatabaseConfig {
   connectionPool: {

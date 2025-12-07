@@ -35,6 +35,7 @@ import { EnhancedArtifactViewer } from '@/components/contracts/EnhancedArtifactV
 import { useKeyboardShortcuts, type KeyboardShortcut } from '@/hooks/useKeyboardShortcuts'
 import { KeyboardShortcutsHelp } from '@/components/contracts/KeyboardShortcutsHelp'
 import { ArtifactEditor } from '@/components/contracts/ArtifactEditor'
+import { EnhancedArtifactEditor } from '@/components/contracts/EnhancedArtifactEditor'
 import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor'
 import { ArtifactHistory } from '@/components/contracts/ArtifactHistory'
 
@@ -93,7 +94,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
     startDate: contract?.startDate || overviewData?.contractDate || overviewData?.effectiveDate || 'N/A',
     endDate: contract?.endDate || overviewData?.expiryDate || overviewData?.endDate || 'N/A',
     totalValue: contract?.totalValue || overviewData?.totalValue || overviewData?.contractValue || 0,
-    supplier: contract?.supplier || overviewData?.parties?.find((p: any) => p.role === 'Supplier' || p.role === 'Vendor')?.name || 'N/A',
+    supplier: contract?.supplier || overviewData?.parties?.find((p: any) => ['Supplier', 'Vendor', 'Service Provider', 'Provider', 'Contractor', 'Seller'].includes(p.role))?.name || 'N/A',
   };
 
   // Define tab order for navigation
@@ -778,12 +779,34 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
 
     {/* Artifact Editor Dialog */}
     {editingArtifact && contract && (
-      <ArtifactEditor
-        artifact={editingArtifact}
-        contractId={contract.id}
-        onSave={handleSaveArtifact}
-        onCancel={handleCancelEdit}
-      />
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <CardContent className="p-6">
+            <EnhancedArtifactEditor
+              artifact={{
+                id: editingArtifact.id || '',
+                type: editingArtifact.type,
+                data: editingArtifact.data || {},
+                contractId: contract.id,
+                isEdited: editingArtifact.isEdited,
+                editCount: editingArtifact.editCount,
+                lastEditedAt: editingArtifact.lastEditedAt,
+                confidence: editingArtifact.confidence,
+              }}
+              contractId={contract.id}
+              onSave={() => {
+                handleSaveArtifact(editingArtifact)
+                handleCancelEdit()
+              }}
+              onCancel={handleCancelEdit}
+              showHistory={() => {
+                setHistoryArtifact({ id: editingArtifact.id || '', type: editingArtifact.type })
+                setShowHistory(true)
+              }}
+            />
+          </CardContent>
+        </Card>
+      </div>
     )}
 
     {/* Artifact History Dialog */}

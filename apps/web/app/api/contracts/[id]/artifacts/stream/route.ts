@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 /**
  * GET /api/contracts/[id]/artifacts/stream
@@ -10,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const contractId = params.id;
-  const tenantId = request.headers.get('x-tenant-id') || 'demo';
+  const tenantId = await getApiTenantId(request);
 
   console.log('[SSE] Stream requested:', { contractId, tenantId });
 

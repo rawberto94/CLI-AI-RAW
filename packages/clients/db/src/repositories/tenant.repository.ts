@@ -94,7 +94,7 @@ export class TenantRepository extends AbstractRepository<
     monthlyProcessed: number;
   }> {
     const [contractCount, userCount, usage] = await Promise.all([
-      this.prisma.contract.count({ where: { tenantId } }),
+      this.prisma.contract.count({ where: { tenantId, status: { not: 'DELETED' } } }),
       this.prisma.user.count({ 
         where: { 
           tenantId, 

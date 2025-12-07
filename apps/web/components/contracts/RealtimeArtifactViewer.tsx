@@ -57,6 +57,8 @@ const stageLabels: Record<string, string> = {
   'TEXT_EXTRACTION': 'Extracting text from document...',
   'RAG_INDEXING': 'Generating semantic embeddings...',
   'ARTIFACT_GENERATION': 'Generating AI artifacts...',
+  'METADATA_EXTRACTION': 'Extracting contract metadata...',
+  'CATEGORIZATION': 'Classifying contract type and risk...',
   'RATE_CARD_EXTRACTION': 'Extracting rate cards...',
   'METADATA_INITIALIZATION': 'Initializing metadata...',
   'COMPLETED': 'Processing complete!'

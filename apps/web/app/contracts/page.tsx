@@ -86,6 +86,8 @@ import {
   GanttChartSquare,
   Kanban,
   Target,
+  Database,
+  ArrowLeftRight,
 } from "lucide-react";
 import { ContractTimeline, type TimelineContract } from "@/components/contracts/ContractTimeline";
 import { ContractKanban, type KanbanContract } from "@/components/contracts/ContractKanban";
@@ -197,7 +199,10 @@ const CompactContractRow = memo(function CompactContractRow({
       <div className="hidden lg:block min-w-0">
         {contract.category ? (
           <CategoryBadge 
-            category={contract.category} 
+            category={contract.category.name} 
+            color={contract.category.color}
+            icon={contract.category.icon}
+            categoryPath={contract.category.path}
             size="sm"
           />
         ) : (
@@ -288,9 +293,10 @@ const CompactContractRow = memo(function CompactContractRow({
             <DropdownMenuItem onClick={onShare} className="cursor-pointer">
               <Share2 className="h-4 w-4 mr-2 text-slate-500" /> Share
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onApproval} className="cursor-pointer">
+            {/* Request Approval - Hidden for now, will be enabled in future */}
+            {/* <DropdownMenuItem onClick={onApproval} className="cursor-pointer">
               <ClipboardCheck className="h-4 w-4 mr-2 text-slate-500" /> Request Approval
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 cursor-pointer">
               <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -385,7 +391,10 @@ const ContractCard = memo(function ContractCard({
                 </p>
                 {contract.category && (
                   <CategoryBadge 
-                    category={contract.category} 
+                    category={contract.category.name}
+                    color={contract.category.color}
+                    icon={contract.category.icon}
+                    categoryPath={contract.category.path}
                     size="sm"
                   />
                 )}
@@ -496,9 +505,10 @@ const ContractCard = memo(function ContractCard({
               <DropdownMenuItem onClick={onDownload} className="cursor-pointer hover:bg-green-50">
                 <Download className="h-4 w-4 mr-2 text-green-600" /> Download
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onApproval} className="cursor-pointer hover:bg-blue-50">
+              {/* Request Approval - Hidden for now, will be enabled in future */}
+              {/* <DropdownMenuItem onClick={onApproval} className="cursor-pointer hover:bg-blue-50">
                 <ClipboardCheck className="h-4 w-4 mr-2 text-blue-600" /> Request Approval
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 cursor-pointer hover:bg-red-50">
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -541,12 +551,13 @@ const RISK_LEVELS = [
   { value: "high", label: "High Risk", range: [70, 100] },
 ];
 
-const APPROVAL_STATUSES = [
-  { value: "pending", label: "Pending Approval", icon: Clock, color: "text-amber-600" },
-  { value: "approved", label: "Approved", icon: CheckCircle, color: "text-green-600" },
-  { value: "rejected", label: "Rejected", icon: AlertTriangle, color: "text-red-600" },
-  { value: "none", label: "No Approval", icon: FileText, color: "text-slate-500" },
-];
+// Approval statuses - Hidden for now, will be enabled in future
+// const APPROVAL_STATUSES = [
+//   { value: "pending", label: "Pending Approval", icon: Clock, color: "text-amber-600" },
+//   { value: "approved", label: "Approved", icon: CheckCircle, color: "text-green-600" },
+//   { value: "rejected", label: "Rejected", icon: AlertTriangle, color: "text-red-600" },
+//   { value: "none", label: "No Approval", icon: FileText, color: "text-slate-500" },
+// ];
 
 // Value range presets
 const VALUE_RANGES = [
@@ -579,15 +590,29 @@ const EXPIRATION_FILTERS = [
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 // Quick filter presets
-const QUICK_PRESETS = [
+const QUICK_PRESETS: Array<{
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  filters: {
+    minValue?: number;
+    expirationDays?: number;
+    status?: string;
+    risk?: string;
+    createdDays?: number;
+    approval?: string;
+  };
+}> = [
   { id: 'high-value-expiring', label: 'High Value Expiring Soon', icon: Zap, color: 'text-amber-600',
     filters: { minValue: 100000, expirationDays: 30 } },
   { id: 'needs-attention', label: 'Needs Attention', icon: AlertTriangle, color: 'text-red-600',
     filters: { status: 'failed', risk: 'high' } },
   { id: 'recent-high-risk', label: 'Recent High Risk', icon: Shield, color: 'text-orange-600',
     filters: { createdDays: 30, risk: 'high' } },
-  { id: 'pending-approval', label: 'Pending Approval', icon: Clock, color: 'text-blue-600',
-    filters: { approval: 'pending' } },
+  // Pending Approval - Hidden for now, will be enabled in future
+  // { id: 'pending-approval', label: 'Pending Approval', icon: Clock, color: 'text-blue-600',
+  //   filters: { approval: 'pending' } },
 ];
 
 export default function ContractsPage() {
@@ -659,6 +684,11 @@ export default function ContractsPage() {
     error 
   } = useContracts({
     status: statusFilter === 'all' ? undefined : statusFilter,
+    page: currentPage,
+    limit: pageSize,
+    sortBy: sortField,
+    sortOrder: sortDirection,
+    search: searchQuery || undefined,
   });
   
   const crossModule = useCrossModuleInvalidation();
@@ -1112,12 +1142,10 @@ export default function ContractsPage() {
     });
   }, [filteredContracts, sortField, sortDirection]);
 
-  // Pagination
-  const totalPages = Math.ceil(sortedContracts.length / pageSize);
-  const paginatedContracts = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedContracts.slice(start, start + pageSize);
-  }, [sortedContracts, currentPage, pageSize]);
+  // Pagination - use server-side total
+  const totalPages = Math.ceil((contractsData?.total ?? 0) / pageSize);
+  // With server-side pagination, contracts are already the current page
+  const paginatedContracts = sortedContracts;
   
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -1389,6 +1417,19 @@ export default function ContractsPage() {
                   </div>
                 </TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button asChild variant="outline" size="sm" className="h-9">
+                    <Link href="/import/external-database">
+                      <Database className="h-4 w-4 mr-1.5" />
+                      Import from DB
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Import contracts from external database
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -1488,6 +1529,26 @@ export default function ContractsPage() {
                         <TooltipContent>Auto-categorize selected contracts with AI</TooltipContent>
                       </Tooltip>
                       
+                      {selectedContracts.size === 2 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700 text-white border-0 h-8"
+                              onClick={() => {
+                                const ids = Array.from(selectedContracts);
+                                router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
+                              }}
+                              disabled={isProcessingBulk}
+                            >
+                              <ArrowLeftRight className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1.5">Compare</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Compare selected contracts side-by-side</TooltipContent>
+                        </Tooltip>
+                      )}
+                      
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1545,7 +1606,7 @@ export default function ContractsPage() {
                   <div>
                     <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</p>
                     <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {Array.isArray(contracts) ? contracts.length : 0}
+                      {contractsData?.total ?? 0}
                     </p>
                     <p className="text-xs text-slate-400 mt-0.5">contracts</p>
                   </div>
@@ -1892,8 +1953,8 @@ export default function ContractsPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                {/* Approval Status Filters */}
-                <DropdownMenu>
+                {/* Approval Status Filters - Hidden for now, will be enabled in future */}
+                {/* <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
                       <ClipboardCheck className="h-4 w-4" />
@@ -1937,7 +1998,7 @@ export default function ContractsPage() {
                       </>
                     )}
                   </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu> */}
 
                 <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
 
@@ -2268,7 +2329,8 @@ export default function ContractsPage() {
                       </Button>
                     </Badge>
                   ))}
-                  {approvalFilters.map(approval => (
+                  {/* Approval filter badges - Hidden for now, will be enabled in future */}
+                  {/* {approvalFilters.map(approval => (
                     <Badge key={approval} className="bg-cyan-100 text-cyan-800 gap-1 pr-1 border-0">
                       <ClipboardCheck className="h-3 w-3" />
                       {APPROVAL_STATUSES.find(s => s.value === approval)?.label}
@@ -2281,7 +2343,7 @@ export default function ContractsPage() {
                         <X className="h-3 w-3" />
                       </Button>
                     </Badge>
-                  ))}
+                  ))} */}
                   {valueRangeFilter && (
                     <Badge className="bg-emerald-100 text-emerald-800 gap-1 pr-1 border-0">
                       <Banknote className="h-3 w-3" />
@@ -2495,8 +2557,8 @@ export default function ContractsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="font-medium text-slate-900">{sortedContracts.length}</span>
-              contract{sortedContracts.length !== 1 ? 's' : ''}
+              <span className="font-medium text-slate-900">{contractsData?.total ?? 0}</span>
+              contract{(contractsData?.total ?? 0) !== 1 ? 's' : ''}
               {hasActiveFilters && (
                 <Badge variant="secondary" className="text-xs">filtered</Badge>
               )}
@@ -2853,21 +2915,24 @@ export default function ContractsPage() {
                 contracts={paginatedContracts.map(contract => ({
                   id: contract.id,
                   title: contract.title || 'Untitled Contract',
-                  startDate: contract.effectiveDate ? new Date(contract.effectiveDate) : new Date(contract.createdAt),
+                  startDate: contract.effectiveDate ? new Date(contract.effectiveDate) : new Date(contract.createdAt || Date.now()),
                   endDate: contract.expirationDate ? new Date(contract.expirationDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-                  status: (contract.status || 'draft') as 'draft' | 'active' | 'pending' | 'expired' | 'terminated',
-                  party: contract.party || 'Unknown Party',
-                  value: contract.totalValue,
-                  milestones: contract.expirationDate ? [
+                  status: (contract.status || 'draft') as 'draft' | 'active' | 'pending' | 'expired' | 'expiring',
+                  supplierName: contract.parties?.supplier || 'Unknown Party',
+                  value: contract.value ?? undefined,
+                  events: contract.expirationDate ? [
                     {
+                      id: `${contract.id}-renewal`,
+                      contractId: contract.id,
+                      contractTitle: contract.title || 'Untitled Contract',
                       date: new Date(new Date(contract.expirationDate).setMonth(new Date(contract.expirationDate).getMonth() - 1)),
-                      label: 'Renewal Decision',
-                      type: 'warning' as const,
+                      type: 'renewal' as const,
+                      description: 'Renewal Decision',
+                      status: 'upcoming' as const,
                     }
                   ] : [],
-                  progress: contract.status === 'active' ? 50 : contract.status === 'expired' ? 100 : 10,
                 }))}
-                onContractClick={(contract) => router.push(`/contracts/${contract.id}`)}
+                onContractClick={(contractId) => router.push(`/contracts/${contractId}`)}
               />
             </motion.div>
           ) : (
@@ -2882,21 +2947,17 @@ export default function ContractsPage() {
                 contracts={paginatedContracts.map(contract => ({
                   id: contract.id,
                   title: contract.title || 'Untitled Contract',
-                  party: contract.party || 'Unknown Party',
-                  value: contract.totalValue,
+                  supplierName: contract.parties?.supplier || 'Unknown Party',
+                  totalValue: contract.value ?? undefined,
                   currency: 'USD',
-                  status: (contract.status || 'draft') as 'draft' | 'in-review' | 'pending-approval' | 'active' | 'expired',
-                  dueDate: contract.expirationDate ? new Date(contract.expirationDate) : undefined,
+                  status: (contract.status || 'draft') as 'draft' | 'pending_review' | 'in_negotiation' | 'pending_approval' | 'active' | 'expiring' | 'expired' | 'archived',
+                  expirationDate: contract.expirationDate ? new Date(contract.expirationDate) : undefined,
                   priority: 'medium' as const,
-                  tags: [contract.party || 'Contract'].slice(0, 2),
-                  assignee: {
-                    name: 'Contract Manager',
-                    avatar: undefined,
-                  },
+                  tags: [contract.parties?.supplier || 'Contract'].slice(0, 2),
                 }))}
-                onContractClick={(contract) => router.push(`/contracts/${contract.id}`)}
-                onStatusChange={(contractId, _oldStatus, newStatus) => {
-                  toast.success(`Contract moved to ${newStatus.replace('-', ' ')}`);
+                onContractClick={(contractId) => router.push(`/contracts/${contractId}`)}
+                onStatusChange={(contractId, newStatus) => {
+                  toast.success(`Contract moved to ${newStatus.replace('_', ' ')}`);
                 }}
               />
             </motion.div>
@@ -2932,9 +2993,9 @@ export default function ContractsPage() {
                   
                   {/* Page Info */}
                   <div className="text-sm text-slate-600">
-                    <span className="font-medium">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, sortedContracts.length)}</span>
+                    <span className="font-medium">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
                     <span className="text-slate-400"> of </span>
-                    <span className="font-medium">{sortedContracts.length}</span>
+                    <span className="font-medium">{contractsData?.total ?? 0}</span>
                   </div>
                   
                   {/* Page Navigation */}
@@ -3037,8 +3098,8 @@ export default function ContractsPage() {
         />
       )}
       
-      {/* Submit for Approval Modal */}
-      {approvalContractId && (
+      {/* Submit for Approval Modal - Hidden for now, will be enabled in future */}
+      {/* {approvalContractId && (
         <SubmitForApprovalModal
           isOpen={approvalModalOpen}
           onClose={() => {
@@ -3050,7 +3111,7 @@ export default function ContractsPage() {
           contractTitle={approvalContractTitle}
           onSuccess={handleApprovalSuccess}
         />
-      )}
+      )} */}
       
       {/* AI Report Modal */}
       <AIReportModal
@@ -3059,7 +3120,7 @@ export default function ContractsPage() {
         contractIds={Array.from(selectedContracts)}
         contractNames={contracts
           .filter(c => selectedContracts.has(c.id))
-          .map(c => c.title || c.fileName)
+          .map(c => c.title || c.filename || 'Untitled')
         }
       />
       

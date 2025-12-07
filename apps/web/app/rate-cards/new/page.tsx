@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Trash2, Save, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 
 interface RoleRate {
   id: string
@@ -59,6 +60,24 @@ export default function AddRateCardPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validation
+    if (!supplierName.trim()) {
+      toast.error('Supplier name is required')
+      return
+    }
+    if (!clientName.trim()) {
+      toast.error('Client name is required')
+      return
+    }
+    const validRoles = roles.filter(role => 
+      role.role && role.level && role.location && role.dailyRate > 0
+    )
+    if (validRoles.length === 0) {
+      toast.error('At least one complete role is required')
+      return
+    }
+    
     setIsSubmitting(true)
     
     try {
@@ -68,9 +87,7 @@ export default function AddRateCardPage() {
         currency,
         validFrom: validFrom ? new Date(validFrom) : new Date(),
         validTo: validTo ? new Date(validTo) : null,
-        roles: roles.filter(role => 
-          role.role && role.level && role.location && role.dailyRate > 0
-        )
+        roles: validRoles
       }
 
       const response = await fetch('/api/rate-cards', {
@@ -87,11 +104,13 @@ export default function AddRateCardPage() {
         throw new Error(result.error || 'Failed to create rate card')
       }
 
-      alert('Rate card created successfully!')
+      toast.success('Rate card created successfully!')
       router.push('/rate-cards')
     } catch (error) {
       console.error('Error creating rate card:', error)
-      alert('Error creating rate card. Please try again.')
+      toast.error('Failed to create rate card', {
+        description: error instanceof Error ? error.message : 'Please try again.'
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -358,7 +377,7 @@ export default function AddRateCardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Actions */}
           <div className="flex items-center justify-between">

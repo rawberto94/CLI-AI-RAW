@@ -161,7 +161,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                   <SelectValue placeholder="All countries" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All countries</SelectItem>
+                  <SelectItem value="__all__">All countries</SelectItem>
                   <SelectItem value="United States">United States</SelectItem>
                   <SelectItem value="United Kingdom">United Kingdom</SelectItem>
                   <SelectItem value="Germany">Germany</SelectItem>

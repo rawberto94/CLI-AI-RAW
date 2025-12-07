@@ -9,11 +9,9 @@
 export { AISummarizer, QuickSummarizeButton } from './AISummarizer';
 
 // Visualization Components
-export { ContractTimeline, TimelineHeader } from './ContractTimeline';
-export type { TimelineContract, TimelineMilestone } from './ContractTimeline';
+export { ContractTimeline } from './ContractTimeline';
 
-export { ContractKanban, KanbanColumn, KanbanContractCard } from './ContractKanban';
-export type { KanbanContract, KanbanColumn as KanbanColumnType } from './ContractKanban';
+export { ContractKanban } from './ContractKanban';
 
 // Comparison Components
 export { ContractComparison, CompareButton } from './ContractComparison';
@@ -88,11 +86,10 @@ export {
 export { StatCard as StatCardNew } from './ContractStatsCards';
 export type { StatCardProps as StatsCardNewProps } from './ContractStatsCards';
 
-export { BulkActionsBar as BulkActionsBarNew, BulkActionButton } from './BulkActionsBar';
-export type { BulkActionsBarProps, BulkAction } from './BulkActionsBar';
+export { BulkActionsBar as BulkActionsBarNew } from './BulkActionsBar';
 
-export { ViewModeToggle as ViewModeToggleNew, VIEW_MODES, VIEW_MODE_ICONS } from './ViewModeToggle';
-export type { ViewMode as ViewModeType, ViewModeOption } from './ViewModeToggle';
+export { ViewModeToggle as ViewModeToggleNew, VIEW_MODE_OPTIONS } from './ViewModeToggle';
+export type { ViewModeOption, ViewModeToggleProps } from './ViewModeToggle';
 
 export { FilterToolbar } from './FilterToolbar';
 export type { 
@@ -160,3 +157,45 @@ export { FilterPresetsDropdown } from './FilterPresetsDropdown';
 
 // Analytics Cards
 export { ContractAnalyticsCards } from './ContractAnalyticsCards';
+
+// Artifact Editors
+export { ArtifactEditor } from './ArtifactEditor';
+export { EnhancedArtifactEditor } from './EnhancedArtifactEditor';
+export { RateCardEditor } from './RateCardEditor';
+export { ArtifactHistory } from './ArtifactHistory';
+
+// AI Analysis
+export { AIAnalysisPanel } from './AIAnalysisPanel';
+
+// Risk Assessment
+export { RiskAssessmentPanel } from './RiskAssessmentPanel';
+export type { RiskFactor, RiskAssessment } from './RiskAssessmentPanel';
+
+// Batch Operations
+export { BatchOperationsPanel } from './BatchOperationsPanel';
+export { BulkActionsPanel } from './BulkActionsPanel';
+export type { SelectedContract } from './BulkActionsPanel';
+
+// Deadline Tracking
+export { DeadlineTracker } from './DeadlineTracker';
+
+// Version History
+export { VersionHistory } from './VersionHistory';
+
+// PDF Viewer
+export { PDFViewer, SplitViewContainer } from './PDFViewer';
+
+// Contract Reminders
+export { ContractReminders } from './ContractReminders';
+
+// Contract Audit Log
+export { ContractAuditLog } from './ContractAuditLog';
+
+// SLA Monitoring
+export { SLAMonitoring } from './SLAMonitoring';
+
+// Compliance Checklist
+export { ComplianceChecklist } from './ComplianceChecklist';
+
+// Negotiation Tracker
+export { NegotiationTracker } from './NegotiationTracker';

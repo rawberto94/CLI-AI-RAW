@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils';
 // Types
 // ============================================================================
 
-interface ContractEvent {
+export interface ContractEvent {
   id: string;
   contractId: string;
   contractTitle: string;
@@ -52,7 +52,7 @@ interface ContractEvent {
   status?: 'completed' | 'pending' | 'overdue' | 'upcoming';
 }
 
-interface ContractPeriod {
+export interface ContractPeriod {
   id: string;
   title: string;
   startDate: Date;
@@ -63,6 +63,9 @@ interface ContractPeriod {
   riskLevel?: 'low' | 'medium' | 'high';
   events: ContractEvent[];
 }
+
+// Alias for backward compatibility
+export type TimelineContract = ContractPeriod;
 
 interface ContractTimelineProps {
   contracts: ContractPeriod[];

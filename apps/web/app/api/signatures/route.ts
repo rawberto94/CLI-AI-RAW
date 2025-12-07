@@ -16,6 +16,17 @@ interface CreateSignatureRequest {
   expiresAt?: string;
 }
 
+// SignatureRequest model may not exist in schema yet - use any for runtime fallback
+type PrismaWithSignatureRequest = typeof prisma & {
+  signatureRequest: {
+    findMany: (args: any) => Promise<any[]>;
+    count: (args: any) => Promise<number>;
+    create: (args: any) => Promise<any>;
+  };
+};
+
+const extendedPrisma = prisma as PrismaWithSignatureRequest;
+
 // GET /api/signatures - List signature requests
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Try to get from database
     try {
-      const signatureRequests = await prisma.signatureRequest.findMany({
+      const signatureRequests = await extendedPrisma.signatureRequest.findMany({
         where,
         include: {
           signers: true,
@@ -50,7 +61,7 @@ export async function GET(request: NextRequest) {
         take: limit,
       });
 
-      const total = await prisma.signatureRequest.count({ where });
+      const total = await extendedPrisma.signatureRequest.count({ where });
 
       return NextResponse.json({
         success: true,
@@ -133,7 +144,7 @@ export async function POST(request: NextRequest) {
 
     // Try to create in database
     try {
-      const signatureRequest = await prisma.signatureRequest.create({
+      const signatureRequest = await extendedPrisma.signatureRequest.create({
         data: {
           contractId,
           status: 'pending',
@@ -157,7 +168,7 @@ export async function POST(request: NextRequest) {
       // Update contract status
       await prisma.contract.update({
         where: { id: contractId },
-        data: { status: 'pending_signature' }
+        data: { status: 'PENDING' }
       });
 
       return NextResponse.json({

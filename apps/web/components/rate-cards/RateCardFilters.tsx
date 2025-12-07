@@ -150,7 +150,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
               className="flex-1"
             />
             {filters.supplier && (
-              <Button variant="ghost" size="icon" onClick={() => clearFilter('supplier')}>
+              <Button variant="ghost" size="icon" onClick={() => clearFilter('supplier')} aria-label="Clear supplier filter">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -168,7 +168,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
               className="flex-1"
             />
             {filters.role && (
-              <Button variant="ghost" size="icon" onClick={() => clearFilter('role')}>
+              <Button variant="ghost" size="icon" onClick={() => clearFilter('role')} aria-label="Clear role filter">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -184,7 +184,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
                 <SelectValue placeholder="All levels" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All levels</SelectItem>
+                <SelectItem value="__all__">All levels</SelectItem>
                 {SENIORITY_LEVELS.map(level => (
                   <SelectItem key={level} value={level}>
                     {level}
@@ -193,7 +193,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
               </SelectContent>
             </Select>
             {filters.seniority && (
-              <Button variant="ghost" size="icon" onClick={() => clearFilter('seniority')}>
+              <Button variant="ghost" size="icon" onClick={() => clearFilter('seniority')} aria-label="Clear seniority filter">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -209,7 +209,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
                 <SelectValue placeholder="All services" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All services</SelectItem>
+                <SelectItem value="__all__">All services</SelectItem>
                 {linesOfService.map(los => (
                   <SelectItem key={los} value={los}>
                     {los}
@@ -218,7 +218,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
               </SelectContent>
             </Select>
             {filters.lineOfService && (
-              <Button variant="ghost" size="icon" onClick={() => clearFilter('lineOfService')}>
+              <Button variant="ghost" size="icon" onClick={() => clearFilter('lineOfService')} aria-label="Clear line of service filter">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -234,7 +234,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
                 <SelectValue placeholder="All countries" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All countries</SelectItem>
+                <SelectItem value="__all__">All countries</SelectItem>
                 {countries.map(country => (
                   <SelectItem key={country} value={country}>
                     {country}
@@ -243,7 +243,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
               </SelectContent>
             </Select>
             {filters.country && (
-              <Button variant="ghost" size="icon" onClick={() => clearFilter('country')}>
+              <Button variant="ghost" size="icon" onClick={() => clearFilter('country')} aria-label="Clear country filter">
                 <X className="h-4 w-4" />
               </Button>
             )}
@@ -259,7 +259,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
                 <SelectValue placeholder="All regions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All regions</SelectItem>
+                <SelectItem value="__all__">All regions</SelectItem>
                 {REGIONS.map(region => (
                   <SelectItem key={region} value={region}>
                     {region}
@@ -268,7 +268,7 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
               </SelectContent>
             </Select>
             {filters.region && (
-              <Button variant="ghost" size="icon" onClick={() => clearFilter('region')}>
+              <Button variant="ghost" size="icon" onClick={() => clearFilter('region')} aria-label="Clear region filter">
                 <X className="h-4 w-4" />
               </Button>
             )}

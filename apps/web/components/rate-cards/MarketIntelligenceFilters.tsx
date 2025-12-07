@@ -166,7 +166,7 @@ export function MarketIntelligenceFilters({
                 <SelectValue placeholder="All roles" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All roles</SelectItem>
+                <SelectItem value="__all__">All roles</SelectItem>
                 {filterOptions.roles.map(role => (
                   <SelectItem key={role} value={role}>{role}</SelectItem>
                 ))}
@@ -184,7 +184,7 @@ export function MarketIntelligenceFilters({
                 <SelectValue placeholder="All levels" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All levels</SelectItem>
+                <SelectItem value="__all__">All levels</SelectItem>
                 {filterOptions.seniorities.map(seniority => (
                   <SelectItem key={seniority} value={seniority}>{seniority}</SelectItem>
                 ))}
@@ -202,7 +202,7 @@ export function MarketIntelligenceFilters({
                 <SelectValue placeholder="All countries" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All countries</SelectItem>
+                <SelectItem value="__all__">All countries</SelectItem>
                 {filterOptions.countries.map(country => (
                   <SelectItem key={country} value={country}>{country}</SelectItem>
                 ))}
@@ -220,7 +220,7 @@ export function MarketIntelligenceFilters({
                 <SelectValue placeholder="All services" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All services</SelectItem>
+                <SelectItem value="__all__">All services</SelectItem>
                 {filterOptions.linesOfService.map(los => (
                   <SelectItem key={los} value={los}>{los}</SelectItem>
                 ))}
@@ -265,7 +265,7 @@ export function MarketIntelligenceFilters({
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
+                  <SelectItem value="__all__">All categories</SelectItem>
                   {filterOptions.roleCategories.map(category => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
                   ))}

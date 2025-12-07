@@ -46,7 +46,7 @@ import { cn } from '@/lib/utils';
 // Types
 // ============================================================================
 
-interface KanbanContract {
+export interface KanbanContract {
   id: string;
   title: string;
   status: 'draft' | 'pending_review' | 'in_negotiation' | 'pending_approval' | 'active' | 'expiring' | 'expired' | 'archived';
@@ -63,7 +63,7 @@ interface KanbanContract {
   daysUntilExpiry?: number;
 }
 
-interface KanbanColumn {
+export interface KanbanColumn {
   id: string;
   title: string;
   status: KanbanContract['status'];

@@ -7,6 +7,8 @@ import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';
 import { registerRAGIndexingWorker } from './rag-indexing-worker';
+import { registerMetadataExtractionWorker } from './metadata-extraction-worker';
+import { registerCategorizationWorker } from './categorization-worker';
 import pino from 'pino';
 
 const logger = pino({
@@ -48,6 +50,8 @@ async function startWorkers() {
     const artifactWorker = registerArtifactGeneratorWorker();
     const webhookWorker = registerWebhookWorker();
     const ragWorker = registerRAGIndexingWorker();
+    const metadataWorker = registerMetadataExtractionWorker();
+    const categorizationWorker = registerCategorizationWorker();
 
     logger.info('✅ All workers registered successfully');
     logger.info({
@@ -56,6 +60,8 @@ async function startWorkers() {
         'artifact-generation',
         'webhook-delivery',
         'rag-indexing (auto-embeddings)',
+        'metadata-extraction (AI metadata)',
+        'categorization (AI classification)',
       ],
     }, 'Active workers');
 
@@ -68,6 +74,8 @@ async function startWorkers() {
         artifactWorker.close(),
         webhookWorker.close(),
         ragWorker.close(),
+        metadataWorker.close(),
+        categorizationWorker.close(),
       ]);
 
       const queueService = getQueueService();

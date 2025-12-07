@@ -84,6 +84,7 @@
     "openai": "^4.10.0",
     "pdf-parse": "^1.1.1",
     "pdf2pic": "^3.2.0",
+    "pdfjs-dist": "4.0.379",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "rate-limiter-flexible": "^8.3.0",

@@ -311,7 +311,7 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
                     <SelectValue placeholder="All levels" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All levels</SelectItem>
+                    <SelectItem value="__all__">All levels</SelectItem>
                     <SelectItem value="JUNIOR">Junior</SelectItem>
                     <SelectItem value="MID">Mid</SelectItem>
                     <SelectItem value="SENIOR">Senior</SelectItem>

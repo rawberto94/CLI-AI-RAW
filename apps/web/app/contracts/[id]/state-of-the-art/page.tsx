@@ -9,13 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ArtifactEditor } from '@/components/contracts/ArtifactEditor';
+import { EnhancedArtifactEditor } from '@/components/contracts/EnhancedArtifactEditor';
 import { RateCardEditor } from '@/components/contracts/RateCardEditor';
 import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor';
 import { VersionHistoryPanel } from '@/components/contracts/VersionHistoryPanel';
+import { AIAnalysisPanel } from '@/components/contracts/AIAnalysisPanel';
 import { 
   FileText, DollarSign, TrendingUp, AlertCircle, CheckCircle2,
   RefreshCw, Download, Edit, History, Tags, ChevronLeft,
-  Sparkles, Zap, Target, Clock, Users, Shield
+  Sparkles, Zap, Target, Clock, Users, Shield, MessageSquare
 } from 'lucide-react';
 
 import { ArtifactViewer } from '@/components/contracts/ArtifactViewer';
@@ -267,10 +269,14 @@ export default function StateOfTheArtContractPage() {
           transition={{ delay: 0.4 }}
         >
           <Tabs defaultValue="artifacts" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-white/60 backdrop-blur-lg border border-gray-200/50 p-1 rounded-xl shadow-lg">
+            <TabsList className="grid w-full grid-cols-5 bg-white/60 backdrop-blur-lg border border-gray-200/50 p-1 rounded-xl shadow-lg">
               <TabsTrigger value="artifacts" className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg">
                 <FileText className="h-4 w-4 mr-2" />
                 Artifacts
+              </TabsTrigger>
+              <TabsTrigger value="ai-analysis" className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                AI Analysis
               </TabsTrigger>
               <TabsTrigger value="metadata" className="data-[state=active]:bg-white data-[state=active]:shadow-md rounded-lg">
                 <Tags className="h-4 w-4 mr-2" />
@@ -393,19 +399,28 @@ export default function StateOfTheArtContractPage() {
                                       }}
                                     />
                                   ) : (
-                                    <ArtifactEditor
+                                    <EnhancedArtifactEditor
                                       artifact={{
                                         id: artifactId,
                                         contractId,
                                         type: artifact.type.toLowerCase(),
                                         data: artifact.data,
                                         confidence: artifact.confidence || 0,
-                                        extractedAt: new Date().toISOString(),
-                                        isEdited: false,
-                                        editCount: 0
+                                        isEdited: artifact.isEdited || false,
+                                        editCount: artifact.editCount || 0,
+                                        lastEditedAt: artifact.lastEditedAt,
+                                        validationStatus: artifact.validationStatus,
                                       }}
                                       contractId={contractId}
-                                      onSave={(updates) => handleArtifactSave(artifactId, updates)}
+                                      onSave={() => {
+                                        loadContractData();
+                                        setEditingArtifactId(null);
+                                      }}
+                                      onCancel={() => setEditingArtifactId(null)}
+                                      showHistory={() => {
+                                        setSelectedArtifactId(artifactId);
+                                        setShowVersionHistory(true);
+                                      }}
                                     />
                                   )}
                                 </motion.div>
@@ -452,6 +467,28 @@ export default function StateOfTheArtContractPage() {
                   </motion.div>
                 )}
               </AnimatePresence>
+            </TabsContent>
+
+            {/* AI Analysis Tab */}
+            <TabsContent value="ai-analysis" className="mt-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="border-0 shadow-lg overflow-hidden">
+                  <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500"></div>
+                  <CardContent className="p-0">
+                    <AIAnalysisPanel
+                      contractId={contractId}
+                      contractName={contract.name}
+                      className="h-[600px]"
+                      onAnalysisComplete={(result) => {
+                        console.log('Analysis completed:', result);
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              </motion.div>
             </TabsContent>
 
             {/* Metadata Tab */}

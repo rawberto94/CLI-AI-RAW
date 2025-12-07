@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export async function GET(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+  const tenantId = await getApiTenantId(request);
   const { searchParams } = new URL(request.url);
   const integrationId = searchParams.get('id');
   const type = searchParams.get('type');
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+  const tenantId = await getApiTenantId(request);
   
   try {
     const body = await request.json();
@@ -271,7 +272,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+  const tenantId = await getApiTenantId(request);
   const { searchParams } = new URL(request.url);
   const integrationId = searchParams.get('id');
 

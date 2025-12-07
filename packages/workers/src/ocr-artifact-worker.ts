@@ -623,6 +623,90 @@ export async function processOCRArtifactJob(
       skipDuplicates: true,
     });
 
+    // 4b. Apply OVERVIEW artifact data to contract record for display
+    const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW');
+    if (overviewArtifact && overviewArtifact.data && !overviewArtifact.data.error) {
+      const overviewData = overviewArtifact.data;
+      const contractUpdate: Record<string, any> = {};
+      
+      // Extract contract type
+      if (overviewData.contractType && overviewData.contractType !== 'Unknown') {
+        contractUpdate.contractType = overviewData.contractType;
+      }
+      
+      // Extract parties
+      if (overviewData.parties && Array.isArray(overviewData.parties)) {
+        const clientParty = overviewData.parties.find((p: any) => 
+          p.role?.toLowerCase().includes('client') || 
+          p.role?.toLowerCase().includes('buyer') ||
+          p.role?.toLowerCase().includes('customer')
+        );
+        const supplierParty = overviewData.parties.find((p: any) => 
+          p.role?.toLowerCase().includes('supplier') || 
+          p.role?.toLowerCase().includes('vendor') ||
+          p.role?.toLowerCase().includes('provider') ||
+          p.role?.toLowerCase().includes('contractor')
+        );
+        
+        if (clientParty?.name) contractUpdate.clientName = clientParty.name;
+        if (supplierParty?.name) contractUpdate.supplierName = supplierParty.name;
+        
+        // If only one party found, use it as supplier
+        if (!contractUpdate.supplierName && !contractUpdate.clientName && overviewData.parties.length > 0) {
+          contractUpdate.supplierName = overviewData.parties[0].name;
+        }
+      }
+      
+      // Extract total value
+      if (overviewData.totalValue && typeof overviewData.totalValue === 'number' && overviewData.totalValue > 0) {
+        contractUpdate.totalValue = overviewData.totalValue;
+      }
+      if (overviewData.currency) {
+        contractUpdate.currency = overviewData.currency;
+      }
+      
+      // Extract dates
+      if (overviewData.effectiveDate) {
+        try {
+          const effDate = new Date(overviewData.effectiveDate);
+          if (!isNaN(effDate.getTime())) {
+            contractUpdate.effectiveDate = effDate;
+          }
+        } catch { /* ignore invalid dates */ }
+      }
+      if (overviewData.expirationDate) {
+        try {
+          const expDate = new Date(overviewData.expirationDate);
+          if (!isNaN(expDate.getTime())) {
+            contractUpdate.expirationDate = expDate;
+          }
+        } catch { /* ignore invalid dates */ }
+      }
+      
+      // Extract contract title if we have a summary
+      if (overviewData.summary && !contract.contractTitle) {
+        // Use first sentence of summary as title, max 100 chars
+        const title = overviewData.summary.split('.')[0].substring(0, 100);
+        if (title.length > 10) {
+          contractUpdate.contractTitle = title;
+        }
+      }
+      
+      // Apply updates if we extracted anything
+      if (Object.keys(contractUpdate).length > 0) {
+        await prisma.contract.updateMany({
+          where: { id: contractId, tenantId },
+          data: {
+            ...contractUpdate,
+            updatedAt: new Date(),
+          },
+        });
+        jobLogger.info({ 
+          fieldsApplied: Object.keys(contractUpdate),
+        }, 'Applied OVERVIEW data to contract record');
+      }
+    }
+
     // Determine final status based on success rate
     const hasPartialSuccess = failedArtifacts.length > 0 && successfulArtifacts.length > 0;
     const hasCompleteFailure = successfulArtifacts.length === 0;
@@ -696,6 +780,70 @@ export async function processOCRArtifactJob(
       } catch (ragError) {
         // Don't fail the job if RAG queueing fails
         jobLogger.warn({ error: ragError }, 'Failed to queue RAG indexing, contract still processed successfully');
+      }
+    }
+
+    // 7. Auto-queue metadata extraction for AI-powered field extraction
+    if (!hasCompleteFailure && extractedText.length > 200) {
+      try {
+        const autoMetadata = process.env.AUTO_METADATA_EXTRACTION !== 'false'; // Default to true
+        if (autoMetadata) {
+          jobLogger.info('Queueing automatic metadata extraction');
+          const queueService = getQueueService();
+          await queueService.addJob(
+            QUEUE_NAMES.METADATA_EXTRACTION,
+            'extract-metadata',
+            { 
+              contractId, 
+              tenantId, 
+              autoApply: true,
+              autoApplyThreshold: 0.85,
+              source: 'upload',
+              priority: 'normal',
+            },
+            {
+              priority: 20,
+              delay: 5000, // 5 second delay to let artifacts complete
+              jobId: `metadata-${contractId}`,
+            }
+          );
+          jobLogger.info('Metadata extraction job queued successfully');
+        }
+      } catch (metadataError) {
+        // Don't fail the job if metadata queueing fails
+        jobLogger.warn({ error: metadataError }, 'Failed to queue metadata extraction, contract still processed successfully');
+      }
+    }
+
+    // 8. Auto-queue AI categorization for contract type, risk, industry classification
+    if (!hasCompleteFailure && extractedText.length > 200) {
+      try {
+        const autoCategorize = process.env.AUTO_CATEGORIZATION !== 'false'; // Default to true
+        if (autoCategorize) {
+          jobLogger.info('Queueing automatic AI categorization');
+          const queueService = getQueueService();
+          await queueService.addJob(
+            QUEUE_NAMES.CATEGORIZATION,
+            'categorize-contract',
+            { 
+              contractId, 
+              tenantId, 
+              autoApply: true,
+              autoApplyThreshold: 0.75,
+              source: 'upload',
+              priority: 'normal',
+            },
+            {
+              priority: 25,
+              delay: 7000, // 7 second delay after metadata
+              jobId: `categorize-${contractId}`,
+            }
+          );
+          jobLogger.info('AI categorization job queued successfully');
+        }
+      } catch (categorizationError) {
+        // Don't fail the job if categorization queueing fails
+        jobLogger.warn({ error: categorizationError }, 'Failed to queue AI categorization, contract still processed successfully');
       }
     }
 

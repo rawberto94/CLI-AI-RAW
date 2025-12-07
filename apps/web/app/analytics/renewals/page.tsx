@@ -209,7 +209,7 @@ export default function RenewalRadarPage() {
                     <SelectValue placeholder="All Risk Levels" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Risk Levels</SelectItem>
+                    <SelectItem value="__all__">All Risk Levels</SelectItem>
                     <SelectItem value="high">High Risk</SelectItem>
                     <SelectItem value="medium">Medium Risk</SelectItem>
                     <SelectItem value="low">Low Risk</SelectItem>
@@ -225,6 +225,7 @@ export default function RenewalRadarPage() {
         </CardContent>
       </Card>
 
+      </motion.div>
       {/* Loading State */}
       {loading && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
