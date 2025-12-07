@@ -198,6 +198,76 @@ class RagIntegrationService {
           }
           break;
 
+        case 'financial':
+        case 'FINANCIAL':
+          // Handle financial artifact with tables, offers, and breakdowns
+          if (data.totalValue?.value) {
+            lines.push(`Total Contract Value: $${Number(data.totalValue.value).toLocaleString()}`);
+          }
+          if (data.currency?.value) {
+            lines.push(`Currency: ${data.currency.value}`);
+          }
+          if (Array.isArray(data.paymentTerms)) {
+            lines.push('Payment Terms:');
+            for (const term of data.paymentTerms) {
+              lines.push(`  - ${term.value || term}`);
+            }
+          }
+          if (Array.isArray(data.costBreakdown)) {
+            lines.push('Cost Breakdown:');
+            for (const cost of data.costBreakdown.slice(0, 15)) {
+              lines.push(`  - ${cost.category}: $${Number(cost.amount).toLocaleString()} - ${cost.description || ''}`);
+            }
+          }
+          // Financial Tables
+          if (Array.isArray(data.financialTables)) {
+            for (const table of data.financialTables) {
+              lines.push(`\nFinancial Table: ${table.tableName || 'Pricing Table'}`);
+              if (Array.isArray(table.rows)) {
+                for (const row of table.rows.slice(0, 20)) {
+                  const desc = row.service || row.description || row.item || 'Item';
+                  const qty = row.quantity || '';
+                  const unitPrice = row.unitPrice ? `$${row.unitPrice}` : '';
+                  const total = row.lineTotal ? `$${Number(row.lineTotal).toLocaleString()}` : '';
+                  lines.push(`  - ${desc}: ${qty} @ ${unitPrice} = ${total}`);
+                }
+              }
+              if (Array.isArray(table.subtotals)) {
+                for (const sub of table.subtotals) {
+                  lines.push(`  Subtotal (${sub.label}): $${Number(sub.amount).toLocaleString()}`);
+                }
+              }
+              if (table.grandTotal?.amount) {
+                lines.push(`  Grand Total: $${Number(table.grandTotal.amount).toLocaleString()}`);
+              }
+            }
+          }
+          // Offers/Quotes
+          if (Array.isArray(data.offers)) {
+            for (const offer of data.offers) {
+              lines.push(`\nOffer: ${offer.offerName || 'Quote'}`);
+              if (offer.validityPeriod) lines.push(`  Valid for: ${offer.validityPeriod}`);
+              if (offer.totalAmount) lines.push(`  Total: $${Number(offer.totalAmount).toLocaleString()}`);
+              if (Array.isArray(offer.lineItems)) {
+                lines.push('  Line Items:');
+                for (const item of offer.lineItems.slice(0, 15)) {
+                  lines.push(`    - ${item.description}: ${item.quantity} ${item.unit || ''} @ $${item.unitPrice} = $${Number(item.total).toLocaleString()}`);
+                }
+              }
+              if (Array.isArray(offer.terms)) {
+                lines.push(`  Terms: ${offer.terms.join(', ')}`);
+              }
+            }
+          }
+          // Discounts
+          if (Array.isArray(data.discounts) && data.discounts.length > 0) {
+            lines.push('Discounts:');
+            for (const disc of data.discounts) {
+              lines.push(`  - ${disc.type}: ${disc.value}${disc.unit === 'percentage' ? '%' : ''} - ${disc.description || ''}`);
+            }
+          }
+          break;
+
         default:
           // Generic handling for other artifact types
           const stringified = JSON.stringify(data).slice(0, 500);

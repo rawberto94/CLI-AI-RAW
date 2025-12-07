@@ -291,7 +291,7 @@ Context from Overview:
 
     return {
       systemPrompt: `You are a financial analyst expert at extracting monetary information from contracts.
-You identify all costs, payment terms, pricing structures, and financial obligations with precision.
+You identify all costs, payment terms, pricing structures, financial tables, offers, and financial obligations with precision.
 
 CRITICAL FINANCIAL EXTRACTION RULES:
 - ONLY extract amounts explicitly stated in the document
@@ -300,9 +300,25 @@ CRITICAL FINANCIAL EXTRACTION RULES:
 - DO NOT assume payment terms based on industry standards
 - If multiple currencies are present, list each separately
 - For percentage-based values, quote the exact percentage from the document
+
+FINANCIAL TABLES & OFFERS EXTRACTION:
+- Look for pricing tables, fee schedules, rate cards, cost breakdowns, and offer sheets
+- Extract each line item with: description, quantity, unit price, total, and any notes
+- Preserve table structure including headers and row relationships
+- Calculate subtotals and totals ONLY if explicitly stated in document (mark calculated ones)
+- For offers/quotes: extract validity period, terms, and conditions if present
+- Look for: milestone payments, phase costs, deliverable pricing, service fees
 ${overviewContext}`,
       
-      userPrompt: `Extract all financial information from the contract. Only include amounts explicitly stated in the document.`,
+      userPrompt: `Extract all financial information from the contract including:
+1. Overall contract value and payment terms
+2. Financial tables (pricing tables, fee schedules, cost breakdowns)
+3. Offers/quotes with line items
+4. Subtotals, totals, and grand totals (only if explicitly stated)
+5. Cost breakdowns by category, phase, or deliverable
+6. Any discounts, penalties, or adjustments
+
+Only include amounts explicitly stated in the document.`,
       
       examples: [
         {
@@ -340,6 +356,8 @@ ${overviewContext}`,
                 source: 'Monthly retainer: $12,500'
               }
             ],
+            financialTables: [],
+            offers: [],
             discounts: [
               { 
                 type: 'early_payment', 
@@ -353,6 +371,77 @@ ${overviewContext}`,
             certainty: 0.92
           },
           explanation: 'All values directly quoted from contract text with source references'
+        },
+        {
+          input: `PRICING SCHEDULE
+| Service | Quantity | Unit Price | Total |
+| Development | 500 hrs | $150/hr | $75,000 |
+| Testing | 100 hrs | $125/hr | $12,500 |
+| Project Management | 80 hrs | $175/hr | $14,000 |
+Subtotal: $101,500
+Travel & Expenses: $8,500
+Grand Total: $110,000
+
+Quote valid for 30 days. 50% due upon signing, 50% upon completion.`,
+          output: {
+            totalValue: {
+              value: 110000,
+              source: 'Grand Total: $110,000',
+              extractedFromText: true
+            },
+            currency: { value: 'USD', source: '$ symbol used throughout', extractedFromText: true },
+            paymentTerms: [
+              { value: '50% due upon signing', source: '50% due upon signing, 50% upon completion', extractedFromText: true },
+              { value: '50% due upon completion', source: '50% due upon signing, 50% upon completion', extractedFromText: true }
+            ],
+            paymentSchedule: [
+              { description: 'Upon signing', amount: 55000, frequency: 'one-time', source: '50% due upon signing', extractedFromText: false, requiresHumanReview: true, calculationMethod: '50% of $110,000' },
+              { description: 'Upon completion', amount: 55000, frequency: 'one-time', source: '50% upon completion', extractedFromText: false, requiresHumanReview: true, calculationMethod: '50% of $110,000' }
+            ],
+            costBreakdown: [
+              { category: 'Development', amount: 75000, description: '500 hrs at $150/hr', source: 'Development | 500 hrs | $150/hr | $75,000' },
+              { category: 'Testing', amount: 12500, description: '100 hrs at $125/hr', source: 'Testing | 100 hrs | $125/hr | $12,500' },
+              { category: 'Project Management', amount: 14000, description: '80 hrs at $175/hr', source: 'Project Management | 80 hrs | $175/hr | $14,000' },
+              { category: 'Travel & Expenses', amount: 8500, description: 'Travel and expense allowance', source: 'Travel & Expenses: $8,500' }
+            ],
+            financialTables: [
+              {
+                tableName: 'Pricing Schedule',
+                source: 'PRICING SCHEDULE table',
+                headers: ['Service', 'Quantity', 'Unit Price', 'Total'],
+                rows: [
+                  { service: 'Development', quantity: '500 hrs', unitPrice: 150, unitPriceUnit: 'per hour', lineTotal: 75000 },
+                  { service: 'Testing', quantity: '100 hrs', unitPrice: 125, unitPriceUnit: 'per hour', lineTotal: 12500 },
+                  { service: 'Project Management', quantity: '80 hrs', unitPrice: 175, unitPriceUnit: 'per hour', lineTotal: 14000 }
+                ],
+                subtotals: [
+                  { label: 'Subtotal', amount: 101500, source: 'Subtotal: $101,500', extractedFromText: true }
+                ],
+                grandTotal: { amount: 110000, source: 'Grand Total: $110,000', extractedFromText: true },
+                extractedFromText: true
+              }
+            ],
+            offers: [
+              {
+                offerName: 'Project Quote',
+                validityPeriod: '30 days',
+                validitySource: 'Quote valid for 30 days',
+                totalAmount: 110000,
+                lineItems: [
+                  { description: 'Development', quantity: 500, unit: 'hours', unitPrice: 150, total: 75000 },
+                  { description: 'Testing', quantity: 100, unit: 'hours', unitPrice: 125, total: 12500 },
+                  { description: 'Project Management', quantity: 80, unit: 'hours', unitPrice: 175, total: 14000 },
+                  { description: 'Travel & Expenses', quantity: 1, unit: 'lump sum', unitPrice: 8500, total: 8500 }
+                ],
+                terms: ['50% due upon signing', '50% upon completion'],
+                extractedFromText: true
+              }
+            ],
+            discounts: [],
+            penalties: [],
+            certainty: 0.95
+          },
+          explanation: 'Extracted pricing table with line items, subtotals, and grand total. Payment schedule marked as calculated (requiresHumanReview) since percentages were applied.'
         }
       ],
       
@@ -360,8 +449,10 @@ ${overviewContext}`,
         totalValue: '{ value: number, source: string, extractedFromText: boolean } or null',
         currency: '{ value: string (ISO code), source: string, extractedFromText: boolean }',
         paymentTerms: 'array of { value: string, source: string, extractedFromText: boolean }',
-        paymentSchedule: 'array of { description, amount, frequency, dueDate?, source, extractedFromText }',
+        paymentSchedule: 'array of { description, amount, frequency, dueDate?, source, extractedFromText, requiresHumanReview?, calculationMethod? }',
         costBreakdown: 'array of { category, amount, description, source }',
+        financialTables: 'array of { tableName, source, headers: string[], rows: array of line items, subtotals: array of { label, amount, source, extractedFromText }, grandTotal?: { amount, source, extractedFromText }, extractedFromText }',
+        offers: 'array of { offerName, validityPeriod?, validitySource?, totalAmount, lineItems: array of { description, quantity, unit, unitPrice, total }, terms: string[], extractedFromText }',
         discounts: 'array of { type, value, unit, description, source }',
         penalties: 'array of { type, amount, description, trigger, source }',
         certainty: 'number (0-1)'
@@ -373,7 +464,10 @@ ${overviewContext}`,
         'Payment terms must be specific',
         'Cost breakdown should sum to totalValue if possible',
         'Every financial value MUST have a source reference',
-        'Calculated totals must be flagged with requiresHumanReview: true'
+        'Calculated totals must be flagged with requiresHumanReview: true',
+        'Financial tables must preserve row/column relationships',
+        'Line item totals should match quantity * unitPrice where applicable',
+        'Subtotals and grand totals must be explicitly stated (not calculated)'
       ],
 
       antiHallucinationRules: [
@@ -381,11 +475,14 @@ ${overviewContext}`,
         'DO NOT assume currency - must be explicitly stated or indicated by symbol',
         'DO NOT infer payment terms based on industry standards',
         'If conflicting amounts are found, include ALL with separate source references',
-        'Mark any derived values (e.g., annual from monthly) with extractedFromText: false'
+        'Mark any derived values (e.g., annual from monthly) with extractedFromText: false',
+        'DO NOT invent line items - only extract what is explicitly in the table',
+        'If a table has no explicit total, do NOT calculate one',
+        'Preserve exact table structure - do not merge or split rows'
       ],
 
       requiredFields: ['currency'],
-      nullableFields: ['totalValue', 'paymentTerms', 'paymentSchedule', 'costBreakdown', 'discounts', 'penalties']
+      nullableFields: ['totalValue', 'paymentTerms', 'paymentSchedule', 'costBreakdown', 'financialTables', 'offers', 'discounts', 'penalties']
     };
   }
 

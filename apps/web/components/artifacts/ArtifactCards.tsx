@@ -867,13 +867,79 @@ export function RiskArtifact({ data, className, isLoading }: RiskArtifactProps) 
 
 // ============ FINANCIAL ARTIFACT ============
 
+interface FinancialTableRow {
+  service?: string;
+  description?: string;
+  item?: string;
+  quantity?: string | number;
+  unitPrice?: number;
+  unitPriceUnit?: string;
+  lineTotal?: number;
+}
+
+interface FinancialTable {
+  tableName?: string;
+  source?: string;
+  headers?: string[];
+  rows?: FinancialTableRow[];
+  subtotals?: Array<{ label: string; amount: number; source?: string; extractedFromText?: boolean }>;
+  grandTotal?: { amount: number; source?: string; extractedFromText?: boolean };
+  extractedFromText?: boolean;
+}
+
+interface OfferLineItem {
+  description: string;
+  quantity: number;
+  unit?: string;
+  unitPrice: number;
+  total: number;
+}
+
+interface Offer {
+  offerName?: string;
+  validityPeriod?: string;
+  validitySource?: string;
+  totalAmount?: number;
+  lineItems?: OfferLineItem[];
+  terms?: string[];
+  extractedFromText?: boolean;
+}
+
+interface CostBreakdownItem {
+  category: string;
+  amount: number;
+  description?: string;
+  source?: string;
+}
+
+interface Discount {
+  type: string;
+  value: number;
+  unit: 'percentage' | 'fixed';
+  description?: string;
+  source?: string;
+}
+
+interface Penalty {
+  type: string;
+  amount: number;
+  description?: string;
+  trigger?: string;
+  source?: string;
+}
+
 interface FinancialArtifactProps extends ArtifactBaseProps {
   data: {
-    totalValue?: number
-    currency?: string
-    paymentTerms?: string
-    rates?: RateCard[]
-    summary?: string
+    totalValue?: number | { value: number; source?: string; extractedFromText?: boolean };
+    currency?: string | { value: string; source?: string; extractedFromText?: boolean };
+    paymentTerms?: string | Array<string | { value: string; source?: string; extractedFromText?: boolean }>;
+    rates?: RateCard[];
+    costBreakdown?: CostBreakdownItem[];
+    financialTables?: FinancialTable[];
+    offers?: Offer[];
+    discounts?: Discount[];
+    penalties?: Penalty[];
+    summary?: string;
   }
 }
 
@@ -882,16 +948,35 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
     return <ArtifactSkeleton />;
   }
 
+  // Helper to get total value from either format
+  const getTotalValue = (): number | undefined => {
+    if (typeof data.totalValue === 'object' && data.totalValue?.value) {
+      return data.totalValue.value;
+    }
+    return typeof data.totalValue === 'number' ? data.totalValue : undefined;
+  };
+
+  // Helper to get currency as string
+  const getCurrency = (): string => {
+    if (typeof data.currency === 'object' && data.currency?.value) {
+      return data.currency.value;
+    }
+    return typeof data.currency === 'string' ? data.currency : 'USD';
+  };
+
+  const totalValue = getTotalValue();
+  const currency = getCurrency();
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-900">Financial Analysis</h3>
-        {data.totalValue && (
+        {totalValue && (
           <div className="text-right">
             <p className="text-sm text-slate-500">Total Value</p>
             <p className="text-2xl font-bold text-slate-900">
-              {formatCurrency(data.totalValue, data.currency)}
+              {formatCurrency(totalValue, currency)}
             </p>
           </div>
         )}
@@ -908,8 +993,249 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
       {data.paymentTerms && (
         <div className="p-4 bg-slate-50 rounded-xl">
           <h4 className="text-sm font-semibold text-slate-700 mb-2">Payment Terms</h4>
-          <p className="text-sm text-slate-600">{data.paymentTerms}</p>
+          {Array.isArray(data.paymentTerms) ? (
+            <ul className="space-y-1">
+              {data.paymentTerms.map((term, i) => (
+                <li key={i} className="text-sm text-slate-600 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  {typeof term === 'object' ? term.value : term}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-600">{data.paymentTerms}</p>
+          )}
         </div>
+      )}
+
+      {/* Cost Breakdown */}
+      {data.costBreakdown && data.costBreakdown.length > 0 && (
+        <ExpandableSection 
+          title="Cost Breakdown" 
+          icon={TrendingUp}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.costBreakdown.length} items</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-2">
+            {data.costBreakdown.map((cost, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
+                <div>
+                  <p className="font-medium text-slate-900">{cost.category}</p>
+                  {cost.description && (
+                    <p className="text-xs text-slate-500 mt-0.5">{cost.description}</p>
+                  )}
+                </div>
+                <p className="font-semibold text-slate-900">
+                  {formatCurrency(cost.amount, currency)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Financial Tables */}
+      {data.financialTables && data.financialTables.length > 0 && (
+        <ExpandableSection 
+          title="Financial Tables" 
+          icon={FileText}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.financialTables.length}</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-4">
+            {data.financialTables.map((table, tableIdx) => (
+              <div key={tableIdx} className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                  <h5 className="font-medium text-slate-700">{table.tableName || `Table ${tableIdx + 1}`}</h5>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="text-left py-2 px-4 font-medium text-slate-600">Description</th>
+                        <th className="text-right py-2 px-4 font-medium text-slate-600">Qty</th>
+                        <th className="text-right py-2 px-4 font-medium text-slate-600">Unit Price</th>
+                        <th className="text-right py-2 px-4 font-medium text-slate-600">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {table.rows?.map((row, rowIdx) => (
+                        <tr key={rowIdx} className="border-b border-slate-100 last:border-0">
+                          <td className="py-3 px-4 text-slate-900">
+                            {row.service || row.description || row.item || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-600">
+                            {row.quantity || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-600">
+                            {row.unitPrice ? formatCurrency(row.unitPrice, currency) : '-'}
+                            {row.unitPriceUnit && <span className="text-xs text-slate-400 ml-1">/{row.unitPriceUnit}</span>}
+                          </td>
+                          <td className="py-3 px-4 text-right font-medium text-slate-900">
+                            {row.lineTotal ? formatCurrency(row.lineTotal, currency) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {((table.subtotals && table.subtotals.length > 0) || table.grandTotal) && (
+                      <tfoot className="bg-slate-50">
+                        {table.subtotals?.map((sub, subIdx) => (
+                          <tr key={subIdx} className="border-t border-slate-200">
+                            <td colSpan={3} className="py-2 px-4 text-right font-medium text-slate-600">
+                              {sub.label}:
+                            </td>
+                            <td className="py-2 px-4 text-right font-semibold text-slate-700">
+                              {formatCurrency(sub.amount, currency)}
+                            </td>
+                          </tr>
+                        ))}
+                        {table.grandTotal && (
+                          <tr className="border-t-2 border-slate-300">
+                            <td colSpan={3} className="py-3 px-4 text-right font-bold text-slate-700">
+                              Grand Total:
+                            </td>
+                            <td className="py-3 px-4 text-right font-bold text-lg text-emerald-600">
+                              {formatCurrency(table.grandTotal.amount, currency)}
+                            </td>
+                          </tr>
+                        )}
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Offers / Quotes */}
+      {data.offers && data.offers.length > 0 && (
+        <ExpandableSection 
+          title="Offers & Quotes" 
+          icon={FileCheck}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.offers.length}</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-4">
+            {data.offers.map((offer, offerIdx) => (
+              <div key={offerIdx} className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50/30">
+                <div className="bg-blue-50 px-4 py-3 border-b border-blue-200 flex items-center justify-between">
+                  <h5 className="font-semibold text-blue-900">{offer.offerName || `Quote ${offerIdx + 1}`}</h5>
+                  <div className="flex items-center gap-3">
+                    {offer.validityPeriod && (
+                      <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                        Valid: {offer.validityPeriod}
+                      </Badge>
+                    )}
+                    {offer.totalAmount && (
+                      <span className="font-bold text-blue-900">
+                        {formatCurrency(offer.totalAmount, currency)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {offer.lineItems && offer.lineItems.length > 0 && (
+                  <div className="p-4">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-blue-200">
+                          <th className="text-left py-2 font-medium text-slate-600">Item</th>
+                          <th className="text-right py-2 font-medium text-slate-600">Qty</th>
+                          <th className="text-right py-2 font-medium text-slate-600">Unit Price</th>
+                          <th className="text-right py-2 font-medium text-slate-600">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {offer.lineItems.map((item, itemIdx) => (
+                          <tr key={itemIdx} className="border-b border-blue-100 last:border-0">
+                            <td className="py-2 text-slate-900">{item.description}</td>
+                            <td className="py-2 text-right text-slate-600">
+                              {item.quantity} {item.unit || ''}
+                            </td>
+                            <td className="py-2 text-right text-slate-600">
+                              {formatCurrency(item.unitPrice, currency)}
+                            </td>
+                            <td className="py-2 text-right font-medium text-slate-900">
+                              {formatCurrency(item.total, currency)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                
+                {offer.terms && offer.terms.length > 0 && (
+                  <div className="px-4 pb-3">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Terms:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {offer.terms.map((term, termIdx) => (
+                        <Badge key={termIdx} variant="secondary" className="text-xs">
+                          {term}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Discounts */}
+      {data.discounts && data.discounts.length > 0 && (
+        <ExpandableSection 
+          title="Discounts" 
+          icon={Tag}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-green-100 text-green-700">{data.discounts.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.discounts.map((discount, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                <div>
+                  <p className="font-medium text-slate-900 capitalize">{discount.type?.replace(/_/g, ' ')}</p>
+                  {discount.description && (
+                    <p className="text-xs text-slate-500 mt-0.5">{discount.description}</p>
+                  )}
+                </div>
+                <Badge className="bg-green-100 text-green-700 border-green-300">
+                  {discount.unit === 'percentage' ? `${discount.value}%` : formatCurrency(discount.value, currency)} off
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Penalties */}
+      {data.penalties && data.penalties.length > 0 && (
+        <ExpandableSection 
+          title="Penalties" 
+          icon={AlertTriangle}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-rose-100 text-rose-700">{data.penalties.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.penalties.map((penalty, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-200">
+                <div>
+                  <p className="font-medium text-slate-900 capitalize">{penalty.type?.replace(/_/g, ' ')}</p>
+                  {penalty.description && (
+                    <p className="text-xs text-slate-500 mt-0.5">{penalty.description}</p>
+                  )}
+                  {penalty.trigger && (
+                    <p className="text-xs text-rose-600 mt-1">Trigger: {penalty.trigger}</p>
+                  )}
+                </div>
+                <Badge className="bg-rose-100 text-rose-700 border-rose-300">
+                  {formatCurrency(penalty.amount, currency)}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
       )}
       
       {/* Rate Cards */}
