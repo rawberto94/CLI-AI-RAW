@@ -1,23 +1,46 @@
+/**
+ * Renewal Alert Worker
+ * 
+ * Background worker that scans contracts for upcoming renewal deadlines,
+ * opt-out dates, and termination notice periods.
+ * 
+ * Features:
+ * - Configurable scan windows (days ahead)
+ * - Priority-based alerting (critical/warning/info)
+ * - Per-tenant or global scanning
+ * - Scheduled daily checks
+ * - Auto-renewal detection
+ */
+
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { Job } from 'bullmq';
-import getClient from 'clients-db';
-import { getQueueService } from '../../utils/src/queue/queue-service';
+import type { Job } from 'bullmq';
 import pino from 'pino';
 
 const logger = pino({ name: 'renewal-alert-worker' });
-const prisma = getClient();
 
-// Queue name for renewal alerts
-export const RENEWAL_ALERT_QUEUE = 'renewal-alerts';
+// ============================================================================
+// TYPES
+// ============================================================================
 
-interface RenewalCheckJobData {
-  tenantId?: string; // If provided, only check contracts for this tenant
-  daysAhead: number; // How many days ahead to check for renewals
+export interface RenewalCheckJobData {
+  tenantId?: string;
+  /** How many days ahead to check for renewals (default: 90) */
+  daysAhead?: number;
+  /** Alert threshold for critical alerts (default: 14 days) */
+  criticalThresholdDays?: number;
+  /** Alert threshold for warning alerts (default: 30 days) */
+  warningThresholdDays?: number;
+  /** Whether to include auto-renewal contracts only */
+  autoRenewalOnly?: boolean;
+  /** Priority of the check */
+  priority?: 'high' | 'normal' | 'low';
+  /** Source that triggered the check */
+  source?: 'scheduled' | 'manual' | 'webhook';
 }
 
-interface RenewalAlert {
+export interface RenewalAlert {
   contractId: string;
   contractName: string;
   alertType: 'critical' | 'warning' | 'info';
@@ -26,32 +49,82 @@ interface RenewalAlert {
   daysRemaining: number;
   autoRenewal: boolean;
   tenantId: string;
+  sourceClause?: string;
 }
 
-interface RenewalCheckResult {
+export interface RenewalCheckResult {
+  success: boolean;
   alertsGenerated: number;
   contractsChecked: number;
   alerts: RenewalAlert[];
+  processingTimeMs: number;
+  errors?: string[];
 }
 
+// ============================================================================
+// QUEUE CONFIGURATION
+// ============================================================================
+
+export const RENEWAL_ALERT_QUEUE = 'renewal-alerts';
+
+export const RENEWAL_ALERT_CONFIG = {
+  name: RENEWAL_ALERT_QUEUE,
+  concurrency: 2,
+  limiter: {
+    max: 10,
+    duration: 60000, // 10 per minute
+  },
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential' as const,
+      delay: 5000,
+    },
+    removeOnComplete: {
+      count: 100,
+      age: 7 * 24 * 60 * 60, // 7 days
+    },
+    removeOnFail: {
+      count: 200,
+      age: 30 * 24 * 60 * 60, // 30 days
+    },
+  },
+};
+
+// ============================================================================
+// WORKER FUNCTION
+// ============================================================================
+
 /**
- * Renewal Alert Worker
- * Scans contracts for upcoming renewal deadlines and opt-out dates
+ * Process a renewal check job
  */
 export async function checkRenewalsJob(
   job: Job<RenewalCheckJobData>
 ): Promise<RenewalCheckResult> {
-  const { tenantId, daysAhead = 90 } = job.data;
+  const { 
+    tenantId, 
+    daysAhead = 90,
+    criticalThresholdDays = 14,
+    warningThresholdDays = 30,
+    autoRenewalOnly = false,
+    source = 'scheduled'
+  } = job.data;
+
+  const startTime = Date.now();
+  const errors: string[] = [];
+  const alerts: RenewalAlert[] = [];
 
   logger.info(
-    { tenantId, daysAhead, jobId: job.id },
+    { tenantId, daysAhead, source, jobId: job.id },
     'Starting renewal check scan'
   );
 
-  const alerts: RenewalAlert[] = [];
-
   try {
     await job.updateProgress(5);
+
+    // Dynamic import to avoid circular dependencies
+    const getClient = (await import('clients-db')).default;
+    const prisma = getClient();
 
     // Build query for contracts with renewal artifacts
     const whereClause: any = {
@@ -80,8 +153,6 @@ export async function checkRenewalsJob(
     await job.updateProgress(20);
 
     const today = new Date();
-    const checkDate = new Date();
-    checkDate.setDate(today.getDate() + daysAhead);
 
     let processedCount = 0;
     const totalContracts = contracts.length;
@@ -93,13 +164,16 @@ export async function checkRenewalsJob(
 
         const renewalData = renewalArtifact.data as any;
         
+        // Skip non-auto-renewal if filter is set
+        if (autoRenewalOnly && !renewalData.autoRenewal) continue;
+        
         // Check current term end date
         if (renewalData.currentTermEnd) {
           const termEndDate = new Date(renewalData.currentTermEnd);
           const daysUntilEnd = Math.ceil((termEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
           if (daysUntilEnd > 0 && daysUntilEnd <= daysAhead) {
-            const alertType = daysUntilEnd <= 14 ? 'critical' : daysUntilEnd <= 30 ? 'warning' : 'info';
+            const alertType = daysUntilEnd <= criticalThresholdDays ? 'critical' : daysUntilEnd <= warningThresholdDays ? 'warning' : 'info';
             
             alerts.push({
               contractId: contract.id,
@@ -110,6 +184,7 @@ export async function checkRenewalsJob(
               daysRemaining: daysUntilEnd,
               autoRenewal: renewalData.autoRenewal || false,
               tenantId: contract.tenantId,
+              sourceClause: renewalData.renewalTerms?.source,
             });
           }
         }
@@ -180,45 +255,69 @@ export async function checkRenewalsJob(
     // Sort alerts by days remaining (most urgent first)
     alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
 
-    // Store alerts in database if needed (could use a notifications table)
-    // For now, we return them for the calling code to handle
-    
     await job.updateProgress(100);
 
+    const processingTimeMs = Date.now() - startTime;
+
     logger.info(
-      { contractsChecked: contracts.length, alertsGenerated: alerts.length },
+      { contractsChecked: contracts.length, alertsGenerated: alerts.length, processingTimeMs },
       'Renewal check completed'
     );
 
     return {
+      success: true,
       alertsGenerated: alerts.length,
       contractsChecked: contracts.length,
       alerts,
+      processingTimeMs,
+      errors: errors.length > 0 ? errors : undefined,
     };
 
   } catch (error) {
+    const processingTimeMs = Date.now() - startTime;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    errors.push(errorMessage);
+    
     logger.error({ error, jobId: job.id }, 'Renewal check failed');
-    throw error;
+    
+    return {
+      success: false,
+      alertsGenerated: 0,
+      contractsChecked: 0,
+      alerts: [],
+      processingTimeMs,
+      errors,
+    };
   }
 }
+
+// ============================================================================
+// SCHEDULING & REGISTRATION
+// ============================================================================
 
 /**
  * Schedule daily renewal checks
  */
-export async function scheduleRenewalCheck(tenantId?: string) {
+export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<RenewalCheckJobData>) {
+  const { getQueueService } = await import('../../utils/src/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 
-  // Add a job to check renewals
   await queue.add(
     'check-renewals',
-    { tenantId, daysAhead: 90 },
+    { 
+      tenantId, 
+      daysAhead: options?.daysAhead ?? 90,
+      criticalThresholdDays: options?.criticalThresholdDays ?? 14,
+      warningThresholdDays: options?.warningThresholdDays ?? 30,
+      source: 'scheduled',
+      ...options
+    },
     {
       repeat: {
         pattern: '0 8 * * *', // Run daily at 8 AM
       },
-      removeOnComplete: { count: 30 }, // Keep last 30 completed jobs
-      removeOnFail: { count: 50 },
+      ...RENEWAL_ALERT_CONFIG.defaultJobOptions,
     }
   );
 
@@ -226,16 +325,39 @@ export async function scheduleRenewalCheck(tenantId?: string) {
 }
 
 /**
+ * Trigger immediate renewal check
+ */
+export async function triggerRenewalCheck(data: RenewalCheckJobData) {
+  const { getQueueService } = await import('../../utils/src/queue/queue-service');
+  const queueService = getQueueService();
+  const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
+
+  const job = await queue.add(
+    'manual-renewal-check',
+    { ...data, source: data.source || 'manual' },
+    {
+      priority: data.priority === 'high' ? 1 : data.priority === 'low' ? 10 : 5,
+      ...RENEWAL_ALERT_CONFIG.defaultJobOptions,
+    }
+  );
+
+  logger.info({ jobId: job.id, tenantId: data.tenantId }, 'Triggered manual renewal check');
+  return job;
+}
+
+/**
  * Register renewal alert worker
  */
 export function registerRenewalAlertWorker() {
+  const { getQueueService } = require('../../utils/src/queue/queue-service');
   const queueService = getQueueService();
 
   const worker = queueService.registerWorker<RenewalCheckJobData, RenewalCheckResult>(
     RENEWAL_ALERT_QUEUE,
     checkRenewalsJob,
     {
-      concurrency: 1, // Run one at a time
+      concurrency: RENEWAL_ALERT_CONFIG.concurrency,
+      limiter: RENEWAL_ALERT_CONFIG.limiter,
     }
   );
 
