@@ -1696,6 +1696,1070 @@ export function ComplianceArtifact({ data, className, isLoading }: ComplianceArt
   );
 }
 
+// ============ OBLIGATIONS ARTIFACT ============
+
+interface Obligation {
+  id: string
+  title: string
+  party: string
+  type: 'deliverable' | 'sla' | 'milestone' | 'reporting' | 'compliance' | 'other'
+  description: string
+  dueDate?: string
+  recurring?: {
+    frequency: string
+    interval: number
+  }
+  status?: 'pending' | 'in-progress' | 'completed' | 'overdue'
+  slaCriteria?: {
+    metric: string
+    target: string | number
+    unit?: string
+  }
+  penalty?: string
+  sourceClause?: string
+  confidence?: number
+}
+
+interface ObligationsArtifactProps extends ArtifactBaseProps {
+  data: {
+    obligations: Obligation[]
+    milestones?: Array<{
+      id: string
+      name: string
+      date: string
+      deliverables: string[]
+      status?: 'upcoming' | 'due' | 'completed' | 'missed'
+    }>
+    slaMetrics?: Array<{
+      metric: string
+      target: string | number
+      currentValue?: string | number
+      status?: 'met' | 'at-risk' | 'breached'
+      penalty?: string
+    }>
+    summary?: string
+  }
+}
+
+export function ObligationsArtifact({ data, className, isLoading }: ObligationsArtifactProps) {
+  if (isLoading) {
+    return <ArtifactSkeleton />;
+  }
+
+  const getObligationTypeConfig = (type: Obligation['type']) => {
+    return {
+      'deliverable': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Deliverable' },
+      'sla': { bg: 'bg-purple-100', text: 'text-purple-700', label: 'SLA' },
+      'milestone': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Milestone' },
+      'reporting': { bg: 'bg-indigo-100', text: 'text-indigo-700', label: 'Reporting' },
+      'compliance': { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Compliance' },
+      'other': { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Other' }
+    }[type] || { bg: 'bg-slate-100', text: 'text-slate-600', label: type };
+  };
+
+  const getStatusConfig = (status?: string) => {
+    return {
+      'pending': { bg: 'bg-slate-100', text: 'text-slate-600', icon: Calendar },
+      'in-progress': { bg: 'bg-blue-100', text: 'text-blue-600', icon: TrendingUp },
+      'completed': { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: CheckCircle2 },
+      'overdue': { bg: 'bg-rose-100', text: 'text-rose-600', icon: AlertTriangle },
+      'upcoming': { bg: 'bg-amber-100', text: 'text-amber-600', icon: Calendar },
+      'due': { bg: 'bg-orange-100', text: 'text-orange-600', icon: AlertTriangle },
+      'missed': { bg: 'bg-rose-100', text: 'text-rose-600', icon: AlertTriangle },
+      'met': { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: CheckCircle2 },
+      'at-risk': { bg: 'bg-amber-100', text: 'text-amber-600', icon: AlertTriangle },
+      'breached': { bg: 'bg-rose-100', text: 'text-rose-600', icon: AlertTriangle }
+    }[status || 'pending'] || { bg: 'bg-slate-100', text: 'text-slate-600', icon: Info };
+  };
+
+  const obligationsByParty = data.obligations.reduce((acc, obl) => {
+    const party = obl.party || 'Unassigned';
+    if (!acc[party]) acc[party] = [];
+    acc[party].push(obl);
+    return acc;
+  }, {} as Record<string, Obligation[]>);
+
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <FileCheck className="h-5 w-5 text-blue-500" />
+            Obligations Tracker
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            {data.obligations.length} obligations • {data.milestones?.length || 0} milestones
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Badge className="bg-blue-100 text-blue-700">
+            {data.obligations.filter(o => o.type === 'sla').length} SLAs
+          </Badge>
+          <Badge className="bg-amber-100 text-amber-700">
+            {data.obligations.filter(o => o.status === 'pending' || o.status === 'in-progress').length} Active
+          </Badge>
+        </div>
+      </div>
+
+      {/* Summary */}
+      {data.summary && (
+        <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-xl border border-blue-200/50">
+          <p className="text-sm text-slate-700">{data.summary}</p>
+        </div>
+      )}
+
+      {/* SLA Metrics */}
+      {data.slaMetrics && data.slaMetrics.length > 0 && (
+        <ExpandableSection
+          title="SLA Metrics"
+          icon={TrendingUp}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.slaMetrics.length}</Badge>}
+          defaultOpen
+        >
+          <div className="grid grid-cols-2 gap-3">
+            {data.slaMetrics.map((sla, i) => {
+              const config = getStatusConfig(sla.status);
+              const StatusIcon = config.icon;
+              return (
+                <div key={i} className={cn("p-3 rounded-lg border", config.bg, "border-slate-200/50")}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-slate-900 text-sm">{sla.metric}</span>
+                    <StatusIcon className={cn("h-4 w-4", config.text)} />
+                  </div>
+                  <p className="text-lg font-bold text-slate-900 mt-1">
+                    Target: {sla.target}
+                  </p>
+                  {sla.currentValue && (
+                    <p className="text-xs text-slate-500">Current: {sla.currentValue}</p>
+                  )}
+                  {sla.penalty && (
+                    <p className="text-xs text-rose-600 mt-1">Penalty: {sla.penalty}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Milestones */}
+      {data.milestones && data.milestones.length > 0 && (
+        <ExpandableSection
+          title="Milestones"
+          icon={Calendar}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.milestones.length}</Badge>}
+        >
+          <div className="space-y-3">
+            {data.milestones.map((milestone) => {
+              const config = getStatusConfig(milestone.status);
+              return (
+                <div key={milestone.id} className={cn("p-4 rounded-xl border", config.bg, "border-slate-200/50")}>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-medium text-slate-900">{milestone.name}</h4>
+                      <p className="text-sm text-slate-600 mt-1">{formatDate(milestone.date)}</p>
+                    </div>
+                    <Badge className={cn("text-[10px]", config.bg, config.text)}>
+                      {milestone.status || 'upcoming'}
+                    </Badge>
+                  </div>
+                  {milestone.deliverables.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1">
+                      {milestone.deliverables.map((d, i) => (
+                        <Badge key={i} variant="outline" className="text-[10px] bg-white">
+                          {d}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Obligations by Party */}
+      {Object.entries(obligationsByParty).map(([party, obligations]) => (
+        <ExpandableSection
+          key={party}
+          title={party}
+          icon={Users}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{obligations.length}</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-2">
+            {obligations.map((obl) => {
+              const typeConfig = getObligationTypeConfig(obl.type);
+              const statusConfig = getStatusConfig(obl.status);
+              return (
+                <div key={obl.id} className="p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn("text-[10px]", typeConfig.bg, typeConfig.text)}>
+                          {typeConfig.label}
+                        </Badge>
+                        <h4 className="font-medium text-slate-900 text-sm">{obl.title}</h4>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-1">{obl.description}</p>
+                      {obl.slaCriteria && (
+                        <p className="text-xs text-purple-600 mt-1">
+                          SLA: {obl.slaCriteria.metric} - {obl.slaCriteria.target} {obl.slaCriteria.unit || ''}
+                        </p>
+                      )}
+                      {obl.penalty && (
+                        <p className="text-xs text-rose-600 mt-1">Penalty: {obl.penalty}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      {obl.dueDate && (
+                        <p className="text-xs text-slate-500">{formatDate(obl.dueDate)}</p>
+                      )}
+                      <Badge className={cn("text-[10px] mt-1", statusConfig.bg, statusConfig.text)}>
+                        {obl.status || 'pending'}
+                      </Badge>
+                    </div>
+                  </div>
+                  {obl.confidence && obl.confidence < 90 && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <ConfidenceIndicator value={obl.confidence} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </ExpandableSection>
+      ))}
+    </div>
+  );
+}
+
+// ============ RENEWAL ARTIFACT ============
+
+interface RenewalArtifactProps extends ArtifactBaseProps {
+  data: {
+    autoRenewal: boolean
+    renewalTerms?: {
+      renewalPeriod: string
+      noticePeriodDays: number
+      optOutDeadline?: string
+    }
+    terminationNotice?: {
+      requiredDays: number
+      format?: string
+      recipientParty?: string
+    }
+    priceEscalation?: Array<{
+      type: string
+      percentage?: number
+      index?: string
+      cap?: number
+      effectiveDate?: string
+    }>
+    optOutDeadlines?: Array<{
+      date: string
+      description: string
+      daysRemaining?: number
+    }>
+    renewalAlerts?: Array<{
+      type: 'warning' | 'critical' | 'info'
+      message: string
+      dueDate?: string
+    }>
+    currentTermEnd?: string
+    renewalCount?: number
+    summary?: string
+  }
+}
+
+export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactProps) {
+  if (isLoading) {
+    return <ArtifactSkeleton />;
+  }
+
+  const getAlertConfig = (type: 'warning' | 'critical' | 'info') => {
+    return {
+      'critical': { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-300', icon: AlertTriangle },
+      'warning': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', icon: AlertTriangle },
+      'info': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', icon: Info }
+    }[type];
+  };
+
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-indigo-500" />
+            Renewal & Termination
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Contract renewal terms and deadlines
+          </p>
+        </div>
+        <Badge className={data.autoRenewal ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}>
+          {data.autoRenewal ? 'Auto-Renewal Enabled' : 'Manual Renewal'}
+        </Badge>
+      </div>
+
+      {/* Summary */}
+      {data.summary && (
+        <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50/50 rounded-xl border border-indigo-200/50">
+          <p className="text-sm text-slate-700">{data.summary}</p>
+        </div>
+      )}
+
+      {/* Renewal Alerts */}
+      {data.renewalAlerts && data.renewalAlerts.length > 0 && (
+        <div className="space-y-2">
+          {data.renewalAlerts.map((alert, i) => {
+            const config = getAlertConfig(alert.type);
+            const AlertIcon = config.icon;
+            return (
+              <div key={i} className={cn("p-4 rounded-xl border", config.bg, config.border)}>
+                <div className="flex items-start gap-3">
+                  <AlertIcon className={cn("h-5 w-5 shrink-0", config.text)} />
+                  <div className="flex-1">
+                    <p className={cn("text-sm font-medium", config.text)}>{alert.message}</p>
+                    {alert.dueDate && (
+                      <p className="text-xs text-slate-500 mt-1">Due: {formatDate(alert.dueDate)}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Key Dates */}
+      <div className="grid grid-cols-2 gap-4">
+        {data.currentTermEnd && (
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-xs text-slate-500 uppercase">Current Term Ends</p>
+            <p className="text-lg font-bold text-slate-900 mt-1">{formatDate(data.currentTermEnd)}</p>
+          </div>
+        )}
+        {data.renewalTerms?.optOutDeadline && (
+          <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <p className="text-xs text-amber-600 uppercase">Opt-Out Deadline</p>
+            <p className="text-lg font-bold text-amber-700 mt-1">{formatDate(data.renewalTerms.optOutDeadline)}</p>
+          </div>
+        )}
+        {data.terminationNotice && (
+          <div className="p-4 bg-rose-50 rounded-xl border border-rose-200">
+            <p className="text-xs text-rose-600 uppercase">Notice Required</p>
+            <p className="text-lg font-bold text-rose-700 mt-1">{data.terminationNotice.requiredDays} days</p>
+            {data.terminationNotice.format && (
+              <p className="text-xs text-slate-500 mt-1">Format: {data.terminationNotice.format}</p>
+            )}
+          </div>
+        )}
+        {data.renewalTerms && (
+          <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+            <p className="text-xs text-indigo-600 uppercase">Renewal Period</p>
+            <p className="text-lg font-bold text-indigo-700 mt-1">{data.renewalTerms.renewalPeriod}</p>
+            <p className="text-xs text-slate-500 mt-1">{data.renewalTerms.noticePeriodDays} days notice</p>
+          </div>
+        )}
+      </div>
+
+      {/* Price Escalation */}
+      {data.priceEscalation && data.priceEscalation.length > 0 && (
+        <ExpandableSection
+          title="Price Escalation"
+          icon={TrendingUp}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.priceEscalation.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.priceEscalation.map((esc, i) => (
+              <div key={i} className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-slate-900">{esc.type}</span>
+                  {esc.percentage && (
+                    <Badge className="bg-amber-100 text-amber-700">+{esc.percentage}%</Badge>
+                  )}
+                </div>
+                {esc.index && <p className="text-xs text-slate-500 mt-1">Index: {esc.index}</p>}
+                {esc.cap && <p className="text-xs text-slate-500">Cap: {esc.cap}%</p>}
+                {esc.effectiveDate && <p className="text-xs text-slate-500">Effective: {formatDate(esc.effectiveDate)}</p>}
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Opt-Out Deadlines */}
+      {data.optOutDeadlines && data.optOutDeadlines.length > 0 && (
+        <ExpandableSection
+          title="Opt-Out Deadlines"
+          icon={AlertTriangle}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-amber-100 text-amber-700">{data.optOutDeadlines.length}</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-2">
+            {data.optOutDeadlines.map((deadline, i) => (
+              <div key={i} className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-slate-900">{formatDate(deadline.date)}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">{deadline.description}</p>
+                  </div>
+                  {deadline.daysRemaining !== undefined && (
+                    <Badge className={deadline.daysRemaining < 30 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}>
+                      {deadline.daysRemaining} days
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+    </div>
+  );
+}
+
+// ============ NEGOTIATION POINTS ARTIFACT ============
+
+interface NegotiationPointsArtifactProps extends ArtifactBaseProps {
+  data: {
+    leveragePoints?: Array<{
+      id: string
+      title: string
+      description: string
+      category: string
+      strength: 'strong' | 'moderate' | 'weak'
+      suggestedAction?: string
+      sourceClause?: string
+    }>
+    weakClauses?: Array<{
+      id: string
+      clauseReference: string
+      issue: string
+      impact: 'high' | 'medium' | 'low'
+      suggestedRevision?: string
+      benchmarkComparison?: string
+    }>
+    benchmarkGaps?: Array<{
+      area: string
+      currentTerm: string
+      marketStandard: string
+      gap: string
+      recommendation: string
+    }>
+    negotiationScript?: Array<{
+      topic: string
+      openingPosition: string
+      fallbackPosition: string
+      walkAwayPoint?: string
+      supportingEvidence?: string[]
+    }>
+    summary?: string
+    overallLeverage?: 'strong' | 'balanced' | 'weak'
+  }
+}
+
+export function NegotiationPointsArtifact({ data, className, isLoading }: NegotiationPointsArtifactProps) {
+  if (isLoading) {
+    return <ArtifactSkeleton />;
+  }
+
+  const getStrengthConfig = (strength: string) => {
+    return {
+      'strong': { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Strong' },
+      'moderate': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Moderate' },
+      'weak': { bg: 'bg-rose-100', text: 'text-rose-700', label: 'Weak' },
+      'balanced': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Balanced' }
+    }[strength] || { bg: 'bg-slate-100', text: 'text-slate-600', label: strength };
+  };
+
+  const leverageConfig = getStrengthConfig(data.overallLeverage || 'balanced');
+
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Scale className="h-5 w-5 text-purple-500" />
+            Negotiation Intelligence
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            Strategic insights for contract negotiation
+          </p>
+        </div>
+        <Badge className={cn(leverageConfig.bg, leverageConfig.text)}>
+          {leverageConfig.label} Position
+        </Badge>
+      </div>
+
+      {/* Summary */}
+      {data.summary && (
+        <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50/50 rounded-xl border border-purple-200/50">
+          <p className="text-sm text-slate-700">{data.summary}</p>
+        </div>
+      )}
+
+      {/* Leverage Points */}
+      {data.leveragePoints && data.leveragePoints.length > 0 && (
+        <ExpandableSection
+          title="Leverage Points"
+          icon={TrendingUp}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-emerald-100 text-emerald-700">{data.leveragePoints.length}</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-3">
+            {data.leveragePoints.map((point) => {
+              const strengthConfig = getStrengthConfig(point.strength);
+              return (
+                <div key={point.id} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn("text-[10px]", strengthConfig.bg, strengthConfig.text)}>
+                          {strengthConfig.label}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px]">{point.category}</Badge>
+                      </div>
+                      <h4 className="font-medium text-slate-900 mt-2">{point.title}</h4>
+                      <p className="text-sm text-slate-600 mt-1">{point.description}</p>
+                      {point.suggestedAction && (
+                        <p className="text-sm text-emerald-600 mt-2 flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          {point.suggestedAction}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Weak Clauses */}
+      {data.weakClauses && data.weakClauses.length > 0 && (
+        <ExpandableSection
+          title="Weak Clauses"
+          icon={AlertTriangle}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-rose-100 text-rose-700">{data.weakClauses.length}</Badge>}
+        >
+          <div className="space-y-3">
+            {data.weakClauses.map((clause) => (
+              <div key={clause.id} className="p-4 bg-rose-50 rounded-xl border border-rose-200">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-[10px]">{clause.clauseReference}</Badge>
+                  <SeverityBadge severity={clause.impact} />
+                </div>
+                <p className="text-sm text-slate-900 font-medium mt-2">{clause.issue}</p>
+                {clause.suggestedRevision && (
+                  <div className="mt-3 p-2 bg-white rounded-lg border border-slate-200">
+                    <p className="text-xs text-slate-500 uppercase mb-1">Suggested Revision</p>
+                    <p className="text-sm text-slate-700">{clause.suggestedRevision}</p>
+                  </div>
+                )}
+                {clause.benchmarkComparison && (
+                  <p className="text-xs text-slate-500 mt-2">Market: {clause.benchmarkComparison}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Benchmark Gaps */}
+      {data.benchmarkGaps && data.benchmarkGaps.length > 0 && (
+        <ExpandableSection
+          title="Benchmark Gaps"
+          icon={TrendingDown}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.benchmarkGaps.length}</Badge>}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 font-medium text-slate-600">Area</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Current</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Market</th>
+                  <th className="text-left py-2 font-medium text-slate-600">Recommendation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.benchmarkGaps.map((gap, i) => (
+                  <tr key={i} className="border-b border-slate-100 last:border-0">
+                    <td className="py-3 text-slate-900 font-medium">{gap.area}</td>
+                    <td className="py-3 text-rose-600">{gap.currentTerm}</td>
+                    <td className="py-3 text-emerald-600">{gap.marketStandard}</td>
+                    <td className="py-3 text-slate-600">{gap.recommendation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Negotiation Script */}
+      {data.negotiationScript && data.negotiationScript.length > 0 && (
+        <ExpandableSection
+          title="Negotiation Script"
+          icon={Edit3}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.negotiationScript.length} topics</Badge>}
+        >
+          <div className="space-y-4">
+            {data.negotiationScript.map((script, i) => (
+              <div key={i} className="p-4 bg-white rounded-xl border border-slate-200">
+                <h4 className="font-medium text-slate-900">{script.topic}</h4>
+                <div className="mt-3 space-y-2">
+                  <div className="p-2 bg-emerald-50 rounded-lg">
+                    <p className="text-xs text-emerald-600 uppercase mb-1">Opening Position</p>
+                    <p className="text-sm text-slate-700">{script.openingPosition}</p>
+                  </div>
+                  <div className="p-2 bg-amber-50 rounded-lg">
+                    <p className="text-xs text-amber-600 uppercase mb-1">Fallback Position</p>
+                    <p className="text-sm text-slate-700">{script.fallbackPosition}</p>
+                  </div>
+                  {script.walkAwayPoint && (
+                    <div className="p-2 bg-rose-50 rounded-lg">
+                      <p className="text-xs text-rose-600 uppercase mb-1">Walk Away Point</p>
+                      <p className="text-sm text-slate-700">{script.walkAwayPoint}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+    </div>
+  );
+}
+
+// ============ AMENDMENTS ARTIFACT ============
+
+interface AmendmentsArtifactProps extends ArtifactBaseProps {
+  data: {
+    amendments?: Array<{
+      id: string
+      amendmentNumber: number
+      effectiveDate: string
+      title: string
+      description: string
+      changedClauses: Array<{
+        clauseId: string
+        originalText?: string
+        newText: string
+        changeType: 'added' | 'modified' | 'deleted'
+      }>
+      signedBy?: string[]
+      sourceDocument?: string
+    }>
+    supersededClauses?: Array<{
+      originalClause: string
+      supersededBy: string
+      effectiveDate: string
+    }>
+    changeLog?: Array<{
+      date: string
+      type: string
+      description: string
+      reference?: string
+    }>
+    consolidatedTerms?: {
+      lastUpdated: string
+      version: string
+      effectiveTerms: string[]
+    }
+    summary?: string
+  }
+}
+
+export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArtifactProps) {
+  if (isLoading) {
+    return <ArtifactSkeleton />;
+  }
+
+  const getChangeTypeConfig = (type: string) => {
+    return {
+      'added': { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Added' },
+      'modified': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Modified' },
+      'deleted': { bg: 'bg-rose-100', text: 'text-rose-700', label: 'Deleted' }
+    }[type] || { bg: 'bg-slate-100', text: 'text-slate-600', label: type };
+  };
+
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Edit3 className="h-5 w-5 text-indigo-500" />
+            Amendments & Changes
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            {data.amendments?.length || 0} amendments tracked
+          </p>
+        </div>
+        {data.consolidatedTerms && (
+          <Badge className="bg-blue-100 text-blue-700">
+            v{data.consolidatedTerms.version}
+          </Badge>
+        )}
+      </div>
+
+      {/* Summary */}
+      {data.summary && (
+        <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-xl border border-indigo-200/50">
+          <p className="text-sm text-slate-700">{data.summary}</p>
+        </div>
+      )}
+
+      {/* Amendments */}
+      {data.amendments && data.amendments.length > 0 && (
+        <ExpandableSection
+          title="Amendments"
+          icon={FileText}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.amendments.length}</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-4">
+            {data.amendments.map((amendment) => (
+              <div key={amendment.id} className="p-4 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-indigo-100 text-indigo-700">
+                        Amendment #{amendment.amendmentNumber}
+                      </Badge>
+                      <span className="text-xs text-slate-500">{formatDate(amendment.effectiveDate)}</span>
+                    </div>
+                    <h4 className="font-medium text-slate-900 mt-2">{amendment.title}</h4>
+                    <p className="text-sm text-slate-600 mt-1">{amendment.description}</p>
+                  </div>
+                </div>
+                
+                {/* Changed Clauses */}
+                {amendment.changedClauses.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-slate-500 uppercase">Changes</p>
+                    {amendment.changedClauses.map((clause, i) => {
+                      const config = getChangeTypeConfig(clause.changeType);
+                      return (
+                        <div key={i} className={cn("p-3 rounded-lg", config.bg)}>
+                          <div className="flex items-center justify-between">
+                            <Badge variant="outline" className="text-[10px]">{clause.clauseId}</Badge>
+                            <Badge className={cn("text-[10px]", config.bg, config.text)}>
+                              {config.label}
+                            </Badge>
+                          </div>
+                          {clause.originalText && (
+                            <p className="text-sm text-slate-500 line-through mt-2">{clause.originalText}</p>
+                          )}
+                          <p className="text-sm text-slate-900 mt-1">{clause.newText}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Signed By */}
+                {amendment.signedBy && amendment.signedBy.length > 0 && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Users className="h-3 w-3 text-slate-400" />
+                    <span className="text-xs text-slate-500">
+                      Signed by: {amendment.signedBy.join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Change Log */}
+      {data.changeLog && data.changeLog.length > 0 && (
+        <ExpandableSection
+          title="Change Log"
+          icon={Calendar}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.changeLog.length}</Badge>}
+        >
+          <div className="relative">
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200" />
+            <div className="space-y-4">
+              {data.changeLog.map((entry, i) => (
+                <div key={i} className="relative pl-10">
+                  <div className="absolute left-2.5 w-3 h-3 rounded-full bg-white border-2 border-indigo-500" />
+                  <div className="p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-[10px]">{entry.type}</Badge>
+                      <span className="text-xs text-slate-500">{formatDate(entry.date)}</span>
+                    </div>
+                    <p className="text-sm text-slate-700 mt-1">{entry.description}</p>
+                    {entry.reference && (
+                      <p className="text-xs text-slate-400 mt-1">Ref: {entry.reference}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Superseded Clauses */}
+      {data.supersededClauses && data.supersededClauses.length > 0 && (
+        <ExpandableSection
+          title="Superseded Clauses"
+          icon={FileText}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-slate-100">{data.supersededClauses.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.supersededClauses.map((clause, i) => (
+              <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-slate-500 line-through">{clause.originalClause}</span>
+                  <span className="text-slate-400">→</span>
+                  <span className="text-slate-900 font-medium">{clause.supersededBy}</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">Effective: {formatDate(clause.effectiveDate)}</p>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+    </div>
+  );
+}
+
+// ============ CONTACTS ARTIFACT ============
+
+interface ContactsArtifactProps extends ArtifactBaseProps {
+  data: {
+    primaryContacts?: Array<{
+      id: string
+      name: string
+      role: string
+      party: string
+      email?: string
+      phone?: string
+      address?: string
+      isPrimary?: boolean
+    }>
+    escalationPath?: Array<{
+      level: number
+      role: string
+      name?: string
+      contactInfo?: string
+      escalationTrigger?: string
+    }>
+    notificationAddresses?: Array<{
+      purpose: string
+      party: string
+      address: string
+      format?: string
+    }>
+    keyPersonnel?: Array<{
+      name: string
+      role: string
+      responsibilities: string[]
+      party: string
+    }>
+    summary?: string
+  }
+}
+
+export function ContactsArtifact({ data, className, isLoading }: ContactsArtifactProps) {
+  if (isLoading) {
+    return <ArtifactSkeleton />;
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  return (
+    <div className={cn("space-y-6", className)}>
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-500" />
+            Key Contacts
+          </h3>
+          <p className="text-sm text-slate-500 mt-1">
+            {data.primaryContacts?.length || 0} contacts • {data.escalationPath?.length || 0} escalation levels
+          </p>
+        </div>
+      </div>
+
+      {/* Summary */}
+      {data.summary && (
+        <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50/50 rounded-xl border border-blue-200/50">
+          <p className="text-sm text-slate-700">{data.summary}</p>
+        </div>
+      )}
+
+      {/* Primary Contacts */}
+      {data.primaryContacts && data.primaryContacts.length > 0 && (
+        <ExpandableSection
+          title="Primary Contacts"
+          icon={Users}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.primaryContacts.length}</Badge>}
+          defaultOpen
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {data.primaryContacts.map((contact) => (
+              <div key={contact.id} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium text-slate-900">{contact.name}</h4>
+                      {contact.isPrimary && (
+                        <Badge className="text-[10px] bg-blue-100 text-blue-700">Primary</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-600">{contact.role}</p>
+                    <Badge variant="outline" className="text-[10px] mt-1">{contact.party}</Badge>
+                  </div>
+                </div>
+                
+                <div className="mt-3 space-y-1">
+                  {contact.email && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-slate-500">Email:</span>
+                      <button
+                        onClick={() => copyToClipboard(contact.email!)}
+                        className="text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        {contact.email}
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  {contact.phone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-slate-500">Phone:</span>
+                      <span className="text-slate-700">{contact.phone}</span>
+                    </div>
+                  )}
+                  {contact.address && (
+                    <div className="flex items-start gap-2 text-sm">
+                      <span className="text-slate-500 shrink-0">Address:</span>
+                      <span className="text-slate-700">{contact.address}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Escalation Path */}
+      {data.escalationPath && data.escalationPath.length > 0 && (
+        <ExpandableSection
+          title="Escalation Path"
+          icon={TrendingUp}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.escalationPath.length} levels</Badge>}
+        >
+          <div className="relative">
+            <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-500 via-amber-500 to-rose-500" />
+            <div className="space-y-3">
+              {data.escalationPath.map((level, i) => (
+                <div key={i} className="relative pl-10">
+                  <div className="absolute left-2 w-5 h-5 rounded-full bg-white border-2 border-indigo-500 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-indigo-600">{level.level}</span>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-slate-900">{level.role}</h4>
+                      {level.name && <span className="text-sm text-slate-600">{level.name}</span>}
+                    </div>
+                    {level.contactInfo && (
+                      <p className="text-sm text-blue-600 mt-1">{level.contactInfo}</p>
+                    )}
+                    {level.escalationTrigger && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        <span className="font-medium">Trigger:</span> {level.escalationTrigger}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Notification Addresses */}
+      {data.notificationAddresses && data.notificationAddresses.length > 0 && (
+        <ExpandableSection
+          title="Notification Addresses"
+          icon={FileText}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.notificationAddresses.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.notificationAddresses.map((addr, i) => (
+              <div key={i} className="p-3 bg-white rounded-lg border border-slate-200">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <Badge variant="outline" className="text-[10px]">{addr.purpose}</Badge>
+                    <p className="text-sm text-slate-900 font-medium mt-1">{addr.party}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">{addr.address}</p>
+                  </div>
+                  {addr.format && (
+                    <Badge className="text-[10px] bg-slate-100 text-slate-600">
+                      {addr.format}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Key Personnel */}
+      {data.keyPersonnel && data.keyPersonnel.length > 0 && (
+        <ExpandableSection
+          title="Key Personnel"
+          icon={Users}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.keyPersonnel.length}</Badge>}
+        >
+          <div className="space-y-3">
+            {data.keyPersonnel.map((person, i) => (
+              <div key={i} className="p-4 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-slate-900">{person.name}</h4>
+                    <p className="text-sm text-slate-600">{person.role}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px]">{person.party}</Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {person.responsibilities.map((resp, j) => (
+                    <Badge key={j} className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                      {resp}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+    </div>
+  );
+}
+
 // ============ SKELETON ============
 
 function ArtifactSkeleton() {

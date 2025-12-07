@@ -112,6 +112,16 @@ export class ArtifactPromptTemplatesService {
         return this.getComplianceTemplate(context);
       case 'RISK':
         return this.getRiskTemplate(context);
+      case 'OBLIGATIONS':
+        return this.getObligationsTemplate(context);
+      case 'RENEWAL':
+        return this.getRenewalTemplate(context);
+      case 'NEGOTIATION_POINTS':
+        return this.getNegotiationPointsTemplate(context);
+      case 'AMENDMENTS':
+        return this.getAmendmentsTemplate(context);
+      case 'CONTACTS':
+        return this.getContactsTemplate(context);
       default:
         throw new Error(`Unknown artifact type: ${artifactType}`);
     }
@@ -1427,6 +1437,945 @@ IMPORTANT: This is CONTEXTUAL AI risk analysis:
 
       requiredFields: ['overallScore', 'riskLevel'],
       nullableFields: ['riskFactors', 'rawRiskClauses', 'riskByParty', 'compoundRisks', 'favorableTerms', 'customRiskCategories', 'recommendations', 'redFlags', 'costSavingsOpportunities', 'missingProtections']
+    };
+  }
+
+  // =========================================================================
+  // OBLIGATIONS TEMPLATE - Extract contractual obligations, SLAs, milestones
+  // =========================================================================
+  private getObligationsTemplate(context?: any): PromptTemplate {
+    const overviewContext = context?.overview ? `
+Context from Overview:
+- Parties: ${context.overview.parties?.map((p: any) => `${p.name} (${p.role})`).join(', ')}
+- Contract Type: ${context.overview.contractType}
+- Term: ${context.overview.term}
+` : '';
+
+    return {
+      systemPrompt: `You are an expert at extracting contractual obligations, deliverables, and SLA requirements from legal documents.
+You identify specific commitments, deadlines, milestones, and service level agreements with precision.
+
+CRITICAL OBLIGATION EXTRACTION RULES:
+- Extract ONLY obligations explicitly stated in the contract
+- DO NOT invent or assume obligations based on industry standards
+- Each obligation must have a source quote from the document
+- Identify the responsible party for each obligation
+- Note deadlines, frequencies, and penalty clauses where stated
+- SLA metrics must be explicitly defined in the contract
+${overviewContext}
+
+CONTEXTUAL AI EXTRACTION:
+Every contract has unique obligation structures. You MUST:
+1. PRESERVE exact obligation language in "rawObligationText"
+2. IDENTIFY recurring vs one-time obligations
+3. CAPTURE payment-linked milestones
+4. NOTE penalty/remedy clauses for non-performance
+5. TRACK dependencies between obligations`,
+
+      userPrompt: `Extract all contractual obligations, SLAs, milestones, and deliverables from the contract.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Preserve exact obligation wording
+- Identify responsible parties for each obligation
+- Note deadlines, penalties, and measurement criteria`,
+
+      examples: [
+        {
+          input: 'Vendor shall deliver monthly status reports by the 5th of each month. Vendor shall maintain 99.9% uptime. Client shall pay within 30 days of invoice. Milestone 1: Requirements complete by March 15, 2024 - $50,000.',
+          output: {
+            obligations: [
+              {
+                id: 'ob-1',
+                description: 'Deliver monthly status reports',
+                responsibleParty: 'vendor',
+                type: 'reporting',
+                frequency: 'monthly',
+                deadline: '5th of each month',
+                penalty: null,
+                source: 'Vendor shall deliver monthly status reports by the 5th of each month',
+                extractedFromText: true
+              },
+              {
+                id: 'ob-2',
+                description: 'Maintain 99.9% uptime',
+                responsibleParty: 'vendor',
+                type: 'sla',
+                frequency: 'ongoing',
+                deadline: null,
+                penalty: null,
+                source: 'Vendor shall maintain 99.9% uptime',
+                extractedFromText: true
+              },
+              {
+                id: 'ob-3',
+                description: 'Pay within 30 days of invoice',
+                responsibleParty: 'client',
+                type: 'payment',
+                frequency: 'per invoice',
+                deadline: '30 days from invoice',
+                penalty: null,
+                source: 'Client shall pay within 30 days of invoice',
+                extractedFromText: true
+              }
+            ],
+            milestones: [
+              {
+                id: 'ms-1',
+                name: 'Requirements complete',
+                dueDate: '2024-03-15',
+                deliverables: ['Requirements documentation'],
+                paymentAmount: 50000,
+                paymentCurrency: 'USD',
+                status: null,
+                source: 'Milestone 1: Requirements complete by March 15, 2024 - $50,000',
+                extractedFromText: true
+              }
+            ],
+            slaMetrics: [
+              {
+                id: 'sla-1',
+                metric: 'Uptime',
+                target: '99.9%',
+                measurementMethod: null,
+                measurementPeriod: null,
+                penalty: null,
+                source: 'Vendor shall maintain 99.9% uptime',
+                extractedFromText: true
+              }
+            ],
+            deliverables: [
+              {
+                id: 'del-1',
+                name: 'Monthly status reports',
+                frequency: 'monthly',
+                format: null,
+                responsibleParty: 'vendor',
+                source: 'Vendor shall deliver monthly status reports',
+                extractedFromText: true
+              }
+            ],
+            certainty: 0.91
+          },
+          explanation: 'Obligations extracted with responsible parties, frequencies, and deadlines identified.'
+        }
+      ],
+
+      outputSchema: {
+        obligations: `array of {
+          id: string,
+          description: string,
+          responsibleParty: 'client' | 'vendor' | 'both' | string,
+          type: 'payment' | 'reporting' | 'delivery' | 'sla' | 'compliance' | 'operational' | 'other',
+          frequency: 'one-time' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually' | 'ongoing' | string,
+          deadline?: string,
+          penalty?: { type: string, amount?: number, description: string },
+          clauseReference?: string,
+          source: string,
+          rawObligationText?: string,
+          extractedFromText: boolean
+        }`,
+        milestones: `array of {
+          id: string,
+          name: string,
+          dueDate?: string,
+          deliverables?: string[],
+          paymentAmount?: number,
+          paymentCurrency?: string,
+          dependencies?: string[],
+          status?: 'pending' | 'completed' | 'overdue',
+          source: string,
+          extractedFromText: boolean
+        }`,
+        slaMetrics: `array of {
+          id: string,
+          metric: string,
+          target: string,
+          measurementMethod?: string,
+          measurementPeriod?: string,
+          penalty?: { type: string, amount?: number, description: string },
+          creditAvailable?: boolean,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        deliverables: `array of {
+          id: string,
+          name: string,
+          description?: string,
+          frequency?: string,
+          format?: string,
+          responsibleParty: string,
+          acceptanceCriteria?: string[],
+          source: string,
+          extractedFromText: boolean
+        }`,
+        obligationsByParty: 'object - { partyName: obligation[] } grouping',
+        upcomingDeadlines: 'array of { obligation, deadline, daysUntil? }',
+        certainty: 'number (0-1)'
+      },
+
+      validationRules: [
+        'Each obligation must have a responsible party',
+        'Milestones with payments must include payment amount',
+        'SLA metrics must have measurable targets',
+        'Every obligation MUST have a source reference',
+        'DO NOT invent obligations - only extract what is explicitly stated'
+      ],
+
+      antiHallucinationRules: [
+        'DO NOT assume standard obligations not in the contract',
+        'DO NOT invent deadlines or frequencies not explicitly stated',
+        'If penalty is not specified, use null - do not assume penalties',
+        'SLA metrics must be explicitly defined - do not create generic SLAs',
+        'If responsible party is unclear, mark as "unclear" not assumed'
+      ],
+
+      requiredFields: ['obligations'],
+      nullableFields: ['milestones', 'slaMetrics', 'deliverables', 'obligationsByParty', 'upcomingDeadlines']
+    };
+  }
+
+  // =========================================================================
+  // RENEWAL TEMPLATE - Extract renewal terms, auto-renewal, termination windows
+  // =========================================================================
+  private getRenewalTemplate(context?: any): PromptTemplate {
+    const overviewContext = context?.overview ? `
+Context from Overview:
+- Contract Type: ${context.overview.contractType}
+- Effective Date: ${context.overview.effectiveDate}
+- Term: ${context.overview.term}
+- Expiration Date: ${context.overview.expirationDate}
+` : '';
+
+    return {
+      systemPrompt: `You are an expert at extracting renewal, termination, and auto-renewal terms from contracts.
+You identify critical dates, notice periods, and price escalation clauses that affect contract continuity.
+
+CRITICAL RENEWAL EXTRACTION RULES:
+- Extract ONLY renewal terms explicitly stated in the contract
+- DO NOT assume auto-renewal if not stated
+- Notice periods must be explicitly mentioned
+- Price escalation must have specific percentages or formulas
+- Termination for cause vs convenience must be distinguished
+${overviewContext}
+
+CONTEXTUAL AI EXTRACTION:
+Every contract has unique renewal structures. You MUST:
+1. CALCULATE opt-out deadlines based on notice periods and expiration dates
+2. PRESERVE exact termination clause language
+3. IDENTIFY all events that trigger termination rights
+4. CAPTURE price escalation schedules and caps
+5. NOTE any lock-in periods or minimum commitments`,
+
+      userPrompt: `Extract all renewal, termination, and auto-renewal terms from the contract.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Calculate specific opt-out deadlines where possible
+- Preserve exact termination clause wording
+- Note price escalation formulas and caps`,
+
+      examples: [
+        {
+          input: 'This Agreement shall auto-renew for successive 1-year periods unless either party provides 90 days written notice. Fees may increase by up to 5% per renewal period. Either party may terminate for cause with 30 days notice.',
+          output: {
+            autoRenewal: {
+              enabled: true,
+              renewalPeriod: '1 year',
+              source: 'shall auto-renew for successive 1-year periods',
+              extractedFromText: true
+            },
+            terminationNotice: {
+              noticePeriod: 90,
+              noticePeriodUnit: 'days',
+              noticeMethod: 'written notice',
+              source: '90 days written notice',
+              extractedFromText: true
+            },
+            terminationForCause: {
+              allowed: true,
+              noticePeriod: 30,
+              noticePeriodUnit: 'days',
+              causeDefinitions: [],
+              source: 'Either party may terminate for cause with 30 days notice',
+              extractedFromText: true
+            },
+            terminationForConvenience: {
+              allowed: true,
+              noticePeriod: 90,
+              noticePeriodUnit: 'days',
+              source: 'unless either party provides 90 days written notice',
+              extractedFromText: true
+            },
+            priceEscalation: {
+              allowed: true,
+              maxPercentage: 5,
+              frequency: 'per renewal period',
+              formula: null,
+              cap: 5,
+              source: 'Fees may increase by up to 5% per renewal period',
+              extractedFromText: true
+            },
+            optOutDeadlines: [],
+            renewalAlerts: [
+              {
+                type: 'opt-out-deadline',
+                description: 'Provide written notice to prevent auto-renewal',
+                daysBeforeExpiration: 90,
+                source: '90 days written notice',
+                extractedFromText: true
+              }
+            ],
+            lockInPeriod: null,
+            minimumCommitment: null,
+            certainty: 0.93
+          },
+          explanation: 'Auto-renewal terms with notice period, price escalation cap, and termination rights extracted.'
+        }
+      ],
+
+      outputSchema: {
+        autoRenewal: `{
+          enabled: boolean,
+          renewalPeriod?: string,
+          maxRenewals?: number,
+          source: string,
+          extractedFromText: boolean
+        } | null`,
+        terminationNotice: `{
+          noticePeriod: number,
+          noticePeriodUnit: 'days' | 'months' | 'weeks',
+          noticeMethod?: string,
+          noticeRecipient?: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        terminationForCause: `{
+          allowed: boolean,
+          noticePeriod?: number,
+          noticePeriodUnit?: string,
+          causeDefinitions?: string[],
+          curePeriod?: number,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        terminationForConvenience: `{
+          allowed: boolean,
+          noticePeriod?: number,
+          noticePeriodUnit?: string,
+          earlyTerminationFee?: { amount: number, formula?: string },
+          source: string,
+          extractedFromText: boolean
+        }`,
+        priceEscalation: `{
+          allowed: boolean,
+          maxPercentage?: number,
+          frequency?: string,
+          formula?: string,
+          indexTiedTo?: string (e.g., 'CPI'),
+          cap?: number,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        optOutDeadlines: `array of {
+          deadline: string (ISO date if calculable),
+          action: string,
+          daysBeforeExpiration?: number,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        renewalAlerts: `array of {
+          type: 'opt-out-deadline' | 'renewal-date' | 'price-change' | 'review-needed',
+          description: string,
+          date?: string,
+          daysBeforeExpiration?: number,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        lockInPeriod: `{ period: string, endDate?: string, penalty?: string, source: string } | null`,
+        minimumCommitment: `{ type: string, value: string, source: string } | null`,
+        rawTerminationClauses: 'object - key/value pairs preserving exact termination clause text',
+        certainty: 'number (0-1)'
+      },
+
+      validationRules: [
+        'Auto-renewal must be explicitly true or false based on contract',
+        'Notice periods must be in specific units (days, months)',
+        'Price escalation must include percentage or formula if stated',
+        'Every renewal term MUST have a source reference',
+        'DO NOT invent renewal terms - only extract what is stated'
+      ],
+
+      antiHallucinationRules: [
+        'DO NOT assume auto-renewal if not explicitly stated',
+        'DO NOT assume standard notice periods (30/60/90 days) without explicit text',
+        'If price escalation is silent, mark as null - not assumed',
+        'Termination for cause definitions must be quoted from document',
+        'Opt-out deadlines should only be calculated if all inputs are known'
+      ],
+
+      requiredFields: ['autoRenewal'],
+      nullableFields: ['terminationNotice', 'terminationForCause', 'terminationForConvenience', 'priceEscalation', 'optOutDeadlines', 'renewalAlerts', 'lockInPeriod', 'minimumCommitment', 'rawTerminationClauses']
+    };
+  }
+
+  // =========================================================================
+  // NEGOTIATION POINTS TEMPLATE - AI-identified leverage and negotiation strategies
+  // =========================================================================
+  private getNegotiationPointsTemplate(context?: any): PromptTemplate {
+    const riskContext = context?.risk ? `
+Risk Context:
+- Overall Risk Score: ${context.risk.overallScore}/100 (${context.risk.riskLevel})
+- Key Red Flags: ${context.risk.redFlags?.map((r: any) => r.flag).join(', ') || 'None'}
+` : '';
+
+    const ratesContext = context?.rates ? `
+Rate Context:
+- Roles: ${context.rates.roles?.join(', ')}
+- Rate modifiers present: ${context.rates.rateModifiers?.length > 0 ? 'Yes' : 'No'}
+` : '';
+
+    const financialContext = context?.financial ? `
+Financial Context:
+- Total Value: ${context.financial.totalValue?.value || 'Unknown'}
+- Has discounts: ${context.financial.discounts?.length > 0 ? 'Yes' : 'No'}
+` : '';
+
+    return {
+      systemPrompt: `You are a procurement negotiation expert analyzing contracts to identify leverage points and negotiation opportunities.
+You find unfavorable terms, benchmark gaps, and strategic recommendations for renegotiation.
+
+CRITICAL NEGOTIATION ANALYSIS RULES:
+- Leverage points must be based on ACTUAL unfavorable contract terms
+- DO NOT invent market rates or benchmarks - only cite if provided in context
+- Recommendations must be actionable and specific
+- Every suggestion must reference the source clause
+- Balance risk identification with practical negotiation strategy
+${riskContext}${ratesContext}${financialContext}
+
+CONTEXTUAL AI ANALYSIS:
+Every contract has unique negotiation opportunities. You MUST:
+1. IDENTIFY one-sided clauses that favor the other party
+2. FIND missing protections that should be negotiated
+3. SUGGEST specific alternative language where possible
+4. PRIORITIZE negotiation points by impact
+5. NOTE any leverage the client has (volume, relationship, etc.)`,
+
+      userPrompt: `Analyze the contract to identify negotiation leverage points and strategic recommendations.
+
+IMPORTANT: This is CONTEXTUAL AI analysis:
+- Identify specific unfavorable clauses
+- Suggest concrete negotiation positions
+- Prioritize by business impact`,
+
+      examples: [
+        {
+          input: 'Vendor may increase prices at any time with 30 days notice. Client liable for all third-party claims. Termination requires 12 months notice.',
+          output: {
+            leveragePoints: [
+              {
+                id: 'lp-1',
+                clause: 'Unlimited price increases',
+                issue: 'No cap on price increases',
+                currentPosition: 'Vendor may increase prices at any time with 30 days notice',
+                suggestedPosition: 'Price increases capped at 3-5% annually, tied to CPI',
+                priority: 'high',
+                businessImpact: 'Unpredictable cost exposure',
+                source: 'Vendor may increase prices at any time with 30 days notice',
+                extractedFromText: true
+              },
+              {
+                id: 'lp-2',
+                clause: 'Broad indemnification',
+                issue: 'Client bears all third-party liability',
+                currentPosition: 'Client liable for all third-party claims',
+                suggestedPosition: 'Mutual indemnification with carve-outs for gross negligence',
+                priority: 'high',
+                businessImpact: 'Unlimited liability exposure',
+                source: 'Client liable for all third-party claims',
+                extractedFromText: true
+              },
+              {
+                id: 'lp-3',
+                clause: 'Long termination notice',
+                issue: '12 months notice is excessive',
+                currentPosition: 'Termination requires 12 months notice',
+                suggestedPosition: 'Reduce to 60-90 days notice',
+                priority: 'medium',
+                businessImpact: 'Locked into contract for extended period',
+                source: 'Termination requires 12 months notice',
+                extractedFromText: true
+              }
+            ],
+            weakClauses: [
+              {
+                clauseType: 'Price escalation',
+                weakness: 'No limit on increases',
+                recommendedChange: 'Add annual cap tied to CPI or fixed percentage',
+                riskIfUnchanged: 'Budget unpredictability',
+                source: 'Vendor may increase prices at any time',
+                extractedFromText: true
+              }
+            ],
+            missingProtections: [
+              {
+                protection: 'Liability cap',
+                importance: 'high',
+                suggestedLanguage: 'Total liability not to exceed 12 months of fees',
+                extractedFromText: false,
+                requiresHumanReview: true
+              },
+              {
+                protection: 'SLA credits',
+                importance: 'medium',
+                suggestedLanguage: 'Service credits for SLA breaches',
+                extractedFromText: false,
+                requiresHumanReview: true
+              }
+            ],
+            negotiationStrategy: {
+              openingPosition: 'Request comprehensive renegotiation of one-sided terms',
+              mustHaves: ['Price increase cap', 'Reduced termination notice'],
+              niceToHaves: ['SLA credits', 'Audit rights'],
+              walkAwayPoints: ['Unlimited liability', 'No termination for convenience'],
+              leverage: [],
+              extractedFromText: false,
+              requiresHumanReview: true
+            },
+            prioritizedActions: [
+              { rank: 1, action: 'Negotiate price increase cap', impact: 'high', effort: 'medium' },
+              { rank: 2, action: 'Reduce termination notice period', impact: 'medium', effort: 'low' },
+              { rank: 3, action: 'Add mutual indemnification', impact: 'high', effort: 'high' }
+            ],
+            certainty: 0.85
+          },
+          explanation: 'Negotiation analysis with prioritized leverage points and strategic recommendations.'
+        }
+      ],
+
+      outputSchema: {
+        leveragePoints: `array of {
+          id: string,
+          clause: string,
+          issue: string,
+          currentPosition: string,
+          suggestedPosition: string,
+          priority: 'high' | 'medium' | 'low',
+          businessImpact: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        weakClauses: `array of {
+          clauseType: string,
+          weakness: string,
+          recommendedChange: string,
+          riskIfUnchanged: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        benchmarkGaps: `array of {
+          item: string,
+          contractValue: string,
+          marketBenchmark?: string,
+          gapPercentage?: number,
+          priority: 'high' | 'medium' | 'low',
+          source: string,
+          extractedFromText: boolean
+        }`,
+        missingProtections: `array of {
+          protection: string,
+          importance: 'high' | 'medium' | 'low',
+          suggestedLanguage?: string,
+          extractedFromText: boolean,
+          requiresHumanReview: boolean
+        }`,
+        negotiationStrategy: `{
+          openingPosition: string,
+          mustHaves: string[],
+          niceToHaves: string[],
+          walkAwayPoints: string[],
+          leverage: string[],
+          extractedFromText: boolean,
+          requiresHumanReview: boolean
+        }`,
+        prioritizedActions: 'array of { rank: number, action: string, impact: string, effort: string }',
+        certainty: 'number (0-1)'
+      },
+
+      validationRules: [
+        'Leverage points must reference actual contract clauses',
+        'Suggested positions must be reasonable and actionable',
+        'Priority must be based on business impact',
+        'Every analysis must have a source reference',
+        'Strategy elements should be flagged as requiring human review'
+      ],
+
+      antiHallucinationRules: [
+        'DO NOT invent market benchmarks without data',
+        'Leverage points must be based on ACTUAL unfavorable terms in the contract',
+        'If contract has favorable terms, do not manufacture issues',
+        'Missing protections should be common items, not invented',
+        'Strategy recommendations must be marked requiresHumanReview: true'
+      ],
+
+      requiredFields: ['leveragePoints'],
+      nullableFields: ['weakClauses', 'benchmarkGaps', 'missingProtections', 'negotiationStrategy', 'prioritizedActions']
+    };
+  }
+
+  // =========================================================================
+  // AMENDMENTS TEMPLATE - Track contract amendments and change history
+  // =========================================================================
+  private getAmendmentsTemplate(context?: any): PromptTemplate {
+    const overviewContext = context?.overview ? `
+Context from Overview:
+- Original Contract Type: ${context.overview.contractType}
+- Original Effective Date: ${context.overview.effectiveDate}
+- Original Term: ${context.overview.term}
+` : '';
+
+    return {
+      systemPrompt: `You are an expert at identifying and extracting contract amendments, modifications, and change history.
+You track what has been changed, when, and the impact on the original agreement.
+
+CRITICAL AMENDMENT EXTRACTION RULES:
+- Amendments must be explicitly stated in the document
+- DO NOT assume changes without explicit text
+- Track superseded clauses vs new clauses
+- Note financial impact of amendments where stated
+- Preserve exact amendment language
+${overviewContext}
+
+CONTEXTUAL AI EXTRACTION:
+Every contract amendment has unique implications. You MUST:
+1. IDENTIFY amendment effective dates
+2. TRACK which original clauses are superseded
+3. PRESERVE exact amendment language
+4. CALCULATE financial impact where possible
+5. NOTE any remaining original terms that still apply`,
+
+      userPrompt: `Extract all amendments, modifications, and change history from the contract.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Identify what changed vs what remains
+- Note effective dates of changes
+- Preserve exact amendment wording`,
+
+      examples: [
+        {
+          input: 'AMENDMENT NO. 1 to Master Agreement dated January 1, 2024. Effective March 1, 2024. Section 5.2 (Pricing) is hereby deleted and replaced with: "Fees shall be $150/hour for Senior resources." All other terms remain unchanged.',
+          output: {
+            amendments: [
+              {
+                id: 'amend-1',
+                amendmentNumber: 1,
+                title: 'Amendment No. 1',
+                effectiveDate: '2024-03-01',
+                originalAgreementDate: '2024-01-01',
+                summary: 'Updates pricing for Senior resources to $150/hour',
+                source: 'AMENDMENT NO. 1 to Master Agreement dated January 1, 2024',
+                extractedFromText: true
+              }
+            ],
+            changes: [
+              {
+                id: 'change-1',
+                amendmentId: 'amend-1',
+                changeType: 'replaced',
+                affectedSection: 'Section 5.2 (Pricing)',
+                originalText: null,
+                newText: 'Fees shall be $150/hour for Senior resources.',
+                financialImpact: { type: 'rate_change', newValue: 150, unit: 'hour' },
+                source: 'Section 5.2 (Pricing) is hereby deleted and replaced with',
+                extractedFromText: true
+              }
+            ],
+            supersededClauses: [
+              {
+                section: 'Section 5.2 (Pricing)',
+                supersededBy: 'Amendment No. 1',
+                effectiveDate: '2024-03-01',
+                source: 'is hereby deleted and replaced',
+                extractedFromText: true
+              }
+            ],
+            unchangedTerms: {
+              note: 'All other terms remain unchanged',
+              source: 'All other terms remain unchanged',
+              extractedFromText: true
+            },
+            amendmentHistory: [
+              {
+                date: '2024-03-01',
+                amendment: 'Amendment No. 1',
+                description: 'Pricing update for Senior resources'
+              }
+            ],
+            currentVersionInfo: {
+              masterAgreementDate: '2024-01-01',
+              latestAmendmentDate: '2024-03-01',
+              totalAmendments: 1
+            },
+            certainty: 0.94
+          },
+          explanation: 'Amendment tracked with superseded clause and new terms preserved.'
+        }
+      ],
+
+      outputSchema: {
+        amendments: `array of {
+          id: string,
+          amendmentNumber: number,
+          title?: string,
+          effectiveDate?: string,
+          originalAgreementDate?: string,
+          summary: string,
+          parties?: string[],
+          rawAmendmentText?: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        changes: `array of {
+          id: string,
+          amendmentId: string,
+          changeType: 'added' | 'modified' | 'deleted' | 'replaced',
+          affectedSection: string,
+          originalText?: string,
+          newText?: string,
+          financialImpact?: { type: string, oldValue?: any, newValue?: any, unit?: string },
+          source: string,
+          extractedFromText: boolean
+        }`,
+        supersededClauses: `array of {
+          section: string,
+          supersededBy: string,
+          effectiveDate?: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        unchangedTerms: `{
+          note: string,
+          sections?: string[],
+          source: string,
+          extractedFromText: boolean
+        } | null`,
+        amendmentHistory: 'array of { date: string, amendment: string, description: string }',
+        currentVersionInfo: `{
+          masterAgreementDate?: string,
+          latestAmendmentDate?: string,
+          totalAmendments: number,
+          currentVersion?: string
+        }`,
+        rawAmendmentSections: 'object - key/value pairs preserving exact amendment text',
+        certainty: 'number (0-1)'
+      },
+
+      validationRules: [
+        'Amendments must have identifiable numbers or dates',
+        'Changes must specify affected sections',
+        'Every amendment MUST have a source reference',
+        'Superseded clauses must be explicitly stated',
+        'DO NOT invent amendments - only extract what is stated'
+      ],
+
+      antiHallucinationRules: [
+        'DO NOT assume amendments without explicit text',
+        'Original text should be quoted if available, null if not',
+        'Financial impact should only be stated if explicit',
+        'If unchanged terms are not explicitly stated, do not assume',
+        'Amendment history should only include documented amendments'
+      ],
+
+      requiredFields: [],
+      nullableFields: ['amendments', 'changes', 'supersededClauses', 'unchangedTerms', 'amendmentHistory', 'currentVersionInfo', 'rawAmendmentSections']
+    };
+  }
+
+  // =========================================================================
+  // CONTACTS TEMPLATE - Extract key contacts and escalation paths
+  // =========================================================================
+  private getContactsTemplate(context?: any): PromptTemplate {
+    const overviewContext = context?.overview ? `
+Context from Overview:
+- Parties: ${context.overview.parties?.map((p: any) => `${p.name} (${p.role})`).join(', ')}
+` : '';
+
+    return {
+      systemPrompt: `You are an expert at extracting contact information, escalation paths, and notification requirements from contracts.
+You identify key personnel, their roles, and communication protocols.
+
+CRITICAL CONTACT EXTRACTION RULES:
+- Extract ONLY contacts explicitly stated in the contract
+- DO NOT make up contact information
+- Note the purpose/context for each contact (billing, technical, legal, etc.)
+- Identify escalation hierarchies where stated
+- Capture notification addresses and methods
+${overviewContext}
+
+CONTEXTUAL AI EXTRACTION:
+Every contract has unique communication requirements. You MUST:
+1. IDENTIFY contacts by function (project manager, account executive, legal)
+2. EXTRACT notification addresses for formal communications
+3. CAPTURE response time requirements where stated
+4. NOTE any communication protocols or escalation procedures`,
+
+      userPrompt: `Extract all contact information, escalation paths, and notification requirements from the contract.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Identify contacts by role and purpose
+- Note notification methods and addresses
+- Capture escalation procedures`,
+
+      examples: [
+        {
+          input: 'Notices shall be sent to: Client: John Smith, VP Procurement, john.smith@client.com. Vendor: Jane Doe, Account Manager, jane.doe@vendor.com. Escalation: Level 1 - Account Manager (2 business days), Level 2 - VP Sales (5 business days).',
+          output: {
+            primaryContacts: [
+              {
+                id: 'contact-1',
+                party: 'client',
+                name: 'John Smith',
+                title: 'VP Procurement',
+                email: 'john.smith@client.com',
+                phone: null,
+                purpose: ['notices', 'primary'],
+                source: 'Client: John Smith, VP Procurement, john.smith@client.com',
+                extractedFromText: true
+              },
+              {
+                id: 'contact-2',
+                party: 'vendor',
+                name: 'Jane Doe',
+                title: 'Account Manager',
+                email: 'jane.doe@vendor.com',
+                phone: null,
+                purpose: ['notices', 'account management'],
+                source: 'Vendor: Jane Doe, Account Manager, jane.doe@vendor.com',
+                extractedFromText: true
+              }
+            ],
+            escalationPath: [
+              {
+                level: 1,
+                role: 'Account Manager',
+                contact: 'Jane Doe',
+                responseTime: '2 business days',
+                source: 'Level 1 - Account Manager (2 business days)',
+                extractedFromText: true
+              },
+              {
+                level: 2,
+                role: 'VP Sales',
+                contact: null,
+                responseTime: '5 business days',
+                source: 'Level 2 - VP Sales (5 business days)',
+                extractedFromText: true
+              }
+            ],
+            notificationAddresses: [
+              {
+                party: 'client',
+                type: 'formal notices',
+                address: 'john.smith@client.com',
+                method: 'email',
+                source: 'Notices shall be sent to: Client: John Smith',
+                extractedFromText: true
+              },
+              {
+                party: 'vendor',
+                type: 'formal notices',
+                address: 'jane.doe@vendor.com',
+                method: 'email',
+                source: 'Notices shall be sent to: Vendor: Jane Doe',
+                extractedFromText: true
+              }
+            ],
+            communicationProtocols: [],
+            responseTimeRequirements: [
+              {
+                type: 'escalation',
+                level: 'Level 1',
+                responseTime: '2 business days',
+                source: 'Level 1 - Account Manager (2 business days)',
+                extractedFromText: true
+              },
+              {
+                type: 'escalation',
+                level: 'Level 2',
+                responseTime: '5 business days',
+                source: 'Level 2 - VP Sales (5 business days)',
+                extractedFromText: true
+              }
+            ],
+            certainty: 0.92
+          },
+          explanation: 'Contacts extracted with escalation path and notification requirements.'
+        }
+      ],
+
+      outputSchema: {
+        primaryContacts: `array of {
+          id: string,
+          party: 'client' | 'vendor' | string,
+          name: string,
+          title?: string,
+          email?: string,
+          phone?: string,
+          address?: string,
+          purpose: string[],
+          source: string,
+          extractedFromText: boolean
+        }`,
+        escalationPath: `array of {
+          level: number,
+          role: string,
+          contact?: string,
+          responseTime?: string,
+          triggerConditions?: string[],
+          source: string,
+          extractedFromText: boolean
+        }`,
+        notificationAddresses: `array of {
+          party: string,
+          type: string,
+          address: string,
+          method?: 'email' | 'mail' | 'fax' | 'portal' | string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        communicationProtocols: `array of {
+          protocol: string,
+          description: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        responseTimeRequirements: `array of {
+          type: string,
+          level?: string,
+          responseTime: string,
+          source: string,
+          extractedFromText: boolean
+        }`,
+        contactsByFunction: 'object - { function: contact[] } grouping (billing, technical, legal, etc.)',
+        certainty: 'number (0-1)'
+      },
+
+      validationRules: [
+        'Contacts must have at least a name or role',
+        'Email addresses must be valid format if present',
+        'Escalation levels must be ordered',
+        'Every contact MUST have a source reference',
+        'DO NOT invent contact information'
+      ],
+
+      antiHallucinationRules: [
+        'DO NOT make up contact names, emails, or phone numbers',
+        'If contact info is not in the document, use null',
+        'Escalation levels must be explicitly defined',
+        'Response times must be explicitly stated',
+        'Do not assume standard contacts (e.g., "legal team") without explicit text'
+      ],
+
+      requiredFields: [],
+      nullableFields: ['primaryContacts', 'escalationPath', 'notificationAddresses', 'communicationProtocols', 'responseTimeRequirements', 'contactsByFunction']
     };
   }
 }

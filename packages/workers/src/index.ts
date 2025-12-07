@@ -9,6 +9,8 @@ import { registerWebhookWorker } from './webhook-worker';
 import { registerRAGIndexingWorker } from './rag-indexing-worker';
 import { registerMetadataExtractionWorker } from './metadata-extraction-worker';
 import { registerCategorizationWorker } from './categorization-worker';
+import { registerRenewalAlertWorker } from './renewal-alert-worker';
+import { registerObligationTrackerWorker } from './obligation-tracker-worker';
 import pino from 'pino';
 
 const logger = pino({
@@ -52,6 +54,8 @@ async function startWorkers() {
     const ragWorker = registerRAGIndexingWorker();
     const metadataWorker = registerMetadataExtractionWorker();
     const categorizationWorker = registerCategorizationWorker();
+    const renewalAlertWorker = registerRenewalAlertWorker();
+    const obligationTrackerWorker = registerObligationTrackerWorker();
 
     logger.info('✅ All workers registered successfully');
     logger.info({
@@ -62,6 +66,8 @@ async function startWorkers() {
         'rag-indexing (auto-embeddings)',
         'metadata-extraction (AI metadata)',
         'categorization (AI classification)',
+        'renewal-alerts (deadline monitoring)',
+        'obligation-tracker (SLA & milestone monitoring)',
       ],
     }, 'Active workers');
 
@@ -76,6 +82,8 @@ async function startWorkers() {
         ragWorker.close(),
         metadataWorker.close(),
         categorizationWorker.close(),
+        renewalAlertWorker.close(),
+        obligationTrackerWorker.close(),
       ]);
 
       const queueService = getQueueService();

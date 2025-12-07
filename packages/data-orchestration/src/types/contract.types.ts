@@ -205,6 +205,11 @@ export const ArtifactTypeEnum = z.enum([
   "BENCHMARK",
   "RISK",
   "REPORT",
+  "OBLIGATIONS",
+  "RENEWAL",
+  "NEGOTIATION_POINTS",
+  "AMENDMENTS",
+  "CONTACTS",
 ]);
 
 export type ArtifactType = z.infer<typeof ArtifactTypeEnum>;

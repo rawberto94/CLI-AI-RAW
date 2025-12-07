@@ -47,11 +47,16 @@ export async function generateArtifactsJob(
 
     // Define artifacts to generate
     const artifactTypes: Array<{ type: ArtifactType; weight: number }> = [
-      { type: 'OVERVIEW' as ArtifactType, weight: 15 },
-      { type: 'CLAUSES' as ArtifactType, weight: 20 },
-      { type: 'FINANCIAL' as ArtifactType, weight: 25 },
-      { type: 'RISK' as ArtifactType, weight: 20 },
-      { type: 'COMPLIANCE' as ArtifactType, weight: 20 },
+      { type: 'OVERVIEW' as ArtifactType, weight: 10 },
+      { type: 'CLAUSES' as ArtifactType, weight: 12 },
+      { type: 'FINANCIAL' as ArtifactType, weight: 12 },
+      { type: 'RISK' as ArtifactType, weight: 12 },
+      { type: 'COMPLIANCE' as ArtifactType, weight: 12 },
+      { type: 'OBLIGATIONS' as ArtifactType, weight: 10 },
+      { type: 'RENEWAL' as ArtifactType, weight: 10 },
+      { type: 'NEGOTIATION_POINTS' as ArtifactType, weight: 8 },
+      { type: 'AMENDMENTS' as ArtifactType, weight: 7 },
+      { type: 'CONTACTS' as ArtifactType, weight: 7 },
     ];
 
     let progressBase = 10;
@@ -257,6 +262,216 @@ ${truncatedText}`,
 ONLY include compliance requirements EXPLICITLY stated. DO NOT assume requirements based on industry.
 
 Contract text:
+${truncatedText}`,
+
+      OBLIGATIONS: `Extract all obligations, deliverables, SLAs, and milestones EXPLICITLY stated in this contract. Return JSON with:
+{
+  "obligations": [
+    {
+      "id": "obl_1",
+      "title": "Obligation title",
+      "party": "Which party is responsible (exact name from contract)",
+      "type": "deliverable/sla/milestone/reporting/compliance/other",
+      "description": "Direct quote or close paraphrase",
+      "dueDate": "YYYY-MM-DD" or null,
+      "recurring": {"frequency": "monthly/quarterly/annually", "interval": 1} or null,
+      "slaCriteria": {"metric": "Response Time", "target": "4 hours", "unit": "hours"} or null,
+      "penalty": "Penalty for non-compliance" or null,
+      "sourceClause": "Section reference",
+      "extractedFromText": true,
+      "confidence": 0.9
+    }
+  ],
+  "milestones": [
+    {"id": "ms_1", "name": "Milestone name", "date": "YYYY-MM-DD", "deliverables": ["list"], "source": "quote"}
+  ],
+  "slaMetrics": [
+    {"metric": "Uptime", "target": "99.9%", "penalty": "$1000/violation", "source": "quote"}
+  ],
+  "reportingRequirements": [
+    {"type": "Monthly report", "frequency": "monthly", "recipient": "Client", "source": "quote"}
+  ],
+  "summary": "Brief summary of key obligations",
+  "certainty": 0.85
+}
+
+CRITICAL: Only extract obligations EXPLICITLY stated. DO NOT infer or invent SLAs not in the document.
+
+Contract text:
+${truncatedText}`,
+
+      RENEWAL: `Extract all renewal, termination, and expiration terms EXPLICITLY stated in this contract. Return JSON with:
+{
+  "autoRenewal": true/false/null,
+  "renewalTerms": {
+    "renewalPeriod": "1 year" or null,
+    "noticePeriodDays": 30 or null,
+    "optOutDeadline": "YYYY-MM-DD" or null,
+    "source": "exact quote"
+  },
+  "terminationNotice": {
+    "requiredDays": 30,
+    "format": "Written notice" or null,
+    "recipientParty": "Party name" or null,
+    "source": "quote"
+  },
+  "priceEscalation": [
+    {"type": "Annual", "percentage": 3, "index": "CPI" or null, "cap": 5 or null, "effectiveDate": "YYYY-MM-DD", "source": "quote"}
+  ],
+  "optOutDeadlines": [
+    {"date": "YYYY-MM-DD", "description": "Last day to opt out", "source": "quote"}
+  ],
+  "renewalAlerts": [
+    {"type": "warning/critical/info", "message": "Alert message", "dueDate": "YYYY-MM-DD"}
+  ],
+  "currentTermEnd": "YYYY-MM-DD" or null,
+  "renewalCount": number or null,
+  "summary": "Brief summary of renewal terms",
+  "certainty": 0.85
+}
+
+CRITICAL: Only extract renewal terms EXPLICITLY stated. Calculate optOutDeadline based on noticePeriodDays + currentTermEnd if both available.
+
+Contract text:
+${truncatedText}`,
+
+      NEGOTIATION_POINTS: `Analyze this contract for negotiation leverage points and weaknesses. Return JSON with:
+{
+  "leveragePoints": [
+    {
+      "id": "lp_1",
+      "title": "Leverage point title",
+      "description": "Why this is advantageous",
+      "category": "pricing/terms/liability/sla/termination",
+      "strength": "strong/moderate/weak",
+      "suggestedAction": "How to leverage this",
+      "sourceClause": "Section reference",
+      "extractedFromText": true
+    }
+  ],
+  "weakClauses": [
+    {
+      "id": "wc_1",
+      "clauseReference": "Section X.X",
+      "issue": "What's problematic",
+      "impact": "high/medium/low",
+      "suggestedRevision": "Proposed better language",
+      "benchmarkComparison": "Market standard for comparison",
+      "extractedFromText": true
+    }
+  ],
+  "benchmarkGaps": [
+    {
+      "area": "Payment Terms",
+      "currentTerm": "Net 15",
+      "marketStandard": "Net 30",
+      "gap": "Below market",
+      "recommendation": "Negotiate to Net 30"
+    }
+  ],
+  "negotiationScript": [
+    {
+      "topic": "Payment Terms",
+      "openingPosition": "We propose Net 45",
+      "fallbackPosition": "We can accept Net 30",
+      "walkAwayPoint": "Net 15 is unacceptable",
+      "supportingEvidence": ["Industry standard is Net 30", "Our cash flow requires 30+ days"]
+    }
+  ],
+  "overallLeverage": "strong/balanced/weak",
+  "summary": "Brief negotiation strategy summary",
+  "certainty": 0.85
+}
+
+CRITICAL: Base ALL analysis on actual contract language. DO NOT invent leverage points not supported by the text.
+
+Contract text:
+${truncatedText}`,
+
+      AMENDMENTS: `Extract all amendments, modifications, and change history from this contract. Return JSON with:
+{
+  "amendments": [
+    {
+      "id": "amd_1",
+      "amendmentNumber": 1,
+      "effectiveDate": "YYYY-MM-DD",
+      "title": "Amendment title",
+      "description": "Brief description",
+      "changedClauses": [
+        {"clauseId": "Section 5.2", "originalText": "Old text" or null, "newText": "New text", "changeType": "added/modified/deleted"}
+      ],
+      "signedBy": ["Party names"],
+      "sourceDocument": "Amendment 1 dated MM/DD/YYYY",
+      "extractedFromText": true
+    }
+  ],
+  "supersededClauses": [
+    {"originalClause": "Section 3.1", "supersededBy": "Amendment 2, Section 3.1", "effectiveDate": "YYYY-MM-DD"}
+  ],
+  "changeLog": [
+    {"date": "YYYY-MM-DD", "type": "Amendment/Addendum/Modification", "description": "Change description", "reference": "Amendment 1"}
+  ],
+  "consolidatedTerms": {
+    "lastUpdated": "YYYY-MM-DD",
+    "version": "2.0",
+    "effectiveTerms": ["List of current effective provisions"]
+  },
+  "summary": "Brief amendment history summary",
+  "certainty": 0.85
+}
+
+CRITICAL: Only extract amendments EXPLICITLY documented. If this is the original contract with no amendments, return empty arrays.
+
+Contract text:
+${truncatedText}`,
+
+      CONTACTS: `Extract all key contacts, notification addresses, and escalation paths from this contract. Return JSON with:
+{
+  "primaryContacts": [
+    {
+      "id": "con_1",
+      "name": "Contact name",
+      "role": "Project Manager",
+      "party": "Client/Vendor name",
+      "email": "email@example.com" or null,
+      "phone": "+1-555-0123" or null,
+      "address": "Full address" or null,
+      "isPrimary": true/false,
+      "extractedFromText": true
+    }
+  ],
+  "escalationPath": [
+    {
+      "level": 1,
+      "role": "Account Manager",
+      "name": "Name if specified" or null,
+      "contactInfo": "Contact details",
+      "escalationTrigger": "When to escalate"
+    }
+  ],
+  "notificationAddresses": [
+    {
+      "purpose": "Legal Notices/Billing/Technical/General",
+      "party": "Party name",
+      "address": "Full address",
+      "format": "Certified Mail/Email/Both"
+    }
+  ],
+  "keyPersonnel": [
+    {
+      "name": "Person name",
+      "role": "Their title/role",
+      "responsibilities": ["List", "of", "duties"],
+      "party": "Party name"
+    }
+  ],
+  "summary": "Brief contacts summary",
+  "certainty": 0.85
+}
+
+CRITICAL: Only extract contact information EXPLICITLY stated. DO NOT invent contacts or assume standard roles.
+
+Contract text:
 ${truncatedText}`
     };
 
@@ -305,6 +520,11 @@ function getFallbackArtifactData(type: string, contractId: string): Record<strin
     FINANCIAL: { totalValue: null, currency: null, analysis: 'AI analysis unavailable', certainty: 0, _meta: { fallback: true } },
     RISK: { overallRisk: 'Unknown', riskScore: null, risks: [], certainty: 0, _meta: { fallback: true } },
     COMPLIANCE: { compliant: null, checks: [], issues: [], certainty: 0, _meta: { fallback: true } },
+    OBLIGATIONS: { obligations: [], milestones: [], slaMetrics: [], reportingRequirements: [], summary: null, certainty: 0, _meta: { fallback: true } },
+    RENEWAL: { autoRenewal: null, renewalTerms: null, terminationNotice: null, priceEscalation: [], optOutDeadlines: [], renewalAlerts: [], summary: null, certainty: 0, _meta: { fallback: true } },
+    NEGOTIATION_POINTS: { leveragePoints: [], weakClauses: [], benchmarkGaps: [], negotiationScript: [], overallLeverage: null, summary: null, certainty: 0, _meta: { fallback: true } },
+    AMENDMENTS: { amendments: [], supersededClauses: [], changeLog: [], consolidatedTerms: null, summary: null, certainty: 0, _meta: { fallback: true } },
+    CONTACTS: { primaryContacts: [], escalationPath: [], notificationAddresses: [], keyPersonnel: [], summary: null, certainty: 0, _meta: { fallback: true } },
   };
   return templates[type] || { type, certainty: 0, _meta: { fallback: true } };
 }
