@@ -27,10 +27,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
 
     if (artifactType && artifactData) {
       // Validate specific artifact
-      const validation = await artifactValidationService.validateArtifact({
-        type: artifactType,
-        ...artifactData
-      });
+      const validation = await artifactValidationService.validateArtifact(
+        artifactType,
+        artifactData
+      );
 
       // Try auto-fix if there are issues
       let autoFixResult = null;
