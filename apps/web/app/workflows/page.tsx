@@ -31,7 +31,7 @@ import {
   AlertTriangle,
   Loader2,
 } from 'lucide-react'
-import { useWorkflows, useUpdateWorkflow, useDeleteWorkflow, useCreateWorkflow, type Workflow as WorkflowType } from '@/hooks/use-queries'
+import { useWorkflows, useUpdateWorkflow, useDeleteWorkflow, useCreateWorkflow, useCrossModuleInvalidation, type Workflow as WorkflowType } from '@/hooks/use-queries'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import {
@@ -100,6 +100,7 @@ function WorkflowsPageContent() {
   const updateWorkflow = useUpdateWorkflow()
   const deleteWorkflowMutation = useDeleteWorkflow()
   const createWorkflowMutation = useCreateWorkflow()
+  const crossModule = useCrossModuleInvalidation()
 
   const workflows: WorkflowType[] = workflowsData?.workflows || []
 
@@ -136,6 +137,7 @@ function WorkflowsPageContent() {
     try {
       await updateWorkflow.mutateAsync({ id: workflowId, data: { isActive } })
       toast.success(isActive ? 'Workflow activated' : 'Workflow deactivated')
+      crossModule.onWorkflowChange()
     } catch (error) {
       console.error('Failed to toggle workflow:', error)
       toast.error('Failed to update workflow')
@@ -147,6 +149,7 @@ function WorkflowsPageContent() {
     try {
       await deleteWorkflowMutation.mutateAsync(workflowId)
       toast.success('Workflow deleted')
+      crossModule.onWorkflowChange()
       setDeleteModalOpen(false)
       setWorkflowToDelete(null)
     } catch (error) {
@@ -170,6 +173,7 @@ function WorkflowsPageContent() {
         isActive: false,
       })
       toast.success('Workflow duplicated')
+      crossModule.onWorkflowChange()
     } catch (error) {
       console.error('Failed to duplicate workflow:', error)
       toast.error('Failed to duplicate workflow')
@@ -194,6 +198,7 @@ function WorkflowsPageContent() {
               const url = selectedWorkflow ? `/api/workflows/${selectedWorkflow.id}` : '/api/workflows'
               await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
               setShowBuilder(false)
+              crossModule.onWorkflowChange()
               await refetch()
               toast.success(selectedWorkflow ? 'Workflow updated' : 'Workflow created')
             }}

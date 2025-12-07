@@ -9,7 +9,7 @@
  * - CategorySuggestions: Show AI-suggested categories
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Tag,
@@ -23,6 +23,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
+import { useTaxonomyCategories, type TaxonomyCategory as TaxonomyCategoryType } from "@/hooks/use-queries";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -152,50 +153,34 @@ export function CategorySelector({
   className = "",
   inline = true,
 }: CategorySelectorProps) {
-  const [categories, setCategories] = useState<TaxonomyCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // Use React Query for automatic cache invalidation
+  const { data: categories = [], isLoading, refetch } = useTaxonomyCategories();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<TaxonomyCategory | null>(null);
 
-  // Fetch categories on mount
+  // Find selected category when value or categories change
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/taxonomy?flat=true", {
-          headers: { "x-tenant-id": tenantId },
-        });
+    if (value && categories.length > 0) {
+      const found = categories.find(
+        (c) => c.id === value || c.name === value
+      );
+      setSelectedCategory(found || null);
+    } else if (!value) {
+      setSelectedCategory(null);
+    }
+  }, [value, categories]);
 
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.data || []);
-
-          // Find selected category by id or name
-          if (value) {
-            const found = data.data?.find(
-              (c: TaxonomyCategory) => c.id === value || c.name === value
-            );
-            setSelectedCategory(found || null);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch categories:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, [tenantId, value]);
-
-  // Filter categories
-  const filteredCategories = searchQuery
-    ? categories.filter(
-        (c) =>
-          c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.path.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : categories;
+  // Filter categories - memoized for performance
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery) return categories;
+    const query = searchQuery.toLowerCase();
+    return categories.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        c.path.toLowerCase().includes(query)
+    );
+  }, [categories, searchQuery]);
 
   // Group by parent for hierarchical display
   const groupedByParent = filteredCategories.reduce((acc, cat) => {

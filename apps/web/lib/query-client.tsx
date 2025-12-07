@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, useEffect, type ReactNode } from 'react';
+import { setGlobalQueryClient } from './propagation';
 
 // =====================
 // Query Client Configuration
@@ -90,6 +91,11 @@ export function getQueryClient() {
 export function QueryProvider({ children }: { children: ReactNode }) {
   // Create a new QueryClient instance for each session to avoid sharing state
   const [queryClient] = useState(() => createQueryClient());
+  
+  // Set the global query client for the propagation utility
+  useEffect(() => {
+    setGlobalQueryClient(queryClient);
+  }, [queryClient]);
   
   // Prefetch critical data on app mount
   useEffect(() => {

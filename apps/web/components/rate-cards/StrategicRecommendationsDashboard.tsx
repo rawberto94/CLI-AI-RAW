@@ -1,30 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Target, TrendingDown, Users, Shield, Settings, 
-  Loader2, ChevronRight, DollarSign 
+  Loader2, ChevronRight, DollarSign, RefreshCw
 } from 'lucide-react';
+import { useStrategicRecommendations, type StrategicRecommendation } from '@/hooks/use-rate-card-queries';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 // ============================================================================
-// Types
+// Types (re-exported from hook for local use)
 // ============================================================================
-
-interface StrategicRecommendation {
-  id: string;
-  category: 'COST_REDUCTION' | 'SUPPLIER_OPTIMIZATION' | 'MARKET_POSITIONING' | 'RISK_MITIGATION' | 'PROCESS_IMPROVEMENT';
-  title: string;
-  description: string;
-  impact: 'LOW' | 'MEDIUM' | 'HIGH';
-  effort: 'LOW' | 'MEDIUM' | 'HIGH';
-  priority: number;
-  estimatedSavings?: number;
-  affectedRateCards: number;
-  actionItems: string[];
-}
 
 interface StrategicRecommendationsDashboardProps {
   tenantId: string;
@@ -104,35 +93,19 @@ export function StrategicRecommendationsDashboard({
   tenantId, 
   className = '' 
 }: StrategicRecommendationsDashboardProps) {
-  const [recommendations, setRecommendations] = useState<StrategicRecommendation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  const { 
+    data, 
+    isLoading: loading, 
+    isFetching,
+    error, 
+    refetch,
+    dataUpdatedAt,
+  } = useStrategicRecommendations({ tenantId });
 
-  useEffect(() => {
-    const fetchRecommendations = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/rate-cards/strategic-recommendations?tenantId=${tenantId}`);
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || 'Failed to fetch recommendations');
-        }
-
-        setRecommendations(result.data.recommendations);
-      } catch (err: any) {
-        setError(err.message);
-        console.error('Error fetching recommendations:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecommendations();
-  }, [tenantId]);
+  const recommendations = data?.recommendations ?? [];
+  const totalSavings = data?.totalSavings ?? 0;
 
   if (loading) {
     return (
@@ -141,7 +114,7 @@ export function StrategicRecommendationsDashboard({
           <CardTitle>Strategic Recommendations</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center gap-2 py-12">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
         </CardContent>
@@ -157,7 +130,9 @@ export function StrategicRecommendationsDashboard({
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-sm text-red-600 mb-4">{error}</p>
+            <p className="text-sm text-red-600 mb-4">
+              {error instanceof Error ? error.message : 'Failed to load recommendations'}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -180,20 +155,24 @@ export function StrategicRecommendationsDashboard({
     );
   }
 
-  // Calculate total potential savings
-  const totalSavings = recommendations.reduce((sum, rec) => 
-    sum + (rec.estimatedSavings || 0), 0
-  );
-
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Summary Card */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Strategic Recommendations</span>
-            <Badge variant="secondary">{recommendations.length} Recommendations</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <span>Strategic Recommendations</span>
+              <Badge variant="secondary">{recommendations.length} Recommendations</Badge>
+            </CardTitle>
+            <Button onClick={() => refetch()} variant="ghost" size="sm" disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+          <DataFreshnessIndicator
+            dataUpdatedAt={dataUpdatedAt}
+            isFetching={isFetching}
+          />
         </CardHeader>
         <CardContent>
           {totalSavings > 0 && (

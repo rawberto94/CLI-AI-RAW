@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,19 +14,8 @@ import {
   ArrowRight,
   RefreshCw
 } from 'lucide-react';
-
-interface EmergingTrend {
-  type: 'RATE_SPIKE' | 'RATE_DROP' | 'NEW_MARKET' | 'HOT_ROLE' | 'SUPPLIER_ENTRY' | 'SUPPLIER_EXIT';
-  title: string;
-  description: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH';
-  affectedRoles?: string[];
-  affectedCountries?: string[];
-  affectedSuppliers?: string[];
-  changePercent?: number;
-  detectedAt: Date;
-  recommendation: string;
-}
+import { useEmergingTrends, type EmergingTrend } from '@/hooks/use-rate-card-queries';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 interface EmergingTrendsPanelProps {
   tenantId: string;
@@ -39,32 +28,19 @@ export function EmergingTrendsPanel({
   autoRefresh = false, 
   refreshInterval = 300000 // 5 minutes
 }: EmergingTrendsPanelProps) {
-  const [trends, setTrends] = useState<EmergingTrend[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const { 
+    data, 
+    isLoading: loading, 
+    isFetching,
+    refetch,
+    dataUpdatedAt,
+  } = useEmergingTrends({
+    autoRefresh,
+    refreshInterval,
+  });
 
-  useEffect(() => {
-    loadTrends();
-
-    if (autoRefresh) {
-      const interval = setInterval(loadTrends, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh, refreshInterval]);
-
-  const loadTrends = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/rate-cards/market-intelligence/trends');
-      const data = await response.json();
-      setTrends(data);
-      setLastRefresh(new Date());
-    } catch (error) {
-      console.error('Error loading emerging trends:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const trends = data?.trends ?? [];
+  const groupedTrends = data?.grouped ?? { HIGH: [], MEDIUM: [], LOW: [] };
 
   const getTrendIcon = (type: EmergingTrend['type']) => {
     switch (type) {
@@ -100,29 +76,19 @@ export function EmergingTrendsPanel({
     return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const groupTrendsBySeverity = () => {
-    const grouped = {
-      HIGH: trends.filter(t => t.severity === 'HIGH'),
-      MEDIUM: trends.filter(t => t.severity === 'MEDIUM'),
-      LOW: trends.filter(t => t.severity === 'LOW'),
-    };
-    return grouped;
-  };
-
-  const groupedTrends = groupTrendsBySeverity();
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Emerging Trends</h2>
-          <p className="text-sm text-muted-foreground">
-            Last updated: {lastRefresh.toLocaleTimeString()}
-          </p>
+          <DataFreshnessIndicator
+            dataUpdatedAt={dataUpdatedAt}
+            isFetching={isFetching}
+          />
         </div>
-        <Button onClick={loadTrends} disabled={loading} variant="outline" size="sm">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+        <Button onClick={() => refetch()} disabled={isFetching} variant="outline" size="sm">
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>

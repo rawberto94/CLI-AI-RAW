@@ -3,17 +3,17 @@
 /**
  * Saved Comparisons Component
  * 
- * List and manage saved rate card comparisons
+ * List and manage saved rate card comparisons.
+ * Uses React Query for data fetching with optimistic mutations.
  * Requirements: 6.5
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
-import { copyToClipboard } from '@/hooks/useCopyToClipboard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,54 +29,35 @@ import {
   Trash2,
   Users,
   Calendar,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
-
-interface SavedComparison {
-  id: string;
-  name: string;
-  description?: string;
-  comparisonType: string;
-  isShared: boolean;
-  createdAt: string;
-  rateCardEntries: Array<{
-    rateCardEntry: {
-      id: string;
-      supplierName: string;
-      roleStandardized: string;
-      dailyRateUSD: number;
-    };
-  }>;
-}
+import { 
+  useSavedComparisonsQuery, 
+  useDeleteComparisonMutation, 
+  useShareComparisonMutation,
+  type SavedComparison 
+} from '@/hooks/use-saved-items-queries';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 interface SavedComparisonsProps {
   onViewComparison?: (comparisonId: string) => void;
 }
 
 export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
-  const [comparisons, setComparisons] = useState<SavedComparison[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    data: comparisons = [], 
+    isLoading: loading, 
+    isFetching,
+    refetch,
+    dataUpdatedAt,
+  } = useSavedComparisonsQuery();
+  
+  const deleteMutation = useDeleteComparisonMutation();
+  const shareMutation = useShareComparisonMutation();
+  
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [comparisonToDelete, setComparisonToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    fetchComparisons();
-  }, []);
-
-  const fetchComparisons = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/rate-cards/comparisons');
-      if (response.ok) {
-        const data = await response.json();
-        setComparisons(data.comparisons || []);
-      }
-    } catch (error) {
-      console.error('Error fetching comparisons:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleView = (comparisonId: string) => {
     if (onViewComparison) {
@@ -88,22 +69,9 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
 
   const handleShare = async (comparisonId: string) => {
     try {
-      const response = await fetch(`/api/rate-cards/comparisons/${comparisonId}/share`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isShared: true }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        copyToClipboard(window.location.origin + data.shareUrl, {
-          successMessage: 'Share link copied to clipboard!',
-        });
-        fetchComparisons(); // Refresh to show updated share status
-      }
+      await shareMutation.mutateAsync(comparisonId);
     } catch (error) {
-      console.error('Error sharing comparison:', error);
-      toast.error('Failed to share comparison');
+      // Error handled in mutation
     }
   };
 
@@ -123,7 +91,6 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
         document.body.removeChild(a);
         toast.success('CSV exported successfully');
       } else if (format === 'pdf') {
-        // For PDF, we would need to implement client-side PDF generation
         toast.info('PDF export coming soon!');
       }
     } catch (error) {
@@ -140,23 +107,11 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
   const handleDelete = async () => {
     if (!comparisonToDelete) return;
     
-    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/rate-cards/comparisons/${comparisonToDelete}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        toast.success('Comparison deleted successfully');
-        fetchComparisons(); // Refresh list
-      } else {
-        toast.error('Failed to delete comparison');
-      }
+      await deleteMutation.mutateAsync(comparisonToDelete);
     } catch (error) {
-      console.error('Error deleting comparison:', error);
-      toast.error('Failed to delete comparison');
+      // Error handled in mutation
     } finally {
-      setIsDeleting(false);
       setDeleteDialogOpen(false);
       setComparisonToDelete(null);
     }
@@ -184,7 +139,8 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-center py-8 text-muted-foreground">
+          <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
             Loading saved comparisons...
           </div>
         </CardContent>
@@ -211,8 +167,17 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Saved Comparisons ({comparisons.length})</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base">Saved Comparisons ({comparisons.length})</CardTitle>
+            <DataFreshnessIndicator
+              dataUpdatedAt={dataUpdatedAt}
+              isFetching={isFetching}
+            />
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -314,7 +279,7 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
         description="Are you sure you want to delete this comparison? This action cannot be undone."
         confirmLabel="Delete"
         variant="destructive"
-        isLoading={isDeleting}
+        isLoading={deleteMutation.isPending}
         onConfirm={handleDelete}
       />
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,13 @@ import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { toast } from 'sonner';
 import { DeadlineAlertBanner, useDeadlineAlerts } from '@/components/workflows/DeadlineAlerts';
+import { 
+  useDashboardStats, 
+  usePendingApprovals, 
+  useContractExpirations, 
+  useContractHealthScores,
+  useCrossModuleInvalidation 
+} from '@/hooks/use-queries';
 import {
   LineChart,
   Line,
@@ -153,115 +160,104 @@ const mockChartData = {
   ],
 };
 
-// ============ API FETCH HOOK ============
+// ============ API FETCH HOOK (React Query) ============
 
 function useDashboardData() {
   const { isMockData } = useDataMode();
-  const [metrics, setMetrics] = useState<DashboardMetrics>(mockMetrics);
-  const [chartData, setChartData] = useState(mockChartData);
-  const [recentContracts, setRecentContracts] = useState<RecentContract[]>(mockRecentContracts);
-  const [expirations, setExpirations] = useState<UpcomingExpiration[]>(mockExpirations);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // If in demo mode, use mock data
+  
+  // Use React Query hooks for real-time cache invalidation
+  const statsQuery = useDashboardStats();
+  const approvalsQuery = usePendingApprovals(5);
+  const expirationsQuery = useContractExpirations(5);
+  const healthQuery = useContractHealthScores();
+  
+  // Compute derived state from queries
+  const { metrics, chartData, expirations } = useMemo(() => {
+    // If in demo mode or queries are loading, use mock data
     if (isMockData) {
-      setMetrics(mockMetrics);
-      setChartData(mockChartData);
-      setRecentContracts(mockRecentContracts);
-      setExpirations(mockExpirations);
-      setLoading(false);
-      return;
+      return {
+        metrics: mockMetrics,
+        chartData: mockChartData,
+        expirations: mockExpirations,
+      };
     }
     
-    async function fetchData() {
-      try {
-        const [statsRes, approvalsRes, expirationsRes, healthRes] = await Promise.all([
-          fetch('/api/dashboard/stats'),
-          fetch('/api/approvals?limit=5'),
-          fetch('/api/contracts/expirations?limit=5&expired=false'),
-          fetch('/api/contracts/health-scores'),
-        ]);
+    const statsJson = statsQuery.data;
+    const approvalsJson = approvalsQuery.data;
+    const expirationsJson = expirationsQuery.data;
+    const healthJson = healthQuery.data;
+    
+    let computedMetrics = mockMetrics;
+    let computedChartData = mockChartData;
+    let computedExpirations = mockExpirations;
+    
+    // Map API data to metrics
+    if (statsJson?.success && statsJson.data) {
+      const d = statsJson.data;
+      
+      // Use health score data if available
+      const avgHealthScore = d.health?.averageScore || healthJson?.data?.stats?.averageScore || 66;
+      const riskScore = 100 - avgHealthScore; // Invert health to get risk
+      
+      computedMetrics = {
+        totalContracts: d.overview?.totalContracts ?? mockMetrics.totalContracts,
+        activeContracts: d.overview?.activeContracts ?? mockMetrics.activeContracts,
+        totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
+        avgRiskScore: riskScore,
+        pendingApprovals: approvalsJson?.data?.items?.length ?? mockMetrics.pendingApprovals,
+        expiringThisMonth: (d.expirations?.criticalRisk + d.expirations?.highRisk) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
+        contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
+        aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
+        trends: {
+          contracts: mockMetrics.trends.contracts,
+          value: mockMetrics.trends.value,
+          risk: d.health?.trends?.improving > 0 ? -5 : d.health?.trends?.declining > 0 ? 5 : 0,
+          compliance: d.health?.averageScore ? (d.health.averageScore - 60) : mockMetrics.trends.compliance,
+        },
+      };
 
-        const [statsJson, approvalsJson, expirationsJson, healthJson] = await Promise.all([
-          statsRes.json(),
-          approvalsRes.json(),
-          expirationsRes.json(),
-          healthRes.json(),
-        ]);
+      // Map breakdown to chart with health score distribution
+      if (d.breakdown?.byType) {
+        computedChartData = {
+          ...mockChartData,
+          byType: d.breakdown.byType.slice(0, 5).map((t: any) => ({
+            type: t.type?.substring(0, 10) || 'Other',
+            count: t.count,
+          })),
+        };
+      }
 
-        // Map API data to metrics
-        if (statsJson.success && statsJson.data) {
-          const d = statsJson.data;
-          
-          // Use health score data if available
-          const avgHealthScore = d.health?.averageScore || healthJson.data?.stats?.averageScore || 66;
-          const riskScore = 100 - avgHealthScore; // Invert health to get risk
-          
-          setMetrics({
-            totalContracts: d.overview?.totalContracts ?? mockMetrics.totalContracts,
-            activeContracts: d.overview?.activeContracts ?? mockMetrics.activeContracts,
-            totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
-            avgRiskScore: riskScore,
-            pendingApprovals: approvalsJson.data?.items?.length ?? mockMetrics.pendingApprovals,
-            expiringThisMonth: (d.expirations?.criticalRisk + d.expirations?.highRisk) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
-            contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
-            aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
-            trends: {
-              contracts: mockMetrics.trends.contracts,
-              value: mockMetrics.trends.value,
-              risk: d.health?.trends?.improving > 0 ? -5 : d.health?.trends?.declining > 0 ? 5 : 0,
-              compliance: d.health?.averageScore ? (d.health.averageScore - 60) : mockMetrics.trends.compliance,
-            },
-          });
-
-          // Map breakdown to chart with health score distribution
-          if (d.breakdown?.byType) {
-            setChartData(prev => ({
-              ...prev,
-              byType: d.breakdown.byType.slice(0, 5).map((t: any) => ({
-                type: t.type?.substring(0, 10) || 'Other',
-                count: t.count,
-              })),
-            }));
-          }
-
-          // Map health score distribution to risk chart
-          if (d.health?.byAlertLevel) {
-            const alertLevels = d.health.byAlertLevel;
-            setChartData(prev => ({
-              ...prev,
-              riskDistribution: [
-                { name: 'Low Risk', value: (alertLevels.healthy || 0) + (alertLevels.medium || 0), color: '#10b981' },
-                { name: 'Medium Risk', value: alertLevels.high || 0, color: '#f59e0b' },
-                { name: 'High Risk', value: alertLevels.critical || 0, color: '#f43f5e' },
-              ],
-            }));
-          }
-        }
-
-        // Map expirations data to upcoming expirations
-        if (expirationsJson.success && expirationsJson.data?.expirations?.length > 0) {
-          setExpirations(expirationsJson.data.expirations.slice(0, 3).map((e: any, i: number) => ({
-            id: e.contractId || String(i + 1),
-            name: e.contractName || 'Contract',
-            client: e.owner || 'Unknown',
-            expiresAt: e.expiryDate,
-            daysRemaining: e.daysUntilExpiry || 0,
-            value: e.contractValue || 0,
-          })));
-        }
-
-      } catch (error) {
-        console.log('Using mock data due to API error:', error);
-        // Keep mock data
-      } finally {
-        setLoading(false);
+      // Map health score distribution to risk chart
+      if (d.health?.byAlertLevel) {
+        const alertLevels = d.health.byAlertLevel;
+        computedChartData = {
+          ...computedChartData,
+          riskDistribution: [
+            { name: 'Low Risk', value: (alertLevels.healthy || 0) + (alertLevels.medium || 0), color: '#10b981' },
+            { name: 'Medium Risk', value: alertLevels.high || 0, color: '#f59e0b' },
+            { name: 'High Risk', value: alertLevels.critical || 0, color: '#f43f5e' },
+          ],
+        };
       }
     }
 
-    fetchData();
-  }, [isMockData]);
+    // Map expirations data to upcoming expirations
+    if (expirationsJson?.success && expirationsJson.data?.expirations?.length > 0) {
+      computedExpirations = expirationsJson.data.expirations.slice(0, 3).map((e: any, i: number) => ({
+        id: e.contractId || String(i + 1),
+        name: e.contractName || 'Contract',
+        client: e.owner || 'Unknown',
+        expiresAt: e.expiryDate,
+        daysRemaining: e.daysUntilExpiry || 0,
+        value: e.contractValue || 0,
+      }));
+    }
+    
+    return { metrics: computedMetrics, chartData: computedChartData, expirations: computedExpirations };
+  }, [isMockData, statsQuery.data, approvalsQuery.data, expirationsQuery.data, healthQuery.data]);
+  
+  const loading = statsQuery.isLoading || approvalsQuery.isLoading || expirationsQuery.isLoading;
+  const recentContracts = mockRecentContracts; // Keep mock for now since recent contracts come from stats
 
   return { metrics, chartData, recentContracts, expirations, loading };
 }

@@ -48,6 +48,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useDataMode } from '@/contexts/DataModeContext';
+import { useRiskFlags } from '@/hooks/use-optimistic-mutations';
 
 interface Policy {
   id: string;
@@ -449,37 +450,28 @@ export function AIGuardrails() {
     }
   }, [riskFlags]);
 
-  // Handle resolve flag
-  const handleResolveFlag = useCallback(async (flagId: string) => {
-    toast.info('Resolving flag...');
-    try {
-      const res = await fetch(`/api/governance/flags/${flagId}/resolve`, { method: 'POST' });
-      if (res.ok) {
-        setRiskFlags(prev => prev.map(f => f.id === flagId ? { ...f, status: 'resolved' } : f));
-        toast.success('Flag resolved successfully');
-      } else {
-        throw new Error('Failed to resolve');
-      }
-    } catch (error) {
-      toast.error('Failed to resolve flag');
-    }
-  }, []);
+  // Use optimistic mutation hooks for instant UI feedback
+  const riskFlagMutations = useRiskFlags();
 
-  // Handle dismiss flag
-  const handleDismissFlag = useCallback(async (flagId: string) => {
-    toast.info('Dismissing flag...');
-    try {
-      const res = await fetch(`/api/governance/flags/${flagId}/dismiss`, { method: 'POST' });
-      if (res.ok) {
+  // Handle resolve flag - now uses optimistic mutations
+  const handleResolveFlag = useCallback((flagId: string) => {
+    // Optimistic update - UI updates instantly, syncs in background
+    riskFlagMutations.resolve.mutate(flagId, {
+      onSuccess: () => {
+        setRiskFlags(prev => prev.map(f => f.id === flagId ? { ...f, status: 'resolved' } : f));
+      },
+    });
+  }, [riskFlagMutations.resolve]);
+
+  // Handle dismiss flag - now uses optimistic mutations
+  const handleDismissFlag = useCallback((flagId: string) => {
+    // Optimistic update - UI updates instantly, syncs in background
+    riskFlagMutations.dismiss.mutate(flagId, {
+      onSuccess: () => {
         setRiskFlags(prev => prev.filter(f => f.id !== flagId));
-        toast.success('Flag dismissed');
-      } else {
-        throw new Error('Failed to dismiss');
-      }
-    } catch (error) {
-      toast.error('Failed to dismiss flag');
-    }
-  }, []);
+      },
+    });
+  }, [riskFlagMutations.dismiss]);
 
   // Handle investigate flag
   const handleInvestigate = useCallback((flagId: string, contractId?: string) => {

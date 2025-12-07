@@ -1,6 +1,8 @@
 /**
  * API Keys Management Component
  * Secure management of API keys and access tokens
+ * 
+ * Now uses optimistic mutations for instant UI feedback
  */
 
 'use client';
@@ -54,6 +56,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useApiKeys } from '@/hooks/use-optimistic-mutations';
+import { useQuery } from '@tanstack/react-query';
+import { getTenantId } from '@/lib/tenant';
 
 interface ApiKey {
   id: string;
@@ -83,12 +88,52 @@ const permissionOptions = [
 ];
 
 export const ApiKeysManager = memo(function ApiKeysManager({
-  tenantId = 'default',
+  tenantId: propTenantId,
   className,
 }: ApiKeysManagerProps) {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
+  // Use optimistic mutation hooks for instant UI feedback
+  const apiKeyMutations = useApiKeys();
+  
+  // Query for API keys with React Query
+  const { data: apiKeysData, isLoading: loading } = useQuery({
+    queryKey: ['api-keys'],
+    queryFn: async () => {
+      const response = await fetch('/api/settings/api-keys', {
+        headers: { 'x-tenant-id': getTenantId() },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.keys || [];
+      }
+      // Mock data for demo
+      return [
+        {
+          id: 'key_1',
+          name: 'Production API',
+          keyPreview: 'sk_live_****abcd',
+          permissions: ['read:contracts', 'write:contracts', 'read:artifacts'],
+          createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+          lastUsedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          isActive: true,
+        },
+        {
+          id: 'key_2',
+          name: 'Integration Webhook',
+          keyPreview: 'sk_live_****efgh',
+          permissions: ['read:contracts'],
+          createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+          lastUsedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          isActive: true,
+        },
+      ];
+    },
+  });
+  
+  const apiKeys = apiKeysData || [];
+  // Derive creating state from mutation
+  const creating = apiKeyMutations.create.isPending;
+  
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null);
   const [newKeyData, setNewKeyData] = useState<{
@@ -103,113 +148,34 @@ export const ApiKeysManager = memo(function ApiKeysManager({
   const [newKeySecret, setNewKeySecret] = useState<string | null>(null);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchApiKeys();
-  }, [tenantId]);
-
-  const fetchApiKeys = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/settings/api-keys');
-      if (response.ok) {
-        const data = await response.json();
-        setApiKeys(data.keys || []);
-      } else {
-        // Mock data for demo
-        setApiKeys([
-          {
-            id: 'key_1',
-            name: 'Production API',
-            keyPreview: 'sk_live_****abcd',
-            permissions: ['read:contracts', 'write:contracts', 'read:artifacts'],
-            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            lastUsedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            isActive: true,
-          },
-          {
-            id: 'key_2',
-            name: 'Integration Webhook',
-            keyPreview: 'sk_live_****efgh',
-            permissions: ['read:contracts'],
-            createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-            lastUsedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            isActive: true,
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch API keys:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const createApiKey = async () => {
     if (!newKeyData.name) {
       toast.error('Please enter a name for the API key');
       return;
     }
 
-    setCreating(true);
-    try {
-      const response = await fetch('/api/settings/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newKeyData),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setNewKeySecret(data.secret);
-        setApiKeys(prev => [data.key, ...prev]);
-        toast.success('API key created successfully');
-      } else {
-        // Mock creation
-        const mockKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-        setNewKeySecret(mockKey);
-        setApiKeys(prev => [{
-          id: `key_${Date.now()}`,
-          name: newKeyData.name,
-          keyPreview: `sk_live_****${mockKey.slice(-4)}`,
-          permissions: newKeyData.permissions,
-          createdAt: new Date().toISOString(),
-          isActive: true,
-        }, ...prev]);
-        toast.success('API key created');
+    // Use optimistic mutation hook
+    apiKeyMutations.create.mutate(
+      { name: newKeyData.name, permissions: newKeyData.permissions },
+      {
+        onSuccess: (response) => {
+          // Show the secret to user (only time it's visible)
+          const mockKey = `sk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+          setNewKeySecret(response?.apiKey?.key || mockKey);
+        },
       }
-    } catch (error) {
-      toast.error('Failed to create API key');
-    } finally {
-      setCreating(false);
-    }
+    );
   };
 
-  const deleteApiKey = async (keyId: string) => {
-    try {
-      await fetch(`/api/settings/api-keys/${keyId}`, { method: 'DELETE' });
-      setApiKeys(prev => prev.filter(k => k.id !== keyId));
-      toast.success('API key deleted');
-    } catch (error) {
-      toast.error('Failed to delete API key');
-    }
+  const deleteApiKey = (keyId: string) => {
+    // Use optimistic mutation - UI updates instantly, syncs in background
+    apiKeyMutations.delete.mutate(keyId);
     setDeleteKeyId(null);
   };
 
-  const toggleKeyStatus = async (keyId: string, isActive: boolean) => {
-    try {
-      await fetch(`/api/settings/api-keys/${keyId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive }),
-      });
-      setApiKeys(prev => prev.map(k => 
-        k.id === keyId ? { ...k, isActive } : k
-      ));
-      toast.success(`API key ${isActive ? 'activated' : 'deactivated'}`);
-    } catch (error) {
-      toast.error('Failed to update API key');
-    }
+  const toggleKeyStatus = (keyId: string, isActive: boolean) => {
+    // Use optimistic mutation - UI updates instantly, syncs in background
+    apiKeyMutations.toggle.mutate({ keyId, isActive });
   };
 
   const copyToClipboard = (text: string, keyId: string) => {
@@ -403,7 +369,7 @@ export const ApiKeysManager = memo(function ApiKeysManager({
             </div>
           ) : (
             <div className="space-y-4">
-              {apiKeys.map((key) => (
+              {apiKeys.map((key: ApiKey) => (
                 <div
                   key={key.id}
                   className={cn(
@@ -441,7 +407,7 @@ export const ApiKeysManager = memo(function ApiKeysManager({
                         )}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {key.permissions.map(perm => (
+                        {key.permissions.map((perm: string) => (
                           <Badge key={perm} variant="outline" className="text-xs">
                             {perm}
                           </Badge>

@@ -91,6 +91,7 @@ export default function TemplatesPage() {
         status: 'draft',
       })
       toast.success('Template duplicated successfully')
+      crossModule.onTemplateChange()
       refetch()
     } catch (error) {
       console.error('Duplicate error:', error)
@@ -112,6 +113,7 @@ export default function TemplatesPage() {
       toast.info('Deleting template...')
       await deleteTemplateMutation.mutateAsync(templateToDelete.id)
       toast.success('Template deleted successfully')
+      crossModule.onTemplateChange()
       refetch()
     } catch (error) {
       console.error('Delete error:', error)

@@ -4,9 +4,109 @@
  * Central export point for all custom hooks
  */
 
-// Data fetching & mutations
+// Data fetching & mutations - use-queries is the main source for query hooks
 export * from './use-queries';
-export * from './use-cross-module-actions';
+
+// Cross-module actions - selective exports to avoid usePendingApprovals conflict
+export { 
+  type Approval,
+  type Notification,
+  type ShareRequest,
+  type AIAnalysisRequest,
+  crossModuleKeys,
+  useContractApprovals,
+  useRequestApproval,
+  useRespondToApproval,
+  useNotifications,
+  useUnreadNotificationCount,
+  useMarkNotificationsRead,
+  useShareContract,
+  useContractShares,
+  useRevokeShare,
+  useRunAIAnalysis,
+  useAISuggestions,
+  useAIChat,
+  useAIQueryHistory,
+  useContractActions,
+  useBulkContractActions,
+  // usePendingApprovals is exported from use-queries with better implementation
+} from './use-cross-module-actions';
+
+export * from './use-propagation';
+
+// Optimistic mutations - named exports to avoid conflicts with useContractHealth
+export { 
+  useOptimisticMutation,
+  useApiKeys,
+  useDeleteApiKey,
+  useToggleApiKey,
+  useCreateApiKey,
+  useWebhooks,
+  useDeleteWebhook,
+  useToggleWebhook,
+  useCreateWebhook,
+  useUpdateWebhook,
+  useTestWebhook,
+  useRiskFlags,
+  useResolveRiskFlag,
+  useDismissRiskFlag,
+  useBulkResolveFlags,
+  useDeleteSavedFilter,
+  useShareFilter,
+  useCreateFilter,
+  useDeleteComparison,
+  useCreateComparison,
+  useContractHealth as useContractHealthMutations,
+  useRefreshHealth,
+  useReassessContract,
+} from './use-optimistic-mutations';
+
+// Rate Card Queries - named exports to avoid conflicts
+export { 
+  type EmergingTrend,
+  type TrackingData,
+  type StrategicRecommendation,
+  type MarketBenchmark,
+  type RateCardEntry as RateCardQueryEntry,
+  rateCardQueryKeys,
+  useEmergingTrends,
+  useBaselineTracking,
+  useBaseline,
+  useStrategicRecommendations,
+  useMarketBenchmarks,
+  useRateCardEntries as useRateCardEntriesQuery,
+  useDismissTrend,
+  useCreateBaseline,
+  useUpdateBaseline,
+  useActOnRecommendation,
+  usePrefetchRateCards,
+  useRateCardInvalidation,
+} from './use-rate-card-queries';
+
+// Settings Queries
+export * from './use-settings-queries';
+
+// Saved Items Queries (filters, comparisons) - named exports to avoid conflicts
+export { 
+  type SavedFilter as SavedFilterQuery,
+  type SavedComparison as SavedComparisonQuery,
+  savedItemsQueryKeys,
+  useSavedFiltersQuery,
+  useDeleteSavedFilterMutation,
+  useShareFilterMutation,
+  useSavedComparisonsQuery,
+  useSavedComparisonQuery,
+  useDeleteComparisonMutation,
+  useShareComparisonMutation,
+  useSavedItemsInvalidation,
+} from './use-saved-items-queries';
+
+// Monitoring Queries (audit logs, activity)
+export * from './use-monitoring-queries';
+
+export * from './use-prefetch';
+export * from './use-background-sync';
+export * from './use-focus-management';
 
 // UI State
 export { useLocalStorage, useRecentItems, useLocalStorageToggle } from './useLocalStorage';

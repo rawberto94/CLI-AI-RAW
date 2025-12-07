@@ -184,6 +184,38 @@ export function EnhancedArtifactViewer({
     return { riskScore, complianceScore, totalValue, clauseCount };
   }, [normalizedData]);
 
+  // Calculate overall confidence and determine if human review is needed
+  const confidenceInfo = useMemo(() => {
+    const confidenceScores: number[] = [];
+    
+    // Collect confidence from all artifact types
+    if (normalizedData.overview?.confidence) {
+      confidenceScores.push(Number(normalizedData.overview.confidence));
+    }
+    if (normalizedData.clauses?.confidence) {
+      confidenceScores.push(Number(normalizedData.clauses.confidence));
+    }
+    if (normalizedData.financial?.confidence) {
+      confidenceScores.push(Number(normalizedData.financial.confidence));
+    }
+    if (normalizedData.risk?.confidence) {
+      confidenceScores.push(Number(normalizedData.risk.confidence));
+    }
+    if (normalizedData.compliance?.confidence) {
+      confidenceScores.push(Number(normalizedData.compliance.confidence));
+    }
+
+    const avgConfidence = confidenceScores.length > 0
+      ? Math.round(confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length)
+      : null;
+    
+    // Flag for human review if confidence is below 70%
+    const needsHumanReview = avgConfidence !== null && avgConfidence < 70;
+    const hasLowConfidenceArtifacts = confidenceScores.some(c => c < 70);
+    
+    return { avgConfidence, needsHumanReview, hasLowConfidenceArtifacts };
+  }, [normalizedData]);
+
   // Handlers for editable mode
   const handleSaveArtifact = async (data: Record<string, any>) => {
     console.log('Saving artifact data:', data);
@@ -347,6 +379,45 @@ export function EnhancedArtifactViewer({
 
   return (
     <div className={containerClasses}>
+      {/* Human Review Banner - Shows when AI confidence is low */}
+      {confidenceInfo.needsHumanReview && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200"
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-100">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-amber-900">Human Review Recommended</h4>
+              <p className="text-sm text-amber-700 mt-1">
+                AI confidence is {confidenceInfo.avgConfidence}% for this contract. Some extracted values may need verification.
+                Please review highlighted sections before using this data for critical decisions.
+              </p>
+            </div>
+            <Badge className="bg-amber-100 text-amber-800 border-amber-300 shrink-0">
+              {confidenceInfo.avgConfidence}% Confidence
+            </Badge>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Confidence Indicator - Shows when confidence is good */}
+      {confidenceInfo.avgConfidence !== null && !confidenceInfo.needsHumanReview && (
+        <div className="mb-4 flex items-center gap-2 text-sm text-emerald-700">
+          <Check className="h-4 w-4" />
+          <span>AI Confidence: {confidenceInfo.avgConfidence}%</span>
+          <div className="h-1.5 w-16 bg-emerald-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-emerald-500 rounded-full" 
+              style={{ width: `${confidenceInfo.avgConfidence}%` }} 
+            />
+          </div>
+        </div>
+      )}
+
       {/* Quick Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {stats.totalValue && (

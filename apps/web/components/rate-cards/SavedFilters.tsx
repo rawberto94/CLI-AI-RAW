@@ -3,60 +3,47 @@
 /**
  * Saved Filters Component
  * 
- * Manages saved filter presets for quick access
+ * Manages saved filter presets for quick access.
+ * Uses React Query for data fetching with optimistic mutations.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
-import { Bookmark, Trash2, Share2, Users } from 'lucide-react';
+import { Bookmark, Trash2, Share2, Users, RefreshCw, Loader2 } from 'lucide-react';
 import { RateCardFilterCriteria } from './RateCardFilters';
-
-interface SavedFilter {
-  id: string;
-  name: string;
-  description?: string;
-  filters: RateCardFilterCriteria;
-  isShared: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { 
+  useSavedFiltersQuery, 
+  useDeleteSavedFilterMutation, 
+  useShareFilterMutation,
+  type SavedFilter 
+} from '@/hooks/use-saved-items-queries';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 interface SavedFiltersProps {
   onApplyFilter: (filters: RateCardFilterCriteria) => void;
 }
 
 export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
-  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    data: savedFilters = [], 
+    isLoading: loading, 
+    isFetching,
+    refetch,
+    dataUpdatedAt,
+  } = useSavedFiltersQuery();
+  
+  const deleteMutation = useDeleteSavedFilterMutation();
+  const shareMutation = useShareFilterMutation();
+  
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [filterToDelete, setFilterToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    fetchSavedFilters();
-  }, []);
-
-  const fetchSavedFilters = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/rate-cards/filters');
-      if (response.ok) {
-        const data = await response.json();
-        setSavedFilters(data.filters || []);
-      }
-    } catch (error) {
-      console.error('Error fetching saved filters:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleApplyFilter = (filter: SavedFilter) => {
-    onApplyFilter(filter.filters);
+    onApplyFilter(filter.filters as RateCardFilterCriteria);
     toast.success(`Filter "${filter.name}" applied`);
   };
 
@@ -68,23 +55,11 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
   const handleDeleteFilter = async () => {
     if (!filterToDelete) return;
     
-    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/rate-cards/filters/${filterToDelete}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setSavedFilters(prev => prev.filter(f => f.id !== filterToDelete));
-        toast.success('Filter deleted successfully');
-      } else {
-        toast.error('Failed to delete filter');
-      }
+      await deleteMutation.mutateAsync(filterToDelete);
     } catch (error) {
-      console.error('Error deleting filter:', error);
-      toast.error('Failed to delete filter');
+      // Error handled in mutation
     } finally {
-      setIsDeleting(false);
       setDeleteDialogOpen(false);
       setFilterToDelete(null);
     }
@@ -92,15 +67,9 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
 
   const handleShareFilter = async (filterId: string) => {
     try {
-      const response = await fetch(`/api/rate-cards/filters/${filterId}/share`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        fetchSavedFilters(); // Refresh to show updated share status
-      }
+      await shareMutation.mutateAsync(filterId);
     } catch (error) {
-      console.error('Error sharing filter:', error);
+      // Error handled in mutation
     }
   };
 
@@ -123,8 +92,9 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
   if (loading) {
     return (
       <Card>
-        <CardContent className="pt-6">
-          <p className="text-muted-foreground">Loading saved filters...</p>
+        <CardContent className="pt-6 flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading saved filters...
         </CardContent>
       </Card>
     );
@@ -227,7 +197,7 @@ export function SavedFilters({ onApplyFilter }: SavedFiltersProps) {
           description="Are you sure you want to delete this saved filter? This action cannot be undone."
           confirmLabel="Delete"
           variant="destructive"
-          isLoading={isDeleting}
+          isLoading={deleteMutation.isPending}
           onConfirm={handleDeleteFilter}
         />
       </CardContent>

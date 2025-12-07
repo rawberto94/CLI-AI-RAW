@@ -40,6 +40,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { useCrossModuleInvalidation } from "@/hooks/use-queries";
+import { notifyTaxonomyChange } from "@/lib/taxonomy-events";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -684,6 +686,9 @@ export default function TaxonomyPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Cross-module cache invalidation for real-time propagation
+  const crossModule = useCrossModuleInvalidation();
+
   // Modal states
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -737,6 +742,10 @@ export default function TaxonomyPage() {
       showNotification("success", data.message || "Preset applied successfully");
       setShowPresetsModal(false);
       await fetchCategories();
+      
+      // Propagate changes across the app and to other tabs
+      crossModule.onTaxonomyChange();
+      notifyTaxonomyChange('preset_applied', { presetId });
     } catch (err) {
       showNotification("error", err instanceof Error ? err.message : "Failed to apply preset");
     } finally {
@@ -824,6 +833,13 @@ export default function TaxonomyPage() {
       setEditingCategory(null);
       setParentCategory(null);
       await fetchCategories();
+      
+      // Propagate changes across the app and to other tabs
+      crossModule.onTaxonomyChange();
+      notifyTaxonomyChange(editingCategory ? 'category_updated' : 'category_created', { 
+        categoryId: editingCategory?.id,
+        categoryName: data.name 
+      });
     } catch (err) {
       showNotification("error", err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -856,6 +872,10 @@ export default function TaxonomyPage() {
       setEditingCategory(null);
       setSelectedId(null);
       await fetchCategories();
+      
+      // Propagate changes across the app and to other tabs
+      crossModule.onTaxonomyChange();
+      notifyTaxonomyChange('category_deleted', { categoryId: editingCategory.id });
     } catch (err) {
       showNotification("error", err instanceof Error ? err.message : "Failed to delete");
     } finally {

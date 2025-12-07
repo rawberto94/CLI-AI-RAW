@@ -1,11 +1,13 @@
 /**
  * Audit Log Viewer Component
  * View and filter system audit logs for compliance and debugging
+ * 
+ * Uses React Query for data fetching with caching and background refresh.
  */
 
 'use client';
 
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useMemo } from 'react';
 import { 
   ClipboardList, 
   Search,
@@ -45,29 +47,8 @@ import {
 } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
-
-export interface AuditLogEntry {
-  id: string;
-  timestamp: Date;
-  action: string;
-  category: 'user' | 'contract' | 'system' | 'security' | 'data' | 'integration';
-  actor: {
-    id: string;
-    name: string;
-    email: string;
-    type: 'user' | 'system' | 'api';
-  };
-  resource?: {
-    type: string;
-    id: string;
-    name?: string;
-  };
-  details: Record<string, unknown>;
-  ipAddress?: string;
-  userAgent?: string;
-  success: boolean;
-  errorMessage?: string;
-}
+import { useAuditLogs, type AuditLogEntry } from '@/hooks/use-monitoring-queries';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 interface AuditLogViewerProps {
   className?: string;
@@ -151,39 +132,27 @@ function generateMockLogs(): AuditLogEntry[] {
 export const AuditLogViewer = memo(function AuditLogViewer({
   className,
 }: AuditLogViewerProps) {
-  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  // React Query hook for audit logs
+  const { 
+    data, 
+    isLoading: loading, 
+    isFetching,
+    refetch,
+    dataUpdatedAt,
+  } = useAuditLogs({
+    pageSize: 100,
+  });
+  
+  // Fall back to mock data if no data from API
+  const logs = data?.logs ?? generateMockLogs();
+  
+  // Local UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [successFilter, setSuccessFilter] = useState<string>('all');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadLogs();
-  }, []);
-
-  const loadLogs = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/audit/logs');
-      if (response.ok) {
-        const data = await response.json();
-        setLogs(data.logs.map((l: AuditLogEntry) => ({
-          ...l,
-          timestamp: new Date(l.timestamp),
-        })));
-      } else {
-        // Use mock data
-        setLogs(generateMockLogs());
-      }
-    } catch {
-      setLogs(generateMockLogs());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = useMemo(() => logs.filter((log: AuditLogEntry) => {
     if (categoryFilter !== 'all' && log.category !== categoryFilter) return false;
     if (successFilter !== 'all' && (successFilter === 'success' ? !log.success : log.success)) return false;
     if (searchQuery) {
@@ -196,7 +165,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
       );
     }
     return true;
-  });
+  }), [logs, categoryFilter, successFilter, searchQuery]);
 
   const toggleExpand = (logId: string) => {
     setExpandedLogs(prev => {
@@ -251,10 +220,14 @@ export const AuditLogViewer = memo(function AuditLogViewer({
             <CardDescription>
               View system activity and changes for compliance
             </CardDescription>
+            <DataFreshnessIndicator
+              dataUpdatedAt={dataUpdatedAt}
+              isFetching={isFetching}
+            />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadLogs} disabled={loading}>
-              <RefreshCw className={cn('h-4 w-4 mr-2', loading && 'animate-spin')} />
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={cn('h-4 w-4 mr-2', isFetching && 'animate-spin')} />
               Refresh
             </Button>
             <Button variant="outline" size="sm" onClick={exportLogs}>

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -19,67 +18,21 @@ import {
   CheckCircle,
   DollarSign,
   BarChart3,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
-
-interface TrackingData {
-  summary: {
-    totalBaselines: number;
-    activeBaselines: number;
-    totalRateCards: number;
-    ratesWithinBaseline: number;
-    ratesExceedingBaseline: number;
-    achievementRate: number;
-    totalSavingsIdentified: number;
-    totalSavingsRealized: number;
-  };
-  byType: Array<{
-    type: string;
-    count: number;
-    avgRate: number;
-  }>;
-  byCategory: Array<{
-    category: string;
-    count: number;
-  }>;
-  topViolations: Array<{
-    entryId: string;
-    resourceType: string;
-    lineOfService: string;
-    actualRate: number;
-    maxSavings: number;
-    comparisons: any[];
-  }>;
-  recentComparisons: any[];
-}
+import { useBaselineTracking, type TrackingData } from '@/hooks/use-rate-card-queries';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 export function BaselineTrackingDashboard() {
-  const [data, setData] = useState<TrackingData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchTrackingData();
-  }, []);
-
-  const fetchTrackingData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch('/api/rate-cards/baselines/tracking');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch tracking data');
-      }
-
-      const result = await response.json();
-      setData(result);
-    } catch (err) {
-      console.error('Error fetching tracking data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { 
+    data, 
+    isLoading: loading, 
+    isFetching,
+    error, 
+    refetch,
+    dataUpdatedAt,
+  } = useBaselineTracking();
 
   const getTypeBadge = (type: string) => {
     const labels: Record<string, string> = {
@@ -96,7 +49,10 @@ export function BaselineTrackingDashboard() {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-center text-gray-500 py-8">Loading tracking data...</div>
+          <div className="flex items-center justify-center gap-2 text-gray-500 py-8">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading tracking data...
+          </div>
         </div>
       </div>
     );
@@ -107,7 +63,7 @@ export function BaselineTrackingDashboard() {
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {error || 'Failed to load tracking data'}
+            {error instanceof Error ? error.message : 'Failed to load tracking data'}
           </div>
         </div>
       </div>
@@ -125,8 +81,13 @@ export function BaselineTrackingDashboard() {
           <p className="text-gray-600 mt-1">
             Monitor baseline achievement rates and identify savings opportunities
           </p>
+          <DataFreshnessIndicator
+            dataUpdatedAt={dataUpdatedAt}
+            isFetching={isFetching}
+          />
         </div>
-        <Button onClick={fetchTrackingData} variant="outline">
+        <Button onClick={() => refetch()} variant="outline" disabled={isFetching}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>

@@ -1,11 +1,14 @@
 /**
  * Webhook Management Component
  * Configure and manage webhooks for external integrations
+ * 
+ * Uses React Query for data fetching and optimistic mutations
+ * for instant UI feedback.
  */
 
 'use client';
 
-import { memo, useState, useEffect } from 'react';
+import { memo, useState } from 'react';
 import { 
   Webhook, 
   Plus, 
@@ -48,19 +51,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-
-interface WebhookConfig {
-  id: string;
-  name: string;
-  url: string;
-  events: string[];
-  isActive: boolean;
-  secret?: string;
-  createdAt: string;
-  lastTriggeredAt?: string;
-  lastStatus?: 'success' | 'failed';
-  failureCount: number;
-}
+import { useWebhooksQuery, type WebhookConfig } from '@/hooks/use-settings-queries';
+import { 
+  useDeleteWebhook, 
+  useToggleWebhook, 
+  useCreateWebhook, 
+  useUpdateWebhook,
+  useTestWebhook 
+} from '@/hooks/use-optimistic-mutations';
+import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
 
 interface WebhooksManagerProps {
   tenantId?: string;
@@ -82,10 +81,22 @@ export const WebhooksManager = memo(function WebhooksManager({
   tenantId = 'default',
   className,
 }: WebhooksManagerProps) {
-  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState<string | null>(null);
+  // React Query hooks
+  const { 
+    data: webhooks = [], 
+    isLoading: loading, 
+    isFetching,
+    refetch,
+    dataUpdatedAt,
+  } = useWebhooksQuery();
+  
+  const deleteMutation = useDeleteWebhook();
+  const toggleMutation = useToggleWebhook();
+  const createMutation = useCreateWebhook();
+  const updateMutation = useUpdateWebhook();
+  const testMutation = useTestWebhook();
+
+  // Local UI state
   const [showDialog, setShowDialog] = useState(false);
   const [editingWebhook, setEditingWebhook] = useState<WebhookConfig | null>(null);
   const [deleteWebhookId, setDeleteWebhookId] = useState<string | null>(null);
@@ -95,51 +106,6 @@ export const WebhooksManager = memo(function WebhooksManager({
     events: [] as string[],
     secret: '',
   });
-
-  useEffect(() => {
-    fetchWebhooks();
-  }, [tenantId]);
-
-  const fetchWebhooks = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/settings/webhooks');
-      if (response.ok) {
-        const data = await response.json();
-        setWebhooks(data.webhooks || []);
-      } else {
-        // Mock data
-        setWebhooks([
-          {
-            id: 'wh_1',
-            name: 'Slack Notifications',
-            url: 'https://hooks.slack.com/services/T00/B00/xxx',
-            events: ['contract.processed', 'risk.detected'],
-            isActive: true,
-            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            lastTriggeredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-            lastStatus: 'success',
-            failureCount: 0,
-          },
-          {
-            id: 'wh_2',
-            name: 'CRM Integration',
-            url: 'https://api.salesforce.com/webhooks/contracts',
-            events: ['contract.created', 'contract.updated'],
-            isActive: true,
-            createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-            lastTriggeredAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-            lastStatus: 'failed',
-            failureCount: 3,
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch webhooks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const openCreateDialog = () => {
     setEditingWebhook(null);
@@ -172,99 +138,43 @@ export const WebhooksManager = memo(function WebhooksManager({
       return;
     }
 
-    setSaving(true);
     try {
-      const method = editingWebhook ? 'PUT' : 'POST';
-      const url = editingWebhook 
-        ? `/api/settings/webhooks/${editingWebhook.id}` 
-        : '/api/settings/webhooks';
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        toast.success(editingWebhook ? 'Webhook updated' : 'Webhook created');
-        fetchWebhooks();
+      if (editingWebhook) {
+        await updateMutation.mutateAsync({
+          webhookId: editingWebhook.id,
+          ...formData,
+        });
       } else {
-        // Mock save
-        if (editingWebhook) {
-          setWebhooks(prev => prev.map(w => 
-            w.id === editingWebhook.id 
-              ? { ...w, ...formData } 
-              : w
-          ));
-        } else {
-          setWebhooks(prev => [{
-            id: `wh_${Date.now()}`,
-            ...formData,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            failureCount: 0,
-          }, ...prev]);
-        }
-        toast.success(editingWebhook ? 'Webhook updated' : 'Webhook created');
+        await createMutation.mutateAsync(formData);
       }
       setShowDialog(false);
     } catch (error) {
-      toast.error('Failed to save webhook');
-    } finally {
-      setSaving(false);
+      // Error handling is done in the mutation hooks
     }
   };
 
   const deleteWebhook = async (webhookId: string) => {
     try {
-      await fetch(`/api/settings/webhooks/${webhookId}`, { method: 'DELETE' });
-      setWebhooks(prev => prev.filter(w => w.id !== webhookId));
-      toast.success('Webhook deleted');
+      await deleteMutation.mutateAsync(webhookId);
     } catch (error) {
-      toast.error('Failed to delete webhook');
+      // Error handling is done in the mutation hook
     }
     setDeleteWebhookId(null);
   };
 
   const toggleWebhook = async (webhookId: string, isActive: boolean) => {
     try {
-      await fetch(`/api/settings/webhooks/${webhookId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive }),
-      });
-      setWebhooks(prev => prev.map(w => 
-        w.id === webhookId ? { ...w, isActive } : w
-      ));
-      toast.success(`Webhook ${isActive ? 'enabled' : 'disabled'}`);
+      await toggleMutation.mutateAsync({ webhookId, isActive });
     } catch (error) {
-      toast.error('Failed to update webhook');
+      // Error handling is done in the mutation hook
     }
   };
 
   const testWebhook = async (webhookId: string) => {
-    setTesting(webhookId);
     try {
-      const response = await fetch(`/api/settings/webhooks/${webhookId}/test`, {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        toast.success('Test webhook sent successfully');
-        setWebhooks(prev => prev.map(w => 
-          w.id === webhookId 
-            ? { ...w, lastTriggeredAt: new Date().toISOString(), lastStatus: 'success' as const, failureCount: 0 } 
-            : w
-        ));
-      } else {
-        // Simulate test
-        await new Promise(r => setTimeout(r, 1000));
-        toast.success('Test payload sent');
-      }
+      await testMutation.mutateAsync(webhookId);
     } catch (error) {
-      toast.error('Test failed');
-    } finally {
-      setTesting(null);
+      // Error handling is done in the mutation hook
     }
   };
 
@@ -280,6 +190,9 @@ export const WebhooksManager = memo(function WebhooksManager({
     if (diffDays < 30) return `${diffDays}d ago`;
     return date.toLocaleDateString();
   };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const testingWebhookId = testMutation.isPending ? testMutation.variables : null;
 
   if (loading) {
     return (
@@ -304,11 +217,20 @@ export const WebhooksManager = memo(function WebhooksManager({
               <CardDescription className="mt-1">
                 Send real-time notifications to external services
               </CardDescription>
+              <DataFreshnessIndicator
+                dataUpdatedAt={dataUpdatedAt}
+                isFetching={isFetching}
+              />
             </div>
-            <Button onClick={openCreateDialog} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Webhook
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button onClick={openCreateDialog} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Webhook
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -383,10 +305,10 @@ export const WebhooksManager = memo(function WebhooksManager({
                         variant="outline"
                         size="sm"
                         onClick={() => testWebhook(webhook.id)}
-                        disabled={testing === webhook.id || !webhook.isActive}
+                        disabled={testingWebhookId === webhook.id || !webhook.isActive}
                         className="gap-1.5"
                       >
-                        {testing === webhook.id ? (
+                        {testingWebhookId === webhook.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Send className="h-3.5 w-3.5" />
@@ -496,8 +418,8 @@ export const WebhooksManager = memo(function WebhooksManager({
             <Button variant="outline" onClick={() => setShowDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={saveWebhook} disabled={saving}>
-              {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            <Button onClick={saveWebhook} disabled={isSaving}>
+              {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {editingWebhook ? 'Save Changes' : 'Create Webhook'}
             </Button>
           </DialogFooter>

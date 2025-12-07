@@ -537,22 +537,16 @@ export default function ContractDetailPage() {
         return
       }
       
-      // Tab navigation: 1-5 keys
+      // Tab navigation: 1-3 keys (simplified tabs)
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
         switch (e.key) {
           case '1':
             setActiveTab('overview')
             break
           case '2':
-            setActiveTab('artifacts')
-            break
-          case '3':
             setActiveTab('details')
             break
-          case '4':
-            setActiveTab('reminders')
-            break
-          case '5':
+          case '3':
             setActiveTab('activity')
             break
           case 'p':
@@ -1264,44 +1258,65 @@ export default function ContractDetailPage() {
           </motion.div>
         )}
 
-        {/* Stats Grid */}
+        {/* Quick Stats - Compact inline badges */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="flex flex-wrap items-center gap-3 mb-6"
         >
-          <StatCard
-            icon={DollarSign}
-            label="Contract Value"
-            value={financialData?.totalValue ? formatCurrency(financialData.totalValue, financialData.currency || 'USD') : '$0'}
-            subValue={financialData?.currency || 'USD'}
-            color="emerald"
-          />
-          <StatCard
-            icon={AlertTriangle}
-            label="Risk Level"
-            value={riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
-            subValue={`${riskData?.risks?.length || 0} factors identified`}
-            color={riskLevel === 'low' ? 'emerald' : riskLevel === 'medium' ? 'amber' : 'red'}
-            score={riskScore}
-          />
-          <StatCard
-            icon={Shield}
-            label="Compliance"
-            value={complianceData?.compliant ? 'Compliant' : 'Review Needed'}
-            subValue={`${complianceData?.checks?.length || 0} checks passed`}
-            color={complianceData?.compliant ? 'emerald' : 'amber'}
-          />
-          <StatCard
-            icon={Brain}
-            label="AI Artifacts"
-            value={contract?.artifactCount || 5}
-            subValue="Generated"
-            color="purple"
-          />
+          {financialData?.totalValue && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <DollarSign className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-700">
+                {formatCurrency(financialData.totalValue, financialData.currency || 'USD')}
+              </span>
+            </div>
+          )}
+          
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-1.5 border rounded-lg",
+            riskLevel === 'low' ? 'bg-emerald-50 border-emerald-200' : 
+            riskLevel === 'medium' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'
+          )}>
+            <AlertTriangle className={cn(
+              "h-4 w-4",
+              riskLevel === 'low' ? 'text-emerald-600' : 
+              riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
+            )} />
+            <span className={cn(
+              "text-sm font-medium",
+              riskLevel === 'low' ? 'text-emerald-700' : 
+              riskLevel === 'medium' ? 'text-amber-700' : 'text-red-700'
+            )}>
+              {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
+            </span>
+          </div>
+          
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-1.5 border rounded-lg",
+            complianceData?.compliant ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+          )}>
+            <Shield className={cn(
+              "h-4 w-4",
+              complianceData?.compliant ? 'text-emerald-600' : 'text-amber-600'
+            )} />
+            <span className={cn(
+              "text-sm font-medium",
+              complianceData?.compliant ? 'text-emerald-700' : 'text-amber-700'
+            )}>
+              {complianceData?.compliant ? 'Compliant' : 'Review Needed'}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg">
+            <Brain className="h-4 w-4 text-purple-600" />
+            <span className="text-sm font-medium text-purple-700">
+              {contract?.artifactCount || 5} AI Artifacts
+            </span>
+          </div>
         </motion.div>
 
-        {/* Category & Status Bar - Compact inline design */}
+        {/* Category & Quick Actions Bar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1342,18 +1357,11 @@ export default function ContractDetailPage() {
             )}
           </div>
           
-          {/* Quick Status Indicators */}
+          {/* Renewal Soon Alert - Only show when expiring within 90 days */}
           {overviewData?.expirationDate && new Date(overviewData.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
             <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm">
               <Clock className="h-4 w-4" />
               <span>Renewal Soon</span>
-            </div>
-          )}
-          
-          {riskLevel === 'high' && (
-            <div className="flex items-center gap-1.5 text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm">
-              <AlertTriangle className="h-4 w-4" />
-              <span>High Risk</span>
             </div>
           )}
           
@@ -1367,7 +1375,7 @@ export default function ContractDetailPage() {
           </button>
         </motion.div>
 
-        {/* Main Tabs */}
+        {/* Main Tabs - Simplified to 3 core tabs */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1381,40 +1389,26 @@ export default function ContractDetailPage() {
                   className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Overview
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="artifacts" 
-                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
-                >
-                  <Brain className="h-4 w-4 mr-2" />
-                  AI Analysis
+                  Summary
                 </TabsTrigger>
                 <TabsTrigger 
                   value="details" 
                   className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
                 >
                   <Info className="h-4 w-4 mr-2" />
-                  Details
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="reminders" 
-                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Reminders
+                  Edit Details
                 </TabsTrigger>
                 <TabsTrigger 
                   value="activity" 
                   className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
                 >
                   <History className="h-4 w-4 mr-2" />
-                  Activity
+                  Activity & Reminders
                 </TabsTrigger>
               </TabsList>
             </div>
 
-            {/* Overview Tab */}
+            {/* Summary Tab - Combines Overview + AI Analysis in one flow */}
             <TabsContent value="overview" className="space-y-6">
               {/* Summary Card */}
               <Card>
@@ -1572,22 +1566,33 @@ export default function ContractDetailPage() {
                 }}
               />
 
+              {/* AI Extracted Details - Integrated into Summary */}
+              {contract?.extractedData && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-purple-600" />
+                      AI-Extracted Details
+                    </CardTitle>
+                    <CardDescription>
+                      Detailed analysis of clauses, financials, risk, and compliance
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <EnhancedArtifactViewer
+                      artifacts={contract.extractedData}
+                      contractId={params.id as string}
+                      initialTab={searchParams.get('tab') || 'overview'}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Contract Health Score */}
               <ContractHealthScore
                 contractId={params.id as string}
                 variant="full"
               />
-            </TabsContent>
-
-            {/* AI Analysis Tab */}
-            <TabsContent value="artifacts">
-              {contract?.extractedData && (
-                <EnhancedArtifactViewer
-                  artifacts={contract.extractedData}
-                  contractId={params.id as string}
-                  initialTab={searchParams.get('tab') || 'overview'}
-                />
-              )}
             </TabsContent>
 
             {/* Details Tab - Editable Metadata */}
@@ -1939,14 +1944,27 @@ export default function ContractDetailPage() {
               )}
             </TabsContent>
 
-            {/* Reminders Tab */}
-            <TabsContent value="reminders" className="space-y-6">
-              <ContractReminders contractId={params.id as string} />
-            </TabsContent>
-
-            {/* Activity Tab - Approval History & Collaboration */}
+            {/* Activity & Reminders Tab - Combined for simplicity */}
             <TabsContent value="activity" className="space-y-6">
-              <ActivityTab contractId={params.id as string} />
+              {/* Reminders Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-amber-600" />
+                  Reminders
+                </h3>
+                <ContractReminders contractId={params.id as string} />
+              </div>
+              
+              <Separator className="my-8" />
+              
+              {/* Activity Section */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <History className="h-5 w-5 text-blue-600" />
+                  Recent Activity
+                </h3>
+                <ActivityTab contractId={params.id as string} />
+              </div>
               
               {/* Audit Log */}
               <ContractAuditLog 

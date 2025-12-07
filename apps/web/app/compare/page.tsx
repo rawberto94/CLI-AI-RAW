@@ -472,8 +472,8 @@ export default function ContractComparisonPage() {
     const group1Name = getGroupName(group1Supplier, group1Year, group1Contracts);
     const group2Name = getGroupName(group2Supplier, group2Year, group2Contracts);
 
-    const stats1 = calcGroupStats(group1Contracts, group1Name);
-    const stats2 = calcGroupStats(group2Contracts, group2Name);
+    const stats1 = calcGroupStats(group1Contracts, group1Name || 'Group 1');
+    const stats2 = calcGroupStats(group2Contracts, group2Name || 'Group 2');
 
     const differences: GroupComparisonResult["differences"] = [];
     const keyInsights: string[] = [];

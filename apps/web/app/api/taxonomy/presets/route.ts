@@ -366,6 +366,432 @@ const PRESET_TAXONOMIES = {
       },
     ],
   },
+
+  // ============================================================================
+  // SALES & REVENUE CONTRACTS
+  // ============================================================================
+  sales: {
+    id: "sales",
+    name: "Sales & Revenue",
+    description: "Customer-facing and revenue-generating contracts",
+    categories: [
+      {
+        name: "Customer Agreements",
+        description: "Direct customer contracts and subscriptions",
+        icon: "users",
+        color: "#10B981",
+        keywords: ["customer", "client", "subscription", "order", "purchase order"],
+        aiClassificationPrompt: "Customer-facing contracts and subscription agreements",
+        children: [
+          {
+            name: "Master Service Agreement (MSA)",
+            keywords: ["msa", "master service", "customer msa", "framework"],
+            aiClassificationPrompt: "Master service agreements with customers",
+          },
+          {
+            name: "Order Forms",
+            keywords: ["order form", "sow", "work order", "statement of work"],
+            aiClassificationPrompt: "Order forms and statements of work under MSAs",
+          },
+          {
+            name: "Subscription Agreements",
+            keywords: ["subscription", "saas", "recurring", "annual contract"],
+            aiClassificationPrompt: "SaaS and subscription-based customer agreements",
+          },
+          {
+            name: "Enterprise License",
+            keywords: ["enterprise", "license", "site license", "volume"],
+            aiClassificationPrompt: "Enterprise and volume license agreements",
+          },
+        ],
+      },
+      {
+        name: "Channel & Partners",
+        description: "Partner, reseller, and distribution agreements",
+        icon: "globe",
+        color: "#6366F1",
+        keywords: ["partner", "reseller", "distributor", "channel", "referral"],
+        aiClassificationPrompt: "Channel partner and distribution agreements",
+        children: [
+          {
+            name: "Reseller Agreements",
+            keywords: ["reseller", "var", "value added reseller", "distribution"],
+            aiClassificationPrompt: "Reseller and VAR agreements",
+          },
+          {
+            name: "Referral Agreements",
+            keywords: ["referral", "affiliate", "commission", "finder"],
+            aiClassificationPrompt: "Referral and affiliate partner agreements",
+          },
+          {
+            name: "OEM Agreements",
+            keywords: ["oem", "white label", "embedded", "bundling"],
+            aiClassificationPrompt: "OEM and white-label licensing agreements",
+          },
+          {
+            name: "Strategic Partnerships",
+            keywords: ["strategic", "alliance", "co-marketing", "joint"],
+            aiClassificationPrompt: "Strategic alliance and partnership agreements",
+          },
+        ],
+      },
+      {
+        name: "Licensing Out",
+        description: "IP and technology licensing to third parties",
+        icon: "key",
+        color: "#8B5CF6",
+        keywords: ["license out", "royalty", "ip license", "technology transfer"],
+        aiClassificationPrompt: "Outbound IP and technology licensing",
+        children: [
+          {
+            name: "Technology License",
+            keywords: ["technology", "platform", "api", "sdk"],
+            aiClassificationPrompt: "Technology and platform licensing",
+          },
+          {
+            name: "Patent License",
+            keywords: ["patent", "royalty", "invention"],
+            aiClassificationPrompt: "Patent and invention licensing",
+          },
+          {
+            name: "Brand License",
+            keywords: ["brand", "trademark", "logo", "merchandising"],
+            aiClassificationPrompt: "Brand and trademark licensing",
+          },
+        ],
+      },
+      {
+        name: "Government & Public Sector",
+        description: "Government and public sector contracts",
+        icon: "landmark",
+        color: "#0EA5E9",
+        keywords: ["government", "federal", "state", "municipal", "public sector"],
+        aiClassificationPrompt: "Government and public sector contracts",
+        children: [
+          {
+            name: "Federal Contracts",
+            keywords: ["federal", "gsa", "far", "dfar", "government"],
+            aiClassificationPrompt: "Federal government contracts and GSA schedules",
+          },
+          {
+            name: "State & Local",
+            keywords: ["state", "municipal", "county", "local government"],
+            aiClassificationPrompt: "State and local government contracts",
+          },
+          {
+            name: "Education",
+            keywords: ["education", "university", "school", "k-12", "higher ed"],
+            aiClassificationPrompt: "Educational institution contracts",
+          },
+        ],
+      },
+      {
+        name: "Proposals & Bids",
+        description: "RFP responses and bid documents",
+        icon: "file-text",
+        color: "#F59E0B",
+        keywords: ["rfp", "rfq", "bid", "proposal", "tender"],
+        aiClassificationPrompt: "RFP responses and bid documents",
+      },
+    ],
+  },
+
+  // ============================================================================
+  // DIRECT PROCUREMENT (MANUFACTURING/SUPPLY CHAIN)
+  // ============================================================================
+  direct: {
+    id: "direct",
+    name: "Direct Procurement",
+    description: "Raw materials, components, and manufacturing contracts",
+    categories: [
+      {
+        name: "Raw Materials",
+        description: "Raw materials and commodities",
+        icon: "layers",
+        color: "#78716C",
+        keywords: ["raw material", "commodity", "feedstock", "chemical", "metal"],
+        aiClassificationPrompt: "Raw material and commodity supply contracts",
+        children: [
+          {
+            name: "Metals & Minerals",
+            keywords: ["metal", "steel", "aluminum", "copper", "mineral"],
+            aiClassificationPrompt: "Metal and mineral supply agreements",
+          },
+          {
+            name: "Chemicals & Polymers",
+            keywords: ["chemical", "polymer", "plastic", "resin", "compound"],
+            aiClassificationPrompt: "Chemical and polymer supply contracts",
+          },
+          {
+            name: "Agricultural Products",
+            keywords: ["agricultural", "grain", "produce", "organic", "food ingredient"],
+            aiClassificationPrompt: "Agricultural and food ingredient supply",
+          },
+          {
+            name: "Energy & Fuels",
+            keywords: ["energy", "fuel", "gas", "oil", "power"],
+            aiClassificationPrompt: "Energy and fuel supply agreements",
+          },
+        ],
+      },
+      {
+        name: "Components & Parts",
+        description: "Manufactured components and assemblies",
+        icon: "cpu",
+        color: "#3B82F6",
+        keywords: ["component", "part", "assembly", "sub-assembly", "oem part"],
+        aiClassificationPrompt: "Component and parts supply contracts",
+        children: [
+          {
+            name: "Electronic Components",
+            keywords: ["electronic", "semiconductor", "pcb", "chip", "circuit"],
+            aiClassificationPrompt: "Electronic component supply agreements",
+          },
+          {
+            name: "Mechanical Parts",
+            keywords: ["mechanical", "machined", "casting", "forging", "stamping"],
+            aiClassificationPrompt: "Mechanical parts and machining contracts",
+          },
+          {
+            name: "Sub-Assemblies",
+            keywords: ["sub-assembly", "module", "kit", "assembly"],
+            aiClassificationPrompt: "Sub-assembly and module supply",
+          },
+        ],
+      },
+      {
+        name: "Contract Manufacturing",
+        description: "Outsourced manufacturing and production",
+        icon: "factory",
+        color: "#EF4444",
+        keywords: ["contract manufacturing", "cm", "ems", "toll manufacturing", "co-packer"],
+        aiClassificationPrompt: "Contract manufacturing and production agreements",
+        children: [
+          {
+            name: "Electronics Manufacturing (EMS)",
+            keywords: ["ems", "electronics manufacturing", "pcba", "box build"],
+            aiClassificationPrompt: "Electronics manufacturing services",
+          },
+          {
+            name: "Toll Manufacturing",
+            keywords: ["toll", "processing", "formulation", "blending"],
+            aiClassificationPrompt: "Toll and custom manufacturing",
+          },
+          {
+            name: "Co-Packing",
+            keywords: ["co-pack", "packaging", "labeling", "kitting"],
+            aiClassificationPrompt: "Co-packing and packaging services",
+          },
+        ],
+      },
+      {
+        name: "Packaging Materials",
+        description: "Packaging and labeling materials",
+        icon: "package",
+        color: "#F59E0B",
+        keywords: ["packaging", "label", "container", "box", "carton"],
+        aiClassificationPrompt: "Packaging material supply contracts",
+        children: [
+          {
+            name: "Primary Packaging",
+            keywords: ["bottle", "container", "blister", "pouch"],
+            aiClassificationPrompt: "Primary packaging materials",
+          },
+          {
+            name: "Secondary Packaging",
+            keywords: ["carton", "box", "case", "shrink wrap"],
+            aiClassificationPrompt: "Secondary and tertiary packaging",
+          },
+          {
+            name: "Labels & Printing",
+            keywords: ["label", "printing", "barcode", "artwork"],
+            aiClassificationPrompt: "Labels and printed materials",
+          },
+        ],
+      },
+      {
+        name: "Supply Chain Services",
+        description: "Supply chain and logistics for direct materials",
+        icon: "truck",
+        color: "#10B981",
+        keywords: ["supply chain", "logistics", "warehouse", "3pl", "fulfillment"],
+        aiClassificationPrompt: "Supply chain and logistics services",
+        children: [
+          {
+            name: "Warehousing",
+            keywords: ["warehouse", "storage", "inventory", "distribution center"],
+            aiClassificationPrompt: "Warehousing and storage agreements",
+          },
+          {
+            name: "Transportation",
+            keywords: ["freight", "shipping", "carrier", "trucking"],
+            aiClassificationPrompt: "Transportation and freight contracts",
+          },
+          {
+            name: "3PL Services",
+            keywords: ["3pl", "fulfillment", "pick pack", "order fulfillment"],
+            aiClassificationPrompt: "Third-party logistics services",
+          },
+        ],
+      },
+    ],
+  },
+
+  // ============================================================================
+  // M&A & CORPORATE TRANSACTIONS
+  // ============================================================================
+  corporate: {
+    id: "corporate",
+    name: "M&A & Corporate",
+    description: "Mergers, acquisitions, and corporate transactions",
+    categories: [
+      {
+        name: "M&A Transactions",
+        description: "Merger and acquisition agreements",
+        icon: "git-merge",
+        color: "#6366F1",
+        keywords: ["merger", "acquisition", "m&a", "purchase", "sale"],
+        aiClassificationPrompt: "Merger and acquisition transaction documents",
+        children: [
+          {
+            name: "Asset Purchase",
+            keywords: ["asset purchase", "apa", "asset sale", "business sale"],
+            aiClassificationPrompt: "Asset purchase agreements",
+          },
+          {
+            name: "Stock Purchase",
+            keywords: ["stock purchase", "spa", "equity purchase", "share purchase"],
+            aiClassificationPrompt: "Stock and equity purchase agreements",
+          },
+          {
+            name: "Merger Agreement",
+            keywords: ["merger", "combination", "amalgamation"],
+            aiClassificationPrompt: "Merger and combination agreements",
+          },
+          {
+            name: "LOI / Term Sheet",
+            keywords: ["loi", "letter of intent", "term sheet", "mou"],
+            aiClassificationPrompt: "Letters of intent and term sheets",
+          },
+        ],
+      },
+      {
+        name: "Due Diligence",
+        description: "Due diligence and disclosure documents",
+        icon: "search",
+        color: "#8B5CF6",
+        keywords: ["due diligence", "disclosure", "representations", "warranties"],
+        aiClassificationPrompt: "Due diligence and disclosure materials",
+        children: [
+          {
+            name: "Disclosure Schedules",
+            keywords: ["disclosure", "schedule", "exhibit", "representation"],
+            aiClassificationPrompt: "Disclosure schedules and exhibits",
+          },
+          {
+            name: "Data Room Documents",
+            keywords: ["data room", "vdr", "diligence", "document request"],
+            aiClassificationPrompt: "Virtual data room documents",
+          },
+        ],
+      },
+      {
+        name: "Investment & Financing",
+        description: "Investment and financing documents",
+        icon: "trending-up",
+        color: "#10B981",
+        keywords: ["investment", "financing", "equity", "debt", "venture"],
+        aiClassificationPrompt: "Investment and financing agreements",
+        children: [
+          {
+            name: "Equity Investment",
+            keywords: ["equity", "series", "preferred stock", "venture", "private equity"],
+            aiClassificationPrompt: "Equity investment and venture agreements",
+          },
+          {
+            name: "Convertible Notes",
+            keywords: ["convertible", "safe", "note", "bridge"],
+            aiClassificationPrompt: "Convertible notes and SAFE agreements",
+          },
+          {
+            name: "Credit Agreements",
+            keywords: ["credit", "loan", "debt", "facility", "revolver"],
+            aiClassificationPrompt: "Credit and loan facility agreements",
+          },
+          {
+            name: "Shareholder Agreements",
+            keywords: ["shareholder", "stockholder", "voting", "rights"],
+            aiClassificationPrompt: "Shareholder and voting agreements",
+          },
+        ],
+      },
+      {
+        name: "Corporate Governance",
+        description: "Governance and board documents",
+        icon: "shield",
+        color: "#EF4444",
+        keywords: ["governance", "board", "bylaws", "charter", "corporate"],
+        aiClassificationPrompt: "Corporate governance documents",
+        children: [
+          {
+            name: "Board Resolutions",
+            keywords: ["resolution", "board", "consent", "approval"],
+            aiClassificationPrompt: "Board resolutions and consents",
+          },
+          {
+            name: "Bylaws & Charter",
+            keywords: ["bylaws", "charter", "articles", "incorporation"],
+            aiClassificationPrompt: "Corporate bylaws and charter documents",
+          },
+          {
+            name: "D&O Insurance",
+            keywords: ["d&o", "directors", "officers", "liability", "indemnification"],
+            aiClassificationPrompt: "Directors and officers insurance and indemnification",
+          },
+        ],
+      },
+      {
+        name: "Joint Ventures",
+        description: "Joint venture and partnership structures",
+        icon: "users",
+        color: "#F59E0B",
+        keywords: ["joint venture", "jv", "partnership", "consortium"],
+        aiClassificationPrompt: "Joint venture and partnership agreements",
+        children: [
+          {
+            name: "JV Operating Agreement",
+            keywords: ["operating", "jv agreement", "joint venture agreement"],
+            aiClassificationPrompt: "Joint venture operating agreements",
+          },
+          {
+            name: "Consortium Agreement",
+            keywords: ["consortium", "teaming", "collaboration"],
+            aiClassificationPrompt: "Consortium and teaming agreements",
+          },
+        ],
+      },
+      {
+        name: "Restructuring",
+        description: "Corporate restructuring and reorganization",
+        icon: "refresh-cw",
+        color: "#0EA5E9",
+        keywords: ["restructuring", "reorganization", "spinoff", "carveout"],
+        aiClassificationPrompt: "Corporate restructuring documents",
+        children: [
+          {
+            name: "Spin-Off",
+            keywords: ["spinoff", "spin-off", "separation", "distribution"],
+            aiClassificationPrompt: "Corporate spin-off and separation agreements",
+          },
+          {
+            name: "Carve-Out",
+            keywords: ["carveout", "carve-out", "divestiture"],
+            aiClassificationPrompt: "Business carve-out and divestiture",
+          },
+        ],
+      },
+    ],
+  },
 };
 
 // ============================================================================

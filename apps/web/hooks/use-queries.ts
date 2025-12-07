@@ -137,6 +137,16 @@ export const queryKeys = {
     current: () => [...queryKeys.users.all, 'current'] as const,
     list: () => [...queryKeys.users.all, 'list'] as const,
   },
+  
+  // Taxonomy / Categories
+  taxonomy: {
+    all: ['taxonomy'] as const,
+    categories: () => [...queryKeys.taxonomy.all, 'categories'] as const,
+    flat: () => [...queryKeys.taxonomy.all, 'flat'] as const,
+    tree: () => [...queryKeys.taxonomy.all, 'tree'] as const,
+    presets: () => [...queryKeys.taxonomy.all, 'presets'] as const,
+    detail: (id: string) => [...queryKeys.taxonomy.all, 'detail', id] as const,
+  },
 };
 
 // =====================
@@ -563,6 +573,83 @@ export function useDashboardSummary() {
 }
 
 /**
+ * Detailed dashboard stats - used by ProfessionalDashboard
+ */
+export function useDashboardStats() {
+  const tenantId = getTenantId();
+  
+  return useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/dashboard/stats', {
+        headers: { 'x-tenant-id': tenantId },
+      });
+      if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+      return response.json();
+    },
+    staleTime: 30000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Pending approvals for dashboard
+ */
+export function usePendingApprovals(limit = 5) {
+  const tenantId = getTenantId();
+  
+  return useQuery({
+    queryKey: ['pending-approvals', limit],
+    queryFn: async () => {
+      const response = await fetch(`/api/approvals?limit=${limit}&status=pending`, {
+        headers: { 'x-tenant-id': tenantId },
+      });
+      if (!response.ok) throw new Error('Failed to fetch approvals');
+      return response.json();
+    },
+    staleTime: 30000,
+  });
+}
+
+/**
+ * Contract expirations for dashboard
+ */
+export function useContractExpirations(limit = 5) {
+  const tenantId = getTenantId();
+  
+  return useQuery({
+    queryKey: ['contract-expirations', limit],
+    queryFn: async () => {
+      const response = await fetch(`/api/contracts/expirations?limit=${limit}&expired=false`, {
+        headers: { 'x-tenant-id': tenantId },
+      });
+      if (!response.ok) throw new Error('Failed to fetch expirations');
+      return response.json();
+    },
+    staleTime: 60000,
+  });
+}
+
+/**
+ * Contract health scores for dashboard
+ */
+export function useContractHealthScores() {
+  const tenantId = getTenantId();
+  
+  return useQuery({
+    queryKey: ['contract-health-scores'],
+    queryFn: async () => {
+      const response = await fetch('/api/contracts/health-scores', {
+        headers: { 'x-tenant-id': tenantId },
+      });
+      if (!response.ok) throw new Error('Failed to fetch health scores');
+      return response.json();
+    },
+    staleTime: 60000,
+  });
+}
+
+/**
  * Cross-module search - searches across contracts, rate cards, and clauses
  */
 export function useUnifiedSearch(query: string) {
@@ -760,6 +847,68 @@ export function useCrossModuleInvalidation() {
     onTemplateChange: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.templates.all });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
+    
+    /**
+     * Call when taxonomy/categories change (create, update, delete, import preset)
+     * Updates: taxonomy, contracts (may use category data), dashboard
+     */
+    onTaxonomyChange: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.taxonomy.all });
+      queryClient.invalidateQueries({ queryKey: ['categories'] }); // Legacy key
+      queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all }); // Contracts may show category
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+    },
+    
+    /**
+     * Call when user/team settings change
+     * Updates: users, teams, permissions
+     */
+    onUserChange: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+      queryClient.invalidateQueries({ queryKey: ['teams'] });
+      queryClient.invalidateQueries({ queryKey: ['permissions'] });
+      queryClient.invalidateQueries({ queryKey: ['audit-log'] });
+    },
+    
+    /**
+     * Call when integration settings change (SSO, storage, etc.)
+     * Updates: integrations, settings
+     */
+    onIntegrationChange: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.integrations.all });
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+      queryClient.invalidateQueries({ queryKey: ['sso-config'] });
+      queryClient.invalidateQueries({ queryKey: ['storage-settings'] });
+    },
+    
+    /**
+     * Call when dashboard widgets or preferences change
+     * Updates: dashboard data, user preferences
+     */
+    onDashboardChange: () => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-widgets'] });
+      queryClient.invalidateQueries({ queryKey: ['user-preferences'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
+    },
+    
+    /**
+     * Call when notifications are read/cleared
+     * Updates: notifications, unread count
+     */
+    onNotificationChange: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+    },
+    
+    /**
+     * Call when clauses library changes
+     * Updates: clauses, contract analysis
+     */
+    onClauseChange: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clauses.all });
+      queryClient.invalidateQueries({ queryKey: ['clause-library'] });
     },
     
     /**
@@ -1085,4 +1234,236 @@ export function usePrefetchOnHover<T>(
   }, []);
   
   return { onMouseEnter, onMouseLeave };
+}
+
+// =====================
+// Taxonomy Hooks
+// =====================
+
+export interface TaxonomyCategory {
+  id: string;
+  name: string;
+  description?: string | null;
+  parentId?: string | null;
+  level: number;
+  path: string;
+  keywords: string[];
+  aiClassificationPrompt?: string | null;
+  color: string;
+  icon: string;
+  sortOrder: number;
+  isActive: boolean;
+  contractCount?: number;
+  children?: TaxonomyCategory[];
+}
+
+export interface TaxonomyPreset {
+  id: string;
+  name: string;
+  description: string;
+  categories: Array<{
+    name: string;
+    description: string;
+    keywords: string[];
+    color: string;
+    icon: string;
+    children?: Array<{
+      name: string;
+      description: string;
+      keywords: string[];
+      color?: string;
+      icon?: string;
+    }>;
+  }>;
+}
+
+/**
+ * Fetch taxonomy categories (flat list)
+ */
+export function useTaxonomyCategories(options?: { enabled?: boolean }) {
+  return useQuery<TaxonomyCategory[]>({
+    queryKey: queryKeys.taxonomy.flat(),
+    queryFn: async () => {
+      const response = await fetch('/api/taxonomy?flat=true', {
+        headers: { 'x-tenant-id': getTenantId() },
+      });
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      const data = await response.json();
+      return data.data || [];
+    },
+    staleTime: STALE_TIMES.static, // Categories don't change often
+    ...options,
+  });
+}
+
+/**
+ * Fetch taxonomy categories (tree structure)
+ */
+export function useTaxonomyTree(options?: { enabled?: boolean }) {
+  return useQuery<TaxonomyCategory[]>({
+    queryKey: queryKeys.taxonomy.tree(),
+    queryFn: async () => {
+      const response = await fetch('/api/taxonomy', {
+        headers: { 'x-tenant-id': getTenantId() },
+      });
+      if (!response.ok) throw new Error('Failed to fetch taxonomy tree');
+      const data = await response.json();
+      return data.data || [];
+    },
+    staleTime: STALE_TIMES.static,
+    ...options,
+  });
+}
+
+/**
+ * Fetch available taxonomy presets
+ */
+export function useTaxonomyPresets(options?: { enabled?: boolean }) {
+  return useQuery<TaxonomyPreset[]>({
+    queryKey: queryKeys.taxonomy.presets(),
+    queryFn: async () => {
+      const response = await fetch('/api/taxonomy/presets', {
+        headers: { 'x-tenant-id': getTenantId() },
+      });
+      if (!response.ok) throw new Error('Failed to fetch presets');
+      const data = await response.json();
+      return data.presets || [];
+    },
+    staleTime: STALE_TIMES.static,
+    ...options,
+  });
+}
+
+/**
+ * Create a new taxonomy category
+ */
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async (categoryData: Partial<TaxonomyCategory>) => {
+      const response = await fetch('/api/taxonomy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify(categoryData),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create category');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      crossModule.onTaxonomyChange();
+    },
+  });
+}
+
+/**
+ * Update an existing taxonomy category
+ */
+export function useUpdateCategory() {
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...data }: Partial<TaxonomyCategory> & { id: string }) => {
+      const response = await fetch(`/api/taxonomy/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update category');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      crossModule.onTaxonomyChange();
+    },
+  });
+}
+
+/**
+ * Delete a taxonomy category
+ */
+export function useDeleteCategory() {
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/taxonomy/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-tenant-id': getTenantId() },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete category');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      crossModule.onTaxonomyChange();
+    },
+  });
+}
+
+/**
+ * Apply a taxonomy preset
+ */
+export function useApplyPreset() {
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async ({ presetId, clearExisting = false }: { presetId: string; clearExisting?: boolean }) => {
+      const response = await fetch('/api/taxonomy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+        },
+        body: JSON.stringify({ preset: presetId, clearExisting }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to apply preset');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      crossModule.onTaxonomyChange();
+    },
+  });
+}
+
+/**
+ * Upload custom taxonomy (CSV/JSON)
+ */
+export function useUploadTaxonomy() {
+  const crossModule = useCrossModuleInvalidation();
+  
+  return useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch('/api/taxonomy/upload', {
+        method: 'POST',
+        headers: { 'x-tenant-id': getTenantId() },
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload taxonomy');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      crossModule.onTaxonomyChange();
+    },
+  });
 }

@@ -9,10 +9,14 @@
  */
 
 import { useRealTimeQuerySync } from '@/hooks/use-queries';
+import { useTaxonomySync } from '@/lib/taxonomy-events';
 
 export function RealTimeSyncProvider({ children }: { children: React.ReactNode }) {
   // Enable real-time cache synchronization
   useRealTimeQuerySync();
+  
+  // Enable taxonomy sync across browser tabs
+  useTaxonomySync();
 
   return <>{children}</>;
 }
