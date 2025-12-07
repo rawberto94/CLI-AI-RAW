@@ -544,3 +544,94 @@ export function useIsVisible<T extends HTMLElement = HTMLElement>(
 
   return isVisible;
 }
+
+// ============================================================================
+// useDebounce - Debounce a value
+// ============================================================================
+
+/**
+ * Hook to debounce a value
+ * 
+ * @param value - The value to debounce
+ * @param delay - Debounce delay in milliseconds
+ * @returns The debounced value
+ * 
+ * @example
+ * ```tsx
+ * const [search, setSearch] = useState('');
+ * const debouncedSearch = useDebounce(search, 300);
+ * 
+ * useEffect(() => {
+ *   // This will only run 300ms after user stops typing
+ *   fetchResults(debouncedSearch);
+ * }, [debouncedSearch]);
+ * ```
+ */
+export function useDebounce<T>(value: T, delay: number = 300): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// ============================================================================
+// useDebouncedCallback - Debounce a callback function
+// ============================================================================
+
+/**
+ * Hook to create a debounced callback
+ * 
+ * @param callback - The callback to debounce
+ * @param delay - Debounce delay in milliseconds
+ * @returns Debounced callback function
+ * 
+ * @example
+ * ```tsx
+ * const debouncedSave = useDebouncedCallback((value: string) => {
+ *   saveToServer(value);
+ * }, 500);
+ * 
+ * <input onChange={(e) => debouncedSave(e.target.value)} />
+ * ```
+ */
+export function useDebouncedCallback<T extends (...args: Parameters<T>) => ReturnType<T>>(
+  callback: T,
+  delay: number = 300
+): (...args: Parameters<T>) => void {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
+  const debouncedCallback = useCallback((...args: Parameters<T>) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      callbackRef.current(...args);
+    }, delay);
+  }, [delay]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return debouncedCallback;
+}

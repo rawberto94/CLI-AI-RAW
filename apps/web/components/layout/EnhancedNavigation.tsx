@@ -478,12 +478,16 @@ function EnhancedNavigation() {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-medium text-xs shadow-sm">
-                  RO
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
+                  {session?.user?.image ? (
+                    <img src={session.user.image} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{session?.user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U'}</span>
+                  )}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">Roberto Ostojic</p>
-                  <p className="text-[10px] text-gray-500">Admin</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{session?.user?.name || 'User'}</p>
+                  <p className="text-[10px] text-gray-500 capitalize">{userRole}</p>
                 </div>
                 <Settings className="h-4 w-4 text-gray-400" />
               </button>
