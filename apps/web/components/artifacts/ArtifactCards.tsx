@@ -61,6 +61,19 @@ interface Clause {
   importance: 'high' | 'medium' | 'low'
   obligations?: string[]
   risks?: string[]
+  // Enhanced flexible fields
+  sectionNumber?: string
+  rawClauseText?: string
+  crossReferences?: Array<{ from: string; to: string; context?: string }>
+  definedTermsUsed?: string[]
+  subclauses?: Array<{
+    id: string
+    sectionNumber?: string
+    title?: string
+    content: string
+    rawText?: string
+    subItems?: string[]
+  }>
 }
 
 interface RiskFactor {
@@ -402,11 +415,17 @@ interface OverviewArtifactProps extends ArtifactBaseProps {
     contractType?: string
     jurisdiction?: string
     confidence?: number
+    // Enhanced flexible fields
+    definitions?: Array<{ term: string; meaning: string; source?: string }>
+    referencedDocuments?: Array<{ name: string; description?: string }>
+    additionalData?: Record<string, unknown>
+    rawSections?: Record<string, string>
   }
 }
 
 export function OverviewArtifact({ data, className, isLoading }: OverviewArtifactProps) {
   const [copiedTerm, setCopiedTerm] = useState<string | null>(null);
+  const [showRawSections, setShowRawSections] = useState(false);
   
   const copyTerm = (term: string, value: string) => {
     navigator.clipboard.writeText(value);
@@ -539,6 +558,109 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
           </div>
         </ExpandableSection>
       )}
+
+      {/* Contract Definitions */}
+      {data.definitions && data.definitions.length > 0 && (
+        <ExpandableSection 
+          title="Defined Terms" 
+          icon={FileText}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.definitions.length}</Badge>}
+        >
+          <div className="space-y-3">
+            {data.definitions.map((def, i) => (
+              <div 
+                key={i}
+                className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="font-medium text-indigo-700">"{def.term}"</span>
+                  <span className="text-slate-600">means</span>
+                </div>
+                <p className="mt-1 text-sm text-slate-700">{def.meaning}</p>
+                {def.source && (
+                  <p className="mt-1 text-xs text-slate-400">Source: {def.source}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Referenced Documents / Schedules / Exhibits */}
+      {data.referencedDocuments && data.referencedDocuments.length > 0 && (
+        <ExpandableSection 
+          title="Referenced Documents" 
+          icon={ExternalLink}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.referencedDocuments.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.referencedDocuments.map((doc, i) => (
+              <div 
+                key={i}
+                className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+              >
+                <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+                <div>
+                  <span className="font-medium text-slate-900">{doc.name}</span>
+                  {doc.description && (
+                    <span className="text-slate-500 ml-2">— {doc.description}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Additional Data (dynamic/contextual) */}
+      {data.additionalData && Object.keys(data.additionalData).length > 0 && (
+        <ExpandableSection 
+          title="Additional Information" 
+          icon={Sparkles}
+          badge={<Badge className="ml-2 text-[10px] bg-purple-100 text-purple-700">AI Extracted</Badge>}
+        >
+          <div className="space-y-2">
+            {Object.entries(data.additionalData).map(([key, value], i) => {
+              const displayValue = typeof value === 'object' && value !== null 
+                ? (value as { value?: string }).value || JSON.stringify(value)
+                : String(value);
+              return (
+                <div 
+                  key={i}
+                  className="flex items-start gap-3 p-3 bg-purple-50/50 rounded-lg"
+                >
+                  <span className="text-sm text-purple-600 font-medium capitalize shrink-0">
+                    {key.replace(/([A-Z])/g, ' $1').trim()}:
+                  </span>
+                  <span className="text-sm text-slate-700">{displayValue}</span>
+                </div>
+              );
+            })}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Raw Sections (verbatim text) */}
+      {data.rawSections && Object.keys(data.rawSections).length > 0 && (
+        <ExpandableSection 
+          title="Original Document Sections" 
+          icon={Edit3}
+          badge={<Badge className="ml-2 text-[10px] bg-slate-100 text-slate-600">Verbatim</Badge>}
+        >
+          <div className="space-y-4">
+            {Object.entries(data.rawSections).map(([section, text], i) => (
+              <div key={i} className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-slate-100 px-3 py-2 border-b border-slate-200">
+                  <span className="text-sm font-medium text-slate-700">{section}</span>
+                </div>
+                <pre className="p-3 text-xs text-slate-600 whitespace-pre-wrap font-mono bg-slate-50 max-h-48 overflow-y-auto">
+                  {text}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
     </div>
   );
 }
@@ -549,6 +671,11 @@ interface ClausesArtifactProps extends ArtifactBaseProps {
   data: {
     clauses: Clause[]
     totalCount?: number
+    // Enhanced flexible fields
+    missingClauses?: string[]
+    customClauseTypes?: string[]
+    referencedExhibits?: Array<{ name: string; referencedInClause?: string; purpose?: string }>
+    clauseHierarchy?: Record<string, string[]>
   }
   onClauseUpdate?: (clauseId: string, updates: Partial<Clause>) => void
   editable?: boolean
@@ -760,6 +887,85 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </ul>
                         </div>
                       )}
+
+                      {/* Cross References */}
+                      {clause.crossReferences && clause.crossReferences.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                            Cross References
+                          </h5>
+                          <div className="space-y-1">
+                            {clause.crossReferences.map((ref, i) => (
+                              <div key={i} className="flex items-center gap-2 text-sm text-indigo-600 bg-indigo-50 rounded px-2 py-1">
+                                <span className="font-mono text-xs">{ref.from}</span>
+                                <ChevronRight className="h-3 w-3" />
+                                <span className="font-mono text-xs">{ref.to}</span>
+                                {ref.context && <span className="text-slate-500 text-xs ml-2">({ref.context})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Defined Terms Used */}
+                      {clause.definedTermsUsed && clause.definedTermsUsed.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                            Defined Terms Used
+                          </h5>
+                          <div className="flex flex-wrap gap-1">
+                            {clause.definedTermsUsed.map((term, i) => (
+                              <Badge key={i} variant="outline" className="text-[10px] border-purple-200 text-purple-600">
+                                {term}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Subclauses */}
+                      {clause.subclauses && clause.subclauses.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                            Subclauses
+                          </h5>
+                          <div className="space-y-2 ml-4 border-l-2 border-slate-200 pl-4">
+                            {clause.subclauses.map((sub, i) => (
+                              <div key={i} className="text-sm">
+                                <div className="flex items-center gap-2">
+                                  {sub.sectionNumber && (
+                                    <span className="font-mono text-xs text-slate-500">{sub.sectionNumber}</span>
+                                  )}
+                                  {sub.title && (
+                                    <span className="font-medium text-slate-700">{sub.title}</span>
+                                  )}
+                                </div>
+                                <p className="text-slate-600 mt-1">{sub.content}</p>
+                                {sub.subItems && sub.subItems.length > 0 && (
+                                  <ul className="mt-1 ml-4 list-disc list-inside text-xs text-slate-500">
+                                    {sub.subItems.map((item, j) => (
+                                      <li key={j}>{item}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Raw Clause Text (verbatim) */}
+                      {clause.rawClauseText && (
+                        <div>
+                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-2">
+                            Original Text
+                            <Badge className="text-[9px] bg-slate-100 text-slate-500">Verbatim</Badge>
+                          </h5>
+                          <pre className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded p-3 whitespace-pre-wrap font-mono max-h-32 overflow-y-auto">
+                            {clause.rawClauseText}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -768,6 +974,62 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
           );
         })}
       </div>
+
+      {/* Missing Standard Clauses */}
+      {data.missingClauses && data.missingClauses.length > 0 && (
+        <ExpandableSection 
+          title="Missing Standard Clauses" 
+          icon={AlertTriangle}
+          badge={<Badge className="ml-2 text-[10px] bg-amber-100 text-amber-700">{data.missingClauses.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.missingClauses.map((clause, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                {clause}
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Referenced Exhibits */}
+      {data.referencedExhibits && data.referencedExhibits.length > 0 && (
+        <ExpandableSection 
+          title="Referenced Exhibits & Schedules" 
+          icon={ExternalLink}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.referencedExhibits.length}</Badge>}
+        >
+          <div className="space-y-2">
+            {data.referencedExhibits.map((exhibit, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                <FileText className="h-4 w-4 text-slate-400 shrink-0" />
+                <div>
+                  <span className="font-medium text-slate-900">{exhibit.name}</span>
+                  {exhibit.purpose && (
+                    <span className="text-slate-500 ml-2">— {exhibit.purpose}</span>
+                  )}
+                  {exhibit.referencedInClause && (
+                    <span className="text-xs text-slate-400 ml-2">(Ref: {exhibit.referencedInClause})</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Custom Clause Types */}
+      {data.customClauseTypes && data.customClauseTypes.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-2">
+          <span className="text-xs text-slate-500">Custom clause types in this contract:</span>
+          {data.customClauseTypes.map((type, i) => (
+            <Badge key={i} className="text-[10px] bg-purple-100 text-purple-700">
+              {type}
+            </Badge>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

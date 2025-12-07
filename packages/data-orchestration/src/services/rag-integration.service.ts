@@ -198,6 +198,243 @@ class RagIntegrationService {
           }
           break;
 
+        case 'overview':
+        case 'OVERVIEW':
+          // Handle enhanced overview artifact with flexible fields
+          if (data.summary?.value) lines.push(`Summary: ${data.summary.value}`);
+          if (Array.isArray(data.parties)) {
+            lines.push('Parties:');
+            for (const party of data.parties) {
+              lines.push(`  - ${party.name} (${party.role})`);
+            }
+          }
+          if (data.contractType?.value) lines.push(`Contract Type: ${data.contractType.value}`);
+          if (data.effectiveDate?.value) lines.push(`Effective Date: ${data.effectiveDate.value}`);
+          if (data.expirationDate?.value) lines.push(`Expiration Date: ${data.expirationDate.value}`);
+          if (data.term?.value) lines.push(`Term: ${data.term.value}`);
+          if (data.jurisdiction?.value) lines.push(`Jurisdiction: ${data.jurisdiction.value}`);
+          if (Array.isArray(data.keyTerms) && data.keyTerms.length > 0) {
+            lines.push(`Key Terms: ${data.keyTerms.join(', ')}`);
+          }
+          // Flexible fields
+          if (Array.isArray(data.definitions)) {
+            lines.push('Definitions:');
+            for (const def of data.definitions.slice(0, 10)) {
+              lines.push(`  - "${def.term}" means ${def.meaning}`);
+            }
+          }
+          if (Array.isArray(data.referencedDocuments)) {
+            lines.push('Referenced Documents:');
+            for (const doc of data.referencedDocuments) {
+              lines.push(`  - ${doc.name}: ${doc.description || ''}`);
+            }
+          }
+          if (data.additionalData && typeof data.additionalData === 'object') {
+            lines.push('Additional Overview Data:');
+            for (const [key, value] of Object.entries(data.additionalData)) {
+              if (typeof value === 'object' && (value as any)?.value) {
+                lines.push(`  - ${key}: ${(value as any).value}`);
+              } else if (typeof value === 'string' || typeof value === 'number') {
+                lines.push(`  - ${key}: ${value}`);
+              }
+            }
+          }
+          if (data.rawSections && typeof data.rawSections === 'object') {
+            for (const [section, text] of Object.entries(data.rawSections)) {
+              if (typeof text === 'string') {
+                lines.push(`\n${section}:\n${text.slice(0, 500)}`);
+              }
+            }
+          }
+          break;
+
+        case 'clauses':
+        case 'CLAUSES':
+          // Handle enhanced clauses artifact with hierarchy and raw text
+          if (Array.isArray(data.clauses)) {
+            for (const clause of data.clauses.slice(0, 15)) {
+              const sectionNum = clause.sectionNumber ? `[${clause.sectionNumber}] ` : '';
+              lines.push(`${sectionNum}${clause.type}: ${clause.title || ''}`);
+              lines.push(`  Risk: ${clause.riskLevel}, Importance: ${clause.importance}`);
+              if (clause.content) lines.push(`  ${clause.content.slice(0, 200)}`);
+              if (Array.isArray(clause.obligations) && clause.obligations.length > 0) {
+                lines.push(`  Obligations: ${clause.obligations.join('; ')}`);
+              }
+              if (Array.isArray(clause.crossReferences)) {
+                for (const ref of clause.crossReferences) {
+                  lines.push(`  Cross-ref: ${ref.from} → ${ref.to}`);
+                }
+              }
+              if (Array.isArray(clause.subclauses)) {
+                for (const sub of clause.subclauses.slice(0, 5)) {
+                  lines.push(`    ${sub.sectionNumber || ''}: ${sub.title || sub.content?.slice(0, 100)}`);
+                }
+              }
+            }
+          }
+          if (Array.isArray(data.customClauseTypes) && data.customClauseTypes.length > 0) {
+            lines.push(`Custom Clause Types: ${data.customClauseTypes.join(', ')}`);
+          }
+          if (Array.isArray(data.referencedExhibits)) {
+            lines.push('Referenced Exhibits:');
+            for (const ex of data.referencedExhibits) {
+              lines.push(`  - ${ex.name}: ${ex.purpose || ''}`);
+            }
+          }
+          if (Array.isArray(data.missingClauses) && data.missingClauses.length > 0) {
+            lines.push(`Missing Standard Clauses: ${data.missingClauses.join(', ')}`);
+          }
+          break;
+
+        case 'rates':
+        case 'RATES':
+          // Handle enhanced rates artifact with raw tables and conditions
+          if (Array.isArray(data.rateCards)) {
+            lines.push('Rate Cards:');
+            for (const rate of data.rateCards.slice(0, 20)) {
+              const loc = rate.location ? ` (${rate.location})` : '';
+              lines.push(`  - ${rate.role}: ${rate.currency || 'USD'} ${rate.rate}/${rate.unit}${loc}`);
+            }
+          }
+          // Raw rate tables for 1:1 document fidelity
+          if (Array.isArray(data.rawRateTables)) {
+            for (const table of data.rawRateTables) {
+              lines.push(`\nRate Table: ${table.tableName || 'Rate Card'}`);
+              if (Array.isArray(table.headers)) {
+                lines.push(`  Columns: ${table.headers.join(' | ')}`);
+              }
+              if (Array.isArray(table.rows)) {
+                for (const row of table.rows.slice(0, 15)) {
+                  const values = table.headers?.map((h: string) => row[h] || '').join(' | ');
+                  lines.push(`    ${values}`);
+                }
+              }
+              if (table.notes) lines.push(`  Notes: ${table.notes}`);
+            }
+          }
+          if (Array.isArray(data.rateConditions)) {
+            lines.push('Rate Conditions:');
+            for (const cond of data.rateConditions) {
+              lines.push(`  - ${cond.condition}: ${cond.trigger}`);
+            }
+          }
+          if (Array.isArray(data.rateModifiers)) {
+            lines.push('Rate Modifiers:');
+            for (const mod of data.rateModifiers) {
+              lines.push(`  - ${mod.type}: ${mod.condition} = ${mod.adjustment}${mod.unit === 'percentage' ? '%' : ''}`);
+            }
+          }
+          if (data.rateEscalation) {
+            lines.push(`Rate Escalation: ${data.rateEscalation.schedule || ''} ${data.rateEscalation.percentage || data.rateEscalation.fixedIncrease || ''}`);
+          }
+          break;
+
+        case 'compliance':
+        case 'COMPLIANCE':
+          // Handle enhanced compliance artifact
+          if (Array.isArray(data.regulations)) {
+            lines.push('Regulations:');
+            for (const reg of data.regulations) {
+              lines.push(`  - ${reg.name}${reg.scope ? ` (${reg.scope})` : ''}`);
+            }
+          }
+          if (Array.isArray(data.certifications)) {
+            lines.push('Certifications Required:');
+            for (const cert of data.certifications) {
+              lines.push(`  - ${cert.name}${cert.renewalPeriod ? ` (${cert.renewalPeriod})` : ''}`);
+            }
+          }
+          if (Array.isArray(data.complianceRequirements)) {
+            lines.push('Compliance Requirements:');
+            for (const req of data.complianceRequirements.slice(0, 15)) {
+              lines.push(`  - [${req.responsibility || 'party'}] ${req.requirement} (${req.frequency || 'ongoing'})`);
+            }
+          }
+          if (Array.isArray(data.complianceTimelines)) {
+            lines.push('Compliance Timelines:');
+            for (const tl of data.complianceTimelines) {
+              lines.push(`  - ${tl.requirement}: ${tl.deadline}`);
+            }
+          }
+          if (data.breachNotification) {
+            lines.push(`Breach Notification: ${data.breachNotification.timeframe}`);
+          }
+          if (data.dataRetention) {
+            lines.push(`Data Retention: ${data.dataRetention.period}${data.dataRetention.conditions ? ` (${data.dataRetention.conditions})` : ''}`);
+          }
+          if (data.rawComplianceSections && typeof data.rawComplianceSections === 'object') {
+            for (const [section, text] of Object.entries(data.rawComplianceSections)) {
+              if (typeof text === 'string') {
+                lines.push(`\n${section}:\n${text.slice(0, 400)}`);
+              }
+            }
+          }
+          break;
+
+        case 'risk':
+        case 'RISK':
+          // Handle enhanced risk artifact
+          if (data.overallScore !== undefined) {
+            lines.push(`Overall Risk Score: ${data.overallScore}/100 (${data.riskLevel || 'unknown'})`);
+          }
+          if (Array.isArray(data.riskFactors)) {
+            lines.push('Risk Factors:');
+            for (const risk of data.riskFactors.slice(0, 10)) {
+              lines.push(`  - [${risk.category}] ${risk.severity}: ${risk.description}`);
+              if (risk.mitigation) lines.push(`    Mitigation: ${risk.mitigation}`);
+              if (risk.affectedParty) lines.push(`    Affects: ${risk.affectedParty}`);
+            }
+          }
+          if (Array.isArray(data.redFlags)) {
+            lines.push('Red Flags:');
+            for (const flag of data.redFlags) {
+              lines.push(`  - ${flag.flag} (${flag.severity || 'high'})`);
+            }
+          }
+          if (Array.isArray(data.favorableTerms)) {
+            lines.push('Favorable Terms:');
+            for (const term of data.favorableTerms) {
+              lines.push(`  - ${term.term}: ${term.benefit}`);
+            }
+          }
+          if (Array.isArray(data.compoundRisks)) {
+            lines.push('Compound Risks (clause interactions):');
+            for (const cr of data.compoundRisks) {
+              lines.push(`  - ${cr.description}`);
+              lines.push(`    Combined Impact: ${cr.combinedImpact}`);
+            }
+          }
+          if (data.riskByParty && typeof data.riskByParty === 'object') {
+            lines.push('Risk by Party:');
+            for (const [party, info] of Object.entries(data.riskByParty)) {
+              if (typeof info === 'object' && info !== null) {
+                const partyInfo = info as { riskScore?: number; riskFactors?: string[] };
+                lines.push(`  - ${party}: ${partyInfo.riskScore || 0}/100`);
+              }
+            }
+          }
+          if (Array.isArray(data.recommendations)) {
+            lines.push('Recommendations:');
+            for (const rec of data.recommendations.slice(0, 8)) {
+              lines.push(`  - ${rec}`);
+            }
+          }
+          if (Array.isArray(data.costSavingsOpportunities)) {
+            lines.push('Cost Savings Opportunities:');
+            for (const opp of data.costSavingsOpportunities.slice(0, 5)) {
+              lines.push(`  - ${opp}`);
+            }
+          }
+          if (data.rawRiskClauses && typeof data.rawRiskClauses === 'object') {
+            lines.push('Risky Clauses (verbatim):');
+            for (const [key, text] of Object.entries(data.rawRiskClauses)) {
+              if (typeof text === 'string') {
+                lines.push(`  ${key}: "${text.slice(0, 200)}"`);
+              }
+            }
+          }
+          break;
+
         case 'financial':
         case 'FINANCIAL':
           // Handle financial artifact with tables, offers, and breakdowns

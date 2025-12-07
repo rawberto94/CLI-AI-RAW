@@ -194,13 +194,30 @@ CRITICAL: You must ONLY extract information that is EXPLICITLY stated in the con
 - Party names must be exact matches from the document
 - Dates must be explicitly mentioned (do not calculate or infer)
 - Contract type must be stated or clearly implied by document title/structure
-- If jurisdiction is not mentioned, return null (do not guess based on party names)`,
+- If jurisdiction is not mentioned, return null (do not guess based on party names)
+
+CONTEXTUAL AI EXTRACTION - CAPTURE ALL RELEVANT INFORMATION:
+Every contract is unique. Beyond the standard fields, you MUST:
+1. IDENTIFY any additional relevant overview information unique to this contract
+2. PRESERVE document structure - if the contract has special sections, headers, or organization, capture them
+3. EXTRACT any definitions, recitals, background sections, or preambles verbatim
+4. CAPTURE referenced documents, attachments, schedules, exhibits mentioned
+5. NOTE any unique terminology or abbreviations defined in the contract
+
+Use the "additionalData" field for ANY contract-specific information not fitting standard fields.
+Use the "rawSections" field to preserve exact text of important sections.`,
       
-      userPrompt: `Extract comprehensive overview information from the contract. Only include information explicitly stated in the document.`,
+      userPrompt: `Extract comprehensive overview information from the contract. Only include information explicitly stated in the document.
+
+IMPORTANT: This is CONTEXTUAL AI extraction - go beyond the standard fields:
+- Extract ALL relevant overview information, even if not in the predefined schema
+- Preserve exact wording of definitions and recitals
+- Capture referenced documents and schedules
+- Note any unique contract features or structure`,
       
       examples: [
         {
-          input: 'CONSULTING AGREEMENT between Acme Corp (Client) and Tech Solutions LLC (Consultant). Effective Date: January 1, 2024. Term: 12 months.',
+          input: 'CONSULTING AGREEMENT between Acme Corp (Client) and Tech Solutions LLC (Consultant). Effective Date: January 1, 2024. Term: 12 months. WHEREAS, Client desires consulting services for Project Phoenix...',
           output: {
             summary: {
               value: 'Consulting agreement for technology services between Acme Corp and Tech Solutions LLC',
@@ -217,33 +234,61 @@ CRITICAL: You must ONLY extract information that is EXPLICITLY stated in the con
             term: { value: '12 months', source: 'Term: 12 months', extractedFromText: true },
             jurisdiction: null,
             keyTerms: ['Technology consulting services', '12-month engagement'],
-            certainty: 0.92
+            certainty: 0.92,
+            additionalData: {
+              projectName: { value: 'Project Phoenix', source: 'WHEREAS, Client desires consulting services for Project Phoenix', extractedFromText: true },
+              recitals: [
+                { text: 'WHEREAS, Client desires consulting services for Project Phoenix...', source: 'Recitals section', extractedFromText: true }
+              ]
+            },
+            rawSections: {
+              recitals: 'WHEREAS, Client desires consulting services for Project Phoenix...'
+            },
+            referencedDocuments: [],
+            definitions: []
           },
-          explanation: 'Clear parties, dates, and contract type identified. Note: expirationDate calculated from term requires human review.',
-          sourceReferences: ['Document title', 'Effective Date clause', 'Term clause']
+          explanation: 'Clear parties, dates, and contract type identified. Also captured project name and recitals in additionalData.',
+          sourceReferences: ['Document title', 'Effective Date clause', 'Term clause', 'Recitals']
         },
         {
-          input: 'SERVICE AGREEMENT. This agreement is made on March 15, 2024 between XYZ Inc. and ABC Services.',
+          input: 'MASTER SERVICES AGREEMENT\n\nDEFINITIONS:\n"Services" means IT consulting.\n"Deliverables" means all work products.\n\nSchedule A: Statement of Work\nSchedule B: Rate Card\n\nThis agreement is made on March 15, 2024 between XYZ Inc. ("Company") and ABC Services ("Vendor").',
           output: {
             summary: {
-              value: 'Service agreement between XYZ Inc. and ABC Services',
-              source: 'Document title and parties clause',
+              value: 'Master services agreement for IT consulting between XYZ Inc. and ABC Services',
+              source: 'Document title and Definitions section',
               extractedFromText: true
             },
             parties: [
-              { name: 'XYZ Inc.', role: 'party', type: 'corporation', source: 'between XYZ Inc. and' },
-              { name: 'ABC Services', role: 'party', type: 'unknown', source: 'and ABC Services' }
+              { name: 'XYZ Inc.', role: 'company', type: 'corporation', source: 'XYZ Inc. ("Company")' },
+              { name: 'ABC Services', role: 'vendor', type: 'unknown', source: 'ABC Services ("Vendor")' }
             ],
-            contractType: { value: 'Service Agreement', source: 'SERVICE AGREEMENT', extractedFromText: true },
+            contractType: { value: 'Master Services Agreement', source: 'MASTER SERVICES AGREEMENT', extractedFromText: true },
             effectiveDate: { value: '2024-03-15', source: 'made on March 15, 2024', extractedFromText: true },
             expirationDate: null,
             term: null,
             jurisdiction: null,
-            keyTerms: [],
-            certainty: 0.70
+            keyTerms: ['IT consulting', 'Master services', 'Work products'],
+            certainty: 0.85,
+            additionalData: {
+              partyAliases: {
+                'XYZ Inc.': 'Company',
+                'ABC Services': 'Vendor'
+              }
+            },
+            rawSections: {
+              definitions: 'DEFINITIONS:\n"Services" means IT consulting.\n"Deliverables" means all work products.'
+            },
+            referencedDocuments: [
+              { name: 'Schedule A', description: 'Statement of Work', source: 'Schedule A: Statement of Work' },
+              { name: 'Schedule B', description: 'Rate Card', source: 'Schedule B: Rate Card' }
+            ],
+            definitions: [
+              { term: 'Services', meaning: 'IT consulting', source: '"Services" means IT consulting.', extractedFromText: true },
+              { term: 'Deliverables', meaning: 'all work products', source: '"Deliverables" means all work products.', extractedFromText: true }
+            ]
           },
-          explanation: 'Basic information present. Party roles not explicitly defined - marked as generic "party". Missing term, jurisdiction, and expiration date left as null.',
-          sourceReferences: ['Document title', 'Agreement date clause']
+          explanation: 'Captured definitions, referenced schedules, and party aliases. These are critical for understanding the full contract context.',
+          sourceReferences: ['Document title', 'Definitions section', 'Agreement date clause', 'Schedules list']
         }
       ],
       
@@ -256,7 +301,11 @@ CRITICAL: You must ONLY extract information that is EXPLICITLY stated in the con
         term: '{ value: string, source: string, extractedFromText: boolean } or null',
         jurisdiction: '{ value: string, source: string, extractedFromText: boolean } or null',
         keyTerms: 'array of strings',
-        certainty: 'number (0-1)'
+        certainty: 'number (0-1)',
+        additionalData: 'object - ANY additional overview info specific to this contract (project names, references, special terms)',
+        rawSections: 'object - key/value pairs preserving exact text of important sections (recitals, definitions, preambles)',
+        referencedDocuments: 'array of { name: string, description: string, source: string } - schedules, exhibits, attachments',
+        definitions: 'array of { term: string, meaning: string, source: string, extractedFromText: boolean } - defined terms'
       },
       
       validationRules: [
@@ -265,7 +314,9 @@ CRITICAL: You must ONLY extract information that is EXPLICITLY stated in the con
         'Summary must be 10-200 characters',
         'Certainty must be between 0 and 1',
         'Every extracted value must have a source reference',
-        'Calculated/inferred values must have extractedFromText: false and requiresHumanReview: true'
+        'Calculated/inferred values must have extractedFromText: false and requiresHumanReview: true',
+        'additionalData should capture ANY contract-specific info not in standard fields',
+        'rawSections should preserve exact text of key sections'
       ],
 
       antiHallucinationRules: [
@@ -273,11 +324,13 @@ CRITICAL: You must ONLY extract information that is EXPLICITLY stated in the con
         'DO NOT calculate dates unless explicitly asked - mark calculated dates with requiresHumanReview: true',
         'DO NOT infer jurisdiction from party names or addresses',
         'If document title is ambiguous, lower certainty to below 0.7',
-        'Party types (corporation, llc, individual) must be based on explicit text indicators'
+        'Party types (corporation, llc, individual) must be based on explicit text indicators',
+        'additionalData values must come from the contract - do not invent',
+        'rawSections must be EXACT quotes from the document'
       ],
 
       requiredFields: ['parties', 'contractType'],
-      nullableFields: ['effectiveDate', 'expirationDate', 'term', 'jurisdiction']
+      nullableFields: ['effectiveDate', 'expirationDate', 'term', 'jurisdiction', 'additionalData', 'rawSections', 'referencedDocuments', 'definitions']
     };
   }
 
@@ -578,9 +631,29 @@ CRITICAL CLAUSE EXTRACTION RULES:
 - Quote or closely paraphrase the actual clause text
 - DO NOT invent standard clauses that are "typically" in contracts
 - Risk assessment must be based on the actual clause language, not general knowledge
-- If a common clause type is MISSING, note it in a separate "missingClauses" array`,
+- If a common clause type is MISSING, note it in a separate "missingClauses" array
+
+CONTEXTUAL AI EXTRACTION - PRESERVE EXACT CLAUSE STRUCTURE:
+Every contract structures clauses differently. You MUST:
+1. PRESERVE the exact section numbering/lettering (1.1, 1.2, A, B, i, ii, etc.)
+2. CAPTURE nested subclauses and their hierarchy
+3. EXTRACT the FULL clause text verbatim in "rawText" for important clauses
+4. IDENTIFY any cross-references to other clauses or documents
+5. NOTE any defined terms used within clauses
+6. CAPTURE clause headers/titles exactly as they appear
+7. EXTRACT any schedules, exhibits, or appendices referenced by clauses
+
+Use "rawClauseText" to preserve the EXACT formatting of complex clauses.
+Use "subclauses" for nested clause structures.
+Use "customClauseTypes" for any clause categories unique to this contract.`,
       
-      userPrompt: `Extract and analyze all significant clauses from the contract. Only include clauses actually present in the document.`,
+      userPrompt: `Extract and analyze all significant clauses from the contract. Only include clauses actually present in the document.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Preserve exact clause numbering and hierarchy
+- Capture the full verbatim text of important clauses
+- Note cross-references between clauses
+- Identify any unique clause structures in this contract`,
       
       examples: [
         {
@@ -591,38 +664,121 @@ CRITICAL CLAUSE EXTRACTION RULES:
                 id: 'clause-1',
                 type: 'Termination',
                 title: 'Termination Rights',
+                sectionNumber: null,
                 content: 'Either party may terminate this agreement with 30 days written notice.',
+                rawClauseText: 'TERMINATION: Either party may terminate this agreement with 30 days written notice.',
                 source: 'Section: TERMINATION',
                 riskLevel: 'low',
                 importance: 'high',
                 obligations: ['Provide 30 days written notice'],
                 beneficiary: 'both',
                 concerns: [],
-                extractedFromText: true
+                extractedFromText: true,
+                crossReferences: [],
+                definedTermsUsed: [],
+                subclauses: []
               },
               {
                 id: 'clause-2',
                 type: 'Confidentiality',
                 title: 'Confidentiality Obligations',
+                sectionNumber: null,
                 content: 'All proprietary information must remain confidential for 2 years post-termination.',
+                rawClauseText: 'CONFIDENTIALITY: All proprietary information must remain confidential for 2 years post-termination.',
                 source: 'Section: CONFIDENTIALITY',
                 riskLevel: 'medium',
                 importance: 'high',
                 obligations: ['Maintain confidentiality for 2 years after termination'],
                 beneficiary: 'both',
                 concerns: ['Extended post-termination obligations'],
-                extractedFromText: true
+                extractedFromText: true,
+                crossReferences: [],
+                definedTermsUsed: ['proprietary information'],
+                subclauses: []
               }
             ],
             missingClauses: [],
             certainty: 0.88
           },
           explanation: 'Clauses extracted with direct quotes from document sections'
+        },
+        {
+          input: '5. LIABILITY\n5.1 Limitation of Liability. Subject to Section 5.2, neither party shall be liable for any indirect damages.\n5.2 Exceptions. The limitation in Section 5.1 does not apply to: (a) breaches of confidentiality; (b) gross negligence.',
+          output: {
+            clauses: [
+              {
+                id: 'clause-5',
+                type: 'Liability',
+                title: 'LIABILITY',
+                sectionNumber: '5',
+                content: 'Limitation of Liability provisions with exceptions for confidentiality breaches and gross negligence.',
+                rawClauseText: '5. LIABILITY\n5.1 Limitation of Liability. Subject to Section 5.2, neither party shall be liable for any indirect damages.\n5.2 Exceptions. The limitation in Section 5.1 does not apply to: (a) breaches of confidentiality; (b) gross negligence.',
+                source: 'Section 5',
+                riskLevel: 'medium',
+                importance: 'high',
+                obligations: ['Limited liability for indirect damages', 'Full liability for confidentiality breaches and gross negligence'],
+                beneficiary: 'both',
+                concerns: ['Exceptions may expose to significant liability'],
+                extractedFromText: true,
+                crossReferences: [
+                  { from: '5.1', to: '5.2', context: 'Subject to Section 5.2' }
+                ],
+                definedTermsUsed: [],
+                subclauses: [
+                  {
+                    id: 'clause-5.1',
+                    sectionNumber: '5.1',
+                    title: 'Limitation of Liability',
+                    content: 'Neither party shall be liable for any indirect damages.',
+                    rawText: '5.1 Limitation of Liability. Subject to Section 5.2, neither party shall be liable for any indirect damages.',
+                    extractedFromText: true
+                  },
+                  {
+                    id: 'clause-5.2',
+                    sectionNumber: '5.2',
+                    title: 'Exceptions',
+                    content: 'Limitation does not apply to: (a) breaches of confidentiality; (b) gross negligence.',
+                    rawText: '5.2 Exceptions. The limitation in Section 5.1 does not apply to: (a) breaches of confidentiality; (b) gross negligence.',
+                    extractedFromText: true,
+                    subItems: ['breaches of confidentiality', 'gross negligence']
+                  }
+                ]
+              }
+            ],
+            customClauseTypes: [],
+            referencedExhibits: [],
+            clauseHierarchy: {
+              '5': ['5.1', '5.2']
+            },
+            missingClauses: [],
+            certainty: 0.92
+          },
+          explanation: 'Complex clause with subclauses and cross-references preserved. Hierarchy captured.'
         }
       ],
       
       outputSchema: {
-        clauses: 'array of {id, type, title, content, source, riskLevel, importance, obligations, beneficiary, concerns, extractedFromText}',
+        clauses: `array of {
+          id: string,
+          type: string (category),
+          title: string (exact title from document),
+          sectionNumber?: string (exact numbering like "5.1" or "A.2.iii"),
+          content: string (summarized content),
+          rawClauseText?: string (EXACT verbatim text for important clauses),
+          source: string,
+          riskLevel: 'low' | 'medium' | 'high',
+          importance: 'low' | 'medium' | 'high',
+          obligations: string[],
+          beneficiary: 'client' | 'vendor' | 'both' | 'unknown',
+          concerns: string[],
+          extractedFromText: boolean,
+          crossReferences?: array of { from: string, to: string, context: string },
+          definedTermsUsed?: string[],
+          subclauses?: array of { id, sectionNumber, title, content, rawText, extractedFromText, subItems? }
+        }`,
+        customClauseTypes: 'array of strings - any clause types unique to this contract not fitting standard categories',
+        referencedExhibits: 'array of { name: string, referencedInClause: string, purpose?: string }',
+        clauseHierarchy: 'object - mapping of parent clause numbers to child clause numbers',
         missingClauses: 'array of strings (common clause types NOT found in document)',
         certainty: 'number (0-1)'
       },
@@ -633,7 +789,9 @@ CRITICAL CLAUSE EXTRACTION RULES:
         'Importance must be: low, medium, or high',
         'Content must be non-empty and must be from the document',
         'Every clause MUST have a source reference',
-        'Risk assessment must be based on clause language, not assumptions'
+        'Risk assessment must be based on clause language, not assumptions',
+        'rawClauseText should be EXACT verbatim text from document',
+        'Cross-references must cite specific section/clause numbers'
       ],
 
       antiHallucinationRules: [
@@ -642,11 +800,14 @@ CRITICAL CLAUSE EXTRACTION RULES:
         'Risk level must be justified by the actual clause text',
         'If a clause type is expected but missing, add to missingClauses array',
         'Content field must quote or closely paraphrase actual text',
-        'DO NOT assume obligations - they must be explicitly stated'
+        'DO NOT assume obligations - they must be explicitly stated',
+        'rawClauseText must be EXACT copy from document - no paraphrasing',
+        'Section numbers must match the document exactly',
+        'DO NOT normalize clause numbering (keep 5.1, A.2, etc. as they appear)'
       ],
 
       requiredFields: ['clauses'],
-      nullableFields: ['missingClauses']
+      nullableFields: ['missingClauses', 'customClauseTypes', 'referencedExhibits', 'clauseHierarchy']
     };
   }
 
@@ -660,9 +821,27 @@ CRITICAL RATE EXTRACTION RULES:
 - DO NOT calculate derived rates (e.g., don't calculate daily from hourly)
 - Each rate must have a source quote from the document
 - If a rate appears in a table, reference the table
-- Location-based or time-based variations must be explicitly stated`,
+- Location-based or time-based variations must be explicitly stated
+
+CONTEXTUAL AI EXTRACTION - PRESERVE EXACT RATE TABLE STRUCTURE:
+Rate cards in contracts vary widely. You MUST:
+1. PRESERVE exact column headers as they appear (e.g., "Resource Category", "Blended Rate", "Location Premium")
+2. EXTRACT raw table data in "rawRateTables" for 1:1 fidelity with the original document
+3. CAPTURE any rate-related notes, footnotes, or conditions
+4. IDENTIFY tier structures, volume discounts, or escalation clauses
+5. NOTE effective date ranges for different rate periods
+6. EXTRACT any rate comparison tables or benchmark data included
+
+Use "rawRateTables" to preserve EXACT table structure with dynamic headers.
+Use "ratePeriods" for time-based rate variations (Year 1 rates, Year 2 rates, etc.).
+Use "rateConditions" for conditional pricing (overtime, weekend, emergency rates).`,
       
-      userPrompt: `Extract all rate card and pricing information from the contract. Only include rates explicitly stated.`,
+      userPrompt: `Extract all rate card and pricing information from the contract. Only include rates explicitly stated.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Preserve exact rate table column structure (don't normalize to Role/Rate/Location)
+- Capture any rate conditions, tiers, or escalation schedules
+- Extract raw table data for 1:1 document reproduction`,
       
       examples: [
         {
@@ -715,7 +894,10 @@ CRITICAL RATE EXTRACTION RULES:
                 unit: 'hour',
                 currency: 'USD',
                 location: 'Offshore',
-                effectiveDate: null,
+                source: 'Offshore rates: 30% discount',
+                extractedFromText: false,
+                requiresHumanReview: true,
+                calculationMethod: 'Applied 30% discount to US rate',
                 notes: '30% discount applied'
               }
             ],
@@ -733,15 +915,85 @@ CRITICAL RATE EXTRACTION RULES:
             certainty: 0.85
           },
           explanation: 'Explicit rates in rateCards, calculated rates in separate array with requiresHumanReview flag'
+        },
+        {
+          input: 'RATE CARD - EXHIBIT B\n| Resource Category | Standard Rate | Premium Rate | Emergency |\n| Technical Lead | $200/hr | $250/hr | $350/hr |\n| Engineer L3 | $175/hr | $220/hr | $300/hr |\n\nNote: Premium rates apply to after-hours work. Emergency rates apply to critical incidents.',
+          output: {
+            rateCards: [
+              {
+                role: 'Technical Lead',
+                level: null,
+                rate: 200,
+                unit: 'hour',
+                currency: 'USD',
+                location: null,
+                source: 'RATE CARD - EXHIBIT B',
+                extractedFromText: true,
+                effectiveDate: null,
+                notes: 'Standard rate'
+              },
+              {
+                role: 'Engineer L3',
+                level: 'L3',
+                rate: 175,
+                unit: 'hour',
+                currency: 'USD',
+                location: null,
+                source: 'RATE CARD - EXHIBIT B',
+                extractedFromText: true,
+                effectiveDate: null,
+                notes: 'Standard rate'
+              }
+            ],
+            rawRateTables: [
+              {
+                tableName: 'Rate Card - Exhibit B',
+                headers: ['Resource Category', 'Standard Rate', 'Premium Rate', 'Emergency'],
+                rawRows: [
+                  ['Technical Lead', '$200/hr', '$250/hr', '$350/hr'],
+                  ['Engineer L3', '$175/hr', '$220/hr', '$300/hr']
+                ],
+                rows: [
+                  { 'Resource Category': 'Technical Lead', 'Standard Rate': '$200/hr', 'Premium Rate': '$250/hr', 'Emergency': '$350/hr' },
+                  { 'Resource Category': 'Engineer L3', 'Standard Rate': '$175/hr', 'Premium Rate': '$220/hr', 'Emergency': '$300/hr' }
+                ],
+                notes: 'Premium rates apply to after-hours work. Emergency rates apply to critical incidents.',
+                source: 'RATE CARD - EXHIBIT B',
+                extractedFromText: true
+              }
+            ],
+            rateConditions: [
+              { condition: 'Premium', trigger: 'After-hours work', multiplier: null, source: 'Premium rates apply to after-hours work', extractedFromText: true },
+              { condition: 'Emergency', trigger: 'Critical incidents', multiplier: null, source: 'Emergency rates apply to critical incidents', extractedFromText: true }
+            ],
+            roles: ['Technical Lead', 'Engineer L3'],
+            locations: [],
+            rateModifiers: [],
+            certainty: 0.92
+          },
+          explanation: 'Rate table preserved with exact column structure. Multiple rate types (Standard, Premium, Emergency) captured. Conditions noted.'
         }
       ],
       
       outputSchema: {
         rateCards: 'array of {role, level, rate, unit, currency, location, source, extractedFromText, effectiveDate, notes}',
         calculatedRates: 'array of rates that were derived/calculated (must have requiresHumanReview: true)',
+        rawRateTables: `array of {
+          tableName?: string,
+          headers: string[] (EXACT column headers as they appear),
+          rawRows: string[][] (each row as array of cell values for 1:1 fidelity),
+          rows: array of objects with keys matching headers,
+          notes?: string (footnotes or annotations),
+          source: string,
+          extractedFromText: boolean
+        }`,
+        rateConditions: 'array of { condition, trigger, multiplier?, additionalRate?, source, extractedFromText }',
+        ratePeriods: 'array of { period, startDate?, endDate?, rates: array of rate objects }',
         roles: 'array of strings',
         locations: 'array of strings',
         rateModifiers: 'array of {type, condition, adjustment, unit, source}',
+        rateEscalation: 'object - { schedule, percentage?, fixedIncrease?, source, extractedFromText }',
+        volumeDiscounts: 'array of { tier, threshold, discount, unit, source }',
         certainty: 'number (0-1)'
       },
       
@@ -751,7 +1003,9 @@ CRITICAL RATE EXTRACTION RULES:
         'Currency must be valid ISO code',
         'Each rate card must have role and rate',
         'Every rate MUST have a source reference',
-        'Calculated rates must be in separate calculatedRates array with requiresHumanReview: true'
+        'Calculated rates must be in separate calculatedRates array with requiresHumanReview: true',
+        'rawRateTables must preserve EXACT column structure',
+        'Use EXACT header names from document in rawRateTables'
       ],
 
       antiHallucinationRules: [
@@ -759,11 +1013,14 @@ CRITICAL RATE EXTRACTION RULES:
         'DO NOT assume role levels if not specified',
         'DO NOT infer location-based pricing without explicit text',
         'Separate explicitly stated rates from calculated/derived rates',
-        'If rate unit is ambiguous, use lower certainty and add note'
+        'If rate unit is ambiguous, use lower certainty and add note',
+        'DO NOT normalize or rename table columns - use exact headers',
+        'rawRows must contain exact cell values as they appear',
+        'DO NOT invent rate conditions or modifiers not in the document'
       ],
 
       requiredFields: ['rateCards'],
-      nullableFields: ['calculatedRates', 'roles', 'locations', 'rateModifiers']
+      nullableFields: ['calculatedRates', 'rawRateTables', 'rateConditions', 'ratePeriods', 'roles', 'locations', 'rateModifiers', 'rateEscalation', 'volumeDiscounts']
     };
   }
 
@@ -777,19 +1034,38 @@ CRITICAL COMPLIANCE EXTRACTION RULES:
 - DO NOT assume compliance requirements based on industry or contract type
 - Each requirement must have a source quote from the document
 - DO NOT infer GDPR/HIPAA applicability - it must be stated
-- If no compliance requirements are found, return empty arrays (not typical requirements)`,
+- If no compliance requirements are found, return empty arrays (not typical requirements)
+
+CONTEXTUAL AI EXTRACTION - CAPTURE ALL COMPLIANCE CONTEXT:
+Every contract has unique compliance language. You MUST:
+1. EXTRACT verbatim compliance clauses in "rawComplianceSections"
+2. CAPTURE any compliance schedules, appendices, or referenced policies
+3. IDENTIFY industry-specific compliance requirements (PCI-DSS, FEDRAMP, etc.)
+4. NOTE compliance deadlines, remediation periods, and escalation paths
+5. EXTRACT any penalty clauses for non-compliance
+6. CAPTURE certification renewal requirements and timelines
+7. IDENTIFY any contractual audit procedures in detail
+
+Use "rawComplianceSections" to preserve exact compliance language.
+Use "customRequirements" for contract-specific compliance obligations.
+Use "complianceTimelines" for deadline-driven requirements.`,
       
-      userPrompt: `Extract all compliance and regulatory information explicitly mentioned in the contract.`,
+      userPrompt: `Extract all compliance and regulatory information explicitly mentioned in the contract.
+
+IMPORTANT: This is CONTEXTUAL AI extraction:
+- Preserve exact compliance clause wording
+- Capture any unique compliance structures in this contract
+- Note timelines, penalties, and remediation procedures`,
       
       examples: [
         {
           input: 'Vendor must maintain SOC 2 Type II certification. All data processing must comply with GDPR. Annual security audits required.',
           output: {
             regulations: [
-              { name: 'GDPR', source: 'All data processing must comply with GDPR', extractedFromText: true }
+              { name: 'GDPR', scope: 'All data processing', source: 'All data processing must comply with GDPR', extractedFromText: true }
             ],
             certifications: [
-              { name: 'SOC 2 Type II', source: 'Vendor must maintain SOC 2 Type II certification', extractedFromText: true }
+              { name: 'SOC 2 Type II', holder: 'Vendor', renewalPeriod: null, source: 'Vendor must maintain SOC 2 Type II certification', extractedFromText: true }
             ],
             complianceRequirements: [
               {
@@ -821,24 +1097,97 @@ CRITICAL COMPLIANCE EXTRACTION RULES:
               }
             ],
             auditRights: [
-              { right: 'Annual security audits', source: 'Annual security audits required', extractedFromText: true }
+              { right: 'Annual security audits', auditType: 'security', noticePeriod: null, source: 'Annual security audits required', extractedFromText: true }
             ],
             dataProtection: [
-              { requirement: 'GDPR compliance', source: 'All data processing must comply with GDPR', extractedFromText: true }
+              { requirement: 'GDPR compliance', dataTypes: null, retentionPeriod: null, source: 'All data processing must comply with GDPR', extractedFromText: true }
             ],
             notFoundCompliance: [],
             certainty: 0.91
           },
           explanation: 'All compliance requirements extracted with source references. No inferred requirements.'
+        },
+        {
+          input: 'EXHIBIT C - SECURITY REQUIREMENTS\n\n1. Vendor shall comply with ISO 27001 and provide annual certification.\n2. All personnel with access to Client data must complete security training within 30 days of assignment.\n3. Breach notification within 72 hours.\n4. Data retention: maximum 7 years or as required by law.\n5. Quarterly vulnerability assessments required.',
+          output: {
+            regulations: [],
+            certifications: [
+              { name: 'ISO 27001', holder: 'Vendor', renewalPeriod: 'annual', source: 'Vendor shall comply with ISO 27001 and provide annual certification', extractedFromText: true }
+            ],
+            complianceRequirements: [
+              {
+                requirement: 'ISO 27001 compliance with annual certification',
+                category: 'Security',
+                mandatory: true,
+                frequency: 'annual',
+                responsibility: 'vendor',
+                source: 'Exhibit C, Section 1',
+                extractedFromText: true
+              },
+              {
+                requirement: 'Security training for personnel with data access',
+                category: 'Training',
+                mandatory: true,
+                frequency: 'ongoing',
+                responsibility: 'vendor',
+                deadline: '30 days of assignment',
+                source: 'Exhibit C, Section 2',
+                extractedFromText: true
+              },
+              {
+                requirement: 'Quarterly vulnerability assessments',
+                category: 'Security',
+                mandatory: true,
+                frequency: 'quarterly',
+                responsibility: 'vendor',
+                source: 'Exhibit C, Section 5',
+                extractedFromText: true
+              }
+            ],
+            complianceTimelines: [
+              { requirement: 'Security training completion', deadline: '30 days of assignment', source: 'within 30 days of assignment', extractedFromText: true },
+              { requirement: 'Breach notification', deadline: '72 hours', source: 'Breach notification within 72 hours', extractedFromText: true }
+            ],
+            rawComplianceSections: {
+              'Exhibit C - Security Requirements': 'EXHIBIT C - SECURITY REQUIREMENTS\n\n1. Vendor shall comply with ISO 27001 and provide annual certification.\n2. All personnel with access to Client data must complete security training within 30 days of assignment.\n3. Breach notification within 72 hours.\n4. Data retention: maximum 7 years or as required by law.\n5. Quarterly vulnerability assessments required.'
+            },
+            customRequirements: [
+              { requirement: 'Personnel security training within 30 days', category: 'Personnel', source: 'Section 2', extractedFromText: true }
+            ],
+            breachNotification: {
+              timeframe: '72 hours',
+              source: 'Breach notification within 72 hours',
+              extractedFromText: true
+            },
+            dataRetention: {
+              period: '7 years maximum',
+              conditions: 'or as required by law',
+              source: 'Data retention: maximum 7 years or as required by law',
+              extractedFromText: true
+            },
+            auditRights: [],
+            dataProtection: [
+              { requirement: 'Data retention limit', dataTypes: null, retentionPeriod: '7 years maximum', source: 'Section 4', extractedFromText: true }
+            ],
+            notFoundCompliance: [],
+            certainty: 0.93
+          },
+          explanation: 'Detailed compliance extraction from security exhibit including timelines, breach notification, and data retention.'
         }
       ],
       
       outputSchema: {
-        regulations: 'array of { name: string, source: string, extractedFromText: boolean }',
-        certifications: 'array of { name: string, source: string, extractedFromText: boolean }',
-        complianceRequirements: 'array of {requirement, category, mandatory, frequency, responsibility, source, extractedFromText}',
-        auditRights: 'array of { right: string, source: string, extractedFromText: boolean }',
-        dataProtection: 'array of { requirement: string, source: string, extractedFromText: boolean }',
+        regulations: 'array of { name: string, scope?: string, source: string, extractedFromText: boolean }',
+        certifications: 'array of { name: string, holder?: string, renewalPeriod?: string, source: string, extractedFromText: boolean }',
+        complianceRequirements: 'array of {requirement, category, mandatory, frequency, responsibility, deadline?, source, extractedFromText}',
+        complianceTimelines: 'array of { requirement: string, deadline: string, source: string, extractedFromText: boolean }',
+        rawComplianceSections: 'object - key/value pairs preserving exact text of compliance sections/exhibits',
+        customRequirements: 'array of contract-specific requirements not fitting standard categories',
+        breachNotification: 'object - { timeframe, notificationRecipients?, source, extractedFromText }',
+        dataRetention: 'object - { period, conditions?, dataTypes?, source, extractedFromText }',
+        auditRights: 'array of { right: string, auditType?: string, noticePeriod?: string, source: string, extractedFromText: boolean }',
+        dataProtection: 'array of { requirement: string, dataTypes?: string, retentionPeriod?: string, source: string, extractedFromText: boolean }',
+        nonCompliancePenalties: 'array of { violation: string, penalty: string, source: string, extractedFromText: boolean }',
         notFoundCompliance: 'array of strings (common compliance items NOT found in document)',
         certainty: 'number (0-1)'
       },
@@ -849,7 +1198,9 @@ CRITICAL COMPLIANCE EXTRACTION RULES:
         'Requirements must specify responsibility',
         'Frequency must be: ongoing, annual, quarterly, monthly, or one-time',
         'Every compliance item MUST have a source reference',
-        'DO NOT infer compliance requirements - only extract explicit mentions'
+        'DO NOT infer compliance requirements - only extract explicit mentions',
+        'rawComplianceSections must be EXACT verbatim text',
+        'Timelines must be specific (dates or durations from document)'
       ],
 
       antiHallucinationRules: [
@@ -858,11 +1209,13 @@ CRITICAL COMPLIANCE EXTRACTION RULES:
         'If no compliance requirements found, return empty arrays',
         'Only include regulations EXPLICITLY mentioned by name',
         'Add missing common requirements to notFoundCompliance for awareness',
-        'Responsibility must be explicitly stated, not inferred from context'
+        'Responsibility must be explicitly stated, not inferred from context',
+        'rawComplianceSections must be exact copies - no paraphrasing',
+        'DO NOT invent deadlines or timelines not in the document'
       ],
 
       requiredFields: [],
-      nullableFields: ['regulations', 'certifications', 'complianceRequirements', 'auditRights', 'dataProtection', 'notFoundCompliance']
+      nullableFields: ['regulations', 'certifications', 'complianceRequirements', 'complianceTimelines', 'rawComplianceSections', 'customRequirements', 'breachNotification', 'dataRetention', 'auditRights', 'dataProtection', 'nonCompliancePenalties', 'notFoundCompliance']
     };
   }
 
@@ -888,9 +1241,30 @@ CRITICAL RISK ASSESSMENT RULES:
 - DO NOT invent risks based on "typical" contract issues
 - If contract terms are actually favorable, reflect that in a lower risk score
 - Missing protections should be noted, but don't fabricate the negative terms
+
+CONTEXTUAL AI RISK ANALYSIS - COMPREHENSIVE UNDERSTANDING:
+Every contract has unique risk profiles. You MUST:
+1. PRESERVE exact problematic clause language in "rawRiskClauses"
+2. IDENTIFY contract-specific risk categories beyond standard (Legal, Financial, Operational)
+3. ANALYZE relationships between clauses that compound risk
+4. ASSESS risk by party - who bears what risk
+5. EXTRACT any indemnification, warranty, or liability clauses verbatim
+6. NOTE favorable terms as risk mitigators
+7. CAPTURE industry-specific risks mentioned in the contract
+
+Use "rawRiskClauses" to preserve exact language of risky clauses.
+Use "compoundRisks" for risks created by multiple clause interactions.
+Use "riskByParty" to show risk distribution between parties.
+Use "favorableTerms" to note risk-reducing provisions.
 ${financialContext}${clausesContext}`,
       
-      userPrompt: `Analyze risks in the contract based ONLY on actual contract language. Every risk must reference its source in the document.`,
+      userPrompt: `Analyze risks in the contract based ONLY on actual contract language. Every risk must reference its source in the document.
+
+IMPORTANT: This is CONTEXTUAL AI risk analysis:
+- Preserve exact language of risky clauses
+- Identify risks unique to this contract
+- Note favorable terms that reduce risk
+- Analyze how clauses interact to create compound risks`,
       
       examples: [
         {
@@ -904,32 +1278,57 @@ ${financialContext}${clausesContext}`,
                 severity: 'high',
                 description: 'Unlimited liability for data breaches',
                 source: 'Unlimited liability for data breaches',
+                clauseReference: null,
                 extractedFromText: true,
                 impact: 'Could result in catastrophic financial loss',
                 likelihood: 'medium',
-                mitigation: 'Negotiate liability cap'
+                mitigation: 'Negotiate liability cap',
+                affectedParty: 'vendor'
               },
               {
                 category: 'Operational',
                 severity: 'high',
                 description: 'Termination without cause with only 7 days notice',
                 source: 'Termination without cause with 7 days notice',
+                clauseReference: null,
                 extractedFromText: true,
                 impact: 'Insufficient time to transition or find alternatives',
                 likelihood: 'low',
-                mitigation: 'Request 30-60 days notice period'
+                mitigation: 'Request 30-60 days notice period',
+                affectedParty: 'vendor'
               },
               {
                 category: 'Financial',
                 severity: 'high',
                 description: 'No cap on penalties',
                 source: 'No cap on penalties',
+                clauseReference: null,
                 extractedFromText: true,
                 impact: 'Unlimited financial exposure',
                 likelihood: 'medium',
-                mitigation: 'Negotiate penalty caps'
+                mitigation: 'Negotiate penalty caps',
+                affectedParty: 'vendor'
               }
             ],
+            rawRiskClauses: {
+              liability: 'Unlimited liability for data breaches',
+              termination: 'Termination without cause with 7 days notice',
+              penalties: 'No cap on penalties'
+            },
+            riskByParty: {
+              client: { riskScore: 15, riskFactors: [] },
+              vendor: { riskScore: 85, riskFactors: ['unlimited liability', 'short termination notice', 'uncapped penalties'] }
+            },
+            compoundRisks: [
+              {
+                description: 'Unlimited liability combined with short termination notice creates catastrophic risk',
+                clausesInvolved: ['Unlimited liability for data breaches', 'Termination without cause with 7 days notice'],
+                combinedImpact: 'Vendor could be terminated with 7 days notice while still being liable for unlimited damages',
+                source: 'Multiple clauses',
+                extractedFromText: true
+              }
+            ],
+            favorableTerms: [],
             recommendations: [
               'Negotiate liability limitations before signing',
               'Request extended termination notice period',
@@ -943,23 +1342,62 @@ ${financialContext}${clausesContext}`,
               'Penalty caps reduce financial exposure'
             ],
             redFlags: [
-              { flag: 'Unlimited liability exposure', source: 'Unlimited liability for data breaches', extractedFromText: true },
-              { flag: 'Extremely short termination notice', source: 'Termination without cause with 7 days notice', extractedFromText: true },
-              { flag: 'Uncapped penalties', source: 'No cap on penalties', extractedFromText: true }
+              { flag: 'Unlimited liability exposure', source: 'Unlimited liability for data breaches', severity: 'critical', extractedFromText: true },
+              { flag: 'Extremely short termination notice', source: 'Termination without cause with 7 days notice', severity: 'high', extractedFromText: true },
+              { flag: 'Uncapped penalties', source: 'No cap on penalties', severity: 'high', extractedFromText: true }
             ],
             missingProtections: [],
             certainty: 0.89
           },
-          explanation: 'All risks based on actual contract language with source references'
+          explanation: 'All risks based on actual contract language with source references. Compound risk identified between liability and termination clauses.'
+        },
+        {
+          input: 'Section 8.1: Vendor liability capped at contract value ($500,000). Section 8.2: Client indemnifies Vendor for third-party IP claims. Section 9: Force majeure includes pandemic. Section 10.3: 90-day termination notice required.',
+          output: {
+            overallScore: 25,
+            riskLevel: 'low',
+            riskFactors: [],
+            rawRiskClauses: {},
+            riskByParty: {
+              client: { riskScore: 35, riskFactors: ['indemnifies vendor for third-party IP claims'] },
+              vendor: { riskScore: 15, riskFactors: [] }
+            },
+            compoundRisks: [],
+            favorableTerms: [
+              { term: 'Liability cap at contract value', benefit: 'Maximum exposure limited to $500,000', source: 'Section 8.1', extractedFromText: true },
+              { term: 'Force majeure includes pandemic', benefit: 'Protection against force majeure events', source: 'Section 9', extractedFromText: true },
+              { term: '90-day termination notice', benefit: 'Adequate time to transition', source: 'Section 10.3', extractedFromText: true },
+              { term: 'Client indemnifies for IP claims', benefit: 'Vendor protected from third-party IP claims', source: 'Section 8.2', extractedFromText: true }
+            ],
+            customRiskCategories: [],
+            recommendations: [
+              'This contract has favorable terms for the vendor',
+              'Review IP indemnification scope for client comfort',
+              'Verify force majeure trigger conditions'
+            ],
+            costSavingsOpportunities: [
+              'Low risk profile may reduce insurance costs',
+              'Liability cap provides predictable exposure'
+            ],
+            redFlags: [],
+            missingProtections: [],
+            certainty: 0.92
+          },
+          explanation: 'Low risk contract with multiple favorable terms. Client bears some risk with IP indemnification.'
         }
       ],
       
       outputSchema: {
         overallScore: 'number (0-100, higher = more risk)',
         riskLevel: 'string (low, medium, high, critical)',
-        riskFactors: 'array of {category, severity, description, source, extractedFromText, impact, likelihood, mitigation}',
+        riskFactors: 'array of {category, severity, description, source, clauseReference?, extractedFromText, impact, likelihood, mitigation, affectedParty?}',
+        rawRiskClauses: 'object - key/value pairs preserving exact text of risky clauses',
+        riskByParty: 'object - { partyName: { riskScore: number, riskFactors: string[] } } for each party',
+        compoundRisks: 'array of { description, clausesInvolved: string[], combinedImpact, source, extractedFromText }',
+        favorableTerms: 'array of { term, benefit, source, extractedFromText } - risk-reducing provisions',
+        customRiskCategories: 'array of contract-specific risk categories beyond standard (Legal, Financial, Operational)',
         recommendations: 'array of strings',
-        redFlags: 'array of { flag: string, source: string, extractedFromText: boolean }',
+        redFlags: 'array of { flag: string, source: string, severity: string, extractedFromText: boolean }',
         costSavingsOpportunities: 'array of strings (indirect procurement cost optimization)',
         missingProtections: 'array of strings (common protections NOT found in contract)',
         certainty: 'number (0-1)'
@@ -971,7 +1409,9 @@ ${financialContext}${clausesContext}`,
         'Each risk factor must have mitigation',
         'Recommendations must be actionable',
         'Every risk MUST have a source reference to contract language',
-        'DO NOT invent risks - only assess risks from actual contract terms'
+        'DO NOT invent risks - only assess risks from actual contract terms',
+        'rawRiskClauses must be EXACT verbatim text from document',
+        'Compound risks must cite specific interacting clauses'
       ],
 
       antiHallucinationRules: [
@@ -980,11 +1420,13 @@ ${financialContext}${clausesContext}`,
         'If contract has favorable terms, reflect in LOWER risk score',
         'Missing protections go in missingProtections array, not as invented risks',
         'Impact and likelihood assessments must be reasonable given the actual terms',
-        'DO NOT assume worst-case scenarios not supported by contract language'
+        'DO NOT assume worst-case scenarios not supported by contract language',
+        'rawRiskClauses must be exact copies - no paraphrasing',
+        'Favorable terms should reduce overall risk score - do not ignore them'
       ],
 
       requiredFields: ['overallScore', 'riskLevel'],
-      nullableFields: ['riskFactors', 'recommendations', 'redFlags', 'costSavingsOpportunities', 'missingProtections']
+      nullableFields: ['riskFactors', 'rawRiskClauses', 'riskByParty', 'compoundRisks', 'favorableTerms', 'customRiskCategories', 'recommendations', 'redFlags', 'costSavingsOpportunities', 'missingProtections']
     };
   }
 }
