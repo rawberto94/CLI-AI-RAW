@@ -867,14 +867,9 @@ export function RiskArtifact({ data, className, isLoading }: RiskArtifactProps) 
 
 // ============ FINANCIAL ARTIFACT ============
 
+// Dynamic row type - can have any keys matching the table headers
 interface FinancialTableRow {
-  service?: string;
-  description?: string;
-  item?: string;
-  quantity?: string | number;
-  unitPrice?: number;
-  unitPriceUnit?: string;
-  lineTotal?: number;
+  [key: string]: string | number | undefined;
 }
 
 interface FinancialTable {
@@ -882,8 +877,10 @@ interface FinancialTable {
   source?: string;
   headers?: string[];
   rows?: FinancialTableRow[];
+  rawRows?: string[][];  // For 1:1 reproduction of table
   subtotals?: Array<{ label: string; amount: number; source?: string; extractedFromText?: boolean }>;
   grandTotal?: { amount: number; source?: string; extractedFromText?: boolean };
+  notes?: string;
   extractedFromText?: boolean;
 }
 
@@ -1043,68 +1040,105 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
           defaultOpen
         >
           <div className="space-y-4">
-            {data.financialTables.map((table, tableIdx) => (
-              <div key={tableIdx} className="border border-slate-200 rounded-lg overflow-hidden">
-                <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
-                  <h5 className="font-medium text-slate-700">{table.tableName || `Table ${tableIdx + 1}`}</h5>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="text-left py-2 px-4 font-medium text-slate-600">Description</th>
-                        <th className="text-right py-2 px-4 font-medium text-slate-600">Qty</th>
-                        <th className="text-right py-2 px-4 font-medium text-slate-600">Unit Price</th>
-                        <th className="text-right py-2 px-4 font-medium text-slate-600">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {table.rows?.map((row, rowIdx) => (
-                        <tr key={rowIdx} className="border-b border-slate-100 last:border-0">
-                          <td className="py-3 px-4 text-slate-900">
-                            {row.service || row.description || row.item || '-'}
-                          </td>
-                          <td className="py-3 px-4 text-right text-slate-600">
-                            {row.quantity || '-'}
-                          </td>
-                          <td className="py-3 px-4 text-right text-slate-600">
-                            {row.unitPrice ? formatCurrency(row.unitPrice, currency) : '-'}
-                            {row.unitPriceUnit && <span className="text-xs text-slate-400 ml-1">/{row.unitPriceUnit}</span>}
-                          </td>
-                          <td className="py-3 px-4 text-right font-medium text-slate-900">
-                            {row.lineTotal ? formatCurrency(row.lineTotal, currency) : '-'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    {((table.subtotals && table.subtotals.length > 0) || table.grandTotal) && (
-                      <tfoot className="bg-slate-50">
-                        {table.subtotals?.map((sub, subIdx) => (
-                          <tr key={subIdx} className="border-t border-slate-200">
-                            <td colSpan={3} className="py-2 px-4 text-right font-medium text-slate-600">
-                              {sub.label}:
-                            </td>
-                            <td className="py-2 px-4 text-right font-semibold text-slate-700">
-                              {formatCurrency(sub.amount, currency)}
-                            </td>
-                          </tr>
-                        ))}
-                        {table.grandTotal && (
-                          <tr className="border-t-2 border-slate-300">
-                            <td colSpan={3} className="py-3 px-4 text-right font-bold text-slate-700">
-                              Grand Total:
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold text-lg text-emerald-600">
-                              {formatCurrency(table.grandTotal.amount, currency)}
-                            </td>
-                          </tr>
-                        )}
-                      </tfoot>
+            {data.financialTables.map((table, tableIdx) => {
+              // Use headers from table or derive from first row keys
+              const headers = table.headers || (table.rows?.[0] ? Object.keys(table.rows[0]) : []);
+              const columnCount = headers.length || 1;
+              
+              return (
+                <div key={tableIdx} className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+                    <h5 className="font-medium text-slate-700">{table.tableName || `Table ${tableIdx + 1}`}</h5>
+                    {table.notes && (
+                      <span className="text-xs text-slate-500 italic">{table.notes}</span>
                     )}
-                  </table>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      {headers.length > 0 && (
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            {headers.map((header, headerIdx) => (
+                              <th 
+                                key={headerIdx} 
+                                className={cn(
+                                  "py-2 px-4 font-medium text-slate-600",
+                                  headerIdx === 0 ? "text-left" : "text-right"
+                                )}
+                              >
+                                {header}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                      )}
+                      <tbody>
+                        {/* Prefer rawRows for exact 1:1 reproduction, fallback to rows */}
+                        {table.rawRows ? (
+                          table.rawRows.map((row, rowIdx) => (
+                            <tr key={rowIdx} className="border-b border-slate-100 last:border-0">
+                              {row.map((cell, cellIdx) => (
+                                <td 
+                                  key={cellIdx} 
+                                  className={cn(
+                                    "py-3 px-4",
+                                    cellIdx === 0 ? "text-slate-900" : "text-right text-slate-600",
+                                    cellIdx === row.length - 1 && "font-medium text-slate-900"
+                                  )}
+                                >
+                                  {cell || '-'}
+                                </td>
+                              ))}
+                            </tr>
+                          ))
+                        ) : (
+                          table.rows?.map((row, rowIdx) => (
+                            <tr key={rowIdx} className="border-b border-slate-100 last:border-0">
+                              {headers.map((header, cellIdx) => (
+                                <td 
+                                  key={cellIdx} 
+                                  className={cn(
+                                    "py-3 px-4",
+                                    cellIdx === 0 ? "text-slate-900" : "text-right text-slate-600",
+                                    cellIdx === headers.length - 1 && "font-medium text-slate-900"
+                                  )}
+                                >
+                                  {row[header] ?? '-'}
+                                </td>
+                              ))}
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                      {((table.subtotals && table.subtotals.length > 0) || table.grandTotal) && (
+                        <tfoot className="bg-slate-50">
+                          {table.subtotals?.map((sub, subIdx) => (
+                            <tr key={subIdx} className="border-t border-slate-200">
+                              <td colSpan={columnCount - 1} className="py-2 px-4 text-right font-medium text-slate-600">
+                                {sub.label}:
+                              </td>
+                              <td className="py-2 px-4 text-right font-semibold text-slate-700">
+                                {formatCurrency(sub.amount, currency)}
+                              </td>
+                            </tr>
+                          ))}
+                          {table.grandTotal && (
+                            <tr className="border-t-2 border-slate-300">
+                              <td colSpan={columnCount - 1} className="py-3 px-4 text-right font-bold text-slate-700">
+                                Grand Total:
+                              </td>
+                              <td className="py-3 px-4 text-right font-bold text-lg text-emerald-600">
+                                {formatCurrency(table.grandTotal.amount, currency)}
+                              </td>
+                            </tr>
+                          )}
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ExpandableSection>
       )}

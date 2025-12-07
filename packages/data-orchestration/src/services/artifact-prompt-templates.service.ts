@@ -301,18 +301,27 @@ CRITICAL FINANCIAL EXTRACTION RULES:
 - If multiple currencies are present, list each separately
 - For percentage-based values, quote the exact percentage from the document
 
-FINANCIAL TABLES & OFFERS EXTRACTION:
-- Look for pricing tables, fee schedules, rate cards, cost breakdowns, and offer sheets
-- Extract each line item with: description, quantity, unit price, total, and any notes
-- Preserve table structure including headers and row relationships
-- Calculate subtotals and totals ONLY if explicitly stated in document (mark calculated ones)
+FINANCIAL TABLES EXTRACTION - PRESERVE EXACT STRUCTURE:
+- Tables in contracts vary widely - some have 3 columns, others have 10+
+- PRESERVE the EXACT column headers as they appear (e.g., "Daily Rate", "Monthly Estimate", "Resource Type")
+- DO NOT normalize or rename columns - keep them exactly as written
+- Extract both:
+  1. "rows" - array of objects with keys matching the exact header names
+  2. "rawRows" - array of string arrays for 1:1 fidelity with the original table
+- Include table footnotes or annotations in the "notes" field
+- Common table types: rate cards, fee schedules, milestone payments, resource pricing, deliverable costs, expense tables
+- Calculate subtotals and totals ONLY if explicitly stated in document
+
+OFFERS/QUOTES EXTRACTION:
 - For offers/quotes: extract validity period, terms, and conditions if present
 - Look for: milestone payments, phase costs, deliverable pricing, service fees
 ${overviewContext}`,
       
       userPrompt: `Extract all financial information from the contract including:
 1. Overall contract value and payment terms
-2. Financial tables (pricing tables, fee schedules, cost breakdowns)
+2. Financial tables - PRESERVE EXACT column structure as they appear
+   - Use the EXACT header names from the table
+   - Include rawRows for 1:1 table reproduction
 3. Offers/quotes with line items
 4. Subtotals, totals, and grand totals (only if explicitly stated)
 5. Cost breakdowns by category, phase, or deliverable
@@ -410,9 +419,14 @@ Quote valid for 30 days. 50% due upon signing, 50% upon completion.`,
                 source: 'PRICING SCHEDULE table',
                 headers: ['Service', 'Quantity', 'Unit Price', 'Total'],
                 rows: [
-                  { service: 'Development', quantity: '500 hrs', unitPrice: 150, unitPriceUnit: 'per hour', lineTotal: 75000 },
-                  { service: 'Testing', quantity: '100 hrs', unitPrice: 125, unitPriceUnit: 'per hour', lineTotal: 12500 },
-                  { service: 'Project Management', quantity: '80 hrs', unitPrice: 175, unitPriceUnit: 'per hour', lineTotal: 14000 }
+                  { 'Service': 'Development', 'Quantity': '500 hrs', 'Unit Price': '$150/hr', 'Total': '$75,000' },
+                  { 'Service': 'Testing', 'Quantity': '100 hrs', 'Unit Price': '$125/hr', 'Total': '$12,500' },
+                  { 'Service': 'Project Management', 'Quantity': '80 hrs', 'Unit Price': '$175/hr', 'Total': '$14,000' }
+                ],
+                rawRows: [
+                  ['Development', '500 hrs', '$150/hr', '$75,000'],
+                  ['Testing', '100 hrs', '$125/hr', '$12,500'],
+                  ['Project Management', '80 hrs', '$175/hr', '$14,000']
                 ],
                 subtotals: [
                   { label: 'Subtotal', amount: 101500, source: 'Subtotal: $101,500', extractedFromText: true }
@@ -442,6 +456,61 @@ Quote valid for 30 days. 50% due upon signing, 50% upon completion.`,
             certainty: 0.95
           },
           explanation: 'Extracted pricing table with line items, subtotals, and grand total. Payment schedule marked as calculated (requiresHumanReview) since percentages were applied.'
+        },
+        {
+          input: `FEE SCHEDULE - CONSULTING SERVICES
+
+Resource Type | Location | Daily Rate | Monthly Estimate
+Senior Consultant | Onsite | €1,200 | €24,000
+Junior Consultant | Remote | €650 | €13,000
+Technical Lead | Hybrid | €1,500 | €30,000
+
+Additional Fees:
+- Travel per diem: €150/day
+- Equipment rental: €500/month
+
+Total Monthly Budget: €67,650`,
+          output: {
+            totalValue: {
+              value: 67650,
+              source: 'Total Monthly Budget: €67,650',
+              extractedFromText: true
+            },
+            currency: { value: 'EUR', source: '€ symbol used', extractedFromText: true },
+            paymentTerms: [],
+            paymentSchedule: [],
+            costBreakdown: [
+              { category: 'Senior Consultant', amount: 24000, description: 'Monthly estimate', source: 'Senior Consultant | Onsite | €1,200 | €24,000' },
+              { category: 'Junior Consultant', amount: 13000, description: 'Monthly estimate', source: 'Junior Consultant | Remote | €650 | €13,000' },
+              { category: 'Technical Lead', amount: 30000, description: 'Monthly estimate', source: 'Technical Lead | Hybrid | €1,500 | €30,000' },
+              { category: 'Travel per diem', amount: 150, description: 'Per day rate', source: 'Travel per diem: €150/day' },
+              { category: 'Equipment rental', amount: 500, description: 'Monthly rate', source: 'Equipment rental: €500/month' }
+            ],
+            financialTables: [
+              {
+                tableName: 'Fee Schedule - Consulting Services',
+                source: 'FEE SCHEDULE - CONSULTING SERVICES table',
+                headers: ['Resource Type', 'Location', 'Daily Rate', 'Monthly Estimate'],
+                rows: [
+                  { 'Resource Type': 'Senior Consultant', 'Location': 'Onsite', 'Daily Rate': '€1,200', 'Monthly Estimate': '€24,000' },
+                  { 'Resource Type': 'Junior Consultant', 'Location': 'Remote', 'Daily Rate': '€650', 'Monthly Estimate': '€13,000' },
+                  { 'Resource Type': 'Technical Lead', 'Location': 'Hybrid', 'Daily Rate': '€1,500', 'Monthly Estimate': '€30,000' }
+                ],
+                rawRows: [
+                  ['Senior Consultant', 'Onsite', '€1,200', '€24,000'],
+                  ['Junior Consultant', 'Remote', '€650', '€13,000'],
+                  ['Technical Lead', 'Hybrid', '€1,500', '€30,000']
+                ],
+                grandTotal: { amount: 67650, source: 'Total Monthly Budget: €67,650', extractedFromText: true },
+                extractedFromText: true
+              }
+            ],
+            offers: [],
+            discounts: [],
+            penalties: [],
+            certainty: 0.93
+          },
+          explanation: 'Table with different columns (Location, Daily Rate, Monthly Estimate). Preserved exact column headers and values as they appear in the contract.'
         }
       ],
       
@@ -451,7 +520,17 @@ Quote valid for 30 days. 50% due upon signing, 50% upon completion.`,
         paymentTerms: 'array of { value: string, source: string, extractedFromText: boolean }',
         paymentSchedule: 'array of { description, amount, frequency, dueDate?, source, extractedFromText, requiresHumanReview?, calculationMethod? }',
         costBreakdown: 'array of { category, amount, description, source }',
-        financialTables: 'array of { tableName, source, headers: string[], rows: array of line items, subtotals: array of { label, amount, source, extractedFromText }, grandTotal?: { amount, source, extractedFromText }, extractedFromText }',
+        financialTables: `array of {
+          tableName: string (title of the table as it appears),
+          source: string (reference to table location),
+          headers: string[] (EXACT column headers as they appear in the document),
+          rows: array of objects where keys match the headers exactly (e.g., { "Resource Type": "Senior Dev", "Rate": "$150" }),
+          rawRows: array of string[] (each row as array of cell values in order, for 1:1 fidelity),
+          subtotals?: array of { label, amount, source, extractedFromText },
+          grandTotal?: { amount, source, extractedFromText },
+          notes?: string (any footnotes or annotations on the table),
+          extractedFromText: boolean
+        }`,
         offers: 'array of { offerName, validityPeriod?, validitySource?, totalAmount, lineItems: array of { description, quantity, unit, unitPrice, total }, terms: string[], extractedFromText }',
         discounts: 'array of { type, value, unit, description, source }',
         penalties: 'array of { type, amount, description, trigger, source }',
@@ -478,7 +557,10 @@ Quote valid for 30 days. 50% due upon signing, 50% upon completion.`,
         'Mark any derived values (e.g., annual from monthly) with extractedFromText: false',
         'DO NOT invent line items - only extract what is explicitly in the table',
         'If a table has no explicit total, do NOT calculate one',
-        'Preserve exact table structure - do not merge or split rows'
+        'Preserve EXACT table structure - do not merge, split, or rename columns',
+        'Use the EXACT column headers as they appear in the document (do not normalize to Service/Quantity/Price)',
+        'Include rawRows array with cell values exactly as they appear for 1:1 reproduction',
+        'Tables may have any number of columns - extract all of them as they are'
       ],
 
       requiredFields: ['currency'],
