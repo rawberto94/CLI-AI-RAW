@@ -180,16 +180,17 @@ export function AIChatInterface({
         
         // Determine response based on keywords
         const lowerMessage = messageText.toLowerCase();
+        const defaultResponse = 'I can help you with rate benchmarking and contract analysis.';
         if (lowerMessage.includes('trend') || lowerMessage.includes('market')) {
-          response = simulatedResponses.trends;
+          response = simulatedResponses.trends ?? defaultResponse;
         } else if (lowerMessage.includes('pric') || lowerMessage.includes('optimiz')) {
-          response = simulatedResponses.pricing;
+          response = simulatedResponses.pricing ?? defaultResponse;
         } else if (lowerMessage.includes('benchmark') || lowerMessage.includes('compar')) {
-          response = simulatedResponses.benchmark;
+          response = simulatedResponses.benchmark ?? defaultResponse;
         } else if (lowerMessage.includes('negotiat') || lowerMessage.includes('contract')) {
-          response = simulatedResponses.negotiation;
+          response = simulatedResponses.negotiation ?? defaultResponse;
         } else {
-          response = simulatedResponses.default;
+          response = simulatedResponses.default ?? defaultResponse;
         }
       }
 

@@ -93,9 +93,10 @@ export function ScenarioModeling({
 
   const deleteScenario = (id: string) => {
     if (scenarios.length <= 1) return;
-    setScenarios(scenarios.filter(s => s.id !== id));
-    if (selectedId === id) {
-      setSelectedId(scenarios[0].id);
+    const remainingScenarios = scenarios.filter(s => s.id !== id);
+    setScenarios(remainingScenarios);
+    if (selectedId === id && remainingScenarios.length > 0) {
+      setSelectedId(remainingScenarios[0]!.id);
     }
   };
 
