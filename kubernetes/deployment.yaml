@@ -407,6 +407,11 @@ spec:
               value: "5"
             - name: WORKER_TYPE
               value: "all"
+            - name: HEALTH_PORT
+              value: "9090"
+          ports:
+            - containerPort: 9090
+              name: health
           resources:
             requests:
               memory: "512Mi"
@@ -415,17 +420,29 @@ spec:
               memory: "2Gi"
               cpu: "1000m"
           livenessProbe:
-            exec:
-              command: ["node", "-e", "process.exit(0)"]
+            httpGet:
+              path: /livez
+              port: 9090
             initialDelaySeconds: 30
-            periodSeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
-            exec:
-              command: ["node", "-e", "process.exit(0)"]
+            httpGet:
+              path: /readyz
+              port: 9090
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
 ---
-# HorizontalPodAutoscaler for workers
+# HorizontalPodAutoscaler for workers (CPU + Memory + Custom metrics)
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -437,14 +454,78 @@ spec:
     kind: Deployment
     name: workers
   minReplicas: 2
-  maxReplicas: 8
+  maxReplicas: 12
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
           averageUtilization: 80
+---
+# PodDisruptionBudget for workers
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: workers-pdb
+  namespace: contract-intel
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: contract-intel-workers
+---
+# ServiceMonitor for Prometheus (if using prometheus-operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: workers-monitor
+  namespace: contract-intel
+  labels:
+    app: contract-intel-workers
+spec:
+  selector:
+    matchLabels:
+      app: contract-intel-workers
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: 30s
+---
+# Service for worker metrics scraping
+apiVersion: v1
+kind: Service
+metadata:
+  name: workers-metrics
+  namespace: contract-intel
+  labels:
+    app: contract-intel-workers
+spec:
+  selector:
+    app: contract-intel-workers
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: health
 ---
 # MinIO StatefulSet for S3-compatible storage
 apiVersion: apps/v1

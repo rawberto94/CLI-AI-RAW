@@ -11,6 +11,9 @@ import { registerMetadataExtractionWorker } from './metadata-extraction-worker';
 import { registerCategorizationWorker } from './categorization-worker';
 import { registerRenewalAlertWorker } from './renewal-alert-worker';
 import { registerObligationTrackerWorker } from './obligation-tracker-worker';
+import { getMetricsCollector } from './metrics';
+import { startHealthServer } from './health-server';
+import { getDeadLetterQueueManager } from './dead-letter-queue';
 import pino from 'pino';
 
 const logger = pino({
@@ -45,6 +48,17 @@ async function startWorkers() {
     // Initialize queue service
     getQueueService({ connection: redisConfig });
 
+    // Initialize Dead Letter Queue
+    const dlqManager = getDeadLetterQueueManager(redisConfig);
+    logger.info('📮 Dead Letter Queue initialized');
+
+    // Initialize metrics collector
+    const metricsCollector = getMetricsCollector();
+
+    // Start health check server for Kubernetes probes
+    const healthPort = parseInt(process.env.HEALTH_PORT || '9090');
+    const healthServer = startHealthServer(healthPort);
+
     // Register workers
     logger.info('Registering workers...');
     
@@ -57,7 +71,18 @@ async function startWorkers() {
     const renewalAlertWorker = registerRenewalAlertWorker();
     const obligationTrackerWorker = registerObligationTrackerWorker();
 
+    // Register workers with metrics collector
+    metricsCollector.registerWorker('ocr-artifact', ocrArtifactWorker);
+    metricsCollector.registerWorker('artifact-generator', artifactWorker);
+    metricsCollector.registerWorker('webhook', webhookWorker);
+    metricsCollector.registerWorker('rag-indexing', ragWorker);
+    metricsCollector.registerWorker('metadata-extraction', metadataWorker);
+    metricsCollector.registerWorker('categorization', categorizationWorker);
+    metricsCollector.registerWorker('renewal-alert', renewalAlertWorker);
+    metricsCollector.registerWorker('obligation-tracker', obligationTrackerWorker);
+
     logger.info('✅ All workers registered successfully');
+    logger.info('📊 Metrics collection enabled');
     logger.info({
       workers: [
         'ocr-artifact-processing (contract-processing queue)',
@@ -75,6 +100,10 @@ async function startWorkers() {
     const shutdown = async (signal: string) => {
       logger.info({ signal }, 'Received shutdown signal, closing workers...');
 
+      // Close health server first
+      healthServer.close();
+      logger.info('Health server closed');
+
       await Promise.all([
         ocrArtifactWorker.close(),
         artifactWorker.close(),
@@ -85,6 +114,10 @@ async function startWorkers() {
         renewalAlertWorker.close(),
         obligationTrackerWorker.close(),
       ]);
+
+      // Close DLQ
+      await dlqManager.close();
+      logger.info('Dead Letter Queue closed');
 
       const queueService = getQueueService();
       await queueService.close();
