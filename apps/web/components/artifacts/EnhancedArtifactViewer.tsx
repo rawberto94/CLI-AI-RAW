@@ -24,7 +24,12 @@ import {
   Edit3,
   Save,
   Eye,
-  Wand2
+  Wand2,
+  Clock,
+  Calendar,
+  Scale,
+  History,
+  Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -33,6 +38,11 @@ import {
   FinancialArtifact,
   RiskArtifact,
   ComplianceArtifact,
+  ObligationsArtifact,
+  RenewalArtifact,
+  NegotiationPointsArtifact,
+  AmendmentsArtifact,
+  ContactsArtifact,
   MetricCard,
   ScoreRing
 } from '@/components/artifacts/ArtifactCards'
@@ -47,6 +57,11 @@ interface ArtifactData {
   risk?: any
   compliance?: any
   rates?: any
+  obligations?: any
+  renewal?: any
+  negotiationPoints?: any
+  amendments?: any
+  contacts?: any
   // Legacy property names for backward compatibility
   keyClauses?: any
   financialAnalysis?: any
@@ -113,6 +128,56 @@ const TABS = [
     bgColor: 'bg-violet-50',
     textColor: 'text-violet-700',
     borderColor: 'border-violet-200'
+  },
+  { 
+    id: 'obligations', 
+    label: 'Obligations', 
+    icon: Clock,
+    color: 'purple',
+    gradient: 'from-purple-500 to-fuchsia-500',
+    bgColor: 'bg-purple-50',
+    textColor: 'text-purple-700',
+    borderColor: 'border-purple-200'
+  },
+  { 
+    id: 'renewal', 
+    label: 'Renewal', 
+    icon: Calendar,
+    color: 'teal',
+    gradient: 'from-teal-500 to-cyan-500',
+    bgColor: 'bg-teal-50',
+    textColor: 'text-teal-700',
+    borderColor: 'border-teal-200'
+  },
+  { 
+    id: 'negotiationPoints', 
+    label: 'Negotiation', 
+    icon: Scale,
+    color: 'pink',
+    gradient: 'from-pink-500 to-rose-500',
+    bgColor: 'bg-pink-50',
+    textColor: 'text-pink-700',
+    borderColor: 'border-pink-200'
+  },
+  { 
+    id: 'amendments', 
+    label: 'Amendments', 
+    icon: History,
+    color: 'slate',
+    gradient: 'from-slate-500 to-gray-500',
+    bgColor: 'bg-slate-50',
+    textColor: 'text-slate-700',
+    borderColor: 'border-slate-200'
+  },
+  { 
+    id: 'contacts', 
+    label: 'Contacts', 
+    icon: Users,
+    color: 'sky',
+    gradient: 'from-sky-500 to-blue-500',
+    bgColor: 'bg-sky-50',
+    textColor: 'text-sky-700',
+    borderColor: 'border-sky-200'
   }
 ] as const;
 
@@ -139,7 +204,12 @@ export function EnhancedArtifactViewer({
       financial: artifacts.financial || artifacts.financialAnalysis || null,
       risk: artifacts.risk || artifacts.riskAssessment || null,
       compliance: artifacts.compliance || artifacts.complianceCheck || null,
-      rates: artifacts.rates || null
+      rates: artifacts.rates || null,
+      obligations: artifacts.obligations || null,
+      renewal: artifacts.renewal || null,
+      negotiationPoints: artifacts.negotiationPoints || null,
+      amendments: artifacts.amendments || null,
+      contacts: artifacts.contacts || null
     };
   }, [artifacts]);
 
@@ -361,6 +431,75 @@ export function EnhancedArtifactViewer({
                 details: issue.details || issue.notes
               })),
               regulations: data.regulations || data.applicableRegulations || [],
+              summary: data.summary
+            }}
+          />
+        );
+      
+      case 'obligations':
+        return (
+          <ObligationsArtifact 
+            data={{
+              obligations: data.obligations || [],
+              milestones: data.milestones,
+              slaMetrics: data.slaMetrics,
+              summary: data.summary
+            }}
+          />
+        );
+      
+      case 'renewal':
+        return (
+          <RenewalArtifact 
+            data={{
+              autoRenewal: data.autoRenewal ?? false,
+              currentTermEnd: data.currentTermEnd || data.expirationDate,
+              renewalTerms: data.renewalTerms,
+              terminationNotice: data.terminationNotice,
+              priceEscalation: data.priceEscalation,
+              optOutDeadlines: data.optOutDeadlines,
+              renewalAlerts: data.renewalAlerts,
+              renewalCount: data.renewalCount,
+              summary: data.summary
+            }}
+          />
+        );
+      
+      case 'negotiationPoints':
+        return (
+          <NegotiationPointsArtifact 
+            data={{
+              leveragePoints: data.leveragePoints,
+              weakClauses: data.weakClauses,
+              benchmarkGaps: data.benchmarkGaps,
+              negotiationScript: data.negotiationScript,
+              overallLeverage: data.overallLeverage,
+              summary: data.summary
+            }}
+          />
+        );
+      
+      case 'amendments':
+        return (
+          <AmendmentsArtifact 
+            data={{
+              amendments: data.amendments,
+              supersededClauses: data.supersededClauses,
+              changeLog: data.changeLog,
+              consolidatedTerms: data.consolidatedTerms,
+              summary: data.summary
+            }}
+          />
+        );
+      
+      case 'contacts':
+        return (
+          <ContactsArtifact 
+            data={{
+              primaryContacts: data.primaryContacts,
+              escalationPath: data.escalationPath,
+              notificationAddresses: data.notificationAddresses,
+              keyPersonnel: data.keyPersonnel,
               summary: data.summary
             }}
           />
