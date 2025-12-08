@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Clock,
   Menu,
+  ArrowLeftRight,
 } from "lucide-react";
 import {
   Tooltip,
@@ -83,6 +84,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", isNew: true },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search" },
+      { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side" },
     ],
   },
   {

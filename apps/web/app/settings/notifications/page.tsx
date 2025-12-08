@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { PageBreadcrumb } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,6 +167,11 @@ export default function NotificationSettingsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Breadcrumb */}
+      <div className="max-w-4xl mx-auto px-4 pt-4">
+        <PageBreadcrumb />
+      </div>
+      
       {/* Header */}
       <header className="sticky top-0 z-40 border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
         <div className="max-w-4xl mx-auto px-4 py-4">

@@ -16,6 +16,7 @@ import { WebSocketProvider } from "@/contexts/websocket-context";
 import { RealTimeSyncProvider } from "@/components/providers/RealTimeSyncProvider";
 import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { UndoToastProvider } from "@/components/ui/undo-toast";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -51,21 +52,23 @@ export default function RootLayout({
                 <RealTimeSyncProvider>
                   <DataModeProvider>
                     <ToastProvider>
-                      <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
-                        <ModuleProvider>
-                          <FeedbackProvider>
-                            <GlobalKeyboardShortcuts>
-                            <Suspense fallback={null}>
-                              <TenantContextBanner />
-                            </Suspense>
-                            <HealthBanner />
-                            <ConditionalLayout>
-                              {children}
-                            </ConditionalLayout>
-                            </GlobalKeyboardShortcuts>
-                          </FeedbackProvider>
-                        </ModuleProvider>
-                      </RealTimeProvider>
+                      <UndoToastProvider>
+                        <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                          <ModuleProvider>
+                            <FeedbackProvider>
+                              <GlobalKeyboardShortcuts>
+                              <Suspense fallback={null}>
+                                <TenantContextBanner />
+                              </Suspense>
+                              <HealthBanner />
+                              <ConditionalLayout>
+                                {children}
+                              </ConditionalLayout>
+                              </GlobalKeyboardShortcuts>
+                            </FeedbackProvider>
+                          </ModuleProvider>
+                        </RealTimeProvider>
+                      </UndoToastProvider>
                     </ToastProvider>
                   </DataModeProvider>
                 </RealTimeSyncProvider>
