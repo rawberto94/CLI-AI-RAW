@@ -80,17 +80,21 @@ const publicApiPaths = [
   "/api/web-health",
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
-  "/api/ai", // Allow AI chat endpoints
   "/api/events", // Allow SSE endpoint for real-time updates
-  "/api/contracts", // Allow contract endpoints (includes artifact streams)
-  "/api/dashboard/stats", // Allow dashboard stats for testing
-  "/api/dashboard/renewals", // Allow dashboard renewals for testing
-  "/api/renewals", // Allow renewals for testing
-  "/api/approvals", // Allow approvals for testing
-  "/api/governance", // Allow governance for testing
-  "/api/intelligence", // Allow intelligence for testing
-  "/api/workflows", // Allow workflows for testing
-  "/api/sharing", // Allow sharing for testing
+];
+
+// API routes that are open in development only
+const devOnlyApiPaths = [
+  "/api/ai",
+  "/api/contracts",
+  "/api/dashboard/stats",
+  "/api/dashboard/renewals",
+  "/api/renewals",
+  "/api/approvals",
+  "/api/governance",
+  "/api/intelligence",
+  "/api/workflows",
+  "/api/sharing",
 ];
 
 // Routes that require admin or owner role
@@ -148,6 +152,12 @@ export default auth((req) => {
 
   // Allow public API paths
   if (publicApiPaths.some((path) => pathname.startsWith(path))) {
+    return NextResponse.next();
+  }
+
+  // Allow dev-only API paths in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  if (isDevelopment && devOnlyApiPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 

@@ -312,13 +312,15 @@ function SignInForm() {
           </Link>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
-          <p>Demo Accounts:</p>
-          <p className="font-mono mt-1">
-            admin@acme.com | roberto@acme.com
-          </p>
-          <p className="mt-1">Password: password123</p>
-        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
+            <p>Demo Accounts (dev only):</p>
+            <p className="font-mono mt-1">
+              admin@acme.com | roberto@acme.com
+            </p>
+            <p className="mt-1">Password: password123</p>
+          </div>
+        )}
         </Card>
       </div>
     </div>
