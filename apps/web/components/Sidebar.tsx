@@ -58,7 +58,8 @@ interface NavItem {
   isNew?: boolean;
 }
 
-// Enhanced navigation with more features visible
+// Navigation groups - ONLY showing currently active features
+// See UNUSED_FILES.md for future upgrades (Renewals, Approvals, etc.)
 const navigationGroups: NavGroup[] = [
   {
     id: 'core',
@@ -81,19 +82,6 @@ const navigationGroups: NavGroup[] = [
     items: [
       { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", isNew: true },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search" },
-      { href: "/intelligence", label: "Insights Hub", icon: Zap, description: "AI-generated intelligence" },
-    ],
-  },
-  {
-    id: 'management',
-    label: 'Management',
-    icon: Calendar,
-    defaultOpen: false,
-    gradient: 'from-emerald-500 to-teal-500',
-    items: [
-      { href: "/renewals", label: "Renewals", icon: Clock, description: "Track contract renewals" },
-      { href: "/approvals", label: "Approvals", icon: Shield, description: "Pending approvals queue" },
-      { href: "/compliance", label: "Compliance", icon: Shield, description: "Compliance monitoring" },
     ],
   },
   {
@@ -104,9 +92,22 @@ const navigationGroups: NavGroup[] = [
     gradient: 'from-amber-500 to-orange-500',
     items: [
       { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports" },
-      { href: "/reports/ai-builder", label: "AI Report Builder", icon: Sparkles, description: "Create custom AI reports", isNew: true },
     ],
   },
+  // FUTURE UPGRADES - Uncomment when ready:
+  // {
+  //   id: 'management',
+  //   label: 'Management',
+  //   icon: Calendar,
+  //   defaultOpen: false,
+  //   gradient: 'from-emerald-500 to-teal-500',
+  //   items: [
+  //     { href: "/renewals", label: "Renewals", icon: Clock, description: "Track contract renewals" },
+  //     { href: "/approvals", label: "Approvals", icon: Shield, description: "Pending approvals queue" },
+  //     { href: "/compliance", label: "Compliance", icon: Shield, description: "Compliance monitoring" },
+  //     { href: "/governance", label: "Governance", icon: Shield, description: "Policies & compliance" },
+  //   ],
+  // },
 ];
 
 // Collapsible nav group component - memoized for performance

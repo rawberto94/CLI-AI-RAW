@@ -1,7 +1,8 @@
 /**
  * Contracts Dashboard - Quick Actions Grid
  * Fast access to common contract management actions
- * Updated with new innovation modules
+ * Only shows currently ACTIVE features
+ * See UNUSED_FILES.md for future upgrades
  */
 
 "use client";
@@ -13,19 +14,15 @@ import { motion } from "framer-motion";
 import { 
   Upload, 
   Search, 
-  FileText, 
   BarChart3, 
-  Calendar,
   Zap,
-  Sparkles,
-  CheckCircle2,
-  Shield,
+  MessageSquare,
   Keyboard,
 } from "lucide-react";
 import Link from "next/link";
 
 interface QuickAction {
-  icon: any;
+  icon: React.ElementType;
   label: string;
   description: string;
   href: string;
@@ -36,6 +33,7 @@ interface QuickAction {
   isNew?: boolean;
 }
 
+// Only ACTIVE features - see UNUSED_FILES.md for future upgrades
 const actions: QuickAction[] = [
   {
     icon: Upload,
@@ -47,55 +45,74 @@ const actions: QuickAction[] = [
     shadowColor: "shadow-blue-500/20"
   },
   {
-    icon: Zap,
-    label: "Intelligence",
-    description: "AI-powered insights",
-    href: "/intelligence",
+    icon: MessageSquare,
+    label: "AI Assistant",
+    description: "Ask anything",
+    href: "/ai/chat",
     color: "purple",
     gradient: "from-purple-500 to-pink-500",
     shadowColor: "shadow-purple-500/20",
     isNew: true
   },
   {
-    icon: Sparkles,
-    label: "Generate",
-    description: "Create contracts",
-    href: "/generate",
-    color: "indigo",
-    gradient: "from-indigo-500 to-violet-500",
-    shadowColor: "shadow-indigo-500/20",
-    isNew: true
+    icon: Search,
+    label: "Smart Search",
+    description: "Find contracts",
+    href: "/search",
+    color: "emerald",
+    gradient: "from-emerald-500 to-teal-500",
+    shadowColor: "shadow-emerald-500/20"
   },
   {
-    icon: CheckCircle2,
-    label: "Approvals",
-    description: "Pending items",
-    href: "/approvals",
+    icon: BarChart3,
+    label: "Analytics",
+    description: "View reports",
+    href: "/analytics",
     color: "amber",
     gradient: "from-amber-500 to-orange-500",
-    shadowColor: "shadow-amber-500/20",
-    badge: 4
+    shadowColor: "shadow-amber-500/20"
   },
-  {
-    icon: Calendar,
-    label: "Renewals",
-    description: "Upcoming renewals",
-    href: "/renewals",
-    color: "green",
-    gradient: "from-emerald-500 to-green-500",
-    shadowColor: "shadow-emerald-500/20",
-    badge: 2
-  },
-  {
-    icon: Shield,
-    label: "Governance",
-    description: "Policies & compliance",
-    href: "/governance",
-    color: "slate",
-    gradient: "from-slate-600 to-slate-700",
-    shadowColor: "shadow-slate-500/20",
-    isNew: true
-  }
+  // FUTURE UPGRADES - Uncomment when ready:
+  // {
+  //   icon: Zap,
+  //   label: "Intelligence",
+  //   description: "AI-powered insights",
+  //   href: "/intelligence",
+  //   color: "purple",
+  //   gradient: "from-purple-500 to-pink-500",
+  //   shadowColor: "shadow-purple-500/20",
+  //   isNew: true
+  // },
+  // {
+  //   icon: CheckCircle2,
+  //   label: "Approvals",
+  //   description: "Pending items",
+  //   href: "/approvals",
+  //   color: "amber",
+  //   gradient: "from-amber-500 to-orange-500",
+  //   shadowColor: "shadow-amber-500/20",
+  //   badge: 4
+  // },
+  // {
+  //   icon: Calendar,
+  //   label: "Renewals",
+  //   description: "Upcoming renewals",
+  //   href: "/renewals",
+  //   color: "green",
+  //   gradient: "from-emerald-500 to-green-500",
+  //   shadowColor: "shadow-emerald-500/20",
+  //   badge: 2
+  // },
+  // {
+  //   icon: Shield,
+  //   label: "Governance",
+  //   description: "Policies & compliance",
+  //   href: "/governance",
+  //   color: "slate",
+  //   gradient: "from-slate-600 to-slate-700",
+  //   shadowColor: "shadow-slate-500/20",
+  //   isNew: true
+  // }
 ];
 
 const containerVariants = {
