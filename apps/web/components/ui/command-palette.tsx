@@ -170,7 +170,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       description: 'Manage your account',
       icon: User,
       category: 'settings',
-      action: () => router.push('/settings'),
+      action: () => router.push('/settings/profile'),
       keywords: ['profile', 'account', 'user'],
     },
     
