@@ -29,6 +29,8 @@ import {
   CheckCircle,
   Tag,
   FolderTree,
+  HelpCircle,
+  Play,
 } from "lucide-react";
 
 // Mock settings data (kept local to the client component)
@@ -378,6 +380,47 @@ export default function SettingsClient() {
                         <option value="JPY">JPY (¥)</option>
                       </select>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Help & Support Card with Restart Tour */}
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow-lg shadow-purple-500/25">
+                      <HelpCircle className="w-5 h-5 text-white" />
+                    </div>
+                    Help & Support
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                    <div>
+                      <h4 className="font-medium text-purple-900">Guided Tour</h4>
+                      <p className="text-sm text-purple-700">
+                        Take a quick tour of the main features
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        localStorage.removeItem('onboarding-completed');
+                        window.location.href = '/';
+                      }}
+                      className="bg-white border-purple-300 text-purple-700 hover:bg-purple-100"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Restart Tour
+                    </Button>
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    <p>Need more help? Check out:</p>
+                    <ul className="mt-2 space-y-1 list-disc list-inside text-slate-500">
+                      <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">?</kbd> anytime to see keyboard shortcuts</li>
+                      <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">⌘K</kbd> or <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">Ctrl+K</kbd> for quick search</li>
+                    </ul>
                   </div>
                 </CardContent>
               </Card>

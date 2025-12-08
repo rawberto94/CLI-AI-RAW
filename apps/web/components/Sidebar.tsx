@@ -58,6 +58,7 @@ interface NavItem {
   badgeVariant?: 'default' | 'secondary' | 'destructive' | 'outline';
   description?: string;
   isNew?: boolean;
+  tourId?: string; // For onboarding tour targeting
 }
 
 // Navigation groups - ONLY showing currently active features
@@ -70,9 +71,9 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: true,
     gradient: 'from-blue-500 to-indigo-500',
     items: [
-      { href: "/", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics" },
-      { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts" },
-      { href: "/upload", label: "Upload", icon: Upload, description: "Add new contracts" },
+      { href: "/", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics", tourId: "dashboard" },
+      { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts", tourId: "contracts" },
+      { href: "/upload", label: "Upload", icon: Upload, description: "Add new contracts", tourId: "upload" },
     ],
   },
   {
@@ -82,9 +83,9 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: true,
     gradient: 'from-purple-500 to-pink-500',
     items: [
-      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", isNew: true },
-      { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search" },
-      { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side" },
+      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", isNew: true, tourId: "ai-assistant" },
+      { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
+      { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side", tourId: "compare" },
     ],
   },
   {
@@ -94,7 +95,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: false,
     gradient: 'from-amber-500 to-orange-500',
     items: [
-      { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports" },
+      { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports", tourId: "analytics" },
     ],
   },
   // FUTURE UPGRADES - Uncomment when ready:
@@ -203,6 +204,7 @@ const NavItemComponent = memo(function NavItemComponent({
         <TooltipTrigger asChild>
           <Link
             href={item.href}
+            data-tour={item.tourId}
             className={cn(
               "group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200",
               active 

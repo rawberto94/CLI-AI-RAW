@@ -20,7 +20,14 @@ import {
   Search,
   Zap,
   Check,
-  Rocket
+  Rocket,
+  MessageSquare,
+  ArrowLeftRight,
+  Lightbulb,
+  Target,
+  Keyboard,
+  Star,
+  PartyPopper
 } from 'lucide-react';
 
 interface TourStep {
@@ -41,53 +48,76 @@ const defaultTourSteps: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Contract AI! 🎉',
-    description: 'Let\'s take a quick tour of the key features that will help you manage your contracts more efficiently.',
+    description: "We're excited to have you! This quick 2-minute tour will show you everything you need to get started managing contracts like a pro.",
     icon: Sparkles,
     position: 'center'
   },
   {
     id: 'dashboard',
-    target: '[data-testid="nav-dashboard-link"]',
-    title: 'Your Dashboard',
-    description: 'Get a complete overview of your contract portfolio, including key metrics, upcoming renewals, and AI-powered insights.',
-    icon: BarChart3,
-    position: 'right'
+    target: '[data-tour="dashboard"]',
+    title: 'Your Command Center',
+    description: 'Your dashboard gives you a bird\'s eye view of your entire contract portfolio. See active contracts, upcoming renewals, total value, and AI-powered risk alerts at a glance.',
+    icon: Target,
+    position: 'right',
+    spotlightPadding: 12
   },
   {
     id: 'contracts',
-    target: '[data-testid="nav-contracts-link"]',
-    title: 'Contract Management',
-    description: 'View, search, and manage all your contracts in one place. Filter by status, date, or value to find what you need.',
+    target: '[data-tour="contracts"]',
+    title: 'Contract Library',
+    description: 'All your contracts in one secure place. Filter by status, party, date, or value. Click any contract to dive deep into its details, amendments, and AI analysis.',
     icon: FileText,
-    position: 'right'
+    position: 'right',
+    spotlightPadding: 12
   },
   {
     id: 'upload',
-    target: '[data-testid="nav-upload-link"]',
-    title: 'Upload & Analyze',
-    description: 'Upload contracts in PDF, DOCX, or other formats. Our AI will automatically extract key information and provide insights.',
+    target: '[data-tour="upload"]',
+    title: 'Smart Upload',
+    description: 'Drag and drop PDFs, Word docs, or scanned images. Our AI automatically extracts parties, dates, values, key terms, and even flags potential risks.',
     icon: Upload,
-    position: 'right'
+    position: 'right',
+    spotlightPadding: 12
+  },
+  {
+    id: 'ai-assistant',
+    target: '[data-tour="ai-assistant"]',
+    title: 'AI Assistant ✨',
+    description: 'Ask questions in plain English! "What contracts expire this quarter?" "Find all NDAs with tech companies." "Summarize the payment terms." Your AI assistant knows your contracts inside and out.',
+    icon: MessageSquare,
+    position: 'right',
+    spotlightPadding: 12
   },
   {
     id: 'search',
-    title: 'Quick Search',
-    description: 'Use Cmd+K (or Ctrl+K) anytime to quickly search and navigate. It\'s the fastest way to find contracts and run commands.',
+    target: '[data-tour="smart-search"]',
+    title: 'Smart Search',
+    description: 'Semantic search that understands context. Search for "liability caps over $1M" or "auto-renewal clauses" - it finds what you mean, not just keyword matches.',
     icon: Search,
-    position: 'center'
+    position: 'right',
+    spotlightPadding: 12
   },
   {
-    id: 'ai-features',
-    title: 'AI-Powered Features',
-    description: 'Our AI analyzes contracts for risks, extracts key terms, and provides actionable recommendations to save you time.',
-    icon: Zap,
+    id: 'compare',
+    target: '[data-tour="compare"]',
+    title: 'Contract Comparison',
+    description: 'Compare two contracts side-by-side. Perfect for spotting differences between versions, comparing vendor terms, or reviewing amendments against originals.',
+    icon: ArrowLeftRight,
+    position: 'right',
+    spotlightPadding: 12
+  },
+  {
+    id: 'keyboard-shortcuts',
+    title: 'Pro Tip: Keyboard Shortcuts ⌨️',
+    description: 'Power users love these! Press ⌘K (or Ctrl+K) for quick search. Press ? to see all shortcuts. Press Esc to close dialogs. Speed up your workflow!',
+    icon: Keyboard,
     position: 'center'
   },
   {
     id: 'complete',
-    title: 'You\'re All Set! 🚀',
-    description: 'You\'re ready to start using Contract AI. If you need help, click the Help button or use Cmd+K to search for commands.',
-    icon: Rocket,
+    title: 'You\'re Ready! 🚀',
+    description: 'That\'s everything you need to get started! Explore at your own pace. Need help later? Click the ? icon or restart this tour anytime from Settings.',
+    icon: PartyPopper,
     position: 'center'
   }
 ];
@@ -99,6 +129,57 @@ interface OnboardingTourProps {
   onSkip: () => void;
 }
 
+// Confetti particle component
+const ConfettiParticle = ({ delay, x }: { delay: number; x: number }) => {
+  const colors = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#6366F1'];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const size = 6 + Math.random() * 6;
+  const rotation = Math.random() * 360;
+  
+  return (
+    <motion.div
+      className="absolute pointer-events-none"
+      style={{
+        width: size,
+        height: size,
+        background: color,
+        borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+        left: `${x}%`,
+        top: '-20px'
+      }}
+      initial={{ y: 0, x: 0, rotate: 0, opacity: 1 }}
+      animate={{
+        y: [0, window.innerHeight + 100],
+        x: [0, (Math.random() - 0.5) * 200],
+        rotate: [rotation, rotation + 720],
+        opacity: [1, 1, 0]
+      }}
+      transition={{
+        duration: 3 + Math.random() * 2,
+        delay: delay,
+        ease: 'easeOut'
+      }}
+    />
+  );
+};
+
+// Confetti burst component
+const ConfettiBurst = () => {
+  const particles = Array.from({ length: 50 }, (_, i) => ({
+    id: i,
+    delay: Math.random() * 0.3,
+    x: 20 + Math.random() * 60
+  }));
+  
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-[110]">
+      {particles.map((p) => (
+        <ConfettiParticle key={p.id} delay={p.delay} x={p.x} />
+      ))}
+    </div>
+  );
+};
+
 export function OnboardingTour({
   steps = defaultTourSteps,
   isOpen,
@@ -107,12 +188,22 @@ export function OnboardingTour({
 }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [spotlightPosition, setSpotlightPosition] = useState<DOMRect | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const step = steps[currentStep];
   const isFirstStep = currentStep === 0;
   const isLastStep = currentStep === steps.length - 1;
   const progress = ((currentStep + 1) / steps.length) * 100;
+
+  // Show confetti on last step
+  useEffect(() => {
+    if (isLastStep && isOpen) {
+      setShowConfetti(true);
+      const timer = setTimeout(() => setShowConfetti(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLastStep, isOpen]);
 
   // Update spotlight position
   const updateSpotlight = useCallback(() => {
@@ -229,6 +320,9 @@ export function OnboardingTour({
 
   return (
     <AnimatePresence>
+      {/* Confetti effect on completion */}
+      {showConfetti && <ConfettiBurst />}
+      
       <div className="fixed inset-0 z-[100]">
         {/* Overlay with spotlight cutout */}
         <svg
@@ -262,11 +356,26 @@ export function OnboardingTour({
           />
         </svg>
 
-        {/* Spotlight border */}
+        {/* Spotlight border with pulsing animation */}
         {spotlightPosition && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={{ 
+              opacity: 1, 
+              scale: 1,
+              boxShadow: [
+                '0 0 0 4px rgba(59, 130, 246, 0.2)',
+                '0 0 0 8px rgba(59, 130, 246, 0.1)',
+                '0 0 0 4px rgba(59, 130, 246, 0.2)'
+              ]
+            }}
+            transition={{
+              boxShadow: {
+                duration: 2,
+                repeat: Infinity,
+                ease: 'easeInOut'
+              }
+            }}
             className="absolute pointer-events-none"
             style={{
               left: spotlightPosition.x,
@@ -274,8 +383,8 @@ export function OnboardingTour({
               width: spotlightPosition.width,
               height: spotlightPosition.height,
               border: '2px solid rgba(59, 130, 246, 0.8)',
-              borderRadius: '8px',
-              boxShadow: '0 0 0 4px rgba(59, 130, 246, 0.2)'
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(99, 102, 241, 0.05))'
             }}
           />
         )}
