@@ -26,6 +26,7 @@ import {
   Users,
   TrendingUp,
   Clock,
+  Menu,
 } from "lucide-react";
 import {
   Tooltip,
@@ -249,9 +250,122 @@ const NavItemComponent = memo(function NavItemComponent({
   );
 });
 
+// Mobile hamburger button (exported for use in layout)
+export function MobileMenuButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="md:hidden"
+      onClick={onClick}
+      aria-label="Open navigation menu"
+    >
+      <Menu className="h-5 w-5" />
+    </Button>
+  );
+}
+
+// Mobile sidebar overlay
+function MobileSidebar({ 
+  isOpen, 
+  onClose, 
+  pathname,
+  showTutorial,
+  dismissTutorial,
+  resetTutorial 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  pathname: string;
+  showTutorial: boolean;
+  dismissTutorial: () => void;
+  resetTutorial: () => void;
+}) {
+  // Close on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
+  // Close on route change
+  useEffect(() => {
+    onClose();
+  }, [pathname, onClose]);
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden"
+            onClick={onClose}
+            aria-hidden="true"
+          />
+          
+          {/* Sidebar drawer */}
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed left-0 top-0 bottom-0 w-[280px] bg-gradient-to-b from-white via-slate-50/30 to-slate-100/50 shadow-2xl z-50 md:hidden overflow-y-auto"
+          >
+            {/* Close button */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200/60">
+              <ConTigoLogoSVG size="md" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                aria-label="Close navigation menu"
+                className="h-10 w-10"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Navigation */}
+            <nav className="p-4 space-y-2">
+              {navigationGroups.map((group) => (
+                <NavGroupSection key={group.id} group={group} pathname={pathname} />
+              ))}
+            </nav>
+            
+            {/* Footer */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200/60 bg-white/80">
+              <button
+                onClick={resetTutorial}
+                className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="font-medium">Show Welcome Guide</span>
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const [showTutorial, setShowTutorial] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Check if user is new (first visit)
   useEffect(() => {
@@ -447,6 +561,27 @@ export function Sidebar() {
           </div>
         </div>
       </div>
+      
+      {/* Mobile Sidebar */}
+      <MobileSidebar
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        pathname={pathname}
+        showTutorial={showTutorial}
+        dismissTutorial={dismissTutorial}
+        resetTutorial={resetTutorial}
+      />
     </aside>
   );
+}
+
+// Export context for mobile menu control from layout
+export function useMobileMenu() {
+  const [isOpen, setIsOpen] = useState(false);
+  return {
+    isOpen,
+    open: () => setIsOpen(true),
+    close: () => setIsOpen(false),
+    toggle: () => setIsOpen(prev => !prev),
+  };
 }
