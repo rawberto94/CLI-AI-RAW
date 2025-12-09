@@ -8,7 +8,9 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { queryKeys } from '@/hooks/use-queries';
 
 // ============================================================================
 // Types
@@ -101,6 +103,8 @@ export function useBulkOperations(
     showToasts = true,
   } = options;
 
+  const queryClient = useQueryClient();
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentOperation, setCurrentOperation] = useState<BulkOperationType | null>(null);
   const [progress, setProgress] = useState(0);
@@ -158,6 +162,12 @@ export function useBulkOperations(
 
       onComplete?.(result);
       setProgress(100);
+      
+      // Invalidate related caches for real-time sync
+      queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      
       return result;
     } catch (error: any) {
       if (error.name === 'AbortError') {

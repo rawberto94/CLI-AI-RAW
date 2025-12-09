@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useRouter } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
+import { usePropagation } from '@/hooks/use-propagation'
 import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -136,6 +137,7 @@ function formatFileSize(bytes: number): string {
 export default function UploadPage() {
   const router = useRouter()
   const { dataMode } = useDataMode()
+  const { propagateContract } = usePropagation()
   const [files, setFiles] = useState<UploadFile[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [ocrMode, setOcrMode] = useState<OcrMode>('gpt4')
@@ -236,6 +238,8 @@ export default function UploadPage() {
                 ? { ...f, status: 'completed', progress: 100, processingStage: 'complete' }
                 : f
             ))
+            // Propagate changes to dashboard and contracts list
+            propagateContract(data.contractId)
           } else if (statusData.status === 'ERROR' || statusData.status === 'FAILED') {
             clearInterval(pollInterval)
             setFiles(prev => prev.map(f =>

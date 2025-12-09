@@ -797,6 +797,7 @@ export function useCrossModuleInvalidation() {
      */
     onContractChange: (contractId?: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
       if (contractId) {
@@ -812,6 +813,7 @@ export function useCrossModuleInvalidation() {
      */
     onRateCardChange: (contractId?: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.rateCards.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       if (contractId) {
         queryClient.invalidateQueries({ queryKey: ['contract-rate-cards', contractId] });
@@ -825,6 +827,7 @@ export function useCrossModuleInvalidation() {
     onRenewalChange: (contractId?: string) => {
       queryClient.invalidateQueries({ queryKey: ['renewal-intelligence'] });
       queryClient.invalidateQueries({ queryKey: ['renewals'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       if (contractId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.contracts.detail(contractId) });
@@ -846,6 +849,7 @@ export function useCrossModuleInvalidation() {
      */
     onTemplateChange: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.templates.all });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
     
@@ -857,6 +861,7 @@ export function useCrossModuleInvalidation() {
       queryClient.invalidateQueries({ queryKey: queryKeys.taxonomy.all });
       queryClient.invalidateQueries({ queryKey: ['categories'] }); // Legacy key
       queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all }); // Contracts may show category
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     },
     

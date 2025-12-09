@@ -331,6 +331,7 @@ export function NotificationCenter({ maxHeight = '400px', onClose, className }: 
 export function NotificationBell({ className }: { className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const wsContext = useWebSocket();
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -344,10 +345,31 @@ export function NotificationBell({ className }: { className?: string }) {
     };
 
     fetchUnread();
-    // Poll every 30 seconds
+    // Poll every 30 seconds as fallback when WebSocket is not available
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Real-time notification updates via WebSocket
+  useEffect(() => {
+    if (!wsContext?.onEvent) return;
+    
+    const unsubscribe = wsContext.onEvent((event: unknown) => {
+      const typedEvent = event as { type?: string };
+      if (typedEvent.type === 'notification') {
+        // Increment unread count when new notification arrives
+        setUnreadCount(prev => prev + 1);
+      } else if (typedEvent.type === 'notification_read') {
+        // Decrement when a notification is marked as read
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } else if (typedEvent.type === 'notifications_cleared') {
+        // Reset count when all are cleared
+        setUnreadCount(0);
+      }
+    });
+
+    return () => unsubscribe?.();
+  }, [wsContext]);
 
   return (
     <div className={cn('relative', className)}>

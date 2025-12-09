@@ -882,6 +882,10 @@ export default function ContractDetailPage() {
       
       toast.success('Category updated successfully')
       setShowCategorySelector(false)
+      
+      // Invalidate related caches
+      crossModule.onTaxonomyChange()
+      
       await loadContract()
     } catch (err) {
       console.error('Failed to update category:', err)
@@ -913,6 +917,7 @@ export default function ContractDetailPage() {
       const data = await response.json()
       if (data.data?.results?.[0]?.success) {
         toast.success('Contract categorized by AI')
+        crossModule.onTaxonomyChange()
         await loadContract()
       } else {
         toast.warning('AI could not determine a category')

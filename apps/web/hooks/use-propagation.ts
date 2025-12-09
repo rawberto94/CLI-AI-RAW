@@ -24,6 +24,7 @@ export function usePropagation() {
 
   const propagateContract = useCallback((contractId?: string) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Main dashboard page
     queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
@@ -40,6 +41,7 @@ export function usePropagation() {
     queryClient.invalidateQueries({ queryKey: ['approvals'] });
     queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
     queryClient.invalidateQueries({ queryKey: ['approval-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Main dashboard page
     queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     
@@ -119,6 +121,7 @@ export function usePropagation() {
   }, [queryClient]);
 
   const propagateDashboard = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // Main dashboard page
     queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
     queryClient.invalidateQueries({ queryKey: ['dashboard-widgets'] });
