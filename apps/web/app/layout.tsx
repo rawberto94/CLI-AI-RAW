@@ -17,6 +17,7 @@ import { RealTimeSyncProvider } from "@/components/providers/RealTimeSyncProvide
 import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { UndoToastProvider } from "@/components/ui/undo-toast";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -37,7 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
-      <body className="min-h-screen bg-slate-50 font-sans antialiased">
+      <body className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans antialiased">
         {/* Skip to main content link for accessibility */}
         <a 
           href="#main-content" 
@@ -46,35 +47,37 @@ export default function RootLayout({
           Skip to main content
         </a>
         <GlobalErrorBoundary>
-          <AuthProvider>
-            <QueryProvider>
-              <WebSocketProvider>
-                <RealTimeSyncProvider>
-                  <DataModeProvider>
-                    <ToastProvider>
-                      <UndoToastProvider>
-                        <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
-                          <ModuleProvider>
-                            <FeedbackProvider>
-                              <GlobalKeyboardShortcuts>
-                              <Suspense fallback={null}>
-                                <TenantContextBanner />
-                              </Suspense>
-                              <HealthBanner />
-                              <ConditionalLayout>
-                                {children}
-                              </ConditionalLayout>
-                              </GlobalKeyboardShortcuts>
-                            </FeedbackProvider>
-                          </ModuleProvider>
-                        </RealTimeProvider>
-                      </UndoToastProvider>
-                    </ToastProvider>
-                  </DataModeProvider>
-                </RealTimeSyncProvider>
-              </WebSocketProvider>
-            </QueryProvider>
-          </AuthProvider>
+          <ThemeProvider defaultTheme="system" storageKey="contigo-theme">
+            <AuthProvider>
+              <QueryProvider>
+                <WebSocketProvider>
+                  <RealTimeSyncProvider>
+                    <DataModeProvider>
+                      <ToastProvider>
+                        <UndoToastProvider>
+                          <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                            <ModuleProvider>
+                              <FeedbackProvider>
+                                <GlobalKeyboardShortcuts>
+                                <Suspense fallback={null}>
+                                  <TenantContextBanner />
+                                </Suspense>
+                                <HealthBanner />
+                                <ConditionalLayout>
+                                  {children}
+                                </ConditionalLayout>
+                                </GlobalKeyboardShortcuts>
+                              </FeedbackProvider>
+                            </ModuleProvider>
+                          </RealTimeProvider>
+                        </UndoToastProvider>
+                      </ToastProvider>
+                    </DataModeProvider>
+                  </RealTimeSyncProvider>
+                </WebSocketProvider>
+              </QueryProvider>
+            </AuthProvider>
+          </ThemeProvider>
         </GlobalErrorBoundary>
       </body>
     </html>

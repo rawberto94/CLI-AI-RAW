@@ -596,7 +596,7 @@ export default function ContractGenerationPage() {
   }, []);
 
   const handleTemplateSelect = useCallback((template: Template) => {
-    console.log('Selected template:', template);
+    // Template selected for generation
     setShowTemplateDialog(false);
     // Navigate to draft editor with template
   }, []);

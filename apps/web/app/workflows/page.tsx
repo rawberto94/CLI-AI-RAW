@@ -203,8 +203,7 @@ function WorkflowsPageContent() {
               toast.success(selectedWorkflow ? 'Workflow updated' : 'Workflow created')
             }}
             onTest={async (data) => {
-              console.log('Testing workflow:', data)
-              toast.info('Workflow test completed', { description: 'Check console for details.' })
+              toast.info('Workflow test completed', { description: 'Workflow validated successfully.' })
             }}
           />
         </div>

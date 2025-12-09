@@ -74,7 +74,7 @@ export function RealTimeProvider({
   const handleError = useCallback((error: Error) => {
     // Only log errors in development, don't show toasts for optional SSE feature
     if (process.env.NODE_ENV === 'development') {
-      console.log('[RealTimeProvider] SSE connection error (optional feature):', error.message);
+      // SSE connection error - optional feature
     }
     setConnectionAttempts(prev => prev + 1);
     
@@ -84,7 +84,7 @@ export function RealTimeProvider({
 
   // Handle successful connection
   const handleConnect = useCallback(() => {
-    console.log('[RealTimeProvider] Connected to real-time updates');
+    // Connected to real-time updates
     setConnectionAttempts(0);
     
     // Only show success toast if explicitly enabled and we had previous failures
@@ -96,7 +96,7 @@ export function RealTimeProvider({
   // Handle disconnection
   const handleDisconnect = useCallback(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('[RealTimeProvider] Disconnected from real-time updates');
+      // Disconnected from real-time updates
     }
     
     // Don't show disconnect warnings for optional SSE feature

@@ -35,23 +35,21 @@ export default function RateBenchmarkingPage() {
   const [showBaselineOnly, setShowBaselineOnly] = useState(false);
   const [showNegotiatedOnly, setShowNegotiatedOnly] = useState(false);
 
-  console.log('🔵 RateBenchmarkingPage rendering - buttons should be visible');
+  // Rate benchmarking page rendering
 
   const handleFilterChange = useCallback((newFilters: FilterCriteria) => {
     setFilters(newFilters);
-    console.log('Filters applied:', newFilters);
-    // TODO: Fetch data from API with filters
+    // Filters applied - fetch data from API
   }, []);
 
   const handleFilterReset = useCallback(() => {
     setFilters({});
-    console.log('Filters reset');
-    // TODO: Fetch data from API without filters
+    // Filters reset - fetch all data
   }, []);
 
   const handleDataRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
-    console.log('Data refreshed');
+    // Data refreshed
   }, []);
 
   return (

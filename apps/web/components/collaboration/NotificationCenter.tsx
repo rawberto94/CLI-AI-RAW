@@ -332,6 +332,7 @@ export function NotificationBell({ className }: { className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const wsContext = useWebSocket();
+  const onEvent = wsContext?.onEvent;
 
   useEffect(() => {
     const fetchUnread = async () => {
@@ -352,9 +353,9 @@ export function NotificationBell({ className }: { className?: string }) {
 
   // Real-time notification updates via WebSocket
   useEffect(() => {
-    if (!wsContext?.onEvent) return;
+    if (!onEvent) return;
     
-    const unsubscribe = wsContext.onEvent((event: unknown) => {
+    const unsubscribe = onEvent((event: unknown) => {
       const typedEvent = event as { type?: string };
       if (typedEvent.type === 'notification') {
         // Increment unread count when new notification arrives
@@ -369,7 +370,7 @@ export function NotificationBell({ className }: { className?: string }) {
     });
 
     return () => unsubscribe?.();
-  }, [wsContext]);
+  }, [onEvent]);
 
   return (
     <div className={cn('relative', className)}>

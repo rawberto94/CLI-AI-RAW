@@ -16,6 +16,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 import { CompactConnectionStatus } from '@/components/realtime/ConnectionStatusIndicator';
 import { NotificationBell } from '@/components/collaboration/NotificationCenter';
 import { ConTigoLogoSVG } from '@/components/ui/ConTigoLogo';
+import { ThemeToggle } from '@/components/theme/ThemeProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnClickOutside } from '@/hooks/useEventListener';
 import {
@@ -54,6 +55,7 @@ import {
   FolderKanban,
   Brain,
   Database,
+  Keyboard,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -385,12 +387,18 @@ function EnhancedNavigation() {
     }
   }, []);
 
+  // Open keyboard shortcuts modal
+  const openKeyboardShortcuts = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
+  }, []);
+
   return (
     <TooltipProvider>
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/60 px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-gray-200/60 dark:border-slate-700/60 px-4 py-3 flex items-center justify-between">
         <ConTigoLogoSVG size="md" />
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           <NotificationBell />
           <Button
             variant="ghost"
@@ -471,12 +479,33 @@ function EnhancedNavigation() {
           </nav>
 
           {/* Footer */}
-          <div className="border-t border-gray-100 p-3 space-y-3">
+          <div className="border-t border-gray-100 dark:border-slate-700 p-3 space-y-3">
+            {/* Quick Actions */}
+            <div className="flex items-center justify-between px-2">
+              <ThemeToggle />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={openKeyboardShortcuts}
+                  >
+                    <Keyboard className="h-4 w-4 text-gray-500" />
+                    <span className="sr-only">Keyboard shortcuts</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p>Keyboard shortcuts (⌘K)</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            
             {/* User */}
             <div ref={userMenuRef} className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
               >
                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
                   {session?.user?.image ? (
@@ -486,8 +515,8 @@ function EnhancedNavigation() {
                   )}
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{session?.user?.name || 'User'}</p>
-                  <p className="text-[10px] text-gray-500 capitalize">{userRole}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{session?.user?.name || 'User'}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{userRole}</p>
                 </div>
                 <Settings className="h-4 w-4 text-gray-400" />
               </button>
@@ -498,16 +527,16 @@ function EnhancedNavigation() {
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
-                    className="absolute bottom-full left-0 right-0 mb-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50"
+                    className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 py-1 z-50"
                   >
-                    <Link href="/settings/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <Link href="/settings/profile" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
                       <User className="h-4 w-4" /> Profile
                     </Link>
-                    <Link href="/settings" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <Link href="/settings" className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700">
                       <Settings className="h-4 w-4" /> Settings
                     </Link>
-                    <hr className="my-1" />
-                    <button onClick={() => signOut({ callbackUrl: '/auth/signin' })} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
+                    <hr className="my-1 dark:border-slate-700" />
+                    <button onClick={() => signOut({ callbackUrl: '/auth/signin' })} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20">
                       <LogOut className="h-4 w-4" /> Sign Out
                     </button>
                   </motion.div>
@@ -516,9 +545,10 @@ function EnhancedNavigation() {
             </div>
 
             {/* Status */}
-            <div className="flex items-center justify-between px-2 text-[10px] text-gray-400">
+            <div className="flex items-center justify-between px-2 text-[10px] text-gray-400 dark:text-gray-500">
               <span>v2.0.0</span>
               <CompactConnectionStatus />
+            </div>
             </div>
           </div>
         </div>

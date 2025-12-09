@@ -80,7 +80,7 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
   }, [id]);
 
   const handleSave = useCallback((content: string, changes: Change[]) => {
-    console.log('Saving document:', { content, changes });
+    // Saving document with changes
     setLastSaved(new Date());
     toast.success('Document saved successfully', {
       description: `${changes.filter(c => c.status === 'pending').length} pending changes remain`

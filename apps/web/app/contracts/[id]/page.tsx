@@ -209,7 +209,7 @@ function ActivityTab({ contractId }: { contractId: string }) {
         ];
         setActivities(mockActivities);
       } catch (e) {
-        console.log('Failed to fetch activity');
+        // Failed to fetch activity - non-critical error
       } finally {
         setLoading(false);
       }

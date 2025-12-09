@@ -9,7 +9,7 @@ export default function RateCardImportPage() {
 
   const handleUploadComplete = (jobIds: string[]) => {
     setUploadedJobs((prev) => [...prev, ...jobIds]);
-    console.log('Upload complete:', jobIds);
+    // Upload complete - process job IDs
   };
 
   const handleUploadError = (errorMessages: string[]) => {

@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
@@ -15,6 +15,13 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
   const router = useRouter();
   const feedback = useFeedback();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+
+  // Listen for custom event to open shortcuts modal
+  useEffect(() => {
+    const handleOpenShortcuts = () => setShowShortcutsModal(true);
+    window.addEventListener('openKeyboardShortcuts', handleOpenShortcuts);
+    return () => window.removeEventListener('openKeyboardShortcuts', handleOpenShortcuts);
+  }, []);
 
   // Define global shortcuts
   const shortcuts: KeyboardShortcut[] = [

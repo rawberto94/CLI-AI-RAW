@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
@@ -123,12 +123,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     });
 
     newSocket.on('connect', () => {
-      console.log('[WebSocket] Connected:', newSocket.id);
       setConnected(true);
     });
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('[WebSocket] Disconnected:', reason);
+    newSocket.on('disconnect', () => {
       setConnected(false);
     });
 
@@ -394,25 +392,44 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     setApprovalNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
+  const contextValue = useMemo(() => ({
+    socket,
+    connected,
+    presence,
+    locks,
+    approvalNotifications,
+    joinDocument,
+    leaveDocument,
+    updateCursor,
+    updateSelection,
+    broadcastEdit,
+    lockSection,
+    unlockSection,
+    sendComment,
+    onEvent,
+    subscribeToApprovals,
+    clearApprovalNotification,
+  }), [
+    socket,
+    connected,
+    presence,
+    locks,
+    approvalNotifications,
+    joinDocument,
+    leaveDocument,
+    updateCursor,
+    updateSelection,
+    broadcastEdit,
+    lockSection,
+    unlockSection,
+    sendComment,
+    onEvent,
+    subscribeToApprovals,
+    clearApprovalNotification,
+  ]);
+
   return (
-    <WebSocketContext.Provider value={{
-      socket,
-      connected,
-      presence,
-      locks,
-      approvalNotifications,
-      joinDocument,
-      leaveDocument,
-      updateCursor,
-      updateSelection,
-      broadcastEdit,
-      lockSection,
-      unlockSection,
-      sendComment,
-      onEvent,
-      subscribeToApprovals,
-      clearApprovalNotification,
-    }}>
+    <WebSocketContext.Provider value={contextValue}>
       {children}
     </WebSocketContext.Provider>
   );
@@ -424,9 +441,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
 export function useWebSocket() {
   const context = useContext(WebSocketContext);
-  if (!context) {
-    throw new Error('useWebSocket must be used within a WebSocketProvider');
-  }
+  // Return null instead of throwing - WebSocket is optional
   return context;
 }
 

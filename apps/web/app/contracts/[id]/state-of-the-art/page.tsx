@@ -483,7 +483,7 @@ export default function StateOfTheArtContractPage() {
                       contractName={contract.name}
                       className="h-[600px]"
                       onAnalysisComplete={(result) => {
-                        console.log('Analysis completed:', result);
+                        // Analysis completed successfully
                       }}
                     />
                   </CardContent>
