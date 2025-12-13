@@ -177,8 +177,8 @@ export const LazyFloatingAIBubble = dynamic(
 );
 
 // Approval components
-export const LazyApprovalsQueue = dynamic(
-  () => import('@/components/approvals/ApprovalsQueue').then(mod => mod.ApprovalsQueue),
+export const LazyApprovalWorkflow = dynamic(
+  () => import('@/components/approvals/ApprovalWorkflow').then(mod => mod.ApprovalWorkflow),
   {
     loading: () => (
       <div className="w-full h-[400px] bg-gray-100 animate-pulse rounded-lg" />
@@ -206,5 +206,5 @@ export default {
   LazyRedlineEditor,
   LazyVersionCompare,
   LazyFloatingAIBubble,
-  LazyApprovalsQueue,
+  LazyApprovalWorkflow,
 };

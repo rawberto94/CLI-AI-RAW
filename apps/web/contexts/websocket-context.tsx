@@ -453,20 +453,26 @@ export function useCollaboration(documentId: string, documentType: 'contract' | 
   const ws = useWebSocket();
   
   useEffect(() => {
-    ws.joinDocument(documentId, documentType);
-    return () => ws.leaveDocument();
+    if (ws) {
+      ws.joinDocument(documentId, documentType);
+      return () => ws.leaveDocument();
+    }
   }, [documentId, documentType, ws]);
 
+  // Provide safe defaults when ws is null
+  const noop = () => {};
+  const noopAsync = async () => false;
+  
   return {
-    connected: ws.connected,
-    collaborators: Array.from(ws.presence.values()),
-    locks: ws.locks,
-    updateCursor: ws.updateCursor,
-    updateSelection: ws.updateSelection,
-    broadcastEdit: ws.broadcastEdit,
-    lockSection: ws.lockSection,
-    unlockSection: ws.unlockSection,
-    sendComment: ws.sendComment,
-    onEvent: ws.onEvent,
+    connected: ws?.connected ?? false,
+    collaborators: ws ? Array.from(ws.presence.values()) : [],
+    locks: ws?.locks ?? new Map(),
+    updateCursor: ws?.updateCursor ?? noop,
+    updateSelection: ws?.updateSelection ?? noop,
+    broadcastEdit: ws?.broadcastEdit ?? noop,
+    lockSection: ws?.lockSection ?? noopAsync,
+    unlockSection: ws?.unlockSection ?? noop,
+    sendComment: ws?.sendComment ?? noop,
+    onEvent: ws?.onEvent ?? (() => noop),
   };
 }

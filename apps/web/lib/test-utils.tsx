@@ -3,6 +3,13 @@
  * Comprehensive testing utilities for React components and hooks
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Jest type declarations for environments where @types/jest may not be installed
+declare const jest: {
+  fn: <T extends (...args: any[]) => any>(implementation?: T) => T & { mock: { calls: any[][] } };
+};
+
 import React, { ReactElement, ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 

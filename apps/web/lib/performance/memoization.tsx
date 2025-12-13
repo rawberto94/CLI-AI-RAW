@@ -149,7 +149,7 @@ export function useDebouncedCallback<T extends (...args: unknown[]) => unknown>(
   callback: T,
   delay: number
 ): T {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const callbackRef = useRef(callback);
   
   // Update the callback ref
@@ -202,7 +202,7 @@ export function useThrottledCallback<T extends (...args: unknown[]) => unknown>(
  * Hook that tracks previous value
  */
 export function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
+  const ref = useRef<T | undefined>(undefined);
   
   useEffect(() => {
     ref.current = value;
@@ -339,7 +339,7 @@ export function useWhyDidYouRender<P extends Record<string, unknown>>(
   componentName: string,
   props: P
 ) {
-  const previousProps = useRef<P>();
+  const previousProps = useRef<P | undefined>(undefined);
   
   useEffect(() => {
     if (previousProps.current && process.env.NODE_ENV === 'development') {

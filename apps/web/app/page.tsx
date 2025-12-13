@@ -578,7 +578,8 @@ export default function DashboardPage() {
                     { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500' },
                     { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', bar: 'bg-purple-500' },
                   ];
-                  const color = colors[idx % colors.length];
+                  const defaultColor = { bg: 'bg-gray-100', text: 'text-gray-700', bar: 'bg-gray-500' };
+                  const color = colors[idx % colors.length] ?? defaultColor;
                   const percentage = dashboardData.overview.totalContracts > 0 
                     ? Math.round((item.count / dashboardData.overview.totalContracts) * 100) 
                     : 0;

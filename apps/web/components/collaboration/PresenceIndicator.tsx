@@ -24,8 +24,10 @@ export function PresenceIndicator({
   showConnectionStatus = true,
   className,
 }: PresenceIndicatorProps) {
-  const { connected, presence } = useWebSocket();
-  const collaborators = Array.from(presence.values());
+  const ws = useWebSocket();
+  const connected = ws?.connected ?? false;
+  const presence = ws?.presence ?? new Map();
+  const collaborators = Array.from(presence.values()) as Presence[];
   const visibleCollaborators = collaborators.slice(0, maxAvatars);
   const hiddenCount = collaborators.length - maxAvatars;
 
@@ -154,8 +156,9 @@ interface CursorOverlayProps {
 }
 
 export function CursorOverlay({ containerRef }: CursorOverlayProps) {
-  const { presence } = useWebSocket();
-  const collaborators = Array.from(presence.values()).filter(u => u.cursor);
+  const ws = useWebSocket();
+  const presence = ws?.presence ?? new Map();
+  const collaborators = (Array.from(presence.values()) as Presence[]).filter(u => u.cursor);
 
   if (collaborators.length === 0) {
     return null;
@@ -212,8 +215,9 @@ interface SelectionHighlightProps {
 }
 
 export function SelectionHighlight({ textRef }: SelectionHighlightProps) {
-  const { presence } = useWebSocket();
-  const collaborators = Array.from(presence.values()).filter(u => u.selection);
+  const ws = useWebSocket();
+  const presence = ws?.presence ?? new Map();
+  const collaborators = (Array.from(presence.values()) as Presence[]).filter(u => u.selection);
 
   // This is a simplified version - in production, you'd need to 
   // calculate the actual text positions for highlighting

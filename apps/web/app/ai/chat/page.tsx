@@ -530,8 +530,8 @@ function AIChatPageContent() {
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Messages */}
-          <ScrollArea ref={scrollRef} className="flex-1 p-4">
-            <div className="max-w-3xl mx-auto space-y-4">
+          <ScrollArea className="flex-1 p-4">
+            <div ref={scrollRef} className="max-w-3xl mx-auto space-y-4">
               {messages.map((message) => (
                 <motion.div
                   key={message.id}

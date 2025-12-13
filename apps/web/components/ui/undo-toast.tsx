@@ -191,7 +191,7 @@ export function UndoToastProvider({ children }: { children: React.ReactNode }) {
     // Start countdown interval
     intervalsRef.current[id] = setInterval(() => {
       setTimeRemaining((prev) => {
-        const remaining = Math.max(0, prev[id] - 100);
+        const remaining = Math.max(0, (prev[id] ?? 0) - 100);
         return { ...prev, [id]: remaining };
       });
     }, 100);

@@ -228,7 +228,7 @@ export function createRequestQueue(config: QueueConfig) {
       // Clean old timestamps
       if (config.windowMs) {
         const cutoff = Date.now() - config.windowMs;
-        while (requestTimestamps.length > 0 && requestTimestamps[0] < cutoff) {
+        while (requestTimestamps.length > 0 && requestTimestamps[0]! < cutoff) {
           requestTimestamps.shift();
         }
       }

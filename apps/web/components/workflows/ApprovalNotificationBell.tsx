@@ -177,7 +177,11 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
 }
 
 export function ApprovalNotificationBell() {
-  const { approvalNotifications, clearApprovalNotification, subscribeToApprovals, connected } = useWebSocket();
+  const ws = useWebSocket();
+  const approvalNotifications = ws?.approvalNotifications ?? [];
+  const clearApprovalNotification = ws?.clearApprovalNotification ?? (() => {});
+  const subscribeToApprovals = ws?.subscribeToApprovals ?? (() => {});
+  const connected = ws?.connected ?? false;
   const [isOpen, setIsOpen] = useState(false);
   const [localNotifications, setLocalNotifications] = useState<ApprovalNotification[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -263,8 +267,8 @@ export function ApprovalNotificationBell() {
   // Merge websocket notifications with local state
   useEffect(() => {
     setLocalNotifications(prev => {
-      const ids = new Set(prev.map(n => n.id));
-      const newNotifs = approvalNotifications.filter(n => !ids.has(n.id));
+      const ids = new Set(prev.map((n: ApprovalNotification) => n.id));
+      const newNotifs = approvalNotifications.filter((n: ApprovalNotification) => !ids.has(n.id));
       return [...newNotifs, ...prev].slice(0, 50);
     });
   }, [approvalNotifications]);

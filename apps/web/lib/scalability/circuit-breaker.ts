@@ -118,6 +118,35 @@ export class CircuitBreaker {
     };
   }
 
+  /**
+   * Check if a request can be made (circuit is not open, or ready for half-open test)
+   */
+  canRequest(): boolean {
+    if (this.state.state === 'CLOSED' || this.state.state === 'HALF_OPEN') {
+      return true;
+    }
+    // Circuit is OPEN - check if it's time to try half-open
+    if (Date.now() >= this.state.nextAttemptTime) {
+      this.transitionTo('HALF_OPEN');
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Record a successful request (public wrapper for onSuccess)
+   */
+  recordSuccess(): void {
+    this.onSuccess();
+  }
+
+  /**
+   * Record a failed request (public wrapper for onFailure)
+   */
+  recordFailure(): void {
+    this.onFailure();
+  }
+
   private onSuccess(): void {
     if (this.state.state === 'HALF_OPEN') {
       this.state.successes++;

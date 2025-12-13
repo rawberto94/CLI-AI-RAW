@@ -99,20 +99,19 @@ export function InlineEditor({
   const [isSaving, setIsSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   
-  const { 
-    connected, 
-    presence, 
-    locks, 
-    lockSection, 
-    unlockSection, 
-    broadcastEdit,
-    sendComment,
-    onEvent 
-  } = useWebSocket()
+  const ws = useWebSocket()
+  const connected = ws?.connected ?? false
+  const presence = ws?.presence ?? new Map()
+  const locks = ws?.locks ?? new Map()
+  const lockSection = ws?.lockSection ?? (async () => false)
+  const unlockSection = ws?.unlockSection ?? (() => {})
+  const broadcastEdit = ws?.broadcastEdit ?? (() => {})
+  const sendComment = ws?.sendComment ?? (() => {})
+  const onEvent = ws?.onEvent ?? (() => () => {})
 
   // Get collaborators viewing/editing this field
   const fieldCollaborators = Array.from(presence.values()).filter(
-    user => user.selection?.start !== undefined
+    (user: { selection?: { start?: number } }) => user.selection?.start !== undefined
   )
 
   // Check if this field is locked by someone else
@@ -123,7 +122,7 @@ export function InlineEditor({
   useEffect(() => {
     if (enableCollaboration && connected && fieldId) {
       setIsLocking(true)
-      lockSection(fieldId).then((success) => {
+      lockSection(fieldId).then((success: boolean) => {
         setHasLock(success)
         setIsLocking(false)
         if (!success && fieldLock) {
@@ -327,7 +326,7 @@ export function InlineEditor({
           {/* Collaborator presence indicators on field */}
           {enableCollaboration && fieldCollaborators.length > 0 && (
             <div className="absolute -top-2 -right-2 flex -space-x-1">
-              {fieldCollaborators.slice(0, 3).map((user) => (
+              {(fieldCollaborators as Presence[]).slice(0, 3).map((user) => (
                 <TooltipProvider key={user.userId}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -575,7 +574,7 @@ export function InlineEditor({
         <div className="flex items-center gap-1 text-xs text-slate-500">
           <Eye className="w-3 h-3" />
           <span>
-            {fieldCollaborators.map(u => u.name.split(' ')[0]).join(', ')} 
+            {(fieldCollaborators as Presence[]).map(u => u.name.split(' ')[0]).join(', ')} 
             {fieldCollaborators.length === 1 ? ' is' : ' are'} viewing
           </span>
         </div>

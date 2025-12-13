@@ -362,7 +362,7 @@ export function useScrollPosition(): ScrollPosition {
 
   const lastY = useRef(0);
   const lastX = useRef(0);
-  const scrollTimeout = useRef<NodeJS.Timeout>();
+  const scrollTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -754,8 +754,6 @@ export function useAdaptiveLoading() {
 // ============================================================================
 
 export type {
-  BreakpointConfig,
-  ViewportInfo,
   ResponsiveValue,
   ContainerSize,
   IntersectionOptions,

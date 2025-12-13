@@ -39,7 +39,7 @@ export class BaseErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error boundary caught:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
@@ -48,7 +48,7 @@ export class BaseErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
     this.setState({ hasError: false, error: null });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       if (typeof this.props.fallback === 'function') {
         return this.props.fallback(this.state.error!, this.reset);
@@ -134,7 +134,7 @@ export class NetworkErrorBoundary extends Component<ErrorBoundaryProps, ErrorBou
     throw error; // Re-throw non-network errors
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Network error caught:', error);
     this.props.onError?.(error, errorInfo);
   }
@@ -148,7 +148,7 @@ export class NetworkErrorBoundary extends Component<ErrorBoundaryProps, ErrorBou
     }, 1000);
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <NetworkErrorFallback 
@@ -207,7 +207,7 @@ export class ApiErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
     throw error;
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('API error caught:', error);
     this.props.onError?.(error, errorInfo);
   }
@@ -216,7 +216,7 @@ export class ApiErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
     this.setState({ hasError: false, error: null });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return <ApiErrorFallback error={this.state.error!} reset={this.reset} />;
     }
@@ -280,7 +280,7 @@ export class ComponentErrorBoundary extends Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error(`Component "${this.props.componentName}" error:`, error);
     this.props.onError?.(error, errorInfo);
   }
@@ -289,7 +289,7 @@ export class ComponentErrorBoundary extends Component<
     this.setState({ hasError: false, error: null });
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <ComponentErrorFallback 

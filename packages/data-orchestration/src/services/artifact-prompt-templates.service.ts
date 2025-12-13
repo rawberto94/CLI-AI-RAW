@@ -12,7 +12,7 @@
  * - Mandatory "NOT_FOUND" markers for unfound data
  */
 
-import { ArtifactType } from './ai-artifact-generator.service';
+import { ArtifactType } from '../types/contract.types';
 
 // =============================================================================
 // ANTI-HALLUCINATION BASE PROMPT (Applied to ALL artifact types)

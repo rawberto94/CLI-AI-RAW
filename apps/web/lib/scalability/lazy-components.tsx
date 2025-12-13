@@ -177,21 +177,21 @@ export const HeavyComponents = {
     { ssr: false }
   ),
   
-  // PDF Viewer
+  // PDF Viewer / Artifact Viewer
   PDFViewer: lazyComponent(
-    () => import('@/components/contracts/ContractViewer').then(m => ({ default: m.default })),
+    () => import('@/components/contracts/ArtifactViewer').then(m => ({ default: m.ArtifactViewer as unknown as ComponentType<Record<string, unknown>> })),
     { ssr: false }
   ),
   
-  // Rich Text Editor
+  // Rich Text Editor / AI Analysis
   RichTextEditor: lazyComponent(
-    () => import('@/components/contracts/AIReviewSidebar').then(m => ({ default: m.AIReviewSidebar })),
+    () => import('@/components/contracts/AIAnalysisPanel').then(m => ({ default: m.AIAnalysisPanel as unknown as ComponentType<Record<string, unknown>> })),
     { ssr: false }
   ),
   
   // Data Tables with Virtual Scrolling
   VirtualDataTable: lazyComponent(
-    () => import('@/components/ui/virtual-list').then(m => ({ default: m.VirtualList })),
+    () => import('@/components/ui/virtual-list').then(m => ({ default: m.VirtualList as unknown as ComponentType<Record<string, unknown>> })),
     { ssr: false }
   ),
 };

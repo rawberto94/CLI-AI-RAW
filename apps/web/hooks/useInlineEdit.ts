@@ -94,15 +94,14 @@ export function useInlineEdit<T = string>(options: UseInlineEditOptions<T>): Use
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastBroadcastRef = useRef<string>('')
 
-  const {
-    connected,
-    presence,
-    locks,
-    lockSection,
-    unlockSection,
-    broadcastEdit,
-    onEvent,
-  } = useWebSocket()
+  const ws = useWebSocket()
+  const connected = ws?.connected ?? false
+  const presence = ws?.presence ?? new Map()
+  const locks = ws?.locks ?? new Map()
+  const lockSection = ws?.lockSection ?? (async () => false)
+  const unlockSection = ws?.unlockSection ?? (() => {})
+  const broadcastEdit = ws?.broadcastEdit ?? (() => {})
+  const onEvent = ws?.onEvent ?? (() => () => {})
 
   // Get lock state
   const fieldLock = locks.get(fieldId)
@@ -110,8 +109,8 @@ export function useInlineEdit<T = string>(options: UseInlineEditOptions<T>): Use
 
   // Get viewers (collaborators whose selection might be on this field)
   const viewers = Array.from(presence.values())
-    .filter(user => user.selection?.start !== undefined)
-    .map(user => ({
+    .filter((user: { selection?: { start?: number } }) => user.selection?.start !== undefined)
+    .map((user: { userId: string; name: string; color: string }) => ({
       userId: user.userId,
       name: user.name,
       color: user.color,
@@ -135,10 +134,10 @@ export function useInlineEdit<T = string>(options: UseInlineEditOptions<T>): Use
 
     const unsubscribe = onEvent((event) => {
       if (event.type === 'edit' && event.data) {
-        const editData = event.data as { sectionId: string; content: string; userId: string }
+        const editData = event.data as { sectionId?: string; content?: string; userId?: string }
         if (editData.sectionId === fieldId && editData.content !== lastBroadcastRef.current) {
           // Someone else edited this field
-          const user = presence.get(editData.userId)
+          const user = presence.get(editData.userId ?? '') as { name?: string } | undefined
           toast.info(`${user?.name || 'Someone'} is also editing this field`)
         }
       }

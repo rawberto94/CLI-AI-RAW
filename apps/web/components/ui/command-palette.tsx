@@ -215,10 +215,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const groupedCommands = useMemo(() => {
     const groups: Record<string, CommandItem[]> = {};
     filteredCommands.forEach((cmd) => {
-      if (!groups[cmd.category]) {
-        groups[cmd.category] = [];
+      const category = cmd.category ?? 'other';
+      if (!groups[category]) {
+        groups[category] = [];
       }
-      groups[cmd.category].push(cmd);
+      groups[category]!.push(cmd);
     });
     return groups;
   }, [filteredCommands]);

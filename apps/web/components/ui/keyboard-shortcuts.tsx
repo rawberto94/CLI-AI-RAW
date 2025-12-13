@@ -45,10 +45,11 @@ const shortcuts: KeyboardShortcut[] = [
 ];
 
 const groupedShortcuts = shortcuts.reduce((acc, shortcut) => {
-  if (!acc[shortcut.category]) {
-    acc[shortcut.category] = [];
+  const category = shortcut.category ?? 'other';
+  if (!acc[category]) {
+    acc[category] = [];
   }
-  acc[shortcut.category].push(shortcut);
+  acc[category]!.push(shortcut);
   return acc;
 }, {} as Record<string, KeyboardShortcut[]>);
 
@@ -231,9 +232,10 @@ export function useKeyboardNavigation() {
           s: '/search',
         };
         
-        if (routes[e.key]) {
+        const route = routes[e.key as keyof typeof routes];
+        if (route) {
           e.preventDefault();
-          window.location.href = routes[e.key];
+          window.location.href = route;
         }
         setPendingKey(null);
         return;

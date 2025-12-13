@@ -55,7 +55,7 @@ export interface InfiniteQueryResult<T> {
 
 export async function enhancedFetch<T>(
   url: string,
-  options: FetcherOptions & RequestInit = {}
+  options: FetcherOptions & Omit<RequestInit, 'headers'> = {}
 ): Promise<T> {
   const {
     headers: customHeaders = {},

@@ -15,7 +15,8 @@ import React, {
   lazy,
   Suspense,
   type ComponentType,
-  type ReactNode
+  type ReactNode,
+  type ElementType
 } from 'react';
 import { useViewport, useNetworkInfo, useAdaptiveLoading } from '@/lib/responsive';
 
@@ -327,7 +328,7 @@ interface ResponsiveFontProps {
     lg?: string;
     xl?: string;
   };
-  as?: keyof JSX.IntrinsicElements;
+  as?: ElementType;
   className?: string;
 }
 

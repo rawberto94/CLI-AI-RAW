@@ -227,11 +227,11 @@ export {
   
   // Batching (DataLoader pattern)
   Batcher,
-  createBatcher,
+  createBatcher as createBatcherUtil,
   
   // Request queue
   RequestQueue,
-  createRequestQueue,
+  createRequestQueue as createRequestQueueUtil,
   
   // SWR-like caching
   SWRCache,
@@ -346,7 +346,7 @@ export {
   
   // Types
   type FetcherOptions,
-  type PaginatedData,
+  type PaginatedData as PaginatedDataFetching,
   type InfiniteQueryResult,
 } from './data-fetching';
 
