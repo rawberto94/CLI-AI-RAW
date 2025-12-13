@@ -44,6 +44,48 @@ export {
 } from './lazy-components';
 
 // ============================================================================
+// Connection Health Monitoring
+// ============================================================================
+export {
+  ConnectionHealthMonitor,
+  getHealthMonitor,
+  useEndpointHealth,
+  useAllEndpointHealth,
+  setupDefaultHealthChecks,
+  getOverallSystemHealth,
+  type HealthStatus,
+  type EndpointHealth,
+  type HealthCheckConfig,
+  type HealthMonitorOptions,
+} from './connection-health';
+
+// ============================================================================
+// Memory Management
+// ============================================================================
+export {
+  // Caches
+  LRUCache,
+  WeakCache,
+  getCacheManager,
+  useCache,
+  
+  // Memory monitoring
+  getMemoryInfo,
+  getMemoryPressure,
+  type MemoryPressureLevel,
+  
+  // Prefetching
+  getPrefetchManager,
+  prefetch,
+  
+  // Types
+  type CacheConfig,
+  type CacheStats,
+  type CacheEntry,
+  type PrefetchConfig,
+} from './memory-management';
+
+// ============================================================================
 // Re-export from architecture
 // ============================================================================
 export {

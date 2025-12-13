@@ -276,3 +276,42 @@ export {
   capitalize,
   titleCase,
 } from './utils/formatters';
+
+// ============================================================================
+// Scalability Patterns
+// ============================================================================
+export {
+  // Circuit breaker
+  CircuitBreaker,
+  CircuitOpenError,
+  getCircuitBreaker,
+  getAllCircuitStats,
+  resetAllCircuits,
+  type CircuitState,
+  type CircuitBreakerOptions,
+  
+  // Request optimization
+  deduplicateRequest,
+  generateRequestKey,
+  createBatcher,
+  createRequestQueue,
+  getGlobalRequestQueue,
+  
+  // Lazy loading
+  lazyComponent,
+  withPreload,
+  preloadComponent,
+  HeavyComponents,
+  setupRoutePreloading,
+  
+  // Connection health monitoring
+  ConnectionHealthMonitor,
+  getHealthMonitor,
+  useEndpointHealth,
+  useAllEndpointHealth,
+  setupDefaultHealthChecks,
+  getOverallSystemHealth,
+  type HealthStatus,
+  type EndpointHealth,
+  type HealthCheckConfig,
+} from './scalability';
