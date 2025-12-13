@@ -83,13 +83,18 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format, subDays, subMonths, startOfYear, endOfYear, isWithinInterval } from "date-fns";
-import type { DateRange } from "react-day-picker";
+
+// Local DateRange type matching our Calendar component
+interface DateRange {
+  from?: Date;
+  to?: Date;
+}
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export type ContractStatus = "draft" | "pending" | "active" | "expired" | "terminated" | "renewal";
+export type ContractStatus = "draft" | "pending" | "active" | "expired" | "terminated" | "renewal" | "processing" | "completed" | "failed";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
 export interface FilterPreset {
@@ -402,8 +407,12 @@ const DateRangePicker = memo(function DateRangePicker({
     { label: "This year", range: { start: startOfYear(new Date()), end: new Date() } },
   ];
 
-  const handleRangeSelect = (range: DateRange | undefined) => {
-    onChange({ start: range?.from, end: range?.to });
+  const handleRangeSelect = (range: Date | Date[] | { from?: Date; to?: Date } | undefined) => {
+    if (range && typeof range === 'object' && 'from' in range) {
+      onChange({ start: range.from, end: range.to });
+    } else {
+      onChange({ start: undefined, end: undefined });
+    }
   };
 
   const displayValue = useMemo(() => {
@@ -480,13 +489,15 @@ const ValueRangeSlider = memo(function ValueRangeSlider({
   ]);
 
   const handleChange = (newRange: number[]) => {
-    setRange([newRange[0], newRange[1]]);
+    setRange([newRange[0] ?? 0, newRange[1] ?? maxValue]);
   };
 
   const handleCommit = (newRange: number[]) => {
+    const min = newRange[0] ?? 0;
+    const max = newRange[1] ?? maxValue;
     onChange({
-      min: newRange[0] === 0 ? undefined : newRange[0],
-      max: newRange[1] === maxValue ? undefined : newRange[1],
+      min: min === 0 ? undefined : min,
+      max: max === maxValue ? undefined : max,
     });
   };
 
@@ -585,25 +596,28 @@ export const SmartFilters = memo(function SmartFilters({
   isLoading = false,
   className,
 }: SmartFiltersProps) {
+  // Ensure filters is never undefined
+  const effectiveFilters = filters ?? {};
+  
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
 
-  const activeFilterCount = useMemo(() => getActiveFilterCount(filters), [filters]);
+  const activeFilterCount = useMemo(() => getActiveFilterCount(effectiveFilters), [effectiveFilters]);
 
   const updateFilter = useCallback(
     <K extends keyof ContractFilters>(key: K, value: ContractFilters[K]) => {
-      onFiltersChange({ ...filters, [key]: value });
+      onFiltersChange({ ...effectiveFilters, [key]: value });
     },
-    [filters, onFiltersChange]
+    [effectiveFilters, onFiltersChange]
   );
 
   const removeFilter = useCallback(
     (key: keyof ContractFilters) => {
-      const newFilters = { ...filters };
+      const newFilters = { ...effectiveFilters };
       delete newFilters[key];
       onFiltersChange(newFilters);
     },
-    [filters, onFiltersChange]
+    [effectiveFilters, onFiltersChange]
   );
 
   const clearAllFilters = useCallback(() => {
@@ -619,37 +633,37 @@ export const SmartFilters = memo(function SmartFilters({
 
   const handleSavePreset = useCallback(
     (name: string) => {
-      onSavePreset?.(name, filters);
+      onSavePreset?.(name, effectiveFilters);
     },
-    [filters, onSavePreset]
+    [effectiveFilters, onSavePreset]
   );
 
   // Generate active filter chips
   const filterChips = useMemo(() => {
     const chips: Array<{ key: keyof ContractFilters; label: string }> = [];
 
-    if (filters.status?.length) {
-      chips.push({ key: "status", label: `Status: ${filters.status.join(", ")}` });
+    if (effectiveFilters.status?.length) {
+      chips.push({ key: "status", label: `Status: ${effectiveFilters.status.join(", ")}` });
     }
-    if (filters.riskLevel?.length) {
-      chips.push({ key: "riskLevel", label: `Risk: ${filters.riskLevel.join(", ")}` });
+    if (effectiveFilters.riskLevel?.length) {
+      chips.push({ key: "riskLevel", label: `Risk: ${effectiveFilters.riskLevel.join(", ")}` });
     }
-    if (filters.expiringWithin) {
-      chips.push({ key: "expiringWithin", label: `Expiring in ${filters.expiringWithin} days` });
+    if (effectiveFilters.expiringWithin) {
+      chips.push({ key: "expiringWithin", label: `Expiring in ${effectiveFilters.expiringWithin} days` });
     }
-    if (filters.dateRange?.start || filters.dateRange?.end) {
+    if (effectiveFilters.dateRange?.start || effectiveFilters.dateRange?.end) {
       chips.push({ key: "dateRange", label: "Date range set" });
     }
-    if (filters.valueRange?.min || filters.valueRange?.max) {
+    if (effectiveFilters.valueRange?.min || effectiveFilters.valueRange?.max) {
       chips.push({ key: "valueRange", label: "Value range set" });
     }
-    if (filters.tags?.length) {
-      chips.push({ key: "tags", label: `Tags: ${filters.tags.length}` });
+    if (effectiveFilters.tags?.length) {
+      chips.push({ key: "tags", label: `Tags: ${effectiveFilters.tags.length}` });
     }
-    if (filters.isFavorite) {
+    if (effectiveFilters.isFavorite) {
       chips.push({ key: "isFavorite", label: "Favorites only" });
     }
-    if (filters.isPinned) {
+    if (effectiveFilters.isPinned) {
       chips.push({ key: "isPinned", label: "Pinned only" });
     }
 
@@ -662,7 +676,7 @@ export const SmartFilters = memo(function SmartFilters({
       <div className="flex items-center gap-3 flex-wrap">
         {/* Search Input */}
         <SearchWithSuggestions
-          value={filters.search}
+          value={effectiveFilters.search}
           onChange={(value) => updateFilter("search", value || undefined)}
           onSubmit={onSearchSubmit}
           suggestions={searchSuggestions}
@@ -750,10 +764,10 @@ export const SmartFilters = memo(function SmartFilters({
       <div className="flex items-center gap-2 flex-wrap">
         {DEFAULT_QUICK_FILTERS.map((qf) => {
           const isActive =
-            JSON.stringify(filters.status) === JSON.stringify(qf.filters.status) ||
-            (qf.filters.isFavorite && filters.isFavorite) ||
-            (qf.filters.expiringWithin && filters.expiringWithin === qf.filters.expiringWithin) ||
-            (qf.filters.riskLevel && JSON.stringify(filters.riskLevel) === JSON.stringify(qf.filters.riskLevel));
+            JSON.stringify(effectiveFilters.status) === JSON.stringify(qf.filters.status) ||
+            (qf.filters.isFavorite && effectiveFilters.isFavorite) ||
+            (qf.filters.expiringWithin && effectiveFilters.expiringWithin === qf.filters.expiringWithin) ||
+            (qf.filters.riskLevel && JSON.stringify(effectiveFilters.riskLevel) === JSON.stringify(qf.filters.riskLevel));
 
           return (
             <Button
@@ -765,7 +779,7 @@ export const SmartFilters = memo(function SmartFilters({
                 isActive ? qf.color : "hover:bg-gray-50"
               )}
               onClick={() =>
-                isActive ? clearAllFilters() : onFiltersChange({ ...filters, ...qf.filters })
+                isActive ? clearAllFilters() : onFiltersChange({ ...effectiveFilters, ...qf.filters })
               }
             >
               {qf.icon}
@@ -824,9 +838,9 @@ export const SmartFilters = memo(function SmartFilters({
                         <div key={status} className="flex items-center gap-2">
                           <Checkbox
                             id={`status-${status}`}
-                            checked={filters.status?.includes(status) ?? false}
+                            checked={effectiveFilters.status?.includes(status) ?? false}
                             onCheckedChange={(checked) => {
-                              const current = filters.status ?? [];
+                              const current = effectiveFilters.status ?? [];
                               updateFilter(
                                 "status",
                                 checked
@@ -855,9 +869,9 @@ export const SmartFilters = memo(function SmartFilters({
                       <div key={risk} className="flex items-center gap-2">
                         <Checkbox
                           id={`risk-${risk}`}
-                          checked={filters.riskLevel?.includes(risk) ?? false}
+                          checked={effectiveFilters.riskLevel?.includes(risk) ?? false}
                           onCheckedChange={(checked) => {
-                            const current = filters.riskLevel ?? [];
+                            const current = effectiveFilters.riskLevel ?? [];
                             updateFilter(
                               "riskLevel",
                               checked
@@ -881,7 +895,7 @@ export const SmartFilters = memo(function SmartFilters({
                 <div className="space-y-2">
                   <Label>Date Range</Label>
                   <DateRangePicker
-                    value={filters.dateRange}
+                    value={effectiveFilters.dateRange}
                     onChange={(range) => updateFilter("dateRange", range)}
                   />
                 </div>
@@ -890,7 +904,7 @@ export const SmartFilters = memo(function SmartFilters({
                 <div className="space-y-2">
                   <Label>Expiring Within</Label>
                   <Select
-                    value={filters.expiringWithin?.toString() ?? ""}
+                    value={effectiveFilters.expiringWithin?.toString() ?? ""}
                     onValueChange={(v) =>
                       updateFilter("expiringWithin", v ? parseInt(v) : undefined)
                     }
@@ -914,7 +928,7 @@ export const SmartFilters = memo(function SmartFilters({
               <div className="space-y-2">
                 <Label>Contract Value Range</Label>
                 <ValueRangeSlider
-                  value={filters.valueRange}
+                  value={effectiveFilters.valueRange}
                   onChange={(range) => updateFilter("valueRange", range)}
                 />
               </div>
@@ -927,10 +941,10 @@ export const SmartFilters = memo(function SmartFilters({
                     {availableTags.map((tag) => (
                       <Badge
                         key={tag}
-                        variant={filters.tags?.includes(tag) ? "default" : "outline"}
+                        variant={effectiveFilters.tags?.includes(tag) ? "default" : "outline"}
                         className="cursor-pointer"
                         onClick={() => {
-                          const current = filters.tags ?? [];
+                          const current = effectiveFilters.tags ?? [];
                           updateFilter(
                             "tags",
                             current.includes(tag)
@@ -951,7 +965,7 @@ export const SmartFilters = memo(function SmartFilters({
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="favorites-only"
-                    checked={filters.isFavorite ?? false}
+                    checked={effectiveFilters.isFavorite ?? false}
                     onCheckedChange={(checked) =>
                       updateFilter("isFavorite", checked ? true : undefined)
                     }
@@ -963,7 +977,7 @@ export const SmartFilters = memo(function SmartFilters({
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="pinned-only"
-                    checked={filters.isPinned ?? false}
+                    checked={effectiveFilters.isPinned ?? false}
                     onCheckedChange={(checked) =>
                       updateFilter("isPinned", checked ? true : undefined)
                     }
@@ -975,7 +989,7 @@ export const SmartFilters = memo(function SmartFilters({
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="has-attachments"
-                    checked={filters.hasAttachments ?? false}
+                    checked={effectiveFilters.hasAttachments ?? false}
                     onCheckedChange={(checked) =>
                       updateFilter("hasAttachments", checked ? true : undefined)
                     }
@@ -987,7 +1001,7 @@ export const SmartFilters = memo(function SmartFilters({
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="is-analyzed"
-                    checked={filters.isAnalyzed ?? false}
+                    checked={effectiveFilters.isAnalyzed ?? false}
                     onCheckedChange={(checked) =>
                       updateFilter("isAnalyzed", checked ? true : undefined)
                     }

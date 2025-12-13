@@ -67,6 +67,7 @@ export interface ContractsHeroDashboardProps {
   onGenerateClick?: () => void;
   onCompareClick?: () => void;
   onAskAIClick?: () => void;
+  onQuickAction?: (action: string) => void;
   className?: string;
 }
 
@@ -434,9 +435,9 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
   };
 
   const sparklines = useMemo(() => ({
-    contracts: generateSparkline(stats.trends.contracts),
-    value: generateSparkline(stats.trends.value),
-    risk: generateSparkline(-stats.trends.risk),
+    contracts: generateSparkline(stats.trends?.contracts ?? 0),
+    value: generateSparkline(stats.trends?.value ?? 0),
+    risk: generateSparkline(-(stats.trends?.risk ?? 0)),
   }), [stats.trends]);
 
   if (isLoading) {
@@ -501,37 +502,37 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Contracts"
-          value={stats.totalContracts.toLocaleString()}
-          subtitle={`${stats.activeContracts} active`}
+          value={(stats.totalContracts ?? 0).toLocaleString()}
+          subtitle={`${stats.activeContracts ?? 0} active`}
           icon={FileText}
-          trend={stats.trends.contracts}
+          trend={stats.trends?.contracts ?? 0}
           color="blue"
           sparklineData={sparklines.contracts}
           delay={0}
         />
         <StatCard
           title="Total Value"
-          value={formatCurrency(stats.totalValue)}
+          value={formatCurrency(stats.totalValue ?? 0)}
           subtitle="Across all contracts"
           icon={DollarSign}
-          trend={stats.trends.value}
+          trend={stats.trends?.value ?? 0}
           color="green"
           sparklineData={sparklines.value}
           delay={0.1}
         />
         <StatCard
           title="Avg. Risk Score"
-          value={`${stats.avgRiskScore}%`}
-          subtitle={stats.avgRiskScore < 30 ? 'Low risk' : stats.avgRiskScore < 70 ? 'Medium risk' : 'High risk'}
+          value={`${stats.avgRiskScore ?? 0}%`}
+          subtitle={(stats.avgRiskScore ?? 0) < 30 ? 'Low risk' : (stats.avgRiskScore ?? 0) < 70 ? 'Medium risk' : 'High risk'}
           icon={Shield}
-          trend={stats.trends.risk}
-          color={stats.avgRiskScore < 30 ? 'green' : stats.avgRiskScore < 70 ? 'amber' : 'red'}
+          trend={stats.trends?.risk ?? 0}
+          color={(stats.avgRiskScore ?? 0) < 30 ? 'green' : (stats.avgRiskScore ?? 0) < 70 ? 'amber' : 'red'}
           sparklineData={sparklines.risk}
           delay={0.2}
         />
         <StatCard
           title="Recently Added"
-          value={stats.recentlyAdded}
+          value={stats.recentlyAdded ?? 0}
           subtitle="Last 7 days"
           icon={Zap}
           color="purple"
@@ -540,26 +541,26 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
       </div>
 
       {/* Alerts Row */}
-      {(stats.expiringSoon > 0 || stats.highRisk > 0 || stats.pendingReview > 0) && (
+      {((stats.expiringSoon ?? 0) > 0 || (stats.highRisk ?? 0) > 0 || (stats.pendingReview ?? 0) > 0) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-3"
         >
-          {stats.expiringSoon > 0 && (
+          {(stats.expiringSoon ?? 0) > 0 && (
             <AlertCard
               title="Expiring Soon"
-              count={stats.expiringSoon}
+              count={stats.expiringSoon ?? 0}
               icon={Clock}
               color="amber"
               description="Within the next 30 days"
             />
           )}
-          {stats.highRisk > 0 && (
+          {(stats.highRisk ?? 0) > 0 && (
             <AlertCard
               title="High Risk"
-              count={stats.highRisk}
+              count={stats.highRisk ?? 0}
               icon={AlertTriangle}
               color="red"
               description="Contracts need attention"

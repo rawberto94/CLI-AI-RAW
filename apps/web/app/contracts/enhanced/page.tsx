@@ -42,7 +42,7 @@ import {
   type EnhancedContract 
 } from "@/components/contracts/EnhancedContractCard";
 import { ContractPreviewPanel, type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
-import { EnhancedBulkActionsBar, type BulkAction } from "@/components/contracts/EnhancedBulkActionsBar";
+import { EnhancedBulkActionsBar, type BulkAction, type BulkActionType } from "@/components/contracts/EnhancedBulkActionsBar";
 import { SmartFilters, type ContractFilters } from "@/components/contracts/SmartFilters";
 import {
   MobileContractCard,
@@ -66,23 +66,20 @@ const MOCK_STATS: ContractStats = {
   highRisk: 5,
   activeContracts: 189,
   pendingReview: 23,
-  processingQueue: 3,
+  recentlyAdded: 15,
+  avgRiskScore: 35,
   trends: {
-    contracts: [
-      { name: "Jan", value: 220 },
-      { name: "Feb", value: 228 },
-      { name: "Mar", value: 235 },
-      { name: "Apr", value: 240 },
-      { name: "May", value: 247 },
-    ],
-    value: [
-      { name: "Jan", value: 12500000 },
-      { name: "Feb", value: 13200000 },
-      { name: "Mar", value: 14100000 },
-      { name: "Apr", value: 15000000 },
-      { name: "May", value: 15750000 },
-    ],
+    contracts: 12.5,
+    value: 8.3,
+    risk: -5.2,
   },
+  trendData: [
+    { date: "Jan", contracts: 220, value: 12500000 },
+    { date: "Feb", contracts: 228, value: 13200000 },
+    { date: "Mar", contracts: 235, value: 14100000 },
+    { date: "Apr", contracts: 240, value: 15000000 },
+    { date: "May", contracts: 247, value: 15750000 },
+  ],
 };
 
 const MOCK_CONTRACTS: EnhancedContract[] = [
@@ -283,20 +280,20 @@ export default function EnhancedContractsDemo() {
       if (filters.search) {
         const search = filters.search.toLowerCase();
         if (
-          !contract.title.toLowerCase().includes(search) &&
-          !contract.type.toLowerCase().includes(search)
+          !(contract.title || '').toLowerCase().includes(search) &&
+          !(contract.type || '').toLowerCase().includes(search)
         ) {
           return false;
         }
       }
 
       // Status filter
-      if (filters.status?.length && !filters.status.includes(contract.status)) {
+      if (filters.status?.length && contract.status && !filters.status.includes(contract.status)) {
         return false;
       }
 
       // Risk filter
-      if (filters.riskLevel?.length && contract.health) {
+      if (filters.riskLevel?.length && contract.health?.riskLevel) {
         if (!filters.riskLevel.includes(contract.health.riskLevel)) {
           return false;
         }
@@ -415,13 +412,14 @@ export default function EnhancedContractsDemo() {
   }, [router]);
 
   const handleBulkAction = useCallback(
-    async (action: BulkAction, params?: Record<string, any>) => {
+    async (action: BulkAction | BulkActionType, params?: Record<string, any>) => {
       setIsLoading(true);
       try {
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 1000));
         
-        switch (action) {
+        const actionId = typeof action === 'string' ? action : action.id;
+        switch (actionId) {
           case "delete":
             setContracts((prev) => prev.filter((c) => !selectedIds.includes(c.id)));
             toast.success(`Deleted ${selectedIds.length} contracts`);
@@ -453,7 +451,7 @@ export default function EnhancedContractsDemo() {
             toast.success(`Pinned ${selectedIds.length} contracts`);
             break;
           default:
-            toast.info(`Action: ${action}`);
+            toast.info(`Action: ${actionId}`);
         }
 
         return { success: selectedIds.length, failed: 0 };
@@ -499,11 +497,11 @@ export default function EnhancedContractsDemo() {
         <div className="py-4">
           <MobileStatsSummary
             stats={{
-              total: MOCK_STATS.totalContracts,
-              active: MOCK_STATS.activeContracts,
-              expiringSoon: MOCK_STATS.expiringSoon,
-              highRisk: MOCK_STATS.highRisk,
-              totalValue: MOCK_STATS.totalValue,
+              total: MOCK_STATS.totalContracts ?? 0,
+              active: MOCK_STATS.activeContracts ?? 0,
+              expiringSoon: MOCK_STATS.expiringSoon ?? 0,
+              highRisk: MOCK_STATS.highRisk ?? 0,
+              totalValue: MOCK_STATS.totalValue ?? 0,
             }}
             isExpanded={mobileStatsExpanded}
             onToggle={() => setMobileStatsExpanded(!mobileStatsExpanded)}
@@ -700,11 +698,11 @@ export default function EnhancedContractsDemo() {
                   key={contract.id}
                   contract={contract}
                   isSelected={selectedIds.includes(contract.id)}
-                  onSelect={handleSelectContract}
-                  onClick={handleContractClick}
+                  onSelect={(id, selected) => id && handleSelectContract(id, selected ?? false)}
+                  onClick={(id) => id && handleContractClick(id)}
                   onPin={handlePinToggle}
                   onFavorite={handleFavoriteToggle}
-                  onPreview={handleContractClick}
+                  onPreview={(id) => handleContractClick(id)}
                   onAnalyze={(id) => toast.info(`AI analyzing contract ${id}...`)}
                   onEdit={(id) => router.push(`/contracts/${id}`)}
                   onDelete={(id) => {
@@ -740,11 +738,11 @@ export default function EnhancedContractsDemo() {
                   key={contract.id}
                   contract={contract}
                   isSelected={selectedIds.includes(contract.id)}
-                  onSelect={handleSelectContract}
-                  onClick={handleContractClick}
+                  onSelect={(id, selected) => id && handleSelectContract(id, selected ?? false)}
+                  onClick={(id) => id && handleContractClick(id)}
                   onPin={handlePinToggle}
                   onFavorite={handleFavoriteToggle}
-                  onPreview={handleContractClick}
+                  onPreview={(id) => handleContractClick(id)}
                   onAnalyze={(id) => toast.info(`AI analyzing contract ${id}...`)}
                   onEdit={(id) => router.push(`/contracts/${id}`)}
                   onDelete={(id) => {

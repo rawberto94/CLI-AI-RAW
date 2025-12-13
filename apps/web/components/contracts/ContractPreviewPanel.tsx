@@ -683,7 +683,7 @@ export const ContractPreviewPanel = memo(function ContractPreviewPanel({
 
   if (!contract) return null;
 
-  const statusConfig = getStatusConfig(contract.status);
+  const statusConfig = getStatusConfig(contract.status) || { icon: FileText, label: 'Unknown', color: 'bg-gray-100 text-gray-700' };
   const StatusIcon = statusConfig.icon;
 
   const panelVariants = {

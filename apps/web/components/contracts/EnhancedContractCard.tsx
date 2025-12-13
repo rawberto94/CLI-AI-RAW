@@ -148,14 +148,18 @@ function getDaysUntilExpiry(endDate?: string): number | null {
   }
 }
 
-function getStatusConfig(status: EnhancedContract["status"]) {
-  const configs = {
-    draft: {
-      color: "bg-slate-100 text-slate-700 border-slate-200",
-      icon: FileText,
-      label: "Draft",
-      dotColor: "bg-slate-400",
-    },
+type StatusConfig = { color: string; icon: typeof FileText; label: string; dotColor: string };
+
+function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
+  const defaultConfig: StatusConfig = {
+    color: "bg-slate-100 text-slate-700 border-slate-200",
+    icon: FileText,
+    label: "Draft",
+    dotColor: "bg-slate-400",
+  };
+  
+  const configs: Record<string, StatusConfig> = {
+    draft: defaultConfig,
     pending: {
       color: "bg-amber-50 text-amber-700 border-amber-200",
       icon: Clock,
@@ -186,8 +190,30 @@ function getStatusConfig(status: EnhancedContract["status"]) {
       label: "Up for Renewal",
       dotColor: "bg-blue-400",
     },
+    processing: {
+      color: "bg-blue-50 text-blue-700 border-blue-200",
+      icon: Clock,
+      label: "Processing",
+      dotColor: "bg-blue-400",
+    },
+    completed: {
+      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      icon: CheckCircle2,
+      label: "Completed",
+      dotColor: "bg-emerald-400",
+    },
+    failed: {
+      color: "bg-red-50 text-red-700 border-red-200",
+      icon: XCircle,
+      label: "Failed",
+      dotColor: "bg-red-400",
+    },
   };
-  return configs[status] || configs.draft;
+  
+  if (status && configs[status]) {
+    return configs[status];
+  }
+  return defaultConfig;
 }
 
 function getRiskConfig(riskLevel?: ContractHealth["riskLevel"]) {
@@ -478,8 +504,8 @@ const QuickPreview = memo(function QuickPreview({ contract }: QuickPreviewProps)
       <div className="border-t pt-3">
         <p className="text-[10px] text-muted-foreground mb-2">Parties</p>
         <div className="space-y-1.5">
-          {contract.parties.slice(0, 3).map((party) => (
-            <div key={party.id} className="flex items-center gap-2">
+          {contract.parties && Array.isArray(contract.parties) && contract.parties.slice(0, 3).map((party: ContractParty) => (
+            <div key={party.id || party.name} className="flex items-center gap-2">
               <PartyAvatar party={party} size="sm" />
               <span className="text-xs truncate">{party.name}</span>
               <span className="text-[10px] text-muted-foreground capitalize">({party.role})</span>
@@ -616,11 +642,11 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         </div>
 
         {/* Parties Row */}
-        {contract.parties.length > 0 && (
+        {contract.parties && Array.isArray(contract.parties) && contract.parties.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2">
-              {contract.parties.slice(0, 3).map((party) => (
-                <PartyAvatar key={party.id} party={party} size="sm" />
+              {contract.parties.slice(0, 3).map((party: ContractParty) => (
+                <PartyAvatar key={party.id || party.name} party={party} size="sm" />
               ))}
               {contract.parties.length > 3 && (
                 <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-[10px] flex items-center justify-center ring-2 ring-white font-medium">
@@ -629,7 +655,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
               )}
             </div>
             <span className="text-xs text-muted-foreground truncate">
-              {contract.parties.map((p) => p.name).join(", ")}
+              {contract.parties.map((p: ContractParty) => p.name).join(", ")}
             </span>
           </div>
         )}
@@ -925,12 +951,12 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       {/* Parties */}
       <div className="hidden lg:flex items-center gap-2 w-40 shrink-0">
         <div className="flex -space-x-2">
-          {contract.parties.slice(0, 2).map((party) => (
-            <PartyAvatar key={party.id} party={party} size="sm" />
+          {contract.parties && Array.isArray(contract.parties) && contract.parties.slice(0, 2).map((party: ContractParty) => (
+            <PartyAvatar key={party.id || party.name} party={party} size="sm" />
           ))}
         </div>
         <span className="text-xs text-muted-foreground truncate">
-          {contract.parties.length > 0 ? contract.parties[0].name : "-"}
+          {contract.parties && Array.isArray(contract.parties) && contract.parties.length > 0 && contract.parties[0] ? contract.parties[0].name : "-"}
         </span>
       </div>
 
@@ -1037,11 +1063,11 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
         </DropdownMenu>
       </div>
     </motion.div>
-  );
+);
 });
 
 // ============================================================================
-// Export all
+// Export all (HealthIndicator already exported with its declaration)
 // ============================================================================
 
-export { PartyAvatar, HealthIndicator, ExpiryBadge, CompletenessBar, QuickPreview };
+export { PartyAvatar, ExpiryBadge, CompletenessBar, QuickPreview };

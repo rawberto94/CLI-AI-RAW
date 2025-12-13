@@ -447,10 +447,10 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
 
   // Processing state
-  const [processing, setProcessing] = useState<BulkAction | null>(null);
+  const [processing, setProcessing] = useState<BulkActionType | null>(null);
 
   const handleAction = useCallback(
-    async (action: BulkAction, params?: Record<string, any>) => {
+    async (action: BulkActionType, params?: Record<string, any>) => {
       setProcessing(action);
       try {
         await onAction(action, params);
