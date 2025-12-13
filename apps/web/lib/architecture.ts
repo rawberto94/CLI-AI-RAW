@@ -349,3 +349,71 @@ export {
   type PaginatedData,
   type InfiniteQueryResult,
 } from './data-fetching';
+
+// ============================================================================
+// Responsive Utilities
+// ============================================================================
+export {
+  // Provider and hooks
+  ResponsiveProvider,
+  useViewport,
+  useResponsiveValue,
+  
+  // Container queries
+  useContainerQuery,
+  
+  // Visibility detection
+  useIntersection,
+  
+  // Scroll tracking
+  useScrollPosition,
+  
+  // Image optimization
+  useResponsiveImage,
+  
+  // Touch handling
+  useTouch,
+  
+  // Network awareness
+  useNetworkInfo,
+  useAdaptiveLoading,
+  
+  // Components
+  ResponsiveRender,
+  AdaptiveLoad,
+  
+  // Types
+  type Breakpoint,
+  type BreakpointConfig,
+  type ViewportInfo,
+  type ResponsiveValue,
+  type NetworkInfo,
+} from './responsive';
+
+// ============================================================================
+// Responsive Performance
+// ============================================================================
+export {
+  // Adaptive components
+  createAdaptiveComponent,
+  NetworkAwareContent,
+  
+  // Progressive loading
+  ProgressiveImage,
+  ResponsiveSkeleton,
+  DeferredContent,
+  RenderBudget,
+  
+  // Typography
+  ResponsiveFont,
+  
+  // Device targeting
+  DeviceOnly,
+  TouchOnly,
+  MouseOnly,
+  
+  // Layout helpers
+  AspectRatio,
+  SafeArea,
+  OrientationWarning,
+} from './responsive-performance';
