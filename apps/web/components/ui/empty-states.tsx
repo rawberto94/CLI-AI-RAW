@@ -44,9 +44,9 @@ export function EmptyState({
   if (variant === 'minimal') {
     return (
       <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-        {icon && <div className="mb-3 text-gray-400">{icon}</div>}
-        <h3 className="text-base font-medium text-gray-900 mb-1">{title}</h3>
-        {description && <p className="text-sm text-gray-500 mb-3 max-w-xs">{description}</p>}
+        {icon && <div className="mb-3 text-gray-400 dark:text-gray-500">{icon}</div>}
+        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">{title}</h3>
+        {description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 max-w-xs">{description}</p>}
         {action && <div>{action}</div>}
       </div>
     );
@@ -63,14 +63,14 @@ export function EmptyState({
           className="mb-6"
           variants={floatAnimation}
         >
-          <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full shadow-inner">
+          <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-full shadow-inner">
             {icon}
           </div>
         </motion.div>
       )}
       
       <motion.h3 
-        className="text-xl font-bold text-gray-900 mb-2"
+        className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2"
         variants={fadeInUp}
       >
         {title}
@@ -78,7 +78,7 @@ export function EmptyState({
       
       {description && (
         <motion.p 
-          className="text-gray-600 mb-6 max-w-md"
+          className="text-gray-600 dark:text-gray-400 mb-6 max-w-md"
           variants={fadeInUp}
           transition={{ delay: 0.1 }}
         >
@@ -88,18 +88,18 @@ export function EmptyState({
       
       {tips && tips.length > 0 && (
         <motion.div 
-          className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 max-w-md w-full"
+          className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-xl p-4 mb-6 max-w-md w-full"
           variants={fadeInUp}
           transition={{ delay: 0.2 }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Lightbulb className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-semibold text-amber-800">Quick Tips</span>
+            <Lightbulb className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Quick Tips</span>
           </div>
           <ul className="space-y-1">
             {tips.map((tip, index) => (
-              <li key={index} className="flex items-start gap-2 text-sm text-amber-700">
-                <CheckCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+              <li key={index} className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
+                <CheckCircle className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0" />
                 <span>{tip}</span>
               </li>
             ))}

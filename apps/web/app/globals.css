@@ -780,4 +780,118 @@
   .stagger-children > *:nth-child(4) { animation-delay: 150ms; }
   .stagger-children > *:nth-child(5) { animation-delay: 200ms; }
   .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+
+  /* ========================
+     TOUCH & MOBILE IMPROVEMENTS
+     ======================== */
+
+  /* Better touch targets on mobile */
+  @media (pointer: coarse) {
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Increase spacing for touch interfaces */
+    .touch-spacing > * + * {
+      margin-top: 0.75rem;
+    }
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Thin scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #475569;
+  }
+  
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  /* ========================
+     ACCESSIBILITY IMPROVEMENTS  
+     ======================== */
+
+  /* High contrast focus states */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+  }
+
+  .focus-ring-inset {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset;
+  }
+
+  /* Skip link styling is in layout */
+  
+  /* Screen reader utilities */
+  .sr-focus:not(:focus) {
+    @apply sr-only;
+  }
+
+  /* ========================
+     LOADING STATES
+     ======================== */
+     
+  .loading-dots::after {
+    content: '';
+    animation: loading-dots 1.4s infinite;
+  }
+
+  @keyframes loading-dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+
+  /* Pulse loading effect */
+  .loading-pulse {
+    @apply animate-pulse bg-slate-200 dark:bg-slate-700;
+  }
+
+  /* ========================
+     RESPONSIVE CONTAINERS
+     ======================== */
+     
+  .container-tight {
+    @apply max-w-4xl mx-auto px-4 sm:px-6;
+  }
+
+  .container-wide {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-full {
+    @apply w-full px-4 sm:px-6 lg:px-8;
+  }
 }

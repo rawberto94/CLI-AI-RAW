@@ -154,14 +154,29 @@ function SignInForm() {
 
   const hasSSO = providers.some(p => p !== "credentials");
 
+  // Clear error when user starts typing
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (error) setError("");
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (error) setError("");
+  };
+
   return (
     <div className="min-h-screen flex">
       {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 p-12 flex-col justify-between">
-        <div>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 p-12 flex-col justify-between relative overflow-hidden">
+        {/* Decorative elements */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-teal-400/20 rounded-full blur-2xl" />
+        
+        <div className="relative z-10">
           <ConTigoLogo size="lg" />
         </div>
-        <div className="text-white">
+        <div className="text-white relative z-10">
           <h2 className="text-4xl font-bold mb-4">Contract Intelligence Platform</h2>
           <p className="text-teal-100 text-lg leading-relaxed">
             Manage, analyze, and optimize your contracts with AI-powered insights. 
@@ -178,22 +193,22 @@ function SignInForm() {
             </div>
           </div>
         </div>
-        <div className="text-teal-200 text-sm">
+        <div className="text-teal-200 text-sm relative z-10">
           © 2025 ConTigo. All rights reserved.
         </div>
       </div>
 
       {/* Right side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gradient-to-br from-slate-50 to-white">
-        <Card className="w-full max-w-md p-8 shadow-xl border-0 bg-white">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 to-white">
+        <Card className="w-full max-w-md p-6 sm:p-8 shadow-xl border-0 bg-white">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <ConTigoLogo size="md" />
           </div>
 
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-            <p className="text-slate-500">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Welcome Back</h1>
+            <p className="text-slate-500 text-sm sm:text-base">
               Sign in to your account to continue
             </p>
           </div>
@@ -268,11 +283,13 @@ function SignInForm() {
               id="email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={handleEmailChange}
               placeholder="you@example.com"
               required
               disabled={loading}
               className="mt-1"
+              autoComplete="email"
+              aria-describedby={error ? "signin-error" : undefined}
             />
           </div>
 
@@ -282,32 +299,49 @@ function SignInForm() {
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={handlePasswordChange}
               placeholder="••••••••"
               required
               disabled={loading}
               className="mt-1"
+              autoComplete="current-password"
+              aria-describedby={error ? "signin-error" : undefined}
             />
           </div>
 
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+            <div 
+              id="signin-error"
+              role="alert"
+              className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 animate-in slide-in-from-top-1 duration-200"
+            >
+              <svg className="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
               {error}
             </div>
           )}
 
           <Button
             type="submit"
-            className="w-full btn-primary"
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2.5 transition-all focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
             disabled={loading}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Signing in...
+              </span>
+            ) : "Sign In"}
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-slate-500">
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-teal-600 hover:text-teal-700 hover:underline font-medium">
+          <Link href="/auth/signup" className="text-teal-600 hover:text-teal-700 hover:underline font-medium transition-colors">
             Sign up
           </Link>
         </div>

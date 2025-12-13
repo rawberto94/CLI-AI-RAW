@@ -178,26 +178,26 @@ function NavItem({
           aria-expanded={isExpanded}
           aria-controls={`nav-children-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
           className={cn(
-            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-all',
+            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50',
             (itemActive || hasActiveChild)
-              ? 'bg-blue-50/80 text-blue-700'
-              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+              : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
           )}
         >
           <div className="flex items-center gap-2.5">
             <item.icon className={cn(
               'h-4 w-4',
-              (itemActive || hasActiveChild) ? 'text-blue-600' : 'text-gray-400'
+              (itemActive || hasActiveChild) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'
             )} />
             <span className="font-medium">{item.name}</span>
             {item.isNew && (
-              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded-full">
+              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full">
                 NEW
               </span>
             )}
           </div>
           <ChevronDown className={cn(
-            'h-4 w-4 text-gray-400 transition-transform duration-200',
+            'h-4 w-4 text-gray-400 dark:text-slate-500 transition-transform duration-200',
             isExpanded && 'rotate-180'
           )} aria-hidden="true" />
         </button>
@@ -214,17 +214,17 @@ function NavItem({
               role="group"
               aria-label={`${item.name} submenu`}
             >
-              <div className="ml-6 mt-1 space-y-0.5 border-l border-gray-200 pl-3">
+              <div className="ml-6 mt-1 space-y-0.5 border-l border-gray-200 dark:border-slate-700 pl-3">
                 {item.children?.map((child) => (
                   <Link
                     key={child.href || child.name}
                     href={child.href || '#'}
                     onClick={onMobileClose}
                     className={cn(
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors',
+                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50',
                       isActive(child.href)
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium'
+                        : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200'
                     )}
                   >
                     <child.icon className="h-3.5 w-3.5" />
@@ -248,14 +248,14 @@ function NavItem({
           onMobileClose();
         }}
         className={cn(
-          'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
-          'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50',
+          'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
         )}
       >
-        <item.icon className="h-4 w-4 text-gray-400" />
+        <item.icon className="h-4 w-4 text-gray-400 dark:text-slate-500" />
         <span className="font-medium">{item.name}</span>
         {item.isNew && (
-          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded-full">
+          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full">
             NEW
           </span>
         )}
@@ -268,19 +268,19 @@ function NavItem({
       href={item.href || '/'}
       onClick={onMobileClose}
       className={cn(
-        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all',
+        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50',
         itemActive
-          ? 'bg-blue-50/80 text-blue-700'
-          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+          : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
       )}
     >
       <item.icon className={cn(
         'h-4 w-4',
-        itemActive ? 'text-blue-600' : 'text-gray-400'
+        itemActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'
       )} />
       <span className="font-medium">{item.name}</span>
       {item.isNew && (
-        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 text-emerald-700 rounded-full">
+        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full">
           NEW
         </span>
       )}
@@ -415,7 +415,7 @@ function EnhancedNavigation() {
       <aside
         className={cn(
           'fixed top-0 left-0 z-30 h-screen transition-transform duration-300 ease-out',
-          'bg-white/95 backdrop-blur-md border-r border-gray-200/60',
+          'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-r border-gray-200/60 dark:border-slate-700/60',
           'lg:translate-x-0 w-64',
           isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
         )}
@@ -424,7 +424,7 @@ function EnhancedNavigation() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100 dark:border-slate-700">
             <ConTigoLogoSVG size="lg" />
           </div>
 
@@ -444,9 +444,9 @@ function EnhancedNavigation() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
-                  className="w-full h-9 pl-9 pr-10 bg-gray-50/80 border border-gray-200/60 rounded-lg text-sm placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-blue-300 transition-all"
+                  className="w-full h-9 pl-9 pr-10 bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200/60 dark:border-slate-600/60 rounded-lg text-sm placeholder:text-gray-400 dark:placeholder:text-slate-500 text-gray-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
-                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:flex items-center px-1.5 py-0.5 text-[10px] text-gray-400 bg-white border border-gray-200 rounded font-mono">
+                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:flex items-center px-1.5 py-0.5 text-[10px] text-gray-400 dark:text-slate-500 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded font-mono">
                   ⌘K
                 </kbd>
               </div>
@@ -454,10 +454,10 @@ function EnhancedNavigation() {
           </div>
 
           {/* Navigation Groups */}
-          <nav className="flex-1 overflow-y-auto px-3 pb-3">
+          <nav className="flex-1 overflow-y-auto px-3 pb-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-600">
             {filteredNavigationGroups.map((group, groupIndex) => (
               <div key={group.id} className={cn(groupIndex > 0 && 'mt-5')}>
-                <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
                   {group.label}
                 </h3>
                 <div className="space-y-0.5">
