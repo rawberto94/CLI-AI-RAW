@@ -102,16 +102,25 @@ function formatCurrency(value: number, currency: string = "USD"): string {
   }).format(value);
 }
 
-function getStatusConfig(status: EnhancedContract["status"]) {
-  const configs = {
-    draft: { color: "bg-slate-100 text-slate-700", dotColor: "bg-slate-400", label: "Draft" },
+type StatusConfigType = { color: string; dotColor: string; label: string };
+
+function getStatusConfig(status?: EnhancedContract["status"]): StatusConfigType {
+  const defaultConfig: StatusConfigType = { color: "bg-slate-100 text-slate-700", dotColor: "bg-slate-400", label: "Draft" };
+  const configs: Record<string, StatusConfigType> = {
+    draft: defaultConfig,
     pending: { color: "bg-amber-50 text-amber-700", dotColor: "bg-amber-400", label: "Pending" },
     active: { color: "bg-emerald-50 text-emerald-700", dotColor: "bg-emerald-400", label: "Active" },
     expired: { color: "bg-red-50 text-red-700", dotColor: "bg-red-400", label: "Expired" },
     terminated: { color: "bg-gray-100 text-gray-700", dotColor: "bg-gray-400", label: "Terminated" },
     renewal: { color: "bg-blue-50 text-blue-700", dotColor: "bg-blue-400", label: "Renewal" },
+    processing: { color: "bg-blue-50 text-blue-700", dotColor: "bg-blue-400", label: "Processing" },
+    completed: { color: "bg-emerald-50 text-emerald-700", dotColor: "bg-emerald-400", label: "Completed" },
+    failed: { color: "bg-red-50 text-red-700", dotColor: "bg-red-400", label: "Failed" },
   };
-  return configs[status] || configs.draft;
+  if (status && configs[status]) {
+    return configs[status];
+  }
+  return defaultConfig;
 }
 
 // ============================================================================
@@ -225,12 +234,12 @@ export const MobileContractCard = memo(function MobileContractCard({
           </div>
 
           {/* Parties */}
-          {contract.parties.length > 0 && (
+          {contract.parties && Array.isArray(contract.parties) && contract.parties.length > 0 && (
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
-                {contract.parties.slice(0, 2).map((party) => (
+                {contract.parties.slice(0, 2).map((party: { id?: string; name: string }) => (
                   <div
-                    key={party.id}
+                    key={party.id || party.name}
                     className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 text-[10px] font-medium ring-2 ring-white"
                   >
                     {party.name.charAt(0)}
@@ -587,14 +596,14 @@ export const MobilePullToRefresh = memo(function MobilePullToRefresh({
   const PULL_THRESHOLD = 80;
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (containerRef.current?.scrollTop === 0) {
+    if (containerRef.current?.scrollTop === 0 && e.touches[0]) {
       startY.current = e.touches[0].clientY;
       setIsPulling(true);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isPulling) return;
+    if (!isPulling || !e.touches[0]) return;
     const currentY = e.touches[0].clientY;
     const distance = Math.max(0, (currentY - startY.current) * 0.5);
     setPullDistance(Math.min(distance, PULL_THRESHOLD * 1.5));

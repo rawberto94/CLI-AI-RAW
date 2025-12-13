@@ -46,14 +46,14 @@ export function PullToRefresh({
     if (disabled || refreshing) return;
     
     const scrollTop = containerRef.current?.scrollTop || 0;
-    if (scrollTop <= 0) {
+    if (scrollTop <= 0 && e.touches[0]) {
       startY.current = e.touches[0].clientY;
       setPulling(true);
     }
   }, [disabled, refreshing]);
 
   const handleTouchMove = useCallback((e: ReactTouchEvent) => {
-    if (!pulling || disabled || refreshing) return;
+    if (!pulling || disabled || refreshing || !e.touches[0]) return;
     
     const currentY = e.touches[0].clientY;
     const distance = Math.max(0, (currentY - startY.current) * 0.5);
@@ -231,7 +231,7 @@ export function BottomSheet({
   const { height: viewportHeight } = useViewport();
 
   const snapHeights = snapPoints.map(p => viewportHeight * p);
-  const currentHeight = snapHeights[currentSnap] || snapHeights[0];
+  const currentHeight = snapHeights[currentSnap] ?? snapHeights[0] ?? viewportHeight * 0.5;
 
   const handleDragEnd = useCallback((
     _: MouseEvent | TouchEvent | PointerEvent,
@@ -275,11 +275,11 @@ export function BottomSheet({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             drag="y"
-            dragConstraints={{ top: viewportHeight - snapHeights[snapHeights.length - 1], bottom: 0 }}
+            dragConstraints={{ top: viewportHeight - (snapHeights[snapHeights.length - 1] ?? viewportHeight * 0.9), bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={handleDragEnd}
             className="fixed inset-x-0 bottom-0 bg-white rounded-t-2xl shadow-2xl z-50"
-            style={{ height: snapHeights[snapHeights.length - 1], touchAction: 'none' }}
+            style={{ height: snapHeights[snapHeights.length - 1] ?? viewportHeight * 0.9, touchAction: 'none' }}
           >
             {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-2">
@@ -455,9 +455,10 @@ export function DraggableList({ items, onReorder, className = '' }: DraggableLis
       const targetIndex = items.findIndex(i => i.id === dragOverItem);
       
       const [removed] = newItems.splice(draggedIndex, 1);
-      newItems.splice(targetIndex, 0, removed);
-      
-      onReorder(newItems);
+      if (removed) {
+        newItems.splice(targetIndex, 0, removed);
+        onReorder(newItems);
+      }
     }
     
     setDraggedItem(null);
@@ -715,10 +716,15 @@ export const MobileInput = React.forwardRef<HTMLInputElement, MobileInputProps>(
 // Haptic Feedback Button
 // ============================================================================
 
-interface HapticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface HapticButtonProps {
   haptic?: 'light' | 'medium' | 'heavy';
   variant?: 'primary' | 'secondary' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
+  className?: string;
+  onClick?: (e: ReactMouseEvent<HTMLButtonElement>) => void;
+  children?: React.ReactNode;
+  disabled?: boolean;
+  type?: 'button' | 'submit' | 'reset';
 }
 
 export const HapticButton = React.forwardRef<HTMLButtonElement, HapticButtonProps>(
@@ -729,7 +735,8 @@ export const HapticButton = React.forwardRef<HTMLButtonElement, HapticButtonProp
     className = '',
     onClick,
     children,
-    ...props
+    disabled,
+    type = 'button',
   }, ref) {
     const handleClick = useCallback((e: ReactMouseEvent<HTMLButtonElement>) => {
       // Trigger haptic feedback if available
@@ -762,6 +769,8 @@ export const HapticButton = React.forwardRef<HTMLButtonElement, HapticButtonProp
         ref={ref}
         whileTap={{ scale: 0.97 }}
         onClick={handleClick}
+        disabled={disabled}
+        type={type}
         className={`
           rounded-xl font-medium
           transition-colors
@@ -770,7 +779,6 @@ export const HapticButton = React.forwardRef<HTMLButtonElement, HapticButtonProp
           ${sizeClasses[size]}
           ${className}
         `}
-        {...props}
       >
         {children}
       </motion.button>

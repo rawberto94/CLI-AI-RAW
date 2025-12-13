@@ -490,7 +490,7 @@ export default function ContractDetailPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { dataMode } = useDataMode()
-  const { joinDocument, leaveDocument } = useWebSocket()
+  const wsContext = useWebSocket()
   const crossModule = useCrossModuleInvalidation()
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -620,13 +620,13 @@ export default function ContractDetailPage() {
 
   // Join document for real-time collaboration
   useEffect(() => {
-    if (params.id) {
-      joinDocument(params.id as string, 'contract')
+    if (params.id && wsContext?.joinDocument) {
+      wsContext.joinDocument(params.id as string, 'contract')
     }
     return () => {
-      leaveDocument()
+      wsContext?.leaveDocument?.()
     }
-  }, [params.id, joinDocument, leaveDocument])
+  }, [params.id, wsContext])
 
   const loadContract = useCallback(async () => {
     setLoading(true)
