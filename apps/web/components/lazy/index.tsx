@@ -93,6 +93,99 @@ export const LazyEnhancedDashboard = dynamic(
   }
 );
 
+// Analytics components
+export const LazyAnalyticsHub = dynamic(
+  () => import('@/components/analytics/AnalyticsHub').then(mod => mod.AnalyticsHub),
+  {
+    loading: () => (
+      <div className="w-full min-h-[600px] bg-gray-50 animate-pulse rounded-lg" />
+    ),
+    ssr: false,
+  }
+);
+
+export const LazyForecastingDashboard = dynamic(
+  () => import('@/components/analytics/ForecastingDashboard').then(mod => mod.ForecastingDashboard),
+  {
+    loading: () => (
+      <div className="w-full min-h-[500px] bg-gray-50 animate-pulse rounded-lg" />
+    ),
+    ssr: false,
+  }
+);
+
+// Contract heavy components
+export const LazyAIAnalysisPanel = dynamic(
+  () => import('@/components/contracts/AIAnalysisPanel').then(mod => mod.AIAnalysisPanel),
+  {
+    loading: () => (
+      <div className="w-full h-[400px] bg-gray-100 animate-pulse rounded-lg" />
+    ),
+    ssr: false,
+  }
+);
+
+export const LazyEnhancedArtifactViewer = dynamic(
+  () => import('@/components/contracts/EnhancedArtifactViewer').then(mod => mod.EnhancedArtifactViewer),
+  {
+    loading: () => (
+      <div className="w-full h-[500px] bg-gray-100 animate-pulse rounded-lg" />
+    ),
+    ssr: false,
+  }
+);
+
+export const LazyPDFViewer = dynamic(
+  () => import('@/components/contracts/PDFViewer').then(mod => mod.default),
+  {
+    loading: () => (
+      <div className="w-full h-[600px] bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">
+        <div className="text-gray-400">Loading PDF viewer...</div>
+      </div>
+    ),
+    ssr: false,
+  }
+);
+
+export const LazyRedlineEditor = dynamic(
+  () => import('@/components/contracts/RedlineEditor').then(mod => mod.default),
+  {
+    loading: () => (
+      <div className="w-full h-[500px] bg-gray-100 animate-pulse rounded-lg" />
+    ),
+    ssr: false,
+  }
+);
+
+export const LazyVersionCompare = dynamic(
+  () => import('@/components/contracts/VersionCompare').then(mod => mod.VersionCompare),
+  {
+    loading: () => (
+      <div className="w-full h-[600px] bg-gray-100 animate-pulse rounded-lg" />
+    ),
+    ssr: false,
+  }
+);
+
+// AI components
+export const LazyFloatingAIBubble = dynamic(
+  () => import('@/components/ai/FloatingAIBubble').then(mod => mod.FloatingAIBubble),
+  {
+    loading: () => null,
+    ssr: false,
+  }
+);
+
+// Approval components
+export const LazyApprovalsQueue = dynamic(
+  () => import('@/components/approvals/ApprovalsQueue').then(mod => mod.ApprovalsQueue),
+  {
+    loading: () => (
+      <div className="w-full h-[400px] bg-gray-100 animate-pulse rounded-lg" />
+    ),
+  }
+);
+
 // Export all lazy components
 export default {
   LazyInteractiveBoxPlot,
@@ -105,4 +198,13 @@ export default {
   LazyRateCardDataRepository,
   LazyCostSavingsDashboardWidget,
   LazyEnhancedDashboard,
+  LazyAnalyticsHub,
+  LazyForecastingDashboard,
+  LazyAIAnalysisPanel,
+  LazyEnhancedArtifactViewer,
+  LazyPDFViewer,
+  LazyRedlineEditor,
+  LazyVersionCompare,
+  LazyFloatingAIBubble,
+  LazyApprovalsQueue,
 };

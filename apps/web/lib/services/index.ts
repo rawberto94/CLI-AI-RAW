@@ -4,6 +4,39 @@
  * Central export point for all service classes.
  */
 
+// API Client Service
+export {
+  ApiClient,
+  getApiClient,
+  contractsApi,
+  templatesApi,
+  approvalsApi,
+  analyticsApi,
+  uploadApi,
+  // Query keys for React Query
+  queryKeys,
+  // Hooks
+  useContracts,
+  useContract,
+  useContractSummary,
+  useCreateContract,
+  useUpdateContract,
+  useDeleteContract,
+  usePendingApprovals,
+  useApproveContract,
+  useDashboardMetrics,
+  // Types
+  type Contract,
+  type ContractSummary,
+  type CreateContractInput,
+  type UpdateContractInput,
+  type ListContractsParams,
+  type PaginatedResponse,
+  type Artifact,
+  type Template,
+  type Approval,
+} from './api-client.service';
+
 // Metadata Schema Service
 export {
   MetadataSchemaService,
