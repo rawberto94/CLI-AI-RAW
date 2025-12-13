@@ -90,12 +90,13 @@ export interface ContractAttachment {
   uploadedBy?: string;
 }
 
-export interface ExtendedContract extends EnhancedContract {
+// Override keyTerms to support both simple strings and label/value pairs
+export interface ExtendedContract extends Omit<EnhancedContract, 'keyTerms'> {
   clauses?: ContractClause[];
   activities?: ContractActivity[];
   attachments?: ContractAttachment[];
   notes?: string;
-  keyTerms?: Array<{ label: string; value: string }>;
+  keyTerms?: Array<{ label: string; value: string }> | string[];
   obligations?: Array<{
     id: string;
     description: string;
@@ -103,6 +104,7 @@ export interface ExtendedContract extends EnhancedContract {
     status: "pending" | "completed" | "overdue";
     assignee?: string;
   }>;
+  summary?: string;
 }
 
 export interface ContractPreviewPanelProps {
@@ -115,7 +117,10 @@ export interface ContractPreviewPanelProps {
   onDelete?: (id: string) => void;
   onDuplicate?: (id: string) => void;
   onExport?: (id: string) => void;
+  onDownload?: (id: string) => void;
+  onShare?: (id: string) => void;
   onAnalyze?: (id: string) => void;
+  onAskAI?: () => void;
   onPin?: (id: string) => void;
   onFavorite?: (id: string) => void;
   hasNext?: boolean;
@@ -143,23 +148,27 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getStatusConfig(status: EnhancedContract["status"]) {
-  const configs = {
+function getStatusConfig(status?: EnhancedContract["status"]) {
+  const configs: Record<string, { color: string; icon: typeof FileText; label: string }> = {
     draft: { color: "bg-slate-100 text-slate-700", icon: FileText, label: "Draft" },
     pending: { color: "bg-amber-50 text-amber-700", icon: Clock, label: "Pending Review" },
     active: { color: "bg-emerald-50 text-emerald-700", icon: CheckCircle2, label: "Active" },
     expired: { color: "bg-red-50 text-red-700", icon: AlertTriangle, label: "Expired" },
     terminated: { color: "bg-gray-100 text-gray-700", icon: X, label: "Terminated" },
     renewal: { color: "bg-blue-50 text-blue-700", icon: RefreshCw, label: "Up for Renewal" },
+    processing: { color: "bg-blue-50 text-blue-700", icon: RefreshCw, label: "Processing" },
+    completed: { color: "bg-emerald-50 text-emerald-700", icon: CheckCircle2, label: "Completed" },
+    failed: { color: "bg-red-50 text-red-700", icon: AlertTriangle, label: "Failed" },
   };
-  return configs[status] || configs.draft;
+  return status && configs[status] ? configs[status] : configs.draft;
 }
 
-function getRiskBadge(riskLevel?: "low" | "medium" | "high") {
+function getRiskBadge(riskLevel?: "low" | "medium" | "high" | "critical") {
   const configs = {
     low: { color: "bg-emerald-100 text-emerald-700", label: "Low Risk" },
     medium: { color: "bg-amber-100 text-amber-700", label: "Medium Risk" },
     high: { color: "bg-red-100 text-red-700", label: "High Risk" },
+    critical: { color: "bg-red-200 text-red-800", label: "Critical Risk" },
   };
   return riskLevel ? configs[riskLevel] : null;
 }
@@ -173,7 +182,7 @@ interface OverviewTabProps {
 }
 
 const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
-  const statusConfig = getStatusConfig(contract.status);
+  const statusConfig = getStatusConfig(contract.status) || { icon: FileText, label: 'Unknown', color: 'bg-gray-100 text-gray-700' };
   const StatusIcon = statusConfig.icon;
 
   const daysUntilExpiry = contract.endDate
@@ -252,8 +261,10 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
                 contract.health.riskLevel === "critical" && "bg-red-100 text-red-700"
               )}
             >
-              {contract.health.riskLevel.charAt(0).toUpperCase() +
-                contract.health.riskLevel.slice(1)}{" "}
+              {contract.health.riskLevel ? (
+                contract.health.riskLevel.charAt(0).toUpperCase() +
+                contract.health.riskLevel.slice(1)
+              ) : 'Unknown'}{" "}
               Risk
             </Badge>
           </div>
@@ -287,16 +298,16 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
       )}
 
       {/* Parties */}
-      {contract.parties.length > 0 && (
+      {contract.parties && Array.isArray(contract.parties) && contract.parties.length > 0 && (
         <div>
           <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Parties Involved
           </h4>
           <div className="space-y-2">
-            {contract.parties.map((party) => (
+            {contract.parties.map((party: ContractParty) => (
               <div
-                key={party.id}
+                key={party.id || party.name}
                 className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
               >
                 {party.logo ? (
@@ -328,12 +339,22 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
             Key Terms
           </h4>
           <div className="space-y-2">
-            {contract.keyTerms.map((term, i) => (
-              <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
-                <span className="text-xs text-muted-foreground">{term.label}</span>
-                <span className="text-sm font-medium">{term.value}</span>
-              </div>
-            ))}
+            {contract.keyTerms.map((term, i) => {
+              // Handle both string[] and { label, value }[] formats
+              if (typeof term === 'string') {
+                return (
+                  <div key={i} className="flex items-center py-2 border-b last:border-0">
+                    <span className="text-sm font-medium">{term}</span>
+                  </div>
+                );
+              }
+              return (
+                <div key={i} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <span className="text-xs text-muted-foreground">{term.label}</span>
+                  <span className="text-sm font-medium">{term.value}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

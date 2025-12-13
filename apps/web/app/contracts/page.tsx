@@ -1,11 +1,13 @@
 /**
- * Enhanced Contracts List Page
+ * Enhanced Contracts List Page v2.0
+ * Premium UI/UX with Hero Dashboard, Smart Filters, Preview Panel
  * Integrated filters, bulk selection, cross-module actions
+ * Preserves RAG and chatbot data flows
  */
 
 "use client";
 
-import { useState, useMemo, useCallback, memo, useEffect } from "react";
+import { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,6 +90,9 @@ import {
   Target,
   Database,
   ArrowLeftRight,
+  Heart,
+  MessageSquare,
+  Layers,
 } from "lucide-react";
 import { ContractTimeline, type TimelineContract } from "@/components/contracts/ContractTimeline";
 import { ContractKanban, type KanbanContract } from "@/components/contracts/ContractKanban";
@@ -98,6 +103,14 @@ import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
+
+// Enhanced UI Components
+import { ContractsHeroDashboard, type ContractStats } from "@/components/contracts/ContractsHeroDashboard";
+import { EnhancedContractCard, EnhancedContractRow, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
+import { ContractPreviewPanel, type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
+import { EnhancedBulkActionsBar, type BulkAction } from "@/components/contracts/EnhancedBulkActionsBar";
+import { SmartFilters, type ContractFilters } from "@/components/contracts/SmartFilters";
+import { MobileContractCard, MobileFiltersSheet, MobileSearchBar } from "@/components/contracts/MobileContractViews";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
 import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForApprovalModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -676,6 +689,14 @@ export default function ContractsPage() {
   const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
+  // Enhanced UI state
+  const [previewContract, setPreviewContract] = useState<ExtendedContract | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [favoriteContracts, setFavoriteContracts] = useState<Set<string>>(new Set());
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [useEnhancedUI, setUseEnhancedUI] = useState(true); // Toggle between enhanced and legacy UI
+  const listContainerRef = useRef<HTMLDivElement>(null);
+
   // Use React Query for data fetching with caching
   const { 
     data: contractsData, 
@@ -1165,6 +1186,180 @@ export default function ContractsPage() {
     return { totalValue, avgValue, highRiskCount, expiringCount };
   }, [sortedContracts]);
 
+  // Hero Dashboard Stats (enhanced version of filteredStats)
+  const heroStats: ContractStats = useMemo(() => {
+    const now = Date.now();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+    
+    // Calculate week-over-week trends (mock data for now - would come from API)
+    const totalValue = contracts.reduce((sum, c) => sum + (c.value || 0), 0);
+    const expiringSoon = contracts.filter(c => {
+      if (!c.expirationDate) return false;
+      const daysUntil = Math.ceil((new Date(c.expirationDate).getTime() - now) / (1000 * 60 * 60 * 24));
+      return daysUntil >= 0 && daysUntil <= 30;
+    }).length;
+    const highRisk = contracts.filter(c => (c.riskScore || 0) >= 70).length;
+    const processing = contracts.filter(c => c.status === 'processing').length;
+    
+    return {
+      totalContracts: contractsData?.total ?? contracts.length,
+      activeContracts: contracts.filter(c => c.status === 'completed').length,
+      totalValue,
+      monthlyChange: 12.5, // Would come from API - mock for now
+      expiringSoon,
+      expiringThisWeek: contracts.filter(c => {
+        if (!c.expirationDate) return false;
+        const daysUntil = Math.ceil((new Date(c.expirationDate).getTime() - now) / (1000 * 60 * 60 * 24));
+        return daysUntil >= 0 && daysUntil <= 7;
+      }).length,
+      highRiskContracts: highRisk,
+      riskTrend: highRisk > 3 ? 'up' : 'down',
+      processingCount: processing,
+      pendingReview: contracts.filter(c => c.status === 'pending').length,
+      recentlyAdded: contracts.filter(c => {
+        if (!c.createdAt) return false;
+        return new Date(c.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000;
+      }).length,
+      // Sparkline data (mock - would come from analytics API)
+      trendData: [
+        { date: 'Mon', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+        { date: 'Tue', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+        { date: 'Wed', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+        { date: 'Thu', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+        { date: 'Fri', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+        { date: 'Sat', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+        { date: 'Sun', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
+      ],
+    };
+  }, [contracts, contractsData?.total]);
+
+  // Convert Contract to EnhancedContract for enhanced cards
+  const enhancedContracts = useMemo(() => {
+    return paginatedContracts.map(contract => ({
+      id: contract.id,
+      title: contract.title || 'Untitled Contract',
+      type: contract.type || 'Contract',
+      filename: contract.filename,
+      status: (contract.status || 'draft') as EnhancedContract['status'],
+      value: contract.value,
+      expirationDate: contract.expirationDate,
+      effectiveDate: contract.effectiveDate,
+      createdAt: contract.createdAt,
+      riskScore: contract.riskScore,
+      health: {
+        score: Math.max(20, 100 - (contract.riskScore || 0)),
+        issues: contract.riskScore && contract.riskScore >= 70 ? ['High risk score detected'] : [],
+        lastChecked: new Date(),
+      },
+      parties: contract.parties ? [
+        ...(contract.parties.client ? [{ name: contract.parties.client, role: 'client' as const }] : []),
+        ...(contract.parties.supplier ? [{ name: contract.parties.supplier, role: 'vendor' as const }] : []),
+      ] : [],
+      isFavorite: favoriteContracts.has(contract.id),
+      isPinned: false,
+      completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
+      keyTerms: [],
+      tags: [],
+    } satisfies EnhancedContract));
+  }, [paginatedContracts, favoriteContracts]);
+
+  // Convert to ExtendedContract for preview panel
+  const convertToExtendedContract = useCallback((contract: Contract): ExtendedContract => ({
+    id: contract.id,
+    title: contract.title || 'Untitled Contract',
+    type: contract.type || 'Contract',
+    filename: contract.filename,
+    status: (contract.status || 'draft') as ExtendedContract['status'],
+    value: contract.value,
+    expirationDate: contract.expirationDate,
+    effectiveDate: contract.effectiveDate,
+    createdAt: contract.createdAt,
+    riskScore: contract.riskScore,
+    parties: contract.parties ? [
+      ...(contract.parties.client ? [{ 
+        id: 'client-1',
+        name: contract.parties.client, 
+        role: 'client' as const, 
+        email: '',
+        phone: '',
+      }] : []),
+      ...(contract.parties.supplier ? [{ 
+        id: 'vendor-1',
+        name: contract.parties.supplier, 
+        role: 'vendor' as const, 
+        email: '',
+        phone: '',
+      }] : []),
+    ] : [],
+    clauses: [],
+    attachments: [],
+    activities: [],
+    summary: 'Contract summary will be available after processing.',
+  }), []);
+
+  // Handle preview
+  const handlePreview = useCallback((contract: Contract) => {
+    setPreviewContract(convertToExtendedContract(contract));
+    setPreviewOpen(true);
+  }, [convertToExtendedContract]);
+
+  // Handle favorite toggle
+  const handleToggleFavorite = useCallback((contractId: string) => {
+    setFavoriteContracts(prev => {
+      const next = new Set(prev);
+      if (next.has(contractId)) {
+        next.delete(contractId);
+        toast.success('Removed from favorites');
+      } else {
+        next.add(contractId);
+        toast.success('Added to favorites');
+      }
+      return next;
+    });
+  }, []);
+
+  // Smart filters change handler
+  const handleSmartFiltersChange = useCallback((filters: ContractFilters) => {
+    setSearchQuery(filters.search || '');
+    if (filters.status?.length && filters.status[0]) {
+      setStatusFilter(filters.status[0]);
+    } else {
+      setStatusFilter('all');
+    }
+    if (filters.riskLevel?.length) {
+      setRiskFilters(filters.riskLevel);
+    } else {
+      setRiskFilters([]);
+    }
+    if (filters.contractType?.length) {
+      setTypeFilters(filters.contractType);
+    } else {
+      setTypeFilters([]);
+    }
+    // Date range handling
+    if (filters.dateRange?.from) {
+      const daysDiff = Math.ceil((Date.now() - new Date(filters.dateRange.from).getTime()) / (1000 * 60 * 60 * 24));
+      const preset = DATE_PRESETS.find(p => p.days >= daysDiff);
+      setDateRangeFilter(preset?.value || null);
+    } else {
+      setDateRangeFilter(null);
+    }
+  }, []);
+
+  // Navigate between contracts in preview
+  const handlePreviewNavigate = useCallback((direction: 'prev' | 'next') => {
+    if (!previewContract) return;
+    const currentIndex = paginatedContracts.findIndex(c => c.id === previewContract.id);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+    const nextContract = paginatedContracts[newIndex];
+    if (newIndex >= 0 && newIndex < paginatedContracts.length && nextContract) {
+      setPreviewContract(convertToExtendedContract(nextContract));
+    }
+  }, [previewContract, paginatedContracts, convertToExtendedContract]);
+
   // Export filtered results
   const handleExportFiltered = useCallback(async (format: 'csv' | 'json') => {
     try {
@@ -1587,8 +1782,63 @@ export default function ContractsPage() {
           )}
         </AnimatePresence>
 
-        {/* Stats - Click to filter */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+
+        {/* Enhanced Hero Dashboard */}
+        <ContractsHeroDashboard
+          stats={heroStats}
+          onUploadClick={() => router.push('/upload')}
+          onGenerateClick={() => router.push('/generate')}
+          onCompareClick={() => {
+            if (selectedContracts.size === 2) {
+              const ids = Array.from(selectedContracts);
+              router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
+            } else {
+              toast.info('Select exactly 2 contracts to compare');
+            }
+          }}
+          onAskAIClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
+          className="mb-2"
+        />
+
+        {/* Enhanced Smart Filters with AI Search */}
+        <SmartFilters
+          onFiltersChange={handleSmartFiltersChange}
+          initialFilters={{
+            search: searchQuery,
+            status: statusFilter !== 'all' ? [statusFilter as any] : [],
+            riskLevel: riskFilters as any[],
+            contractType: typeFilters,
+          }}
+          savedPresets={savedFilters.map(f => ({
+            id: f.id,
+            name: f.name,
+            filters: {
+              search: '',
+              status: f.filters.statusFilter !== 'all' ? [f.filters.statusFilter] : [],
+              riskLevel: f.filters.riskFilters || [],
+              contractType: f.filters.typeFilters || [],
+            },
+            isDefault: false,
+          }))}
+          onSavePreset={(name, filters) => {
+            const newFilter = {
+              id: Date.now().toString(),
+              name,
+              filters: {
+                statusFilter: filters.status?.[0] || 'all',
+                typeFilters: filters.contractType || [],
+                riskFilters: filters.riskLevel || [],
+              }
+            };
+            setSavedFilters(prev => [...prev, newFilter]);
+            toast.success(`Filter "${name}" saved`);
+          }}
+          totalResults={sortedContracts.length}
+          className="mb-2"
+        />
+
+        {/* Legacy Stats - Compact (shown as secondary info) */}
+        <div className="hidden lg:grid grid-cols-5 gap-3">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -2869,7 +3119,7 @@ export default function ContractsPage() {
               </Card>
             </motion.div>
           ) : viewMode === 'cards' ? (
-            /* ============ CARD VIEW ============ */
+            /* ============ ENHANCED CARD VIEW ============ */
             <motion.div 
               key="card-list"
               className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" 
@@ -2878,7 +3128,10 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {paginatedContracts.map((contract, index) => (
+            {enhancedContracts.map((contract, index) => {
+                const originalContract = paginatedContracts[index];
+                if (!originalContract) return null;
+                return (
                 <motion.div
                   key={contract.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -2886,22 +3139,35 @@ export default function ContractsPage() {
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                   whileHover={{ y: -4 }}
                 >
-                  <ContractCard
+                  <EnhancedContractCard
                     contract={contract}
                     isSelected={selectedContracts.has(contract.id)}
                     onSelect={() => toggleSelect(contract.id)}
-                    onView={() => router.push(`/contracts/${contract.id}`)}
-                    onShare={() => handleShare(contract.id, contract.title || 'Contract')}
-                    onDelete={() => handleDeleteClick(contract.id, contract.title || 'Contract')}
-                    onDownload={() => handleDownload(contract.id)}
-                    onApproval={() => handleRequestApproval(contract.id, contract.title || 'Contract')}
-                    formatCurrency={formatCurrency}
-                    formatDate={formatDate}
-                    getStatusBadge={getStatusBadge}
-                    getRiskBadge={getRiskBadge}
+                    onClick={() => handlePreview(originalContract)}
+                    onQuickAction={(action) => {
+                      switch (action) {
+                        case 'ai':
+                          window.dispatchEvent(new CustomEvent('openAIChatbot'));
+                          break;
+                        case 'preview':
+                          handlePreview(originalContract);
+                          break;
+                        case 'share':
+                          handleShare(contract.id, contract.title || 'Contract');
+                          break;
+                        case 'favorite':
+                          handleToggleFavorite(contract.id);
+                          break;
+                      }
+                    }}
+                    onDoubleClick={() => router.push(`/contracts/${contract.id}`)}
+                    showHealthIndicator
+                    showPartyAvatars
+                    enableHoverPreview
                   />
                 </motion.div>
-              ))}
+              );
+              })}
             </motion.div>
           ) : viewMode === 'timeline' ? (
             /* ============ TIMELINE VIEW ============ */
@@ -3145,6 +3411,93 @@ export default function ContractsPage() {
         confirmLabel="Delete All"
         onConfirm={handleConfirmBulkDelete}
         isLoading={isProcessingBulk}
+      />
+
+      {/* Contract Preview Panel */}
+      <ContractPreviewPanel
+        contract={previewContract}
+        isOpen={previewOpen}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewContract(null);
+        }}
+        onNavigate={handlePreviewNavigate}
+        onEdit={(id) => router.push(`/contracts/${id}`)}
+        onShare={(id) => {
+          const contract = contracts.find(c => c.id === id);
+          if (contract) handleShare(id, contract.title || 'Contract');
+        }}
+        onDownload={handleDownload}
+        onDelete={(id) => {
+          const contract = contracts.find(c => c.id === id);
+          if (contract) handleDeleteClick(id, contract.title || 'Contract');
+        }}
+        onAskAI={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
+      />
+
+      {/* Enhanced Bulk Actions Bar (floating) */}
+      <EnhancedBulkActionsBar
+        selectedCount={selectedContracts.size}
+        selectedContracts={enhancedContracts.filter(c => selectedContracts.has(c.id))}
+        onClearSelection={() => setSelectedContracts(new Set())}
+        onAction={async (action) => {
+          const actionId = typeof action === 'string' ? action : action.id;
+          switch (actionId) {
+            case 'export-pdf':
+            case 'export-csv':
+            case 'export-json':
+              await performBulkAction('export');
+              break;
+            case 'ai-analyze':
+            case 'ai-summarize':
+              await performBulkAction('analyze');
+              break;
+            case 'ai-report':
+              setAiReportModalOpen(true);
+              break;
+            case 'categorize':
+              await handleBulkCategorize();
+              break;
+            case 'share':
+              await performBulkAction('share');
+              break;
+            case 'delete':
+              handleBulkDeleteClick();
+              break;
+            case 'compare':
+              if (selectedContracts.size === 2) {
+                const ids = Array.from(selectedContracts);
+                router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
+              }
+              break;
+            default:
+              // Handle any other actions
+              break;
+          }
+        }}
+        isProcessing={isProcessingBulk}
+      />
+
+      {/* Mobile Filters Sheet */}
+      <MobileFiltersSheet
+        isOpen={showMobileFilters}
+        onOpenChange={setShowMobileFilters}
+        filters={{
+          search: searchQuery,
+          status: statusFilter !== 'all' ? [statusFilter] : [],
+          riskLevel: riskFilters,
+          contractType: typeFilters,
+        }}
+        onFiltersChange={(filters) => {
+          if (filters.search !== undefined) setSearchQuery(filters.search);
+          if (filters.status) {
+            setStatusFilter(filters.status.length > 0 ? filters.status[0] : 'all');
+          }
+          if (filters.riskLevel) setRiskFilters(filters.riskLevel);
+          if (filters.contractType) setTypeFilters(filters.contractType);
+        }}
+        onApply={() => setShowMobileFilters(false)}
+        onReset={clearFilters}
       />
     </div>
     </TooltipProvider>

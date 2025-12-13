@@ -54,31 +54,37 @@ import { formatDistanceToNow, differenceInDays, format, isValid, parseISO } from
 // ============================================================================
 
 export interface ContractParty {
-  id: string;
+  id?: string;
   name: string;
   role: "client" | "vendor" | "partner" | "other";
   logo?: string;
   initials?: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface ContractHealth {
   score: number; // 0-100
-  riskLevel: "low" | "medium" | "high" | "critical";
+  riskLevel?: "low" | "medium" | "high" | "critical";
   issues?: string[];
   lastAssessed?: string;
+  lastChecked?: Date;
 }
 
 export interface EnhancedContract {
   id: string;
-  title: string;
-  type: string;
-  status: "draft" | "pending" | "active" | "expired" | "terminated" | "renewal";
+  title?: string;
+  type?: string;
+  filename?: string;
+  status?: "draft" | "pending" | "active" | "expired" | "terminated" | "renewal" | "completed" | "processing" | "failed";
   value?: number;
   currency?: string;
   startDate?: string;
   endDate?: string;
+  expirationDate?: string;
+  effectiveDate?: string;
   renewalDate?: string;
-  parties: ContractParty[];
+  parties?: ContractParty[] | { client?: string; supplier?: string };
   health?: ContractHealth;
   isPinned?: boolean;
   isFavorite?: boolean;
@@ -89,13 +95,17 @@ export interface EnhancedContract {
   hasAttachments?: boolean;
   attachmentCount?: number;
   description?: string;
+  riskScore?: number;
+  keyTerms?: string[];
+  category?: { id: string; name: string; color: string; icon?: string };
+  processing?: { progress: number; currentStage?: string };
 }
 
 export interface EnhancedContractCardProps {
   contract: EnhancedContract;
   isSelected?: boolean;
-  onSelect?: (id: string, selected: boolean) => void;
-  onClick?: (id: string) => void;
+  onSelect?: (id?: string, selected?: boolean) => void;
+  onClick?: (id?: string) => void;
   onPin?: (id: string) => void;
   onFavorite?: (id: string) => void;
   onPreview?: (id: string) => void;
@@ -104,8 +114,13 @@ export interface EnhancedContractCardProps {
   onDuplicate?: (id: string) => void;
   onExport?: (id: string) => void;
   onAnalyze?: (id: string) => void;
+  onQuickAction?: (action: 'ai' | 'preview' | 'share' | 'favorite') => void;
+  onDoubleClick?: () => void;
   variant?: "default" | "compact" | "detailed";
   showPreviewOnHover?: boolean;
+  showHealthIndicator?: boolean;
+  showPartyAvatars?: boolean;
+  enableHoverPreview?: boolean;
   className?: string;
 }
 
@@ -240,56 +255,75 @@ const PartyAvatar = memo(function PartyAvatar({ party, size = "md" }: PartyAvata
   );
 });
 
-interface HealthIndicatorProps {
+export interface HealthIndicatorProps {
   health?: ContractHealth;
   showDetails?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+  showLabel?: boolean;
 }
 
-const HealthIndicator = memo(function HealthIndicator({
+export const HealthIndicator = memo(function HealthIndicator({
   health,
   showDetails = false,
+  size = 'md',
+  showLabel = false,
 }: HealthIndicatorProps) {
   if (!health) return null;
 
   const riskConfig = getRiskConfig(health.riskLevel);
   if (!riskConfig) return null;
 
-  const circumference = 2 * Math.PI * 12;
+  // Size configurations
+  const sizeConfig = {
+    sm: { svg: 'w-6 h-6', radius: 10, stroke: 2, font: 'text-[8px]' },
+    md: { svg: 'w-8 h-8', radius: 12, stroke: 3, font: 'text-[10px]' },
+    lg: { svg: 'w-16 h-16', radius: 24, stroke: 4, font: 'text-sm' },
+  };
+
+  const cfg = sizeConfig[size];
+  const circumference = 2 * Math.PI * cfg.radius;
   const strokeDashoffset = circumference - (health.score / 100) * circumference;
+  const viewBox = size === 'lg' ? '0 0 64 64' : '0 0 32 32';
+  const center = size === 'lg' ? 32 : 16;
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative inline-flex items-center justify-center">
-            <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 32 32">
-              {/* Background circle */}
-              <circle
-                cx="16"
-                cy="16"
-                r="12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-gray-200"
-              />
-              {/* Progress circle */}
-              <circle
-                cx="16"
-                cy="16"
-                r="12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                className={riskConfig.color}
-              />
-            </svg>
-            <span className={cn("absolute text-[10px] font-bold", riskConfig.color)}>
-              {health.score}
-            </span>
+          <div className="flex flex-col items-center gap-1">
+            <div className="relative inline-flex items-center justify-center">
+              <svg className={cn(cfg.svg, "transform -rotate-90")} viewBox={viewBox}>
+                {/* Background circle */}
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={cfg.radius}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={cfg.stroke}
+                  className="text-gray-200"
+                />
+                {/* Progress circle */}
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={cfg.radius}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={cfg.stroke}
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round"
+                  className={riskConfig.color}
+                />
+              </svg>
+              <span className={cn("absolute font-bold", cfg.font, riskConfig.color)}>
+                {health.score}
+              </span>
+            </div>
+            {showLabel && (
+              <span className="text-xs font-medium text-slate-600">{riskConfig.label}</span>
+            )}
           </div>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[200px]">

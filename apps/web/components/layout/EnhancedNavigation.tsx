@@ -549,7 +549,6 @@ function EnhancedNavigation() {
               <span>v2.0.0</span>
               <CompactConnectionStatus />
             </div>
-            </div>
           </div>
         </div>
       </aside>

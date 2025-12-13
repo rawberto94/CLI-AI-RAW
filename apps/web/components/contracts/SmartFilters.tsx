@@ -106,9 +106,12 @@ export interface ContractFilters {
   search?: string;
   status?: ContractStatus[];
   riskLevel?: RiskLevel[];
+  contractType?: string[]; // Added for compatibility
   dateRange?: {
     start?: Date;
     end?: Date;
+    from?: Date; // Alias for compatibility
+    to?: Date;   // Alias for compatibility
   };
   expiringWithin?: number; // days
   valueRange?: {
@@ -125,9 +128,11 @@ export interface ContractFilters {
 }
 
 export interface SmartFiltersProps {
-  filters: ContractFilters;
+  filters?: ContractFilters;
+  initialFilters?: ContractFilters;
   onFiltersChange: (filters: ContractFilters) => void;
   presets?: FilterPreset[];
+  savedPresets?: FilterPreset[];
   onSavePreset?: (name: string, filters: ContractFilters) => void;
   onDeletePreset?: (id: string) => void;
   availableTags?: string[];
@@ -137,6 +142,7 @@ export interface SmartFiltersProps {
   recentSearches?: string[];
   onSearchSubmit?: (query: string) => void;
   resultCount?: number;
+  totalResults?: number;
   isLoading?: boolean;
   className?: string;
 }

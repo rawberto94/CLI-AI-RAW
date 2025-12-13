@@ -38,16 +38,26 @@ export interface ContractStats {
   totalContracts: number;
   activeContracts: number;
   totalValue: number;
+  monthlyChange?: number;
   expiringSoon: number;
-  highRisk: number;
+  expiringThisWeek?: number;
+  highRisk?: number;
+  highRiskContracts?: number;
+  riskTrend?: 'up' | 'down' | 'stable' | string;
+  processingCount?: number;
   pendingReview: number;
   recentlyAdded: number;
-  avgRiskScore: number;
-  trends: {
+  avgRiskScore?: number;
+  trends?: {
     contracts: number; // percentage change
     value: number;
     risk: number;
   };
+  trendData?: Array<{
+    date: string;
+    contracts: number;
+    value: number;
+  }>;
 }
 
 export interface ContractsHeroDashboardProps {
@@ -56,6 +66,8 @@ export interface ContractsHeroDashboardProps {
   onUploadClick?: () => void;
   onGenerateClick?: () => void;
   onCompareClick?: () => void;
+  onAskAIClick?: () => void;
+  className?: string;
 }
 
 // ============================================================================

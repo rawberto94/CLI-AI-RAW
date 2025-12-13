@@ -53,7 +53,12 @@ import {
   History,
   PanelLeftClose,
   PanelRightClose,
-  FileType
+  FileType,
+  Heart,
+  MessageSquare,
+  TrendingUp,
+  TrendingDown,
+  Activity,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -87,6 +92,7 @@ import {
 } from '@/components/ui/dialog'
 import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
+import { HealthIndicator } from '@/components/contracts/EnhancedContractCard'
 
 // ============ TYPES ============
 
@@ -1262,6 +1268,63 @@ export default function ContractDetailPage() {
             </Button>
           </motion.div>
         )}
+
+        {/* Contract Health Score - Enhanced Visual */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mb-6"
+        >
+          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/80 overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-6">
+                {/* Health Ring */}
+                <div className="relative">
+                  <HealthIndicator 
+                    health={{
+                      score: riskScore ? Math.max(20, 100 - riskScore) : 85,
+                      issues: riskScore && riskScore >= 70 ? ['High risk score'] : [],
+                      lastChecked: new Date(),
+                    }}
+                    size="lg"
+                    showLabel
+                  />
+                </div>
+                
+                {/* Health Details */}
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">Completeness</p>
+                    <p className="text-lg font-bold text-slate-900">{contract?.status === 'completed' ? '100%' : '75%'}</p>
+                  </div>
+                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">Risk Level</p>
+                    <p className={cn(
+                      "text-lg font-bold",
+                      riskLevel === 'low' ? 'text-emerald-600' : 
+                      riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
+                    )}>
+                      {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
+                    </p>
+                  </div>
+                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">AI Artifacts</p>
+                    <p className="text-lg font-bold text-purple-600">{contract?.artifactCount || 5}</p>
+                  </div>
+                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide">Compliance</p>
+                    <p className={cn(
+                      "text-lg font-bold",
+                      complianceData?.compliant ? 'text-emerald-600' : 'text-amber-600'
+                    )}>
+                      {complianceData?.compliant ? 'Pass' : 'Review'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Quick Stats - Compact inline badges */}
         <motion.div

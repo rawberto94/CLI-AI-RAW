@@ -70,9 +70,19 @@ import { cn } from "@/lib/utils";
 // Types
 // ============================================================================
 
-export type BulkAction =
+export interface BulkAction {
+  id: string;
+  label?: string;
+  icon?: React.ReactNode;
+  variant?: 'default' | 'destructive';
+}
+
+export type BulkActionType =
   | "delete"
   | "export"
+  | "export-pdf"
+  | "export-csv"
+  | "export-json"
   | "tag"
   | "move"
   | "share"
@@ -90,7 +100,11 @@ export type BulkAction =
   | "unfavorite"
   | "assign"
   | "ai_report"
-  | "categorize";
+  | "ai-analyze"
+  | "ai-summarize"
+  | "ai-report"
+  | "categorize"
+  | "compare";
 
 export interface BulkActionResult {
   success: number;
@@ -100,16 +114,19 @@ export interface BulkActionResult {
 
 export interface EnhancedBulkActionsBarProps {
   selectedCount: number;
-  totalCount: number;
-  selectedIds: string[];
-  onSelectAll: () => void;
-  onDeselectAll: () => void;
-  onAction: (action: BulkAction, params?: Record<string, any>) => Promise<BulkActionResult | void>;
+  totalCount?: number;
+  selectedIds?: string[];
+  selectedContracts?: any[];
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
+  onClearSelection?: () => void;
+  onAction: (action: BulkAction | BulkActionType, params?: Record<string, any>) => Promise<BulkActionResult | void>;
   availableTags?: string[];
   availableFolders?: Array<{ id: string; name: string }>;
   availableStatuses?: Array<{ value: string; label: string }>;
   availableUsers?: Array<{ id: string; name: string; email: string }>;
   isLoading?: boolean;
+  isProcessing?: boolean;
   className?: string;
 }
 
