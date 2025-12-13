@@ -5,6 +5,8 @@
 
 import { Result, AppResult, AppError } from './result';
 import { API, CACHE } from './constants';
+import { getCircuitBreaker, type CircuitBreaker } from './scalability/circuit-breaker';
+import { deduplicateRequest, generateRequestKey } from './scalability/request-optimization';
 
 // ============================================================================
 // Types
@@ -16,6 +18,10 @@ export interface ServiceConfig {
   retries?: number;
   cacheEnabled?: boolean;
   cacheTTL?: number;
+  /** Enable circuit breaker for this service */
+  circuitBreakerEnabled?: boolean;
+  /** Enable request deduplication */
+  deduplicationEnabled?: boolean;
 }
 
 export interface FetchOptions extends RequestInit {
@@ -72,6 +78,7 @@ function clearCache(pattern?: string): void {
 export abstract class BaseService {
   protected config: Required<ServiceConfig>;
   protected serviceName: string;
+  protected circuitBreaker: CircuitBreaker | null = null;
 
   constructor(serviceName: string, config: ServiceConfig = {}) {
     this.serviceName = serviceName;
@@ -81,11 +88,26 @@ export abstract class BaseService {
       retries: config.retries || API.RETRY.MAX_ATTEMPTS,
       cacheEnabled: config.cacheEnabled ?? true,
       cacheTTL: config.cacheTTL || CACHE.TTL.MEDIUM,
+      circuitBreakerEnabled: config.circuitBreakerEnabled ?? true,
+      deduplicationEnabled: config.deduplicationEnabled ?? true,
     };
+
+    // Initialize circuit breaker if enabled
+    if (this.config.circuitBreakerEnabled) {
+      this.circuitBreaker = getCircuitBreaker(serviceName, {
+        failureThreshold: 5,
+        successThreshold: 2,
+        resetTimeout: 30000,
+        failureWindow: 60000,
+        onStateChange: (from, to) => {
+          this.log('info', `Circuit state changed: ${from} -> ${to}`);
+        },
+      });
+    }
   }
 
   // ============================================================================
-  // Fetch with error handling and retries
+  // Fetch with error handling, retries, and circuit breaker
   // ============================================================================
 
   protected async fetch<T>(
@@ -114,42 +136,72 @@ export abstract class BaseService {
       }
     }
 
-    // Execute with retries
-    let lastError: AppError | null = null;
-    
-    for (let attempt = 0; attempt < retries; attempt++) {
-      const result = await this.executeFetch<T>(url, fetchOptions, timeout);
-      
-      if (result.isOk()) {
-        // Cache successful GET responses
-        if (
-          this.config.cacheEnabled &&
-          !skipCache &&
-          (!fetchOptions.method || fetchOptions.method.toUpperCase() === 'GET')
-        ) {
-          setCache(cacheKey, result.value, this.config.cacheTTL);
-        }
-        return result;
-      }
-
-      lastError = result.error;
-      
-      // Don't retry on certain errors
-      if (!this.isRetryable(lastError)) {
-        return result;
-      }
-
-      // Wait before retrying (exponential backoff)
-      if (attempt < retries - 1) {
-        const delay = Math.min(
-          API.RETRY.BASE_DELAY * Math.pow(API.RETRY.BACKOFF_MULTIPLIER, attempt),
-          API.RETRY.MAX_DELAY
-        );
-        await this.sleep(delay);
-      }
+    // Check circuit breaker before proceeding
+    if (this.circuitBreaker && !this.circuitBreaker.canRequest()) {
+      return Result.fail(AppError.create(
+        'CIRCUIT_OPEN',
+        `Service ${this.serviceName} is temporarily unavailable`,
+        { userMessage: 'Please try again in a moment' }
+      ));
     }
 
-    return Result.fail(lastError!);
+    // Generate request key for deduplication
+    const requestKey = this.config.deduplicationEnabled 
+      ? generateRequestKey(fetchOptions.method || 'GET', url, fetchOptions.body)
+      : null;
+
+    // Core fetch execution with retries
+    const executeRequest = async (): Promise<AppResult<T>> => {
+      let lastError: AppError | null = null;
+      
+      for (let attempt = 0; attempt < retries; attempt++) {
+        const result = await this.executeFetch<T>(url, fetchOptions, timeout);
+        
+        if (result.isOk()) {
+          // Record success for circuit breaker
+          this.circuitBreaker?.recordSuccess();
+          
+          // Cache successful GET responses
+          if (
+            this.config.cacheEnabled &&
+            !skipCache &&
+            (!fetchOptions.method || fetchOptions.method.toUpperCase() === 'GET')
+          ) {
+            setCache(cacheKey, result.value, this.config.cacheTTL);
+          }
+          return result;
+        }
+
+        lastError = result.error;
+        
+        // Don't retry on certain errors
+        if (!this.isRetryable(lastError)) {
+          // Record failure for circuit breaker
+          this.circuitBreaker?.recordFailure();
+          return result;
+        }
+
+        // Wait before retrying (exponential backoff)
+        if (attempt < retries - 1) {
+          const delay = Math.min(
+            API.RETRY.BASE_DELAY * Math.pow(API.RETRY.BACKOFF_MULTIPLIER, attempt),
+            API.RETRY.MAX_DELAY
+          );
+          await this.sleep(delay);
+        }
+      }
+
+      // Record failure after all retries exhausted
+      this.circuitBreaker?.recordFailure();
+      return Result.fail(lastError!);
+    };
+
+    // Use deduplication if enabled
+    if (requestKey && this.config.deduplicationEnabled) {
+      return deduplicateRequest(requestKey, executeRequest);
+    }
+
+    return executeRequest();
   }
 
   private async executeFetch<T>(
