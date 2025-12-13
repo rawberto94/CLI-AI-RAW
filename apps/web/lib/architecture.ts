@@ -315,3 +315,37 @@ export {
   type EndpointHealth,
   type HealthCheckConfig,
 } from './scalability';
+
+// ============================================================================
+// Enhanced Data Fetching
+// ============================================================================
+export {
+  // Core fetcher
+  enhancedFetch,
+  
+  // Suspense-compatible
+  useData,
+  
+  // Infinite scrolling
+  useInfiniteData,
+  
+  // Polling
+  usePolling,
+  
+  // Dependent queries
+  useDependentQuery,
+  
+  // Batch fetching
+  useBatchFetch,
+  
+  // Search
+  useSearch,
+  
+  // Optimistic list
+  useOptimisticList,
+  
+  // Types
+  type FetcherOptions,
+  type PaginatedData,
+  type InfiniteQueryResult,
+} from './data-fetching';
