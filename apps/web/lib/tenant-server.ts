@@ -146,13 +146,14 @@ export async function validateTenantAccess(requestedTenantId: string): Promise<b
   return context.isAuthenticated && context.tenantId === requestedTenantId;
 }
 
-export default {
+const tenantServer = {
   getTenantContext,
   getServerTenantId,
   getTenantIdFromRequest,
   requireTenantContext,
   validateTenantAccess,
 };
+export default tenantServer;
 
 // Alias for API routes - preferred name
 export const getApiTenantId = getTenantIdFromRequest;

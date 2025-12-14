@@ -31,7 +31,7 @@ import {
   AlignCenter,
   AlignRight,
   Link2,
-  Image,
+  Image as ImageIcon,
   Table,
   Code,
   Heading1,
@@ -431,7 +431,7 @@ and
                   <Link2 className="h-4 w-4 text-gray-600" />
                 </button>
                 <button className="p-1.5 rounded hover:bg-gray-100 transition-colors" title="Insert Image">
-                  <Image className="h-4 w-4 text-gray-600" />
+                  <ImageIcon className="h-4 w-4 text-gray-600" />
                 </button>
                 <button className="p-1.5 rounded hover:bg-gray-100 transition-colors" title="Insert Table">
                   <Table className="h-4 w-4 text-gray-600" />

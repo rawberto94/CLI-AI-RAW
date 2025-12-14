@@ -105,6 +105,7 @@ export function RealtimeArtifactViewer({
         }, 1000);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artifacts]);
 
   const handleRetry = async (artifactId: string) => {

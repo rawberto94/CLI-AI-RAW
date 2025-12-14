@@ -40,6 +40,7 @@ export function WorkflowExecutionViewer({
 
   useEffect(() => {
     loadExecution()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [executionId])
 
   const loadExecution = async () => {

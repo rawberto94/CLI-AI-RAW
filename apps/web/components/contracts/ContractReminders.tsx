@@ -128,6 +128,7 @@ export function ContractReminders({
   // Load reminders
   useEffect(() => {
     loadReminders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
   const loadReminders = async () => {

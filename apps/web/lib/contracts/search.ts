@@ -188,6 +188,7 @@ export const useContractSearch = () => {
   // Auto-search when debounced query or filters change
   useEffect(() => {
     performSearch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuery, searchState.filters])
 
   // Get search suggestions

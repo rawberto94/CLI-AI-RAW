@@ -829,7 +829,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
   );
 });
 
-export default {
+const MobileContractViews = {
   MobileContractCard,
   MobileSearchBar,
   MobileFiltersSheet,
@@ -838,3 +838,4 @@ export default {
   MobileEmptyState,
   MobileStatsSummary,
 };
+export default MobileContractViews;

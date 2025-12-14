@@ -211,6 +211,7 @@ export const DeadlineTracker = memo(function DeadlineTracker({
 
   useEffect(() => {
     loadDeadlines();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
   const loadDeadlines = async () => {

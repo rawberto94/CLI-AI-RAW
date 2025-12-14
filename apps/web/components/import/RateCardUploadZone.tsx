@@ -67,6 +67,7 @@ export function RateCardUploadZone({
       const droppedFiles = Array.from(e.dataTransfer.files);
       addFiles(droppedFiles);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [files, maxFiles]
   );
 
@@ -77,6 +78,7 @@ export function RateCardUploadZone({
         addFiles(selectedFiles);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [files, maxFiles]
   );
 

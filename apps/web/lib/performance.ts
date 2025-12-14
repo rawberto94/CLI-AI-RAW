@@ -413,7 +413,7 @@ export function sendVitalsToAnalytics(
 // Exports
 // ============================================================================
 
-export default {
+const performanceUtils = {
   reportWebVitals,
   measureStart,
   measureAsync,
@@ -425,3 +425,4 @@ export default {
   observeResourceTiming,
   sendVitalsToAnalytics,
 };
+export default performanceUtils;

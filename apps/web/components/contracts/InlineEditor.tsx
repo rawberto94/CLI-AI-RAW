@@ -107,6 +107,7 @@ export function InlineEditor({
   const unlockSection = ws?.unlockSection ?? (() => {})
   const broadcastEdit = ws?.broadcastEdit ?? (() => {})
   const sendComment = ws?.sendComment ?? (() => {})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const onEvent = ws?.onEvent ?? (() => () => {})
 
   // Get collaborators viewing/editing this field
@@ -136,6 +137,7 @@ export function InlineEditor({
         unlockSection(fieldId)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enableCollaboration, connected, fieldId, lockSection, unlockSection])
 
   // Focus input on mount
@@ -163,6 +165,7 @@ export function InlineEditor({
     })
 
     return unsubscribe
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enableCollaboration, fieldId, onEvent])
 
   // Validate value

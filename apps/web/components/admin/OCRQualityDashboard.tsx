@@ -34,7 +34,7 @@ import {
   Server,
   TrendingUp,
   FileText,
-  Image,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -556,7 +556,7 @@ export function OCRQualityDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Image className="h-5 w-5" />
+            <ImageIcon className="h-5 w-5" />
             Document Quality Guidelines
           </CardTitle>
           <CardDescription>

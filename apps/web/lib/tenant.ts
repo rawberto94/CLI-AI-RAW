@@ -95,7 +95,7 @@ export function getTenantConfig(): TenantConfig {
   };
 }
 
-export default {
+const tenantUtils = {
   getTenantId,
   setTenantId,
   ensureTenantId,
@@ -104,3 +104,4 @@ export default {
   isViewingAsClient,
   getViewAsClientName,
 };
+export default tenantUtils;

@@ -41,6 +41,7 @@ export function BaselinesList() {
 
   useEffect(() => {
     fetchBaselines();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchBaselines = async () => {

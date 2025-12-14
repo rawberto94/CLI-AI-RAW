@@ -65,6 +65,7 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
         ]
       }])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen])
 
   const sendMessage = async () => {

@@ -783,7 +783,7 @@ export async function processContractWithSemanticChunking(
   };
 }
 
-export default {
+const advancedRagService = {
   semanticChunk,
   expandQuery,
   hybridSearch,
@@ -791,3 +791,4 @@ export default {
   processContractWithSemanticChunking,
   rerank,
 };
+export default advancedRagService;

@@ -123,6 +123,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
 
   useEffect(() => {
     filterClauses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clauses, searchQuery, selectedCategory, selectedRisk, showFavoritesOnly]);
 
   const fetchClauses = async () => {

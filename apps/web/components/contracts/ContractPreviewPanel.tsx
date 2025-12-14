@@ -311,6 +311,7 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
                 className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
               >
                 {party.logo ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={party.logo}
                     alt={party.name}

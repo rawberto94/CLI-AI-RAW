@@ -111,7 +111,7 @@ export function isAiConfigured(): boolean {
   return validateApiKey(process.env.OPENAI_API_KEY, /^sk-/);
 }
 
-export default {
+const apiKeyUtils = {
   validateApiKey,
   getApiKeyStatus,
   generateSecret,
@@ -120,3 +120,4 @@ export default {
   areRequiredKeysConfigured,
   isAiConfigured,
 };
+export default apiKeyUtils;

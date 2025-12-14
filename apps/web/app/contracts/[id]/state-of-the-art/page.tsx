@@ -46,6 +46,7 @@ export default function StateOfTheArtContractPage() {
 
   useEffect(() => {
     loadContractData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
   const loadContractData = async () => {

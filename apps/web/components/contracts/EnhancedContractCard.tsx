@@ -251,6 +251,7 @@ const PartyAvatar = memo(function PartyAvatar({ party, size = "md" }: PartyAvata
 
   if (party.logo) {
     return (
+      /* eslint-disable-next-line @next/next/no-img-element */
       <img
         src={party.logo}
         alt={party.name}

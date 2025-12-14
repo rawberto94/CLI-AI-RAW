@@ -72,6 +72,7 @@ export function ContractProgress({ contractId, onProgressUpdate }: ContractProgr
     }, 2000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId, progress.current, progress.total, onProgressUpdate]);
 
   if (isLoading) {

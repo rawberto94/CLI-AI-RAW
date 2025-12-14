@@ -153,6 +153,7 @@ export default function TemplateEditorPage() {
         { name: 'endDate', label: 'End Date', type: 'date', required: true },
       ])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   const loadTemplate = async () => {

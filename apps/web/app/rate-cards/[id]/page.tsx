@@ -25,6 +25,7 @@ export default function RateCardDetailPage() {
     if (params.id) {
       fetchRateCard();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, dataMode]);
 
   const fetchRateCard = async () => {

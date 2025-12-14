@@ -187,7 +187,7 @@ export const LazyApprovalWorkflow = dynamic(
 );
 
 // Export all lazy components
-export default {
+const LazyComponents = {
   LazyInteractiveBoxPlot,
   LazyTimeSeriesChart,
   LazyGeographicHeatMap,
@@ -208,3 +208,4 @@ export default {
   LazyFloatingAIBubble,
   LazyApprovalWorkflow,
 };
+export default LazyComponents;

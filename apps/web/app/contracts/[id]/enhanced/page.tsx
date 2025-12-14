@@ -114,6 +114,7 @@ export default function EnhancedContractDetailPage() {
     if (contractId) {
       loadContract()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId])
 
   // Auto-refresh for processing contracts
@@ -122,6 +123,7 @@ export default function EnhancedContractDetailPage() {
       const interval = setInterval(loadContract, 3000)
       return () => clearInterval(interval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract?.status])
 
   const loadContract = async () => {

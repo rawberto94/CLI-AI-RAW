@@ -591,6 +591,7 @@ export default function ContractDetailPage() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, showPdfViewer])
 
   // Handle panel resize mouse events

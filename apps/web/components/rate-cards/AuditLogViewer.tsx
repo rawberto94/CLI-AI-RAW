@@ -47,6 +47,7 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
 
   useEffect(() => {
     fetchAuditLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.offset]);
 
   const fetchAuditLogs = async () => {

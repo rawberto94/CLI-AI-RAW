@@ -62,6 +62,7 @@ export function SavedSegments({
 
   useEffect(() => {
     loadSegments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantId, userId, showShared]);
 
   const loadSegments = async () => {

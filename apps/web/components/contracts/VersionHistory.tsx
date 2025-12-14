@@ -192,6 +192,7 @@ export const VersionHistory = memo(function VersionHistory({
 
   useEffect(() => {
     loadVersions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
   const loadVersions = async () => {

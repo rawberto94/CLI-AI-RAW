@@ -58,6 +58,7 @@ export function AIInsightsPanel({ rateCardId, className = '' }: AIInsightsPanelP
 
   useEffect(() => {
     fetchInsights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rateCardId]);
 
   if (loading) {

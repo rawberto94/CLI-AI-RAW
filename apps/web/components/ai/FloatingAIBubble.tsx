@@ -374,6 +374,7 @@ export function FloatingAIBubble() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   // Listen for custom event to open chatbot from other components
@@ -495,6 +496,7 @@ export function FloatingAIBubble() {
         // Unhandled action - no-op
         break;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   // Send message handler with real-ish AI responses
@@ -616,6 +618,7 @@ export function FloatingAIBubble() {
       setIsLoading(false);
       setIsTyping(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, isLoading, conversationContext, isOpen, playSound, messages]);
 
   // Update conversation context

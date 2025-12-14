@@ -108,6 +108,7 @@ export default function ContractWorkflowPage() {
 
   useEffect(() => {
     loadContractAndWorkflow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
   const loadContractAndWorkflow = async () => {

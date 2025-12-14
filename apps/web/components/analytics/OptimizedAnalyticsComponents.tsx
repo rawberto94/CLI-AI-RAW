@@ -591,7 +591,7 @@ export function QuickStatsGrid({ stats }: {
 }
 
 // Default export for lazy loading
-export default { 
+const OptimizedAnalyticsComponents = { 
   SavingsOpportunityCard,
   RenewalAlertCard,
   ComplianceIssueCard,
@@ -601,3 +601,4 @@ export default {
   SmartInsightsPanel,
   QuickStatsGrid
 };
+export default OptimizedAnalyticsComponents;

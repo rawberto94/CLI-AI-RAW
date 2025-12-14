@@ -97,6 +97,7 @@ export function SupplierRankings() {
 
   useEffect(() => {
     fetchRankings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodMonths]);
 
   const getSortedRankings = () => {

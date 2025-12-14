@@ -240,6 +240,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useRealData, filters]);
 
   useEffect(() => {

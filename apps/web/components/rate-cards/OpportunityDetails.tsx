@@ -20,6 +20,7 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
 
   useEffect(() => {
     fetchOpportunityDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunityId]);
 
   const fetchOpportunityDetails = async () => {

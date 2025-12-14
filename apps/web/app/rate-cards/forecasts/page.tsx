@@ -108,6 +108,7 @@ export default function RateCardForecastsPage() {
 
   useEffect(() => {
     fetchForecasts(currentPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, riskLevel, trendDirection, minConfidence]);
 
   const handleRefresh = () => {

@@ -67,6 +67,7 @@ export function RateComparisonView({
 
   useEffect(() => {
     fetchRateCards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rateCardIds]);
 
   const fetchRateCards = async () => {

@@ -647,10 +647,11 @@ export function QuickStatsRow({
   );
 }
 
-export default {
+const CrossModuleWidgets = {
   IntelligenceWidget,
   ApprovalsWidget,
   RenewalsWidget,
   GovernanceWidget,
   QuickStatsRow,
 };
+export default CrossModuleWidgets;

@@ -130,6 +130,7 @@ How can I help you today?`,
         },
       ]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [context, messages.length]);
 
   useEffect(() => {

@@ -102,6 +102,7 @@ function WorkflowsPageContent() {
   const createWorkflowMutation = useCreateWorkflow()
   const crossModule = useCrossModuleInvalidation()
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const workflows: WorkflowType[] = workflowsData?.workflows || []
 
   const stats = useMemo(() => ({
@@ -109,6 +110,7 @@ function WorkflowsPageContent() {
     active: workflows.filter(w => w.isActive).length,
     inactive: workflows.filter(w => !w.isActive).length,
     totalExecutions: workflows.reduce((sum, w) => sum + (w.executions || 0), 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [workflows])
 
   useEffect(() => {

@@ -36,6 +36,7 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
 
   useEffect(() => {
     fetchComparisons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rateCardEntryId]);
 
   const fetchComparisons = async () => {

@@ -83,6 +83,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
 
   useEffect(() => {
     calculateAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rateCards]);
 
   const calculateAnalytics = async () => {

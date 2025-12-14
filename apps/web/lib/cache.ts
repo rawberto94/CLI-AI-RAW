@@ -207,7 +207,7 @@ export const invalidateCache = {
   },
 };
 
-export default {
+const cacheUtils = {
   getCached,
   setCached,
   deleteCached,
@@ -216,3 +216,4 @@ export default {
   CacheKeys,
   invalidateCache,
 };
+export default cacheUtils;

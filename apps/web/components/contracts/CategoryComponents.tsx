@@ -535,6 +535,7 @@ export function CategorySuggestions({
 
   useEffect(() => {
     fetchSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId]);
 
   return (

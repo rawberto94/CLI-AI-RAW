@@ -58,6 +58,7 @@ export async function analyzeDocumentWithMistral(
   }
 }
 
-export default {
+const mistralClient = {
   analyzeDocumentWithMistral,
 };
+export default mistralClient;

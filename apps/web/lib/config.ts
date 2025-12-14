@@ -108,7 +108,7 @@ export const UI_CONFIG = {
   animationDuration: ANIMATION.normal,
 };
 
-export default {
+const appConfig = {
   API_BASE_URL,
   FEATURES,
   UPLOAD_CONFIG,
@@ -121,3 +121,4 @@ export default {
   UI_CONFIG,
   TOAST_DURATION,
 };
+export default appConfig;

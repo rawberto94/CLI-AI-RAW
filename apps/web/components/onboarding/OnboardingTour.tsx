@@ -238,19 +238,19 @@ export function OnboardingTour({
     };
   }, [updateSpotlight]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (isLastStep) {
       onComplete();
     } else {
       setCurrentStep(prev => prev + 1);
     }
-  };
+  }, [isLastStep, onComplete]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (!isFirstStep) {
       setCurrentStep(prev => prev - 1);
     }
-  };
+  }, [isFirstStep]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (!isOpen) return;
@@ -262,6 +262,7 @@ export function OnboardingTour({
     } else if (e.key === 'Escape') {
       onSkip();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, handleNext, handlePrev, onSkip]);
 
   useEffect(() => {

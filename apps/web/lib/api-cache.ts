@@ -283,7 +283,7 @@ export function cacheableHandler<T extends Request>(
   };
 }
 
-export default {
+const apiCache = {
   get: getCachedResponse,
   set: setCachedResponse,
   invalidate: invalidateCache,
@@ -294,3 +294,4 @@ export default {
   cacheableHandler,
   getStats: getCacheStats,
 };
+export default apiCache;

@@ -180,7 +180,7 @@ export async function createAuditLog(
   });
 }
 
-export default {
+const tenantIsolation = {
   getTenantScope,
   requireTenantScope,
   requireAdminScope,
@@ -190,3 +190,4 @@ export default {
   validateResourceAccess,
   createAuditLog,
 };
+export default tenantIsolation;

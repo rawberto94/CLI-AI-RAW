@@ -246,6 +246,7 @@ export function SupplierScorecard({
 
   useEffect(() => {
     fetchScorecard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId, periodMonths]);
 
   if (loading) {

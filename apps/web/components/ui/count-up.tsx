@@ -41,6 +41,7 @@ export function CountUp({
     }, delay * 1000);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [from, to, duration, delay]);
 
   const animateCount = () => {

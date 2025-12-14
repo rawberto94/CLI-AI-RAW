@@ -352,6 +352,7 @@ export function CommentsThread({
                             isOwn ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-700"
                           )}>
                             {comment.author.avatar ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
                               <img 
                                 src={comment.author.avatar} 
                                 alt={comment.author.name}

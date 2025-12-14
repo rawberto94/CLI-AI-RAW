@@ -84,4 +84,5 @@ export async function runPostProcessingHooks(
   };
 }
 
-export default { triggerAutoCategorization, runPostProcessingHooks };
+const postProcessingHooks = { triggerAutoCategorization, runPostProcessingHooks };
+export default postProcessingHooks;

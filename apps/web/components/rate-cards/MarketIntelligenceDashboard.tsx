@@ -24,12 +24,14 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
 
   useEffect(() => {
     loadMarketIntelligence();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRole, selectedSeniority, selectedCountry, periodMonths]);
 
   useEffect(() => {
     loadTrendingRoles();
     loadSupplierRankings();
     loadEmergingTrends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodMonths]);
 
   const loadMarketIntelligence = async () => {
