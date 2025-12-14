@@ -1,7 +1,7 @@
 import { createClient, RedisClientType } from "redis";
-import pino from "pino";
+import { createLogger } from "../utils/logger";
 
-const logger = pino({ name: "cache-adaptor" });
+const logger = createLogger("cache-adaptor");
 
 export class CacheAdaptor {
   private client: RedisClientType;

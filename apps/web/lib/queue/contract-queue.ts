@@ -3,6 +3,11 @@
  * Re-exports the contract queue from packages/utils for local use
  */
 
+import 'server-only';
+
+import { initializeQueueService } from '@/lib/queue-init';
+import { getContractQueue as getContractQueueFromUtils } from '../../../../packages/utils/src/queue/contract-queue';
+
 // Type definitions for the queue
 export interface MetadataExtractionJobData {
   contractId: string;
@@ -67,9 +72,9 @@ let queueInstance: ContractQueueManager | null = null;
 export function getContractQueue(): ContractQueueManager {
   if (!queueInstance) {
     try {
-      // Try to dynamically load the queue from packages/utils
-      const queueModule = require('../../../../../packages/utils/dist/queue/contract-queue');
-      queueInstance = queueModule.getContractQueue();
+      // Ensure the QueueService singleton is initialized before constructing queue managers
+      initializeQueueService();
+      queueInstance = getContractQueueFromUtils();
     } catch (error) {
       console.warn('Contract queue not available, using stub implementation:', error);
       // Return a stub implementation that logs operations

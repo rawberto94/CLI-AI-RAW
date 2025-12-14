@@ -6,6 +6,8 @@
 
 import { Redis } from '@upstash/redis';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 // Initialize Redis client (using Upstash for serverless compatibility)
 // Set these in your .env file:
 // REDIS_URL=your_redis_url
@@ -20,7 +22,9 @@ try {
       token: process.env.REDIS_TOKEN,
     });
   } else {
-    console.warn('Redis credentials not found. Caching disabled.');
+    if (isDev) {
+      console.warn('Redis credentials not found. Caching disabled.');
+    }
   }
 } catch (error) {
   console.warn('Redis initialization failed. Running without cache:', error);
@@ -42,10 +46,10 @@ export async function getCached<T>(key: string): Promise<T | null> {
   try {
     const value = await redis.get<T>(key);
     if (value) {
-      console.log(`Cache HIT: ${key}`);
+      if (isDev) console.log(`Cache HIT: ${key}`);
       return value;
     }
-    console.log(`Cache MISS: ${key}`);
+    if (isDev) console.log(`Cache MISS: ${key}`);
     return null;
   } catch (error) {
     console.error('Cache GET error:', error);
@@ -70,7 +74,7 @@ export async function setCached<T>(
 
   try {
     await redis.setex(key, ttl, JSON.stringify(value));
-    console.log(`Cache SET: ${key} (TTL: ${ttl}s)`);
+    if (isDev) console.log(`Cache SET: ${key} (TTL: ${ttl}s)`);
   } catch (error) {
     console.error('Cache SET error:', error);
   }
@@ -85,7 +89,7 @@ export async function deleteCached(key: string): Promise<void> {
 
   try {
     await redis.del(key);
-    console.log(`Cache DELETE: ${key}`);
+    if (isDev) console.log(`Cache DELETE: ${key}`);
   } catch (error) {
     console.error('Cache DELETE error:', error);
   }
@@ -102,7 +106,7 @@ export async function deleteCachedByPattern(pattern: string): Promise<void> {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(...keys);
-      console.log(`Cache DELETE pattern: ${pattern} (${keys.length} keys)`);
+      if (isDev) console.log(`Cache DELETE pattern: ${pattern} (${keys.length} keys)`);
     }
   } catch (error) {
     console.error('Cache DELETE pattern error:', error);

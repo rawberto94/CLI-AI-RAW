@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { optionalImport } from '@/lib/server/optional-module';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,8 +30,22 @@ export async function POST(request: NextRequest) {
       priority = 'normal',
     } = body;
 
-    // Dynamic import to avoid build issues
-    const { triggerObligationCheck } = await import('@workspace/workers/obligation-tracker-worker');
+    const workerModule = await optionalImport<{ triggerObligationCheck: (tenantId: string) => Promise<unknown> }>(
+      '@workspace/workers/obligation-tracker-worker'
+    );
+
+    if (!workerModule?.triggerObligationCheck) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Background worker not available',
+          message: 'Obligation tracker worker is not installed/configured in this environment.',
+        },
+        { status: 503 }
+      );
+    }
+
+    const { triggerObligationCheck } = workerModule;
 
     const job = await triggerObligationCheck({
       tenantId,

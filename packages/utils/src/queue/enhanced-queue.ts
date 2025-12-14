@@ -7,7 +7,10 @@ import { Queue, Worker, Job, QueueEvents, ConnectionOptions } from 'bullmq';
 import Redis from 'ioredis';
 import pino from 'pino';
 
-const logger = pino({ name: 'enhanced-queue-service' });
+const logger = pino({
+  name: 'enhanced-queue-service',
+  ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 
 export const DLQ_QUEUE_NAMES = {
   CONTRACT_PROCESSING_DLQ: 'contract-processing-dlq',

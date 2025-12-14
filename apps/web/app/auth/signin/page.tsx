@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { CalendarCheck2, ShieldCheck, Sparkles } from "lucide-react";
 
 // ConTigo Logo SVG Component
 function ConTigoLogo({ size = 'lg' }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {
@@ -182,14 +183,47 @@ function SignInForm() {
             Manage, analyze, and optimize your contracts with AI-powered insights. 
             Streamline your procurement processes and never miss a deadline.
           </p>
-          <div className="mt-8 grid grid-cols-2 gap-4">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="text-3xl font-bold">415K+</div>
-              <div className="text-teal-200 text-sm">Lines of Code</div>
+          <div className="mt-8 grid grid-cols-3 gap-3">
+            <div className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/10">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-lg bg-white/10 p-2">
+                  <CalendarCheck2 className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-white">Renewals & deadlines</div>
+                  <div className="text-teal-100 text-sm leading-snug">
+                    Stay ahead of expirations and obligations.
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-              <div className="text-3xl font-bold">AI</div>
-              <div className="text-teal-200 text-sm">Powered Analysis</div>
+
+            <div className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/10">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-lg bg-white/10 p-2">
+                  <ShieldCheck className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-white">Risk visibility</div>
+                  <div className="text-teal-100 text-sm leading-snug">
+                    Surface red flags and high-risk terms.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/10">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-lg bg-white/10 p-2">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-white">Actionable insights</div>
+                  <div className="text-teal-100 text-sm leading-snug">
+                    Turn contracts into clear next steps.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

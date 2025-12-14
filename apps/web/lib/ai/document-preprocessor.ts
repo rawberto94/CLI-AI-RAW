@@ -20,6 +20,7 @@
 
 import sharp from 'sharp';
 import { createHash } from 'crypto';
+import { optionalImport } from '@/lib/server/optional-module';
 
 // ============================================================================
 // Types
@@ -388,7 +389,7 @@ export class DocumentPreprocessor {
     try {
       // Use pdf-to-img or similar to convert PDF pages to images
       // For now, we'll return a placeholder indicating PDF support
-      const pdfToImg = await import('pdf-to-img').catch(() => null);
+      const pdfToImg = await optionalImport<any>('pdf-to-img');
       
       if (!pdfToImg) {
         console.warn('pdf-to-img not available, returning original PDF');

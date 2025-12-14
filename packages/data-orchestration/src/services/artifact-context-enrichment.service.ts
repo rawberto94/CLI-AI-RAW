@@ -6,11 +6,11 @@
  * Includes cost savings analysis for indirect procurement.
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { ArtifactType } from './ai-artifact-generator.service';
 import { costSavingsAnalyzerService } from './cost-savings-analyzer.service';
 
-const logger = pino({ name: 'artifact-context-enrichment-service' });
+const logger = createLogger('artifact-context-enrichment-service');
 
 export interface EnrichedContext {
   type: ArtifactType;

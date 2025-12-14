@@ -3,7 +3,10 @@ import type { ConnectionOptions } from 'bullmq';
 import Redis from 'ioredis';
 import pino from 'pino';
 
-const logger = pino({ name: 'queue-service' });
+const logger = pino({
+  name: 'queue-service',
+  ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 
 export interface QueueConfig {
   connection: ConnectionOptions;

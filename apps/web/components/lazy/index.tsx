@@ -4,8 +4,8 @@ import { ComponentType } from 'react';
 
 // Loading skeleton component
 const ChartSkeleton = () => (
-  <div className="w-full h-[400px] bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">
-    <div className="text-gray-400">Loading chart...</div>
+  <div className="w-full h-[400px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
+    <div className="text-muted-foreground">Loading chart...</div>
   </div>
 );
 
@@ -69,7 +69,7 @@ export const LazyRateCardDataRepository = dynamic(
   () => import('@/components/rate-cards/RateCardDataRepository').then(mod => mod.RateCardDataRepository),
   {
     loading: () => (
-      <div className="w-full h-[600px] bg-gray-50 animate-pulse rounded-lg" />
+      <div className="w-full h-[600px] bg-muted/40 animate-pulse rounded-lg" />
     ),
   }
 );
@@ -79,7 +79,7 @@ export const LazyCostSavingsDashboardWidget = dynamic(
   () => import('@/components/dashboard/CostSavingsDashboardWidget').then(mod => mod.CostSavingsDashboardWidget),
   {
     loading: () => (
-      <div className="w-full h-[300px] bg-gray-100 animate-pulse rounded-lg" />
+      <div className="w-full h-[300px] bg-muted animate-pulse rounded-lg" />
     ),
   }
 );
@@ -88,7 +88,7 @@ export const LazyEnhancedDashboard = dynamic(
   () => import('@/components/dashboard/EnhancedDashboard').then(mod => mod.EnhancedDashboard),
   {
     loading: () => (
-      <div className="w-full min-h-screen bg-gray-50 animate-pulse" />
+      <div className="w-full min-h-[600px] bg-muted/40 animate-pulse rounded-lg" />
     ),
   }
 );
@@ -98,7 +98,7 @@ export const LazyAnalyticsHub = dynamic(
   () => import('@/components/analytics/AnalyticsHub').then(mod => mod.AnalyticsHub),
   {
     loading: () => (
-      <div className="w-full min-h-[600px] bg-gray-50 animate-pulse rounded-lg" />
+      <div className="w-full min-h-[600px] bg-muted/40 animate-pulse rounded-lg" />
     ),
     ssr: false,
   }
@@ -108,7 +108,7 @@ export const LazyForecastingDashboard = dynamic(
   () => import('@/components/analytics/ForecastingDashboard').then(mod => mod.ForecastingDashboard),
   {
     loading: () => (
-      <div className="w-full min-h-[500px] bg-gray-50 animate-pulse rounded-lg" />
+      <div className="w-full min-h-[500px] bg-muted/40 animate-pulse rounded-lg" />
     ),
     ssr: false,
   }
@@ -119,7 +119,7 @@ export const LazyAIAnalysisPanel = dynamic(
   () => import('@/components/contracts/AIAnalysisPanel').then(mod => mod.AIAnalysisPanel),
   {
     loading: () => (
-      <div className="w-full h-[400px] bg-gray-100 animate-pulse rounded-lg" />
+      <div className="w-full h-[400px] bg-muted animate-pulse rounded-lg" />
     ),
     ssr: false,
   }
@@ -129,7 +129,7 @@ export const LazyEnhancedArtifactViewer = dynamic(
   () => import('@/components/contracts/EnhancedArtifactViewer').then(mod => mod.EnhancedArtifactViewer),
   {
     loading: () => (
-      <div className="w-full h-[500px] bg-gray-100 animate-pulse rounded-lg" />
+      <div className="w-full h-[500px] bg-muted animate-pulse rounded-lg" />
     ),
     ssr: false,
   }
@@ -139,8 +139,8 @@ export const LazyPDFViewer = dynamic(
   () => import('@/components/contracts/PDFViewer').then(mod => mod.default),
   {
     loading: () => (
-      <div className="w-full h-[600px] bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">
-        <div className="text-gray-400">Loading PDF viewer...</div>
+      <div className="w-full h-[600px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
+        <div className="text-muted-foreground">Loading PDF viewer...</div>
       </div>
     ),
     ssr: false,
@@ -151,7 +151,7 @@ export const LazyRedlineEditor = dynamic(
   () => import('@/components/contracts/RedlineEditor').then(mod => mod.default),
   {
     loading: () => (
-      <div className="w-full h-[500px] bg-gray-100 animate-pulse rounded-lg" />
+      <div className="w-full h-[500px] bg-muted animate-pulse rounded-lg" />
     ),
     ssr: false,
   }
@@ -161,7 +161,7 @@ export const LazyVersionCompare = dynamic(
   () => import('@/components/contracts/VersionCompare').then(mod => mod.VersionCompare),
   {
     loading: () => (
-      <div className="w-full h-[600px] bg-gray-100 animate-pulse rounded-lg" />
+      <div className="w-full h-[600px] bg-muted animate-pulse rounded-lg" />
     ),
     ssr: false,
   }
@@ -181,7 +181,7 @@ export const LazyApprovalWorkflow = dynamic(
   () => import('@/components/approvals/ApprovalWorkflow').then(mod => mod.ApprovalWorkflow),
   {
     loading: () => (
-      <div className="w-full h-[400px] bg-gray-100 animate-pulse rounded-lg" />
+      <div className="w-full h-[400px] bg-muted animate-pulse rounded-lg" />
     ),
   }
 );

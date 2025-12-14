@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { optionalImport } from '@/lib/server/optional-module';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,8 +32,22 @@ export async function GET(request: NextRequest) {
 
     console.log('[CRON] Starting renewal alerts scan', { tenantId, daysAhead });
 
-    // Dynamic import to avoid build issues
-    const { triggerRenewalCheck } = await import('@workspace/workers/renewal-alert-worker');
+    const workerModule = await optionalImport<{ triggerRenewalCheck: (args: any) => Promise<any> }>(
+      '@workspace/workers/renewal-alert-worker'
+    );
+
+    if (!workerModule?.triggerRenewalCheck) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Background worker not available',
+          message: 'Renewal alert worker is not installed/configured in this environment.',
+        },
+        { status: 503 }
+      );
+    }
+
+    const { triggerRenewalCheck } = workerModule;
 
     const job = await triggerRenewalCheck({
       tenantId,

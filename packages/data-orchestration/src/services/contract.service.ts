@@ -4,7 +4,7 @@ import { enhancedDbAdaptor } from "../dal/enhanced-database.adaptor";
 import { smartCacheService } from "./smart-cache.service";
 import { eventBus, Events } from "../events/event-bus";
 import { fileIntegrityService } from "./file-integrity.service";
-import pino from "pino";
+import { createLogger } from "../utils/logger";
 import {
   Contract,
   ContractQuery,
@@ -16,7 +16,7 @@ import {
 
 export type { ServiceResponse }; // Re-export for other services
 
-const logger = pino({ name: "contract-service" });
+const logger = createLogger("contract-service");
 
 // Extended DTO with file integrity fields
 export interface EnhancedCreateContractDTO

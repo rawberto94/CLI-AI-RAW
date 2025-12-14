@@ -18,6 +18,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { optionalImport } from '@/lib/server/optional-module';
 
 // ============================================================================
 // Types
@@ -355,8 +356,13 @@ export async function performGoogleEUOCR(
   }
 
   try {
-    // Dynamic import to avoid bundling if not used
-    const { ImageAnnotatorClient } = await import('@google-cloud/vision');
+    const visionModule = await optionalImport<any>('@google-cloud/vision');
+
+    if (!visionModule?.ImageAnnotatorClient) {
+      throw new Error('Missing optional dependency: @google-cloud/vision');
+    }
+
+    const { ImageAnnotatorClient } = visionModule;
 
     const client = new ImageAnnotatorClient({
       keyFilename: credentialsPath,
@@ -443,7 +449,12 @@ export async function performOVHCloudOCR(
   // OVH uses a custom signature-based authentication
   // In production, use the ovh npm package
   try {
-    const ovh = await import('ovh');
+    const ovh = await optionalImport<any>('ovh');
+
+    if (!ovh?.default) {
+      throw new Error('Missing optional dependency: ovh');
+    }
+
     const client = ovh.default({
       appKey,
       appSecret,
@@ -511,7 +522,11 @@ export async function performTesseractOCR(
   const startTime = Date.now();
 
   try {
-    const Tesseract = await import('tesseract.js');
+    const Tesseract = await optionalImport<any>('tesseract.js');
+
+    if (!Tesseract?.createWorker) {
+      throw new Error('Missing optional dependency: tesseract.js');
+    }
 
     const langMap: Record<string, string> = {
       de: 'deu',

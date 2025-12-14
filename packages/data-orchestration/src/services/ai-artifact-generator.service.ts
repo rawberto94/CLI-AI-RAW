@@ -14,14 +14,14 @@
  * - Retry logic with exponential backoff
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { confidenceScoringService } from './confidence-scoring.service';
 import { artifactVersioningService } from './artifact-versioning.service';
 import { artifactPromptTemplatesService } from './artifact-prompt-templates.service';
 import { artifactValidationService } from './artifact-validation.service';
 import { artifactCostSavingsIntegrationService } from './artifact-cost-savings-integration.service';
 
-const logger = pino({ name: 'ai-artifact-generator-service' });
+const logger = createLogger('ai-artifact-generator-service');
 
 // =========================================================================
 // CIRCUIT BREAKER IMPLEMENTATION

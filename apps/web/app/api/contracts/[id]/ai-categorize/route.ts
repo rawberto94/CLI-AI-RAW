@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { optionalImport } from '@/lib/server/optional-module';
 
 export async function POST(
   request: NextRequest,
@@ -173,9 +174,21 @@ export async function POST(
     } else {
       // Queue for background processing
       try {
-        const { queueCategorizationJob } = await import(
+        const workerModule = await optionalImport<{ queueCategorizationJob: (args: any) => Promise<string> }>(
           '@workspace/workers/categorization-worker'
         );
+
+        if (!workerModule?.queueCategorizationJob) {
+          return NextResponse.json(
+            {
+              error: 'Background worker not available',
+              message: 'Categorization worker is not installed/configured in this environment.',
+            },
+            { status: 503 }
+          );
+        }
+
+        const { queueCategorizationJob } = workerModule;
 
         const jobId = await queueCategorizationJob({
           contractId: id,

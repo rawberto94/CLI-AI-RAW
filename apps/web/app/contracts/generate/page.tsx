@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   FileText,
   ArrowRight,
   ArrowLeft,
@@ -29,12 +36,17 @@ interface Template {
   name: string
   description: string
   category: string
+  clauses?: unknown
+  structure?: unknown
+  metadata?: unknown
+  variableCount?: number
   variables: Array<{
     name: string
     label: string
     type: string
     required: boolean
     defaultValue?: string
+    options?: Array<{ value: string; label: string }>
   }>
 }
 
@@ -57,7 +69,183 @@ export default function GenerateContractPage() {
     loadTemplates()
   }, [])
 
+  const pickFirst = (data: FormData, keys: string[], fallback: string) => {
+    for (const key of keys) {
+      const value = data[key]
+      if (value) return value
+    }
+    return fallback
+  }
+
+  const interpolate = (text: string, data: FormData) => {
+    return text.replace(/\{\{\s*([a-zA-Z0-9_\-\.]+)\s*\}\}/g, (_, key: string) => {
+      const value = data[key]
+      return value ?? ''
+    })
+  }
+
+  const fetchClauseIndex = async () => {
+    const index = new Map<string, { title?: string; content: string }>()
+
+    const tryAdd = (raw: unknown) => {
+      if (!Array.isArray(raw)) return
+      for (const item of raw) {
+        if (!item || typeof item !== 'object') continue
+        const clause = item as Record<string, unknown>
+        const id = typeof clause.id === 'string' ? clause.id : ''
+        const title = typeof clause.title === 'string' ? clause.title : undefined
+        const content = typeof clause.content === 'string' ? clause.content : ''
+        if (!id || !content) continue
+        index.set(id, { title, content })
+      }
+    }
+
+    try {
+      const [libraryResp, clausesResp] = await Promise.all([
+        fetch('/api/clauses/library'),
+        fetch('/api/clauses'),
+      ])
+
+      if (libraryResp.ok) {
+        const json = (await libraryResp.json()) as { clauses?: unknown }
+        tryAdd(json?.clauses)
+      }
+
+      if (clausesResp.ok) {
+        const json = (await clausesResp.json()) as { clauses?: unknown }
+        tryAdd(json?.clauses)
+      }
+    } catch {
+      // ignore
+    }
+
+    return index
+  }
+
+  const mapApiVariables = (rawVariables: unknown): Template['variables'] => {
+    if (!Array.isArray(rawVariables)) return []
+    return rawVariables
+      .map((v) => {
+        if (!v || typeof v !== 'object') return null
+        const variable = v as Record<string, unknown>
+        const name = typeof variable.name === 'string' ? variable.name : ''
+        if (!name) return null
+        const label =
+          typeof variable.displayName === 'string'
+            ? variable.displayName
+            : typeof variable.label === 'string'
+              ? variable.label
+              : name
+
+        const type = typeof variable.type === 'string' ? variable.type : 'text'
+        const required = Boolean(variable.required)
+        const defaultValueRaw = variable.defaultValue
+        const defaultValue =
+          typeof defaultValueRaw === 'string' || typeof defaultValueRaw === 'number'
+            ? String(defaultValueRaw)
+            : undefined
+
+        const optionsRaw = variable.options
+        const options = Array.isArray(optionsRaw)
+          ? optionsRaw
+              .map((o) => {
+                if (!o || typeof o !== 'object') return null
+                const opt = o as Record<string, unknown>
+                const value = typeof opt.value === 'string' ? opt.value : ''
+                const label = typeof opt.label === 'string' ? opt.label : value
+                if (!value) return null
+                return { value, label }
+              })
+              .filter(Boolean) as Array<{ value: string; label: string }>
+          : undefined
+
+        return {
+          name,
+          label,
+          type,
+          required,
+          defaultValue,
+          options,
+        }
+      })
+      .filter(Boolean) as Template['variables']
+  }
+
+  const mapApiTemplates = (rawTemplates: unknown): Template[] => {
+    if (!Array.isArray(rawTemplates)) return []
+    return rawTemplates
+      .map((t) => {
+        if (!t || typeof t !== 'object') return null
+        const template = t as Record<string, unknown>
+        const id = typeof template.id === 'string' ? template.id : ''
+        const name = typeof template.name === 'string' ? template.name : ''
+        if (!id || !name) return null
+
+        const description = typeof template.description === 'string' ? template.description : ''
+        const category = typeof template.category === 'string' ? template.category : 'GENERAL'
+
+        const metadata = template.metadata
+        let variableCount: number | undefined
+        if (metadata && typeof metadata === 'object') {
+          const vars = (metadata as Record<string, unknown>).variables
+          if (Array.isArray(vars)) variableCount = vars.length
+        }
+
+        return {
+          id,
+          name,
+          description,
+          category,
+          clauses: template.clauses,
+          structure: template.structure,
+          metadata,
+          variableCount,
+          variables: [],
+        }
+      })
+      .filter(Boolean) as Template[]
+  }
+
+  const hydrateTemplateVariables = async (template: Template) => {
+    if (template.variables.length > 0) return template
+
+    try {
+      const response = await fetch(`/api/templates/${template.id}/variables`)
+      if (!response.ok) return template
+      const json = (await response.json()) as { variables?: unknown }
+      const variables = mapApiVariables(json?.variables)
+
+      const hydrated: Template = {
+        ...template,
+        variables,
+        variableCount: variables.length,
+      }
+
+      setTemplates((current) => current.map((t) => (t.id === template.id ? hydrated : t)))
+      return hydrated
+    } catch {
+      return template
+    }
+  }
+
   const loadTemplates = async () => {
+    // Try managed templates first
+    try {
+      const response = await fetch('/api/templates?limit=100')
+      if (response.ok) {
+        const json = (await response.json()) as { success?: boolean; templates?: unknown }
+        if (json?.success && json.templates) {
+          const apiTemplates = mapApiTemplates(json.templates)
+          if (apiTemplates.length > 0) {
+            setTemplates(apiTemplates)
+            return
+          }
+        }
+      }
+    } catch {
+      // fall back to mock templates
+    }
+
     // Mock templates
     const mockTemplates: Template[] = [
       {
@@ -108,22 +296,107 @@ export default function GenerateContractPage() {
           { name: 'confidentialityPeriod', label: 'Confidentiality Period (years)', type: 'number', required: true },
         ]
       },
+      {
+        id: '4',
+        name: 'Statement of Work (SoW)',
+        description: 'Project scope, deliverables, timeline, and pricing for services',
+        category: 'Services',
+        variables: [
+          { name: 'contractTitle', label: 'SoW Title', type: 'text', required: true },
+          { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
+          { name: 'clientName', label: 'Client Name', type: 'text', required: true },
+          { name: 'supplierName', label: 'Supplier Name', type: 'text', required: true },
+          { name: 'projectName', label: 'Project Name', type: 'text', required: true },
+          { name: 'scopeOfWork', label: 'Scope / Description', type: 'textarea', required: true },
+          { name: 'deliverables', label: 'Deliverables', type: 'textarea', required: true },
+          { name: 'milestones', label: 'Milestones', type: 'textarea', required: false },
+          { name: 'startDate', label: 'Start Date', type: 'date', required: true },
+          { name: 'endDate', label: 'End Date', type: 'date', required: true },
+          { name: 'totalValue', label: 'Total Value', type: 'currency', required: true },
+          { name: 'paymentTerms', label: 'Payment Terms', type: 'text', required: true, defaultValue: 'Net 30' },
+        ]
+      },
+      {
+        id: '5',
+        name: 'Service Level Agreement (SLA)',
+        description: 'Service commitments, uptime targets, support response times, and credits',
+        category: 'Operations',
+        variables: [
+          { name: 'contractTitle', label: 'SLA Title', type: 'text', required: true },
+          { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
+          { name: 'clientName', label: 'Customer Name', type: 'text', required: true },
+          { name: 'supplierName', label: 'Service Provider Name', type: 'text', required: true },
+          { name: 'serviceName', label: 'Service Name', type: 'text', required: true },
+          { name: 'uptimeTarget', label: 'Uptime Target (%)', type: 'number', required: true, defaultValue: '99.9' },
+          { name: 'supportHours', label: 'Support Hours', type: 'text', required: true, defaultValue: '24x7' },
+          { name: 'responseTime', label: 'Initial Response Time', type: 'text', required: true, defaultValue: '1 hour (P1)' },
+          { name: 'serviceCredits', label: 'Service Credits', type: 'textarea', required: false },
+        ]
+      },
+      {
+        id: '6',
+        name: 'Data Processing Addendum (DPA)',
+        description: 'Privacy and data protection terms for processing personal data',
+        category: 'Legal',
+        variables: [
+          { name: 'contractTitle', label: 'DPA Title', type: 'text', required: true },
+          { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
+          { name: 'controllerName', label: 'Controller (Customer) Name', type: 'text', required: true },
+          { name: 'processorName', label: 'Processor (Vendor) Name', type: 'text', required: true },
+          { name: 'processingDescription', label: 'Processing Description', type: 'textarea', required: true },
+          { name: 'dataTypes', label: 'Data Types', type: 'textarea', required: true },
+          { name: 'securityMeasures', label: 'Security Measures', type: 'textarea', required: false },
+        ]
+      },
+      {
+        id: '7',
+        name: 'Order Form / Purchase Order',
+        description: 'Commercial order terms, items/services, and delivery details',
+        category: 'Procurement',
+        variables: [
+          { name: 'contractTitle', label: 'Order Title', type: 'text', required: true },
+          { name: 'orderNumber', label: 'Order Number', type: 'text', required: true },
+          { name: 'orderDate', label: 'Order Date', type: 'date', required: true },
+          { name: 'buyerName', label: 'Buyer Name', type: 'text', required: true },
+          { name: 'supplierName', label: 'Supplier Name', type: 'text', required: true },
+          { name: 'items', label: 'Items / Services', type: 'textarea', required: true },
+          { name: 'totalValue', label: 'Total Amount', type: 'currency', required: true },
+          { name: 'currency', label: 'Currency', type: 'text', required: true, defaultValue: 'USD' },
+          { name: 'paymentTerms', label: 'Payment Terms', type: 'text', required: true, defaultValue: 'Net 30' },
+          { name: 'deliveryDate', label: 'Delivery Date', type: 'date', required: false },
+        ]
+      },
+      {
+        id: '8',
+        name: 'Contract Amendment',
+        description: 'Modify an existing agreement with clear tracked changes',
+        category: 'Legal',
+        variables: [
+          { name: 'contractTitle', label: 'Amendment Title', type: 'text', required: true },
+          { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
+          { name: 'originalAgreementTitle', label: 'Original Agreement Title', type: 'text', required: true },
+          { name: 'party1Name', label: 'Party 1 Name', type: 'text', required: true },
+          { name: 'party2Name', label: 'Party 2 Name', type: 'text', required: true },
+          { name: 'changes', label: 'Changes / Amendments', type: 'textarea', required: true },
+        ]
+      },
     ]
     setTemplates(mockTemplates)
   }
 
-  const selectTemplate = (template: Template) => {
-    setSelectedTemplate(template)
-    
+  const selectTemplate = async (template: Template) => {
+    const hydrated = await hydrateTemplateVariables(template)
+    setSelectedTemplate(hydrated)
+
     // Initialize form data with default values
     const initialData: FormData = {}
-    template.variables.forEach(variable => {
-      if (variable.defaultValue) {
+    hydrated.variables.forEach((variable) => {
+      if (variable.defaultValue !== undefined) {
         initialData[variable.name] = variable.defaultValue
       }
     })
     setFormData(initialData)
-    
+
     setStep(2)
   }
 
@@ -143,6 +416,137 @@ export default function GenerateContractPage() {
       let content = `# ${formData.contractTitle || selectedTemplate.name}\n\n`
       content += `## Agreement Details\n\n`
       content += `**Effective Date:** ${formData.effectiveDate}\n\n`
+
+      const isManagedTemplate = Boolean(selectedTemplate.clauses || selectedTemplate.structure || selectedTemplate.metadata)
+      if (isManagedTemplate) {
+        const entries = selectedTemplate.variables
+          .map((v) => ({ label: v.label, value: formData[v.name] }))
+          .filter((x) => x.value)
+
+        if (entries.length > 0) {
+          content += `## Provided Values\n\n`
+          for (const entry of entries) {
+            content += `- **${entry.label}:** ${entry.value}\n`
+          }
+          content += `\n`
+        }
+
+        const structure = selectedTemplate.structure
+        const structureObj = structure && typeof structure === 'object' ? (structure as Record<string, unknown>) : null
+
+        const header = structureObj && typeof structureObj.header === 'string' ? structureObj.header : ''
+        const footer = structureObj && typeof structureObj.footer === 'string' ? structureObj.footer : ''
+        const sectionsRaw = structureObj ? structureObj.sections : undefined
+
+        if (header) {
+          content += `## Header\n\n`
+          content += `${interpolate(header, formData)}\n\n`
+        }
+
+        if (Array.isArray(sectionsRaw) && sectionsRaw.length > 0) {
+          const sections = sectionsRaw
+            .filter((s) => s && typeof s === 'object')
+            .map((s) => s as Record<string, unknown>)
+            .map((s) => ({
+              title:
+                typeof s.title === 'string'
+                  ? s.title
+                  : typeof s.name === 'string'
+                    ? s.name
+                    : 'Section',
+              order: typeof s.order === 'number' ? s.order : 999,
+              clauses: Array.isArray(s.clauses) ? (s.clauses.filter((c) => typeof c === 'string') as string[]) : [],
+              body: typeof s.body === 'string' ? s.body : typeof s.content === 'string' ? s.content : '',
+            }))
+            .sort((a, b) => a.order - b.order)
+
+          const neededClauseIds = new Set<string>()
+          for (const section of sections) {
+            for (const clauseId of section.clauses) neededClauseIds.add(clauseId)
+          }
+
+          const clauseIndex = neededClauseIds.size > 0 ? await fetchClauseIndex() : new Map<string, { title?: string; content: string }>()
+
+          content += `## Sections\n\n`
+          for (const section of sections) {
+            content += `### ${interpolate(section.title, formData)}\n\n`
+            if (section.body) {
+              content += `${interpolate(section.body, formData)}\n\n`
+            }
+
+            for (const clauseId of section.clauses) {
+              const clause = clauseIndex.get(clauseId)
+              if (!clause) continue
+              if (clause.title) content += `**${interpolate(clause.title, formData)}**\n\n`
+              content += `${interpolate(clause.content, formData)}\n\n`
+            }
+          }
+        } else {
+          const clauses = selectedTemplate.clauses
+          if (Array.isArray(clauses) && clauses.length > 0) {
+            content += `## Template Clauses\n\n`
+            for (const clause of clauses) {
+              if (typeof clause === 'string') {
+                const text = interpolate(clause, formData)
+                if (text.trim()) content += `${text}\n\n`
+                continue
+              }
+              if (!clause || typeof clause !== 'object') continue
+              const c = clause as Record<string, unknown>
+              const title =
+                typeof c.title === 'string'
+                  ? c.title
+                  : typeof c.name === 'string'
+                    ? c.name
+                    : typeof c.heading === 'string'
+                      ? c.heading
+                      : ''
+              const body =
+                typeof c.content === 'string'
+                  ? c.content
+                  : typeof c.text === 'string'
+                    ? c.text
+                    : typeof c.body === 'string'
+                      ? c.body
+                      : ''
+
+              if (title) content += `### ${interpolate(title, formData)}\n`
+              if (body) content += `${interpolate(body, formData)}\n\n`
+            }
+          } else {
+            content += `## Template Content\n\n`
+            content += `This document was generated from a managed template.\n\n`
+          }
+        }
+
+        if (footer) {
+          content += `## Footer\n\n`
+          content += `${interpolate(footer, formData)}\n\n`
+        }
+
+        content += `---\n\n`
+        const sigParty1 = pickFirst(
+          formData,
+          ['clientName', 'client_name', 'party1Name', 'party1_name', 'controllerName', 'controller_name', 'buyerName', 'buyer_name'],
+          'Party 1'
+        )
+        const sigParty2 = pickFirst(
+          formData,
+          ['supplierName', 'supplier_name', 'party2Name', 'party2_name', 'processorName', 'processor_name'],
+          'Party 2'
+        )
+
+        content += `**${sigParty1}**\n`
+        content += `Signature: ___________________\n`
+        content += `Date: ___________________\n\n`
+        content += `**${sigParty2}**\n`
+        content += `Signature: ___________________\n`
+        content += `Date: ___________________\n`
+
+        setGeneratedContract(content)
+        setStep(4)
+        return
+      }
       
       if (selectedTemplate.id === '1') {
         content += `## SOFTWARE LICENSE AGREEMENT\n\n`
@@ -170,18 +574,65 @@ export default function GenerateContractPage() {
         content += `### Scope of Work\n${formData.scopeOfWork}\n\n`
         content += `### Compensation\n${formData.totalValue}\n\n`
         content += `### Payment Terms\n${formData.paymentTerms}\n\n`
-      } else {
+      } else if (selectedTemplate.id === '3') {
         content += `## NON-DISCLOSURE AGREEMENT\n\n`
         content += `This NDA is between ${formData.party1Name} and ${formData.party2Name}.\n\n`
         content += `### Purpose\n${formData.purpose}\n\n`
         content += `### Confidentiality Period\n${formData.confidentialityPeriod} years\n\n`
+      } else if (selectedTemplate.id === '4') {
+        content += `## STATEMENT OF WORK (SOW)\n\n`
+        content += `This Statement of Work ("SoW") is effective as of ${formData.effectiveDate} and is entered into by and between ${formData.clientName} ("Client") and ${formData.supplierName} ("Supplier").\n\n`
+        content += `### Project\n**${formData.projectName}**\n\n`
+        content += `### Scope / Description\n${formData.scopeOfWork}\n\n`
+        content += `### Deliverables\n${formData.deliverables}\n\n`
+        if (formData.milestones) {
+          content += `### Milestones\n${formData.milestones}\n\n`
+        }
+        content += `### Term\nStart: ${formData.startDate}\nEnd: ${formData.endDate}\n\n`
+        content += `### Fees & Payment\nTotal: ${formData.totalValue}\nPayment Terms: ${formData.paymentTerms}\n\n`
+      } else if (selectedTemplate.id === '5') {
+        content += `## SERVICE LEVEL AGREEMENT (SLA)\n\n`
+        content += `This SLA is effective as of ${formData.effectiveDate} between ${formData.clientName} ("Customer") and ${formData.supplierName} ("Provider").\n\n`
+        content += `### Service\n${formData.serviceName}\n\n`
+        content += `### Availability\nUptime Target: ${formData.uptimeTarget}%\n\n`
+        content += `### Support\nSupport Hours: ${formData.supportHours}\nInitial Response Time: ${formData.responseTime}\n\n`
+        content += `### Service Credits\n${formData.serviceCredits || 'To be defined based on availability shortfalls.'}\n\n`
+      } else if (selectedTemplate.id === '6') {
+        content += `## DATA PROCESSING ADDENDUM (DPA)\n\n`
+        content += `This DPA is effective as of ${formData.effectiveDate} between ${formData.controllerName} ("Controller") and ${formData.processorName} ("Processor").\n\n`
+        content += `### Processing Description\n${formData.processingDescription}\n\n`
+        content += `### Categories of Data\n${formData.dataTypes}\n\n`
+        content += `### Security Measures\n${formData.securityMeasures || 'Appropriate technical and organizational measures will be implemented to protect personal data.'}\n\n`
+      } else if (selectedTemplate.id === '7') {
+        content += `## ORDER FORM / PURCHASE ORDER\n\n`
+        content += `Order Number: ${formData.orderNumber}\n`
+        content += `Order Date: ${formData.orderDate}\n\n`
+        content += `Buyer: ${formData.buyerName}\n`
+        content += `Supplier: ${formData.supplierName}\n\n`
+        content += `### Items / Services\n${formData.items}\n\n`
+        content += `### Total\n${formData.totalValue} ${formData.currency}\n\n`
+        content += `### Payment Terms\n${formData.paymentTerms}\n\n`
+        if (formData.deliveryDate) {
+          content += `### Delivery Date\n${formData.deliveryDate}\n\n`
+        }
+      } else if (selectedTemplate.id === '8') {
+        content += `## CONTRACT AMENDMENT\n\n`
+        content += `This Amendment ("Amendment") is effective as of ${formData.effectiveDate} and amends the ${formData.originalAgreementTitle} (the "Original Agreement") between ${formData.party1Name} and ${formData.party2Name}.\n\n`
+        content += `### Amendments\n${formData.changes}\n\n`
+        content += `### No Other Changes\nExcept as expressly modified by this Amendment, the Original Agreement remains in full force and effect.\n\n`
+      } else {
+        content += `## AGREEMENT\n\n`
+        content += `This document was generated from the selected template.\n\n`
       }
       
       content += `---\n\n`
-      content += `**${formData.clientName || formData.party1Name}**\n`
+      const sigParty1 = formData.clientName || formData.party1Name || formData.controllerName || formData.buyerName || 'Party 1'
+      const sigParty2 = formData.supplierName || formData.party2Name || formData.processorName || 'Party 2'
+
+      content += `**${sigParty1}**\n`
       content += `Signature: ___________________\n`
       content += `Date: ___________________\n\n`
-      content += `**${formData.supplierName || formData.party2Name}**\n`
+      content += `**${sigParty2}**\n`
       content += `Signature: ___________________\n`
       content += `Date: ___________________\n`
       
@@ -278,7 +729,7 @@ export default function GenerateContractPage() {
                     <p className="text-gray-600 text-sm mb-4">{template.description}</p>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <FileText className="h-4 w-4" />
-                      <span>{template.variables.length} fields to fill</span>
+                      <span>{(template.variableCount ?? template.variables.length) || 0} fields to fill</span>
                     </div>
                   </div>
                 ))}
@@ -306,7 +757,23 @@ export default function GenerateContractPage() {
                       {variable.label}
                       {variable.required && <span className="text-red-500">*</span>}
                     </label>
-                    {variable.type === 'textarea' ? (
+                    {variable.type === 'select' && variable.options && variable.options.length > 0 ? (
+                      <Select
+                        value={formData[variable.name] || ''}
+                        onValueChange={(value) => updateFormData(variable.name, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={`Select ${variable.label.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {variable.options.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : variable.type === 'textarea' ? (
                       <Textarea
                         value={formData[variable.name] || ''}
                         onChange={(e) => updateFormData(variable.name, e.target.value)}

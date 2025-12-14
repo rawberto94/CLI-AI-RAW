@@ -9,12 +9,12 @@
  * - Intelligent scheduling based on dependencies
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { aiArtifactGeneratorService, ArtifactType, GenerationOptions, GenerationResult } from './ai-artifact-generator.service';
 import { artifactContextEnrichmentService } from './artifact-context-enrichment.service';
 import { artifactValidationService } from './artifact-validation.service';
 
-const logger = pino({ name: 'parallel-artifact-generator-service' });
+const logger = createLogger('parallel-artifact-generator-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

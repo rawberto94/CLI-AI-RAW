@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DashboardLayout } from '@/components/layout/AppLayout'
 import { ProfessionalDashboard } from '@/components/dashboard/ProfessionalDashboard'
 import { LazyEnhancedDashboard as EnhancedDashboard } from '@/components/lazy'
-import { BarChart3, TrendingUp, Brain } from 'lucide-react'
+import { TrendingUp, Brain } from 'lucide-react'
 
 export default function DashboardPage() {
   return (
@@ -14,23 +14,26 @@ export default function DashboardPage() {
       description="Portfolio intelligence and analytics"
     >
       <div className="max-w-7xl mx-auto">
-        <Tabs defaultValue="intelligence" className="space-y-6">
-          <TabsList className="bg-slate-100 border-0 p-1 rounded-lg">
-            <TabsTrigger value="intelligence" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+        <Tabs defaultValue="intelligence" className="space-y-4">
+          <TabsList
+            aria-label="Dashboard sections"
+            className="w-full sm:w-auto grid grid-cols-2 sm:inline-flex"
+          >
+            <TabsTrigger value="intelligence" className="gap-2">
               <Brain className="h-4 w-4" />
-              Intelligence Dashboard
+              <span className="truncate">Intelligence</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="analytics" className="gap-2">
               <TrendingUp className="h-4 w-4" />
-              Analytics
+              <span className="truncate">Analytics</span>
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="intelligence" className="mt-6">
+          <TabsContent value="intelligence" className="mt-4">
             <ProfessionalDashboard />
           </TabsContent>
           
-          <TabsContent value="analytics" className="mt-6">
+          <TabsContent value="analytics" className="mt-4">
             <EnhancedDashboard />
           </TabsContent>
         </Tabs>

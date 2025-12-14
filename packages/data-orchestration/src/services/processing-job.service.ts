@@ -11,12 +11,12 @@
  */
 
 import { randomUUID } from 'crypto';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { dbAdaptor } from '../dal/database.adaptor';
 import { enhancedDbAdaptor, ErrorCategory } from '../dal/enhanced-database.adaptor';
 import { eventBus, Events } from '../events/event-bus';
 
-const logger = pino({ name: 'processing-job-service' });
+const logger = createLogger('processing-job-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

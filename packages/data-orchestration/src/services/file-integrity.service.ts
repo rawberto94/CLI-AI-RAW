@@ -8,10 +8,10 @@
 import { createHash } from 'crypto';
 import { createReadStream, statSync, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { dbAdaptor } from '../dal/database.adaptor';
 
-const logger = pino({ name: 'file-integrity-service' });
+const logger = createLogger('file-integrity-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

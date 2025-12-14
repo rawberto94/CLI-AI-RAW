@@ -9,9 +9,9 @@
  * - Threshold-based flagging for manual review
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'confidence-scoring-service' });
+const logger = createLogger('confidence-scoring-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

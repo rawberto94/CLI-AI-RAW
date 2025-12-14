@@ -9,9 +9,9 @@
  * - Financial calculations validation
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'financial-validation-service' });
+const logger = createLogger('financial-validation-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

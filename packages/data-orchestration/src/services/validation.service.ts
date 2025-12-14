@@ -6,9 +6,9 @@
  */
 
 import { z } from 'zod';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'validation-service' });
+const logger = createLogger('validation-service');
 
 // =========================================================================
 // ZOD SCHEMAS

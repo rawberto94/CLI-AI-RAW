@@ -8,12 +8,12 @@
  * - Pass 3: Validation and gap-filling
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { ArtifactType, GenerationResult } from './ai-artifact-generator.service';
 import { aiArtifactGeneratorService } from './ai-artifact-generator.service';
 import { artifactValidationService } from './artifact-validation.service';
 
-const logger = pino({ name: 'multi-pass-generator' });
+const logger = createLogger('multi-pass-generator');
 
 export interface MultiPassOptions {
   maxPasses?: number;

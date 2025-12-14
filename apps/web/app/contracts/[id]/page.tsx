@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
@@ -93,6 +93,12 @@ import {
 import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { HealthIndicator } from '@/components/contracts/EnhancedContractCard'
+import { ActivityTab } from '@/components/contracts/detail/ActivityTab'
+import { CopyableId } from '@/components/contracts/detail/CopyableId'
+import { StatusBadge } from '@/components/contracts/detail/StatusBadge'
+import { StatCard } from '@/components/contracts/detail/StatCard'
+import { KeyTermBadge } from '@/components/contracts/detail/KeyTermBadge'
+import { useSplitPaneResize } from '@/hooks/use-split-pane-resize'
 
 // ============ TYPES ============
 
@@ -165,324 +171,6 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR']
 
 // ============ HELPER COMPONENTS ============
 
-// Activity Tab Component
-function ActivityTab({ contractId }: { contractId: string }) {
-  const [activities, setActivities] = useState<any[]>([]);
-  const [approvalHistory, setApprovalHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchActivity = async () => {
-      setLoading(true);
-      try {
-        // Fetch approval history
-        const approvalRes = await fetch(`/api/approvals?contractId=${contractId}`);
-        if (approvalRes.ok) {
-          const data = await approvalRes.json();
-          setApprovalHistory(data.data?.items || []);
-        }
-
-        // Generate mock activities (would come from activity log API)
-        const mockActivities = [
-          {
-            id: '1',
-            type: 'view',
-            user: 'Sarah Johnson',
-            action: 'viewed this contract',
-            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          },
-          {
-            id: '2',
-            type: 'edit',
-            user: 'Mike Chen',
-            action: 'updated contract metadata',
-            timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-          },
-          {
-            id: '3',
-            type: 'share',
-            user: 'You',
-            action: 'shared with Legal Team',
-            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          },
-          {
-            id: '4',
-            type: 'upload',
-            user: 'You',
-            action: 'uploaded this contract',
-            timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-          },
-        ];
-        setActivities(mockActivities);
-      } catch (e) {
-        // Failed to fetch activity - non-critical error
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchActivity();
-  }, [contractId]);
-
-  const formatTimeAgo = (date: Date) => {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-    if (seconds < 60) return 'Just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-    return `${Math.floor(seconds / 86400)} days ago`;
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="h-20 bg-white border border-slate-200 rounded-lg animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Approval Workflow Status - Hidden for now, will be enabled in future */}
-      {/* {approvalHistory.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">
-              Approval Workflow
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {approvalHistory.map((approval: any) => (
-                <div key={approval.id} className="p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant="outline"
-                        className={cn(
-                          approval.status === 'approved' && 'bg-green-50 text-green-700 border-green-200',
-                          approval.status === 'rejected' && 'bg-red-50 text-red-700 border-red-200',
-                          approval.status === 'pending' && 'bg-amber-50 text-amber-700 border-amber-200'
-                        )}
-                      >
-                        {approval.status.charAt(0).toUpperCase() + approval.status.slice(1)}
-                      </Badge>
-                      <span className="text-sm text-slate-600">{approval.title || 'Approval Request'}</span>
-                    </div>
-                    <span className="text-xs text-slate-500">
-                      {formatTimeAgo(new Date(approval.requestedAt || approval.createdAt))}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )} */}
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activities.length > 0 ? (
-            <div className="space-y-3">
-              {activities.map((activity) => {
-                return (
-                  <div 
-                    key={activity.id}
-                    className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-900">
-                        <span className="font-medium">{activity.user}</span>{' '}
-                        {activity.action}
-                      </p>
-                    </div>
-                    <p className="text-xs text-slate-500 ml-4">
-                      {formatTimeAgo(activity.timestamp)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500 text-center py-4">
-              No recent activity
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { bg: string; text: string; icon: React.ElementType; label: string; animate?: boolean }> = {
-    completed: {
-      bg: 'bg-emerald-50 border-emerald-200',
-      text: 'text-emerald-700',
-      icon: CheckCircle2,
-      label: 'Completed'
-    },
-    processing: {
-      bg: 'bg-blue-50 border-blue-200',
-      text: 'text-blue-700',
-      icon: Loader2,
-      label: 'Processing',
-      animate: true
-    },
-    error: {
-      bg: 'bg-red-50 border-red-200',
-      text: 'text-red-700',
-      icon: AlertCircle,
-      label: 'Error'
-    },
-    failed: {
-      bg: 'bg-red-50 border-red-200',
-      text: 'text-red-700',
-      icon: AlertCircle,
-      label: 'Failed'
-    },
-    uploaded: {
-      bg: 'bg-amber-50 border-amber-200',
-      text: 'text-amber-700',
-      icon: Clock,
-      label: 'Pending'
-    }
-  };
-  
-  const statusConfig = config[status.toLowerCase()] || {
-    bg: 'bg-slate-50 border-slate-200',
-    text: 'text-slate-700',
-    icon: FileText,
-    label: status
-  };
-  
-  const Icon = statusConfig.icon;
-  const shouldAnimate = 'animate' in statusConfig && statusConfig.animate;
-  
-  return (
-    <Badge variant="outline" className={cn("gap-1.5 font-medium border", statusConfig.bg, statusConfig.text)}>
-      <Icon className={cn("h-3 w-3", shouldAnimate && "animate-spin")} />
-      {statusConfig.label}
-    </Badge>
-  );
-}
-
-function CopyableId({ id }: { id: string }) {
-  const [copied, setCopied] = useState(false);
-  
-  const copyId = () => {
-    navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            onClick={copyId}
-            className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 font-mono transition-colors"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3 text-emerald-500" />
-                <span className="text-emerald-600">Copied</span>
-              </>
-            ) : (
-              <>
-                <span className="truncate max-w-[100px]">{id.slice(0, 8)}...</span>
-                <Copy className="h-3 w-3" />
-              </>
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="font-mono text-xs">{id}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function StatCard({ 
-  icon: Icon, 
-  label, 
-  value, 
-  subValue, 
-  color = 'slate',
-  score
-}: { 
-  icon: React.ElementType
-  label: string
-  value: string | number
-  subValue?: string
-  color?: 'emerald' | 'amber' | 'red' | 'blue' | 'purple' | 'slate'
-  score?: number
-}) {
-  const gradientClasses = {
-    emerald: 'from-emerald-500 to-teal-600',
-    amber: 'from-amber-500 to-orange-600',
-    red: 'from-red-500 to-rose-600',
-    blue: 'from-blue-500 to-indigo-600',
-    purple: 'from-purple-500 to-violet-600',
-    slate: 'from-slate-500 to-gray-600'
-  };
-
-  const bgClasses = {
-    emerald: 'bg-emerald-50/50 border-emerald-100/50',
-    amber: 'bg-amber-50/50 border-amber-100/50',
-    red: 'bg-red-50/50 border-red-100/50',
-    blue: 'bg-blue-50/50 border-blue-100/50',
-    purple: 'bg-purple-50/50 border-purple-100/50',
-    slate: 'bg-slate-50/50 border-slate-100/50'
-  };
-  
-  return (
-    <motion.div 
-      whileHover={{ scale: 1.02, y: -2 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
-      className={cn(
-        "bg-white/90 backdrop-blur-sm rounded-xl border p-4 transition-all duration-300 hover:shadow-lg",
-        bgClasses[color]
-      )}
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className={cn(
-            "inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 shadow-lg",
-            `bg-gradient-to-br ${gradientClasses[color]}`
-          )}>
-            <Icon className="h-5 w-5 text-white" />
-          </div>
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-          <p className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent mt-1">
-            {value}
-          </p>
-          {subValue && <p className="text-xs text-slate-500 mt-0.5">{subValue}</p>}
-        </div>
-        {score !== undefined && (
-          <ScoreRing score={score} size="sm" />
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-function KeyTermBadge({ term }: { term: string }) {
-  return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-      {term}
-    </span>
-  );
-}
-
 // ============ MAIN COMPONENT ============
 
 export default function ContractDetailPage() {
@@ -517,9 +205,14 @@ export default function ContractDetailPage() {
   
   // PDF Viewer state
   const [showPdfViewer, setShowPdfViewer] = useState(false)
-  const [pdfSplitRatio, setPdfSplitRatio] = useState(45)
-  const [isResizingPanel, setIsResizingPanel] = useState(false)
-  const splitContainerRef = useRef<HTMLDivElement>(null)
+  const {
+    containerRef: splitContainerRef,
+    ratio: pdfSplitRatio,
+    setRatio: setPdfSplitRatio,
+    isResizing: isResizingPanel,
+    beginResize: beginResizePanel,
+    aria: splitAria,
+  } = useSplitPaneResize({ initialRatio: 45, minRatio: 20, maxRatio: 75 })
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [metadata, setMetadata] = useState<ContractMetadata>({
@@ -593,31 +286,6 @@ export default function ContractDetailPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, showPdfViewer])
-
-  // Handle panel resize mouse events
-  useEffect(() => {
-    if (!isResizingPanel) return;
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!splitContainerRef.current) return;
-      const containerRect = splitContainerRef.current.getBoundingClientRect();
-      const newRatio = ((e.clientX - containerRect.left) / containerRect.width) * 100;
-      // Clamp between 20% and 75%
-      setPdfSplitRatio(Math.max(20, Math.min(75, newRatio)));
-    };
-    
-    const handleMouseUp = () => {
-      setIsResizingPanel(false);
-    };
-    
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizingPanel]);
 
   // Join document for real-time collaboration
   useEffect(() => {
@@ -1158,7 +826,9 @@ export default function ContractDetailPage() {
                   <div className="px-2 py-1.5">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Keyboard Shortcuts</p>
                     <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">
-                      <span>1-5</span><span>Switch tabs</span>
+                      <span>1-3</span><span>Switch tabs</span>
+                      <span>P</span><span>Toggle PDF</span>
+                      <span>E</span><span>Edit metadata</span>
                       <span>⌘R</span><span>Refresh</span>
                       <span>⌘S</span><span>Save (edit mode)</span>
                       <span>Esc</span><span>Cancel/Close</span>
@@ -1203,9 +873,39 @@ export default function ContractDetailPage() {
                 "flex items-center justify-center group",
                 isResizingPanel && "bg-blue-500"
               )}
+              role="separator"
+              tabIndex={0}
+              aria-label="Resize panels"
+              aria-orientation="vertical"
+              aria-valuemin={splitAria.min}
+              aria-valuemax={splitAria.max}
+              aria-valuenow={splitAria.now}
               onMouseDown={(e) => {
-                e.preventDefault();
-                setIsResizingPanel(true);
+                e.preventDefault()
+                beginResizePanel()
+              }}
+              onKeyDown={(e) => {
+                if (!showPdfViewer) return
+
+                const step = 2
+                switch (e.key) {
+                  case 'ArrowLeft':
+                    e.preventDefault()
+                    setPdfSplitRatio(pdfSplitRatio - step)
+                    break
+                  case 'ArrowRight':
+                    e.preventDefault()
+                    setPdfSplitRatio(pdfSplitRatio + step)
+                    break
+                  case 'Home':
+                    e.preventDefault()
+                    setPdfSplitRatio(splitAria.min)
+                    break
+                  case 'End':
+                    e.preventDefault()
+                    setPdfSplitRatio(splitAria.max)
+                    break
+                }
               }}
             >
               <div className="w-0.5 h-8 bg-slate-400 group-hover:bg-white rounded-full" />
@@ -1937,7 +1637,9 @@ export default function ContractDetailPage() {
                           {tag}
                           {isEditing && (
                             <button
+                              type="button"
                               onClick={() => handleRemoveTag(tag)}
+                              aria-label={`Remove tag ${tag}`}
                               className="ml-1 hover:text-red-600"
                             >
                               <X className="h-3 w-3" />
@@ -1955,7 +1657,12 @@ export default function ContractDetailPage() {
                           type="text"
                           value={newTag}
                           onChange={(e) => setNewTag(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddTag();
+                            }
+                          }}
                           placeholder="Add a tag..."
                           className="h-8 bg-white text-sm"
                         />

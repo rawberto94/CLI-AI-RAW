@@ -5,9 +5,9 @@
  * Focuses on rate optimization, payment terms, volume discounts, and supplier consolidation
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'cost-savings-analyzer' });
+const logger = createLogger('cost-savings-analyzer');
 
 export interface CostSavingsOpportunity {
   id: string;

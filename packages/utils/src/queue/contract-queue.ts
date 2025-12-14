@@ -2,7 +2,10 @@ import { Job } from 'bullmq';
 import { getQueueService } from './queue-service';
 import pino from 'pino';
 
-const logger = pino({ name: 'contract-queue' });
+const logger = pino({
+  name: 'contract-queue',
+  ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 
 /**
  * Priority levels for queue jobs

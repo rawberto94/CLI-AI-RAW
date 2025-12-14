@@ -9,10 +9,10 @@
  * - Whitespace trimming
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import path from 'path';
 
-const logger = pino({ name: 'data-sanitization-service' });
+const logger = createLogger('data-sanitization-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import pino from 'pino';
 
-const logger = pino({ name: 'prisma-client' });
+const logger = pino({
+  name: 'prisma-client',
+  ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 
 // Prevent multiple instances in development
 declare global {

@@ -5,11 +5,11 @@
  * Ensures all artifacts include relevant cost optimization insights
  */
 
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { ArtifactType } from './ai-artifact-generator.service';
 import { costSavingsAnalyzerService, CostSavingsAnalysis } from './cost-savings-analyzer.service';
 
-const logger = pino({ name: 'artifact-cost-savings-integration' });
+const logger = createLogger('artifact-cost-savings-integration');
 
 export interface ArtifactWithSavings {
   artifact: any;

@@ -63,6 +63,14 @@ export function RobustPDFViewer({
   onToggle,
   isExpanded = true,
 }: RobustPDFViewerProps) {
+  const debug = process.env.NODE_ENV !== 'production';
+  const debugLog = (...args: any[]) => {
+    if (debug) console.log(...args);
+  };
+  const debugError = (...args: any[]) => {
+    if (debug) console.error(...args);
+  };
+
   const [mode, setMode] = useState<ViewerMode>('loading');
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -100,7 +108,7 @@ export function RobustPDFViewer({
         setMode('loading');
         setError(null);
         
-        console.log('[PDFViewer] Fetching PDF from:', pdfUrl);
+        debugLog('[PDFViewer] Fetching PDF from:', pdfUrl);
         
         const response = await fetch(pdfUrl);
         
@@ -109,17 +117,17 @@ export function RobustPDFViewer({
         }
         
         const contentType = response.headers.get('content-type');
-        console.log('[PDFViewer] Content-Type:', contentType);
+        debugLog('[PDFViewer] Content-Type:', contentType);
         
         if (!contentType?.includes('pdf') && !contentType?.includes('octet-stream')) {
           // Try to read error message
           const text = await response.text();
-          console.error('[PDFViewer] Unexpected content:', text.substring(0, 200));
+          debugError('[PDFViewer] Unexpected content:', text.substring(0, 200));
           throw new Error('Server returned non-PDF content');
         }
         
         const arrayBuffer = await response.arrayBuffer();
-        console.log('[PDFViewer] PDF data received:', arrayBuffer.byteLength, 'bytes');
+        debugLog('[PDFViewer] PDF data received:', arrayBuffer.byteLength, 'bytes');
         
         if (mounted) {
           setPdfData(arrayBuffer);
@@ -127,7 +135,7 @@ export function RobustPDFViewer({
           tryCanvasRendering(arrayBuffer);
         }
       } catch (err) {
-        console.error('[PDFViewer] Fetch error:', err);
+        debugError('[PDFViewer] Fetch error:', err);
         if (mounted) {
           // Try embed/object fallback
           setMode('embed');
@@ -137,17 +145,17 @@ export function RobustPDFViewer({
     
     async function tryCanvasRendering(data: ArrayBuffer) {
       try {
-        console.log('[PDFViewer] Attempting canvas rendering with PDF.js');
+        debugLog('[PDFViewer] Attempting canvas rendering with PDF.js');
         
-        // Dynamically import PDF.js
-        const pdfjsLib = await import('pdfjs-dist');
+        // Dynamically import PDF.js (legacy build avoids top-level await warnings)
+        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
         
         // Set up the worker - use the CDN version matching the library version
         const PDFJS_VERSION = pdfjsLib.version;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 
-          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
         
-        console.log('[PDFViewer] Using PDF.js version:', PDFJS_VERSION);
+        debugLog('[PDFViewer] Using PDF.js version:', PDFJS_VERSION);
         
         // Load the PDF from array buffer
         const loadingTask = pdfjsLib.getDocument({
@@ -158,7 +166,7 @@ export function RobustPDFViewer({
         });
         
         const pdf = await loadingTask.promise;
-        console.log('[PDFViewer] PDF loaded successfully, pages:', pdf.numPages);
+        debugLog('[PDFViewer] PDF loaded successfully, pages:', pdf.numPages);
         
         if (mounted) {
           setPdfDoc(pdf);
@@ -174,7 +182,7 @@ export function RobustPDFViewer({
           setMode('canvas');
         }
       } catch (err) {
-        console.error('[PDFViewer] Canvas rendering failed:', err);
+        debugError('[PDFViewer] Canvas rendering failed:', err);
         if (mounted) {
           // Fall back to embed/object
           setMode('embed');
@@ -221,9 +229,9 @@ export function RobustPDFViewer({
         };
         
         await page.render(renderContext).promise;
-        console.log('[PDFViewer] Page', currentPage, 'rendered successfully');
+        debugLog('[PDFViewer] Page', currentPage, 'rendered successfully');
       } catch (err) {
-        console.error('[PDFViewer] Error rendering page:', err);
+        debugError('[PDFViewer] Error rendering page:', err);
       }
     }
     
@@ -273,7 +281,7 @@ export function RobustPDFViewer({
             );
           }
         } catch (err) {
-          console.error('[PDFViewer] Error generating thumbnail for page', i + 1, err);
+          debugError('[PDFViewer] Error generating thumbnail for page', i + 1, err);
         }
       }
     }
@@ -286,10 +294,10 @@ export function RobustPDFViewer({
   }, [mode, pdfDoc, totalPages, showSidebar]);
 
   // Handle embed/object load errors
-  const handleEmbedError = useCallback(() => {
-    console.log('[PDFViewer] Embed failed, switching to fallback mode');
+  const handleEmbedError = () => {
+    debugLog('[PDFViewer] Embed failed, switching to fallback mode');
     setMode('fallback');
-  }, []);
+  };
 
   // Navigation handlers
   const goToPage = useCallback((page: number) => {

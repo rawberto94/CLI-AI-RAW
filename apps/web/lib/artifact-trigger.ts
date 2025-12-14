@@ -10,7 +10,9 @@
  * - BACKGROUND (50): Non-urgent background tasks
  */
 
-import { getContractQueue } from '../../../packages/utils/dist/queue/contract-queue';
+import 'server-only';
+
+import { getContractQueue } from '@/lib/queue/contract-queue';
 
 /**
  * Priority levels matching queue configuration

@@ -290,14 +290,14 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
     >
-      <Card className="border-slate-200/80 hover:border-slate-300/80 hover:shadow-md transition-all">
+      <Card className="border-border/60 hover:border-border hover:shadow-md transition-all">
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">{title}</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
+              <p className="text-sm font-medium text-muted-foreground">{title}</p>
+              <p className="text-3xl font-bold text-foreground mt-1">{value}</p>
               {subtitle && (
-                <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+                <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
               )}
               {trend && (
                 <div className="flex items-center gap-1 mt-2">
@@ -306,7 +306,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
                   ) : trend.value < 0 ? (
                     <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" />
                   ) : (
-                    <Minus className="h-3.5 w-3.5 text-slate-400" />
+                    <Minus className="h-3.5 w-3.5 text-muted-foreground" />
                   )}
                   <span className={cn(
                     "text-xs font-medium",
@@ -315,7 +315,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
                     {trend.value > 0 ? '+' : ''}{trend.value}%
                   </span>
                   {trend.label && (
-                    <span className="text-xs text-slate-400">{trend.label}</span>
+                    <span className="text-xs text-muted-foreground">{trend.label}</span>
                   )}
                 </div>
               )}
@@ -354,15 +354,15 @@ function ContractRow({ contract, index }: { contract: RecentContract; index: num
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors group"
+      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/40 transition-colors group"
     >
       <div className={cn("w-2 h-2 rounded-full shrink-0", riskConfig)} />
       
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+        <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
           {contract.name}
         </p>
-        <p className="text-xs text-slate-500">{formatDate(contract.date)}</p>
+        <p className="text-xs text-muted-foreground">{formatDate(contract.date)}</p>
       </div>
       
       <Badge className={cn("text-[10px]", statusConfig.bg, statusConfig.text)}>
@@ -371,12 +371,12 @@ function ContractRow({ contract, index }: { contract: RecentContract; index: num
       </Badge>
       
       {contract.value > 0 && (
-        <span className="text-sm font-medium text-slate-900 tabular-nums">
+        <span className="text-sm font-medium text-foreground tabular-nums">
           {formatCurrency(contract.value)}
         </span>
       )}
       
-      <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
     </motion.div>
   );
 }
@@ -393,21 +393,21 @@ function ExpirationRow({ item, index }: { item: UpcomingExpiration; index: numbe
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors group"
+      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/40 transition-colors group"
     >
       <div className={cn("px-2 py-1 rounded-md text-xs font-medium", urgencyColor)}>
         {item.daysRemaining}d
       </div>
       
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-slate-900 truncate">{item.name}</p>
-        <p className="text-xs text-slate-500 flex items-center gap-1">
+        <p className="font-medium text-foreground truncate">{item.name}</p>
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
           <Building className="h-3 w-3" />
           {item.client}
         </p>
       </div>
       
-      <span className="text-sm font-medium text-slate-900 tabular-nums">
+      <span className="text-sm font-medium text-foreground tabular-nums">
         {formatCurrency(item.value)}
       </span>
       
@@ -488,7 +488,7 @@ function PendingApprovalsWidget() {
     if (days === 0) return <span className="text-red-600 font-medium">Today</span>;
     if (days === 1) return <span className="text-amber-600 font-medium">Tomorrow</span>;
     if (days <= 3) return <span className="text-amber-600">{days} days</span>;
-    return <span className="text-slate-600">{days} days</span>;
+    return <span className="text-muted-foreground">{days} days</span>;
   };
 
   if (loading) {
@@ -498,11 +498,11 @@ function PendingApprovalsWidget() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.85 }}
       >
-        <Card className="border-slate-200/80">
+        <Card className="border-border/60">
           <CardContent className="p-8">
             <div className="animate-pulse space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-16 bg-slate-100 rounded-lg" />
+                <div key={i} className="h-16 bg-muted/40 rounded-lg" />
               ))}
             </div>
           </CardContent>
@@ -518,13 +518,13 @@ function PendingApprovalsWidget() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.85 }}
       >
-        <Card className="border-slate-200/80 bg-gradient-to-br from-emerald-50 to-teal-50">
+        <Card className="border-border/60 bg-muted/40">
           <CardContent className="p-8 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-1">All caught up!</h3>
-            <p className="text-sm text-slate-600">No pending approvals at the moment.</p>
+            <h3 className="font-semibold text-foreground mb-1">All caught up!</h3>
+            <p className="text-sm text-muted-foreground">No pending approvals at the moment.</p>
           </CardContent>
         </Card>
       </motion.div>
@@ -537,14 +537,14 @@ function PendingApprovalsWidget() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.85 }}
     >
-      <Card className="border-slate-200/80">
+      <Card className="border-border/60">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-amber-600" />
+              <UserCheck className="h-5 w-5 text-primary" />
               Pending Approvals
             </CardTitle>
-            <Button variant="ghost" size="sm" className="text-amber-600" asChild>
+            <Button variant="ghost" size="sm" className="text-primary" asChild>
               <Link href="/approvals">
                 View all
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -553,7 +553,7 @@ function PendingApprovalsWidget() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border/60">
             {approvals.map((approval, index) => {
               const priorityConfig = getPriorityConfig(approval.priority);
               const TypeIcon = getTypeIcon(approval.type);
@@ -567,17 +567,17 @@ function PendingApprovalsWidget() {
                 >
                   <Link 
                     href={`/approvals?id=${approval.id}`}
-                    className="flex items-center gap-4 p-3 hover:bg-slate-50 transition-colors group"
+                    className="flex items-center gap-4 p-3 hover:bg-muted/40 transition-colors group"
                   >
                     <div className={cn("p-2 rounded-lg", priorityConfig.bg)}>
                       <TypeIcon className={cn("h-4 w-4", priorityConfig.text)} />
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 truncate group-hover:text-amber-600 transition-colors">
+                      <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
                         {approval.title}
                       </p>
-                      <p className="text-xs text-slate-500 flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
                         <span>by {approval.requestedBy}</span>
                         <span>•</span>
                         <span className="capitalize">{approval.type}</span>
@@ -585,14 +585,14 @@ function PendingApprovalsWidget() {
                     </div>
                     
                     <div className="text-right">
-                      <div className="text-xs text-slate-500">Due</div>
+                      <div className="text-xs text-muted-foreground">Due</div>
                       <div className="text-sm font-medium">
                         {formatDueDate(approval.dueDate)}
                       </div>
                     </div>
                     
                     {approval.value && approval.value > 0 && (
-                      <span className="text-sm font-semibold text-slate-900 tabular-nums">
+                      <span className="text-sm font-semibold text-foreground tabular-nums">
                         {formatCurrency(approval.value)}
                       </span>
                     )}
@@ -601,7 +601,7 @@ function PendingApprovalsWidget() {
                       {approval.priority}
                     </Badge>
                     
-                    <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </Link>
                 </motion.div>
               );
@@ -678,14 +678,14 @@ function PortfolioHealthWidget() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.82 }}
     >
-      <Card className="border-slate-200/80">
+      <Card className="border-border/60">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600" />
+              <Activity className="h-5 w-5 text-primary" />
               Portfolio Health
             </CardTitle>
-            <Button variant="ghost" size="sm" className="text-blue-600" asChild>
+            <Button variant="ghost" size="sm" className="text-primary" asChild>
               <Link href="/intelligence/health">
                 Details
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -701,7 +701,7 @@ function PortfolioHealthWidget() {
                 "w-20 h-20 rounded-full flex items-center justify-center bg-gradient-to-br shadow-lg",
                 getScoreBg(healthData.averageScore)
               )}>
-                <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-background flex items-center justify-center">
                   <span className={cn("text-2xl font-bold", getScoreColor(healthData.averageScore))}>
                     {healthData.averageScore}
                   </span>
@@ -731,20 +731,20 @@ function PortfolioHealthWidget() {
           </div>
           
           {/* Trends */}
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div className="mt-4 pt-4 border-t border-border/60 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1 text-sm">
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 <span className="text-green-600 font-medium">{healthData.trends.improving}</span>
-                <span className="text-slate-500">improving</span>
+                <span className="text-muted-foreground">improving</span>
               </div>
               <div className="flex items-center gap-1 text-sm">
                 <TrendingDown className="h-4 w-4 text-red-500" />
                 <span className="text-red-600 font-medium">{healthData.trends.declining}</span>
-                <span className="text-slate-500">declining</span>
+                <span className="text-muted-foreground">declining</span>
               </div>
             </div>
-            <span className="text-xs text-slate-400">{healthData.contractsWithScores} contracts scored</span>
+            <span className="text-xs text-muted-foreground">{healthData.contractsWithScores} contracts scored</span>
           </div>
         </CardContent>
       </Card>
@@ -784,15 +784,15 @@ export function ProfessionalDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
+      <div className="space-y-6" aria-live="polite" aria-busy="true">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-32 bg-slate-100 rounded-xl" />
+            <div key={i} className="h-32 bg-muted/40 animate-pulse rounded-xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 h-80 bg-slate-100 rounded-xl" />
-          <div className="h-80 bg-slate-100 rounded-xl" />
+          <div className="lg:col-span-2 h-80 bg-muted/40 animate-pulse rounded-xl" />
+          <div className="h-80 bg-muted/40 animate-pulse rounded-xl" />
         </div>
       </div>
     );
@@ -804,24 +804,27 @@ export function ProfessionalDashboard() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Intelligence Dashboard</h1>
-          <p className="text-slate-500 mt-1">Contract analytics and AI insights</p>
+          <h2 className="text-xl font-semibold text-foreground">Intelligence</h2>
+          <p className="text-sm text-muted-foreground">Contract analytics and AI insights</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="inline-flex gap-1 p-1 bg-muted rounded-md" role="group" aria-label="Timeframe">
             {(['7d', '30d', '90d'] as const).map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
+                type="button"
+                aria-pressed={timeframe === tf}
                 className={cn(
                   "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background",
                   timeframe === tf 
-                    ? "bg-white text-slate-900 shadow-sm" 
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-background text-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {tf === '7d' ? '7 Days' : tf === '30d' ? '30 Days' : '90 Days'}
@@ -829,14 +832,15 @@ export function ProfessionalDashboard() {
             ))}
           </div>
           
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleRefresh} aria-label="Refresh dashboard">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </motion.div>
 
@@ -903,53 +907,53 @@ export function ProfessionalDashboard() {
         transition={{ delay: 0.4 }}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        <Card className="border-slate-200/80">
+          <Card className="border-border/60">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-indigo-100">
               <Zap className="h-5 w-5 text-indigo-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{metrics.contractsThisWeek}</p>
-              <p className="text-xs text-slate-500">This week</p>
+                <p className="text-2xl font-bold text-foreground">{metrics.contractsThisWeek}</p>
+                <p className="text-xs text-muted-foreground">This week</p>
             </div>
           </CardContent>
         </Card>
         
         <Link href="/approvals">
-          <Card className="border-slate-200/80 hover:border-amber-300 hover:shadow-md transition-all cursor-pointer group">
+            <Card className="border-border/60 hover:border-border hover:shadow-md transition-all cursor-pointer group">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-100 group-hover:bg-amber-200 transition-colors">
                 <Clock className="h-5 w-5 text-amber-600" />
               </div>
               <div className="flex-1">
-                <p className="text-2xl font-bold text-slate-900">{metrics.pendingApprovals}</p>
-                <p className="text-xs text-slate-500">Pending approval</p>
+                  <p className="text-2xl font-bold text-foreground">{metrics.pendingApprovals}</p>
+                  <p className="text-xs text-muted-foreground">Pending approval</p>
               </div>
-              <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             </CardContent>
           </Card>
         </Link>
         
-        <Card className="border-slate-200/80">
+          <Card className="border-border/60">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-rose-100">
               <Calendar className="h-5 w-5 text-rose-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{metrics.expiringThisMonth}</p>
-              <p className="text-xs text-slate-500">Expiring soon</p>
+                <p className="text-2xl font-bold text-foreground">{metrics.expiringThisMonth}</p>
+                <p className="text-xs text-muted-foreground">Expiring soon</p>
             </div>
           </CardContent>
         </Card>
         
-        <Card className="border-slate-200/80">
+          <Card className="border-border/60">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-100">
               <Target className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-slate-900">{Math.round(metrics.trends.compliance)}%</p>
-              <p className="text-xs text-slate-500">Compliance rate</p>
+                <p className="text-2xl font-bold text-foreground">{Math.round(metrics.trends.compliance)}%</p>
+                <p className="text-xs text-muted-foreground">Compliance rate</p>
             </div>
           </CardContent>
         </Card>
@@ -968,10 +972,10 @@ export function ProfessionalDashboard() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-indigo-600" />
+                  <BarChart3 className="h-5 w-5 text-primary" />
                   Contract Activity
                 </CardTitle>
-                <Badge variant="secondary" className="bg-slate-100">Last 6 months</Badge>
+                <Badge variant="secondary">Last 6 months</Badge>
               </div>
             </CardHeader>
             <CardContent>
@@ -987,15 +991,15 @@ export function ProfessionalDashboard() {
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="month" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <Tooltip 
                     contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                      backgroundColor: 'hsl(var(--popover))',
+                      color: 'hsl(var(--popover-foreground))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
                     }}
                   />
                   <Legend />
@@ -1029,10 +1033,10 @@ export function ProfessionalDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <Card className="border-slate-200/80 h-full">
+          <Card className="border-border/60 h-full">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <PieChartIcon className="h-5 w-5 text-amber-600" />
+                <PieChartIcon className="h-5 w-5 text-primary" />
                 Risk Distribution
               </CardTitle>
             </CardHeader>
@@ -1062,7 +1066,7 @@ export function ProfessionalDashboard() {
                       className="w-3 h-3 rounded-full" 
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-xs text-slate-600">{item.name}</span>
+                    <span className="text-xs text-muted-foreground">{item.name}</span>
                   </div>
                 ))}
               </div>
@@ -1079,14 +1083,14 @@ export function ProfessionalDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
-          <Card className="border-slate-200/80">
+          <Card className="border-border/60">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-blue-600" />
+                  <Activity className="h-5 w-5 text-primary" />
                   Recent Contracts
                 </CardTitle>
-                <Button variant="ghost" size="sm" className="text-indigo-600" asChild>
+                <Button variant="ghost" size="sm" className="text-primary" asChild>
                   <Link href="/contracts">
                     View all
                     <ChevronRight className="h-4 w-4 ml-1" />
@@ -1095,7 +1099,7 @@ export function ProfessionalDashboard() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border/60">
                 {recentContracts.map((contract, i) => (
                   <ContractRow key={contract.id} contract={contract} index={i} />
                 ))}
@@ -1110,20 +1114,18 @@ export function ProfessionalDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
         >
-          <Card className="border-slate-200/80">
+          <Card className="border-border/60">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-amber-600" />
+                  <Calendar className="h-5 w-5 text-primary" />
                   Upcoming Expirations
                 </CardTitle>
-                <Badge className="bg-amber-100 text-amber-700">
-                  {expirations.length} contracts
-                </Badge>
+                <Badge variant="secondary">{expirations.length} contracts</Badge>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border/60">
                 {expirations.map((item, i) => (
                   <ExpirationRow key={item.id} item={item} index={i} />
                 ))}
@@ -1145,23 +1147,24 @@ export function ProfessionalDashboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.9 }}
       >
-        <Card className="border-slate-200/80">
+        <Card className="border-border/60">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-5 w-5 text-purple-600" />
+              <FileText className="h-5 w-5 text-primary" />
               Contracts by Type
             </CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData.byType} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis type="number" stroke="#64748b" fontSize={12} />
-                <YAxis type="category" dataKey="type" stroke="#64748b" fontSize={12} width={80} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis type="category" dataKey="type" stroke="hsl(var(--muted-foreground))" fontSize={12} width={80} />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: 'white', 
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: 'hsl(var(--popover))',
+                    color: 'hsl(var(--popover-foreground))',
+                    border: '1px solid hsl(var(--border))',
                     borderRadius: '8px'
                   }}
                 />

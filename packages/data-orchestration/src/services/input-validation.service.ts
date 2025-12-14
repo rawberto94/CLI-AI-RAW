@@ -5,9 +5,9 @@
  */
 
 import { z, ZodError, ZodSchema } from 'zod';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'input-validation-service' });
+const logger = createLogger('input-validation-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

@@ -3,10 +3,15 @@
  * Initializes queue service with Redis connection
  */
 
-import { getQueueService } from '../../../packages/utils/dist/queue/queue-service';
+import 'server-only';
+
+import { getQueueService } from '../../../packages/utils/src/queue/queue-service';
 import pino from 'pino';
 
-const logger = pino({ name: 'queue-init' });
+const logger = pino({
+  name: 'queue-init',
+  ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 
 let queueInitialized = false;
 
@@ -46,7 +51,3 @@ export function getInitializedQueueService() {
   return getQueueService();
 }
 
-// Auto-initialize on import (only in Node.js environment)
-if (typeof window === 'undefined') {
-  initializeQueueService();
-}

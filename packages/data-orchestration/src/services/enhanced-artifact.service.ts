@@ -14,9 +14,9 @@ import { dbAdaptor } from '../dal/database.adaptor';
 import { enhancedDbAdaptor } from '../dal/enhanced-database.adaptor';
 import { processingJobService } from './processing-job.service';
 import { eventBus, Events } from '../events/event-bus';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'enhanced-artifact-service' });
+const logger = createLogger('enhanced-artifact-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

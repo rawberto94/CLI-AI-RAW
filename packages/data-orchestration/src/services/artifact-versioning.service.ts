@@ -9,11 +9,11 @@
  */
 
 import { randomUUID } from 'crypto';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { dbAdaptor } from '../dal/database.adaptor';
 import { eventBus, Events } from '../events/event-bus';
 
-const logger = pino({ name: 'artifact-versioning-service' });
+const logger = createLogger('artifact-versioning-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

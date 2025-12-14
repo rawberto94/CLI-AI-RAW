@@ -3,6 +3,24 @@ import path from "path";
 import { fileURLToPath } from "url";
 import bundleAnalyzer from "@next/bundle-analyzer";
 
+function isNextBuildProcess() {
+  const argv = process.argv ?? [];
+  const argvString = argv.join(' ');
+  return (
+    argv.includes('build') ||
+    argvString.includes(' next build') ||
+    argvString.includes('next build') ||
+    argvString.includes('next/dist/bin/next build') ||
+    argvString.includes('next/dist/build')
+  );
+}
+
+// Keep production builds clean by silencing server-side logs that can fire during
+// Next's "Collecting page data" phase (child processes won't always match argv heuristics).
+if (isNextBuildProcess() && !process.env.LOG_LEVEL) {
+  process.env.LOG_LEVEL = 'silent';
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -103,6 +121,13 @@ const nextConfig = {
 
   // Minimal webpack configuration
   webpack: (config, { isServer, dev, webpack }) => {
+    // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
+    // by declaring async/await support in the target environment.
+    config.output.environment = {
+      ...(config.output.environment || {}),
+      asyncFunction: true,
+    };
+
     // Improve dev server stability and HMR
     if (dev && !isServer) {
       // Disable problematic lazy compilation
@@ -195,14 +220,12 @@ const nextConfig = {
       const externals = ['clients-db', 'clients-storage', 'clients-openai', 'clients-queue', 'clients-rag'];
       config.externals = config.externals || [];
       if (Array.isArray(config.externals)) {
-        config.externals.push(
-          (context, request, callback) => {
-            if (externals.some(ext => request.startsWith(ext))) {
-              return callback(null, 'commonjs ' + request);
-            }
-            callback();
+        config.externals.push(({ request }, callback) => {
+          if (request && externals.some((ext) => request.startsWith(ext))) {
+            return callback(null, 'commonjs ' + request);
           }
-        );
+          callback();
+        });
       }
     }
 

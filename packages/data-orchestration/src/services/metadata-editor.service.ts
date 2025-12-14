@@ -12,9 +12,9 @@
 import { dbAdaptor } from '../dal/database.adaptor';
 import { eventBus, Events } from '../events/event-bus';
 import { taxonomyService } from './taxonomy.service';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'metadata-editor-service' });
+const logger = createLogger('metadata-editor-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

@@ -6,9 +6,9 @@
  */
 
 import getClient from 'clients-db';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'rag-integration-service' });
+const logger = createLogger('rag-integration-service');
 
 class RagIntegrationService {
   private static instance: RagIntegrationService;

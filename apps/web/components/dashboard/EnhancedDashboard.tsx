@@ -141,8 +141,11 @@ export function EnhancedDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <RefreshCw className="h-12 w-12 animate-spin text-blue-600" />
+      <div className="flex items-center justify-center h-96" aria-live="polite" aria-busy="true">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm">Loading analytics…</span>
+        </div>
       </div>
     );
   }
@@ -150,32 +153,35 @@ export function EnhancedDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="text-gray-600 mt-1">Comprehensive CLM insights and metrics</p>
+          <h2 className="text-xl font-semibold text-foreground">Analytics</h2>
+          <p className="text-sm text-muted-foreground">Comprehensive CLM insights and metrics</p>
         </div>
-        <div className="flex gap-3">
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="inline-flex gap-1 bg-muted p-1 rounded-md" role="group" aria-label="Timeframe">
             {(['7d', '30d', '90d', '1y'] as const).map((tf) => (
               <Button
                 key={tf}
                 variant={timeframe === tf ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTimeframe(tf)}
+                aria-pressed={timeframe === tf}
               >
                 {tf === '7d' ? '7 Days' : tf === '30d' ? '30 Days' : tf === '90d' ? '90 Days' : '1 Year'}
               </Button>
             ))}
           </div>
-          <Button variant="outline" onClick={handleExport}>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button onClick={fetchMetrics}>
+            <Button onClick={fetchMetrics}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
+          </div>
         </div>
       </div>
 
@@ -185,22 +191,22 @@ export function EnhancedDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Contracts</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{metrics?.totalContracts || 214}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Contracts</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{metrics?.totalContracts || 214}</p>
                 <div className="flex items-center gap-1 mt-2">
                   {(metrics?.trends.contractsChange || 12) > 0 ? (
-                    <ArrowUpRight className="h-4 w-4 text-green-600" />
+                    <ArrowUpRight className="h-4 w-4 text-emerald-600" />
                   ) : (
-                    <ArrowDownRight className="h-4 w-4 text-red-600" />
+                    <ArrowDownRight className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.contractsChange || 12) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-medium ${(metrics?.trends.contractsChange || 12) > 0 ? 'text-emerald-600' : 'text-destructive'}`}>
                     {Math.abs(metrics?.trends.contractsChange || 12)}%
                   </span>
-                  <span className="text-sm text-gray-500">vs last period</span>
+                  <span className="text-sm text-muted-foreground">vs last period</span>
                 </div>
               </div>
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <FileText className="h-8 w-8 text-blue-600" />
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <FileText className="h-8 w-8 text-primary" />
               </div>
             </div>
           </CardContent>
@@ -210,22 +216,22 @@ export function EnhancedDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Value</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">${(metrics?.totalValue || 3.8).toFixed(1)}M</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Value</p>
+                <p className="text-3xl font-bold text-foreground mt-1">${(metrics?.totalValue || 3.8).toFixed(1)}M</p>
                 <div className="flex items-center gap-1 mt-2">
                   {(metrics?.trends.valueChange || 18) > 0 ? (
-                    <ArrowUpRight className="h-4 w-4 text-green-600" />
+                    <ArrowUpRight className="h-4 w-4 text-emerald-600" />
                   ) : (
-                    <ArrowDownRight className="h-4 w-4 text-red-600" />
+                    <ArrowDownRight className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.valueChange || 18) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-medium ${(metrics?.trends.valueChange || 18) > 0 ? 'text-emerald-600' : 'text-destructive'}`}>
                     {Math.abs(metrics?.trends.valueChange || 18)}%
                   </span>
-                  <span className="text-sm text-gray-500">vs last period</span>
+                  <span className="text-sm text-muted-foreground">vs last period</span>
                 </div>
               </div>
-              <div className="p-3 bg-green-100 rounded-xl">
-                <DollarSign className="h-8 w-8 text-green-600" />
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <DollarSign className="h-8 w-8 text-primary" />
               </div>
             </div>
           </CardContent>

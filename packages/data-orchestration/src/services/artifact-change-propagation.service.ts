@@ -14,9 +14,9 @@
  */
 
 import { eventBus, Events } from '../events/event-bus';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'artifact-change-propagation-service' });
+const logger = createLogger('artifact-change-propagation-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

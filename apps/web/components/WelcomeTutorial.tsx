@@ -172,20 +172,6 @@ export function WelcomeTutorial() {
     return () => window.removeEventListener('show-tutorial', handleShowTutorial);
   }, [openTutorial]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isAnimating) return;
-      if (e.key === 'Escape') handleClose();
-      else if (e.key === 'ArrowRight' || e.key === 'Enter') handleNext();
-      else if (e.key === 'ArrowLeft') handlePrevious();
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleClose, handleNext, handlePrevious, isAnimating, isOpen]);
-
   const handleClose = useCallback(() => {
     setIsOpen(false);
     if (dontShowAgain) localStorage.setItem("contigo-tutorial-completed", "true");
@@ -215,6 +201,20 @@ export function WelcomeTutorial() {
     setCurrentStep((prev) => prev - 1);
     setTimeout(() => setIsAnimating(false), 400);
   }, [currentStep, isAnimating]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isAnimating) return;
+      if (e.key === 'Escape') handleClose();
+      else if (e.key === 'ArrowRight' || e.key === 'Enter') handleNext();
+      else if (e.key === 'ArrowLeft') handlePrevious();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleClose, handleNext, handlePrevious, isAnimating, isOpen]);
 
   const handleAction = useCallback(() => {
     const step = tutorialSteps[currentStep];

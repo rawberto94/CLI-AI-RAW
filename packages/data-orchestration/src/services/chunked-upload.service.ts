@@ -12,10 +12,10 @@ import { randomUUID } from 'crypto';
 import { createWriteStream, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import { writeFile, readFile, unlink } from 'fs/promises';
 import { join } from 'path';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 import { fileIntegrityService } from './file-integrity.service';
 
-const logger = pino({ name: 'chunked-upload-service' });
+const logger = createLogger('chunked-upload-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

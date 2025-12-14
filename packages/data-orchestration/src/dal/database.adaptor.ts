@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from "@prisma/client";
-import pino from "pino";
+import { createLogger } from "../utils/logger";
 import {
   Contract,
   ContractQuery,
@@ -9,7 +9,7 @@ import {
   ContractQueryResponse,
 } from "../types";
 
-const logger = pino({ name: "database-adaptor" });
+const logger = createLogger("database-adaptor");
 
 // ============================================================================
 // TYPE CONVERSION HELPERS

@@ -9,9 +9,9 @@
  */
 
 import { z } from 'zod';
-import pino from 'pino';
+import { createLogger } from '../utils/logger';
 
-const logger = pino({ name: 'data-validation-service' });
+const logger = createLogger('data-validation-service');
 
 // =========================================================================
 // TYPES AND INTERFACES

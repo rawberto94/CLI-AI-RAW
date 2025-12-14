@@ -71,8 +71,8 @@ export function PDFCanvasViewer({
         setLoading(true);
         setError(null);
         
-        // Dynamically import PDF.js
-        const pdfjsLib = await import('pdfjs-dist');
+        // Dynamically import PDF.js (legacy build avoids top-level-await warnings in some Next builds)
+        const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
         
         // Disable worker - works fine for most PDFs and avoids CORS issues
         pdfjsLib.GlobalWorkerOptions.workerSrc = '';
