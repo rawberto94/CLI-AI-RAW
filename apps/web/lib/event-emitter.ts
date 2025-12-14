@@ -37,8 +37,7 @@ export type Unsubscribe = () => void;
 // Typed Event Emitter
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export class TypedEventEmitter<Events extends Record<string, any>> {
+export class TypedEventEmitter<Events extends Record<string, unknown>> {
   private handlers = new Map<keyof Events, Set<EventHandler<unknown>>>();
   private onceHandlers = new Map<keyof Events, Set<EventHandler<unknown>>>();
 
@@ -261,8 +260,7 @@ export function useEmit<K extends keyof AppEvents>(
 /**
  * Create a namespaced event emitter
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createNamespacedEmitter<Events extends Record<string, any> = Record<string, unknown>>(
+export function createNamespacedEmitter<Events extends Record<string, unknown> = Record<string, unknown>>(
   namespace: string
 ): TypedEventEmitter<Events> & { namespace: string } {
   const emitter = new TypedEventEmitter<Events>();

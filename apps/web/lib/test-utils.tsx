@@ -3,8 +3,6 @@
  * Comprehensive testing utilities for React components and hooks
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 // Jest type declarations for environments where @types/jest may not be installed
 declare const jest: {
   fn: <T extends (...args: any[]) => any>(implementation?: T) => T & { mock: { calls: any[][] } };

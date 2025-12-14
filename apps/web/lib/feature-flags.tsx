@@ -22,6 +22,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   ReactNode,
 } from 'react';
 
@@ -307,11 +308,14 @@ export function FeatureFlagProvider({
     return new Map();
   });
 
-  const config: FeatureFlagConfig = {
-    flags,
-    environment,
-    user,
-  };
+  const config: FeatureFlagConfig = useMemo(
+    () => ({
+      flags,
+      environment,
+      user,
+    }),
+    [flags, environment, user]
+  );
 
   // Persist overrides
   useEffect(() => {

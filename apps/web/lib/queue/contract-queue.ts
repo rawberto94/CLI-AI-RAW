@@ -68,7 +68,6 @@ export function getContractQueue(): ContractQueueManager {
   if (!queueInstance) {
     try {
       // Try to dynamically load the queue from packages/utils
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const queueModule = require('../../../../../packages/utils/dist/queue/contract-queue');
       queueInstance = queueModule.getContractQueue();
     } catch (error) {

@@ -40,8 +40,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const includeAlerts = searchParams.get('includeAlerts') !== 'false';
 
     // Initialize trend analyzer with prisma
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const supplierTrendAnalyzerService = new SupplierTrendAnalyzerService(prisma) as any;
+    const supplierTrendAnalyzerService = new SupplierTrendAnalyzerService(prisma);
 
     // Calculate competitiveness score
     const competitivenessScore = await supplierIntelligenceService.calculateCompetitivenessScore(

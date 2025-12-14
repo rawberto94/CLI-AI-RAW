@@ -114,6 +114,11 @@ const navigationGroups: NavGroup[] = [
   // },
 ];
 
+function isPathActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 // Collapsible nav group component - memoized for performance
 const NavGroupSection = memo(function NavGroupSection({ 
   group, 
@@ -123,10 +128,11 @@ const NavGroupSection = memo(function NavGroupSection({
   pathname: string 
 }) {
   const [isOpen, setIsOpen] = useState(group.defaultOpen ?? false);
+  const contentId = `nav-group-${group.id}`;
   
   // Memoize active state calculation
   const hasActiveItem = useMemo(
-    () => group.items.some(item => pathname === item.href),
+    () => group.items.some(item => isPathActive(pathname, item.href)),
     [group.items, pathname]
   );
   
@@ -136,9 +142,12 @@ const NavGroupSection = memo(function NavGroupSection({
   return (
     <div className="mb-2">
       <motion.button
+        type="button"
         onClick={toggleOpen}
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.98 }}
+        aria-expanded={isOpen}
+        aria-controls={contentId}
         className={cn(
           "flex items-center w-full gap-2.5 px-3 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200",
           "hover:bg-gradient-to-r hover:from-slate-100/80 hover:to-slate-50/50",
@@ -167,6 +176,7 @@ const NavGroupSection = memo(function NavGroupSection({
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
+            id={contentId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -195,62 +205,61 @@ const NavItemComponent = memo(function NavItemComponent({
   pathname: string;
   gradient?: string;
 }) {
-  const active = pathname === item.href;
+  const active = isPathActive(pathname, item.href);
   const ItemIcon = item.icon;
   
   return (
-    <TooltipProvider delayDuration={500}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
-            href={item.href}
-            data-tour={item.tourId}
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href={item.href}
+          data-tour={item.tourId}
+          aria-current={active ? "page" : undefined}
+          className={cn(
+            "group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200",
+            active
+              ? `bg-gradient-to-r ${gradient || 'from-blue-50 to-indigo-50'} text-slate-900 font-semibold shadow-sm border border-slate-200/50`
+              : "text-slate-600 hover:bg-slate-100/60 hover:text-slate-900"
+          )}
+        >
+          <motion.div
+            whileHover={{ scale: 1.1 }}
             className={cn(
-              "group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200",
-              active 
-                ? `bg-gradient-to-r ${gradient || 'from-blue-50 to-indigo-50'} text-slate-900 font-semibold shadow-sm border border-slate-200/50` 
-                : "text-slate-600 hover:bg-slate-100/60 hover:text-slate-900"
+              "p-1 rounded-md transition-all",
+              active
+                ? `bg-gradient-to-br ${gradient} text-white shadow-sm`
+                : "bg-transparent text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700"
             )}
           >
-            <motion.div
-              whileHover={{ scale: 1.1 }}
+            <ItemIcon className="h-3.5 w-3.5" />
+          </motion.div>
+          <span className="flex-1">{item.label}</span>
+          {item.isNew && (
+            <Badge className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 animate-pulse">
+              NEW
+            </Badge>
+          )}
+          {item.badge && (
+            <Badge
+              variant={item.badgeVariant || "secondary"}
               className={cn(
-                "p-1 rounded-md transition-all",
-                active 
-                  ? `bg-gradient-to-br ${gradient} text-white shadow-sm` 
-                  : "bg-transparent text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700"
+                "h-5 px-1.5 text-[10px] font-bold rounded-full",
+                item.badgeVariant === 'destructive'
+                  ? "bg-gradient-to-r from-rose-100 to-red-100 text-rose-700"
+                  : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
               )}
             >
-              <ItemIcon className="h-3.5 w-3.5" />
-            </motion.div>
-            <span className="flex-1">{item.label}</span>
-            {item.isNew && (
-              <Badge className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 animate-pulse">
-                NEW
-              </Badge>
-            )}
-            {item.badge && (
-              <Badge 
-                variant={item.badgeVariant || "secondary"} 
-                className={cn(
-                  "h-5 px-1.5 text-[10px] font-bold rounded-full",
-                  item.badgeVariant === 'destructive' 
-                    ? "bg-gradient-to-r from-rose-100 to-red-100 text-rose-700" 
-                    : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
-                )}
-              >
-                {item.badge}
-              </Badge>
-            )}
-          </Link>
-        </TooltipTrigger>
-        {item.description && (
-          <TooltipContent side="right" className="max-w-[200px]">
-            <p className="text-xs">{item.description}</p>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    </TooltipProvider>
+              {item.badge}
+            </Badge>
+          )}
+        </Link>
+      </TooltipTrigger>
+      {item.description && (
+        <TooltipContent side="right" className="max-w-[200px]">
+          <p className="text-xs">{item.description}</p>
+        </TooltipContent>
+      )}
+    </Tooltip>
   );
 });
 
@@ -274,15 +283,11 @@ function MobileSidebar({
   isOpen, 
   onClose, 
   pathname,
-  showTutorial,
-  dismissTutorial,
   resetTutorial 
 }: { 
   isOpen: boolean; 
   onClose: () => void; 
   pathname: string;
-  showTutorial: boolean;
-  dismissTutorial: () => void;
   resetTutorial: () => void;
 }) {
   // Close on escape key
@@ -343,15 +348,18 @@ function MobileSidebar({
             </div>
             
             {/* Navigation */}
-            <nav className="p-4 space-y-2">
-              {navigationGroups.map((group) => (
-                <NavGroupSection key={group.id} group={group} pathname={pathname} />
-              ))}
-            </nav>
+            <TooltipProvider delayDuration={500}>
+              <nav className="p-4 space-y-2">
+                {navigationGroups.map((group) => (
+                  <NavGroupSection key={group.id} group={group} pathname={pathname} />
+                ))}
+              </nav>
+            </TooltipProvider>
             
             {/* Footer */}
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200/60 bg-white/80">
               <button
+                type="button"
                 onClick={resetTutorial}
                 className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
               >
@@ -370,93 +378,91 @@ export function Sidebar() {
   const pathname = usePathname();
   const [showTutorial, setShowTutorial] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const welcomeBannerKey = 'contigo-welcome-banner-dismissed';
+  const legacyWelcomeBannerKey = 'pactum-tutorial-seen';
   
   // Check if user is new (first visit)
   useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('pactum-tutorial-seen');
-    if (!hasSeenTutorial) {
+    const dismissed = localStorage.getItem(welcomeBannerKey) || localStorage.getItem(legacyWelcomeBannerKey);
+    if (!dismissed) {
       setShowTutorial(true);
     }
   }, []);
 
   const dismissTutorial = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem('pactum-tutorial-seen', 'true');
+    localStorage.setItem(welcomeBannerKey, 'true');
+    localStorage.setItem(legacyWelcomeBannerKey, 'true');
   }, []);
 
   const resetTutorial = useCallback(() => {
-    localStorage.removeItem('pactum-tutorial-seen');
+    localStorage.removeItem(welcomeBannerKey);
+    localStorage.removeItem(legacyWelcomeBannerKey);
     localStorage.removeItem('contigo-tutorial-completed');
     setShowTutorial(true);
     // Dispatch event to trigger the main tutorial
     window.dispatchEvent(new CustomEvent('show-tutorial'));
-    window.location.reload();
   }, []);
   
   return (
     <aside className="hidden border-r border-slate-200/60 bg-gradient-to-b from-white via-slate-50/30 to-slate-100/50 md:block shadow-sm backdrop-blur-sm">
-      <div className="flex h-full max-h-screen flex-col">
+      <TooltipProvider delayDuration={500}>
+        <div className="flex h-full max-h-screen flex-col">
         {/* Header with enhanced branding */}
         <div className="flex h-16 items-center border-b border-slate-200/60 px-4 lg:px-5 bg-white/80 backdrop-blur-xl">
           <ConTigoLogoSVG size="md" />
           <div className="ml-auto flex items-center gap-1">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
-                  >
-                    <Bell className="h-4 w-4" />
-                    {/* Notification dot */}
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
-                  </motion.button>
-                </TooltipTrigger>
-                <TooltipContent>Notifications</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.button
+                  type="button"
+                  aria-label="Notifications"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  <Bell className="h-4 w-4" />
+                  {/* Notification dot */}
+                  <span aria-hidden="true" className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+                </motion.button>
+              </TooltipTrigger>
+              <TooltipContent>Notifications</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
         {/* Quick Actions Bar */}
         <div className="px-3 py-3 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-white">
           <div className="flex gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/upload" className="flex-1">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all"
-                    >
-                      <Upload className="h-3.5 w-3.5" />
-                      Upload
-                    </motion.button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1">
+                  <Link
+                    href="/upload"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload
                   </Link>
-                </TooltipTrigger>
-                <TooltipContent>Upload new contracts</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Upload new contracts</TooltipContent>
+            </Tooltip>
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link href="/search" className="flex-1">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                      Search
-                    </motion.button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1">
+                  <Link
+                    href="/search"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    Search
                   </Link>
-                </TooltipTrigger>
-                <TooltipContent>Search contracts</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                </motion.div>
+              </TooltipTrigger>
+              <TooltipContent>Search contracts</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -472,8 +478,10 @@ export function Sidebar() {
               <div className="p-3 border-b border-slate-200/60">
                 <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100 shadow-sm">
                   <motion.button 
+                    type="button"
                     onClick={dismissTutorial}
                     whileHover={{ scale: 1.1, rotate: 90 }}
+                    aria-label="Dismiss welcome banner"
                     className="absolute top-2 right-2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-white/50 transition-all"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -531,6 +539,7 @@ export function Sidebar() {
         <div className="p-3 border-t border-slate-200/60 bg-gradient-to-t from-slate-100/80 to-transparent">
           {/* Help & Tutorial Button */}
           <motion.button
+            type="button"
             onClick={resetTutorial}
             whileHover={{ x: 2 }}
             className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all mb-2"
@@ -546,33 +555,30 @@ export function Sidebar() {
             </div>
             <div className="flex items-center gap-1">
               <span className="text-[10px] text-slate-400">v1.0</span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href="/settings">
-                      <motion.div 
-                        whileHover={{ rotate: 90 }}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
-                      >
-                        <Settings className="h-4 w-4" />
-                      </motion.div>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent>Settings</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/settings" aria-label="Settings">
+                    <motion.div 
+                      whileHover={{ rotate: 90 }}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </motion.div>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Settings</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </TooltipProvider>
       
       {/* Mobile Sidebar */}
       <MobileSidebar
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         pathname={pathname}
-        showTutorial={showTutorial}
-        dismissTutorial={dismissTutorial}
         resetTutorial={resetTutorial}
       />
     </aside>

@@ -157,6 +157,21 @@ export function WelcomeTutorial() {
     }
   }, []);
 
+  const openTutorial = useCallback(() => {
+    setDirection('next');
+    setCurrentStep(0);
+    setIsOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const handleShowTutorial = () => {
+      openTutorial();
+    };
+
+    window.addEventListener('show-tutorial', handleShowTutorial);
+    return () => window.removeEventListener('show-tutorial', handleShowTutorial);
+  }, [openTutorial]);
+
   useEffect(() => {
     if (!isOpen) return;
     
@@ -169,8 +184,7 @@ export function WelcomeTutorial() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, currentStep, isAnimating]);
+  }, [handleClose, handleNext, handlePrevious, isAnimating, isOpen]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
@@ -274,6 +288,10 @@ export function WelcomeTutorial() {
           exit={{ opacity: 0, scale: 0.9, y: 40 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
           className="relative w-full max-w-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="contigo-tutorial-title"
+          aria-describedby="contigo-tutorial-desc"
         >
           {/* Glowing border effect */}
           <div className={cn(
@@ -294,9 +312,11 @@ export function WelcomeTutorial() {
 
             {/* Close button */}
             <motion.button
+              type="button"
               onClick={handleSkip}
               whileHover={{ scale: 1.1, rotate: 90 }}
               whileTap={{ scale: 0.9 }}
+              aria-label="Close welcome tour"
               className="absolute top-5 right-5 z-20 p-2 rounded-full bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 transition-colors"
             >
               <X className="h-5 w-5" />
@@ -351,6 +371,7 @@ export function WelcomeTutorial() {
                     key={`title-${step.id}`}
                     initial={{ opacity: 0, x: direction === 'next' ? 30 : -30 }}
                     animate={{ opacity: 1, x: 0 }}
+                    id="contigo-tutorial-title"
                     className="text-3xl font-bold text-white mb-2"
                   >
                     {step.title}
@@ -360,6 +381,7 @@ export function WelcomeTutorial() {
                     initial={{ opacity: 0, x: direction === 'next' ? 20 : -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 }}
+                    id="contigo-tutorial-desc"
                     className="text-white/80 text-lg max-w-md"
                   >
                     {step.description}
@@ -403,6 +425,7 @@ export function WelcomeTutorial() {
               <div className="flex justify-center gap-2 mb-6">
                 {tutorialSteps.map((_, index) => (
                   <motion.button
+                    type="button"
                     key={index}
                     onClick={() => {
                       if (!isAnimating) {
@@ -412,6 +435,7 @@ export function WelcomeTutorial() {
                         setTimeout(() => setIsAnimating(false), 400);
                       }
                     }}
+                    aria-label={`Go to step ${index + 1} of ${tutorialSteps.length}`}
                     className={cn(
                       "h-2.5 rounded-full transition-all duration-300",
                       index === currentStep ? "w-8" : "w-2.5"
