@@ -143,6 +143,7 @@ export function ContractSearch({
             "bg-transparent outline-none",
             "placeholder:text-gray-400"
           )}
+          role="combobox"
           aria-label="Search contracts"
           aria-autocomplete="list"
           aria-controls="search-dropdown"
@@ -211,6 +212,7 @@ export function ContractSearch({
                         "hover:bg-gray-50 transition-colors"
                       )}
                       role="option"
+                      aria-selected={false}
                     >
                       <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <span className="truncate">{search}</span>
@@ -236,6 +238,7 @@ export function ContractSearch({
                       "hover:bg-blue-50 transition-colors"
                     )}
                     role="option"
+                    aria-selected={false}
                   >
                     <Search className="w-4 h-4 text-blue-500 flex-shrink-0" />
                     <span className="truncate">{suggestion}</span>
