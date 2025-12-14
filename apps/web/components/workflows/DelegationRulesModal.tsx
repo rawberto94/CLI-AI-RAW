@@ -241,7 +241,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
             Delegation Rules
           </DialogTitle>
           <DialogDescription>
-            Set up automatic delegation for approvals when you're unavailable
+            Set up automatic delegation for approvals when you&apos;re unavailable
           </DialogDescription>
         </DialogHeader>
 
@@ -452,7 +452,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                     <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                     <h3 className="font-medium text-slate-900 mb-1">No Delegation Rules</h3>
                     <p className="text-slate-500 text-sm mb-4">
-                      Create rules to automatically delegate approvals when you're unavailable
+                      Create rules to automatically delegate approvals when you&apos;re unavailable
                     </p>
                     <Button onClick={() => setIsAddingRule(true)}>
                       <Plus className="w-4 h-4 mr-2" />

@@ -124,7 +124,7 @@ export function ImprovementDialog({
             Improve Artifact
           </DialogTitle>
           <DialogDescription>
-            Describe how you'd like to refine this {artifactType.toLowerCase()} artifact. 
+            Describe how you&apos;d like to refine this {artifactType.toLowerCase()} artifact. 
             Use templates or your own custom instructions.
           </DialogDescription>
         </DialogHeader>
@@ -209,7 +209,7 @@ export function ImprovementDialog({
                 <p className="text-sm font-semibold text-gray-900">Tips for better results:</p>
                 <ul className="text-xs text-gray-700 space-y-1">
                   <li>• Be specific about what information you want extracted</li>
-                  <li>• Mention exact clause types or terms you're looking for</li>
+                  <li>• Mention exact clause types or terms you&apos;re looking for</li>
                   <li>• Request structured formats (lists, tables, dates, amounts)</li>
                   <li>• Ask for confidence levels on uncertain extractions</li>
                 </ul>

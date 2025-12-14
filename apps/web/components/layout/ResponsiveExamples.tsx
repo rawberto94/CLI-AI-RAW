@@ -6,6 +6,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import {
   ResponsiveContainer,
   ResponsiveGrid,
@@ -35,42 +36,42 @@ export function ResponsiveExamples() {
         }
         desktopNav={
           <div className="flex items-center gap-6">
-            <a href="/" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <Link href="/" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <Home className="w-4 h-4" />
               Home
-            </a>
-            <a href="/contracts" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            </Link>
+            <Link href="/contracts" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <FileText className="w-4 h-4" />
               Contracts
-            </a>
-            <a href="/analytics" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            </Link>
+            <Link href="/analytics" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <BarChart className="w-4 h-4" />
               Analytics
-            </a>
-            <a href="/settings" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            </Link>
+            <Link href="/settings" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <Settings className="w-4 h-4" />
               Settings
-            </a>
+            </Link>
           </div>
         }
         mobileNav={
           <div className="space-y-2">
-            <a href="/" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            <Link href="/" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <Home className="w-5 h-5" />
               <span>Home</span>
-            </a>
-            <a href="/contracts" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            </Link>
+            <Link href="/contracts" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <FileText className="w-5 h-5" />
               <span>Contracts</span>
-            </a>
-            <a href="/analytics" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            </Link>
+            <Link href="/analytics" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <BarChart className="w-5 h-5" />
               <span>Analytics</span>
-            </a>
-            <a href="/settings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
+            </Link>
+            <Link href="/settings" className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
               <Settings className="w-5 h-5" />
               <span>Settings</span>
-            </a>
+            </Link>
           </div>
         }
       />

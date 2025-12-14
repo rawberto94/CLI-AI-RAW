@@ -270,7 +270,7 @@ export function WorkflowProgressStepper({
                 {/* Comment if any */}
                 {step.comment && (
                   <div className="mt-2 p-2 bg-slate-50 rounded-lg text-xs text-slate-600 italic">
-                    "{step.comment}"
+                    &ldquo;{step.comment}&rdquo;
                   </div>
                 )}
                 

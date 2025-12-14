@@ -625,7 +625,7 @@ function DeleteConfirmModal({
           <div className="flex-1">
             <h3 className="font-semibold text-lg text-slate-900">Delete Category</h3>
             <p className="text-slate-600 mt-1">
-              Are you sure you want to delete "{category.name}"?
+              Are you sure you want to delete &ldquo;{category.name}&rdquo;?
             </p>
             {hasChildren && (
               <p className="text-amber-600 text-sm mt-2">
@@ -1127,7 +1127,7 @@ export default function TaxonomyPage() {
                 </div>
                 <div className="flex gap-2">
                   <span className="text-amber-600 font-medium">3.</span>
-                  <p>When contracts are uploaded, they're automatically categorized using AI + keywords</p>
+                  <p>When contracts are uploaded, they&apos;re automatically categorized using AI + keywords</p>
                 </div>
               </div>
             </div>
@@ -1177,7 +1177,7 @@ export default function TaxonomyPage() {
                         <div className="mb-4">
                           <p className="text-xs text-slate-500 mb-2">AI Hint:</p>
                           <p className="text-sm text-slate-600 italic">
-                            "{selected.aiClassificationPrompt}"
+                            &ldquo;{selected.aiClassificationPrompt}&rdquo;
                           </p>
                         </div>
                       )}

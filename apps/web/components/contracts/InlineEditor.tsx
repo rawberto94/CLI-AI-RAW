@@ -514,7 +514,7 @@ export function InlineEditor({
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{entry.userName}</span>
                       <span className="text-slate-400 truncate max-w-[150px]">
-                        "{entry.value}"
+                        &ldquo;{entry.value}&rdquo;
                       </span>
                     </div>
                     <span className="text-slate-400">

@@ -22,6 +22,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react";
+import Link from "next/link";
 
 // ============================================================================
 // Types
@@ -117,13 +118,13 @@ function DefaultFallback({ error, errorInfo, resetError, showDetails }: DefaultF
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
           </button>
-          <a
+          <Link
             href="/"
             className="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
             <Home className="w-4 h-4 mr-2" />
             Go Home
-          </a>
+          </Link>
         </div>
 
         {/* Report Bug Link */}

@@ -519,7 +519,7 @@ export default function ExternalDatabaseImportPage() {
                   <div className="max-h-80 overflow-y-auto border rounded-lg divide-y">
                     {filteredTables.length === 0 ? (
                       <div className="p-8 text-center text-slate-500">
-                        No tables found matching "{tableSearch}"
+                        No tables found matching &ldquo;{tableSearch}&rdquo;
                       </div>
                     ) : (
                       filteredTables.map(table => (
@@ -764,7 +764,7 @@ export default function ExternalDatabaseImportPage() {
                       <div>
                         <div className="font-medium text-amber-900">Large Import</div>
                         <div className="text-sm text-amber-700">
-                          You're about to import {preview.totalRows.toLocaleString()} records. 
+                          You&apos;re about to import {preview.totalRows.toLocaleString()} records. 
                           Consider setting a limit for testing first.
                         </div>
                       </div>

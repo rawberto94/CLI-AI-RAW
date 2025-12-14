@@ -2124,7 +2124,7 @@ export default function ContractDetailPage() {
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">Confirm Category Change</DialogTitle>
             <p className="text-sm text-muted-foreground mt-2">
-              Are you sure you want to change the category to <span className="font-medium text-foreground">"{pendingCategory?.name}"</span>?
+              Are you sure you want to change the category to <span className="font-medium text-foreground">&ldquo;{pendingCategory?.name}&rdquo;</span>?
             </p>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-4">

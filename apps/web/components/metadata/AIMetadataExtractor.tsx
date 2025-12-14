@@ -551,7 +551,7 @@ export function AIMetadataExtractor({
                               View source
                             </summary>
                             <p className="mt-1 text-xs text-gray-500 bg-gray-50 p-2 rounded">
-                              "{field.source.text.slice(0, 200)}..."
+                              &ldquo;{field.source.text.slice(0, 200)}...&rdquo;
                             </p>
                           </details>
                         )}

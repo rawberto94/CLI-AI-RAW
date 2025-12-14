@@ -74,12 +74,12 @@ export function MarketPositionChart({ metrics }: MarketPositionChartProps) {
             <p className="text-sm text-muted-foreground">
               {yourPosition >= 75 ? (
                 <>
-                  Your rates are <strong>competitive</strong>. You're performing better than{' '}
+                  Your rates are <strong>competitive</strong>. You&apos;re performing better than{' '}
                   {yourPosition}% of the market.
                 </>
               ) : yourPosition >= 50 ? (
                 <>
-                  Your rates are <strong>average</strong>. There's room for improvement to reach
+                  Your rates are <strong>average</strong>. There&apos;s room for improvement to reach
                   top-tier competitiveness.
                 </>
               ) : (

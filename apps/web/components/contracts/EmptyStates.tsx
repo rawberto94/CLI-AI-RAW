@@ -187,7 +187,7 @@ export const NoResults = memo(function NoResults({
       >
         {searchTerm ? (
           <>
-            No contracts match "<span className="font-medium">{searchTerm}</span>".
+            No contracts match &ldquo;<span className="font-medium">{searchTerm}</span>&rdquo;.
             Try adjusting your search terms or filters.
           </>
         ) : hasFilters ? (

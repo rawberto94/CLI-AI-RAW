@@ -2540,7 +2540,7 @@ export default function ContractsPage() {
                   {searchQuery && (
                     <Badge className="bg-purple-100 text-purple-800 gap-1 pr-1 border-0">
                       <Search className="h-3 w-3" />
-                      "{searchQuery}"
+                      &ldquo;{searchQuery}&rdquo;
                       <Button
                         variant="ghost"
                         size="sm"

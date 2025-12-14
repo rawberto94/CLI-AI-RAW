@@ -209,7 +209,7 @@ export function UploadSuccess({
           transition={{ delay: 0.8 }}
           className="text-center text-sm text-gray-500"
         >
-          Analysis typically completes in 15-30 seconds. You can view the contract now and artifacts will appear as they're generated.
+          Analysis typically completes in 15-30 seconds. You can view the contract now and artifacts will appear as they&apos;re generated.
         </motion.p>
       </motion.div>
     </div>

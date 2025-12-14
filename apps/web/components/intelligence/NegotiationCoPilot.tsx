@@ -390,7 +390,7 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
                     </span>
                   </div>
                   <div className="text-xs text-purple-600 uppercase mb-1">Standard Language</div>
-                  <p className="text-sm text-purple-800 italic">"{redline.playbookMatch.fallbackLanguage}"</p>
+                  <p className="text-sm text-purple-800 italic">&ldquo;{redline.playbookMatch.fallbackLanguage}&rdquo;</p>
                 </div>
               )}
 

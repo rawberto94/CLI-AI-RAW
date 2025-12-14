@@ -109,22 +109,22 @@ export function ResponsiveProvider({
 export function useViewport(): ViewportInfo {
   const context = useContext(ResponsiveContext);
   
-  if (!context) {
-    // Fallback for components outside provider
-    const [viewport, setViewport] = useState<ViewportInfo>(() => 
-      getViewportInfo(defaultBreakpoints)
-    );
+  // Always call hooks unconditionally
+  const [fallbackViewport, setFallbackViewport] = useState<ViewportInfo>(() => 
+    getViewportInfo(defaultBreakpoints)
+  );
 
-    useEffect(() => {
-      const handleResize = () => setViewport(getViewportInfo(defaultBreakpoints));
-      window.addEventListener('resize', handleResize, { passive: true });
-      return () => window.removeEventListener('resize', handleResize);
-    }, []);
+  useEffect(() => {
+    // Only run if no context provided
+    if (context) return;
+    
+    const handleResize = () => setFallbackViewport(getViewportInfo(defaultBreakpoints));
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, [context]);
 
-    return viewport;
-  }
-
-  return context;
+  // Return context if available, otherwise fallback
+  return context ?? fallbackViewport;
 }
 
 function getViewportInfo(breakpoints: BreakpointConfig): ViewportInfo {

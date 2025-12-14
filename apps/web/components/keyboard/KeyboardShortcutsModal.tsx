@@ -112,7 +112,7 @@ export function KeyboardShortcutsModal({
                 {Object.keys(groupedShortcuts).length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
                     <Keyboard className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>No shortcuts found matching "{searchQuery}"</p>
+                    <p>No shortcuts found matching &ldquo;{searchQuery}&rdquo;</p>
                   </div>
                 ) : (
                   <div className="space-y-6">

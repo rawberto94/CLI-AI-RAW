@@ -531,7 +531,7 @@ export default function PlatformAdminPage() {
           <DialogHeader>
             <DialogTitle>View as {selectedTenant?.name}</DialogTitle>
             <DialogDescription>
-              You are about to access this client's view. You will see their dashboard, contracts, and data as if you were logged in as them.
+              You are about to access this client&apos;s view. You will see their dashboard, contracts, and data as if you were logged in as them.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -539,7 +539,7 @@ export default function PlatformAdminPage() {
               <AlertCircle className="h-5 w-5 text-amber-600" />
               <div className="text-sm text-amber-800">
                 <p className="font-medium">Admin Mode Active</p>
-                <p>Your actions will be logged. A banner will indicate you're viewing as this client.</p>
+                <p>Your actions will be logged. A banner will indicate you&apos;re viewing as this client.</p>
               </div>
             </div>
           </div>

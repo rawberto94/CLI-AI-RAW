@@ -237,7 +237,7 @@ export function AICategorizationCard({
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Info className="h-4 w-4" />
-              This contract hasn't been categorized yet.
+              This contract hasn&apos;t been categorized yet.
             </div>
             {showActions && (
               <div className="flex gap-2">

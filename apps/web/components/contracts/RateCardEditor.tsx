@@ -368,7 +368,7 @@ export function RateCardEditor({
 
       {rates.length === 0 && !isAdding && (
         <div className="text-center py-8 text-gray-500">
-          No rate entries yet. Click "Add Rate" to get started.
+          No rate entries yet. Click &ldquo;Add Rate&rdquo; to get started.
         </div>
       )}
     </div>

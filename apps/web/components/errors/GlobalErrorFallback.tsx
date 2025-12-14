@@ -47,7 +47,7 @@ export function GlobalErrorFallback({ error, reset }: GlobalErrorFallbackProps) 
             </div>
           </div>
           <CardDescription className="text-base">
-            We encountered an unexpected error. Don't worry, your data is safe. 
+            We encountered an unexpected error. Don&apos;t worry, your data is safe. 
             Please try one of the options below to continue.
           </CardDescription>
         </CardHeader>

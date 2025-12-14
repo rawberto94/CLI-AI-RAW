@@ -1953,7 +1953,7 @@ export const ApprovalsQueue: React.FC = () => {
             <DialogDescription>
               {selectedApproval && (
                 <>
-                  You are about to approve <strong>"{selectedApproval.title}"</strong>
+                  You are about to approve <strong>&ldquo;{selectedApproval.title}&rdquo;</strong>
                   {selectedApproval.value && selectedApproval.value > 100000 && (
                     <span className="block mt-2 text-amber-600 font-medium">
                       ⚠️ High-value item: ${selectedApproval.value.toLocaleString()}

@@ -676,7 +676,7 @@ export default function UseCasesSection() {
                 <CheckCircle className="w-5 h-5 text-purple-600 mt-0.5" />
                 <div>
                   <div className="font-semibold text-purple-800">Differentiating:</div>
-                  <div className="text-sm text-purple-700">Cross-client insights (with anonymization) are unique to Chain IQ's BPO model.</div>
+                  <div className="text-sm text-purple-700">Cross-client insights (with anonymization) are unique to Chain IQ&apos;s BPO model.</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">

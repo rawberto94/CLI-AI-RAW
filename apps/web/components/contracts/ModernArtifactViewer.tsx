@@ -91,7 +91,7 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
         </div>
         <h3 className="text-xl font-bold text-gray-900 mb-2">No Artifacts Available</h3>
         <p className="text-gray-600 text-center max-w-md">
-          This contract hasn't been processed yet, or artifacts are still being generated.
+          This contract hasn&apos;t been processed yet, or artifacts are still being generated.
         </p>
       </div>
     )

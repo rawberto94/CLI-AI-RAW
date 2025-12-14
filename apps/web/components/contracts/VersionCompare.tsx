@@ -185,8 +185,9 @@ function VersionSelector({
   label: string;
   position: 'left' | 'right';
 }) {
-  if (!selectedVersion) return null;
   const [isOpen, setIsOpen] = useState(false);
+  
+  if (!selectedVersion) return null;
 
   return (
     <div className="relative">

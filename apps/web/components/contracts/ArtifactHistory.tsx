@@ -113,7 +113,7 @@ export function ArtifactHistory({
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <FileText className="h-12 w-12 mb-3 text-gray-300" />
             <p className="text-lg font-medium">No edit history</p>
-            <p className="text-sm">This artifact hasn't been edited yet</p>
+            <p className="text-sm">This artifact hasn&apos;t been edited yet</p>
           </div>
         )}
 

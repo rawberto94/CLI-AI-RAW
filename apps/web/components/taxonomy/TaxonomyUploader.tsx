@@ -303,7 +303,7 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
               Import Custom Taxonomy
             </CardTitle>
             <CardDescription className="mt-1.5">
-              Upload your organization's category structure from CSV or JSON
+              Upload your organization&apos;s category structure from CSV or JSON
             </CardDescription>
           </div>
           <Button
@@ -355,7 +355,7 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
                       JSON Format
                     </div>
                     <p className="text-xs text-blue-700">
-                      Flat array or hierarchical with "children" property
+                      Flat array or hierarchical with &ldquo;children&rdquo; property
                     </p>
                     <Button
                       variant="outline"

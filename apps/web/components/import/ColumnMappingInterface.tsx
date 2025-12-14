@@ -134,7 +134,7 @@ export function ColumnMappingInterface({
                       onClick={(e) => e.stopPropagation()}
                       className="ml-4 px-3 py-1 border border-gray-300 rounded text-sm"
                     >
-                      <option value="none">Don't map</option>
+                      <option value="none">Don&apos;t map</option>
                       {STANDARD_FIELDS.map((field) => (
                         <option key={field.name} value={field.name}>
                           {field.label} {field.required && '*'}

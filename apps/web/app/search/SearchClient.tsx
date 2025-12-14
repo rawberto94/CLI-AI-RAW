@@ -246,7 +246,7 @@ export default function SearchClient() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Search Results for "{searchQuery}"
+                Search Results for &ldquo;{searchQuery}&rdquo;
               </h2>
               <p className="text-gray-600">
                 Found {searchData.sampleResults.length} contracts

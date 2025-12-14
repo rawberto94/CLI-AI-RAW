@@ -244,7 +244,7 @@ export function OpportunitiesList() {
           <div className="space-y-4">
             {opportunities.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No opportunities found. Click "Detect New Opportunities" to scan for savings.
+                No opportunities found. Click &ldquo;Detect New Opportunities&rdquo; to scan for savings.
               </div>
             ) : (
               opportunities.map((opp) => (

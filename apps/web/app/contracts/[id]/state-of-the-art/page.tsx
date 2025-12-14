@@ -112,7 +112,7 @@ export default function StateOfTheArtContractPage() {
         >
           <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-700">Contract Not Found</h2>
-          <p className="text-gray-500 mt-2">The contract you're looking for doesn't exist</p>
+          <p className="text-gray-500 mt-2">The contract you&apos;re looking for doesn&apos;t exist</p>
           <Button onClick={() => router.push('/contracts')} className="mt-6">
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back to Contracts

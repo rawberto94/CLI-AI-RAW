@@ -24,7 +24,7 @@ export function DataModeBanner() {
           <Sparkles className="h-4 w-4" />
         )}
         <span>
-          You're viewing <strong>{dataMode}</strong> data
+          You&apos;re viewing <strong>{dataMode}</strong> data
         </span>
         <span className="hidden sm:inline">
           • Switch to <strong>Real</strong> mode for production data

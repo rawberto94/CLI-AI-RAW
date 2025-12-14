@@ -119,25 +119,17 @@ export async function enhancedFetch<T>(
 // Suspense-Ready Query Hook
 // ============================================================================
 
-interface UseSuspenseDataOptions<T> extends Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'> {
-  suspense?: boolean;
-}
-
 /**
- * Hook for data fetching with optional Suspense support
+ * Hook for data fetching with Suspense support
  * 
  * @example
- * // With Suspense (component suspends until data loads)
- * const { data } = useData('/api/contracts', { suspense: true });
- * 
- * // Without Suspense (traditional loading state)
- * const { data, isLoading } = useData('/api/contracts');
+ * // Component suspends until data loads
+ * const { data } = useSuspenseData('/api/contracts');
  */
-export function useData<T>(
+export function useSuspenseData<T>(
   url: string | null,
-  options: UseSuspenseDataOptions<T> = {}
+  options: Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'> = {}
 ) {
-  const { suspense = false, ...queryOptions } = options;
   const queryKey: QueryKey = ['data', url];
 
   const queryFn = async () => {
@@ -145,21 +137,37 @@ export function useData<T>(
     return enhancedFetch<T>(url);
   };
 
-  if (suspense) {
-    // Use suspense query - will throw promise and suspend component
-    return useSuspenseQuery({
-      queryKey,
-      queryFn,
-      ...queryOptions,
-    });
-  }
+  return useSuspenseQuery({
+    queryKey,
+    queryFn,
+    ...options,
+  });
+}
+
+/**
+ * Hook for data fetching with traditional loading state
+ * 
+ * @example
+ * // Traditional loading state
+ * const { data, isLoading } = useData('/api/contracts');
+ */
+export function useData<T>(
+  url: string | null,
+  options: Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'> = {}
+) {
+  const queryKey: QueryKey = ['data', url];
+
+  const queryFn = async () => {
+    if (!url) throw new Error('No URL provided');
+    return enhancedFetch<T>(url);
+  };
 
   // Regular query with loading states
   return useQuery({
     queryKey,
     queryFn,
     enabled: !!url,
-    ...queryOptions,
+    ...options,
   });
 }
 

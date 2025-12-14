@@ -211,7 +211,7 @@ export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFr
           <Alert>
             <FileText className="h-4 w-4" />
             <AlertDescription>
-              This will extract rate card information from the contract's artifacts and create 
+              This will extract rate card information from the contract&apos;s artifacts and create 
               rate card entries in the repository. Duplicate entries will be skipped.
             </AlertDescription>
           </Alert>

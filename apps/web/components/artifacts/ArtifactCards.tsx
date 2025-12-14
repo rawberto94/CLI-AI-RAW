@@ -573,7 +573,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
                 className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100"
               >
                 <div className="flex items-start gap-2">
-                  <span className="font-medium text-indigo-700">"{def.term}"</span>
+                  <span className="font-medium text-indigo-700">&ldquo;{def.term}&rdquo;</span>
                   <span className="text-slate-600">means</span>
                 </div>
                 <p className="mt-1 text-sm text-slate-700">{def.meaning}</p>

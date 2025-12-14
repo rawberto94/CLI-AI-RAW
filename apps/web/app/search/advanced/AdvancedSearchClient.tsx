@@ -159,7 +159,7 @@ export default function AdvancedSearchClient() {
             Advanced Contract Search
           </h1>
           <p className="text-gray-600 mt-1">
-            Use detailed filters to find exactly what you're looking for
+            Use detailed filters to find exactly what you&apos;re looking for
           </p>
         </div>
         <div className="flex items-center gap-3">

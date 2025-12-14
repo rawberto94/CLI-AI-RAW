@@ -176,7 +176,7 @@ export const CompetitiveTooltip: React.FC<CompetitiveTooltipProps> = ({
                   <Lightbulb className="w-3 h-3 text-yellow-500" />
                   <span className="text-xs font-medium">Key Message:</span>
                 </div>
-                <p className="text-xs italic text-gray-600 mt-1">"{insight.keyMessage}"</p>
+                <p className="text-xs italic text-gray-600 mt-1">&ldquo;{insight.keyMessage}&rdquo;</p>
               </div>
             </CardContent>
           </Card>
@@ -400,7 +400,7 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
                 <Lightbulb className="w-5 h-5 text-yellow-500" />
                 <div>
                   <span className="font-semibold text-gray-900">Key Competitive Message:</span>
-                  <p className="text-gray-700 italic mt-1">"{data.keyMessage}"</p>
+                  <p className="text-gray-700 italic mt-1">&ldquo;{data.keyMessage}&rdquo;</p>
                 </div>
               </div>
             </CardContent>

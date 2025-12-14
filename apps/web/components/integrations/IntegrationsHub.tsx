@@ -625,7 +625,7 @@ export const IntegrationsHub = memo(function IntegrationsHub({
                 <div className="space-y-4">
                   <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-700">
                     <p className="font-medium mb-1">Connection Required</p>
-                    <p>You'll be redirected to {selectedIntegration.name} to authorize the connection.</p>
+                    <p>You&apos;ll be redirected to {selectedIntegration.name} to authorize the connection.</p>
                   </div>
 
                   <div>

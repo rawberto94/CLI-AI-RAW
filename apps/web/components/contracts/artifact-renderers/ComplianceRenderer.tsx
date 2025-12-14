@@ -43,7 +43,7 @@ export const ComplianceRenderer = memo(function ComplianceRenderer({ data }: Com
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 leading-relaxed">{item.notes || item.details}</p>
                 {item.excerpt && (
                   <p className="text-sm italic text-gray-500 dark:text-gray-400 mt-3 pl-4 border-l-4 border-indigo-300 dark:border-indigo-700 leading-relaxed">
-                    "{item.excerpt}"
+                    &ldquo;{item.excerpt}&rdquo;
                   </p>
                 )}
               </div>

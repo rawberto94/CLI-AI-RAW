@@ -288,7 +288,7 @@ export function SmartSearch() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Found <strong>{results.length}</strong> results for "{query}"
+              Found <strong>{results.length}</strong> results for &ldquo;{query}&rdquo;
             </p>
             <Button variant="outline" size="sm">
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -355,7 +355,7 @@ export function SmartSearch() {
         <Card>
           <CardContent className="py-12 text-center">
             <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600 mb-2">No results found for "{query}"</p>
+            <p className="text-gray-600 mb-2">No results found for &ldquo;{query}&rdquo;</p>
             <p className="text-sm text-gray-500">Try different keywords or adjust your filters</p>
           </CardContent>
         </Card>

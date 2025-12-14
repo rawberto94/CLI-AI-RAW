@@ -310,7 +310,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
         {(entry.comment || entry.metadata?.reason || entry.action === 'delegated') && (
           <div className="mt-3 pt-3 border-t border-slate-100">
             {entry.comment && (
-              <p className="text-sm text-slate-600 italic">"{entry.comment}"</p>
+              <p className="text-sm text-slate-600 italic">&ldquo;{entry.comment}&rdquo;</p>
             )}
             {entry.metadata?.reason && !entry.comment && (
               <p className="text-sm text-slate-600">

@@ -193,7 +193,7 @@ export function DataModeBanner() {
             Demo Mode Active
           </h4>
           <p className="text-sm text-purple-700 mt-1">
-            You're viewing curated mock data. Switch to "Real Data" to see insights from your uploaded contracts.
+            You&apos;re viewing curated mock data. Switch to &ldquo;Real Data&rdquo; to see insights from your uploaded contracts.
           </p>
         </div>
         <DataModeToggleCompact />

@@ -54,7 +54,7 @@ export default function GlobalError({
               Something went wrong
             </h1>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
-              We encountered an unexpected error. Don't worry, your data is safe.
+              We encountered an unexpected error. Don&apos;t worry, your data is safe.
               Try refreshing the page or go back to the dashboard.
             </p>
 

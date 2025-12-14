@@ -188,6 +188,7 @@ function AIChatPageContent() {
       }, 500);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
 
   // Keyboard shortcuts
@@ -506,7 +507,7 @@ function AIChatPageContent() {
                     onClick={() => handleUseSuggestion(prompt)}
                     className="w-full text-left text-sm p-2 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-colors text-muted-foreground hover:text-foreground"
                   >
-                    "{prompt}"
+                    &ldquo;{prompt}&rdquo;
                   </button>
                 ))}
               </div>

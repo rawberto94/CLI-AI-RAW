@@ -58,7 +58,7 @@ export default function Error({
           {/* Content */}
           <div className="p-6">
             <p className="text-slate-600 text-center mb-6">
-              Don't worry, the rest of the app is still working. 
+              Don&apos;t worry, the rest of the app is still working. 
               Try refreshing this section or go back.
             </p>
 
