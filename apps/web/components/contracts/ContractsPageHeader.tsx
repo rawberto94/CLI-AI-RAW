@@ -31,6 +31,7 @@ export interface ContractsPageHeaderProps {
   onRefresh: () => void;
   onAdvancedSearch: () => void;
   showTaxonomyLink?: boolean;
+  extraActions?: React.ReactNode;
 }
 
 // ============================================================================
@@ -41,6 +42,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
   onRefresh,
   onAdvancedSearch,
   showTaxonomyLink = true,
+  extraActions,
 }: ContractsPageHeaderProps) {
   return (
     <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900">
@@ -71,6 +73,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
           
           {/* Action Buttons */}
           <div className="flex gap-2">
+            {extraActions}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 

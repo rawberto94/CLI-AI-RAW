@@ -2,14 +2,18 @@
 
 import React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DashboardLayout } from '@/components/layout/AppLayout'
 import { ProfessionalDashboard } from '@/components/dashboard/ProfessionalDashboard'
 import { LazyEnhancedDashboard as EnhancedDashboard } from '@/components/lazy'
 import { BarChart3, TrendingUp, Brain } from 'lucide-react'
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <div className="max-w-7xl mx-auto px-6 py-8">
+    <DashboardLayout
+      title="Dashboard"
+      description="Portfolio intelligence and analytics"
+    >
+      <div className="max-w-7xl mx-auto">
         <Tabs defaultValue="intelligence" className="space-y-6">
           <TabsList className="bg-slate-100 border-0 p-1 rounded-lg">
             <TabsTrigger value="intelligence" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
@@ -31,6 +35,6 @@ export default function DashboardPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }

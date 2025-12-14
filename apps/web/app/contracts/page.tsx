@@ -9,7 +9,6 @@
 
 import { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -115,6 +114,7 @@ import { ShareDialog } from "@/components/collaboration/ShareDialog";
 import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForApprovalModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
+import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
 import { cn } from "@/lib/utils";
 
 // ============ COMPACT ROW COMPONENT ============
@@ -1545,94 +1545,23 @@ export default function ContractsPage() {
   return (
     <TooltipProvider>
     <div className="min-h-screen bg-slate-50">
-      {/* Header Section */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6">
-          <PageBreadcrumb />
-          
-          <div className="mt-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2.5 mb-1">
-                <FileText className="h-6 w-6 text-slate-700" />
-                <h1 className="text-2xl font-semibold text-slate-900">Contracts</h1>
-              </div>
-              <p className="text-slate-500 text-sm">
-                Manage your contract portfolio with AI-powered insights
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => refetch()}
-                    className="h-9"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-1.5" />
-                    Refresh
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="flex items-center gap-2">
-                    Refresh list
-                    <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 rounded">R</kbd>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowAdvancedSearch(true)}
-                className="h-9"
-              >
-                <SlidersHorizontal className="h-4 w-4 mr-1.5" />
-                Advanced
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                asChild
-                className="h-9"
-              >
-                <Link href="/settings/taxonomy">
-                  <Tag className="h-4 w-4 mr-1.5" />
-                  Taxonomy
+      <ContractsPageHeader
+        onRefresh={() => refetch()}
+        onAdvancedSearch={() => setShowAdvancedSearch(true)}
+        extraActions={
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild variant="outline" size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm">
+                <Link href="/import/external-database">
+                  <Database className="h-4 w-4 mr-2" />
+                  Import from DB
                 </Link>
               </Button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-9">
-                    <Link href="/upload">
-                      <Upload className="h-4 w-4 mr-1.5" />
-                      Upload Contract
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <div className="flex items-center gap-2">
-                    Upload new contract
-                    <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 rounded">N</kbd>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button asChild variant="outline" size="sm" className="h-9">
-                    <Link href="/import/external-database">
-                      <Database className="h-4 w-4 mr-1.5" />
-                      Import from DB
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Import contracts from external database
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-        </div>
-      </div>
+            </TooltipTrigger>
+            <TooltipContent>Import contracts from external database</TooltipContent>
+          </Tooltip>
+        }
+      />
       
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
 
