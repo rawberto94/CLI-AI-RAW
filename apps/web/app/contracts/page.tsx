@@ -3,6 +3,13 @@
  * Premium UI/UX with Hero Dashboard, Smart Filters, Preview Panel
  * Integrated filters, bulk selection, cross-module actions
  * Preserves RAG and chatbot data flows
+ * 
+ * v2.1 - Live Updates & Enhanced UI
+ * - Real-time auto-refresh with configurable intervals
+ * - Visual pulse indicators for live data
+ * - Animated stat counters
+ * - Skeleton loading states
+ * - Processing contracts live progress tracking
  */
 
 "use client";
@@ -14,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { NoContracts, NoResults } from "@/components/ui/empty-states";
 import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
 import {
   DropdownMenu,
@@ -92,6 +98,12 @@ import {
   Heart,
   MessageSquare,
   Layers,
+  Radio,
+  Wifi,
+  WifiOff,
+  Activity,
+  Pause,
+  Play,
 } from "lucide-react";
 import { ContractTimeline, type TimelineContract } from "@/components/contracts/ContractTimeline";
 import { ContractKanban, type KanbanContract } from "@/components/contracts/ContractKanban";
@@ -110,12 +122,269 @@ import { ContractPreviewPanel, type ExtendedContract } from "@/components/contra
 import { EnhancedBulkActionsBar, type BulkAction } from "@/components/contracts/EnhancedBulkActionsBar";
 import { SmartFilters, type ContractFilters } from "@/components/contracts/SmartFilters";
 import { MobileContractCard, MobileFiltersSheet, MobileSearchBar } from "@/components/contracts/MobileContractViews";
+import { NoContracts, NoResults } from "@/components/contracts/EmptyStates";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
 import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForApprovalModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
 import { cn } from "@/lib/utils";
+
+// ============ LIVE UPDATE INDICATOR COMPONENT ============
+interface LiveIndicatorProps {
+  isLive: boolean;
+  lastUpdated?: string | null;
+  onToggle: () => void;
+  isRefetching?: boolean;
+}
+
+const LiveIndicator = memo(function LiveIndicator({ 
+  isLive, 
+  lastUpdated, 
+  onToggle,
+  isRefetching 
+}: LiveIndicatorProps) {
+  const getTimeAgo = (dateString?: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 10) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    return `${Math.floor(minutes / 60)}h ago`;
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      {/* Last Updated */}
+      {lastUpdated && (
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <Clock className="h-3 w-3" />
+          <span>Updated {getTimeAgo(lastUpdated)}</span>
+        </div>
+      )}
+      
+      {/* Live Toggle Button */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggle}
+            className={cn(
+              "h-8 gap-2 transition-all duration-300",
+              isLive 
+                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300" 
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+            )}
+          >
+            {isRefetching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : isLive ? (
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+            ) : (
+              <WifiOff className="h-3.5 w-3.5" />
+            )}
+            <span className="text-xs font-medium">
+              {isLive ? 'Live' : 'Paused'}
+            </span>
+            {isLive ? (
+              <Pause className="h-3 w-3 opacity-60" />
+            ) : (
+              <Play className="h-3 w-3 opacity-60" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{isLive ? 'Click to pause auto-refresh' : 'Click to enable auto-refresh (every 15s)'}</p>
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  );
+});
+
+// ============ ANIMATED COUNTER COMPONENT ============
+interface AnimatedCounterProps {
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  className?: string;
+  duration?: number;
+}
+
+const AnimatedCounter = memo(function AnimatedCounter({
+  value,
+  prefix = '',
+  suffix = '',
+  className = '',
+  duration = 500
+}: AnimatedCounterProps) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const previousValue = useRef(value);
+  
+  useEffect(() => {
+    if (previousValue.current === value) return;
+    
+    const startValue = previousValue.current;
+    const endValue = value;
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const current = Math.round(startValue + (endValue - startValue) * easeOutQuart);
+      
+      setDisplayValue(current);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+    previousValue.current = value;
+  }, [value, duration]);
+  
+  return (
+    <span className={className}>
+      {prefix}{displayValue.toLocaleString()}{suffix}
+    </span>
+  );
+});
+
+// ============ SKELETON LOADING COMPONENT ============
+const ContractRowSkeleton = memo(function ContractRowSkeleton({ index }: { index: number }) {
+  return (
+    <div 
+      className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 items-center border-b border-slate-100/80"
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
+      <div className="h-4 w-4 bg-slate-200 rounded animate-pulse" />
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 bg-slate-200 rounded-lg animate-pulse" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
+          <div className="h-3 w-1/4 bg-slate-100 rounded animate-pulse" />
+        </div>
+      </div>
+      <div className="h-5 w-20 bg-slate-200 rounded animate-pulse" />
+      <div className="h-4 w-16 bg-slate-200 rounded animate-pulse" />
+      <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
+      <div className="h-4 w-16 bg-slate-200 rounded animate-pulse" />
+      <div className="h-4 w-20 bg-slate-200 rounded animate-pulse" />
+      <div className="h-5 w-16 bg-slate-200 rounded-full animate-pulse" />
+      <div className="h-6 w-6 bg-slate-200 rounded animate-pulse" />
+    </div>
+  );
+});
+
+const ContractCardSkeleton = memo(function ContractCardSkeleton({ index }: { index: number }) {
+  return (
+    <div 
+      className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse"
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-slate-200 rounded-lg" />
+          <div className="space-y-2">
+            <div className="h-4 w-40 bg-slate-200 rounded" />
+            <div className="h-3 w-24 bg-slate-100 rounded" />
+          </div>
+        </div>
+        <div className="h-6 w-16 bg-slate-200 rounded-full" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <div className="h-3 w-16 bg-slate-100 rounded" />
+          <div className="h-4 w-24 bg-slate-200 rounded" />
+        </div>
+        <div className="space-y-1">
+          <div className="h-3 w-16 bg-slate-100 rounded" />
+          <div className="h-4 w-20 bg-slate-200 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ============ PROCESSING CONTRACT TRACKER ============
+interface ProcessingContractTrackerProps {
+  contracts: Contract[];
+  onContractComplete: (contractId: string) => void;
+}
+
+const ProcessingContractTracker = memo(function ProcessingContractTracker({
+  contracts,
+  onContractComplete
+}: ProcessingContractTrackerProps) {
+  const processingContracts = contracts.filter(c => c.status === 'processing');
+  
+  if (processingContracts.length === 0) return null;
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="mb-4"
+    >
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="relative">
+              <Activity className="h-5 w-5 text-blue-600" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+              </span>
+            </div>
+            <span className="font-medium text-blue-800 text-sm">
+              Processing {processingContracts.length} contract{processingContracts.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {processingContracts.slice(0, 3).map((contract) => (
+              <div key={contract.id} className="flex items-center gap-3 text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="text-slate-700 truncate font-medium">{contract.title}</p>
+                  <p className="text-xs text-blue-600">
+                    {contract.processing?.currentStage || 'Initializing...'}
+                  </p>
+                </div>
+                <div className="w-24">
+                  <div className="h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${contract.processing?.progress || 0}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-blue-600 text-right mt-0.5">
+                    {contract.processing?.progress || 0}%
+                  </p>
+                </div>
+              </div>
+            ))}
+            {processingContracts.length > 3 && (
+              <p className="text-xs text-blue-600 text-center">
+                +{processingContracts.length - 3} more processing
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+});
 
 // ============ COMPACT ROW COMPONENT ============
 interface CompactContractRowProps {
@@ -164,20 +433,41 @@ const CompactContractRow = memo(function CompactContractRow({
 
   const isExpired = contract.expirationDate && new Date(contract.expirationDate) < new Date();
 
+  const handleRowKeyDown = (e: React.KeyboardEvent) => {
+    // Only activate when the row itself is focused (not a child control like checkbox/buttons/menus)
+    if (e.currentTarget !== e.target) return;
+
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onView();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.15, delay: index * 0.02 }}
+      whileHover={{ x: 2 }}
       className={cn(
-        "grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 items-center hover:bg-blue-50/50 cursor-pointer transition-colors group",
-        isSelected && "bg-blue-50 hover:bg-blue-100/70",
-        !isSelected && index % 2 === 1 && "bg-slate-50/50"
+        "grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 items-center cursor-pointer transition-all duration-200 group border-b border-slate-100/80",
+        isSelected 
+          ? "bg-gradient-to-r from-blue-50 to-indigo-50/50 hover:from-blue-100/70 hover:to-indigo-100/50" 
+          : "hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/30",
+        !isSelected && index % 2 === 1 && "bg-slate-50/30"
       )}
       onClick={onView}
+      role="link"
+      tabIndex={0}
+      aria-label={`View contract ${contract.title || 'Untitled Contract'}`}
+      onKeyDown={handleRowKeyDown}
     >
       {/* Checkbox */}
-      <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex items-center"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         <Checkbox
           checked={isSelected}
           onCheckedChange={onSelect}
@@ -186,10 +476,10 @@ const CompactContractRow = memo(function CompactContractRow({
         />
       </div>
 
-      {/* Contract Title & Category */}
+      {/* Contract Title & Category - Enhanced */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="p-2 bg-slate-100 rounded-md flex-shrink-0">
-          <FileText className="h-4 w-4 text-slate-500" />
+        <div className="p-2 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex-shrink-0 group-hover:from-blue-100 group-hover:to-indigo-50 transition-colors shadow-sm">
+          <FileText className="h-4 w-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -197,7 +487,7 @@ const CompactContractRow = memo(function CompactContractRow({
               {contract.title || 'Untitled Contract'}
             </p>
             {isNew && (
-              <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px] px-1.5 py-0 h-4 flex-shrink-0 font-medium">
+              <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-0 text-[10px] px-1.5 py-0 h-4 flex-shrink-0 font-semibold shadow-sm">
                 New
               </Badge>
             )}
@@ -268,50 +558,53 @@ const CompactContractRow = memo(function CompactContractRow({
         )}
       </div>
 
-      {/* Status */}
+      {/* Status - Enhanced with gradient backgrounds */}
       <div>
         <span className={cn(
-          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium",
-          statusConfig.bg,
-          statusConfig.color
+          "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all",
+          contract.status === 'completed' && "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60",
+          contract.status === 'processing' && "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200/60",
+          contract.status === 'failed' && "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200/60",
+          contract.status === 'pending' && "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200/60",
+          !['completed', 'processing', 'failed', 'pending'].includes(contract.status) && "bg-gradient-to-r from-slate-50 to-gray-50 text-slate-700 border border-slate-200/60"
         )}>
           <StatusIcon className={cn("h-3.5 w-3.5", contract.status === 'processing' && "animate-spin")} />
           {statusConfig.label}
         </span>
       </div>
 
-      {/* Actions */}
+      {/* Actions - Enhanced with better hover states */}
       <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 rounded-md hover:bg-slate-200"
+              className="h-8 w-8 p-0 rounded-lg hover:bg-slate-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
             >
               <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-white border-slate-200 shadow-lg rounded-lg">
-            <DropdownMenuItem onClick={onView} className="cursor-pointer">
+          <DropdownMenuContent align="end" className="w-48 bg-white border-slate-200 shadow-xl rounded-xl p-1">
+            <DropdownMenuItem onClick={onView} className="cursor-pointer rounded-lg">
               <Eye className="h-4 w-4 mr-2 text-slate-500" /> View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="cursor-pointer">
-              <Brain className="h-4 w-4 mr-2 text-slate-500" /> AI Analysis
+            <DropdownMenuItem onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="cursor-pointer rounded-lg">
+              <Brain className="h-4 w-4 mr-2 text-purple-500" /> AI Analysis
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDownload} className="cursor-pointer">
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem onClick={onDownload} className="cursor-pointer rounded-lg">
               <Download className="h-4 w-4 mr-2 text-slate-500" /> Download
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onShare} className="cursor-pointer">
+            <DropdownMenuItem onClick={onShare} className="cursor-pointer rounded-lg">
               <Share2 className="h-4 w-4 mr-2 text-slate-500" /> Share
             </DropdownMenuItem>
             {/* Request Approval - Hidden for now, will be enabled in future */}
-            {/* <DropdownMenuItem onClick={onApproval} className="cursor-pointer">
+            {/* <DropdownMenuItem onClick={onApproval} className="cursor-pointer rounded-lg">
               <ClipboardCheck className="h-4 w-4 mr-2 text-slate-500" /> Request Approval
             </DropdownMenuItem> */}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 cursor-pointer">
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer rounded-lg">
               <Trash2 className="h-4 w-4 mr-2" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -631,6 +924,31 @@ const QUICK_PRESETS: Array<{
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
+
+  // Preserve list scroll position when navigating to contract details and back
+  useEffect(() => {
+    try {
+      const shouldRestore = sessionStorage.getItem('contracts:list:restore');
+      if (shouldRestore !== '1') return;
+      const y = sessionStorage.getItem('contracts:list:scrollY');
+      const yNum = y ? Number.parseInt(y, 10) : NaN;
+      if (!Number.isFinite(yNum)) return;
+      sessionStorage.removeItem('contracts:list:restore');
+      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, yNum)));
+    } catch {
+      // ignore storage/scroll errors
+    }
+  }, []);
+
+  const pushToContract = (id: string) => {
+    try {
+      sessionStorage.setItem('contracts:list:scrollY', String(window.scrollY));
+      sessionStorage.setItem('contracts:list:restore', '1');
+    } catch {
+      // ignore
+    }
+    router.push(`/contracts/${id}`, { scroll: true });
+  };
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -696,13 +1014,20 @@ export default function ContractsPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [useEnhancedUI, setUseEnhancedUI] = useState(true); // Toggle between enhanced and legacy UI
   const listContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Live update state
+  const [isLiveUpdatesEnabled, setIsLiveUpdatesEnabled] = useState(false);
+  const [newContractsCount, setNewContractsCount] = useState(0);
 
-  // Use React Query for data fetching with caching
+  // Use React Query for data fetching with caching and live updates
   const { 
     data: contractsData, 
     isLoading: loading, 
+    isFetching: isRefetching,
     refetch,
-    error 
+    error,
+    lastUpdated,
+    isPolling 
   } = useContracts({
     status: statusFilter === 'all' ? undefined : statusFilter,
     page: currentPage,
@@ -710,6 +1035,27 @@ export default function ContractsPage() {
     sortBy: sortField,
     sortOrder: sortDirection,
     search: searchQuery || undefined,
+  }, {
+    pollingEnabled: isLiveUpdatesEnabled,
+    pollingInterval: 15000, // 15 seconds
+    onNewContract: (count) => {
+      setNewContractsCount(prev => prev + count);
+      toast.success(`${count} new contract${count > 1 ? 's' : ''} added`, {
+        icon: <Sparkles className="h-4 w-4 text-emerald-500" />,
+        action: {
+          label: 'View',
+          onClick: () => {
+            setSortField('createdAt');
+            setSortDirection('desc');
+            setCurrentPage(1);
+          }
+        }
+      });
+    },
+    onUpdate: () => {
+      // Subtle indication that data was refreshed
+      setNewContractsCount(0);
+    }
   });
   
   const crossModule = useCrossModuleInvalidation();
@@ -1519,26 +1865,73 @@ export default function ContractsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
-        <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-12">
-          <div className="flex flex-col items-center justify-center h-96 gap-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-xl opacity-20 animate-pulse" />
-              <motion.div
-                className="relative bg-white rounded-full p-6 shadow-xl"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              >
-                <Loader2 className="h-10 w-10 text-blue-600" />
-              </motion.div>
+      <TooltipProvider>
+        <div className="min-h-screen bg-slate-50">
+          <ContractsPageHeader
+            onRefresh={() => refetch()}
+            onAdvancedSearch={() => {}}
+            isRefreshing={true}
+          />
+          <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
+            {/* Skeleton Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="bg-white border-slate-200">
+                  <CardContent className="p-4">
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-3 w-20 bg-slate-200 rounded" />
+                      <div className="h-8 w-24 bg-slate-200 rounded" />
+                      <div className="h-3 w-16 bg-slate-100 rounded" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <div className="text-center">
-              <p className="text-slate-700 font-medium">Loading contracts...</p>
-              <p className="text-slate-400 text-sm mt-1">Fetching your contract portfolio</p>
+            
+            {/* Skeleton Search Bar */}
+            <Card className="bg-white border-slate-200">
+              <CardContent className="p-4">
+                <div className="animate-pulse flex gap-4">
+                  <div className="h-10 flex-1 bg-slate-200 rounded" />
+                  <div className="h-10 w-24 bg-slate-200 rounded" />
+                </div>
+              </CardContent>
+            </Card>
+            
+            {/* Skeleton List Header */}
+            <div className="flex items-center justify-between">
+              <div className="animate-pulse flex items-center gap-3">
+                <div className="h-5 w-24 bg-slate-200 rounded" />
+                <div className="h-6 w-16 bg-slate-100 rounded-full" />
+              </div>
+              <div className="animate-pulse flex gap-2">
+                <div className="h-8 w-20 bg-slate-200 rounded" />
+                <div className="h-8 w-20 bg-slate-200 rounded" />
+                <div className="h-8 w-28 bg-slate-200 rounded" />
+              </div>
             </div>
+            
+            {/* Skeleton Contract Rows */}
+            <Card className="bg-white border-slate-200 overflow-hidden">
+              <div className="divide-y divide-slate-100">
+                {[...Array(8)].map((_, i) => (
+                  <ContractRowSkeleton key={i} index={i} />
+                ))}
+              </div>
+            </Card>
+            
+            {/* Loading indicator overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed bottom-6 right-6 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-3 border border-slate-200"
+            >
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <span className="text-sm text-slate-600">Loading contracts...</span>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </TooltipProvider>
     );
   }
 
@@ -1548,6 +1941,7 @@ export default function ContractsPage() {
       <ContractsPageHeader
         onRefresh={() => refetch()}
         onAdvancedSearch={() => setShowAdvancedSearch(true)}
+        isRefreshing={isRefetching && !loading}
         extraActions={
           <Tooltip>
             <TooltipTrigger asChild>
@@ -2736,16 +3130,50 @@ export default function ContractsPage() {
           </motion.div>
         )}
 
+        {/* Processing Contracts Live Tracker */}
+        <AnimatePresence>
+          <ProcessingContractTracker 
+            contracts={contracts} 
+            onContractComplete={(id) => {
+              toast.success('Contract processing completed!', {
+                icon: <CheckCircle className="h-4 w-4 text-emerald-500" />,
+              });
+              refetch();
+            }}
+          />
+        </AnimatePresence>
+
         {/* View Mode Toggle, Sort, Export & Results Count */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="font-medium text-slate-900">{contractsData?.total ?? 0}</span>
+              <span className="font-medium text-slate-900">
+                <AnimatedCounter value={contractsData?.total ?? 0} />
+              </span>
               contract{(contractsData?.total ?? 0) !== 1 ? 's' : ''}
               {hasActiveFilters && (
                 <Badge variant="secondary" className="text-xs">filtered</Badge>
               )}
+              {newContractsCount > 0 && (
+                <motion.div
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="flex items-center gap-1"
+                >
+                  <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs animate-pulse">
+                    +{newContractsCount} new
+                  </Badge>
+                </motion.div>
+              )}
             </div>
+            
+            {/* Live Update Indicator */}
+            <LiveIndicator
+              isLive={isLiveUpdatesEnabled}
+              lastUpdated={lastUpdated}
+              onToggle={() => setIsLiveUpdatesEnabled(prev => !prev)}
+              isRefetching={isRefetching && !loading}
+            />
             
             {/* Save Filter */}
             {hasActiveFilters && (
@@ -2955,43 +3383,24 @@ export default function ContractsPage() {
               <Card className="bg-white border-slate-200">
                 <CardContent className="p-0">
                   {(searchQuery || statusFilter !== "all" || hasActiveFilters) ? (
-                    <div className="flex flex-col items-center justify-center py-12 px-8 text-center">
-                      <div className="w-14 h-14 bg-slate-100 rounded-xl flex items-center justify-center mb-4">
-                        <Search className="h-7 w-7 text-slate-400" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900 mb-1">No matching contracts</h3>
-                      <p className="text-slate-500 text-sm mb-5 max-w-md">
-                        No contracts found matching your current filters.
-                      </p>
-                      <Button
-                        onClick={clearFilters}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <X className="h-4 w-4 mr-1.5" />
-                        Clear filters
-                      </Button>
-                    </div>
+                    <NoResults
+                      searchTerm={searchQuery || undefined}
+                      hasFilters={statusFilter !== 'all' || Boolean(hasActiveFilters)}
+                      onClearSearch={searchQuery ? () => setSearchQuery('') : undefined}
+                      onClearFilters={clearFilters}
+                    />
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-12 px-8 text-center">
-                      <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
-                        <FileText className="h-7 w-7 text-blue-600" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-slate-900 mb-1">No contracts yet</h3>
-                      <p className="text-slate-500 text-sm mb-5 max-w-md">
-                        Upload your first contract to get started.
-                      </p>
-                      <Button
-                        asChild
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Link href="/upload">
-                          <Upload className="h-4 w-4 mr-1.5" />
-                          Upload contract
-                        </Link>
-                      </Button>
-                    </div>
+                    <NoContracts
+                      onUpload={() => router.push('/upload')}
+                      additionalActions={(
+                        <Button variant="outline" asChild className="gap-2">
+                          <Link href="/import/external-database" className="gap-2">
+                            <Database className="h-4 w-4" />
+                            Import from DB
+                          </Link>
+                        </Button>
+                      )}
+                    />
                   )}
                 </CardContent>
               </Card>
@@ -3004,9 +3413,9 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Card className="overflow-hidden bg-white border-slate-200 shadow-sm">
-                {/* Table Header - Sticky */}
-                <div className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-0 z-10">
+              <Card className="overflow-hidden bg-white border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+                {/* Table Header - Enhanced with gradient background */}
+                <div className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
                   <div className="flex items-center">
                     <Checkbox
                       checked={allVisibleSelected && paginatedContracts.length > 0}
@@ -3018,15 +3427,16 @@ export default function ContractsPage() {
                         });
                       }}
                       aria-label="Select all on this page"
+                      className="border-slate-300"
                     />
                   </div>
-                  <div>Contract</div>
+                  <div className="text-slate-600">Contract</div>
                   <div className="hidden lg:block">Category</div>
                   <div className="hidden lg:block">Type</div>
                   <div className="hidden md:block">Party</div>
                   <div className="hidden lg:block">Value</div>
                   <div className="hidden md:block">Expires</div>
-                  <div>Status</div>
+                  <div className="text-slate-600">Status</div>
                   <div></div>
                 </div>
                 
@@ -3039,7 +3449,7 @@ export default function ContractsPage() {
                       index={index}
                       isSelected={selectedContracts.has(contract.id)}
                       onSelect={() => toggleSelect(contract.id)}
-                      onView={() => router.push(`/contracts/${contract.id}`)}
+                      onView={() => pushToContract(contract.id)}
                       onShare={() => handleShare(contract.id, contract.title || 'Contract')}
                       onDelete={() => handleDeleteClick(contract.id, contract.title || 'Contract')}
                       onDownload={() => handleDownload(contract.id)}
@@ -3093,7 +3503,7 @@ export default function ContractsPage() {
                           break;
                       }
                     }}
-                    onDoubleClick={() => router.push(`/contracts/${contract.id}`)}
+                    onDoubleClick={() => pushToContract(contract.id)}
                     showHealthIndicator
                     showPartyAvatars
                     enableHoverPreview
@@ -3131,7 +3541,7 @@ export default function ContractsPage() {
                     }
                   ] : [],
                 }))}
-                onContractClick={(contractId) => router.push(`/contracts/${contractId}`)}
+                onContractClick={(contractId) => pushToContract(contractId)}
               />
             </motion.div>
           ) : (
@@ -3154,7 +3564,7 @@ export default function ContractsPage() {
                   priority: 'medium' as const,
                   tags: [contract.parties?.supplier || 'Contract'].slice(0, 2),
                 }))}
-                onContractClick={(contractId) => router.push(`/contracts/${contractId}`)}
+                onContractClick={(contractId) => pushToContract(contractId)}
                 onStatusChange={(contractId, newStatus) => {
                   toast.success(`Contract moved to ${newStatus.replace('_', ' ')}`);
                 }}
@@ -3355,7 +3765,7 @@ export default function ContractsPage() {
           setPreviewContract(null);
         }}
         onNavigate={handlePreviewNavigate}
-        onEdit={(id) => router.push(`/contracts/${id}`)}
+        onEdit={(id) => pushToContract(id)}
         onShare={(id) => {
           const contract = contracts.find(c => c.id === id);
           if (contract) handleShare(id, contract.title || 'Contract');

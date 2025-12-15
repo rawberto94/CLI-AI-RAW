@@ -28,6 +28,20 @@ import {
   FileText,
   TrendingUp,
   TrendingDown,
+  Globe,
+  Languages,
+  CreditCard,
+  Repeat,
+  Users,
+  Shield,
+  Wallet,
+  CalendarClock,
+  Bell,
+  Briefcase,
+  Hash,
+  Banknote,
+  FileSignature,
+  LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,6 +144,19 @@ export interface ContractFilters {
   isAnalyzed?: boolean;
   isPinned?: boolean;
   isFavorite?: boolean;
+  
+  // Enhanced Metadata Filters
+  jurisdiction?: string[];
+  language?: string[];
+  paymentType?: string[];
+  billingFrequency?: string[];
+  periodicity?: string[];
+  currency?: string[];
+  signatureStatus?: 'signed' | 'unsigned' | 'pending' | 'all';
+  reminderEnabled?: boolean;
+  category?: string[];
+  confidenceScore?: { min?: number; max?: number };
+  needsVerification?: boolean;
 }
 
 export interface SmartFiltersProps {
@@ -143,6 +170,10 @@ export interface SmartFiltersProps {
   availableTags?: string[];
   availableParties?: string[];
   availableTypes?: string[];
+  availableJurisdictions?: string[];
+  availableLanguages?: string[];
+  availableCurrencies?: string[];
+  availableCategories?: Array<{ id: string; name: string; color?: string }>;
   searchSuggestions?: string[];
   recentSearches?: string[];
   onSearchSubmit?: (query: string) => void;
@@ -235,8 +266,86 @@ function getActiveFilterCount(filters: ContractFilters): number {
   if (filters.isAnalyzed !== undefined) count++;
   if (filters.isPinned !== undefined) count++;
   if (filters.isFavorite !== undefined) count++;
+  // Enhanced metadata filters
+  if (filters.jurisdiction?.length) count++;
+  if (filters.language?.length) count++;
+  if (filters.paymentType?.length) count++;
+  if (filters.billingFrequency?.length) count++;
+  if (filters.periodicity?.length) count++;
+  if (filters.currency?.length) count++;
+  if (filters.signatureStatus && filters.signatureStatus !== 'all') count++;
+  if (filters.reminderEnabled !== undefined) count++;
+  if (filters.category?.length) count++;
+  if (filters.needsVerification !== undefined) count++;
   return count;
 }
+
+// ============================================================================
+// Metadata Options
+// ============================================================================
+
+const PAYMENT_TYPES = [
+  { value: 'fixed_price', label: 'Fixed Price', icon: Banknote },
+  { value: 'time_and_material', label: 'Time & Material', icon: Clock },
+  { value: 'milestone', label: 'Milestone-Based', icon: CheckCircle2 },
+  { value: 'subscription', label: 'Subscription', icon: Repeat },
+  { value: 'retainer', label: 'Retainer', icon: Briefcase },
+  { value: 'none', label: 'No Payment', icon: X },
+  { value: 'other', label: 'Other', icon: LayoutGrid },
+];
+
+const BILLING_FREQUENCIES = [
+  { value: 'one_off', label: 'One-Off', color: 'bg-blue-100 text-blue-700' },
+  { value: 'recurring', label: 'Recurring', color: 'bg-green-100 text-green-700' },
+  { value: 'mixed', label: 'Mixed', color: 'bg-purple-100 text-purple-700' },
+  { value: 'none', label: 'None', color: 'bg-slate-100 text-slate-700' },
+];
+
+const PERIODICITIES = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'semi_annual', label: 'Semi-Annual' },
+  { value: 'annual', label: 'Annual' },
+  { value: 'on_delivery', label: 'On Delivery' },
+  { value: 'on_milestone', label: 'On Milestone' },
+];
+
+const COMMON_JURISDICTIONS = [
+  { value: 'US', label: 'United States', flag: '🇺🇸' },
+  { value: 'GB', label: 'United Kingdom', flag: '🇬🇧' },
+  { value: 'DE', label: 'Germany', flag: '🇩🇪' },
+  { value: 'FR', label: 'France', flag: '🇫🇷' },
+  { value: 'CH', label: 'Switzerland', flag: '🇨🇭' },
+  { value: 'NL', label: 'Netherlands', flag: '🇳🇱' },
+  { value: 'SG', label: 'Singapore', flag: '🇸🇬' },
+  { value: 'AU', label: 'Australia', flag: '🇦🇺' },
+  { value: 'CA', label: 'Canada', flag: '🇨🇦' },
+  { value: 'JP', label: 'Japan', flag: '🇯🇵' },
+];
+
+const COMMON_LANGUAGES = [
+  { value: 'en', label: 'English', flag: '🇬🇧' },
+  { value: 'de', label: 'German', flag: '🇩🇪' },
+  { value: 'fr', label: 'French', flag: '🇫🇷' },
+  { value: 'es', label: 'Spanish', flag: '🇪🇸' },
+  { value: 'it', label: 'Italian', flag: '🇮🇹' },
+  { value: 'nl', label: 'Dutch', flag: '🇳🇱' },
+  { value: 'pt', label: 'Portuguese', flag: '🇵🇹' },
+  { value: 'zh', label: 'Chinese', flag: '🇨🇳' },
+  { value: 'ja', label: 'Japanese', flag: '🇯🇵' },
+];
+
+const COMMON_CURRENCIES = [
+  { value: 'USD', label: 'US Dollar', symbol: '$' },
+  { value: 'EUR', label: 'Euro', symbol: '€' },
+  { value: 'GBP', label: 'British Pound', symbol: '£' },
+  { value: 'CHF', label: 'Swiss Franc', symbol: 'Fr' },
+  { value: 'JPY', label: 'Japanese Yen', symbol: '¥' },
+  { value: 'AUD', label: 'Australian Dollar', symbol: 'A$' },
+  { value: 'CAD', label: 'Canadian Dollar', symbol: 'C$' },
+  { value: 'SGD', label: 'Singapore Dollar', symbol: 'S$' },
+];
 
 // ============================================================================
 // Sub-Components
@@ -589,6 +698,10 @@ export const SmartFilters = memo(function SmartFilters({
   availableTags = [],
   availableParties = [],
   availableTypes = [],
+  availableJurisdictions = COMMON_JURISDICTIONS.map(j => j.value),
+  availableLanguages = COMMON_LANGUAGES.map(l => l.value),
+  availableCurrencies = COMMON_CURRENCIES.map(c => c.value),
+  availableCategories = [],
   searchSuggestions = [],
   recentSearches = [],
   onSearchSubmit,
@@ -602,6 +715,7 @@ export const SmartFilters = memo(function SmartFilters({
   
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [savePresetOpen, setSavePresetOpen] = useState(false);
+  const [activeFilterSection, setActiveFilterSection] = useState<string | null>(null);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const activeFilterCount = useMemo(() => getActiveFilterCount(effectiveFilters), [effectiveFilters]);
@@ -671,6 +785,37 @@ export const SmartFilters = memo(function SmartFilters({
     }
     if (effectiveFilters.isPinned) {
       chips.push({ key: "isPinned", label: "Pinned only" });
+    }
+    // Enhanced metadata filter chips
+    if (effectiveFilters.jurisdiction?.length) {
+      const labels = effectiveFilters.jurisdiction.map(j => 
+        COMMON_JURISDICTIONS.find(jur => jur.value === j)?.label || j
+      );
+      chips.push({ key: "jurisdiction", label: `Jurisdiction: ${labels.slice(0, 2).join(", ")}${labels.length > 2 ? ` +${labels.length - 2}` : ''}` });
+    }
+    if (effectiveFilters.language?.length) {
+      const labels = effectiveFilters.language.map(l => 
+        COMMON_LANGUAGES.find(lang => lang.value === l)?.label || l
+      );
+      chips.push({ key: "language", label: `Language: ${labels.slice(0, 2).join(", ")}${labels.length > 2 ? ` +${labels.length - 2}` : ''}` });
+    }
+    if (effectiveFilters.paymentType?.length) {
+      chips.push({ key: "paymentType", label: `Payment: ${effectiveFilters.paymentType.length} types` });
+    }
+    if (effectiveFilters.billingFrequency?.length) {
+      chips.push({ key: "billingFrequency", label: `Billing: ${effectiveFilters.billingFrequency.join(", ")}` });
+    }
+    if (effectiveFilters.currency?.length) {
+      chips.push({ key: "currency", label: `Currency: ${effectiveFilters.currency.join(", ")}` });
+    }
+    if (effectiveFilters.signatureStatus && effectiveFilters.signatureStatus !== 'all') {
+      chips.push({ key: "signatureStatus", label: `Signature: ${effectiveFilters.signatureStatus}` });
+    }
+    if (effectiveFilters.category?.length) {
+      chips.push({ key: "category", label: `Category: ${effectiveFilters.category.length}` });
+    }
+    if (effectiveFilters.needsVerification) {
+      chips.push({ key: "needsVerification", label: "Needs verification" });
     }
 
     return chips;
@@ -834,204 +979,706 @@ export const SmartFilters = memo(function SmartFilters({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-gray-50 rounded-xl border p-4 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Status Filter */}
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <div className="space-y-2">
-                    {(["draft", "pending", "active", "expired", "renewal"] as ContractStatus[]).map(
-                      (status) => (
-                        <div key={status} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`status-${status}`}
-                            checked={effectiveFilters.status?.includes(status) ?? false}
-                            onCheckedChange={(checked) => {
-                              const current = effectiveFilters.status ?? [];
-                              updateFilter(
-                                "status",
-                                checked
-                                  ? [...current, status]
-                                  : current.filter((s) => s !== status)
+            <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+              {/* Filter Section Tabs */}
+              <div className="flex border-b border-slate-200 bg-white/80 backdrop-blur-sm overflow-x-auto">
+                {[
+                  { id: 'status', label: 'Status & Risk', icon: Shield },
+                  { id: 'dates', label: 'Dates & Deadlines', icon: CalendarClock },
+                  { id: 'financial', label: 'Financial', icon: Wallet },
+                  { id: 'metadata', label: 'Metadata', icon: Globe },
+                  { id: 'categories', label: 'Categories & Tags', icon: Tag },
+                ].map((section) => (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveFilterSection(activeFilterSection === section.id ? null : section.id)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
+                      activeFilterSection === section.id
+                        ? "border-blue-500 text-blue-700 bg-blue-50/50"
+                        : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                    )}
+                  >
+                    <section.icon className="w-4 h-4" />
+                    {section.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-4">
+                <AnimatePresence mode="wait">
+                  {/* Status & Risk Section */}
+                  {activeFilterSection === 'status' && (
+                    <motion.div
+                      key="status"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    >
+                      {/* Status Filter */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          Contract Status
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(["draft", "pending", "active", "processing", "completed", "expired", "renewal", "failed"] as ContractStatus[]).map(
+                            (status) => {
+                              const isChecked = effectiveFilters.status?.includes(status) ?? false;
+                              const statusColors: Record<string, string> = {
+                                draft: 'bg-slate-100 text-slate-700 border-slate-200',
+                                pending: 'bg-amber-100 text-amber-700 border-amber-200',
+                                active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                processing: 'bg-blue-100 text-blue-700 border-blue-200',
+                                completed: 'bg-green-100 text-green-700 border-green-200',
+                                expired: 'bg-red-100 text-red-700 border-red-200',
+                                renewal: 'bg-purple-100 text-purple-700 border-purple-200',
+                                failed: 'bg-rose-100 text-rose-700 border-rose-200',
+                              };
+                              return (
+                                <button
+                                  key={status}
+                                  onClick={() => {
+                                    const current = effectiveFilters.status ?? [];
+                                    updateFilter(
+                                      "status",
+                                      isChecked
+                                        ? current.filter((s) => s !== status)
+                                        : [...current, status]
+                                    );
+                                  }}
+                                  className={cn(
+                                    "flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+                                    isChecked
+                                      ? statusColors[status]
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                  )}
+                                >
+                                  {isChecked && <Check className="w-3.5 h-3.5" />}
+                                  <span className="capitalize">{status}</span>
+                                </button>
                               );
-                            }}
-                          />
-                          <Label
-                            htmlFor={`status-${status}`}
-                            className="text-sm font-normal capitalize cursor-pointer"
-                          >
-                            {status}
-                          </Label>
+                            }
+                          )}
                         </div>
-                      )
+                      </div>
+
+                      {/* Risk Level Filter */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600" />
+                          Risk Level
+                        </Label>
+                        <div className="space-y-2">
+                          {(["low", "medium", "high", "critical"] as RiskLevel[]).map((risk) => {
+                            const isChecked = effectiveFilters.riskLevel?.includes(risk) ?? false;
+                            const riskConfig: Record<RiskLevel, { color: string; bg: string }> = {
+                              low: { color: 'text-emerald-600', bg: 'bg-emerald-500' },
+                              medium: { color: 'text-amber-600', bg: 'bg-amber-500' },
+                              high: { color: 'text-orange-600', bg: 'bg-orange-500' },
+                              critical: { color: 'text-red-600', bg: 'bg-red-500' },
+                            };
+                            return (
+                              <button
+                                key={risk}
+                                onClick={() => {
+                                  const current = effectiveFilters.riskLevel ?? [];
+                                  updateFilter(
+                                    "riskLevel",
+                                    isChecked
+                                      ? current.filter((r) => r !== risk)
+                                      : [...current, risk]
+                                  );
+                                }}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all",
+                                  isChecked
+                                    ? "bg-slate-50 border-slate-300"
+                                    : "bg-white border-slate-200 hover:border-slate-300"
+                                )}
+                              >
+                                <div className={cn("w-3 h-3 rounded-full", riskConfig[risk].bg)} />
+                                <span className={cn("text-sm font-medium capitalize flex-1 text-left", isChecked ? riskConfig[risk].color : "text-slate-600")}>
+                                  {risk}
+                                </span>
+                                {isChecked && <Check className="w-4 h-4 text-blue-600" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Signature Status */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <FileSignature className="w-4 h-4 text-indigo-600" />
+                          Signature Status
+                        </Label>
+                        <Select
+                          value={effectiveFilters.signatureStatus ?? "all"}
+                          onValueChange={(v) =>
+                            updateFilter("signatureStatus", v === "all" ? undefined : v as any)
+                          }
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="All signatures" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="signed">✅ Fully Signed</SelectItem>
+                            <SelectItem value="pending">⏳ Pending Signatures</SelectItem>
+                            <SelectItem value="unsigned">❌ Unsigned</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {/* Needs Verification */}
+                        <div className="pt-2">
+                          <button
+                            onClick={() => updateFilter("needsVerification", effectiveFilters.needsVerification ? undefined : true)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all",
+                              effectiveFilters.needsVerification
+                                ? "bg-amber-50 border-amber-300 text-amber-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                            <span className="text-sm font-medium flex-1 text-left">Needs Verification</span>
+                            {effectiveFilters.needsVerification && <Check className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Dates & Deadlines Section */}
+                  {activeFilterSection === 'dates' && (
+                    <motion.div
+                      key="dates"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                    >
+                      {/* Date Range */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-blue-600" />
+                          Contract Date Range
+                        </Label>
+                        <DateRangePicker
+                          value={effectiveFilters.dateRange}
+                          onChange={(range) => updateFilter("dateRange", range)}
+                        />
+                      </div>
+
+                      {/* Expiring Within */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-amber-600" />
+                          Expiring Within
+                        </Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { value: 7, label: '7d' },
+                            { value: 14, label: '14d' },
+                            { value: 30, label: '30d' },
+                            { value: 60, label: '60d' },
+                            { value: 90, label: '90d' },
+                            { value: 180, label: '6mo' },
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => updateFilter(
+                                "expiringWithin",
+                                effectiveFilters.expiringWithin === option.value ? undefined : option.value
+                              )}
+                              className={cn(
+                                "px-3 py-2 rounded-lg border text-sm font-medium transition-all",
+                                effectiveFilters.expiringWithin === option.value
+                                  ? "bg-amber-100 border-amber-300 text-amber-700"
+                                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Reminder Settings */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-purple-600" />
+                          Reminders
+                        </Label>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => updateFilter("reminderEnabled", effectiveFilters.reminderEnabled === true ? undefined : true)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all",
+                              effectiveFilters.reminderEnabled === true
+                                ? "bg-purple-50 border-purple-300 text-purple-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <Check className={cn("w-4 h-4", effectiveFilters.reminderEnabled === true ? "opacity-100" : "opacity-0")} />
+                            <span className="text-sm font-medium">Reminders Enabled</span>
+                          </button>
+                          <button
+                            onClick={() => updateFilter("reminderEnabled", effectiveFilters.reminderEnabled === false ? undefined : false)}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all",
+                              effectiveFilters.reminderEnabled === false
+                                ? "bg-slate-100 border-slate-300 text-slate-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <X className={cn("w-4 h-4", effectiveFilters.reminderEnabled === false ? "opacity-100" : "opacity-0")} />
+                            <span className="text-sm font-medium">Reminders Disabled</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Financial Section */}
+                  {activeFilterSection === 'financial' && (
+                    <motion.div
+                      key="financial"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6"
+                    >
+                      {/* Value Range */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-green-600" />
+                          Contract Value Range
+                        </Label>
+                        <div className="bg-white p-4 rounded-lg border border-slate-200">
+                          <ValueRangeSlider
+                            value={effectiveFilters.valueRange}
+                            onChange={(range) => updateFilter("valueRange", range)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Payment Type */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <CreditCard className="w-4 h-4 text-indigo-600" />
+                            Payment Type
+                          </Label>
+                          <div className="space-y-2">
+                            {PAYMENT_TYPES.map((type) => {
+                              const isChecked = effectiveFilters.paymentType?.includes(type.value) ?? false;
+                              const TypeIcon = type.icon;
+                              return (
+                                <button
+                                  key={type.value}
+                                  onClick={() => {
+                                    const current = effectiveFilters.paymentType ?? [];
+                                    updateFilter(
+                                      "paymentType",
+                                      isChecked
+                                        ? current.filter((t) => t !== type.value)
+                                        : [...current, type.value]
+                                    );
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-all text-sm",
+                                    isChecked
+                                      ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                  )}
+                                >
+                                  <TypeIcon className="w-4 h-4" />
+                                  <span className="flex-1 text-left font-medium">{type.label}</span>
+                                  {isChecked && <Check className="w-4 h-4" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Billing Frequency */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Repeat className="w-4 h-4 text-cyan-600" />
+                            Billing Frequency
+                          </Label>
+                          <div className="space-y-2">
+                            {BILLING_FREQUENCIES.map((freq) => {
+                              const isChecked = effectiveFilters.billingFrequency?.includes(freq.value) ?? false;
+                              return (
+                                <button
+                                  key={freq.value}
+                                  onClick={() => {
+                                    const current = effectiveFilters.billingFrequency ?? [];
+                                    updateFilter(
+                                      "billingFrequency",
+                                      isChecked
+                                        ? current.filter((f) => f !== freq.value)
+                                        : [...current, freq.value]
+                                    );
+                                  }}
+                                  className={cn(
+                                    "w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-sm",
+                                    isChecked
+                                      ? freq.color + " border-current"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                  )}
+                                >
+                                  <span className="font-medium">{freq.label}</span>
+                                  {isChecked && <Check className="w-4 h-4" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Currency */}
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Banknote className="w-4 h-4 text-emerald-600" />
+                            Currency
+                          </Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {COMMON_CURRENCIES.map((curr) => {
+                              const isChecked = effectiveFilters.currency?.includes(curr.value) ?? false;
+                              return (
+                                <button
+                                  key={curr.value}
+                                  onClick={() => {
+                                    const current = effectiveFilters.currency ?? [];
+                                    updateFilter(
+                                      "currency",
+                                      isChecked
+                                        ? current.filter((c) => c !== curr.value)
+                                        : [...current, curr.value]
+                                    );
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                                    isChecked
+                                      ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                  )}
+                                >
+                                  <span className="font-mono text-lg">{curr.symbol}</span>
+                                  <span className="font-medium">{curr.value}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Periodicity */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <CalendarClock className="w-4 h-4 text-violet-600" />
+                          Payment Periodicity
+                        </Label>
+                        <div className="flex flex-wrap gap-2">
+                          {PERIODICITIES.map((period) => {
+                            const isChecked = effectiveFilters.periodicity?.includes(period.value) ?? false;
+                            return (
+                              <button
+                                key={period.value}
+                                onClick={() => {
+                                  const current = effectiveFilters.periodicity ?? [];
+                                  updateFilter(
+                                    "periodicity",
+                                    isChecked
+                                      ? current.filter((p) => p !== period.value)
+                                      : [...current, period.value]
+                                  );
+                                }}
+                                className={cn(
+                                  "px-3 py-1.5 rounded-full border text-sm font-medium transition-all",
+                                  isChecked
+                                    ? "bg-violet-100 border-violet-300 text-violet-700"
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                )}
+                              >
+                                {period.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Metadata Section */}
+                  {activeFilterSection === 'metadata' && (
+                    <motion.div
+                      key="metadata"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                    >
+                      {/* Jurisdiction */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-blue-600" />
+                          Jurisdiction
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-2">
+                          {COMMON_JURISDICTIONS.map((jur) => {
+                            const isChecked = effectiveFilters.jurisdiction?.includes(jur.value) ?? false;
+                            return (
+                              <button
+                                key={jur.value}
+                                onClick={() => {
+                                  const current = effectiveFilters.jurisdiction ?? [];
+                                  updateFilter(
+                                    "jurisdiction",
+                                    isChecked
+                                      ? current.filter((j) => j !== jur.value)
+                                      : [...current, jur.value]
+                                  );
+                                }}
+                                className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                                  isChecked
+                                    ? "bg-blue-50 border-blue-300 text-blue-700"
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                )}
+                              >
+                                <span className="text-lg">{jur.flag}</span>
+                                <span className="font-medium flex-1 text-left">{jur.label}</span>
+                                {isChecked && <Check className="w-4 h-4 flex-shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Language */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <Languages className="w-4 h-4 text-purple-600" />
+                          Contract Language
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-2">
+                          {COMMON_LANGUAGES.map((lang) => {
+                            const isChecked = effectiveFilters.language?.includes(lang.value) ?? false;
+                            return (
+                              <button
+                                key={lang.value}
+                                onClick={() => {
+                                  const current = effectiveFilters.language ?? [];
+                                  updateFilter(
+                                    "language",
+                                    isChecked
+                                      ? current.filter((l) => l !== lang.value)
+                                      : [...current, lang.value]
+                                  );
+                                }}
+                                className={cn(
+                                  "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                                  isChecked
+                                    ? "bg-purple-50 border-purple-300 text-purple-700"
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                )}
+                              >
+                                <span className="text-lg">{lang.flag}</span>
+                                <span className="font-medium flex-1 text-left">{lang.label}</span>
+                                {isChecked && <Check className="w-4 h-4 flex-shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Categories & Tags Section */}
+                  {activeFilterSection === 'categories' && (
+                    <motion.div
+                      key="categories"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6"
+                    >
+                      {/* Categories */}
+                      {availableCategories.length > 0 && (
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Tag className="w-4 h-4 text-indigo-600" />
+                            Categories
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {availableCategories.map((cat) => {
+                              const isChecked = effectiveFilters.category?.includes(cat.id) ?? false;
+                              return (
+                                <button
+                                  key={cat.id}
+                                  onClick={() => {
+                                    const current = effectiveFilters.category ?? [];
+                                    updateFilter(
+                                      "category",
+                                      isChecked
+                                        ? current.filter((c) => c !== cat.id)
+                                        : [...current, cat.id]
+                                    );
+                                  }}
+                                  className={cn(
+                                    "px-3 py-1.5 rounded-full border text-sm font-medium transition-all flex items-center gap-2",
+                                    isChecked
+                                      ? "bg-indigo-100 border-indigo-300 text-indigo-700"
+                                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                  )}
+                                  style={cat.color && isChecked ? { backgroundColor: `${cat.color}20`, borderColor: cat.color, color: cat.color } : {}}
+                                >
+                                  {cat.name}
+                                  {isChecked && <Check className="w-3.5 h-3.5" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tags */}
+                      {availableTags.length > 0 && (
+                        <div className="space-y-3">
+                          <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <Hash className="w-4 h-4 text-cyan-600" />
+                            Tags
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {availableTags.map((tag) => {
+                              const isChecked = effectiveFilters.tags?.includes(tag) ?? false;
+                              return (
+                                <Badge
+                                  key={tag}
+                                  variant={isChecked ? "default" : "outline"}
+                                  className={cn(
+                                    "cursor-pointer transition-all",
+                                    isChecked
+                                      ? "bg-cyan-100 text-cyan-700 border-cyan-300 hover:bg-cyan-200"
+                                      : "hover:bg-slate-100"
+                                  )}
+                                  onClick={() => {
+                                    const current = effectiveFilters.tags ?? [];
+                                    updateFilter(
+                                      "tags",
+                                      isChecked
+                                        ? current.filter((t) => t !== tag)
+                                        : [...current, tag]
+                                    );
+                                  }}
+                                >
+                                  #{tag}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Additional Filters */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700">Quick Toggles</Label>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <button
+                            onClick={() => updateFilter("isFavorite", effectiveFilters.isFavorite ? undefined : true)}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                              effectiveFilters.isFavorite
+                                ? "bg-yellow-50 border-yellow-300 text-yellow-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <Star className={cn("w-4 h-4", effectiveFilters.isFavorite && "fill-current")} />
+                            <span className="font-medium">Favorites</span>
+                          </button>
+                          <button
+                            onClick={() => updateFilter("isPinned", effectiveFilters.isPinned ? undefined : true)}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                              effectiveFilters.isPinned
+                                ? "bg-blue-50 border-blue-300 text-blue-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <BookmarkIcon className={cn("w-4 h-4", effectiveFilters.isPinned && "fill-current")} />
+                            <span className="font-medium">Pinned</span>
+                          </button>
+                          <button
+                            onClick={() => updateFilter("hasAttachments", effectiveFilters.hasAttachments ? undefined : true)}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                              effectiveFilters.hasAttachments
+                                ? "bg-slate-100 border-slate-400 text-slate-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span className="font-medium">Attachments</span>
+                          </button>
+                          <button
+                            onClick={() => updateFilter("isAnalyzed", effectiveFilters.isAnalyzed ? undefined : true)}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
+                              effectiveFilters.isAnalyzed
+                                ? "bg-purple-50 border-purple-300 text-purple-700"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                            )}
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            <span className="font-medium">AI Analyzed</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Default view when no section selected */}
+                  {!activeFilterSection && (
+                    <motion.div
+                      key="default"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-center py-8"
+                    >
+                      <SlidersHorizontal className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                      <p className="text-slate-500 font-medium">Select a filter category above</p>
+                      <p className="text-slate-400 text-sm mt-1">Click on any tab to explore filtering options</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Actions */}
+                <Separator className="my-4" />
+                <div className="flex items-center justify-between">
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-slate-600 hover:text-slate-900">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reset All Filters
+                  </Button>
+                  <div className="flex gap-2">
+                    {activeFilterCount > 0 && (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                        {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
+                      </Badge>
+                    )}
+                    {onSavePreset && (
+                      <Button variant="outline" size="sm" onClick={() => setSavePresetOpen(true)}>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save as Preset
+                      </Button>
                     )}
                   </div>
                 </div>
-
-                {/* Risk Level Filter */}
-                <div className="space-y-2">
-                  <Label>Risk Level</Label>
-                  <div className="space-y-2">
-                    {(["low", "medium", "high", "critical"] as RiskLevel[]).map((risk) => (
-                      <div key={risk} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`risk-${risk}`}
-                          checked={effectiveFilters.riskLevel?.includes(risk) ?? false}
-                          onCheckedChange={(checked) => {
-                            const current = effectiveFilters.riskLevel ?? [];
-                            updateFilter(
-                              "riskLevel",
-                              checked
-                                ? [...current, risk]
-                                : current.filter((r) => r !== risk)
-                            );
-                          }}
-                        />
-                        <Label
-                          htmlFor={`risk-${risk}`}
-                          className="text-sm font-normal capitalize cursor-pointer"
-                        >
-                          {risk}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Date Range */}
-                <div className="space-y-2">
-                  <Label>Date Range</Label>
-                  <DateRangePicker
-                    value={effectiveFilters.dateRange}
-                    onChange={(range) => updateFilter("dateRange", range)}
-                  />
-                </div>
-
-                {/* Expiring Within */}
-                <div className="space-y-2">
-                  <Label>Expiring Within</Label>
-                  <Select
-                    value={effectiveFilters.expiringWithin?.toString() ?? ""}
-                    onValueChange={(v) =>
-                      updateFilter("expiringWithin", v ? parseInt(v) : undefined)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select timeframe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">Any time</SelectItem>
-                      <SelectItem value="7">7 days</SelectItem>
-                      <SelectItem value="14">14 days</SelectItem>
-                      <SelectItem value="30">30 days</SelectItem>
-                      <SelectItem value="60">60 days</SelectItem>
-                      <SelectItem value="90">90 days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Value Range */}
-              <div className="space-y-2">
-                <Label>Contract Value Range</Label>
-                <ValueRangeSlider
-                  value={effectiveFilters.valueRange}
-                  onChange={(range) => updateFilter("valueRange", range)}
-                />
-              </div>
-
-              {/* Tags */}
-              {availableTags.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Tags</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {availableTags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant={effectiveFilters.tags?.includes(tag) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          const current = effectiveFilters.tags ?? [];
-                          updateFilter(
-                            "tags",
-                            current.includes(tag)
-                              ? current.filter((t) => t !== tag)
-                              : [...current, tag]
-                          );
-                        }}
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Additional Filters */}
-              <div className="flex flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="favorites-only"
-                    checked={effectiveFilters.isFavorite ?? false}
-                    onCheckedChange={(checked) =>
-                      updateFilter("isFavorite", checked ? true : undefined)
-                    }
-                  />
-                  <Label htmlFor="favorites-only" className="text-sm cursor-pointer">
-                    Favorites only
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="pinned-only"
-                    checked={effectiveFilters.isPinned ?? false}
-                    onCheckedChange={(checked) =>
-                      updateFilter("isPinned", checked ? true : undefined)
-                    }
-                  />
-                  <Label htmlFor="pinned-only" className="text-sm cursor-pointer">
-                    Pinned only
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="has-attachments"
-                    checked={effectiveFilters.hasAttachments ?? false}
-                    onCheckedChange={(checked) =>
-                      updateFilter("hasAttachments", checked ? true : undefined)
-                    }
-                  />
-                  <Label htmlFor="has-attachments" className="text-sm cursor-pointer">
-                    Has attachments
-                  </Label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="is-analyzed"
-                    checked={effectiveFilters.isAnalyzed ?? false}
-                    onCheckedChange={(checked) =>
-                      updateFilter("isAnalyzed", checked ? true : undefined)
-                    }
-                  />
-                  <Label htmlFor="is-analyzed" className="text-sm cursor-pointer">
-                    AI analyzed
-                  </Label>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <Separator />
-              <div className="flex items-center justify-between">
-                <Button variant="ghost" size="sm" onClick={clearAllFilters}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Reset Filters
-                </Button>
-                {onSavePreset && (
-                  <Button variant="outline" size="sm" onClick={() => setSavePresetOpen(true)}>
-                    <Save className="w-4 h-4 mr-2" />
-                    Save as Preset
-                  </Button>
-                )}
               </div>
             </div>
           </motion.div>

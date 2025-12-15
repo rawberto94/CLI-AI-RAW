@@ -75,6 +75,7 @@ export async function processMetadataExtractionJob(
 
     // Dynamic imports to avoid circular dependencies
     const { SchemaAwareMetadataExtractor } = await import("@/lib/ai/metadata-extractor");
+    const { MetadataSchemaService } = await import("@/lib/services/metadata-schema.service");
     const { getExtractionAnalytics } = await import("@/lib/ai/extraction-analytics");
     const { getCalibrationService } = await import("@/lib/ai/confidence-calibration");
     const { prisma } = await import("@/lib/prisma");
@@ -93,7 +94,7 @@ export async function processMetadataExtractionJob(
         id: true,
         rawText: true,
         status: true,
-        contractMetadata: true,
+        contractMetadata: { select: { customFields: true } },
       },
     });
 
@@ -118,15 +119,12 @@ export async function processMetadataExtractionJob(
 
     await job.updateProgress(20);
 
-    // Check if metadata already exists and we're not forcing re-extraction
-    const existingMetadata = contract.contractMetadata;
-    if (existingMetadata && !forceReExtract) {
-      // Check if metadata has values
-      const hasValues = Object.values(existingMetadata as object).some(
-        (v) => v !== null && v !== undefined && v !== ""
-      );
-      if (hasValues) {
-        console.log(`📋 Contract ${contractId} already has metadata, skipping`);
+    // Check if extraction results already exist and we're not forcing re-extraction
+    const existingCustomFields = (contract.contractMetadata as any)?.customFields as any;
+    if (existingCustomFields && !forceReExtract) {
+      const hasPriorExtraction = typeof existingCustomFields === 'object' && !!existingCustomFields?._aiExtraction;
+      if (hasPriorExtraction) {
+        console.log(`📋 Contract ${contractId} already has extraction results, skipping`);
         return {
           success: true,
           contractId,
@@ -142,9 +140,17 @@ export async function processMetadataExtractionJob(
 
     await job.updateProgress(30);
 
-    // Create extractor and extract metadata
-    const extractor = new SchemaAwareMetadataExtractor(tenantId);
-    const extractionResult = await extractor.extractMetadata(contractId, forceReExtract);
+    // Load schema and extract metadata
+    const schemaService = MetadataSchemaService.getInstance();
+    const schema = await schemaService.getSchema(tenantId);
+
+    const extractor = new SchemaAwareMetadataExtractor();
+    const extractionResult = await extractor.extractMetadata(contract.rawText, schema, {
+      enableMultiPass: true,
+      maxPasses: 2,
+      confidenceThreshold: 0.7,
+      includeAlternatives: true,
+    });
 
     await job.updateProgress(70);
 
@@ -157,35 +163,42 @@ export async function processMetadataExtractionJob(
 
     const metadataToApply: Record<string, any> = {};
 
-    for (const field of extractionResult.fields) {
-      if (field.value === null) {
+    const existingCustom = (existingCustomFields && typeof existingCustomFields === 'object')
+      ? existingCustomFields
+      : {};
+
+    for (const result of extractionResult.results) {
+      if (result.value === null || result.value === undefined) {
         fieldsFailed++;
         continue;
       }
 
       // Calibrate confidence
-      let confidence = field.confidence ?? 0;
+      let confidence = result.confidence ?? 0;
       if (confidence > 0) {
         confidence = calibrationService.getAdjustedConfidence(
-          field.fieldType,
+          result.fieldType,
           confidence
         );
         totalConfidence += confidence;
         confidenceCount++;
       }
 
+      const perFieldThreshold = (schema.fields.find((f: any) => f.id === result.fieldId)?.aiConfidenceThreshold) ?? 0;
+      const threshold = Math.max(autoApplyThreshold, perFieldThreshold);
+
       // Decide whether to auto-apply
-      if (autoApply && confidence >= autoApplyThreshold) {
-        metadataToApply[field.fieldKey] = field.value;
+      if (autoApply && confidence >= threshold) {
+        metadataToApply[result.fieldName] = result.value;
         fieldsAutoApplied++;
 
         // Record in analytics
         await analytics.recordFieldAutoApplied(
           contractId,
           tenantId,
-          field.fieldKey,
-          field.fieldType,
-          field.value,
+          result.fieldName,
+          result.fieldType,
+          result.value,
           confidence
         );
       } else if (confidence >= 0.4) {
@@ -198,20 +211,97 @@ export async function processMetadataExtractionJob(
 
     await job.updateProgress(85);
 
-    // Apply auto-approved metadata to contract
-    if (Object.keys(metadataToApply).length > 0) {
-      await prisma.contract.update({
-        where: { id: contractId },
-        data: {
-          contractMetadata: {
-            ...((existingMetadata as object) || {}),
-            ...metadataToApply,
-            _extractedAt: new Date().toISOString(),
-            _extractionSource: source,
-          },
+    const extractionData = {
+      lastExtraction: {
+        extractedAt: extractionResult.extractedAt,
+        schemaId: extractionResult.schemaId,
+        schemaVersion: extractionResult.schemaVersion,
+        summary: extractionResult.summary,
+        warnings: extractionResult.warnings,
+        source,
+      },
+      extractedFields: extractionResult.rawExtractions,
+      fieldDetails: extractionResult.results.reduce((acc: any, r: any) => ({
+        ...acc,
+        [r.fieldName]: {
+          value: r.value,
+          confidence: r.confidence,
+          validationStatus: r.validationStatus,
+          requiresReview: r.requiresHumanReview,
+          source: r.source?.text?.slice(0, 200),
+        }
+      }), {}),
+    };
+
+    const appliedAt = new Date();
+    const mergedCustomFields = {
+      ...existingCustom,
+      ...(Object.keys(metadataToApply).length > 0 ? metadataToApply : {}),
+      _aiExtraction: extractionData,
+      _metadata: {
+        ...(existingCustom?._metadata || {}),
+        appliedAt: appliedAt.toISOString(),
+        appliedBy: 'metadata-extraction-worker',
+        fieldCount: Object.keys(metadataToApply).length,
+        validated: false,
+      },
+    };
+
+    const contractUpdates: Record<string, any> = {};
+    if (typeof metadataToApply.contract_title === 'string') contractUpdates.contractTitle = metadataToApply.contract_title;
+    if (typeof metadataToApply.client_name === 'string') contractUpdates.clientName = metadataToApply.client_name;
+    if (typeof metadataToApply.supplier_name === 'string') contractUpdates.supplierName = metadataToApply.supplier_name;
+    if (typeof metadataToApply.contract_type === 'string') contractUpdates.contractType = metadataToApply.contract_type;
+    if (metadataToApply.total_value !== undefined && metadataToApply.total_value !== null && !Number.isNaN(Number(metadataToApply.total_value))) {
+      contractUpdates.totalValue = Number(metadataToApply.total_value);
+    }
+    if (typeof metadataToApply.currency === 'string') contractUpdates.currency = metadataToApply.currency;
+    if (typeof metadataToApply.payment_terms === 'string') contractUpdates.paymentTerms = metadataToApply.payment_terms;
+    if (typeof metadataToApply.jurisdiction === 'string') contractUpdates.jurisdiction = metadataToApply.jurisdiction;
+    if (typeof metadataToApply.effective_date === 'string' || metadataToApply.effective_date instanceof Date) {
+      const d = new Date(metadataToApply.effective_date);
+      if (!Number.isNaN(d.getTime())) contractUpdates.effectiveDate = d;
+    }
+    if (typeof metadataToApply.expiration_date === 'string' || metadataToApply.expiration_date instanceof Date) {
+      const d = new Date(metadataToApply.expiration_date);
+      if (!Number.isNaN(d.getTime())) contractUpdates.expirationDate = d;
+    }
+    if (typeof metadataToApply.notice_period === 'number' && Number.isFinite(metadataToApply.notice_period)) {
+      contractUpdates.noticePeriodDays = Math.max(0, Math.round(metadataToApply.notice_period));
+    }
+    if (typeof metadataToApply.auto_renewal === 'boolean') {
+      contractUpdates.autoRenewalEnabled = metadataToApply.auto_renewal;
+    }
+
+    await prisma.$transaction(async (tx: any) => {
+      await tx.contractMetadata.upsert({
+        where: { contractId },
+        update: {
+          customFields: mergedCustomFields,
+          lastUpdated: appliedAt,
+          updatedBy: 'metadata-extraction-worker',
+        },
+        create: {
+          contractId,
+          tenantId,
+          customFields: mergedCustomFields,
+          systemFields: {},
+          tags: [],
+          lastUpdated: appliedAt,
+          updatedBy: 'metadata-extraction-worker',
         },
       });
-      console.log(`✅ Applied ${fieldsAutoApplied} fields to contract ${contractId}`);
+
+      if (Object.keys(contractUpdates).length > 0) {
+        await tx.contract.update({
+          where: { id: contractId },
+          data: contractUpdates,
+        });
+      }
+    });
+
+    if (Object.keys(metadataToApply).length > 0) {
+      console.log(`✅ Auto-applied ${fieldsAutoApplied} fields to contract ${contractId}`);
     }
 
     await job.updateProgress(95);
@@ -223,7 +313,7 @@ export async function processMetadataExtractionJob(
     await analytics.recordExtractionComplete(
       contractId,
       tenantId,
-      extractionResult.fields,
+      extractionResult.results,
       processingTimeMs,
       "gpt-4o-mini"
     );
@@ -239,7 +329,7 @@ export async function processMetadataExtractionJob(
     return {
       success: true,
       contractId,
-      fieldsExtracted: extractionResult.fields.length,
+      fieldsExtracted: extractionResult.results.length,
       fieldsAutoApplied,
       fieldsNeedingReview,
       fieldsFailed,

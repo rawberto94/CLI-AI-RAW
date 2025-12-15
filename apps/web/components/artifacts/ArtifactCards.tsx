@@ -1192,13 +1192,29 @@ interface FinancialArtifactProps extends ArtifactBaseProps {
     totalValue?: number | { value: number; source?: string; extractedFromText?: boolean };
     currency?: string | { value: string; source?: string; extractedFromText?: boolean };
     paymentTerms?: string | Array<string | { value: string; source?: string; extractedFromText?: boolean }>;
+    paymentSchedule?: Array<{
+      milestone?: string;
+      description?: string;
+      amount?: number;
+      dueDate?: string;
+      year?: number;
+    }>;
+    yearlyBreakdown?: Array<{
+      year: number;
+      label: string;
+      payments: Array<{ description: string; amount: number; dueDate?: string }>;
+      subtotal: number;
+    }>;
     rates?: RateCard[];
     costBreakdown?: CostBreakdownItem[];
     financialTables?: FinancialTable[];
     offers?: Offer[];
     discounts?: Discount[];
     penalties?: Penalty[];
+    paymentMethod?: string;
+    invoicingRequirements?: string;
     summary?: string;
+    analysis?: string;
   }
 }
 
@@ -1265,6 +1281,110 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
             <p className="text-sm text-slate-600">{data.paymentTerms}</p>
           )}
         </div>
+      )}
+
+      {/* Yearly Payment Breakdown */}
+      {data.yearlyBreakdown && data.yearlyBreakdown.length > 0 && (
+        <ExpandableSection 
+          title="Payment Schedule by Year" 
+          icon={Calendar}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-purple-100 text-purple-700">{data.yearlyBreakdown.length} years</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-4">
+            {data.yearlyBreakdown.map((yearData, yearIdx) => (
+              <div key={yearIdx} className="border border-purple-200 rounded-lg overflow-hidden bg-gradient-to-br from-purple-50/50 to-white">
+                <div className="bg-gradient-to-r from-purple-100 to-purple-50 px-4 py-3 border-b border-purple-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">
+                      {yearData.year}
+                    </div>
+                    <h5 className="font-semibold text-purple-900">{yearData.label}</h5>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-purple-600">Year Total</span>
+                    <p className="font-bold text-purple-900 text-lg">
+                      {formatCurrency(yearData.subtotal, currency)}
+                    </p>
+                  </div>
+                </div>
+                
+                {yearData.payments && yearData.payments.length > 0 && (
+                  <div className="p-4">
+                    <div className="space-y-2">
+                      {yearData.payments.map((payment, paymentIdx) => (
+                        <div 
+                          key={paymentIdx} 
+                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-100 hover:border-purple-300 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-medium">
+                              {paymentIdx + 1}
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">{payment.description}</p>
+                              {payment.dueDate && (
+                                <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                  <Calendar className="w-3 h-3" />
+                                  Due: {payment.dueDate}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-semibold text-slate-900">
+                            {formatCurrency(payment.amount, currency)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            {/* Grand Total */}
+            {data.yearlyBreakdown.length > 1 && (
+              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
+                <span className="font-semibold text-emerald-800">Total Contract Value</span>
+                <span className="text-xl font-bold text-emerald-700">
+                  {formatCurrency(
+                    data.yearlyBreakdown.reduce((sum, y) => sum + (y.subtotal || 0), 0),
+                    currency
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        </ExpandableSection>
+      )}
+
+      {/* Payment Schedule (legacy flat format) */}
+      {data.paymentSchedule && data.paymentSchedule.length > 0 && !data.yearlyBreakdown && (
+        <ExpandableSection 
+          title="Payment Schedule" 
+          icon={Calendar}
+          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.paymentSchedule.length} milestones</Badge>}
+          defaultOpen
+        >
+          <div className="space-y-2">
+            {data.paymentSchedule.map((payment, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
+                <div>
+                  <p className="font-medium text-slate-900">{payment.milestone || payment.description}</p>
+                  {payment.dueDate && (
+                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      Due: {payment.dueDate}
+                    </p>
+                  )}
+                </div>
+                <span className="font-semibold text-slate-900">
+                  {payment.amount ? formatCurrency(payment.amount, currency) : '-'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </ExpandableSection>
       )}
 
       {/* Cost Breakdown */}

@@ -9,7 +9,10 @@ exports.resetQueueService = resetQueueService;
 const bullmq_1 = require("bullmq");
 const ioredis_1 = __importDefault(require("ioredis"));
 const pino_1 = __importDefault(require("pino"));
-const logger = (0, pino_1.default)({ name: 'queue-service' });
+const logger = (0, pino_1.default)({
+    name: 'queue-service',
+    ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 /**
  * Queue Service for managing background jobs with BullMQ
  * Provides unified interface for job queuing, processing, and monitoring
@@ -191,6 +194,64 @@ class QueueService {
             await job.remove();
             logger.info({ queueName, jobId }, 'Job removed');
         }
+    }
+    /**
+     * Add a job that depends on another job completing successfully
+     * Uses BullMQ's native job dependencies feature
+     */
+    async addDependentJob(queueName, jobName, data, parentJob, options) {
+        try {
+            const queue = this.getQueue(queueName);
+            const job = await queue.add(jobName, data, {
+                priority: options?.priority,
+                attempts: options?.attempts,
+                jobId: options?.jobId,
+                parent: {
+                    queue: parentJob.queue,
+                    id: parentJob.id,
+                },
+            });
+            logger.info({
+                queueName,
+                jobName,
+                jobId: job.id,
+                parentQueue: parentJob.queue,
+                parentJobId: parentJob.id,
+            }, 'Dependent job added to queue');
+            return job;
+        }
+        catch (error) {
+            logger.error({ error, queueName, jobName }, 'Failed to add dependent job to queue');
+            return null;
+        }
+    }
+    /**
+     * Add multiple jobs that will execute after a parent job completes
+     * This is a simpler approach using event-based triggering
+     */
+    async addChildJobs(parentQueue, parentJobId, children) {
+        // Get parent job
+        const parentJob = await this.getJob(parentQueue, parentJobId);
+        if (!parentJob) {
+            logger.warn({ parentQueue, parentJobId }, 'Parent job not found for child jobs');
+            return;
+        }
+        // Listen for parent completion and add children
+        const queueEvents = this.getQueueEvents(parentQueue);
+        const completedHandler = async (args) => {
+            if (args.jobId === parentJobId) {
+                logger.info({ parentJobId, childCount: children.length }, 'Parent job completed, adding child jobs');
+                for (const child of children) {
+                    await this.addJob(child.queue, child.name, child.data, {
+                        priority: child.options?.priority,
+                        delay: child.options?.delay || 0,
+                    });
+                }
+                // Remove listener after use
+                queueEvents.off('completed', completedHandler);
+            }
+        };
+        queueEvents.on('completed', completedHandler);
     }
     /**
      * Pause a queue

@@ -30,12 +30,20 @@ import {
   Filter,
   Sparkles,
   Brain,
+  Target,
+  Activity,
+  BarChart3,
+  PieChart,
+  Percent,
+  Zap,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -62,9 +70,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 // Types
 interface Contract {
@@ -93,6 +103,9 @@ interface GroupComparisonResult {
     totalValue: number;
     avgValue: number;
     count: number;
+    activeCount?: number;
+    avgDuration?: number;
+    autoRenewalCount?: number;
   };
   group2: {
     name: string;
@@ -100,6 +113,9 @@ interface GroupComparisonResult {
     totalValue: number;
     avgValue: number;
     count: number;
+    activeCount?: number;
+    avgDuration?: number;
+    autoRenewalCount?: number;
   };
   differences: Array<{
     field: string;
@@ -111,6 +127,141 @@ interface GroupComparisonResult {
   }>;
   keyInsights: string[];
   recommendation: string;
+  metrics?: {
+    valueDifference: number;
+    valueDifferencePercent: number;
+    avgValueDifference: number;
+    avgValueDifferencePercent: number;
+    countDifference: number;
+    riskScore1: number;
+    riskScore2: number;
+    supplierConcentration1: number;
+    supplierConcentration2: number;
+    expiringCount1: number;
+    expiringCount2: number;
+    avgDuration1: number;
+    avgDuration2: number;
+  };
+}
+
+// Visual comparison bar component
+function ComparisonBar({ 
+  value1, 
+  value2, 
+  label,
+  format = 'number',
+  lowerIsBetter = false,
+}: { 
+  value1: number; 
+  value2: number; 
+  label: string;
+  format?: 'number' | 'currency' | 'percent';
+  lowerIsBetter?: boolean;
+}) {
+  const max = Math.max(value1, value2, 1);
+  const pct1 = (value1 / max) * 100;
+  const pct2 = (value2 / max) * 100;
+  
+  const winner = lowerIsBetter 
+    ? (value1 < value2 ? 'group1' : value2 < value1 ? 'group2' : 'tie')
+    : (value1 > value2 ? 'group1' : value2 > value1 ? 'group2' : 'tie');
+  
+  const formatValue = (val: number) => {
+    if (format === 'currency') {
+      if (val >= 1000000) return `$${(val / 1000000).toFixed(1)}M`;
+      if (val >= 1000) return `$${(val / 1000).toFixed(0)}K`;
+      return `$${val.toFixed(0)}`;
+    }
+    if (format === 'percent') return `${val}%`;
+    return val.toLocaleString();
+  };
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-gray-600">{label}</span>
+        <span className="text-gray-400 text-xs">
+          {winner === 'tie' ? 'Equal' : winner === 'group1' ? '← Better' : 'Better →'}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-20 text-right">
+          <span className={cn(
+            "text-sm font-semibold",
+            winner === 'group1' ? "text-blue-600" : "text-gray-600"
+          )}>
+            {formatValue(value1)}
+          </span>
+        </div>
+        <div className="flex-1 flex gap-1 h-6">
+          <div className="flex-1 flex justify-end">
+            <div 
+              className={cn(
+                "h-full rounded-l-md transition-all",
+                winner === 'group1' ? "bg-blue-500" : "bg-blue-300"
+              )}
+              style={{ width: `${pct1}%` }}
+            />
+          </div>
+          <div className="w-px bg-gray-300" />
+          <div className="flex-1">
+            <div 
+              className={cn(
+                "h-full rounded-r-md transition-all",
+                winner === 'group2' ? "bg-purple-500" : "bg-purple-300"
+              )}
+              style={{ width: `${pct2}%` }}
+            />
+          </div>
+        </div>
+        <div className="w-20">
+          <span className={cn(
+            "text-sm font-semibold",
+            winner === 'group2' ? "text-purple-600" : "text-gray-600"
+          )}>
+            {formatValue(value2)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Risk gauge component
+function RiskGauge({ score, label, color }: { score: number; label: string; color: 'blue' | 'purple' }) {
+  const getColor = (s: number) => {
+    if (s <= 30) return 'text-green-600';
+    if (s <= 60) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+  
+  const getBgColor = (s: number) => {
+    if (s <= 30) return 'bg-green-500';
+    if (s <= 60) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+  
+  return (
+    <div className={cn(
+      "p-4 rounded-xl border",
+      color === 'blue' ? "bg-blue-50 border-blue-200" : "bg-purple-50 border-purple-200"
+    )}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-gray-600">{label}</span>
+        <span className={cn("text-lg font-bold", getColor(score))}>{score}</span>
+      </div>
+      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+        <div 
+          className={cn("h-full rounded-full transition-all", getBgColor(score))}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-1 text-[10px] text-gray-400">
+        <span>Low</span>
+        <span>High</span>
+      </div>
+    </div>
+  );
 }
 
 // Utility functions
@@ -547,6 +698,23 @@ export default function ContractComparisonPage() {
       keyInsights.push(`⚠️ ${stats2.name}: ${expiring2.length} contract(s) expiring within 90 days`);
     }
 
+    // Calculate local metrics for immediate display
+    const localMetrics = {
+      valueDifference: valueDiff,
+      valueDifferencePercent: valuePct,
+      avgValueDifference: avgDiff,
+      avgValueDifferencePercent: avgPct,
+      countDifference: stats1.count - stats2.count,
+      riskScore1: 0,
+      riskScore2: 0,
+      supplierConcentration1: 0,
+      supplierConcentration2: 0,
+      expiringCount1: expiring1.length,
+      expiringCount2: expiring2.length,
+      avgDuration1: Math.round(stats1.avgDuration),
+      avgDuration2: Math.round(stats2.avgDuration),
+    };
+
     setComparison({
       group1: stats1,
       group2: stats2,
@@ -555,6 +723,7 @@ export default function ContractComparisonPage() {
       recommendation: keyInsights.length > 0
         ? "Review highlighted insights for potential optimization opportunities"
         : "Both contract groups have similar characteristics",
+      metrics: localMetrics,
     });
 
     // Trigger AI analysis
@@ -574,6 +743,8 @@ export default function ContractComparisonPage() {
               expirationDate: c.expirationDate,
               category: c.categoryL1,
               paymentTerms: c.paymentTerms,
+              autoRenewal: c.autoRenewalEnabled,
+              noticePeriodDays: c.noticePeriodDays,
             })),
             totalValue: stats1.totalValue,
             avgValue: stats1.avgValue,
@@ -588,6 +759,8 @@ export default function ContractComparisonPage() {
               expirationDate: c.expirationDate,
               category: c.categoryL1,
               paymentTerms: c.paymentTerms,
+              autoRenewal: c.autoRenewalEnabled,
+              noticePeriodDays: c.noticePeriodDays,
             })),
             totalValue: stats2.totalValue,
             avgValue: stats2.avgValue,
@@ -598,6 +771,14 @@ export default function ContractComparisonPage() {
       if (aiResponse.ok) {
         const aiData = await aiResponse.json();
         setAiAnalysis(aiData.analysis || aiData.data?.analysis);
+        
+        // Update comparison with metrics from API if available
+        if (aiData.data?.metrics) {
+          setComparison(prev => prev ? {
+            ...prev,
+            metrics: aiData.data.metrics,
+          } : null);
+        }
       } else {
         // Generate fallback analysis
         setAiAnalysis(generateFallbackAnalysis(stats1, stats2, keyInsights));
@@ -822,6 +1003,70 @@ export default function ContractComparisonPage() {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-6"
           >
+            {/* Quick Stats Header */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-blue-100 rounded-lg">
+                      <DollarSign className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-blue-600 font-medium">{comparison.group1.name}</p>
+                      <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-100 rounded-lg">
+                      <DollarSign className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-purple-600 font-medium">{comparison.group2.name}</p>
+                      <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-100 rounded-lg">
+                      <FileText className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-emerald-600 font-medium">Total Contracts</p>
+                      <p className="text-xl font-bold text-gray-900">{comparison.group1.count + comparison.group2.count}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-100 rounded-lg">
+                      <Percent className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-amber-600 font-medium">Value Difference</p>
+                      <p className="text-xl font-bold text-gray-900">
+                        {comparison.metrics?.valueDifferencePercent 
+                          ? `${comparison.metrics.valueDifferencePercent > 0 ? '+' : ''}${comparison.metrics.valueDifferencePercent}%`
+                          : '0%'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
             {/* Key Insights */}
             {comparison.keyInsights.length > 0 && (
               <Card className="border-amber-200 bg-amber-50">
@@ -843,10 +1088,12 @@ export default function ContractComparisonPage() {
 
             {/* AI Analysis Section */}
             {(aiAnalysis || isAiAnalyzing) && (
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50">
-                <CardHeader>
+              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50 overflow-hidden">
+                <CardHeader className="border-b border-purple-100">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
                     AI-Powered Analysis
                     {isAiAnalyzing && (
                       <Loader2 className="w-4 h-4 animate-spin text-purple-600 ml-2" />
@@ -856,7 +1103,7 @@ export default function ContractComparisonPage() {
                     Intelligent comparison insights powered by AI
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-5">
                   {isAiAnalyzing ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
@@ -865,78 +1112,298 @@ export default function ContractComparisonPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="prose prose-sm max-w-none">
-                      {aiAnalysis?.split('\n').map((line, i) => {
-                        if (line.startsWith('## ')) {
-                          return <h2 key={i} className="text-lg font-bold text-gray-900 mt-4 mb-2">{line.replace('## ', '')}</h2>;
-                        } else if (line.startsWith('### ')) {
-                          return <h3 key={i} className="text-base font-semibold text-gray-800 mt-3 mb-1">{line.replace('### ', '')}</h3>;
-                        } else if (line.startsWith('- ')) {
-                          return <li key={i} className="text-gray-700 ml-4">{line.replace('- ', '')}</li>;
-                        } else if (line.match(/^\d+\. /)) {
-                          return <li key={i} className="text-gray-700 ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
-                        } else if (line.trim()) {
-                          return <p key={i} className="text-gray-700 mb-2">{line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</p>;
-                        }
-                        return null;
-                      })}
-                    </div>
+                    <div 
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{
+                        __html: aiAnalysis
+                          ?.replace(/## (.*)/g, '<h2 class="text-lg font-bold text-gray-900 mt-4 mb-2 flex items-center gap-2">$1</h2>')
+                          .replace(/### (.*)/g, '<h3 class="text-base font-semibold text-gray-800 mt-3 mb-1">$1</h3>')
+                          .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
+                          .replace(/\n/g, '<br />')
+                          .replace(/\|(.*?)\|/g, '<span class="font-mono text-sm bg-gray-100 px-1 rounded">$1</span>')
+                          || ''
+                      }}
+                    />
                   )}
                 </CardContent>
               </Card>
             )}
+            
+            {/* Visual Comparison Section */}
+            {comparison.metrics && (
+              <Tabs defaultValue="overview" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="overview" className="gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="financial" className="gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Financial
+                  </TabsTrigger>
+                  <TabsTrigger value="risk" className="gap-2">
+                    <Shield className="w-4 h-4" />
+                    Risk
+                  </TabsTrigger>
+                  <TabsTrigger value="contracts" className="gap-2">
+                    <FileText className="w-4 h-4" />
+                    Contracts
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="overview">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Activity className="w-5 h-5 text-blue-500" />
+                        Side-by-Side Comparison
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex items-center justify-center gap-8 pb-4 border-b">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-blue-500" />
+                          <span className="text-sm font-medium">{comparison.group1.name}</span>
+                        </div>
+                        <span className="text-gray-400">vs</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-purple-500" />
+                          <span className="text-sm font-medium">{comparison.group2.name}</span>
+                        </div>
+                      </div>
+                      
+                      <ComparisonBar 
+                        value1={comparison.group1.totalValue} 
+                        value2={comparison.group2.totalValue}
+                        label="Total Value"
+                        format="currency"
+                      />
+                      <ComparisonBar 
+                        value1={comparison.group1.avgValue} 
+                        value2={comparison.group2.avgValue}
+                        label="Average Contract Value"
+                        format="currency"
+                      />
+                      <ComparisonBar 
+                        value1={comparison.group1.count} 
+                        value2={comparison.group2.count}
+                        label="Number of Contracts"
+                      />
+                      <ComparisonBar 
+                        value1={comparison.metrics.avgDuration1} 
+                        value2={comparison.metrics.avgDuration2}
+                        label="Avg Duration (months)"
+                      />
+                      <ComparisonBar 
+                        value1={comparison.metrics.riskScore1} 
+                        value2={comparison.metrics.riskScore2}
+                        label="Risk Score"
+                        lowerIsBetter
+                      />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="financial">
+                  <div className="grid grid-cols-2 gap-4">
+                    <Card className="border-blue-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base text-blue-800 flex items-center gap-2">
+                          <Building2 className="w-4 h-4" />
+                          {comparison.group1.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-blue-50 rounded-lg">
+                            <p className="text-xs text-blue-600 mb-1">Total Value</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue)}</p>
+                          </div>
+                          <div className="p-3 bg-blue-50 rounded-lg">
+                            <p className="text-xs text-blue-600 mb-1">Avg Contract</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.avgValue)}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Contracts:</span>
+                            <span className="font-medium">{comparison.group1.count}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Avg Duration:</span>
+                            <span className="font-medium">{comparison.metrics.avgDuration1} months</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-            {/* Group Summary Cards */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="border-blue-200">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-blue-800 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    {comparison.group1.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Contracts:</span>
-                    <span className="font-medium">{comparison.group1.count}</span>
+                    <Card className="border-purple-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base text-purple-800 flex items-center gap-2">
+                          <Building2 className="w-4 h-4" />
+                          {comparison.group2.name}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-purple-50 rounded-lg">
+                            <p className="text-xs text-purple-600 mb-1">Total Value</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue)}</p>
+                          </div>
+                          <div className="p-3 bg-purple-50 rounded-lg">
+                            <p className="text-xs text-purple-600 mb-1">Avg Contract</p>
+                            <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.avgValue)}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Contracts:</span>
+                            <span className="font-medium">{comparison.group2.count}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Avg Duration:</span>
+                            <span className="font-medium">{comparison.metrics.avgDuration2} months</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total Value:</span>
-                    <span className="font-medium">{formatCurrency(comparison.group1.totalValue)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Avg Value:</span>
-                    <span className="font-medium">{formatCurrency(comparison.group1.avgValue)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-purple-200">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-purple-800 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    {comparison.group2.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Contracts:</span>
-                    <span className="font-medium">{comparison.group2.count}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Total Value:</span>
-                    <span className="font-medium">{formatCurrency(comparison.group2.totalValue)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Avg Value:</span>
-                    <span className="font-medium">{formatCurrency(comparison.group2.avgValue)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Differences Summary */}
-            {comparison.differences.length > 0 && (
+                </TabsContent>
+                
+                <TabsContent value="risk">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Shield className="w-5 h-5 text-orange-500" />
+                        Risk Comparison
+                      </CardTitle>
+                      <CardDescription>Compare risk profiles between groups</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-blue-800">{comparison.group1.name}</h4>
+                          <RiskGauge 
+                            score={comparison.metrics.riskScore1} 
+                            label="Risk Score"
+                            color="blue"
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-orange-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-orange-600">{comparison.metrics.expiringCount1}</p>
+                              <p className="text-xs text-orange-700">Expiring (90d)</p>
+                            </div>
+                            <div className="p-3 bg-blue-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-blue-600">
+                                {comparison.metrics.supplierConcentration1 > 2500 ? 'High' : 
+                                 comparison.metrics.supplierConcentration1 > 1500 ? 'Med' : 'Low'}
+                              </p>
+                              <p className="text-xs text-blue-700">Concentration</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-purple-800">{comparison.group2.name}</h4>
+                          <RiskGauge 
+                            score={comparison.metrics.riskScore2} 
+                            label="Risk Score"
+                            color="purple"
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="p-3 bg-orange-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-orange-600">{comparison.metrics.expiringCount2}</p>
+                              <p className="text-xs text-orange-700">Expiring (90d)</p>
+                            </div>
+                            <div className="p-3 bg-purple-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-purple-600">
+                                {comparison.metrics.supplierConcentration2 > 2500 ? 'High' : 
+                                 comparison.metrics.supplierConcentration2 > 1500 ? 'Med' : 'Low'}
+                              </p>
+                              <p className="text-xs text-purple-700">Concentration</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                
+                <TabsContent value="contracts">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-blue-500" />
+                          Included Contracts
+                        </CardTitle>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-500" />
+                            {comparison.group1.name}
+                            <Badge variant="outline" className="ml-auto">{comparison.group1.contracts.length}</Badge>
+                          </h4>
+                          <div className="space-y-2 max-h-64 overflow-auto">
+                            {comparison.group1.contracts.map((c) => (
+                              <Link 
+                                key={c.id} 
+                                href={`/contracts/${c.id}`}
+                                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors group"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-700">{c.contractTitle}</p>
+                                  <p className="text-xs text-gray-500">{c.supplierName}</p>
+                                </div>
+                                <div className="text-right ml-2">
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue)}</p>
+                                  <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="text-[10px]">
+                                    {c.status}
+                                  </Badge>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-purple-800 mb-3 flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-purple-500" />
+                            {comparison.group2.name}
+                            <Badge variant="outline" className="ml-auto">{comparison.group2.contracts.length}</Badge>
+                          </h4>
+                          <div className="space-y-2 max-h-64 overflow-auto">
+                            {comparison.group2.contracts.map((c) => (
+                              <Link 
+                                key={c.id} 
+                                href={`/contracts/${c.id}`}
+                                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-purple-200 hover:bg-purple-50 transition-colors group"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-700">{c.contractTitle}</p>
+                                  <p className="text-xs text-gray-500">{c.supplierName}</p>
+                                </div>
+                                <div className="text-right ml-2">
+                                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue)}</p>
+                                  <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="text-[10px]">
+                                    {c.status}
+                                  </Badge>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            )}
+            
+            {/* Legacy Differences Table (fallback if no metrics) */}
+            {!comparison.metrics && comparison.differences.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
@@ -983,70 +1450,15 @@ export default function ContractComparisonPage() {
               </Card>
             )}
 
-            {/* Contract Lists */}
-            <Collapsible open={expandedSections.contracts} onOpenChange={() => toggleSection("contracts")}>
-              <Card>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-blue-500" />
-                        Included Contracts
-                      </CardTitle>
-                      {expandedSections.contracts ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400" />
-                      )}
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="font-medium text-blue-800 mb-2">{comparison.group1.name}</h4>
-                        <div className="space-y-1 max-h-48 overflow-auto">
-                          {comparison.group1.contracts.map((c) => (
-                            <Link 
-                              key={c.id} 
-                              href={`/contracts/${c.id}`}
-                              className="block text-sm p-2 rounded hover:bg-blue-50 transition-colors"
-                            >
-                              <span className="text-blue-600 hover:underline">{c.contractTitle}</span>
-                              <span className="text-gray-400 ml-2">• {formatCurrency(c.totalValue)}</span>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-purple-800 mb-2">{comparison.group2.name}</h4>
-                        <div className="space-y-1 max-h-48 overflow-auto">
-                          {comparison.group2.contracts.map((c) => (
-                            <Link 
-                              key={c.id} 
-                              href={`/contracts/${c.id}`}
-                              className="block text-sm p-2 rounded hover:bg-purple-50 transition-colors"
-                            >
-                              <span className="text-purple-600 hover:underline">{c.contractTitle}</span>
-                              <span className="text-gray-400 ml-2">• {formatCurrency(c.totalValue)}</span>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-
             {/* Recommendation */}
-            <Card className="border-blue-200 bg-blue-50">
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Zap className="w-5 h-5 text-blue-600" />
+                  </div>
                   <div>
-                    <h3 className="font-medium text-blue-900 mb-1">Recommendation</h3>
+                    <h3 className="font-semibold text-blue-900 mb-1">Summary & Recommendation</h3>
                     <p className="text-sm text-blue-800">{comparison.recommendation}</p>
                   </div>
                 </div>

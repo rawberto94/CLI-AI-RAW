@@ -204,11 +204,18 @@ export function useArtifactStream({
 
     const verifyAndConnect = async () => {
       try {
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
         const response = await fetch(`/api/contracts/${contractId}`, {
           headers: {
             'x-tenant-id': tenantId
-          }
+          },
+          signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const message = response.status === 404
@@ -223,10 +230,20 @@ export function useArtifactStream({
 
         cleanup = connect();
       } catch (err) {
+        if (cancelled) return;
+        
+        // Handle abort errors gracefully
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.warn('[SSE] Contract verification timed out, attempting direct connect');
+          // Try to connect directly without verification
+          cleanup = connect();
+          return;
+        }
+
         console.error('[SSE] Verification failed before connecting:', err);
         const message = err instanceof Error ? err.message : 'Unable to connect to live updates.';
         setError(message);
-        setIsComplete(true);
+        // Don't mark as complete on verification failure - allow retry
         setIsConnected(false);
         if (onError) {
           onError(message);

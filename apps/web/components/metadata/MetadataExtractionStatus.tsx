@@ -124,8 +124,53 @@ export function MetadataExtractionStatus({
         throw new Error('Failed to fetch metadata status');
       }
 
-      const data = await response.json();
-      setStatus(data);
+      const payload = await response.json();
+      const extraction = payload?.data;
+
+      if (!payload?.success) {
+        setStatus({
+          hasMetadata: false,
+          fields: 0,
+          populatedFields: 0,
+          fieldDetails: [],
+        });
+        return;
+      }
+
+      if (!extraction) {
+        setStatus({
+          hasMetadata: false,
+          fields: 0,
+          populatedFields: 0,
+          fieldDetails: [],
+        });
+        return;
+      }
+
+      const fieldDetailsObj: Record<string, any> = extraction.fieldDetails || {};
+      const fieldDetailsArr: MetadataField[] = Object.entries(fieldDetailsObj).map(([field, details]) => {
+        const value = details?.value;
+        const hasValue = value !== null && value !== undefined && String(value).trim?.() !== '';
+        return {
+          field,
+          hasValue,
+          type: typeof value,
+          value,
+          confidence: typeof details?.confidence === 'number' ? details.confidence : undefined,
+        };
+      });
+
+      const populatedFields = fieldDetailsArr.filter(f => f.hasValue).length;
+
+      setStatus({
+        hasMetadata: fieldDetailsArr.length > 0,
+        fields: fieldDetailsArr.length,
+        populatedFields,
+        fieldDetails: fieldDetailsArr,
+        extractedAt: extraction.lastExtraction?.extractedAt,
+        confidence: extraction.lastExtraction?.summary?.averageConfidence,
+        model: extraction.lastExtraction?.model,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load status');
     } finally {
@@ -151,9 +196,12 @@ export function MetadataExtractionStatus({
           'x-tenant-id': tenantId,
         },
         body: JSON.stringify({
-          synchronous: true,
-          autoApply: true,
-          forceReExtract,
+          useContractText: true,
+          options: {
+            enableMultiPass: true,
+            maxPasses: 2,
+            confidenceThreshold: 0.7,
+          },
         }),
       });
 

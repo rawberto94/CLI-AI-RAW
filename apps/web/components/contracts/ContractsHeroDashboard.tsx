@@ -1,11 +1,12 @@
 /**
  * Contracts Hero Dashboard
  * A visually striking stats dashboard header for the contracts page
+ * v2.1 - Added animated counters and live data indicators
  */
 
 'use client';
 
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -134,6 +135,69 @@ function Sparkline({
     </svg>
   );
 }
+
+// ============================================================================
+// Animated Counter Component
+// ============================================================================
+
+interface AnimatedCounterProps {
+  value: number;
+  prefix?: string;
+  suffix?: string;
+  className?: string;
+  duration?: number;
+  formatFn?: (value: number) => string;
+}
+
+const AnimatedCounter = memo(function AnimatedCounter({
+  value,
+  prefix = '',
+  suffix = '',
+  className = '',
+  duration = 600,
+  formatFn
+}: AnimatedCounterProps) {
+  const [displayValue, setDisplayValue] = useState(value);
+  const previousValue = useRef(value);
+  const [isAnimating, setIsAnimating] = useState(false);
+  
+  useEffect(() => {
+    if (previousValue.current === value) return;
+    
+    setIsAnimating(true);
+    const startValue = previousValue.current;
+    const endValue = value;
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const current = Math.round(startValue + (endValue - startValue) * easeOutQuart);
+      
+      setDisplayValue(current);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setIsAnimating(false);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+    previousValue.current = value;
+  }, [value, duration]);
+  
+  const formattedValue = formatFn ? formatFn(displayValue) : displayValue.toLocaleString();
+  
+  return (
+    <span className={cn(className, isAnimating && 'text-blue-400 transition-colors duration-300')}>
+      {prefix}{formattedValue}{suffix}
+    </span>
+  );
+});
 
 // ============================================================================
 // Stat Card Component
@@ -411,6 +475,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
   onUploadClick,
   onGenerateClick,
   onCompareClick,
+  onAskAIClick,
 }: ContractsHeroDashboardProps) {
   // Format currency
   const formatCurrency = (value: number): string => {
@@ -442,11 +507,27 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-40 bg-slate-100 rounded-2xl" />
-          ))}
+      <div className="space-y-6">
+        {/* Animated skeleton loader */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-8 w-48 bg-slate-200 rounded-lg" />
+                <div className="h-4 w-32 bg-slate-200 rounded-md" />
+              </div>
+              <div className="flex gap-3">
+                <div className="h-11 w-28 bg-slate-200 rounded-xl" />
+                <div className="h-11 w-28 bg-slate-200 rounded-xl" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-44 bg-slate-200/80 rounded-2xl" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -454,98 +535,225 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header with Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <h1 className="text-2xl font-bold text-slate-900">
-            Contract Dashboard
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Overview of your contract portfolio
-          </p>
-        </motion.div>
+      {/* Premium Hero Section with gradient background */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-8"
+      >
+        {/* Animated background elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.1),transparent_50%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(74,144,226,0.1),transparent_50%)]" />
+          </div>
+          {/* Grid pattern overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="flex items-center gap-3"
-        >
-          <QuickAction
-            label="Upload"
-            icon={Upload}
-            color="blue"
-            onClick={onUploadClick}
-            href="/contracts/upload"
-          />
-          <QuickAction
-            label="Generate"
-            icon={Sparkles}
-            color="purple"
-            onClick={onGenerateClick}
-            href="/contracts/generate"
-          />
-          <QuickAction
-            label="Compare"
-            icon={GitCompare}
-            color="cyan"
-            onClick={onCompareClick}
-          />
-        </motion.div>
-      </div>
+        {/* Header with Quick Actions */}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10">
+                <Activity className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">
+                Contract Portfolio
+              </h1>
+            </div>
+            <p className="text-slate-300 text-sm md:text-base">
+              Real-time overview of your {stats.totalContracts?.toLocaleString() || 0} contracts worth {formatCurrency(stats.totalValue ?? 0)}
+            </p>
+          </motion.div>
 
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Contracts"
-          value={(stats.totalContracts ?? 0).toLocaleString()}
-          subtitle={`${stats.activeContracts ?? 0} active`}
-          icon={FileText}
-          trend={stats.trends?.contracts ?? 0}
-          color="blue"
-          sparklineData={sparklines.contracts}
-          delay={0}
-        />
-        <StatCard
-          title="Total Value"
-          value={formatCurrency(stats.totalValue ?? 0)}
-          subtitle="Across all contracts"
-          icon={DollarSign}
-          trend={stats.trends?.value ?? 0}
-          color="green"
-          sparklineData={sparklines.value}
-          delay={0.1}
-        />
-        <StatCard
-          title="Avg. Risk Score"
-          value={`${stats.avgRiskScore ?? 0}%`}
-          subtitle={(stats.avgRiskScore ?? 0) < 30 ? 'Low risk' : (stats.avgRiskScore ?? 0) < 70 ? 'Medium risk' : 'High risk'}
-          icon={Shield}
-          trend={stats.trends?.risk ?? 0}
-          color={(stats.avgRiskScore ?? 0) < 30 ? 'green' : (stats.avgRiskScore ?? 0) < 70 ? 'amber' : 'red'}
-          sparklineData={sparklines.risk}
-          delay={0.2}
-        />
-        <StatCard
-          title="Recently Added"
-          value={stats.recentlyAdded ?? 0}
-          subtitle="Last 7 days"
-          icon={Zap}
-          color="purple"
-          delay={0.3}
-        />
-      </div>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="flex items-center gap-2 md:gap-3"
+          >
+            <Link href="/contracts/upload">
+              <Button 
+                onClick={onUploadClick}
+                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-medium bg-white text-slate-900 hover:bg-slate-100 shadow-lg shadow-black/20 transition-all hover:shadow-xl hover:scale-[1.02]"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Upload</span>
+              </Button>
+            </Link>
+            <Link href="/contracts/generate">
+              <Button 
+                onClick={onGenerateClick}
+                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-medium bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-xl hover:scale-[1.02]"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Generate</span>
+              </Button>
+            </Link>
+            <Button 
+              onClick={onAskAIClick}
+              className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-medium bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/25 transition-all hover:shadow-xl hover:scale-[1.02]"
+            >
+              <Target className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Ask AI</span>
+            </Button>
+          </motion.div>
+        </div>
 
-      {/* Alerts Row */}
+        {/* Stats Cards - Inside Hero */}
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {/* Total Contracts */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+              <FileText className="w-full h-full text-white" />
+            </div>
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-blue-500/20 backdrop-blur-sm">
+                <FileText className="h-4 w-4 text-blue-300" />
+              </div>
+              {(stats.trends?.contracts ?? 0) !== 0 && (
+                <div className={cn(
+                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm",
+                  (stats.trends?.contracts ?? 0) >= 0 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
+                )}>
+                  {(stats.trends?.contracts ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {Math.abs(stats.trends?.contracts ?? 0)}%
+                </div>
+              )}
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              <AnimatedCounter value={stats.totalContracts ?? 0} />
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">Total Contracts</p>
+            <p className="text-xs text-slate-400">{stats.activeContracts ?? 0} active</p>
+            {sparklines.contracts.length > 0 && (
+              <div className="absolute bottom-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                <Sparkline data={sparklines.contracts} color="blue" height={24} />
+              </div>
+            )}
+          </motion.div>
+
+          {/* Total Value */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+              <DollarSign className="w-full h-full text-white" />
+            </div>
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-emerald-500/20 backdrop-blur-sm">
+                <DollarSign className="h-4 w-4 text-emerald-300" />
+              </div>
+              {(stats.trends?.value ?? 0) !== 0 && (
+                <div className={cn(
+                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm",
+                  (stats.trends?.value ?? 0) >= 0 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
+                )}>
+                  {(stats.trends?.value ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {Math.abs(stats.trends?.value ?? 0)}%
+                </div>
+              )}
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              <AnimatedCounter 
+                value={stats.totalValue ?? 0} 
+                formatFn={formatCurrency}
+              />
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">Portfolio Value</p>
+            <p className="text-xs text-slate-400">All contracts</p>
+            {sparklines.value.length > 0 && (
+              <div className="absolute bottom-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                <Sparkline data={sparklines.value} color="green" height={24} />
+              </div>
+            )}
+          </motion.div>
+
+          {/* Risk Score */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+              <Shield className="w-full h-full text-white" />
+            </div>
+            <div className="flex items-start justify-between mb-3">
+              <div className={cn(
+                "p-2 rounded-lg backdrop-blur-sm",
+                (stats.avgRiskScore ?? 0) < 30 ? "bg-emerald-500/20" : (stats.avgRiskScore ?? 0) < 70 ? "bg-amber-500/20" : "bg-red-500/20"
+              )}>
+                <Shield className={cn(
+                  "h-4 w-4",
+                  (stats.avgRiskScore ?? 0) < 30 ? "text-emerald-300" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-300" : "text-red-300"
+                )} />
+              </div>
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              <AnimatedCounter value={stats.avgRiskScore ?? 0} suffix="%" />
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">Avg Risk Score</p>
+            <p className={cn(
+              "text-xs",
+              (stats.avgRiskScore ?? 0) < 30 ? "text-emerald-400" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-400" : "text-red-400"
+            )}>
+              {(stats.avgRiskScore ?? 0) < 30 ? 'Low risk portfolio' : (stats.avgRiskScore ?? 0) < 70 ? 'Moderate risk' : 'High risk - attention needed'}
+            </p>
+          </motion.div>
+
+          {/* Recent Activity */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+              <Zap className="w-full h-full text-white" />
+            </div>
+            <div className="flex items-start justify-between mb-3">
+              <div className="p-2 rounded-lg bg-purple-500/20 backdrop-blur-sm">
+                <Zap className="h-4 w-4 text-purple-300" />
+              </div>
+              {(stats.recentlyAdded ?? 0) > 0 && (
+                <div className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-purple-500/20 text-purple-300 backdrop-blur-sm">
+                  <span className="animate-pulse w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  New
+                </div>
+              )}
+            </div>
+            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+              <AnimatedCounter value={stats.recentlyAdded ?? 0} />
+            </h3>
+            <p className="text-sm text-slate-300 mt-1">Recently Added</p>
+            <p className="text-xs text-slate-400">Last 7 days</p>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Alerts Row - Outside Hero */}
       {((stats.expiringSoon ?? 0) > 0 || (stats.highRisk ?? 0) > 0 || (stats.pendingReview ?? 0) > 0) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.4 }}
+          transition={{ duration: 0.4, delay: 0.6 }}
           className="grid grid-cols-1 md:grid-cols-3 gap-3"
         >
           {(stats.expiringSoon ?? 0) > 0 && (
@@ -554,16 +762,16 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
               count={stats.expiringSoon ?? 0}
               icon={Clock}
               color="amber"
-              description="Within the next 30 days"
+              description={`${stats.expiringThisWeek ?? 0} this week`}
             />
           )}
-          {(stats.highRisk ?? 0) > 0 && (
+          {(stats.highRisk ?? stats.highRiskContracts ?? 0) > 0 && (
             <AlertCard
               title="High Risk"
-              count={stats.highRisk ?? 0}
+              count={stats.highRisk ?? stats.highRiskContracts ?? 0}
               icon={AlertTriangle}
               color="red"
-              description="Contracts need attention"
+              description="Require immediate attention"
             />
           )}
           {stats.pendingReview > 0 && (
@@ -572,7 +780,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
               count={stats.pendingReview}
               icon={AlertCircle}
               color="amber"
-              description="Awaiting your review"
+              description="Awaiting your approval"
             />
           )}
         </motion.div>

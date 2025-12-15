@@ -13,6 +13,21 @@
       "types": "./dist/queue/index.d.ts",
       "import": "./dist/queue/index.js",
       "require": "./dist/queue/index.js"
+    },
+    "./cache/distributed-cache": {
+      "types": "./dist/cache/distributed-cache.d.ts",
+      "import": "./dist/cache/distributed-cache.js",
+      "require": "./dist/cache/distributed-cache.js"
+    },
+    "./events/redis-event-bus": {
+      "types": "./dist/events/redis-event-bus.d.ts",
+      "import": "./dist/events/redis-event-bus.js",
+      "require": "./dist/events/redis-event-bus.js"
+    },
+    "./queue/dlq-consumer": {
+      "types": "./dist/queue/dlq-consumer.d.ts",
+      "import": "./dist/queue/dlq-consumer.js",
+      "require": "./dist/queue/dlq-consumer.js"
     }
   },
   "scripts": {

@@ -241,13 +241,6 @@ export function QuickActionsFAB() {
         return;
       }
 
-      // CMD/Ctrl + K opens the FAB
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsOpen(prev => !prev);
-        return;
-      }
-
       // If FAB is open, handle shortcuts
       if (isOpen) {
         const action = actions.find(a => 
@@ -382,7 +375,7 @@ export function QuickActionsFAB() {
             animate={{ opacity: 1, x: 0 }}
             className="absolute right-16 bottom-3 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap"
           >
-            Quick Actions <kbd className="ml-1 px-1 bg-gray-700 rounded font-mono">⌘K</kbd>
+            Quick Actions
           </motion.div>
         )}
       </div>

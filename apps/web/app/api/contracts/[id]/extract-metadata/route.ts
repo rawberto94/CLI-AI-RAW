@@ -365,6 +365,22 @@ async function applyMetadataToContract(
         : data;
     }
 
+    // Normalize common legacy keys
+    if (appliedFields.contract_name !== undefined && appliedFields.contract_title === undefined) {
+      appliedFields.contract_title = appliedFields.contract_name;
+      delete appliedFields.contract_name;
+    }
+    if (appliedFields.notice_period_days !== undefined && appliedFields.notice_period === undefined) {
+      appliedFields.notice_period = appliedFields.notice_period_days;
+      delete appliedFields.notice_period_days;
+    }
+    if (appliedFields.party_a_name !== undefined && appliedFields.client_name === undefined) {
+      appliedFields.client_name = appliedFields.party_a_name;
+    }
+    if (appliedFields.party_b_name !== undefined && appliedFields.supplier_name === undefined) {
+      appliedFields.supplier_name = appliedFields.party_b_name;
+    }
+
     const customFields = {
       ...(existing?.customFields as any || {}),
       ...appliedFields,
@@ -376,28 +392,65 @@ async function applyMetadataToContract(
       }
     };
 
-    if (existing) {
-      await prisma.contractMetadata.update({
-        where: { contractId },
-        data: {
-          customFields,
-          lastUpdated: now,
-          updatedBy: 'ai-extractor',
-        }
-      });
-    } else {
-      await prisma.contractMetadata.create({
-        data: {
-          contractId,
-          tenantId,
-          customFields,
-          systemFields: {},
-          tags: [],
-          lastUpdated: now,
-          updatedBy: 'ai-extractor',
-        }
-      });
+    const contractUpdates: Record<string, any> = {};
+    if (typeof appliedFields.contract_title === 'string') contractUpdates.contractTitle = appliedFields.contract_title;
+    if (typeof appliedFields.client_name === 'string') contractUpdates.clientName = appliedFields.client_name;
+    if (typeof appliedFields.supplier_name === 'string') contractUpdates.supplierName = appliedFields.supplier_name;
+    if (typeof appliedFields.contract_type === 'string') contractUpdates.contractType = appliedFields.contract_type;
+    if (appliedFields.total_value !== undefined && appliedFields.total_value !== null && !Number.isNaN(Number(appliedFields.total_value))) {
+      contractUpdates.totalValue = Number(appliedFields.total_value);
     }
+    if (typeof appliedFields.currency === 'string') contractUpdates.currency = appliedFields.currency;
+    if (typeof appliedFields.payment_terms === 'string') contractUpdates.paymentTerms = appliedFields.payment_terms;
+    if (typeof appliedFields.jurisdiction === 'string') contractUpdates.jurisdiction = appliedFields.jurisdiction;
+
+    if (typeof appliedFields.effective_date === 'string' || appliedFields.effective_date instanceof Date) {
+      const d = new Date(appliedFields.effective_date);
+      if (!Number.isNaN(d.getTime())) contractUpdates.effectiveDate = d;
+    }
+    if (typeof appliedFields.expiration_date === 'string' || appliedFields.expiration_date instanceof Date) {
+      const d = new Date(appliedFields.expiration_date);
+      if (!Number.isNaN(d.getTime())) contractUpdates.expirationDate = d;
+    }
+
+    if (typeof appliedFields.notice_period === 'number' && Number.isFinite(appliedFields.notice_period)) {
+      contractUpdates.noticePeriodDays = Math.max(0, Math.round(appliedFields.notice_period));
+    }
+    if (typeof appliedFields.auto_renewal === 'boolean') {
+      contractUpdates.autoRenewalEnabled = appliedFields.auto_renewal;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (existing) {
+        await tx.contractMetadata.update({
+          where: { contractId },
+          data: {
+            customFields,
+            lastUpdated: now,
+            updatedBy: 'ai-extractor',
+          }
+        });
+      } else {
+        await tx.contractMetadata.create({
+          data: {
+            contractId,
+            tenantId,
+            customFields,
+            systemFields: {},
+            tags: [],
+            lastUpdated: now,
+            updatedBy: 'ai-extractor',
+          }
+        });
+      }
+
+      if (Object.keys(contractUpdates).length > 0) {
+        await tx.contract.update({
+          where: { id: contractId },
+          data: contractUpdates,
+        });
+      }
+    });
 
     console.log(`✅ Applied ${Object.keys(appliedFields).length} fields to contract ${contractId}`);
   } catch (error) {

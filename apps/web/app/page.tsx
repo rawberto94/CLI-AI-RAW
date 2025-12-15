@@ -253,6 +253,74 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
+        {/* First-run: Get started */}
+        {dashboardData.overview.totalContracts === 0 && (
+          <motion.div variants={itemVariants}>
+            <Card className="border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-lg">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  Get started in 2 minutes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
+                        <FileUp className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Upload your first contract</div>
+                        <div className="text-xs text-muted-foreground">PDF or text — we’ll extract metadata automatically.</div>
+                        <div className="mt-3">
+                          <Button asChild size="sm">
+                            <Link href="/upload">Upload</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
+                        <FolderOpen className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Browse templates</div>
+                        <div className="text-xs text-muted-foreground">Start from a managed template and generate drafts faster.</div>
+                        <div className="mt-3">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href="/templates">Templates</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
+                        <Bot className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ask the AI assistant</div>
+                        <div className="text-xs text-muted-foreground">Try contract Q&A, comparisons, and reports.</div>
+                        <div className="mt-3">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href="/ai/chat">Open chat</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Total Contracts */}

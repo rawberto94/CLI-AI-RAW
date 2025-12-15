@@ -109,7 +109,7 @@ const defaultTourSteps: TourStep[] = [
   {
     id: 'keyboard-shortcuts',
     title: 'Pro Tip: Keyboard Shortcuts ⌨️',
-    description: 'Power users love these! Press ⌘K (or Ctrl+K) for quick search. Press ? to see all shortcuts. Press Esc to close dialogs. Speed up your workflow!',
+    description: 'Power users love these! Press ⌘K (or Ctrl+K) for the command palette. Press / to focus search. Press ⌘/ (or Ctrl+/) to open the AI Assistant. Press ? to see all shortcuts.',
     icon: Keyboard,
     position: 'center'
   },

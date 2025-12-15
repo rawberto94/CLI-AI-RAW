@@ -1,13 +1,10 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { PageHeader } from '@/components/ui/design-system'
 import { Button } from '@/components/ui/button'
-import { Bell, User, Search, Menu, X } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
-import Link from 'next/link'
-import { ConTigoLogoSVG } from '@/components/ui/ConTigoLogo'
+import { Bell, User, Search, Sparkles } from 'lucide-react'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -17,16 +14,6 @@ interface AppLayoutProps {
   className?: string
 }
 
-// Simple mobile nav items
-const mobileNavItems = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/contracts', label: 'Contracts' },
-  { href: '/upload', label: 'Upload' },
-  { href: '/ai/chat', label: 'AI Assistant' },
-  { href: '/search', label: 'Search' },
-  { href: '/analytics', label: 'Analytics' },
-]
-
 export default function AppLayout({ 
   children, 
   title, 
@@ -34,31 +21,27 @@ export default function AppLayout({
   actions,
   className 
 }: AppLayoutProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
   return (
     <>
       {/* Top Bar */}
       {(title || actions) && (
-        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <motion.header 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="sticky top-16 lg:top-0 z-20 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70"
+        >
+          {/* Decorative accent line */}
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+          
           <div className="flex h-14 md:h-16 items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-3">
-              {/* Mobile Menu Button */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="md:hidden"
-                onClick={() => setMobileMenuOpen(true)}
-                aria-label="Open navigation menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              
               {title && (
                 <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-semibold truncate">{title}</h1>
+                  <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
+                    {title}
+                  </h1>
                   {description && (
-                    <p className="text-xs md:text-sm text-muted-foreground truncate hidden sm:block">{description}</p>
+                    <p className="text-xs md:text-sm text-slate-500 truncate hidden sm:block">{description}</p>
                   )}
                 </div>
               )}
@@ -66,18 +49,33 @@ export default function AppLayout({
             
             <div className="flex items-center gap-1 md:gap-2">
               {/* Search - hidden on mobile */}
-              <Button variant="ghost" size="icon" className="hidden md:flex" aria-label="Search contracts">
-                <Search className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="hidden md:flex h-9 w-9 rounded-xl hover:bg-slate-100/80" 
+                aria-label="Search contracts"
+              >
+                <Search className="h-4 w-4 text-slate-500" />
               </Button>
               
               {/* Notifications */}
-              <Button variant="ghost" size="icon" aria-label="Notifications">
-                <Bell className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 rounded-xl hover:bg-slate-100/80" 
+                aria-label="Notifications"
+              >
+                <Bell className="h-4 w-4 text-slate-500" />
               </Button>
               
               {/* User Menu */}
-              <Button variant="ghost" size="icon" aria-label="User menu">
-                <User className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-9 w-9 rounded-xl hover:bg-slate-100/80" 
+                aria-label="User menu"
+              >
+                <User className="h-4 w-4 text-slate-500" />
               </Button>
               
               {/* Custom Actions - hidden on mobile if space is tight */}
@@ -93,62 +91,8 @@ export default function AppLayout({
               {actions}
             </div>
           )}
-        </header>
+        </motion.header>
       )}
-
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 md:hidden"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-hidden="true"
-            />
-            
-            {/* Drawer */}
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed left-0 top-0 bottom-0 w-[280px] bg-white dark:bg-slate-900 shadow-2xl z-50 md:hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b">
-                <ConTigoLogoSVG size="md" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setMobileMenuOpen(false)}
-                  aria-label="Close navigation"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-              
-              {/* Nav items */}
-              <nav className="p-4 space-y-1">
-                {mobileNavItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
 
       {/* Page Content */}
       <main className={cn('flex-1 w-full max-w-full overflow-x-hidden', className)}>
@@ -215,7 +159,7 @@ export function AILayout({
       title={title} 
       description={description} 
       actions={actions}
-      className={cn('bg-gradient-to-br from-blue-50 via-white to-purple-50', className)}
+      className={cn('bg-gradient-to-br from-blue-50/50 via-white to-purple-50/50', className)}
     >
       <div className="space-y-8">
         {children}

@@ -503,6 +503,38 @@ class RagIntegrationService {
               lines.push(`  - ${disc.type}: ${disc.value}${disc.unit === 'percentage' ? '%' : ''} - ${disc.description || ''}`);
             }
           }
+          // Yearly Breakdown (new from OCR worker)
+          if (Array.isArray(data.yearlyBreakdown) && data.yearlyBreakdown.length > 0) {
+            lines.push('Yearly Breakdown:');
+            for (const yb of data.yearlyBreakdown) {
+              const yearLabel = yb.year || yb.period || 'Year';
+              const amount = yb.amount ? `$${Number(yb.amount).toLocaleString()}` : yb.totalAmount ? `$${Number(yb.totalAmount).toLocaleString()}` : '';
+              lines.push(`  - ${yearLabel}: ${amount}`);
+              if (yb.notes) lines.push(`    Notes: ${yb.notes}`);
+              if (Array.isArray(yb.breakdown)) {
+                for (const item of yb.breakdown.slice(0, 5)) {
+                  lines.push(`      ${item.category || item.item}: $${Number(item.amount).toLocaleString()}`);
+                }
+              }
+            }
+          }
+          // Payment Schedule
+          if (Array.isArray(data.paymentSchedule) && data.paymentSchedule.length > 0) {
+            lines.push('Payment Schedule:');
+            for (const ps of data.paymentSchedule.slice(0, 10)) {
+              const date = ps.dueDate || ps.date || ps.milestone || 'TBD';
+              const amount = ps.amount ? `$${Number(ps.amount).toLocaleString()}` : '';
+              const desc = ps.description || ps.milestone || '';
+              lines.push(`  - ${date}: ${amount}${desc ? ` - ${desc}` : ''}`);
+            }
+          }
+          // Payment Method and Invoicing
+          if (data.paymentMethod) {
+            lines.push(`Payment Method: ${data.paymentMethod}`);
+          }
+          if (data.invoicingRequirements) {
+            lines.push(`Invoicing Requirements: ${data.invoicingRequirements}`);
+          }
           break;
 
         case 'obligations':
@@ -511,20 +543,35 @@ class RagIntegrationService {
           if (Array.isArray(data.obligations)) {
             lines.push('Contractual Obligations:');
             for (const ob of data.obligations.slice(0, 20)) {
-              const party = ob.responsibleParty || 'party';
+              const party = ob.party || ob.responsibleParty || 'party';
               const freq = ob.frequency ? ` (${ob.frequency})` : '';
-              const deadline = ob.deadline ? ` - Due: ${ob.deadline}` : '';
-              lines.push(`  - [${party}] ${ob.description}${freq}${deadline}`);
+              const deadline = ob.dueDate || ob.deadline;
+              const deadlineStr = deadline ? ` - Due: ${deadline}` : '';
+              const obDesc = ob.obligation || ob.description || '';
+              const obType = ob.type ? `[${ob.type}] ` : '';
+              lines.push(`  - [${party}] ${obType}${obDesc}${freq}${deadlineStr}`);
+              if (ob.status) lines.push(`    Status: ${ob.status}`);
+              if (ob.priority) lines.push(`    Priority: ${ob.priority}`);
               if (ob.penalty?.description) {
                 lines.push(`    Penalty: ${ob.penalty.description}`);
               }
             }
           }
+          if (Array.isArray(data.keyDeadlines)) {
+            lines.push('Key Deadlines:');
+            for (const deadline of data.keyDeadlines.slice(0, 10)) {
+              lines.push(`  - ${deadline}`);
+            }
+          }
           if (Array.isArray(data.milestones)) {
             lines.push('Milestones:');
             for (const ms of data.milestones.slice(0, 15)) {
-              const payment = ms.paymentAmount ? ` - $${Number(ms.paymentAmount).toLocaleString()}` : '';
-              lines.push(`  - ${ms.name}: ${ms.dueDate || 'No date'}${payment}`);
+              const payment = ms.paymentAmount || ms.associatedPayment;
+              const paymentStr = payment ? ` - $${Number(payment).toLocaleString()}` : '';
+              const name = ms.name || ms.title || 'Milestone';
+              const date = ms.dueDate || ms.date || 'No date';
+              lines.push(`  - ${name}: ${date}${paymentStr}`);
+              if (ms.description) lines.push(`    ${ms.description}`);
               if (Array.isArray(ms.deliverables)) {
                 lines.push(`    Deliverables: ${ms.deliverables.join(', ')}`);
               }
@@ -548,16 +595,50 @@ class RagIntegrationService {
         case 'renewal':
         case 'RENEWAL':
           // Handle renewal artifact
-          if (data.autoRenewal) {
+          // Handle boolean autoRenewal from OCR worker
+          if (typeof data.autoRenewal === 'boolean') {
+            lines.push(`Auto-Renewal: ${data.autoRenewal ? 'Yes' : 'No'}`);
+          } else if (data.autoRenewal?.enabled !== undefined) {
             lines.push(`Auto-Renewal: ${data.autoRenewal.enabled ? 'Yes' : 'No'}`);
             if (data.autoRenewal.renewalPeriod) {
               lines.push(`  Renewal Period: ${data.autoRenewal.renewalPeriod}`);
             }
           }
+          if (data.renewalTerms) {
+            lines.push(`Renewal Terms: ${data.renewalTerms}`);
+          }
+          if (data.renewalPeriod) {
+            lines.push(`Renewal Period: ${data.renewalPeriod}`);
+          }
+          if (data.renewalNoticeRequired) {
+            lines.push(`Renewal Notice Required: Yes`);
+          }
+          if (data.noticeRequirements) {
+            const nr = data.noticeRequirements;
+            lines.push('Notice Requirements:');
+            if (nr.noticePeriod) lines.push(`  Notice Period: ${nr.noticePeriod}`);
+            if (nr.noticeMethod) lines.push(`  Method: ${nr.noticeMethod}`);
+            if (nr.noticeRecipient) lines.push(`  Recipient: ${nr.noticeRecipient}`);
+          }
+          if (data.terminationRights) {
+            const tr = data.terminationRights;
+            lines.push('Termination Rights:');
+            if (tr.forCause) lines.push(`  For Cause: ${tr.forCause}`);
+            if (tr.forConvenience) lines.push(`  For Convenience: ${tr.forConvenience}`);
+            if (tr.noticePeriod) lines.push(`  Notice Period: ${tr.noticePeriod}`);
+          }
+          if (data.earlyTerminationFees) {
+            lines.push(`Early Termination Fees: ${data.earlyTerminationFees}`);
+          }
           if (data.terminationNotice) {
-            lines.push(`Termination Notice: ${data.terminationNotice.noticePeriod} ${data.terminationNotice.noticePeriodUnit}`);
-            if (data.terminationNotice.noticeMethod) {
-              lines.push(`  Method: ${data.terminationNotice.noticeMethod}`);
+            const tn = data.terminationNotice;
+            if (tn.requiredDays) {
+              lines.push(`Termination Notice: ${tn.requiredDays} days`);
+            } else if (tn.noticePeriod) {
+              lines.push(`Termination Notice: ${tn.noticePeriod} ${tn.noticePeriodUnit || ''}`);
+            }
+            if (tn.noticeMethod || tn.format) {
+              lines.push(`  Method: ${tn.noticeMethod || tn.format}`);
             }
           }
           if (data.terminationForCause?.allowed) {
@@ -571,6 +652,9 @@ class RagIntegrationService {
             if (data.terminationForConvenience.earlyTerminationFee) {
               lines.push(`  Early Termination Fee: ${data.terminationForConvenience.earlyTerminationFee.amount || data.terminationForConvenience.earlyTerminationFee.formula}`);
             }
+          }
+          if (data.expirationDate) {
+            lines.push(`Expiration Date: ${data.expirationDate}`);
           }
           if (data.priceEscalation?.allowed) {
             lines.push(`Price Escalation: Up to ${data.priceEscalation.maxPercentage || data.priceEscalation.cap}%${data.priceEscalation.frequency ? ` ${data.priceEscalation.frequency}` : ''}`);
@@ -590,6 +674,12 @@ class RagIntegrationService {
               lines.push(`  - [${alert.type}] ${alert.description}${alert.date ? ` - ${alert.date}` : ''}`);
             }
           }
+          if (Array.isArray(data.recommendations)) {
+            lines.push('Recommendations:');
+            for (const rec of data.recommendations.slice(0, 5)) {
+              lines.push(`  - ${rec}`);
+            }
+          }
           if (data.lockInPeriod) {
             lines.push(`Lock-In Period: ${data.lockInPeriod.period}${data.lockInPeriod.penalty ? ` (Penalty: ${data.lockInPeriod.penalty})` : ''}`);
           }
@@ -597,13 +687,61 @@ class RagIntegrationService {
 
         case 'negotiation_points':
         case 'NEGOTIATION_POINTS':
+        case 'negotiation':
+        case 'NEGOTIATION':
           // Handle negotiation points artifact
+          if (Array.isArray(data.negotiationPoints)) {
+            lines.push('Negotiation Points:');
+            for (const np of data.negotiationPoints.slice(0, 10)) {
+              lines.push(`  - [${np.priority || 'medium'}] ${np.clause}: ${np.concern || np.issue}`);
+              if (np.currentTerms) lines.push(`    Current: ${np.currentTerms}`);
+              if (np.suggestedChange) lines.push(`    Suggested: ${np.suggestedChange}`);
+              if (np.impact) lines.push(`    Impact: ${np.impact}`);
+            }
+          }
           if (Array.isArray(data.leveragePoints)) {
             lines.push('Negotiation Leverage Points:');
             for (const lp of data.leveragePoints.slice(0, 10)) {
               lines.push(`  - [${lp.priority}] ${lp.clause}: ${lp.issue}`);
-              lines.push(`    Current: ${lp.currentPosition}`);
-              lines.push(`    Suggested: ${lp.suggestedPosition}`);
+              if (lp.currentPosition) lines.push(`    Current: ${lp.currentPosition}`);
+              if (lp.suggestedPosition) lines.push(`    Suggested: ${lp.suggestedPosition}`);
+            }
+          }
+          if (Array.isArray(data.strongPoints)) {
+            lines.push('Favorable Terms:');
+            for (const sp of data.strongPoints.slice(0, 8)) {
+              lines.push(`  - ${sp}`);
+            }
+          }
+          if (Array.isArray(data.imbalances)) {
+            lines.push('Term Imbalances:');
+            for (const ib of data.imbalances.slice(0, 8)) {
+              lines.push(`  - ${ib}`);
+            }
+          }
+          if (Array.isArray(data.missingProtections)) {
+            lines.push('Missing Protections:');
+            for (const mp of data.missingProtections.slice(0, 8)) {
+              if (typeof mp === 'string') {
+                lines.push(`  - ${mp}`);
+              } else {
+                lines.push(`  - [${mp.importance || 'medium'}] ${mp.protection}`);
+                if (mp.suggestedLanguage) {
+                  lines.push(`    Suggested: ${mp.suggestedLanguage}`);
+                }
+              }
+            }
+          }
+          if (data.favorabilityScore !== undefined) {
+            lines.push(`Favorability Score: ${data.favorabilityScore}/100`);
+          }
+          if (data.favorabilityAssessment) {
+            lines.push(`Assessment: ${data.favorabilityAssessment}`);
+          }
+          if (Array.isArray(data.recommendations)) {
+            lines.push('Recommendations:');
+            for (const rec of data.recommendations.slice(0, 5)) {
+              lines.push(`  - ${rec}`);
             }
           }
           if (Array.isArray(data.weakClauses)) {
@@ -642,12 +780,30 @@ class RagIntegrationService {
 
         case 'amendments':
         case 'AMENDMENTS':
-          // Handle amendments artifact
+          // Handle amendments artifact from OCR worker
+          if (data.hasAmendments !== undefined) {
+            lines.push(`Has Amendments: ${data.hasAmendments ? 'Yes' : 'No'}`);
+          }
           if (Array.isArray(data.amendments)) {
             lines.push('Contract Amendments:');
             for (const am of data.amendments.slice(0, 10)) {
-              lines.push(`  - Amendment #${am.amendmentNumber || am.id}: ${am.title || am.summary}`);
-              if (am.effectiveDate) lines.push(`    Effective: ${am.effectiveDate}`);
+              // Support both old and new field names
+              const amendmentId = am.number || am.amendmentNumber || am.id || 'Unknown';
+              const description = am.summary || am.title || 'No description';
+              lines.push(`  - Amendment #${amendmentId}: ${description}`);
+              if (am.date || am.effectiveDate) lines.push(`    Date: ${am.date || am.effectiveDate}`);
+              if (Array.isArray(am.affectedSections)) {
+                lines.push(`    Affected Sections: ${am.affectedSections.join(', ')}`);
+              }
+              if (Array.isArray(am.parties)) {
+                lines.push(`    Parties: ${am.parties.join(', ')}`);
+              }
+            }
+          }
+          if (Array.isArray(data.changeHistory)) {
+            lines.push('Change History:');
+            for (const ch of data.changeHistory.slice(0, 15)) {
+              lines.push(`  - [${ch.date}] ${ch.type}: ${ch.description}`);
             }
           }
           if (Array.isArray(data.changes)) {
@@ -666,23 +822,61 @@ class RagIntegrationService {
               lines.push(`  - ${sc.section} (replaced by ${sc.supersededBy})`);
             }
           }
+          if (data.originalContractDate) {
+            lines.push(`Original Contract Date: ${data.originalContractDate}`);
+          }
+          if (data.latestVersion) {
+            lines.push(`Latest Version: ${data.latestVersion}`);
+          }
           if (data.currentVersionInfo) {
             lines.push(`Current Version: ${data.currentVersionInfo.totalAmendments} amendments since ${data.currentVersionInfo.masterAgreementDate || 'original'}`);
+          }
+          if (data.summary) {
+            lines.push(`Summary: ${data.summary}`);
           }
           break;
 
         case 'contacts':
         case 'CONTACTS':
-          // Handle contacts artifact
-          if (Array.isArray(data.primaryContacts)) {
-            lines.push('Primary Contacts:');
-            for (const contact of data.primaryContacts.slice(0, 15)) {
-              lines.push(`  - [${contact.party}] ${contact.name}${contact.title ? `, ${contact.title}` : ''}`);
+          // Handle contacts artifact from OCR worker
+          // OCR worker uses 'contacts' while older schema used 'primaryContacts'
+          const contactList = data.contacts || data.primaryContacts || [];
+          if (Array.isArray(contactList) && contactList.length > 0) {
+            lines.push('Contacts:');
+            for (const contact of contactList.slice(0, 15)) {
+              const partyLabel = contact.partyType || contact.party || contact.organization || '';
+              const title = contact.role || contact.title || '';
+              lines.push(`  - [${partyLabel}] ${contact.name}${title ? `, ${title}` : ''}`);
+              if (contact.organization && contact.organization !== partyLabel) {
+                lines.push(`    Organization: ${contact.organization}`);
+              }
               if (contact.email) lines.push(`    Email: ${contact.email}`);
               if (contact.phone) lines.push(`    Phone: ${contact.phone}`);
+              if (contact.address) lines.push(`    Address: ${contact.address}`);
+              if (contact.isSignatory) lines.push(`    Signatory: Yes`);
+              if (contact.isPrimaryContact) lines.push(`    Primary Contact: Yes`);
               if (Array.isArray(contact.purpose)) {
                 lines.push(`    Purpose: ${contact.purpose.join(', ')}`);
               }
+            }
+          }
+          if (Array.isArray(data.signatories)) {
+            lines.push('Signatories:');
+            for (const sig of data.signatories.slice(0, 10)) {
+              lines.push(`  - ${sig.name}${sig.title ? `, ${sig.title}` : ''} at ${sig.organization || 'N/A'}`);
+              if (sig.dateSigned) lines.push(`    Signed: ${sig.dateSigned}`);
+            }
+          }
+          // OCR worker uses 'noticeAddresses' while older schema used 'notificationAddresses'
+          const noticeAddrs = data.noticeAddresses || data.notificationAddresses || [];
+          if (Array.isArray(noticeAddrs) && noticeAddrs.length > 0) {
+            lines.push('Notice Addresses:');
+            for (const addr of noticeAddrs) {
+              const party = addr.party || 'Unknown Party';
+              const addrType = addr.type || addr.method || 'mail';
+              const fullAddress = addr.address || 'No address specified';
+              lines.push(`  - [${party}] ${addrType}: ${fullAddress}`);
+              if (addr.attention) lines.push(`    Attn: ${addr.attention}`);
             }
           }
           if (Array.isArray(data.escalationPath)) {
@@ -691,17 +885,14 @@ class RagIntegrationService {
               lines.push(`  Level ${esc.level}: ${esc.role}${esc.contact ? ` (${esc.contact})` : ''} - ${esc.responseTime || 'No SLA'}`);
             }
           }
-          if (Array.isArray(data.notificationAddresses)) {
-            lines.push('Notification Addresses:');
-            for (const addr of data.notificationAddresses) {
-              lines.push(`  - [${addr.party}] ${addr.type}: ${addr.address} (${addr.method || 'unspecified'})`);
-            }
-          }
           if (Array.isArray(data.responseTimeRequirements)) {
             lines.push('Response Time Requirements:');
             for (const rt of data.responseTimeRequirements) {
               lines.push(`  - ${rt.type}${rt.level ? ` (${rt.level})` : ''}: ${rt.responseTime}`);
             }
+          }
+          if (data.summary) {
+            lines.push(`Summary: ${data.summary}`);
           }
           break;
 

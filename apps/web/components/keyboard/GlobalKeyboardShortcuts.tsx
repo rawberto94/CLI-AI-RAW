@@ -10,11 +10,13 @@ import { useRouter } from 'next/navigation';
 import { useKeyboardShortcuts, KeyboardShortcut } from '@/hooks/useKeyboardShortcuts';
 import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { useFeedback } from '@/components/feedback/FeedbackSystem';
+import { CommandPalette } from '@/components/ui/command-palette';
 
 export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const feedback = useFeedback();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Listen for custom event to open shortcuts modal
   useEffect(() => {
@@ -77,16 +79,20 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
     {
       key: 'k',
       ctrl: true,
-      description: 'Open search',
+      description: 'Open command palette',
       action: () => {
-        const searchInput = document.querySelector('[data-search-input]') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-        } else {
-          feedback.showInfo('Search', 'Search is not available on this page');
-        }
+        setIsCommandPaletteOpen(prev => !prev);
       },
-      category: 'Search',
+      category: 'Actions',
+    },
+    {
+      key: '/',
+      ctrl: true,
+      description: 'Open AI Assistant',
+      action: () => {
+        window.dispatchEvent(new CustomEvent('openAIChatbot'));
+      },
+      category: 'Actions',
     },
     {
       key: '/',
@@ -219,6 +225,10 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
         shortcuts={shortcuts}
+      />
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
       />
     </>
   );

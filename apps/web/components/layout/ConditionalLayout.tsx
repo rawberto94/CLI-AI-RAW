@@ -5,7 +5,7 @@ import EnhancedNavigation from '@/components/layout/EnhancedNavigation';
 import { FloatingDataModeToggle } from '@/components/ui/DataModeToggle';
 import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 import { WelcomeTutorial } from '@/components/WelcomeTutorial';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 
 interface ConditionalLayoutProps {
   children: React.ReactNode;
@@ -27,12 +27,25 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   }
   
   // Regular pages: Full navigation and layout
+  useEffect(() => {
+    const active = document.activeElement as HTMLElement | null;
+    const nav = document.getElementById('main-nav');
+
+    // If navigation was triggered from inside the nav, move focus to main content.
+    if (active && nav?.contains(active)) {
+      requestAnimationFrame(() => {
+        const main = document.getElementById('main-content') as HTMLElement | null;
+        main?.focus();
+      });
+    }
+  }, [pathname]);
+
   return (
     <>
       <EnhancedNavigation />
       <main 
         id="main-content"
-        className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-slate-50 dark:bg-slate-900 overflow-x-hidden transition-colors duration-200"
+        className="min-h-screen lg:pl-64 pt-16 lg:pt-0 bg-slate-50 dark:bg-slate-900 overflow-x-hidden transition-colors duration-200 scroll-mt-16"
         tabIndex={-1}
       >
         <div className="h-full w-full max-w-full">

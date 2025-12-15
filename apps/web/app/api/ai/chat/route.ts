@@ -397,6 +397,68 @@ function detectIntent(query: string): DetectedIntent {
     };
   }
 
+  // ============================================
+  // COMPARISON PATTERNS (NEW)
+  // ============================================
+
+  // Pattern: "compare [contract A] with [contract B]" or "compare contracts X and Y"
+  const compareContractsPattern = /compare\s+(?:contract\s+)?(.+?)\s+(?:with|to|and|vs\.?)\s+(?:contract\s+)?(.+?)(?:\s+contracts?)?(?:\?|$)/i;
+  match = query.match(compareContractsPattern);
+  if (match) {
+    const contractA = match[1]?.trim();
+    const contractB = match[2]?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected compare contracts intent:', { contractA, contractB });
+    return {
+      type: 'comparison',
+      action: 'compare_contracts',
+      entities: { contractA, contractB },
+      confidence: 0.92,
+    };
+  }
+
+  // Pattern: "what's different between [A] and [B]" or "differences between contracts"
+  const differencesPattern = /(?:what(?:'s|s)?|show)\s+(?:the\s+)?(?:difference|differences|diff)\s+(?:between|in)\s+(.+?)\s+(?:and|vs\.?|versus)\s+(.+?)(?:\?|$)/i;
+  match = query.match(differencesPattern);
+  if (match) {
+    const contractA = match[1]?.trim();
+    const contractB = match[2]?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected differences intent:', { contractA, contractB });
+    return {
+      type: 'comparison',
+      action: 'compare_contracts',
+      entities: { contractA, contractB },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "compare [supplier A] vs [supplier B] terms" or "which supplier has better terms"
+  const compareSupplierTermsPattern = /compare\s+(.+?)\s+(?:vs\.?|versus|and|to)\s+(.+?)\s+(?:terms?|pricing|rates?|contracts?)|which\s+(?:supplier|vendor)\s+has\s+better\s+(?:terms?|pricing|rates?)/i;
+  match = query.match(compareSupplierTermsPattern);
+  if (match) {
+    const supplierA = match[1]?.trim();
+    const supplierB = match[2]?.trim();
+    console.log('[AI Chat] Detected compare suppliers intent:', { supplierA, supplierB });
+    return {
+      type: 'comparison',
+      action: 'compare_suppliers',
+      entities: { supplierA, supplierB },
+      confidence: 0.88,
+    };
+  }
+
+  // Pattern: "compare renewal terms" or "side-by-side comparison"
+  const sideBySidePattern = /(?:side[- ]?by[- ]?side|parallel)\s+comparison|compare\s+(?:all\s+)?(?:renewal|payment|liability|termination)\s+terms?/i;
+  match = query.match(sideBySidePattern);
+  if (match) {
+    console.log('[AI Chat] Detected side-by-side comparison intent');
+    return {
+      type: 'comparison',
+      action: 'side_by_side',
+      entities: {},
+      confidence: 0.85,
+    };
+  }
+
   // Pattern: "what category is [contract]" or "categorize [contract]"
   const categorizeContractPattern = /(?:what|which)\s+category\s+(?:is|for|should)\s+(.+?)(?:\?|$)|categorize\s+(?:the\s+)?(.+?)(?:\s+contract)?(?:\?|$)|suggest\s+category\s+for\s+(.+)/i;
   match = query.match(categorizeContractPattern);
@@ -779,6 +841,135 @@ function detectIntent(query: string): DetectedIntent {
     };
   }
 
+  // ============================================
+  // ADVANCED NATURAL LANGUAGE PATTERNS
+  // ============================================
+
+  // Pattern: "find me contracts about/related to/containing [topic]"
+  const semanticSearchPattern = /(?:find|search|show|get|look\s+for|locate)\s+(?:me\s+)?(?:all\s+)?contracts?\s+(?:about|related\s+to|containing|mentioning|with|that\s+(?:mention|contain|include|have))\s+(.+?)(?:\?|$)/i;
+  match = query.match(semanticSearchPattern);
+  if (match) {
+    const searchTopic = match[1]?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected semantic search intent:', { searchTopic });
+    return {
+      type: 'search',
+      action: 'semantic_search',
+      entities: { searchQuery: searchTopic },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "which contracts have [clause/term]" or "contracts with [specific term]"
+  const clauseSearchPattern = /(?:which|what)\s+contracts?\s+(?:have|contain|include|mention)\s+(.+?)(?:\s+clause|\s+terms?|\s+language)?(?:\?|$)/i;
+  match = query.match(clauseSearchPattern);
+  if (match) {
+    const clauseTerm = match[1]?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected clause search intent:', { clauseTerm });
+    return {
+      type: 'search',
+      action: 'clause_search',
+      entities: { clauseTerm },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "what should I know about [contract/supplier]"
+  const briefingPattern = /(?:what\s+should\s+I\s+know\s+about|brief\s+me\s+on|catch\s+me\s+up\s+on|what's\s+important\s+about|key\s+points\s+(?:about|for))\s+(.+?)(?:\?|$)/i;
+  match = query.match(briefingPattern);
+  if (match) {
+    const briefingTopic = match[1]?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected briefing intent:', { briefingTopic });
+    return {
+      type: 'analytics',
+      action: 'executive_briefing',
+      entities: { topic: briefingTopic, supplierName: briefingTopic },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "what's happening with [supplier/category]" or "update on [topic]"
+  const statusUpdatePattern = /(?:what's|whats)\s+(?:happening|going\s+on)\s+(?:with|at)\s+(.+?)(?:\?|$)|(?:status|update)\s+(?:on|for)\s+(.+?)(?:\?|$)/i;
+  match = query.match(statusUpdatePattern);
+  if (match) {
+    const topic = (match[1] || match[2])?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected status update intent:', { topic });
+    return {
+      type: 'analytics',
+      action: 'status_update',
+      entities: { supplierName: topic, topic },
+      confidence: 0.85,
+    };
+  }
+
+  // Pattern: "contracts ending/starting this month/quarter/year"
+  const timeframePattern = /contracts?\s+(?:ending|expiring|starting|beginning|renewed)\s+(?:this|next|last)\s+(week|month|quarter|year)/i;
+  match = query.match(timeframePattern);
+  if (match) {
+    const timeframe = match[1]?.toLowerCase();
+    const action = query.toLowerCase().includes('ending') || query.toLowerCase().includes('expiring') ? 'ending' : 'starting';
+    console.log('[AI Chat] Detected timeframe intent:', { timeframe, action });
+    return {
+      type: 'list',
+      action: action === 'ending' ? 'list_expiring' : 'list_by_status',
+      entities: { timeframe, daysUntilExpiry: timeframe === 'week' ? 7 : timeframe === 'month' ? 30 : timeframe === 'quarter' ? 90 : 365 },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "most expensive/valuable contracts"
+  const rankingPattern = /(?:most|top|highest|biggest|largest)\s+(?:expensive|valuable|costly|important)\s+contracts?/i;
+  match = query.match(rankingPattern);
+  if (match) {
+    console.log('[AI Chat] Detected ranking intent: most valuable');
+    return {
+      type: 'list',
+      action: 'list_by_value',
+      entities: { sortOrder: 'desc', limit: 10 },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "contracts needing attention" or "what needs my attention"
+  const attentionPattern = /(?:contracts?|what)\s+(?:needing|that\s+need|requiring)\s+(?:my\s+)?attention|what\s+needs\s+(?:my\s+)?attention|urgent\s+contracts?/i;
+  match = query.match(attentionPattern);
+  if (match) {
+    console.log('[AI Chat] Detected attention needed intent');
+    return {
+      type: 'analytics',
+      action: 'attention_needed',
+      entities: {},
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "who signed [contract]" or "signatories for [contract]"
+  const signatoryPattern = /(?:who\s+signed|signatories?\s+(?:for|of|on)|signatures?\s+on)\s+(.+?)(?:\?|$)/i;
+  match = query.match(signatoryPattern);
+  if (match) {
+    contractName = match[1]?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected signatory intent:', { contractName });
+    return {
+      type: 'search',
+      action: 'find_signatories',
+      entities: { contractName },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "when does [contract] expire" or "expiration date for [contract]"
+  const expirationPattern = /(?:when\s+does|when\s+will)\s+(.+?)\s+(?:expire|end|renew)|expiration\s+(?:date\s+)?(?:for|of)\s+(.+?)(?:\?|$)/i;
+  match = query.match(expirationPattern);
+  if (match) {
+    contractName = (match[1] || match[2])?.trim().replace(/\?$/, '');
+    console.log('[AI Chat] Detected expiration query intent:', { contractName });
+    return {
+      type: 'search',
+      action: 'find_expiration',
+      entities: { contractName },
+      confidence: 0.9,
+    };
+  }
+
   // Default intent
   return {
     type: lowerQuery.includes('?') ? 'question' : 'search',
@@ -924,6 +1115,316 @@ async function listHighValueContracts(threshold: number, tenantId: string) {
   } catch (e) {
     console.error('[AI Chat] Error listing high-value contracts:', e);
     return [];
+  }
+}
+
+// Fetch proactive alerts and insights
+async function getProactiveInsights(tenantId: string): Promise<{
+  criticalAlerts: string[];
+  insights: string[];
+  urgentContracts: any[];
+}> {
+  try {
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    
+    // Fetch critical expiring contracts (within 7 days)
+    const criticalExpiring = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        expirationDate: {
+          gte: now,
+          lte: in7Days,
+        },
+        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
+      },
+      orderBy: { expirationDate: 'asc' },
+      take: 5,
+    });
+    
+    // Fetch auto-renewal contracts coming up
+    const autoRenewals = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        autoRenewal: true,
+        expirationDate: {
+          gte: now,
+          lte: in30Days,
+        },
+        status: 'ACTIVE',
+      },
+      take: 5,
+    });
+    
+    // Fetch high-value contracts expiring soon
+    const highValueExpiring = await prisma.contract.findMany({
+      where: {
+        tenantId,
+        totalValue: { gte: 100000 },
+        expirationDate: {
+          gte: now,
+          lte: in30Days,
+        },
+        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
+      },
+      orderBy: { totalValue: 'desc' },
+      take: 3,
+    });
+    
+    // Build alerts
+    const criticalAlerts: string[] = [];
+    const insights: string[] = [];
+    
+    if (criticalExpiring.length > 0) {
+      criticalAlerts.push(`🔴 **${criticalExpiring.length} contract(s) expiring within 7 days!** Immediate attention required.`);
+    }
+    
+    if (autoRenewals.length > 0) {
+      criticalAlerts.push(`⚠️ **${autoRenewals.length} auto-renewal contract(s)** will renew within 30 days. Review cancellation options.`);
+    }
+    
+    if (highValueExpiring.length > 0) {
+      const totalValue = highValueExpiring.reduce((sum, c) => sum + Number(c.totalValue || 0), 0);
+      insights.push(`💰 **$${totalValue.toLocaleString()}** in high-value contracts expiring soon. Consider renewal negotiations.`);
+    }
+    
+    // Count total active vs expiring
+    const activeCount = await prisma.contract.count({
+      where: { tenantId, status: 'ACTIVE' },
+    });
+    
+    const expiringCount = await prisma.contract.count({
+      where: {
+        tenantId,
+        expirationDate: { lte: in30Days, gte: now },
+        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
+      },
+    });
+    
+    if (expiringCount > 0 && activeCount > 0) {
+      const expiringPct = Math.round((expiringCount / activeCount) * 100);
+      if (expiringPct > 20) {
+        insights.push(`📊 **${expiringPct}%** of your active contracts expire within 30 days. Consider batch renewal strategy.`);
+      }
+    }
+    
+    return {
+      criticalAlerts,
+      insights,
+      urgentContracts: [...criticalExpiring, ...highValueExpiring.filter(c => !criticalExpiring.find(ce => ce.id === c.id))],
+    };
+  } catch (e) {
+    console.error('[AI Chat] Error fetching proactive insights:', e);
+    return { criticalAlerts: [], insights: [], urgentContracts: [] };
+  }
+}
+
+// Compare two contracts side-by-side
+async function compareContracts(
+  contractNameA: string,
+  contractNameB: string,
+  tenantId: string
+): Promise<{
+  contractA: any | null;
+  contractB: any | null;
+  comparison: {
+    field: string;
+    valueA: string;
+    valueB: string;
+    difference: 'same' | 'different' | 'better_a' | 'better_b' | 'na';
+  }[];
+  summary: string;
+}> {
+  try {
+    // Find both contracts
+    const [contractA, contractB] = await Promise.all([
+      prisma.contract.findFirst({
+        where: {
+          tenantId,
+          OR: [
+            { fileName: { contains: contractNameA, mode: 'insensitive' } },
+            { supplierName: { contains: contractNameA, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          artifacts: {
+            where: { 
+              artifactType: { in: ['OVERVIEW', 'TERM_DATES', 'FINANCIAL', 'TERMINATION', 'LIABILITY'] },
+              status: 'COMPLETE',
+            },
+          },
+        },
+      }),
+      prisma.contract.findFirst({
+        where: {
+          tenantId,
+          OR: [
+            { fileName: { contains: contractNameB, mode: 'insensitive' } },
+            { supplierName: { contains: contractNameB, mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          artifacts: {
+            where: { 
+              artifactType: { in: ['OVERVIEW', 'TERM_DATES', 'FINANCIAL', 'TERMINATION', 'LIABILITY'] },
+              status: 'COMPLETE',
+            },
+          },
+        },
+      }),
+    ]);
+
+    if (!contractA || !contractB) {
+      return {
+        contractA,
+        contractB,
+        comparison: [],
+        summary: !contractA && !contractB 
+          ? `Could not find either contract. Please check the names.`
+          : !contractA 
+            ? `Could not find contract matching "${contractNameA}".`
+            : `Could not find contract matching "${contractNameB}".`,
+      };
+    }
+
+    // Build comparison
+    const comparison: {
+      field: string;
+      valueA: string;
+      valueB: string;
+      difference: 'same' | 'different' | 'better_a' | 'better_b' | 'na';
+    }[] = [];
+
+    // Compare basic fields
+    const formatValue = (v: any) => v ? String(v) : 'N/A';
+    const formatMoney = (v: any) => v ? `$${Number(v).toLocaleString()}` : 'N/A';
+    const formatDate = (d: Date | null) => d ? new Date(d).toLocaleDateString() : 'N/A';
+
+    comparison.push({
+      field: 'Supplier',
+      valueA: formatValue(contractA.supplierName),
+      valueB: formatValue(contractB.supplierName),
+      difference: contractA.supplierName === contractB.supplierName ? 'same' : 'different',
+    });
+
+    comparison.push({
+      field: 'Contract Type',
+      valueA: formatValue(contractA.contractType),
+      valueB: formatValue(contractB.contractType),
+      difference: contractA.contractType === contractB.contractType ? 'same' : 'different',
+    });
+
+    comparison.push({
+      field: 'Status',
+      valueA: formatValue(contractA.status),
+      valueB: formatValue(contractB.status),
+      difference: contractA.status === contractB.status ? 'same' : 'different',
+    });
+
+    comparison.push({
+      field: 'Total Value',
+      valueA: formatMoney(contractA.totalValue),
+      valueB: formatMoney(contractB.totalValue),
+      difference: !contractA.totalValue || !contractB.totalValue ? 'na' :
+        contractA.totalValue === contractB.totalValue ? 'same' :
+        Number(contractA.totalValue) > Number(contractB.totalValue) ? 'better_a' : 'better_b',
+    });
+
+    comparison.push({
+      field: 'Start Date',
+      valueA: formatDate(contractA.effectiveDate),
+      valueB: formatDate(contractB.effectiveDate),
+      difference: contractA.effectiveDate?.getTime() === contractB.effectiveDate?.getTime() ? 'same' : 'different',
+    });
+
+    comparison.push({
+      field: 'End Date',
+      valueA: formatDate(contractA.expirationDate),
+      valueB: formatDate(contractB.expirationDate),
+      difference: !contractA.expirationDate || !contractB.expirationDate ? 'na' :
+        contractA.expirationDate.getTime() === contractB.expirationDate.getTime() ? 'same' : 'different',
+    });
+
+    comparison.push({
+      field: 'Auto-Renewal',
+      valueA: contractA.autoRenewal ? 'Yes' : 'No',
+      valueB: contractB.autoRenewal ? 'Yes' : 'No',
+      difference: contractA.autoRenewal === contractB.autoRenewal ? 'same' : 'different',
+    });
+
+    // Get artifact data for deeper comparison
+    const getArtifactData = (artifacts: any[], type: string) => {
+      const artifact = artifacts.find((a: any) => a.artifactType === type);
+      return artifact?.extractedData || {};
+    };
+
+    const termA = getArtifactData(contractA.artifacts, 'TERM_DATES');
+    const termB = getArtifactData(contractB.artifacts, 'TERM_DATES');
+
+    if (termA.noticeRequiredDays || termB.noticeRequiredDays) {
+      comparison.push({
+        field: 'Notice Period (Days)',
+        valueA: termA.noticeRequiredDays ? `${termA.noticeRequiredDays} days` : 'N/A',
+        valueB: termB.noticeRequiredDays ? `${termB.noticeRequiredDays} days` : 'N/A',
+        difference: termA.noticeRequiredDays === termB.noticeRequiredDays ? 'same' : 'different',
+      });
+    }
+
+    const finA = getArtifactData(contractA.artifacts, 'FINANCIAL');
+    const finB = getArtifactData(contractB.artifacts, 'FINANCIAL');
+
+    if (finA.paymentTerms || finB.paymentTerms) {
+      comparison.push({
+        field: 'Payment Terms',
+        valueA: formatValue(finA.paymentTerms),
+        valueB: formatValue(finB.paymentTerms),
+        difference: finA.paymentTerms === finB.paymentTerms ? 'same' : 'different',
+      });
+    }
+
+    const liabA = getArtifactData(contractA.artifacts, 'LIABILITY');
+    const liabB = getArtifactData(contractB.artifacts, 'LIABILITY');
+
+    if (liabA.liabilityCap || liabB.liabilityCap) {
+      comparison.push({
+        field: 'Liability Cap',
+        valueA: formatValue(liabA.liabilityCap),
+        valueB: formatValue(liabB.liabilityCap),
+        difference: liabA.liabilityCap === liabB.liabilityCap ? 'same' : 'different',
+      });
+    }
+
+    // Generate summary
+    const differences = comparison.filter(c => c.difference !== 'same' && c.difference !== 'na');
+    const valueDiff = Number(contractA.totalValue || 0) - Number(contractB.totalValue || 0);
+    
+    let summary = `## Contract Comparison: ${contractA.fileName} vs ${contractB.fileName}\n\n`;
+    summary += `**${differences.length} differences** found across ${comparison.length} compared fields.\n\n`;
+    
+    if (valueDiff !== 0) {
+      summary += valueDiff > 0 
+        ? `💰 **${contractA.fileName}** has higher value by ${formatMoney(Math.abs(valueDiff))}.\n`
+        : `💰 **${contractB.fileName}** has higher value by ${formatMoney(Math.abs(valueDiff))}.\n`;
+    }
+
+    // Add key differences
+    if (differences.length > 0) {
+      summary += `\n**Key Differences:**\n`;
+      differences.slice(0, 5).forEach(d => {
+        summary += `- **${d.field}**: ${d.valueA} vs ${d.valueB}\n`;
+      });
+    }
+
+    return { contractA, contractB, comparison, summary };
+  } catch (e) {
+    console.error('[AI Chat] Error comparing contracts:', e);
+    return {
+      contractA: null,
+      contractB: null,
+      comparison: [],
+      summary: 'Error comparing contracts. Please try again.',
+    };
   }
 }
 
@@ -1840,7 +2341,27 @@ async function findContractsForComparison(
       });
       
       // Extract key terms from metadata
-      const metadata = contract.aiMetadata || {};
+      const customFields = (contract.contractMetadata as any)?.customFields || {};
+      const appliedMetadata = typeof customFields === 'object' && customFields
+        ? Object.fromEntries(Object.entries(customFields).filter(([k]) => !String(k).startsWith('_')))
+        : {};
+
+      if ((appliedMetadata as any).contract_name !== undefined && (appliedMetadata as any).contract_title === undefined) {
+        (appliedMetadata as any).contract_title = (appliedMetadata as any).contract_name;
+      }
+      if ((appliedMetadata as any).notice_period_days !== undefined && (appliedMetadata as any).notice_period === undefined) {
+        (appliedMetadata as any).notice_period = (appliedMetadata as any).notice_period_days;
+      }
+      if ((appliedMetadata as any).party_a_name !== undefined && (appliedMetadata as any).client_name === undefined) {
+        (appliedMetadata as any).client_name = (appliedMetadata as any).party_a_name;
+      }
+      if ((appliedMetadata as any).party_b_name !== undefined && (appliedMetadata as any).supplier_name === undefined) {
+        (appliedMetadata as any).supplier_name = (appliedMetadata as any).party_b_name;
+      }
+      const metadata = {
+        ...(typeof contract.aiMetadata === 'object' && contract.aiMetadata ? (contract.aiMetadata as any) : {}),
+        ...(appliedMetadata as any),
+      };
       const keyTerms: string[] = [];
       
       // Parse metadata for key terms
@@ -3177,6 +3698,7 @@ async function startWorkflowExecution(
 }
 
 // Fetch contract details directly from database when contractId is provided
+// ENHANCED: Now includes ALL artifact types for comprehensive AI context
 async function getContractContext(contractId: string): Promise<string> {
   try {
     const contract = await prisma.contract.findUnique({
@@ -3186,8 +3708,9 @@ async function getContractContext(contractId: string): Promise<string> {
           select: {
             type: true,
             data: true,
+            updatedAt: true,
           },
-          take: 5,
+          // Get ALL artifacts, not just 5
         },
       },
     });
@@ -3204,38 +3727,189 @@ async function getContractContext(contractId: string): Promise<string> {
     if (contract.endDate) context += `• End Date: ${contract.endDate.toLocaleDateString()}\n`;
     if (contract.totalValue) context += `• Value: $${Number(contract.totalValue).toLocaleString()}\n`;
 
-    // Add artifact summaries
+    // Comprehensive artifact context builder
     if (contract.artifacts && contract.artifacts.length > 0) {
-      context += `\n**Analysis Artifacts Available:**\n`;
+      context += `\n**Extracted Contract Intelligence (${contract.artifacts.length} artifacts):**\n`;
+      
       for (const artifact of contract.artifacts) {
-        if (artifact.type === 'OVERVIEW' && artifact.data) {
-          try {
-            const overview = typeof artifact.data === 'string' 
-              ? JSON.parse(artifact.data) 
-              : artifact.data;
-            if (overview.summary) {
-              context += `\n**Summary:** ${String(overview.summary).slice(0, 500)}...\n`;
-            }
-            if (overview.keyTerms && overview.keyTerms.length > 0) {
-              context += `**Key Terms:** ${overview.keyTerms.slice(0, 5).join(', ')}\n`;
-            }
-          } catch (e) {
-            // Skip if can't parse
+        try {
+          const data = typeof artifact.data === 'string' 
+            ? JSON.parse(artifact.data) 
+            : artifact.data;
+          
+          if (!data) continue;
+          
+          switch (artifact.type) {
+            case 'OVERVIEW':
+              context += `\n### Contract Overview\n`;
+              if (data.summary) context += `**Summary:** ${String(data.summary).slice(0, 800)}\n`;
+              if (data.keyTerms?.length) context += `**Key Terms:** ${data.keyTerms.slice(0, 10).join(', ')}\n`;
+              if (data.parties?.length) context += `**Parties:** ${data.parties.map((p: any) => p.name || p).join(', ')}\n`;
+              if (data.effectiveDate) context += `**Effective Date:** ${data.effectiveDate}\n`;
+              if (data.expirationDate) context += `**Expiration Date:** ${data.expirationDate}\n`;
+              if (data.contractValue) context += `**Contract Value:** ${data.contractValue}\n`;
+              if (data.governingLaw) context += `**Governing Law:** ${data.governingLaw}\n`;
+              if (data.additionalFindings?.length) {
+                context += `**Additional Findings:** ${data.additionalFindings.map((f: any) => `${f.field}: ${f.value}`).join('; ')}\n`;
+              }
+              if (data.openEndedNotes) context += `**Notes:** ${data.openEndedNotes}\n`;
+              break;
+              
+            case 'CLAUSES':
+              context += `\n### Key Clauses (${data.clauses?.length || 0} found)\n`;
+              if (data.clauses?.length) {
+                data.clauses.slice(0, 15).forEach((clause: any, i: number) => {
+                  context += `${i + 1}. **${clause.title || clause.name}** (${clause.importance || 'medium'} priority)\n`;
+                  if (clause.content) context += `   ${String(clause.content).slice(0, 200)}\n`;
+                  if (clause.risks?.length) context += `   ⚠️ Risks: ${clause.risks.join(', ')}\n`;
+                });
+              }
+              if (data.missingClauses?.length) context += `**Missing Clauses:** ${data.missingClauses.join(', ')}\n`;
+              if (data.unusualClauses?.length) context += `**Unusual Clauses:** ${data.unusualClauses.join(', ')}\n`;
+              if (data.additionalFindings?.length) {
+                context += `**Additional Clause Findings:** ${data.additionalFindings.map((f: any) => f.value).join('; ')}\n`;
+              }
+              break;
+              
+            case 'FINANCIAL':
+              context += `\n### Financial Terms\n`;
+              if (data.totalValue) context += `**Total Value:** ${data.currency || 'USD'} ${Number(data.totalValue).toLocaleString()}\n`;
+              if (data.paymentTerms) context += `**Payment Terms:** ${data.paymentTerms}\n`;
+              if (data.rateCards?.length) {
+                context += `**Rate Cards (${data.rateCards.length}):**\n`;
+                data.rateCards.slice(0, 10).forEach((rate: any) => {
+                  context += `  • ${rate.role}: ${rate.currency || 'USD'} ${rate.rate}/${rate.unit || 'hour'}\n`;
+                });
+              }
+              if (data.penalties?.length) {
+                context += `**Penalties:** ${data.penalties.map((p: any) => p.description || p.type).join('; ')}\n`;
+              }
+              if (data.discounts?.length) {
+                context += `**Discounts:** ${data.discounts.map((d: any) => `${d.value}${d.unit === 'percentage' ? '%' : ''} ${d.description || d.type}`).join('; ')}\n`;
+              }
+              if (data.additionalFindings?.length) {
+                context += `**Additional Financial Info:** ${data.additionalFindings.map((f: any) => `${f.field}: ${f.value}`).join('; ')}\n`;
+              }
+              break;
+              
+            case 'RISK':
+              context += `\n### Risk Assessment\n`;
+              context += `**Overall Risk:** ${data.overallRisk || data.riskLevel || 'Unknown'} (Score: ${data.riskScore || data.overallScore || 'N/A'}/100)\n`;
+              if (data.risks?.length || data.riskFactors?.length) {
+                const risks = data.risks || data.riskFactors || [];
+                context += `**Risk Factors (${risks.length}):**\n`;
+                risks.slice(0, 8).forEach((risk: any) => {
+                  context += `  • [${risk.level || risk.severity || 'medium'}] ${risk.title || risk.category}: ${String(risk.description).slice(0, 150)}\n`;
+                  if (risk.mitigation) context += `    → Mitigation: ${String(risk.mitigation).slice(0, 100)}\n`;
+                });
+              }
+              if (data.redFlags?.length) context += `**Red Flags:** ${data.redFlags.join('; ')}\n`;
+              if (data.missingProtections?.length) context += `**Missing Protections:** ${data.missingProtections.join('; ')}\n`;
+              break;
+              
+            case 'COMPLIANCE':
+              context += `\n### Compliance Status\n`;
+              context += `**Compliance Score:** ${data.complianceScore || data.score || 'N/A'}%\n`;
+              if (data.checks?.length) {
+                context += `**Compliance Checks:**\n`;
+                data.checks.slice(0, 10).forEach((check: any) => {
+                  const icon = check.status === 'compliant' ? '✅' : check.status === 'non-compliant' ? '❌' : '⚠️';
+                  context += `  ${icon} ${check.regulation}: ${check.status}\n`;
+                });
+              }
+              if (data.issues?.length) {
+                context += `**Issues:** ${data.issues.map((i: any) => `[${i.severity}] ${i.description}`).join('; ')}\n`;
+              }
+              break;
+              
+            case 'OBLIGATIONS':
+              context += `\n### Obligations & Milestones\n`;
+              if (data.obligations?.length) {
+                context += `**Obligations (${data.obligations.length}):**\n`;
+                data.obligations.slice(0, 10).forEach((ob: any) => {
+                  context += `  • ${ob.party}: ${ob.obligation || ob.title} (${ob.type || 'general'})`;
+                  if (ob.dueDate) context += ` - Due: ${ob.dueDate}`;
+                  context += `\n`;
+                });
+              }
+              if (data.milestones?.length) {
+                context += `**Milestones (${data.milestones.length}):**\n`;
+                data.milestones.slice(0, 8).forEach((m: any) => {
+                  context += `  • ${m.name}: ${m.dueDate || m.date || 'No date'}\n`;
+                });
+              }
+              if (data.keyDeadlines?.length) context += `**Key Deadlines:** ${data.keyDeadlines.join(', ')}\n`;
+              break;
+              
+            case 'RENEWAL':
+              context += `\n### Renewal & Termination\n`;
+              context += `**Auto-Renewal:** ${data.autoRenewal ? 'Yes' : 'No'}\n`;
+              if (data.renewalTerms) context += `**Renewal Terms:** ${typeof data.renewalTerms === 'string' ? data.renewalTerms : data.renewalTerms.renewalPeriod || JSON.stringify(data.renewalTerms)}\n`;
+              if (data.expirationDate) context += `**Expiration Date:** ${data.expirationDate}\n`;
+              if (data.noticeRequirements?.noticePeriod) context += `**Notice Required:** ${data.noticeRequirements.noticePeriod}\n`;
+              if (data.terminationRights) {
+                context += `**Termination Rights:** For cause: ${data.terminationRights.forCause || 'Yes'}; For convenience: ${data.terminationRights.forConvenience || 'Check contract'}\n`;
+              }
+              if (data.earlyTerminationFees) context += `**Early Termination Fees:** ${data.earlyTerminationFees}\n`;
+              break;
+              
+            case 'NEGOTIATION':
+              context += `\n### Negotiation Analysis\n`;
+              context += `**Favorability Score:** ${data.favorabilityScore || 'N/A'}/100\n`;
+              if (data.favorabilityAssessment) context += `**Assessment:** ${data.favorabilityAssessment}\n`;
+              if (data.negotiationPoints?.length) {
+                context += `**Points to Negotiate (${data.negotiationPoints.length}):**\n`;
+                data.negotiationPoints.slice(0, 5).forEach((np: any) => {
+                  context += `  • [${np.priority}] ${np.clause}: ${np.concern}\n`;
+                  if (np.suggestedChange) context += `    → Suggest: ${String(np.suggestedChange).slice(0, 100)}\n`;
+                });
+              }
+              if (data.strongPoints?.length) context += `**Strong Points:** ${data.strongPoints.slice(0, 5).join('; ')}\n`;
+              if (data.imbalances?.length) context += `**Imbalances:** ${data.imbalances.slice(0, 5).join('; ')}\n`;
+              break;
+              
+            case 'AMENDMENTS':
+              context += `\n### Amendments History\n`;
+              if (data.amendments?.length) {
+                context += `**Amendments (${data.amendments.length}):**\n`;
+                data.amendments.forEach((a: any) => {
+                  context += `  • ${a.number || a.title}: ${a.summary || 'See details'} (${a.date || 'No date'})\n`;
+                });
+              } else {
+                context += `No amendments recorded.\n`;
+              }
+              break;
+              
+            case 'CONTACTS':
+              context += `\n### Key Contacts\n`;
+              if (data.contacts?.length) {
+                data.contacts.slice(0, 8).forEach((c: any) => {
+                  context += `  • ${c.name} (${c.role || c.partyType}): ${c.email || c.phone || 'No contact info'}\n`;
+                });
+              }
+              if (data.signatories?.length) {
+                context += `**Signatories:** ${data.signatories.map((s: any) => `${s.name} (${s.title})`).join(', ')}\n`;
+              }
+              break;
+              
+            default:
+              // Handle any other artifact types dynamically
+              context += `\n### ${artifact.type}\n`;
+              context += `Data available: ${Object.keys(data).slice(0, 10).join(', ')}\n`;
           }
-        }
-        if (artifact.type === 'RISK' && artifact.data) {
-          try {
-            const risk = typeof artifact.data === 'string' 
-              ? JSON.parse(artifact.data) 
-              : artifact.data;
-            if (risk.overallScore !== undefined) {
-              context += `**Risk Score:** ${risk.overallScore}/100\n`;
-            }
-          } catch (e) {
-            // Skip if can't parse
-          }
+          
+        } catch (e) {
+          // Skip if can't parse artifact
+          console.warn(`Could not parse artifact ${artifact.type}:`, e);
         }
       }
+    }
+
+    // Add last updated timestamp
+    const latestArtifact = contract.artifacts?.reduce((latest: any, a: any) => 
+      !latest || (a.updatedAt && a.updatedAt > latest.updatedAt) ? a : latest, null);
+    if (latestArtifact?.updatedAt) {
+      context += `\n---\n*Artifacts last updated: ${latestArtifact.updatedAt.toLocaleString()}*\n`;
     }
 
     return context;
@@ -4943,7 +5617,7 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
         // Use advanced RAG to find relevant contract content
         const searchResults = await hybridSearch(message, {
           mode: 'hybrid',
-          k: 5,
+          k: 7,
           rerank: true,
           expandQuery: true,
           filters: context?.tenantId ? { tenantId: context.tenantId } : {},
@@ -4951,9 +5625,24 @@ async function getOpenAIResponse(message: string, conversationHistory: any[], co
 
         if (searchResults.length > 0) {
           ragSearchResults = searchResults; // Store for returning to frontend
-          ragContext = `\n\n**Relevant Contract Information Found:**\n${searchResults.map((r, i) => 
-            `[${i + 1}] From "${r.contractName}" (${Math.round(r.score * 100)}% match):\n${r.text.slice(0, 500)}...`
-          ).join('\n\n')}`;
+          
+          // Build enhanced RAG context with better formatting
+          ragContext = `\n\n**🔍 Relevant Contract Information Found (${searchResults.length} matches):**\n\n`;
+          
+          searchResults.forEach((r, i) => {
+            const matchScore = Math.round(r.score * 100);
+            const urgencyIcon = matchScore >= 90 ? '🎯' : matchScore >= 75 ? '✅' : '📄';
+            
+            ragContext += `---\n`;
+            ragContext += `**${urgencyIcon} Match ${i + 1}: [${r.contractName}](/contracts/${r.contractId})** (${matchScore}% relevance)\n`;
+            
+            // Add metadata if available
+            if (r.supplierName) ragContext += `• Supplier: ${r.supplierName}\n`;
+            if (r.chunkType) ragContext += `• Section: ${r.chunkType.replace('_', ' ').toLowerCase()}\n`;
+            
+            // Add the actual content excerpt
+            ragContext += `\n> ${r.text.slice(0, 600).replace(/\n/g, '\n> ')}${r.text.length > 600 ? '...' : ''}\n\n`;
+          });
           
           ragSources = [...ragSources, ...searchResults.map(r => `Contract: ${r.contractName} (ID: ${r.contractId})`)];
         }
@@ -5002,13 +5691,17 @@ ${contractContext || 'No specific contract selected.'}
 
 **📝 RESPONSE GUIDELINES:**
 1. When analysis data is provided above, USE IT to give detailed, data-driven responses
-2. Always include clickable links to contracts: [Contract Name](/contracts/ID)
+2. **ALWAYS include clickable links to contracts using markdown format: [Contract Name](/contracts/CONTRACT_ID)**
+   - When listing contracts, EVERY contract MUST be a clickable link
+   - When mentioning a specific contract, ALWAYS link to it
+   - Extract contract IDs from the context above and use them in links
 3. Structure responses with clear sections using markdown (##, **, bullets)
 4. For summaries, organize by: Overview → Value Analysis → Duration → Categories → Risks
 5. Provide actionable insights and recommendations
 6. Suggest relevant follow-up questions
 7. If data shows risks or issues, highlight them prominently
 8. Be conversational but professional - you're a trusted advisor
+9. When asked to find/search/list contracts, format as a numbered list with each contract as a clickable link
 
 **🚫 OUT OF SCOPE:**
 - Workflow approvals/signatures (coming soon)
@@ -5044,6 +5737,10 @@ ${contractContext || 'No specific contract selected.'}
         }))
       : [];
 
+    // Generate smart, context-aware suggested actions based on intent and results
+    const smartSuggestedActions = generateSmartSuggestedActions(context?.intent, ragSearchResults, context);
+    const smartSuggestions = generateSmartFollowUpSuggestions(message, context?.intent, ragSearchResults);
+
     return {
       response: responseContent,
       sources: ragSources.length > 0 ? ragSources : ['AI-generated response', 'CLM Database'],
@@ -5052,20 +5749,104 @@ ${contractContext || 'No specific contract selected.'}
       ragSearchCount: ragSearchResults.length,
       confidence: ragSearchResults.length > 0 ? 0.95 : 0.85,
       intent: { type: context?.intent?.type || 'general' },
-      suggestedActions: [
-        { label: '🔍 Search Contracts', action: 'search-contracts' },
-        { label: '📊 View Dashboard', action: 'view-dashboard' },
-      ],
-      suggestions: [
-        'Tell me more about this',
-        'What are the next steps?',
-        'Show me related contracts',
-      ],
+      suggestedActions: smartSuggestedActions,
+      suggestions: smartSuggestions,
     };
   } catch (error: any) {
     console.error('OpenAI API error:', error);
     throw new Error(`OpenAI API error: ${error.message}`);
   }
+}
+
+// Generate smart, context-aware suggested actions
+function generateSmartSuggestedActions(intent: any, ragResults: any[], context: any): any[] {
+  const actions: any[] = [];
+  
+  // Intent-based actions
+  if (intent?.type === 'list') {
+    if (intent.action === 'list_by_supplier') {
+      actions.push({ label: '📊 Supplier Analytics', action: 'supplier-analytics' });
+      actions.push({ label: '🔄 Start Renewal', action: 'start-renewal' });
+    } else if (intent.action === 'list_expiring') {
+      actions.push({ label: '🔔 Set Reminders', action: 'set-reminders' });
+      actions.push({ label: '📧 Notify Stakeholders', action: 'notify-stakeholders' });
+    } else if (intent.action === 'list_by_status') {
+      actions.push({ label: '📋 Export List', action: 'export-list' });
+    }
+  } else if (intent?.type === 'analytics') {
+    actions.push({ label: '📈 Deep Dive', action: 'deep-analysis' });
+    actions.push({ label: '📊 Generate Report', action: 'generate-report' });
+  } else if (intent?.type === 'search') {
+    actions.push({ label: '🔍 Refine Search', action: 'refine-search' });
+  }
+  
+  // If we have RAG results, add contract-specific actions
+  if (ragResults && ragResults.length > 0) {
+    const firstContract = ragResults[0];
+    actions.push({ 
+      label: `📄 View ${firstContract.contractName?.slice(0, 20)}...`, 
+      action: `view-contract:${firstContract.contractId}` 
+    });
+  }
+  
+  // Always include some default helpful actions
+  if (actions.length === 0) {
+    actions.push({ label: '🔍 Search Contracts', action: 'search-contracts' });
+    actions.push({ label: '📊 View Dashboard', action: 'view-dashboard' });
+  }
+  
+  // Limit to 3 most relevant actions
+  return actions.slice(0, 3);
+}
+
+// Generate smart follow-up suggestions based on context
+function generateSmartFollowUpSuggestions(query: string, intent: any, ragResults: any[]): string[] {
+  const suggestions: string[] = [];
+  const lowerQuery = query.toLowerCase();
+  
+  // Intent-based suggestions
+  if (intent?.type === 'list') {
+    if (intent.action === 'list_by_supplier' && intent.entities?.supplierName) {
+      suggestions.push(`What's the total spend with ${intent.entities.supplierName}?`);
+      suggestions.push(`Which ${intent.entities.supplierName} contracts expire soon?`);
+      suggestions.push(`Compare ${intent.entities.supplierName} rates with market`);
+    } else if (intent.action === 'list_expiring') {
+      suggestions.push('Which ones are auto-renewing?');
+      suggestions.push('Show me the highest value expiring contracts');
+      suggestions.push('What are the renewal options?');
+    }
+  } else if (intent?.type === 'analytics') {
+    suggestions.push('How does this compare to last year?');
+    suggestions.push('Show me the trend over time');
+    suggestions.push('What are the main risk factors?');
+  }
+  
+  // Query-based suggestions
+  if (lowerQuery.includes('compare') || lowerQuery.includes('vs')) {
+    suggestions.push('Which one offers better terms?');
+    suggestions.push('Show me the key differences');
+  }
+  
+  if (lowerQuery.includes('risk') || lowerQuery.includes('expire')) {
+    suggestions.push('What actions should I take?');
+    suggestions.push('Who should I notify?');
+  }
+  
+  // RAG-based suggestions
+  if (ragResults && ragResults.length > 0) {
+    suggestions.push('Tell me more about the first result');
+    suggestions.push('Are there similar contracts?');
+  }
+  
+  // Default fallback suggestions
+  if (suggestions.length === 0) {
+    suggestions.push('Tell me more about this');
+    suggestions.push('What should I do next?');
+    suggestions.push('Show me related contracts');
+  }
+  
+  // Return unique suggestions, limited to 3
+  return [...new Set(suggestions)].slice(0, 3);
 }
 
 // Determine if the query should use RAG search
@@ -5107,6 +5888,46 @@ export async function POST(request: NextRequest) {
 
     // Build database context based on detected intent
     let additionalContext = '';
+    let contractPreviews: any[] = []; // Store contracts for visual preview cards
+    let proactiveAlerts: string[] = []; // Store proactive alerts to show
+    let proactiveInsightsData: string[] = []; // Store insights
+    
+    // Fetch proactive insights on first message or status/dashboard queries
+    const isStatusQuery = /status|dashboard|overview|summary|what.*happening|urgent|critical|attention/i.test(message);
+    if (isStatusQuery || (!conversationHistory || conversationHistory.length === 0)) {
+      const insights = await getProactiveInsights(tenantId);
+      proactiveAlerts = insights.criticalAlerts;
+      proactiveInsightsData = insights.insights;
+      
+      // Add urgent contracts to previews if available
+      if (insights.urgentContracts.length > 0 && contractPreviews.length === 0) {
+        contractPreviews = insights.urgentContracts.map(formatContractForPreview);
+      }
+      
+      // Add proactive alerts to context
+      if (proactiveAlerts.length > 0 || proactiveInsightsData.length > 0) {
+        additionalContext += `\n\n**⚡ PROACTIVE ALERTS:**\n${proactiveAlerts.join('\n')}\n\n**💡 INSIGHTS:**\n${proactiveInsightsData.join('\n')}`;
+      }
+    }
+    
+    // Helper to format contracts for preview cards
+    const formatContractForPreview = (c: any) => {
+      const expiry = c.expirationDate ? new Date(c.expirationDate) : null;
+      const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+      
+      return {
+        id: c.id,
+        name: c.contractTitle || c.name || 'Untitled Contract',
+        supplier: c.supplierName,
+        status: c.status,
+        value: Number(c.totalValue || c.value || 0),
+        expirationDate: expiry ? expiry.toISOString() : null,
+        daysUntilExpiry: daysUntilExpiry,
+        riskLevel: daysUntilExpiry !== null && daysUntilExpiry <= 30 ? 'high' : 
+                   daysUntilExpiry !== null && daysUntilExpiry <= 90 ? 'medium' : 'low',
+        type: c.contractType || c.type || 'CONTRACT',
+      };
+    };
     
     // ============================================
     // PROCUREMENT AGENT: Query real database based on intent
@@ -5117,21 +5938,25 @@ export async function POST(request: NextRequest) {
       let contracts: any[] = [];
       if (intent.action === 'list_by_supplier' && intent.entities.supplierName) {
         contracts = await listContractsBySupplier(intent.entities.supplierName, tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**Contracts with ${intent.entities.supplierName}:**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Status: ${c.status}, Value: $${Number(c.totalValue || 0).toLocaleString()}, Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}`
         ).join('\n') || 'No contracts found.'}`;
       } else if (intent.action === 'list_expiring') {
         contracts = await listExpiringContracts(intent.entities.daysUntilExpiry || 30, tenantId, intent.entities.supplierName);
+        contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**Contracts Expiring in ${intent.entities.daysUntilExpiry || 30} Days:**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Expires: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'}, Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No expiring contracts found.'}`;
       } else if (intent.action === 'list_by_status' && intent.entities.status) {
         contracts = await listContractsByStatus(intent.entities.status, tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**${intent.entities.status} Contracts:**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No contracts found.'}`;
       } else if (intent.action === 'list_by_value') {
         contracts = await listHighValueContracts(intent.entities.valueThreshold || 100000, tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
         additionalContext = `\n\n**High Value Contracts (>$${(intent.entities.valueThreshold || 100000).toLocaleString()}):**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No high-value contracts found.'}`;
@@ -5691,6 +6516,82 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // For comparison intents
+    if (intent.type === 'comparison') {
+      if (intent.action === 'compare_contracts' && intent.entities.contractA && intent.entities.contractB) {
+        const comparison = await compareContracts(
+          intent.entities.contractA,
+          intent.entities.contractB,
+          tenantId
+        );
+        
+        additionalContext += `\n\n${comparison.summary}`;
+        
+        if (comparison.contractA && comparison.contractB && comparison.comparison.length > 0) {
+          additionalContext += `\n\n**Side-by-Side Comparison:**\n`;
+          additionalContext += `| Field | ${comparison.contractA.fileName} | ${comparison.contractB.fileName} | Status |\n`;
+          additionalContext += `|-------|----------|----------|--------|\n`;
+          comparison.comparison.forEach(c => {
+            const statusIcon = c.difference === 'same' ? '✓' : 
+              c.difference === 'better_a' ? '⬆️' :
+              c.difference === 'better_b' ? '⬇️' :
+              c.difference === 'na' ? '—' : '≠';
+            additionalContext += `| ${c.field} | ${c.valueA} | ${c.valueB} | ${statusIcon} |\n`;
+          });
+          
+          // Add contract preview cards
+          contractPreviews.push(
+            formatContractForPreview(comparison.contractA),
+            formatContractForPreview(comparison.contractB)
+          );
+        }
+        
+        context = { ...context, comparison };
+      } else if (intent.action === 'compare_suppliers' && intent.entities.supplierA && intent.entities.supplierB) {
+        // Compare contracts from two different suppliers
+        const [supplierAContracts, supplierBContracts] = await Promise.all([
+          prisma.contract.findMany({
+            where: { tenantId, supplierName: { contains: intent.entities.supplierA, mode: 'insensitive' } },
+            orderBy: { totalValue: 'desc' },
+            take: 10,
+          }),
+          prisma.contract.findMany({
+            where: { tenantId, supplierName: { contains: intent.entities.supplierB, mode: 'insensitive' } },
+            orderBy: { totalValue: 'desc' },
+            take: 10,
+          }),
+        ]);
+        
+        const calcStats = (contracts: any[]) => ({
+          count: contracts.length,
+          totalValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
+          avgValue: contracts.length > 0 ? contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0) / contracts.length : 0,
+          activeCount: contracts.filter(c => c.status === 'ACTIVE').length,
+        });
+        
+        const statsA = calcStats(supplierAContracts);
+        const statsB = calcStats(supplierBContracts);
+        
+        additionalContext += `\n\n## Supplier Comparison: ${intent.entities.supplierA} vs ${intent.entities.supplierB}\n\n`;
+        additionalContext += `| Metric | ${intent.entities.supplierA} | ${intent.entities.supplierB} |\n`;
+        additionalContext += `|--------|----------|----------|\n`;
+        additionalContext += `| Total Contracts | ${statsA.count} | ${statsB.count} |\n`;
+        additionalContext += `| Total Value | $${statsA.totalValue.toLocaleString()} | $${statsB.totalValue.toLocaleString()} |\n`;
+        additionalContext += `| Average Contract Value | $${Math.round(statsA.avgValue).toLocaleString()} | $${Math.round(statsB.avgValue).toLocaleString()} |\n`;
+        additionalContext += `| Active Contracts | ${statsA.activeCount} | ${statsB.activeCount} |\n`;
+        
+        // Determine which is better overall
+        if (statsA.totalValue !== statsB.totalValue) {
+          const higher = statsA.totalValue > statsB.totalValue ? intent.entities.supplierA : intent.entities.supplierB;
+          additionalContext += `\n💰 **${higher}** has higher total contract value.`;
+        }
+        
+        context = { ...context, supplierComparison: { supplierA: intent.entities.supplierA, supplierB: intent.entities.supplierB, statsA, statsB } };
+      } else if (intent.action === 'side_by_side') {
+        additionalContext += `\n\n**Side-by-Side Comparison:**\nTo compare contracts, please specify which contracts you'd like to compare. For example:\n- "Compare Contract A with Contract B"\n- "Compare Acme Corp contract vs Globex contract"\n- "What's different between MSA 2024 and MSA 2023"`;
+      }
+    }
+
     // For taxonomy intents
     if (intent.type === 'taxonomy') {
       if (intent.action === 'list_categories') {
@@ -5756,12 +6657,111 @@ export async function POST(request: NextRequest) {
       additionalContext,
     });
 
+    // Add contract previews to response if we have them
+    if (contractPreviews.length > 0) {
+      response.contractPreviews = contractPreviews;
+    }
+
+    // Add proactive alerts and insights to response
+    if (proactiveAlerts.length > 0) {
+      response.proactiveAlerts = proactiveAlerts;
+    }
+    if (proactiveInsightsData.length > 0) {
+      response.proactiveInsights = proactiveInsightsData;
+    }
+
     return NextResponse.json(response)
   } catch (error: any) {
-    console.error('Chat API error:', error)
-    return NextResponse.json(
-      { error: error.message || 'Failed to process chat message' },
-      { status: 500 }
-    )
+    console.error('Chat API error:', error);
+    
+    // Generate helpful error response with recovery suggestions
+    const errorCode = error.code || 'UNKNOWN_ERROR';
+    const errorMessage = error.message || 'Failed to process chat message';
+    
+    let userFriendlyMessage = 'I encountered an issue processing your request.';
+    let recoverySuggestions: string[] = [];
+    let suggestedActions: { label: string; action: string }[] = [];
+    
+    // Categorize error and provide specific recovery options
+    if (errorMessage.includes('rate limit') || errorCode === 'rate_limit_exceeded') {
+      userFriendlyMessage = '⏳ I\'m receiving too many requests right now.';
+      recoverySuggestions = [
+        'Wait a few seconds and try again',
+        'Try a simpler question',
+        'Break complex questions into smaller parts',
+      ];
+      suggestedActions = [
+        { label: '🔄 Retry', action: 'retry' },
+        { label: '📋 View Contracts', action: 'list-contracts' },
+      ];
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('ETIMEDOUT')) {
+      userFriendlyMessage = '⏱️ The request took too long to process.';
+      recoverySuggestions = [
+        'Try a more specific search (e.g., add supplier name or date range)',
+        'Ask about a single contract instead of all contracts',
+        'Check your internet connection',
+      ];
+      suggestedActions = [
+        { label: '🔄 Retry', action: 'retry' },
+        { label: '📋 Show Active Contracts', action: 'list-active' },
+      ];
+    } else if (errorMessage.includes('OPENAI_API_KEY') || errorMessage.includes('api_key')) {
+      userFriendlyMessage = '🔑 AI service is not configured properly.';
+      recoverySuggestions = [
+        'Contact your administrator to set up the AI service',
+        'In the meantime, you can still browse and search contracts manually',
+      ];
+      suggestedActions = [
+        { label: '📋 Browse Contracts', action: 'browse' },
+      ];
+    } else if (errorMessage.includes('not found') || errorCode === 'NOT_FOUND') {
+      userFriendlyMessage = '🔍 I couldn\'t find what you\'re looking for.';
+      recoverySuggestions = [
+        'Check the spelling of supplier or contract names',
+        'Try searching with partial names',
+        'Ask me to list all contracts to find what you need',
+      ];
+      suggestedActions = [
+        { label: '📋 List All Contracts', action: 'list-all' },
+        { label: '🔍 Search Contracts', action: 'search' },
+      ];
+    } else if (errorMessage.includes('database') || errorMessage.includes('prisma') || errorMessage.includes('connection')) {
+      userFriendlyMessage = '🗄️ I\'m having trouble accessing the contract database.';
+      recoverySuggestions = [
+        'The database may be temporarily unavailable',
+        'Try again in a few moments',
+        'If the problem persists, contact support',
+      ];
+      suggestedActions = [
+        { label: '🔄 Retry', action: 'retry' },
+      ];
+    } else {
+      recoverySuggestions = [
+        'Try rephrasing your question',
+        'Ask a more specific question',
+        'Start with a simple query like "show me contracts expiring soon"',
+      ];
+      suggestedActions = [
+        { label: '🔄 Retry', action: 'retry' },
+        { label: '📋 Show All Contracts', action: 'list-all' },
+        { label: '❓ Help', action: 'help' },
+      ];
+    }
+    
+    // Return a user-friendly error response that the UI can display nicely
+    return NextResponse.json({
+      response: `${userFriendlyMessage}\n\n**What you can try:**\n${recoverySuggestions.map(s => `• ${s}`).join('\n')}`,
+      error: true,
+      errorCode,
+      errorDetails: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      suggestedActions,
+      suggestions: recoverySuggestions,
+      metadata: {
+        intent: null,
+        confidence: 0,
+        usedRAG: false,
+        errorRecovery: true,
+      },
+    }, { status: 200 }); // Return 200 so the UI can display the friendly error
   }
 }

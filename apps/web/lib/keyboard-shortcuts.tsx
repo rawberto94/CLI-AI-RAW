@@ -6,7 +6,7 @@
  * import { useHotkeys, HotkeyProvider, useHotkeyContext } from '@/lib/keyboard-shortcuts';
  * 
  * // Global shortcut
- * useHotkeys('ctrl+k', () => openSearch());
+ * useHotkeys('ctrl+k', () => openCommandPalette());
  * 
  * // Scoped shortcut
  * useHotkeys('escape', () => closeModal(), { scope: 'modal' });

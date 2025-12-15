@@ -168,6 +168,7 @@ export async function extractMetadataFromArtifacts(
         metadata.currency = data.currency;
       }
       if (data.jurisdiction) {
+        metadata.jurisdiction = data.jurisdiction;
         metadata.governing_law = data.jurisdiction;
       }
       if (data.parties && Array.isArray(data.parties)) {
@@ -181,9 +182,11 @@ export async function extractMetadataFromArtifacts(
           p.role?.toLowerCase().includes("provider")
         );
         if (client?.name) {
+          metadata.client_name = client.name;
           metadata.party_a_name = client.name;
         }
         if (supplier?.name) {
+          metadata.supplier_name = supplier.name;
           metadata.party_b_name = supplier.name;
         }
       }

@@ -220,6 +220,31 @@ export async function GET(
             (a: any) => a.type === "CLAUSES" || a.type === "clauses"
           )?.data
         : contractData.extractedData?.clauses,
+      obligations: Array.isArray(contractData.extractedData)
+        ? contractData.extractedData.find(
+            (a: any) => a.type === "OBLIGATIONS" || a.type === "obligations"
+          )?.data
+        : contractData.extractedData?.obligations,
+      renewal: Array.isArray(contractData.extractedData)
+        ? contractData.extractedData.find(
+            (a: any) => a.type === "RENEWAL" || a.type === "renewal"
+          )?.data
+        : contractData.extractedData?.renewal,
+      negotiationPoints: Array.isArray(contractData.extractedData)
+        ? contractData.extractedData.find(
+            (a: any) => a.type === "NEGOTIATION" || a.type === "negotiation"
+          )?.data
+        : contractData.extractedData?.negotiation || contractData.extractedData?.negotiationPoints,
+      amendments: Array.isArray(contractData.extractedData)
+        ? contractData.extractedData.find(
+            (a: any) => a.type === "AMENDMENTS" || a.type === "amendments"
+          )?.data
+        : contractData.extractedData?.amendments,
+      contacts: Array.isArray(contractData.extractedData)
+        ? contractData.extractedData.find(
+            (a: any) => a.type === "CONTACTS" || a.type === "contacts"
+          )?.data
+        : contractData.extractedData?.contacts,
     };
 
     const responseTime = Date.now() - startTime;

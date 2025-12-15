@@ -3,6 +3,7 @@
 import React, { useState, useMemo, memo } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +33,8 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle2,
-  GitBranch
+  GitBranch,
+  Sparkles
 } from 'lucide-react'
 import { ApprovalNotificationBell } from '@/components/workflows/ApprovalNotificationBell'
 
@@ -154,10 +156,16 @@ function MainNavigation() {
   return (
     <TooltipProvider>
       {/* Mobile Menu Button */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <FileText className="h-6 w-6 text-blue-600" />
-          <span className="font-semibold text-gray-900">Contract Intelligence</span>
+      <motion.div 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 py-3 flex items-center justify-between shadow-sm"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shadow-blue-500/20">
+            <FileText className="h-5 w-5 text-white" />
+          </div>
+          <span className="font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Contract Intelligence</span>
         </div>
         <div className="flex items-center gap-2">
           <ApprovalNotificationBell />
@@ -165,100 +173,152 @@ function MainNavigation() {
           <Button
             variant="ghost"
             size="sm"
+            className="hover:bg-slate-100/80"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
+            <motion.div
+              animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-5 w-5 text-slate-600" />
+              ) : (
+                <Menu className="h-5 w-5 text-slate-600" />
+              )}
+            </motion.div>
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-30 h-screen transition-transform bg-white border-r border-gray-200 shadow-lg',
+          'fixed top-0 left-0 z-30 h-screen transition-all duration-300 ease-out',
+          'bg-white/95 backdrop-blur-xl border-r border-slate-200/60 shadow-xl shadow-slate-200/40',
           'lg:translate-x-0 w-64',
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
+        {/* Decorative gradient orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 -right-10 w-32 h-32 bg-gradient-to-br from-purple-400/15 to-pink-500/15 rounded-full blur-3xl" />
+        </div>
+
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <FileText className="h-6 w-6 text-blue-600" />
-            <span className="font-semibold text-gray-900">Contract Intelligence</span>
+        <div className="relative h-16 flex items-center justify-between px-5 border-b border-slate-200/60 bg-gradient-to-r from-slate-50/80 to-white/50">
+          <div className="flex items-center gap-2.5">
+            <motion.div 
+              whileHover={{ scale: 1.05, rotate: 2 }}
+              className="p-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-xl shadow-lg shadow-blue-500/25"
+            >
+              <FileText className="h-5 w-5 text-white" />
+            </motion.div>
+            <div className="flex flex-col">
+              <span className="font-bold text-sm bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">Contract</span>
+              <span className="text-[10px] font-medium text-slate-500 -mt-0.5 tracking-wide">Intelligence</span>
+            </div>
           </div>
           <ApprovalNotificationBell />
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {navigationItems.map((item) => {
+        <nav className="relative flex-1 overflow-y-auto p-4 space-y-1.5">
+          {navigationItems.map((item, index) => {
             const hasChildren = item.children && item.children.length > 0
             const isExpanded = expandedItems.includes(item.name)
             const isItemActive = isActive(item.href)
             const hasActiveChild = isChildActive(item.children)
 
             return (
-              <div key={item.name}>
+              <motion.div 
+                key={item.name}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.03 }}
+              >
                 {hasChildren ? (
                   <>
                     <button
                       data-testid={`nav-${item.name.toLowerCase().replace(/\s+/g, '-')}-button`}
                       onClick={() => toggleExpanded(item.name)}
                       className={cn(
-                        'w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        'group w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                         (isItemActive || hasActiveChild)
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 text-blue-700 shadow-sm border border-blue-200/50'
+                          : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <item.icon className="h-5 w-5 flex-shrink-0" />
+                        <div className={cn(
+                          'p-1.5 rounded-lg transition-all duration-200',
+                          (isItemActive || hasActiveChild)
+                            ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                            : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
+                        )}>
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                        </div>
                         <span>{item.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {item.badge && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge className="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-sm">
+                            <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                             {item.badge}
                           </Badge>
                         )}
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </motion.div>
                       </div>
                     </button>
 
                     {/* Children */}
-                    {isExpanded && item.children && (
-                      <div className="ml-4 mt-1 space-y-1 border-l-2 border-gray-200 pl-4">
-                        {item.children.map((child, childIndex) => (
-                          <Link
-                            key={`${child.name}-${childIndex}`}
-                            href={child.href}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={cn(
-                              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                              isActive(child.href)
-                                ? 'bg-blue-50 text-blue-700 font-medium'
-                                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                            )}
-                          >
-                            <child.icon className="h-4 w-4 flex-shrink-0" />
-                            <span>{child.name}</span>
-                            {child.badge && (
-                              <Badge variant="secondary" className="ml-auto text-xs">
-                                {child.badge}
-                              </Badge>
-                            )}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
+                    <AnimatePresence>
+                      {isExpanded && item.children && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="ml-4 mt-1.5 space-y-1 border-l-2 border-gradient-to-b from-blue-200 to-indigo-200 pl-3 overflow-hidden"
+                        >
+                          {item.children.map((child, childIndex) => (
+                            <motion.div
+                              key={`${child.name}-${childIndex}`}
+                              initial={{ opacity: 0, x: -5 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: childIndex * 0.05 }}
+                            >
+                              <Link
+                                href={child.href}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={cn(
+                                  'group flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200',
+                                  isActive(child.href)
+                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-100/50'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                )}
+                              >
+                                <child.icon className={cn(
+                                  'h-3.5 w-3.5 flex-shrink-0 transition-colors',
+                                  isActive(child.href) ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'
+                                )} />
+                                <span>{child.name}</span>
+                                {child.badge && (
+                                  <Badge className="ml-auto text-[10px] bg-slate-100 text-slate-600 border-0">
+                                    {child.badge}
+                                  </Badge>
+                                )}
+                              </Link>
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </>
                 ) : (
                   <Link
@@ -266,48 +326,75 @@ function MainNavigation() {
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isItemActive
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 text-blue-700 shadow-sm border border-blue-200/50'
+                        : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                     )}
                   >
-                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                    <div className={cn(
+                      'p-1.5 rounded-lg transition-all duration-200',
+                      isItemActive
+                        ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                        : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
+                    )}>
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                    </div>
                     <span>{item.name}</span>
                     {item.badge && (
-                      <Badge variant="secondary" className="ml-auto text-xs">
+                      <Badge className="ml-auto text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-sm">
+                        <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                         {item.badge}
                       </Badge>
                     )}
                   </Link>
                 )}
-              </div>
+              </motion.div>
             )
           })}
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="text-xs text-gray-500 space-y-2">
+        <div className="relative border-t border-slate-200/60 p-4 bg-gradient-to-t from-slate-50/80 to-transparent">
+          <div className="text-xs space-y-2.5">
             <div className="flex items-center justify-between">
-              <span>Version</span>
-              <span className="font-medium">2.0.0</span>
+              <span className="text-slate-500">Version</span>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 font-mono bg-white/80">
+                v2.0.0
+              </Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span>Real-time</span>
+              <span className="text-slate-500">Real-time</span>
               <CompactConnectionStatus />
             </div>
+            <motion.div 
+              className="pt-2 mt-2 border-t border-slate-200/60"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                <Sparkles className="h-3 w-3 text-indigo-400" />
+                <span>AI-Powered Analysis</span>
+              </div>
+            </motion.div>
           </div>
         </div>
       </aside>
 
       {/* Mobile Overlay */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-20 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </TooltipProvider>
   )
 }

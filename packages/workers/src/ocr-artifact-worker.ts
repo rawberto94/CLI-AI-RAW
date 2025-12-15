@@ -18,6 +18,16 @@ import {
   CircuitBreakerError 
 } from '../../utils/src/patterns/circuit-breaker';
 import { retry, retryOpenAI, retryStorage } from '../../utils/src/patterns/retry';
+import { redisEventBus, RedisEvents, publishJobProgress } from '../../utils/src/events/redis-event-bus';
+import {
+  ContractType,
+  ArtifactType,
+  detectContractType,
+  getContractProfile,
+  getRelevantArtifacts,
+  isArtifactApplicable,
+  getEnhancedPromptHints,
+} from './contract-type-profiles';
 
 const logger = pino({ name: 'ocr-artifact-worker' });
 
@@ -59,26 +69,12 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 });
 const prisma = getClient();
 
-// Simple in-memory cache for OCR results (production would use Redis)
-const ocrCache = new Map<string, { text: string; timestamp: number }>();
-const artifactCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-const OCR_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours for OCR results
+// Use distributed Redis cache instead of in-memory cache
+import { ocrCache, artifactCache } from '../../utils/src/cache/distributed-cache';
 
-// Cleanup old cache entries every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of artifactCache.entries()) {
-    if (now - value.timestamp > CACHE_TTL) {
-      artifactCache.delete(key);
-    }
-  }
-  for (const [key, value] of ocrCache.entries()) {
-    if (now - value.timestamp > OCR_CACHE_TTL) {
-      ocrCache.delete(key);
-    }
-  }
-}, 10 * 60 * 1000);
+// TTL values for reference (applied via the distributed cache)
+const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
+const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
 // OCR fallback chain - try in order until one succeeds
 const OCR_FALLBACK_CHAIN = ['mistral', 'gpt4', 'tesseract'] as const;
@@ -133,13 +129,13 @@ function generateOCRCacheKey(filePath: string, fileSize: number): string {
 async function performOCR(filePath: string, ocrMode: string, fileSize?: number): Promise<string> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
-  // Check cache first
+  // Check distributed cache first
   if (fileSize) {
     const cacheKey = generateOCRCacheKey(filePath, fileSize);
-    const cached = ocrCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < OCR_CACHE_TTL) {
-      logger.info({ cacheKey }, 'Using cached OCR result');
-      return cached.text;
+    const cached = await ocrCache.get<string>(cacheKey);
+    if (cached) {
+      logger.info({ cacheKey }, 'Using cached OCR result from distributed cache');
+      return cached;
     }
   }
   
@@ -185,11 +181,11 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
         result = await extractTextFallback(filePath);
       }
       
-      // Cache successful result
+      // Cache successful result in distributed cache
       if (fileSize && result && result.length > 100) {
         const cacheKey = generateOCRCacheKey(filePath, fileSize);
-        ocrCache.set(cacheKey, { text: result, timestamp: Date.now() });
-        logger.info({ cacheKey, textLength: result.length }, 'Cached OCR result');
+        await ocrCache.set(cacheKey, result, OCR_CACHE_TTL);
+        logger.info({ cacheKey, textLength: result.length }, 'Cached OCR result in distributed cache');
       }
       
       logger.info({ mode, textLength: result.length }, 'OCR extraction succeeded');
@@ -481,9 +477,19 @@ export async function processOCRArtifactJob(
 
   jobLogger.info({ filePath }, 'Starting OCR + artifact processing');
 
+  // Connect to Redis event bus for real-time updates
+  try {
+    await redisEventBus.connect();
+  } catch (err) {
+    jobLogger.warn({ error: err }, 'Redis event bus not available, continuing without real-time updates');
+  }
+
   try {
     jobLogger.info('Step 1: Updating progress to 5%');
     await job.updateProgress(5);
+    
+    // Publish processing started event
+    await publishJobProgress(job.id || '', contractId, tenantId, 5, 'started', 'OCR processing started');
 
     // 1. Fetch contract from database
     jobLogger.info('Step 2: Fetching contract from database');
@@ -498,6 +504,7 @@ export async function processOCRArtifactJob(
 
     jobLogger.info({ status: contract.status }, 'Contract found');
     await job.updateProgress(10);
+    await publishJobProgress(job.id || '', contractId, tenantId, 10, 'processing', 'Downloading contract file');
 
     // 2. Download file from storage to temp location
     let localFilePath: string;
@@ -542,6 +549,7 @@ export async function processOCRArtifactJob(
 
     // 3. Run OCR extraction (skip progress update for speed)
     jobLogger.info({ filePath: localFilePath }, 'Running OCR extraction');
+    await publishJobProgress(job.id || '', contractId, tenantId, 20, 'ocr', 'Extracting text from document');
     
     // Get ocrMode from job data (user selection) or fallback to default
     const ocrMode = job.data.ocrMode || 'mistral'; // Default to Mistral OCR
@@ -550,35 +558,79 @@ export async function processOCRArtifactJob(
     jobLogger.info({ ocrMode, textLength: extractedText.length }, 'OCR extraction completed');
 
     await job.updateProgress(60);
+    await publishJobProgress(job.id || '', contractId, tenantId, 60, 'artifacts', 'Generating AI artifacts');
+
+    // 3.5 Detect contract type for adaptive extraction
+    const contractTypeDetection = detectContractType(extractedText);
+    const detectedContractType = contractTypeDetection.type;
+    const profile = getContractProfile(detectedContractType);
+    
+    jobLogger.info({ 
+      detectedType: detectedContractType,
+      confidence: contractTypeDetection.confidence,
+      matchedKeywords: contractTypeDetection.matchedKeywords.slice(0, 5),
+      displayName: profile.displayName,
+    }, 'Contract type detected for adaptive extraction');
 
     // 4. Generate artifacts using AI with partial success tracking
-    jobLogger.info('Generating AI artifacts');
+    // Use contract type to determine which artifacts to generate
+    jobLogger.info('Generating AI artifacts (adaptive based on contract type)');
     
-    const artifactTypes = [
+    // All possible artifact types
+    const allArtifactTypes: ArtifactType[] = [
       'OVERVIEW',
       'CLAUSES', 
       'FINANCIAL',
       'RISK',
       'COMPLIANCE',
+      'OBLIGATIONS',
+      'RENEWAL',
+      'NEGOTIATION',
+      'AMENDMENTS',
+      'CONTACTS',
     ];
+
+    // Filter to relevant artifacts based on contract type
+    const relevantArtifacts = getRelevantArtifacts(detectedContractType);
+    const artifactTypes = allArtifactTypes.filter(type => relevantArtifacts.includes(type));
+    
+    // Track non-applicable artifacts
+    const notApplicableArtifacts = allArtifactTypes.filter(type => !relevantArtifacts.includes(type));
+    
+    jobLogger.info({ 
+      relevantArtifacts: artifactTypes,
+      skippedAsNotApplicable: notApplicableArtifacts,
+    }, 'Artifact types determined by contract type');
 
     const failedArtifacts: string[] = [];
     const successfulArtifacts: string[] = [];
 
-    // Generate all artifacts in parallel with retry logic
+    // Generate relevant artifacts in parallel with retry logic
     const artifactPromises = artifactTypes.map(async (artifactType) => {
       const maxRetries = 2;
       let lastError: Error | null = null;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const artifactData = await generateArtifactWithAI(artifactType, extractedText, contract);
+          const artifactData = await generateArtifactWithAI(
+            artifactType, 
+            extractedText, 
+            contract,
+            detectedContractType // Pass detected type for adaptive prompts
+          );
           successfulArtifacts.push(artifactType);
           return {
             contractId,
             tenantId,
             type: artifactType,
-            data: artifactData,
+            data: {
+              ...artifactData,
+              _extractionMeta: {
+                contractType: detectedContractType,
+                contractTypeConfidence: contractTypeDetection.confidence,
+                isApplicable: true,
+              }
+            },
             validationStatus: 'valid',
             createdAt: new Date(),
             updatedAt: new Date(),
@@ -608,6 +660,11 @@ export async function processOCRArtifactJob(
           fallback: true,
           retryable: true,
           lastError: lastError?.message,
+          _extractionMeta: {
+            contractType: detectedContractType,
+            contractTypeConfidence: contractTypeDetection.confidence,
+            isApplicable: true,
+          }
         },
         validationStatus: 'error',
         createdAt: new Date(),
@@ -615,16 +672,129 @@ export async function processOCRArtifactJob(
       };
     });
 
-    const artifactDataArray = (await Promise.all(artifactPromises)).filter(Boolean);
+    // Also create "not applicable" placeholder artifacts for skipped types
+    const notApplicableArtifactData = notApplicableArtifacts.map(artifactType => ({
+      contractId,
+      tenantId,
+      type: artifactType,
+      data: {
+        notApplicable: true,
+        reason: `${artifactType} is not typically applicable for ${profile.displayName} contracts`,
+        contractType: detectedContractType,
+        _extractionMeta: {
+          contractType: detectedContractType,
+          contractTypeConfidence: contractTypeDetection.confidence,
+          isApplicable: false,
+        }
+      },
+      validationStatus: 'not-applicable',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const generatedArtifacts = (await Promise.all(artifactPromises)).filter(Boolean);
+    const artifactDataArray = [...generatedArtifacts, ...notApplicableArtifactData];
     
-    // Batch create all artifacts at once
-    const artifacts = await prisma.artifact.createMany({
-      data: artifactDataArray as any,
-      skipDuplicates: true,
+    // Use transaction to ensure artifacts and contract update are atomic
+    const artifacts = await prisma.$transaction(async (tx) => {
+      // Batch create all artifacts at once
+      const result = await tx.artifact.createMany({
+        data: artifactDataArray as any,
+        skipDuplicates: true,
+      });
+      
+      // 4b. Apply OVERVIEW artifact data to contract record for display
+      const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW');
+      if (overviewArtifact && overviewArtifact.data && !overviewArtifact.data.error) {
+        const overviewData = overviewArtifact.data;
+        const contractUpdate: Record<string, any> = {};
+        
+        // Extract contract type
+        if (overviewData.contractType && overviewData.contractType !== 'Unknown') {
+          contractUpdate.contractType = overviewData.contractType;
+        }
+        
+        // Extract parties
+        if (overviewData.parties && Array.isArray(overviewData.parties)) {
+          const clientParty = overviewData.parties.find((p: any) => 
+            p.role?.toLowerCase().includes('client') || 
+            p.role?.toLowerCase().includes('buyer') ||
+            p.role?.toLowerCase().includes('customer')
+          );
+          const supplierParty = overviewData.parties.find((p: any) => 
+            p.role?.toLowerCase().includes('supplier') || 
+            p.role?.toLowerCase().includes('vendor') ||
+            p.role?.toLowerCase().includes('provider') ||
+            p.role?.toLowerCase().includes('contractor')
+          );
+          
+          if (clientParty?.name) contractUpdate.clientName = clientParty.name;
+          if (supplierParty?.name) contractUpdate.supplierName = supplierParty.name;
+          
+          // If only one party found, use it as supplier
+          if (!contractUpdate.supplierName && !contractUpdate.clientName && overviewData.parties.length > 0) {
+            contractUpdate.supplierName = overviewData.parties[0].name;
+          }
+        }
+        
+        // Extract total value
+        if (overviewData.totalValue && typeof overviewData.totalValue === 'number' && overviewData.totalValue > 0) {
+          contractUpdate.totalValue = overviewData.totalValue;
+        }
+        if (overviewData.currency) {
+          contractUpdate.currency = overviewData.currency;
+        }
+        
+        // Extract dates
+        if (overviewData.effectiveDate) {
+          try {
+            const effDate = new Date(overviewData.effectiveDate);
+            if (!isNaN(effDate.getTime())) {
+              contractUpdate.effectiveDate = effDate;
+            }
+          } catch { /* ignore invalid dates */ }
+        }
+        if (overviewData.expirationDate) {
+          try {
+            const expDate = new Date(overviewData.expirationDate);
+            if (!isNaN(expDate.getTime())) {
+              contractUpdate.expirationDate = expDate;
+            }
+          } catch { /* ignore invalid dates */ }
+        }
+        
+        // Extract contract title if we have a summary
+        if (overviewData.summary && !contract.contractTitle) {
+          // Use first sentence of summary as title, max 100 chars
+          const title = overviewData.summary.split('.')[0].substring(0, 100);
+          if (title.length > 10) {
+            contractUpdate.contractTitle = title;
+          }
+        }
+        
+        // Apply updates within transaction if we extracted anything
+        if (Object.keys(contractUpdate).length > 0) {
+          await tx.contract.updateMany({
+            where: { id: contractId, tenantId },
+            data: {
+              ...contractUpdate,
+              updatedAt: new Date(),
+            },
+          });
+          jobLogger.info({ 
+            fieldsApplied: Object.keys(contractUpdate),
+          }, 'Applied OVERVIEW data to contract record (transactional)');
+        }
+      }
+      
+      return result;
+    }, {
+      maxWait: 10000, // 10s max wait for transaction
+      timeout: 30000, // 30s timeout for transaction
     });
 
-    // 4b. Apply OVERVIEW artifact data to contract record for display
-    const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW');
+    // Skip the old non-transactional OVERVIEW processing since it's now done above
+    const overviewArtifact = null; // Processed in transaction
     if (overviewArtifact && overviewArtifact.data && !overviewArtifact.data.error) {
       const overviewData = overviewArtifact.data;
       const contractUpdate: Record<string, any> = {};
@@ -707,6 +877,150 @@ export async function processOCRArtifactJob(
       }
     }
 
+    // 4c. Build enterprise metadata schema (24-field format) from all artifacts
+    const financialArtifact = artifactDataArray.find((a: any) => a.type === 'FINANCIAL');
+    const clausesArtifact = artifactDataArray.find((a: any) => a.type === 'CLAUSES');
+    const riskArtifact = artifactDataArray.find((a: any) => a.type === 'RISK');
+    const complianceArtifact = artifactDataArray.find((a: any) => a.type === 'COMPLIANCE');
+    const overviewArtifactData = (artifactDataArray.find((a: any) => a.type === 'OVERVIEW')?.data) || {};
+    const financialData = financialArtifact?.data || {};
+    const clausesData = clausesArtifact?.data || {};
+    const riskData = riskArtifact?.data || {};
+    const complianceData = complianceArtifact?.data || {};
+
+    // Build external parties array from overview
+    const externalParties: Array<{company_name: string; role: string; contact_info?: string}> = [];
+    if (overviewArtifactData.parties && Array.isArray(overviewArtifactData.parties)) {
+      for (const party of overviewArtifactData.parties) {
+        if (party.name) {
+          externalParties.push({
+            company_name: party.name,
+            role: party.role || 'Party',
+            contact_info: party.address || party.contact || '',
+          });
+        }
+      }
+    }
+
+    // Determine payment type from financial data
+    let paymentType = '';
+    if (financialData.paymentTerms) {
+      const terms = String(financialData.paymentTerms || '').toLowerCase();
+      if (terms.includes('fixed') || terms.includes('lump')) paymentType = 'Fixed';
+      else if (terms.includes('milestone')) paymentType = 'Milestone';
+      else if (terms.includes('time') || terms.includes('hourly')) paymentType = 'Time & Materials';
+      else if (terms.includes('recurring') || terms.includes('subscription')) paymentType = 'Recurring';
+      else paymentType = 'Other';
+    }
+
+    // Determine billing frequency
+    let billingFrequency = '';
+    if (financialData.paymentSchedule || financialData.billingCycle) {
+      // Handle paymentSchedule which could be an array or string
+      let scheduleText = '';
+      if (Array.isArray(financialData.paymentSchedule)) {
+        // If it's an array, check the length to determine frequency
+        const scheduleLength = financialData.paymentSchedule.length;
+        if (scheduleLength === 12) billingFrequency = 'Monthly';
+        else if (scheduleLength === 4) billingFrequency = 'Quarterly';
+        else if (scheduleLength === 1) billingFrequency = 'One-time';
+        else if (scheduleLength === 2) billingFrequency = 'Semi-annually';
+        else billingFrequency = 'Custom';
+      } else {
+        scheduleText = String(financialData.paymentSchedule || financialData.billingCycle || '').toLowerCase();
+        if (scheduleText.includes('month')) billingFrequency = 'Monthly';
+        else if (scheduleText.includes('quarter')) billingFrequency = 'Quarterly';
+        else if (scheduleText.includes('annual') || scheduleText.includes('year')) billingFrequency = 'Annually';
+        else if (scheduleText.includes('week')) billingFrequency = 'Weekly';
+        else if (scheduleText.includes('one') || scheduleText.includes('single')) billingFrequency = 'One-time';
+      }
+    }
+
+    // Extract notice period if available
+    let noticePeriod = '';
+    if (clausesData.clauses && Array.isArray(clausesData.clauses)) {
+      const terminationClause = clausesData.clauses.find((c: any) => 
+        c.type?.toLowerCase().includes('termination') || c.title?.toLowerCase().includes('termination')
+      );
+      if (terminationClause?.text) {
+        const noticeMatch = terminationClause.text.match(/(\d+)\s*(day|month|week)/i);
+        if (noticeMatch) {
+          noticePeriod = `${noticeMatch[1]} ${noticeMatch[2]}${parseInt(noticeMatch[1]) > 1 ? 's' : ''}`;
+        }
+      }
+    }
+
+    // Build enterprise metadata schema
+    const enterpriseMetadata = {
+      // Document identification
+      document_number: contractId,
+      document_title: overviewArtifactData.contractTitle || overviewArtifactData.summary?.split('.')[0]?.substring(0, 100) || '',
+      contract_short_description: overviewArtifactData.summary || '',
+      
+      // Parties
+      external_parties: externalParties,
+      
+      // Financial
+      tcv_amount: overviewArtifactData.totalValue || financialData.totalValue || 0,
+      tcv_text: financialData.totalValueText || (overviewArtifactData.totalValue ? `$${overviewArtifactData.totalValue.toLocaleString()}` : ''),
+      payment_type: paymentType,
+      billing_frequency_type: billingFrequency,
+      periodicity: billingFrequency || '',
+      currency: overviewArtifactData.currency || financialData.currency || 'USD',
+      
+      // Dates
+      execution_date: overviewArtifactData.executionDate || overviewArtifactData.effectiveDate || null,
+      contract_effective_date: overviewArtifactData.effectiveDate || null,
+      contract_end_date: overviewArtifactData.expirationDate || null,
+      
+      // Reminders
+      first_reminder_days: 90,
+      second_reminder_days: 60,
+      final_reminder_days: 30,
+      
+      // Contract details
+      auto_renewing: overviewArtifactData.autoRenewal === true || clausesData.autoRenewal === true,
+      notice_period: noticePeriod,
+      jurisdiction: overviewArtifactData.jurisdiction || '',
+      
+      // Internal tracking
+      owner_name: '',
+      owner_email: '',
+      internal_organization: '',
+      is_inbound: overviewArtifactData.isInbound ?? null,
+      
+      // Extraction metadata
+      _extractedAt: new Date().toISOString(),
+      _extractionSource: 'ocr-artifact-worker',
+      _artifactsUsed: ['OVERVIEW', 'FINANCIAL', 'CLAUSES', 'RISK', 'COMPLIANCE'].filter(
+        type => artifactDataArray.some((a: any) => a.type === type && !a.data?.error)
+      ),
+      _confidence: {
+        overall: successfulArtifacts.length / artifactDataArray.length,
+        parties: externalParties.length > 0 ? 0.9 : 0.3,
+        financial: financialData.totalValue ? 0.9 : 0.5,
+        dates: overviewArtifactData.effectiveDate ? 0.9 : 0.5,
+      },
+    };
+
+    // Save enterprise metadata to contract.aiMetadata
+    try {
+      await prisma.contract.updateMany({
+        where: { id: contractId, tenantId },
+        data: {
+          aiMetadata: enterpriseMetadata as any,
+          updatedAt: new Date(),
+        },
+      });
+      jobLogger.info({ 
+        fieldsPopulated: Object.keys(enterpriseMetadata).filter(k => !k.startsWith('_')).length,
+        partiesCount: externalParties.length,
+        hasFinancials: !!enterpriseMetadata.tcv_amount,
+      }, 'Enterprise metadata schema populated in aiMetadata');
+    } catch (metadataError) {
+      jobLogger.warn({ error: metadataError }, 'Failed to save enterprise metadata, continuing with processing');
+    }
+
     // Determine final status based on success rate
     const hasPartialSuccess = failedArtifacts.length > 0 && successfulArtifacts.length > 0;
     const hasCompleteFailure = successfulArtifacts.length === 0;
@@ -759,6 +1073,7 @@ export async function processOCRArtifactJob(
     }
 
     // 6. Auto-queue RAG indexing for semantic search
+    // Uses minimal delay since we're inside a transaction - data is committed
     if (!hasCompleteFailure && extractedText.length > 500) {
       try {
         const autoRAG = process.env.AUTO_RAG_INDEXING !== 'false'; // Default to true
@@ -771,7 +1086,7 @@ export async function processOCRArtifactJob(
             { contractId, tenantId, artifactIds: [] } as IndexContractJobData,
             {
               priority: 15,
-              delay: 3000, // 3 second delay to let DB settle
+              delay: 500, // Minimal delay - transaction is committed
               jobId: `rag-${contractId}`,
             }
           );
@@ -784,6 +1099,7 @@ export async function processOCRArtifactJob(
     }
 
     // 7. Auto-queue metadata extraction for AI-powered field extraction
+    // Runs after RAG indexing via priority ordering (higher priority = later)
     if (!hasCompleteFailure && extractedText.length > 200) {
       try {
         const autoMetadata = process.env.AUTO_METADATA_EXTRACTION !== 'false'; // Default to true
@@ -802,8 +1118,8 @@ export async function processOCRArtifactJob(
               priority: 'normal',
             },
             {
-              priority: 20,
-              delay: 5000, // 5 second delay to let artifacts complete
+              priority: 20, // Higher priority number = processed later
+              delay: 1000, // Minimal delay
               jobId: `metadata-${contractId}`,
             }
           );
@@ -834,8 +1150,8 @@ export async function processOCRArtifactJob(
               priority: 'normal',
             },
             {
-              priority: 25,
-              delay: 7000, // 7 second delay after metadata
+              priority: 25, // Higher priority number = processed later
+              delay: 1500, // Minimal delay
               jobId: `categorize-${contractId}`,
             }
           );
@@ -847,7 +1163,35 @@ export async function processOCRArtifactJob(
       }
     }
 
+    // 9. Re-index artifacts for RAG semantic search (includes artifact summaries)
+    if (!hasCompleteFailure && artifacts.count > 0) {
+      try {
+        const autoReindex = process.env.AUTO_RAG_ARTIFACT_REINDEX !== 'false'; // Default to true
+        if (autoReindex) {
+          jobLogger.info('Triggering RAG artifact reindexing');
+          await publishJobProgress(job.id || '', contractId, tenantId, 95, 'indexing', 'Indexing for semantic search');
+          // Import dynamically to avoid circular dependencies
+          const { ragIntegrationService } = await import('../../data-orchestration/src/services/rag-integration.service');
+          await ragIntegrationService.reindexContract(contractId);
+          jobLogger.info('RAG artifact reindexing completed');
+        }
+      } catch (reindexError) {
+        // Don't fail the job if reindexing fails
+        jobLogger.warn({ error: reindexError }, 'Failed to reindex artifacts for RAG, contract still processed successfully');
+      }
+    }
+
     await job.updateProgress(100);
+    
+    // Publish completion event
+    await redisEventBus.publish(RedisEvents.PROCESSING_COMPLETED, {
+      contractId,
+      tenantId,
+      jobId: job.id,
+      status: hasCompleteFailure ? 'failed' : (hasPartialSuccess ? 'partial' : 'completed'),
+      artifactsCreated: artifacts.count,
+      failedArtifacts: failedArtifacts.length > 0 ? failedArtifacts : undefined,
+    }, 'ocr-artifact-worker');
 
     jobLogger.info({ 
       artifactsCreated: artifacts.count,
@@ -870,6 +1214,15 @@ export async function processOCRArtifactJob(
       error: errorMessage,
       stack: errorStack
     }, 'OCR + artifact processing failed');
+
+    // Publish failure event
+    await redisEventBus.publish(RedisEvents.PROCESSING_FAILED, {
+      contractId,
+      tenantId,
+      jobId: job.id,
+      status: 'failed',
+      message: errorMessage,
+    }, 'ocr-artifact-worker');
 
     // Update statuses to failed
     try {
@@ -903,11 +1256,13 @@ export async function processOCRArtifactJob(
 
 /**
  * Generate artifact data using OpenAI API - REAL AI ANALYSIS
+ * Now adaptive based on detected contract type
  */
 async function generateArtifactWithAI(
   type: string,
   contractText: string,
-  contract: any
+  contract: any,
+  detectedContractType?: ContractType
 ): Promise<Record<string, any>> {
   const apiKey = process.env.OPENAI_API_KEY;
   
@@ -921,22 +1276,78 @@ async function generateArtifactWithAI(
     const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({ apiKey });
     
-    // Limit contract text to avoid token limits (use first 15000 chars)
-    const truncatedText = contractText.substring(0, 15000);
+    // Get contract type profile for adaptive extraction
+    const contractType = detectedContractType || 'OTHER';
+    const profile = getContractProfile(contractType);
+    
+    // Adjust text limit based on contract complexity
+    const textLimit = contractType === 'MSA' || contractType === 'LOAN' ? 20000 : 15000;
+    const truncatedText = contractText.substring(0, textLimit);
+    
+    // Build contract-type-specific extraction hints
+    const typeContext = detectedContractType ? `
+CONTRACT TYPE DETECTED: ${profile.displayName}
+${profile.extractionHints}
+EXPECTED SECTIONS: ${profile.expectedSections.join(', ')}
+` : '';
+    
+    // Get adaptive clause categories based on contract type
+    const clauseCategories = profile.clauseCategories.length > 0 
+      ? profile.clauseCategories.join(', ')
+      : 'payment, termination, liability, confidentiality, indemnification, warranty, scope, other';
+
+    // Get adaptive financial fields
+    const financialFieldsHint = profile.financialFields.length > 0
+      ? `Focus on extracting: ${profile.financialFields.join(', ')}`
+      : 'Extract any financial terms present';
+
+    // Get adaptive risk categories
+    const riskCategoriesHint = profile.riskCategories.length > 0
+      ? `Key risk areas for this contract type: ${profile.riskCategories.join(', ')}`
+      : 'Analyze general contract risks';
     
     const prompts: Record<string, string> = {
       OVERVIEW: `Analyze this contract and extract key information. Return a JSON object with:
 {
   "summary": "A 2-3 sentence executive summary of what this contract is about",
+  "executiveBriefing": "A one-paragraph (4-5 sentences) briefing suitable for executives highlighting: 1) what this contract does, 2) key value proposition, 3) main obligations, 4) notable risks or opportunities",
   "contractType": "The type of contract (e.g., Service Agreement, NDA, MSA, SOW, Employment, Lease)",
-  "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc"}],
+  "contractTypeConfidence": number 0-100 indicating confidence in type classification,
+  "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc", "address": "if mentioned"}],
   "effectiveDate": "YYYY-MM-DD or null if not found",
   "expirationDate": "YYYY-MM-DD or null if not found",
   "totalValue": numeric value or 0 if not found,
   "currency": "USD/EUR/GBP/etc",
   "keyTerms": ["list", "of", "key", "terms", "or", "topics"],
-  "jurisdiction": "Legal jurisdiction if mentioned"
+  "jurisdiction": "Legal jurisdiction if mentioned",
+  "governingLaw": "Applicable law/state",
+  "definedTerms": [{"term": "Definition name", "definition": "Brief definition"}],
+  "documentStructure": ["List of main sections/headings found"],
+  "keyDates": [{"event": "Event name (signing, start, end, renewal)", "date": "YYYY-MM-DD", "description": "Brief description"}],
+  "keyNumbers": [{"metric": "Metric name", "value": "Value with units", "context": "What this number represents"}],
+  "redFlags": ["Any immediate concerns or issues spotted in first pass"],
+  "additionalFindings": [
+    {
+      "field": "Auto-discovered field name not in schema above",
+      "value": "Extracted value",
+      "sourceSection": "Section/location in document where found",
+      "confidence": 0.85,
+      "category": "legal|financial|operational|dates|parties|other"
+    }
+  ],
+  "openEndedNotes": "Any other relevant observations, unusual terms, or important context not captured by the structured fields above. Include anything a contract reviewer should know."
 }
+
+${typeContext}
+
+IMPORTANT EXTRACTION RULES:
+1. Be thorough - scan the ENTIRE document for information.
+2. Extract ALL parties mentioned, not just primary parties.
+3. Look for dates in multiple formats (MM/DD/YYYY, DD.MM.YYYY, "January 1, 2024", "1st day of January").
+4. For totalValue, include recurring costs multiplied by term length if applicable.
+5. If you discover important information that doesn't fit the schema above, add it to additionalFindings. Never discard relevant contract details.
+6. KeyNumbers should capture any significant metrics (headcount, quantities, limits, thresholds).
+7. The executiveBriefing should be actionable - what would an executive need to know to make decisions?
 
 Contract text:
 ${truncatedText}`,
@@ -946,63 +1357,169 @@ ${truncatedText}`,
   "clauses": [
     {
       "title": "Clause title/name",
+      "section": "Section number if available (e.g., 5.2)",
       "content": "Brief summary of what the clause says (2-3 sentences)",
+      "fullText": "The verbatim clause text if short enough (under 500 chars)",
       "importance": "high/medium/low",
-      "category": "payment/termination/liability/confidentiality/indemnification/warranty/scope/other"
+      "category": "${clauseCategories.split(', ').slice(0, 5).join('/')}",
+      "obligations": ["List any specific obligations created"],
+      "risks": ["Any risks or concerns with this clause"],
+      "crossReferences": ["References to other sections/clauses"]
     }
-  ]
+  ],
+  "missingClauses": ["Standard clauses NOT found that might be expected"],
+  "unusualClauses": ["Any non-standard or unusual provisions"],
+  "additionalFindings": [
+    {
+      "field": "Any clause-related info not fitting above schema",
+      "value": "The extracted content",
+      "sourceSection": "Section/location",
+      "confidence": 0.85,
+      "category": "legal|financial|operational|restriction|right|obligation"
+    }
+  ],
+  "openEndedNotes": "Any other clause-related observations, cross-references, or dependencies between clauses not captured above."
 }
 
-Find ALL significant clauses (aim for 5-15 clauses). Focus on:
-- Payment terms, pricing, invoicing
-- Term and termination conditions
-- Liability limitations, indemnification
-- Confidentiality, IP rights
-- Warranties, representations
-- Scope of work, deliverables
-- Force majeure, dispute resolution
+${typeContext}
+
+Find ALL significant clauses (aim for 5-20 clauses). Focus on:
+${clauseCategories}
+
+IMPORTANT: If you find clauses or provisions that don't fit the schema, add them to additionalFindings. Capture EVERYTHING relevant.
+If a standard clause for this contract type is missing, note it in missingClauses.
 
 Contract text:
 ${truncatedText}`,
 
-      FINANCIAL: `Extract all financial terms from this contract. Return a JSON object with:
+      FINANCIAL: `Extract ALL financial terms from this contract comprehensively. Return a JSON object with:
 {
-  "totalValue": numeric value or 0,
+  "totalValue": numeric value or 0 or null if not applicable,
   "currency": "USD/EUR/GBP/etc",
+  "hasFinancialTerms": true/false - set false if this contract type typically has no financial terms (like NDAs),
   "paymentTerms": "Description of payment terms (e.g., Net 30, monthly, milestone-based)",
-  "paymentSchedule": [{"milestone": "description", "amount": number, "dueDate": "date or trigger"}],
+  "paymentSchedule": [{"milestone": "description", "amount": number, "dueDate": "date or trigger", "year": number}],
+  "yearlyBreakdown": [
+    {
+      "year": 1,
+      "label": "Year 1 (2024-2025)",
+      "payments": [{"description": "Payment description", "amount": number, "dueDate": "date"}],
+      "subtotal": number
+    }
+  ],
   "costBreakdown": [{"category": "name", "amount": number, "description": "details"}],
-  "penalties": ["List of any late fees, penalties, or liquidated damages"],
-  "discounts": ["Any discounts, volume pricing, or incentives mentioned"],
-  "analysis": "Brief analysis of the financial terms and any concerns"
+  "rateCards": [
+    {
+      "id": "rate-1",
+      "role": "Job title or resource type (e.g., Senior Developer, Project Manager)",
+      "rate": numeric hourly/daily/monthly rate,
+      "unit": "hourly/daily/monthly/yearly",
+      "currency": "USD/EUR/GBP"
+    }
+  ],
+  "financialTables": [
+    {
+      "tableName": "Name/title of the pricing table",
+      "headers": ["Column1", "Column2", "Amount"],
+      "rows": [
+        {"Column1": "value", "Column2": "value", "Amount": number}
+      ],
+      "totals": {"Column1": "Total", "Amount": number},
+      "notes": "Any footnotes or additional info"
+    }
+  ],
+  "offers": [
+    {
+      "offerName": "Name of offer/proposal",
+      "validityPeriod": "How long the offer is valid",
+      "totalAmount": number,
+      "lineItems": [
+        {"description": "item description", "quantity": 1, "unit": "each/hour/month", "unitPrice": number, "total": number}
+      ],
+      "terms": ["List of terms for this offer"]
+    }
+  ],
+  "penalties": [
+    {"type": "late_payment/breach/sla_violation", "amount": number, "description": "description", "trigger": "what triggers the penalty"}
+  ],
+  "discounts": [
+    {"type": "early_payment/volume/loyalty", "value": number, "unit": "percentage/fixed", "description": "details"}
+  ],
+  "paymentMethod": "How payments should be made (wire, check, ACH, etc.)",
+  "invoicingRequirements": "Any invoicing requirements mentioned",
+  "contractTypeSpecificFinancials": {},
+  "additionalFindings": [
+    {
+      "field": "Any financial info not fitting above schema (bonuses, royalties, escalations, caps, etc.)",
+      "value": "The extracted value or description",
+      "sourceSection": "Section/table where found",
+      "confidence": 0.85,
+      "category": "pricing|payment|penalty|incentive|cap|escalation|other"
+    }
+  ],
+  "openEndedNotes": "Any other financial observations - hidden costs, unusual payment structures, financial risks, or pricing anomalies not captured above."
 }
+
+${typeContext}
+${financialFieldsHint}
+
+IMPORTANT EXTRACTION RULES:
+1. If this is an NDA or similar non-financial contract, set hasFinancialTerms=false and skip financial extraction.
+2. For EMPLOYMENT: Extract base salary, bonuses, equity grants, benefits value, severance.
+3. For LEASE: Extract rent schedule, CAM charges, security deposit, tenant improvements.
+4. For LICENSE/SUBSCRIPTION: Extract license fees, royalties, usage tiers.
+5. For LOAN: Extract principal, interest rate, repayment schedule.
+6. Group payments by contract year in yearlyBreakdown. Year 1 starts from contract effective date.
+7. Extract ALL rate cards/pricing for labor, resources, or services.
+8. Look for pricing tables - extract as financialTables with proper column headers.
+9. For tables, preserve the structure with headers and row data.
+10. **CRITICAL: If you find ANY financial information not fitting the schema, add it to additionalFindings. Never discard financial data.**
 
 Contract text:
 ${truncatedText}`,
 
-      RISK: `Analyze this contract for risks. Return a JSON object with:
+      RISK: `Analyze this contract for risks specific to its type. Return a JSON object with:
 {
-  "overallRisk": "Low/Medium/High",
+  "overallRisk": "Low/Medium/High/Critical",
   "riskScore": number from 0-100 (0=no risk, 100=extreme risk),
+  "contractTypeRisks": "${profile.riskCategories.slice(0, 5).join(', ')}",
   "risks": [
     {
-      "category": "Financial/Legal/Operational/Compliance/Reputational",
-      "level": "Low/Medium/High",
+      "category": "Financial/Legal/Operational/Compliance/Reputational/ContractTypeSpecific",
+      "level": "Low/Medium/High/Critical",
       "title": "Short risk title",
       "description": "Detailed description of the risk",
-      "mitigation": "Suggested mitigation or action"
+      "mitigation": "Suggested mitigation or action",
+      "clauseReference": "Section/clause number where risk originates"
     }
   ],
   "redFlags": ["List any critical concerns or red flags"],
-  "recommendations": ["Key recommendations for negotiation or review"]
+  "missingProtections": ["Standard protections for this contract type that are missing"],
+  "recommendations": ["Key recommendations for negotiation or review"],
+  "comparativeAnalysis": "How this contract compares to market standard for its type",
+  "additionalFindings": [
+    {
+      "field": "Any risk-related finding not fitting above schema",
+      "value": "Description of the risk or concern",
+      "sourceSection": "Section/clause where found",
+      "confidence": 0.85,
+      "severity": "critical|high|medium|low"
+    }
+  ],
+  "openEndedNotes": "Any other risk observations, potential disputes, enforceability concerns, or contextual risks not captured above."
 }
+
+${typeContext}
+${riskCategoriesHint}
 
 Look for:
 - Unfavorable terms, one-sided clauses
 - Missing protections (liability caps, termination rights)
+- Contract-type-specific risks (see above)
 - Compliance concerns (GDPR, regulatory)
 - Financial risks (payment terms, penalties)
 - Ambiguous language that could cause disputes
+- **IMPORTANT: Any risk or concern not fitting the schema goes in additionalFindings**
 
 Contract text:
 ${truncatedText}`,
@@ -1030,7 +1547,202 @@ ${truncatedText}`,
     "hasDPA": true/false,
     "concerns": ["any data protection concerns"]
   },
-  "recommendations": ["List of compliance recommendations"]
+  "recommendations": ["List of compliance recommendations"],
+  "additionalFindings": [
+    {
+      "field": "Any compliance-related finding not in schema",
+      "value": "Description",
+      "regulation": "Related regulation if any",
+      "severity": "critical|high|medium|low"
+    }
+  ],
+  "openEndedNotes": "Any other regulatory concerns, industry-specific compliance needs, or jurisdictional issues not captured above."
+}
+
+Contract text:
+${truncatedText}`,
+
+      OBLIGATIONS: `Extract all contractual obligations from this contract. Return a JSON object with:
+{
+  "obligations": [
+    {
+      "party": "Name of responsible party",
+      "obligation": "Description of the obligation",
+      "type": "deliverable/payment/reporting/compliance/performance",
+      "dueDate": "Due date or trigger event if specified",
+      "frequency": "one-time/daily/weekly/monthly/quarterly/annually/ongoing",
+      "status": "pending/in-progress/completed/overdue",
+      "priority": "high/medium/low"
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Milestone name",
+      "description": "What needs to be delivered",
+      "dueDate": "Date or timeframe",
+      "associatedPayment": number or null,
+      "status": "pending"
+    }
+  ],
+  "keyDeadlines": ["List of critical deadlines mentioned"],
+  "summary": "Brief summary of major obligations for each party",
+  "additionalFindings": [
+    {
+      "field": "Any obligation not fitting the schema above",
+      "value": "Description of the obligation",
+      "party": "Responsible party",
+      "dueInfo": "Timing or trigger if known",
+      "category": "deliverable|payment|reporting|compliance|operational|other"
+    }
+  ],
+  "openEndedNotes": "Any other obligation-related observations, dependencies between obligations, or conditional triggers not captured above."
+}
+
+Contract text:
+${truncatedText}`,
+
+      RENEWAL: `Analyze the renewal and termination terms of this contract. Return a JSON object with:
+{
+  "autoRenewal": true/false,
+  "renewalTerms": "Description of how renewal works",
+  "renewalPeriod": "Duration of renewal period (e.g., 1 year, 12 months)",
+  "renewalNoticeRequired": true/false,
+  "noticeRequirements": {
+    "noticePeriod": "How many days before expiry",
+    "noticeMethod": "How notice must be given (written, email, etc.)",
+    "noticeRecipient": "Who to notify"
+  },
+  "terminationRights": {
+    "forCause": "Conditions allowing termination for cause",
+    "forConvenience": "Conditions for termination without cause",
+    "noticePeriod": "Required notice for termination"
+  },
+  "earlyTerminationFees": "Any fees for early termination",
+  "expirationDate": "Contract end date if specified",
+  "renewalHistory": [],
+  "recommendations": ["Recommendations for renewal strategy"],
+  "additionalFindings": [
+    {
+      "field": "Any renewal/termination info not in schema",
+      "value": "Description",
+      "sourceSection": "Section where found",
+      "category": "renewal|termination|extension|option|other"
+    }
+  ],
+  "openEndedNotes": "Any other renewal/termination observations - special conditions, negotiation opportunities, or strategic considerations."
+}
+
+Contract text:
+${truncatedText}`,
+
+      NEGOTIATION: `Identify negotiation points and areas for improvement in this contract. Return a JSON object with:
+{
+  "negotiationPoints": [
+    {
+      "clause": "Name or section of the clause",
+      "currentTerms": "Current contract language or terms",
+      "concern": "Why this might be problematic",
+      "suggestedChange": "Recommended modification",
+      "priority": "high/medium/low",
+      "impact": "financial/legal/operational"
+    }
+  ],
+  "favorabilityScore": number from 0-100 (0=very unfavorable, 100=very favorable),
+  "favorabilityAssessment": "Overall assessment of contract favorability",
+  "imbalances": ["List of terms that heavily favor one party"],
+  "missingSprotections": ["Standard clauses or protections that are missing"],
+  "strongPoints": ["Terms that are particularly favorable"],
+  "recommendations": ["Top recommendations for negotiation"],
+  "additionalFindings": [
+    {
+      "field": "Any negotiation-relevant finding not in schema",
+      "value": "Description",
+      "leverage": "strong|weak|neutral",
+      "category": "pricing|terms|rights|obligations|other"
+    }
+  ],
+  "openEndedNotes": "Any other negotiation insights - leverage points, counterparty pressures, market context, or strategic observations."
+}
+
+Contract text:
+${truncatedText}`,
+
+      AMENDMENTS: `Extract information about any amendments, addenda, or modifications to this contract. Return a JSON object with:
+{
+  "hasAmendments": true/false,
+  "amendments": [
+    {
+      "number": "Amendment number or identifier",
+      "date": "Date of amendment",
+      "title": "Title or subject of amendment",
+      "summary": "Brief description of changes",
+      "affectedSections": ["List of sections modified"],
+      "parties": ["Parties who signed"]
+    }
+  ],
+  "changeHistory": [
+    {
+      "date": "Date of change",
+      "type": "amendment/addendum/modification/side-letter",
+      "description": "What was changed"
+    }
+  ],
+  "originalContractDate": "Date of original contract if mentioned",
+  "latestVersion": "Current version number if versioned",
+  "summary": "Overview of contract modification history",
+  "additionalFindings": [
+    {
+      "field": "Any amendment-related info not in schema",
+      "value": "Description",
+      "date": "Date if known",
+      "category": "amendment|addendum|side-letter|modification|other"
+    }
+  ],
+  "openEndedNotes": "Any other observations about the amendment history, superseded terms, or version conflicts."
+}
+
+Contract text:
+${truncatedText}`,
+
+      CONTACTS: `Extract all contact information and key personnel from this contract. Return a JSON object with:
+{
+  "contacts": [
+    {
+      "name": "Full name",
+      "role": "Job title or role",
+      "organization": "Company name",
+      "partyType": "client/vendor/witness/guarantor",
+      "email": "Email address if provided",
+      "phone": "Phone number if provided",
+      "address": "Mailing address if provided",
+      "isSignatory": true/false,
+      "isPrimaryContact": true/false
+    }
+  ],
+  "signatories": [
+    {
+      "name": "Name of signatory",
+      "title": "Job title",
+      "organization": "Company",
+      "dateSigned": "Signature date if shown"
+    }
+  ],
+  "noticeAddresses": [
+    {
+      "party": "Party name",
+      "address": "Full notice address",
+      "attention": "Attention to (if specified)"
+    }
+  ],
+  "summary": "Overview of key contacts for contract management",
+  "additionalFindings": [
+    {
+      "field": "Any contact-related info not in schema",
+      "value": "Description",
+      "contactType": "escalation|emergency|technical|billing|legal|other"
+    }
+  ],
+  "openEndedNotes": "Any other contact observations - escalation procedures, preferred communication methods, or key relationship notes."
 }
 
 Contract text:
@@ -1112,7 +1824,10 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
       currency: contract.currency || 'USD',
       paymentTerms: 'Not analyzed',
       paymentSchedule: [],
+      yearlyBreakdown: [],
       costBreakdown: [],
+      paymentMethod: null,
+      invoicingRequirements: null,
       analysis: 'Financial analysis requires AI - please configure OPENAI_API_KEY',
       _meta: { fallback: true, reason: 'AI unavailable' }
     },
@@ -1130,6 +1845,52 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
       checks: [],
       issues: [],
       recommendations: ['Configure AI analysis for compliance review'],
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    OBLIGATIONS: {
+      obligations: [],
+      milestones: [],
+      keyDeadlines: [],
+      summary: 'Obligation extraction requires AI - please configure OPENAI_API_KEY',
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    RENEWAL: {
+      autoRenewal: null,
+      renewalTerms: 'Not analyzed',
+      renewalPeriod: null,
+      renewalNoticeRequired: null,
+      noticeRequirements: null,
+      terminationRights: null,
+      earlyTerminationFees: null,
+      expirationDate: contract.expirationDate?.toISOString() || null,
+      renewalHistory: [],
+      recommendations: ['Configure AI analysis for renewal terms extraction'],
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    NEGOTIATION: {
+      negotiationPoints: [],
+      favorabilityScore: 50,
+      favorabilityAssessment: 'AI analysis required',
+      imbalances: [],
+      missingProtections: [],
+      strongPoints: [],
+      recommendations: ['Configure AI analysis for negotiation points'],
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    AMENDMENTS: {
+      hasAmendments: false,
+      amendments: [],
+      changeHistory: [],
+      originalContractDate: null,
+      latestVersion: null,
+      summary: 'Amendment extraction requires AI analysis',
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    CONTACTS: {
+      contacts: [],
+      signatories: [],
+      noticeAddresses: [],
+      summary: 'Contact extraction requires AI analysis',
       _meta: { fallback: true, reason: 'AI unavailable' }
     },
   };

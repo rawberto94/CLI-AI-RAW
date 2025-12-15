@@ -83,7 +83,7 @@ const tourSteps: TourStep[] = [
   {
     id: 'shortcuts',
     title: 'Power User Shortcuts',
-    description: 'Press ? anytime to see all keyboard shortcuts. Use ⌘K (or Ctrl+K) to quickly search and navigate.',
+    description: 'Press ? anytime to see all keyboard shortcuts. Use ⌘K (or Ctrl+K) for the command palette, or press / to focus search.',
     icon: Keyboard,
     color: 'from-pink-500 to-rose-500',
   },

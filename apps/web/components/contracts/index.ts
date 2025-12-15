@@ -8,6 +8,9 @@
 // AI & Intelligence Components
 export { AISummarizer, QuickSummarizeButton } from './AISummarizer';
 
+// Enhanced Metadata Section
+export { EnhancedContractMetadataSection } from './EnhancedContractMetadataSection';
+
 // Visualization Components
 export { ContractTimeline } from './ContractTimeline';
 

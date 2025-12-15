@@ -7,7 +7,10 @@ exports.ContractQueueManager = exports.JOB_NAMES = exports.QUEUE_NAMES = exports
 exports.getContractQueue = getContractQueue;
 const queue_service_1 = require("./queue-service");
 const pino_1 = __importDefault(require("pino"));
-const logger = (0, pino_1.default)({ name: 'contract-queue' });
+const logger = (0, pino_1.default)({
+    name: 'contract-queue',
+    ...(process.env.LOG_LEVEL ? { level: process.env.LOG_LEVEL } : {}),
+});
 /**
  * Priority levels for queue jobs
  * Lower number = higher priority
@@ -23,6 +26,8 @@ exports.QUEUE_NAMES = {
     CONTRACT_PROCESSING: 'contract-processing',
     ARTIFACT_GENERATION: 'artifact-generation',
     RAG_INDEXING: 'rag-indexing',
+    METADATA_EXTRACTION: 'metadata-extraction',
+    CATEGORIZATION: 'contract-categorization',
     WEBHOOK_DELIVERY: 'webhook-delivery',
     RATE_CARD_IMPORT: 'rate-card-import',
     BENCHMARK_CALCULATION: 'benchmark-calculation',
@@ -31,6 +36,8 @@ exports.JOB_NAMES = {
     PROCESS_CONTRACT: 'process-contract',
     GENERATE_ARTIFACTS: 'generate-artifacts',
     INDEX_CONTRACT: 'index-contract',
+    EXTRACT_METADATA: 'extract-metadata',
+    CATEGORIZE_CONTRACT: 'categorize-contract',
     SEND_WEBHOOK: 'send-webhook',
     IMPORT_RATE_CARDS: 'import-rate-cards',
     CALCULATE_BENCHMARKS: 'calculate-benchmarks',
@@ -112,6 +119,40 @@ class ContractQueueManager {
                 ? `benchmark-${data.tenantId}-${data.serviceCategory}`
                 : `benchmark-${data.tenantId}-all`,
         });
+        return job?.id || null;
+    }
+    /**
+     * Queue metadata extraction
+     */
+    async queueMetadataExtraction(data, options) {
+        const priorityMap = {
+            high: 5,
+            normal: 15,
+            low: 25,
+        };
+        const job = await this.queueService.addJob(exports.QUEUE_NAMES.METADATA_EXTRACTION, exports.JOB_NAMES.EXTRACT_METADATA, data, {
+            priority: options?.priority || priorityMap[data.priority || 'normal'],
+            delay: options?.delay || 2000, // 2 second delay by default
+            jobId: `metadata-${data.contractId}`,
+        });
+        logger.info({ jobId: job?.id, contractId: data.contractId }, '📋 Metadata extraction job queued');
+        return job?.id || null;
+    }
+    /**
+     * Queue contract categorization
+     */
+    async queueCategorization(data, options) {
+        const priorityMap = {
+            high: 5,
+            normal: 15,
+            low: 25,
+        };
+        const job = await this.queueService.addJob(exports.QUEUE_NAMES.CATEGORIZATION, exports.JOB_NAMES.CATEGORIZE_CONTRACT, data, {
+            priority: options?.priority || priorityMap[data.priority || 'normal'],
+            delay: options?.delay || 1000, // 1 second delay by default
+            jobId: `categorize-${data.contractId}`,
+        });
+        logger.info({ jobId: job?.id, contractId: data.contractId }, '🏷️ Categorization job queued');
         return job?.id || null;
     }
     /**

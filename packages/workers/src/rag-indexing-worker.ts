@@ -168,7 +168,7 @@ export async function processRAGIndexingJob(
   try {
     await job.updateProgress(5);
     
-    // Get contract with text
+    // Get contract with text and status
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
       select: {
@@ -176,11 +176,27 @@ export async function processRAGIndexingJob(
         rawText: true,
         fileName: true,
         tenantId: true,
+        status: true,
       },
     });
     
     if (!contract) {
       throw new Error(`Contract ${contractId} not found`);
+    }
+    
+    // Check if contract is ready for indexing (completed or partial processing)
+    const validStatuses = ['COMPLETED', 'PARTIAL', 'PROCESSED'];
+    if (!validStatuses.includes(contract.status || '')) {
+      jobLogger.warn({ status: contract.status }, 'Contract not ready for RAG indexing, will retry');
+      // Return success=false but don't throw - let BullMQ retry
+      return {
+        success: false,
+        contractId,
+        chunksCreated: 0,
+        embeddingsGenerated: 0,
+        processingTime: Date.now() - startTime,
+        error: `Contract status is ${contract.status}, waiting for processing to complete`,
+      };
     }
     
     if (!contract.rawText) {
@@ -220,13 +236,40 @@ export async function processRAGIndexingJob(
     
     await job.updateProgress(30);
     
-    // Generate embeddings in batches
+    // Generate embeddings in batches with retry and rate limit handling
     const OpenAI = openaiModule?.default || (await import('openai')).default;
     const openai = new OpenAI({ apiKey });
     const model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
     
     const BATCH_SIZE = 32;
+    const MAX_RETRIES = 3;
     const embeddings: number[][] = [];
+    
+    // Helper for retrying with exponential backoff
+    async function retryWithBackoff<T>(
+      fn: () => Promise<T>,
+      retries = MAX_RETRIES,
+      baseDelay = 1000
+    ): Promise<T> {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          return await fn();
+        } catch (error: any) {
+          const isRateLimit = error?.status === 429 || error?.code === 'rate_limit_exceeded';
+          const isTransient = error?.status >= 500 || error?.code === 'ECONNRESET';
+          
+          if (attempt === retries || (!isRateLimit && !isTransient)) {
+            throw error;
+          }
+          
+          // Exponential backoff with jitter
+          const delay = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 500;
+          jobLogger.warn({ attempt, delay, error: error.message }, 'Retrying after error');
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      throw new Error('Max retries exceeded');
+    }
     
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
@@ -237,7 +280,9 @@ export async function processRAGIndexingJob(
       
       jobLogger.info({ batch: batchNum, total: totalBatches }, 'Generating embeddings batch');
       
-      const response = await openai.embeddings.create({ model, input: texts });
+      const response = await retryWithBackoff(() => 
+        openai.embeddings.create({ model, input: texts })
+      );
       embeddings.push(...response.data.map(d => d.embedding));
       
       // Update progress (30% to 80% during embedding)

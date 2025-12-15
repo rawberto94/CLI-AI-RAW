@@ -1,7 +1,7 @@
 /**
  * Command Palette (P5: Polish)
  * 
- * Cmd+K / Ctrl+K to open command palette
+ * Opened via `GlobalKeyboardShortcuts` (Cmd/Ctrl+K)
  * Quick actions, navigation, and search
  */
 
@@ -395,23 +395,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
 }
 
 /**
- * Hook to manage command palette
+ * Hook to manage command palette state.
+ * Keyboard bindings are handled centrally by `GlobalKeyboardShortcuts`.
  */
 export function useCommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Open on Cmd+K or Ctrl+K
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsOpen((prev) => !prev);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   return {
     isOpen,

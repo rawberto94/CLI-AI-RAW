@@ -34,6 +34,7 @@ export interface EmptyStateProps {
 
 export interface NoContractsProps extends EmptyStateProps {
   onUpload?: () => void;
+  additionalActions?: React.ReactNode;
 }
 
 export interface NoResultsProps extends EmptyStateProps {
@@ -89,6 +90,7 @@ const itemVariants = {
  */
 export const NoContracts = memo(function NoContracts({
   onUpload,
+  additionalActions,
   className,
 }: NoContractsProps) {
   return (
@@ -97,46 +99,105 @@ export const NoContracts = memo(function NoContracts({
       initial="hidden"
       animate="visible"
       className={cn(
-        'flex flex-col items-center justify-center py-16 px-4 text-center',
+        'flex flex-col items-center justify-center py-20 px-4 text-center',
         className
       )}
     >
+      {/* Animated illustration */}
       <motion.div
         variants={itemVariants}
-        className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-6"
+        className="relative mb-8"
       >
-        <FileText className="h-10 w-10 text-primary" />
+        {/* Animated rings */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            className="w-32 h-32 rounded-full border-2 border-blue-100"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <motion.div
+            className="w-24 h-24 rounded-full border-2 border-indigo-100"
+            animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0.3] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          />
+        </div>
+        
+        {/* Main icon */}
+        <div className="relative w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-blue-500/25">
+          <FileText className="h-12 w-12 text-white" />
+          <motion.div
+            className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 flex items-center justify-center shadow-lg"
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Sparkles className="h-3 w-3 text-white" />
+          </motion.div>
+        </div>
       </motion.div>
       
       <motion.h3
         variants={itemVariants}
-        className="text-xl font-semibold mb-2"
+        className="text-2xl font-bold text-slate-900 mb-3"
       >
-        No contracts yet
+        Start Your Contract Journey
       </motion.h3>
       
       <motion.p
         variants={itemVariants}
-        className="text-muted-foreground max-w-md mb-6"
+        className="text-slate-600 max-w-lg mb-8 text-base leading-relaxed"
       >
-        Get started by uploading your first contract. Our AI will automatically extract
-        key information and help you manage your agreements effectively.
+        Upload your first contract and let our AI automatically extract key terms, 
+        identify risks, and organize everything for you. It&apos;s like having a 
+        legal assistant that never sleeps.
       </motion.p>
       
       <motion.div
         variants={itemVariants}
-        className="flex flex-wrap justify-center gap-3"
+        className="flex flex-wrap justify-center gap-4"
       >
-        <Button onClick={onUpload} className="gap-2">
-          <Upload className="h-4 w-4" />
-          Upload Contract
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href="/contracts/new" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Manually
-          </Link>
-        </Button>
+        <Link href="/contracts/upload">
+          <Button 
+            onClick={onUpload} 
+            size="lg"
+            className="h-12 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 text-base font-semibold gap-3"
+          >
+            <Upload className="h-5 w-5" />
+            Upload Contract
+          </Button>
+        </Link>
+        <Link href="/contracts/generate">
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="h-12 px-8 border-2 border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-base font-semibold gap-3"
+          >
+            <Sparkles className="h-5 w-5 text-purple-600" />
+            Generate with AI
+          </Button>
+        </Link>
+        {additionalActions}
+      </motion.div>
+      
+      {/* Feature hints */}
+      <motion.div
+        variants={itemVariants}
+        className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl"
+      >
+        {[
+          { icon: '⚡', label: 'Instant OCR', desc: 'PDF to text in seconds' },
+          { icon: '🔍', label: 'AI Analysis', desc: 'Extract key terms automatically' },
+          { icon: '🛡️', label: 'Risk Detection', desc: 'Identify potential issues' },
+        ].map((feature, i) => (
+          <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-100">
+            <span className="text-2xl">{feature.icon}</span>
+            <div className="text-left">
+              <p className="font-medium text-slate-900 text-sm">{feature.label}</p>
+              <p className="text-xs text-slate-500">{feature.desc}</p>
+            </div>
+          </div>
+        ))}
       </motion.div>
     </motion.div>
   );
@@ -159,63 +220,95 @@ export const NoResults = memo(function NoResults({
       initial="hidden"
       animate="visible"
       className={cn(
-        'flex flex-col items-center justify-center py-12 px-4 text-center',
+        'flex flex-col items-center justify-center py-16 px-4 text-center',
         className
       )}
     >
       <motion.div
         variants={itemVariants}
-        className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4"
+        className="relative mb-6"
       >
-        {searchTerm ? (
-          <Search className="h-8 w-8 text-muted-foreground" />
-        ) : (
-          <Filter className="h-8 w-8 text-muted-foreground" />
-        )}
+        {/* Background glow */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 blur-xl" />
+        </div>
+        
+        {/* Icon container */}
+        <div className="relative w-18 h-18 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-5 shadow-inner">
+          {searchTerm ? (
+            <Search className="h-8 w-8 text-slate-400" />
+          ) : (
+            <Filter className="h-8 w-8 text-slate-400" />
+          )}
+        </div>
       </motion.div>
       
       <motion.h3
         variants={itemVariants}
-        className="text-lg font-semibold mb-2"
+        className="text-xl font-bold text-slate-800 mb-2"
       >
-        No contracts found
+        No matches found
       </motion.h3>
       
       <motion.p
         variants={itemVariants}
-        className="text-muted-foreground max-w-md mb-4"
+        className="text-slate-500 max-w-md mb-6 leading-relaxed"
       >
         {searchTerm ? (
           <>
-            No contracts match &ldquo;<span className="font-medium">{searchTerm}</span>&rdquo;.
-            Try adjusting your search terms or filters.
+            We couldn&apos;t find any contracts matching &ldquo;<span className="font-semibold text-slate-700">{searchTerm}</span>&rdquo;.
+            Try different keywords or check your spelling.
           </>
         ) : hasFilters ? (
           <>
-            No contracts match the current filters.
-            Try removing some filters to see more results.
+            Your current filter combination returned no results.
+            Try broadening your criteria or clear filters to see all contracts.
           </>
         ) : (
           <>
-            No contracts match your criteria.
+            No contracts match your current criteria.
+            Try adjusting your search or filters.
           </>
         )}
       </motion.p>
       
       <motion.div
         variants={itemVariants}
-        className="flex flex-wrap justify-center gap-2"
+        className="flex flex-wrap justify-center gap-3"
       >
         {searchTerm && onClearSearch && (
-          <Button variant="outline" size="sm" onClick={onClearSearch}>
+          <Button 
+            variant="outline" 
+            onClick={onClearSearch}
+            className="gap-2 border-2 hover:border-blue-300 hover:bg-blue-50"
+          >
+            <Search className="h-4 w-4" />
             Clear search
           </Button>
         )}
         {hasFilters && onClearFilters && (
-          <Button variant="outline" size="sm" onClick={onClearFilters}>
+          <Button 
+            variant="outline" 
+            onClick={onClearFilters}
+            className="gap-2 border-2 hover:border-purple-300 hover:bg-purple-50"
+          >
+            <Filter className="h-4 w-4" />
             Clear all filters
           </Button>
         )}
+      </motion.div>
+      
+      {/* Suggestions */}
+      <motion.div
+        variants={itemVariants}
+        className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-100 max-w-md"
+      >
+        <p className="text-sm font-medium text-slate-700 mb-2">💡 Search tips:</p>
+        <ul className="text-sm text-slate-500 space-y-1 text-left">
+          <li>• Try searching for contract type (e.g., &quot;NDA&quot;, &quot;MSA&quot;)</li>
+          <li>• Search by party name or company</li>
+          <li>• Use broader terms if specific ones don&apos;t work</li>
+        </ul>
       </motion.div>
     </motion.div>
   );
@@ -236,39 +329,61 @@ export const ErrorState = memo(function ErrorState({
       initial="hidden"
       animate="visible"
       className={cn(
-        'flex flex-col items-center justify-center py-12 px-4 text-center',
+        'flex flex-col items-center justify-center py-16 px-4 text-center',
         className
       )}
     >
       <motion.div
         variants={itemVariants}
-        className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4"
+        className="relative mb-6"
       >
-        <AlertCircle className="h-8 w-8 text-destructive" />
+        {/* Animated error glow */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <div className="w-24 h-24 rounded-full bg-red-100 blur-xl" />
+        </motion.div>
+        
+        <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-xl shadow-red-500/25">
+          <AlertCircle className="h-10 w-10 text-white" />
+        </div>
       </motion.div>
       
       <motion.h3
         variants={itemVariants}
-        className="text-lg font-semibold mb-2"
+        className="text-xl font-bold text-slate-800 mb-2"
       >
-        Something went wrong
+        Oops! Something went wrong
       </motion.h3>
       
       <motion.p
         variants={itemVariants}
-        className="text-muted-foreground max-w-md mb-4"
+        className="text-slate-500 max-w-md mb-6 leading-relaxed"
       >
-        {error || 'We couldn\'t load your contracts. Please try again.'}
+        {error || 'We couldn\'t load your contracts. This might be a temporary issue. Please try again.'}
       </motion.p>
       
       {onRetry && (
         <motion.div variants={itemVariants}>
-          <Button onClick={onRetry} variant="outline" className="gap-2">
+          <Button 
+            onClick={onRetry} 
+            className="gap-2 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/25"
+          >
             <RefreshCw className="h-4 w-4" />
             Try again
           </Button>
         </motion.div>
       )}
+      
+      {/* Help section */}
+      <motion.div
+        variants={itemVariants}
+        className="mt-8 text-xs text-slate-400"
+      >
+        If this problem persists, please contact support.
+      </motion.div>
     </motion.div>
   );
 });
@@ -286,15 +401,50 @@ export const LoadingState = memo(function LoadingState({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className={cn(
-        'flex flex-col items-center justify-center py-16 px-4',
+        'flex flex-col items-center justify-center py-20 px-4',
         className
       )}
     >
-      <div className="relative">
-        <div className="w-12 h-12 rounded-full border-4 border-muted" />
-        <div className="absolute top-0 left-0 w-12 h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      {/* Premium loading animation */}
+      <div className="relative mb-6">
+        {/* Outer rotating ring */}
+        <motion.div
+          className="w-20 h-20 rounded-full border-4 border-slate-100"
+          style={{ borderTopColor: '#3b82f6', borderRightColor: '#8b5cf6' }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        />
+        
+        {/* Inner pulsing dot */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 1, repeat: Infinity }}
+        >
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30" />
+        </motion.div>
+        
+        {/* Sparkle effect */}
+        <motion.div
+          className="absolute -top-1 -right-1 w-4 h-4"
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" />
+        </motion.div>
       </div>
-      <p className="mt-4 text-muted-foreground">{message}</p>
+      
+      <motion.p 
+        className="text-slate-600 font-medium"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 1.5, repeat: Infinity }}
+      >
+        {message}
+      </motion.p>
+      
+      <p className="mt-2 text-sm text-slate-400">
+        This usually takes a few seconds
+      </p>
     </motion.div>
   );
 });
@@ -310,18 +460,21 @@ export const ContractsSkeleton = memo(function ContractsSkeleton({
   return (
     <div className={cn('space-y-3', className)}>
       {Array.from({ length: count }).map((_, i) => (
-        <div
+        <motion.div
           key={i}
-          className="flex items-center gap-4 p-4 border rounded-lg animate-pulse"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+          className="flex items-center gap-4 p-4 border border-slate-100 rounded-xl bg-white"
         >
-          <div className="h-5 w-5 rounded bg-muted" />
+          <div className="h-5 w-5 rounded bg-gradient-to-r from-slate-200 to-slate-100 animate-pulse" />
           <div className="flex-1 space-y-2">
-            <div className="h-4 bg-muted rounded w-1/3" />
-            <div className="h-3 bg-muted rounded w-1/4" />
+            <div className="h-4 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg w-1/3 animate-pulse" />
+            <div className="h-3 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg w-1/4 animate-pulse" />
           </div>
-          <div className="h-6 w-16 bg-muted rounded-full" />
-          <div className="h-4 w-20 bg-muted rounded" />
-        </div>
+          <div className="h-6 w-16 bg-gradient-to-r from-slate-200 to-slate-100 rounded-full animate-pulse" />
+          <div className="h-4 w-20 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg animate-pulse" />
+        </motion.div>
       ))}
     </div>
   );

@@ -19,24 +19,82 @@ import {
   Clock,
   AlertTriangle,
   TrendingUp,
+  TrendingDown,
   Printer,
   ChevronRight,
+  ChevronDown,
   Eye,
   PieChart,
   Activity,
+  Shield,
+  Target,
+  Zap,
+  Users,
+  Layers,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Info,
+  Lightbulb,
+  Award,
+  Gauge,
+  LineChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FilterState {
   suppliers: string[];
   categories: string[];
   years: string[];
   statuses: string[];
+}
+
+interface SupplierAnalysis {
+  name: string;
+  totalValue: number;
+  contractCount: number;
+  avgValue: number;
+  activeCount: number;
+  expiringCount: number;
+  riskScore: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+}
+
+interface BenchmarkData {
+  metric: string;
+  yourValue: number;
+  industryAvg: number;
+  percentile: number;
+  status: 'above' | 'below' | 'at' | 'excellent';
+}
+
+interface Recommendation {
+  type: 'cost' | 'risk' | 'compliance' | 'efficiency' | 'strategic';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  potentialImpact: string;
+  affectedContracts: string[];
+}
+
+interface TrendData {
+  period: string;
+  value: number;
+  count: number;
 }
 
 interface ReportResult {
@@ -48,6 +106,9 @@ interface ReportResult {
     averageDurationMonths: number;
     shortestDurationMonths: number;
     longestDurationMonths: number;
+    healthScore: number;
+    complianceScore: number;
+    riskScore: number;
   };
   contracts: Array<{
     id: string;
@@ -60,16 +121,30 @@ interface ReportResult {
     durationMonths: number;
     category: string;
     daysUntilExpiry: number | null;
+    autoRenewal: boolean;
+    riskLevel: string;
   }>;
-  byCategory: Record<string, { count: number; value: number; contracts: string[] }>;
+  byCategory: Record<string, { count: number; value: number; contracts: string[]; avgDuration: number }>;
   byStatus: Record<string, number>;
   byYear: Record<string, { count: number; value: number }>;
+  bySupplier: SupplierAnalysis[];
   riskAnalysis: {
     expiringIn30Days: number;
     expiringIn90Days: number;
     autoRenewalCount: number;
     highValueAtRisk: number;
+    overdueContracts: number;
+    missingCriticalData: number;
+    concentrationRisk: number;
   };
+  trends: {
+    valueByQuarter: TrendData[];
+    contractsByQuarter: TrendData[];
+    renewalRate: number;
+    avgDurationTrend: TrendData[];
+  };
+  benchmarks: BenchmarkData[];
+  recommendations: Recommendation[];
   aiSummary?: string;
 }
 
@@ -81,6 +156,89 @@ const STATUS_COLORS: Record<string, string> = {
   EXPIRED: 'bg-red-100 text-red-700 border-red-200',
   ARCHIVED: 'bg-slate-100 text-slate-700 border-slate-200',
 };
+
+const RISK_COLORS: Record<string, string> = {
+  critical: 'bg-red-100 text-red-700 border-red-300',
+  high: 'bg-orange-100 text-orange-700 border-orange-300',
+  medium: 'bg-yellow-100 text-yellow-700 border-yellow-300',
+  low: 'bg-green-100 text-green-700 border-green-300',
+};
+
+const PRIORITY_CONFIG: Record<string, { color: string; icon: typeof AlertCircle }> = {
+  critical: { color: 'bg-red-500', icon: AlertCircle },
+  high: { color: 'bg-orange-500', icon: AlertTriangle },
+  medium: { color: 'bg-yellow-500', icon: Info },
+  low: { color: 'bg-green-500', icon: CheckCircle },
+};
+
+const RECOMMENDATION_TYPE_ICONS: Record<string, typeof Target> = {
+  cost: DollarSign,
+  risk: Shield,
+  compliance: CheckCircle,
+  efficiency: Zap,
+  strategic: Target,
+};
+
+// Score gauge component
+function ScoreGauge({ 
+  score, 
+  label, 
+  color = 'blue',
+  size = 'md',
+}: { 
+  score: number; 
+  label: string; 
+  color?: 'blue' | 'green' | 'red' | 'yellow';
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const colorMap = {
+    blue: { bg: 'from-blue-500 to-indigo-600', text: 'text-blue-600', track: 'bg-blue-100' },
+    green: { bg: 'from-green-500 to-emerald-600', text: 'text-green-600', track: 'bg-green-100' },
+    red: { bg: 'from-red-500 to-rose-600', text: 'text-red-600', track: 'bg-red-100' },
+    yellow: { bg: 'from-yellow-500 to-amber-600', text: 'text-yellow-600', track: 'bg-yellow-100' },
+  };
+  const sizes = { sm: 'w-16 h-16', md: 'w-24 h-24', lg: 'w-32 h-32' };
+  const textSizes = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' };
+  
+  return (
+    <div className="flex flex-col items-center">
+      <div className={cn('relative', sizes[size])}>
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="10"
+            className={colorMap[color].track}
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r="45"
+            fill="none"
+            stroke="url(#gradient)"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={`${score * 2.83} 283`}
+            className="transition-all duration-1000 ease-out"
+          />
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" className={`stop-color: ${color === 'blue' ? '#3b82f6' : color === 'green' ? '#22c55e' : color === 'red' ? '#ef4444' : '#eab308'}`} />
+              <stop offset="100%" className={`stop-color: ${color === 'blue' ? '#6366f1' : color === 'green' ? '#10b981' : color === 'red' ? '#f43f5e' : '#f59e0b'}`} />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={cn('font-bold', textSizes[size], colorMap[color].text)}>{score}</span>
+        </div>
+      </div>
+      <span className="text-xs font-medium text-gray-600 mt-2">{label}</span>
+    </div>
+  );
+}
 
 export default function AIReportBuilderPage() {
   const [filters, setFilters] = useState<FilterState>({
@@ -487,7 +645,7 @@ export default function AIReportBuilderPage() {
             {/* Report Header with Actions */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Report Results</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Portfolio Analysis Report</h2>
                 {generatedAt && (
                   <p className="text-sm text-gray-500">
                     Generated {new Date(generatedAt).toLocaleString()}
@@ -519,6 +677,97 @@ export default function AIReportBuilderPage() {
                 </Button>
               </div>
             </div>
+            
+            {/* Health Scores Dashboard */}
+            <Card className="border-0 shadow-lg overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Gauge className="h-5 w-5" />
+                  Portfolio Health Dashboard
+                </CardTitle>
+                <CardDescription className="text-slate-300">
+                  Real-time health metrics based on contract data quality, compliance, and risk factors
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-3 gap-8">
+                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                    <div className="relative w-28 h-28 mb-4">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#e0e7ff" strokeWidth="8" />
+                        <circle 
+                          cx="50" cy="50" r="40" fill="none" stroke="url(#healthGradient)" strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(report.summary.healthScore || 0) * 2.51} 251`}
+                          className="transition-all duration-1000"
+                        />
+                        <defs>
+                          <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#3b82f6" />
+                            <stop offset="100%" stopColor="#6366f1" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl font-bold text-blue-600">{report.summary.healthScore || 0}</span>
+                      </div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900">Health Score</h4>
+                    <p className="text-sm text-gray-500 text-center mt-1">Overall portfolio health based on renewal rates, value distribution, and risk factors</p>
+                  </div>
+                  
+                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                    <div className="relative w-28 h-28 mb-4">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#d1fae5" strokeWidth="8" />
+                        <circle 
+                          cx="50" cy="50" r="40" fill="none" stroke="url(#complianceGradient)" strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(report.summary.complianceScore || 0) * 2.51} 251`}
+                          className="transition-all duration-1000"
+                        />
+                        <defs>
+                          <linearGradient id="complianceGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#22c55e" />
+                            <stop offset="100%" stopColor="#10b981" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl font-bold text-green-600">{report.summary.complianceScore || 0}</span>
+                      </div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900">Compliance Score</h4>
+                    <p className="text-sm text-gray-500 text-center mt-1">Data completeness and documentation quality across all contracts</p>
+                  </div>
+                  
+                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl border border-red-100">
+                    <div className="relative w-28 h-28 mb-4">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#fee2e2" strokeWidth="8" />
+                        <circle 
+                          cx="50" cy="50" r="40" fill="none" stroke="url(#riskGradient)" strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(report.summary.riskScore || 0) * 2.51} 251`}
+                          className="transition-all duration-1000"
+                        />
+                        <defs>
+                          <linearGradient id="riskGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#ef4444" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl font-bold text-orange-600">{report.summary.riskScore || 0}</span>
+                      </div>
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900">Risk Score</h4>
+                    <p className="text-sm text-gray-500 text-center mt-1">Combined risk assessment including expirations, concentration, and compliance gaps</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -609,6 +858,311 @@ export default function AIReportBuilderPage() {
               </Card>
             )}
             
+            {/* AI Recommendations */}
+            {report.recommendations && report.recommendations.length > 0 && (
+              <Card className="border-0 shadow-lg overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-amber-50 via-orange-50 to-red-50 border-b">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <div className="p-1.5 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg">
+                      <Lightbulb className="h-4 w-4 text-white" />
+                    </div>
+                    AI-Powered Recommendations
+                  </CardTitle>
+                  <CardDescription>Actionable insights to optimize your contract portfolio</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-5">
+                  <div className="space-y-4">
+                    {report.recommendations.slice(0, 8).map((rec, idx) => {
+                      const TypeIcon = RECOMMENDATION_TYPE_ICONS[rec.type] || Lightbulb;
+                      const priorityConfig = PRIORITY_CONFIG[rec.priority] || PRIORITY_CONFIG.medium;
+                      
+                      return (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.1 }}
+                          className="group"
+                        >
+                          <div className="flex items-start gap-4 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all">
+                            <div className={cn(
+                              "p-2.5 rounded-xl shrink-0",
+                              rec.type === 'cost' && "bg-emerald-100",
+                              rec.type === 'risk' && "bg-red-100",
+                              rec.type === 'compliance' && "bg-blue-100",
+                              rec.type === 'efficiency' && "bg-purple-100",
+                              rec.type === 'strategic' && "bg-amber-100"
+                            )}>
+                              <TypeIcon className={cn(
+                                "h-5 w-5",
+                                rec.type === 'cost' && "text-emerald-600",
+                                rec.type === 'risk' && "text-red-600",
+                                rec.type === 'compliance' && "text-blue-600",
+                                rec.type === 'efficiency' && "text-purple-600",
+                                rec.type === 'strategic' && "text-amber-600"
+                              )} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-gray-900">{rec.title}</h4>
+                                <Badge className={cn(
+                                  "text-[10px] uppercase tracking-wide font-bold px-2 py-0.5",
+                                  rec.priority === 'critical' && "bg-red-500 text-white",
+                                  rec.priority === 'high' && "bg-orange-500 text-white",
+                                  rec.priority === 'medium' && "bg-yellow-500 text-white",
+                                  rec.priority === 'low' && "bg-green-500 text-white"
+                                )}>
+                                  {rec.priority}
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] capitalize">
+                                  {rec.type}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">{rec.description}</p>
+                              <div className="flex items-center gap-4 text-xs">
+                                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                  <TrendingUp className="h-3 w-3" />
+                                  Impact: {rec.potentialImpact}
+                                </span>
+                                {rec.affectedContracts && rec.affectedContracts.length > 0 && (
+                                  <span className="text-gray-500">
+                                    {rec.affectedContracts.length} contract{rec.affectedContracts.length > 1 ? 's' : ''} affected
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Supplier Analysis */}
+            {report.bySupplier && report.bySupplier.length > 0 && (
+              <Card className="border-0 shadow-lg overflow-hidden">
+                <CardHeader className="border-b">
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                      <Users className="h-4 w-4 text-white" />
+                    </div>
+                    Supplier Analysis
+                  </CardTitle>
+                  <CardDescription>Performance metrics and risk assessment by supplier</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-5">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-gray-50">
+                          <th className="text-left py-3 px-3 font-semibold text-gray-600">Supplier</th>
+                          <th className="text-right py-3 px-3 font-semibold text-gray-600">Total Value</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-600">Contracts</th>
+                          <th className="text-right py-3 px-3 font-semibold text-gray-600">Avg Value</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-600">Active</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-600">Expiring</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-600">Risk</th>
+                          <th className="text-center py-3 px-3 font-semibold text-gray-600">Trend</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.bySupplier.slice(0, 10).map((supplier, idx) => (
+                          <tr key={supplier.name} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-2">
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+                                  idx === 0 ? "bg-amber-100 text-amber-700" :
+                                  idx === 1 ? "bg-gray-200 text-gray-700" :
+                                  idx === 2 ? "bg-orange-100 text-orange-700" :
+                                  "bg-blue-50 text-blue-600"
+                                )}>
+                                  {idx < 3 ? <Award className="h-4 w-4" /> : idx + 1}
+                                </div>
+                                <span className="font-medium text-gray-900">{supplier.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-right font-semibold">{formatCurrency(supplier.totalValue)}</td>
+                            <td className="py-3 px-3 text-center">
+                              <Badge variant="outline">{supplier.contractCount}</Badge>
+                            </td>
+                            <td className="py-3 px-3 text-right text-gray-600">{formatCurrency(supplier.avgValue)}</td>
+                            <td className="py-3 px-3 text-center">
+                              <span className="text-emerald-600 font-medium">{supplier.activeCount}</span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              {supplier.expiringCount > 0 ? (
+                                <span className="text-orange-600 font-medium">{supplier.expiringCount}</span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <div className="flex items-center justify-center">
+                                <div className={cn(
+                                  "w-16 h-2 rounded-full overflow-hidden bg-gray-100"
+                                )}>
+                                  <div 
+                                    className={cn(
+                                      "h-full rounded-full",
+                                      supplier.riskScore <= 30 ? "bg-green-500" :
+                                      supplier.riskScore <= 60 ? "bg-yellow-500" :
+                                      "bg-red-500"
+                                    )}
+                                    style={{ width: `${supplier.riskScore}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              {supplier.trend === 'increasing' && (
+                                <span className="flex items-center justify-center text-emerald-600">
+                                  <ArrowUpRight className="h-4 w-4" />
+                                </span>
+                              )}
+                              {supplier.trend === 'decreasing' && (
+                                <span className="flex items-center justify-center text-red-600">
+                                  <ArrowDownRight className="h-4 w-4" />
+                                </span>
+                              )}
+                              {supplier.trend === 'stable' && (
+                                <span className="flex items-center justify-center text-gray-400">
+                                  <Minus className="h-4 w-4" />
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {/* Trends & Benchmarks Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Trends */}
+              {report.trends && report.trends.valueByQuarter && report.trends.valueByQuarter.length > 0 && (
+                <Card className="border-0 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <LineChart className="h-4 w-4 text-blue-500" />
+                      Portfolio Trends
+                    </CardTitle>
+                    <CardDescription>Quarterly value and contract volume trends</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Value by Quarter</p>
+                        <div className="flex items-end gap-2 h-32">
+                          {report.trends.valueByQuarter.map((trend, idx) => {
+                            const maxValue = Math.max(...report.trends.valueByQuarter.map(t => t.value));
+                            const height = maxValue > 0 ? (trend.value / maxValue) * 100 : 0;
+                            return (
+                              <TooltipProvider key={trend.period}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className="flex-1 flex flex-col items-center gap-1">
+                                      <div 
+                                        className="w-full bg-gradient-to-t from-blue-500 to-indigo-500 rounded-t-md transition-all hover:from-blue-600 hover:to-indigo-600"
+                                        style={{ height: `${height}%`, minHeight: '4px' }}
+                                      />
+                                      <span className="text-[10px] text-gray-500">{trend.period}</span>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{formatCurrency(trend.value)}</p>
+                                    <p className="text-xs text-gray-400">{trend.count} contracts</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      
+                      {report.trends.renewalRate !== undefined && (
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">Renewal Rate</span>
+                            <span className="text-lg font-bold text-emerald-600">{report.trends.renewalRate}%</span>
+                          </div>
+                          <Progress value={report.trends.renewalRate} className="mt-2 h-2" />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Benchmarks */}
+              {report.benchmarks && report.benchmarks.length > 0 && (
+                <Card className="border-0 shadow-md">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Target className="h-4 w-4 text-purple-500" />
+                      Industry Benchmarks
+                    </CardTitle>
+                    <CardDescription>Your portfolio vs industry standards</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {report.benchmarks.map((benchmark, idx) => (
+                        <div key={benchmark.metric} className="flex items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-700 truncate">{benchmark.metric}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge className={cn(
+                                  "text-[10px]",
+                                  benchmark.status === 'excellent' && "bg-emerald-100 text-emerald-700",
+                                  benchmark.status === 'above' && "bg-green-100 text-green-700",
+                                  benchmark.status === 'at' && "bg-yellow-100 text-yellow-700",
+                                  benchmark.status === 'below' && "bg-red-100 text-red-700"
+                                )}>
+                                  {benchmark.status === 'excellent' ? 'Excellent' :
+                                   benchmark.status === 'above' ? 'Above Avg' :
+                                   benchmark.status === 'at' ? 'Average' : 'Below Avg'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div 
+                                className={cn(
+                                  "absolute h-full rounded-full transition-all",
+                                  benchmark.percentile >= 75 ? "bg-emerald-500" :
+                                  benchmark.percentile >= 50 ? "bg-green-500" :
+                                  benchmark.percentile >= 25 ? "bg-yellow-500" :
+                                  "bg-red-500"
+                                )}
+                                style={{ width: `${benchmark.percentile}%` }}
+                              />
+                              <div 
+                                className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-gray-400"
+                                style={{ left: '50%' }}
+                              />
+                            </div>
+                            <div className="flex justify-between mt-1 text-xs text-gray-500">
+                              <span>Your: {typeof benchmark.yourValue === 'number' ? 
+                                (benchmark.metric.includes('Value') || benchmark.metric.includes('$') ? 
+                                  formatCurrency(benchmark.yourValue) : benchmark.yourValue.toFixed(1)) : benchmark.yourValue}</span>
+                              <span>Avg: {typeof benchmark.industryAvg === 'number' ? 
+                                (benchmark.metric.includes('Value') || benchmark.metric.includes('$') ? 
+                                  formatCurrency(benchmark.industryAvg) : benchmark.industryAvg.toFixed(1)) : benchmark.industryAvg}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* By Category - Enhanced */}
@@ -636,6 +1190,9 @@ export default function AIReportBuilderPage() {
                             style={{ width: `${getCategoryPercentage(data.value)}%` }}
                           />
                         </div>
+                        {data.avgDuration && (
+                          <p className="text-xs text-gray-500 mt-1">Avg duration: {data.avgDuration} months</p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -686,44 +1243,67 @@ export default function AIReportBuilderPage() {
                 </CardContent>
               </Card>
             </div>
+            </div>
             
-            {/* Risk Analysis - Full Width */}
-            <Card className="border-0 shadow-md border-l-4 border-l-orange-500">
+            {/* Risk Analysis - Full Width Enhanced */}
+            <Card className="border-0 shadow-lg border-l-4 border-l-orange-500">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  Risk Analysis &amp; Alerts
+                  Comprehensive Risk Analysis
                 </CardTitle>
+                <CardDescription>Identify and monitor portfolio risks</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-5 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
-                    <div className="w-12 h-12 mx-auto mb-2 bg-red-500 rounded-full flex items-center justify-center">
-                      <AlertCircle className="h-6 w-6 text-white" />
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                  <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-red-500 rounded-full flex items-center justify-center">
+                      <AlertCircle className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-3xl font-bold text-red-600">{report.riskAnalysis.expiringIn30Days}</p>
-                    <p className="text-xs text-red-500 mt-1 font-medium">Expiring in 30 days</p>
+                    <p className="text-2xl font-bold text-red-600">{report.riskAnalysis.expiringIn30Days}</p>
+                    <p className="text-[10px] text-red-500 mt-1 font-medium">30-Day Expiry</p>
                   </div>
-                  <div className="text-center p-5 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
-                    <div className="w-12 h-12 mx-auto mb-2 bg-orange-500 rounded-full flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-white" />
+                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-orange-500 rounded-full flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-3xl font-bold text-orange-600">{report.riskAnalysis.expiringIn90Days}</p>
-                    <p className="text-xs text-orange-500 mt-1 font-medium">Expiring in 90 days</p>
+                    <p className="text-2xl font-bold text-orange-600">{report.riskAnalysis.expiringIn90Days}</p>
+                    <p className="text-[10px] text-orange-500 mt-1 font-medium">90-Day Expiry</p>
                   </div>
-                  <div className="text-center p-5 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
-                    <div className="w-12 h-12 mx-auto mb-2 bg-yellow-500 rounded-full flex items-center justify-center">
-                      <RefreshCw className="h-6 w-6 text-white" />
+                  <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl border border-yellow-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <RefreshCw className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-3xl font-bold text-yellow-600">{report.riskAnalysis.autoRenewalCount}</p>
-                    <p className="text-xs text-yellow-600 mt-1 font-medium">Auto-renewal enabled</p>
+                    <p className="text-2xl font-bold text-yellow-600">{report.riskAnalysis.autoRenewalCount}</p>
+                    <p className="text-[10px] text-yellow-600 mt-1 font-medium">Auto-Renewal</p>
                   </div>
-                  <div className="text-center p-5 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                    <div className="w-12 h-12 mx-auto mb-2 bg-purple-500 rounded-full flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-white" />
+                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-purple-500 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-3xl font-bold text-purple-600">{report.riskAnalysis.highValueAtRisk}</p>
-                    <p className="text-xs text-purple-500 mt-1 font-medium">High-value at risk</p>
+                    <p className="text-2xl font-bold text-purple-600">{report.riskAnalysis.highValueAtRisk}</p>
+                    <p className="text-[10px] text-purple-500 mt-1 font-medium">High-Value Risk</p>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl border border-rose-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-rose-500 rounded-full flex items-center justify-center">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-rose-600">{report.riskAnalysis.overdueContracts || 0}</p>
+                    <p className="text-[10px] text-rose-500 mt-1 font-medium">Overdue</p>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-blue-500 rounded-full flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600">{report.riskAnalysis.missingCriticalData || 0}</p>
+                    <p className="text-[10px] text-blue-500 mt-1 font-medium">Missing Data</p>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-indigo-500 rounded-full flex items-center justify-center">
+                      <Layers className="h-5 w-5 text-white" />
+                    </div>
+                    <p className="text-2xl font-bold text-indigo-600">{report.riskAnalysis.concentrationRisk || 0}%</p>
+                    <p className="text-[10px] text-indigo-500 mt-1 font-medium">Concentration</p>
                   </div>
                 </div>
               </CardContent>
@@ -740,6 +1320,10 @@ export default function AIReportBuilderPage() {
                     <FileText className="h-4 w-4 text-blue-500" />
                     Contract Details ({report.contracts.length})
                   </div>
+                  <ChevronDown className={cn(
+                    "h-5 w-5 text-gray-400 transition-transform",
+                    showContractList && "rotate-180"
+                  )} />
                   <ChevronRight className={cn(
                     "h-5 w-5 text-gray-400 transition-transform",
                     showContractList && "rotate-90"
@@ -751,34 +1335,69 @@ export default function AIReportBuilderPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b">
+                        <tr className="border-b bg-gray-50">
                           <th className="text-left py-3 px-2 font-semibold text-gray-600">Contract</th>
                           <th className="text-left py-3 px-2 font-semibold text-gray-600">Supplier</th>
                           <th className="text-right py-3 px-2 font-semibold text-gray-600">Value</th>
                           <th className="text-center py-3 px-2 font-semibold text-gray-600">Status</th>
+                          <th className="text-center py-3 px-2 font-semibold text-gray-600">Risk</th>
                           <th className="text-center py-3 px-2 font-semibold text-gray-600">Duration</th>
+                          <th className="text-center py-3 px-2 font-semibold text-gray-600">Expiry</th>
                           <th className="text-right py-3 px-2 font-semibold text-gray-600">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {report.contracts.slice(0, 20).map((contract) => (
-                          <tr key={contract.id} className="border-b hover:bg-gray-50">
+                          <tr key={contract.id} className="border-b hover:bg-gray-50 transition-colors">
                             <td className="py-3 px-2">
-                              <span className="font-medium text-gray-900 truncate block max-w-[200px]">
-                                {contract.title || 'Untitled Contract'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {contract.autoRenewal && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        <RefreshCw className="h-3.5 w-3.5 text-blue-500" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>Auto-renewal enabled</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                <span className="font-medium text-gray-900 truncate block max-w-[200px]">
+                                  {contract.title || 'Untitled Contract'}
+                                </span>
+                              </div>
                             </td>
                             <td className="py-3 px-2 text-gray-600">{contract.supplierName || 'N/A'}</td>
-                            <td className="py-3 px-2 text-right font-medium">{formatFullCurrency(contract.value || 0)}</td>
+                            <td className="py-3 px-2 text-right font-semibold">{formatFullCurrency(contract.value || 0)}</td>
                             <td className="py-3 px-2 text-center">
                               <Badge className={cn("text-xs", STATUS_COLORS[contract.status])}>
                                 {contract.status}
                               </Badge>
                             </td>
+                            <td className="py-3 px-2 text-center">
+                              {contract.riskLevel && (
+                                <Badge className={cn("text-xs", RISK_COLORS[contract.riskLevel.toLowerCase()] || "bg-gray-100")}>
+                                  {contract.riskLevel}
+                                </Badge>
+                              )}
+                            </td>
                             <td className="py-3 px-2 text-center text-gray-600">{contract.durationMonths || 0} mo</td>
+                            <td className="py-3 px-2 text-center">
+                              {contract.daysUntilExpiry !== null && contract.daysUntilExpiry !== undefined ? (
+                                <span className={cn(
+                                  "text-xs font-medium",
+                                  contract.daysUntilExpiry <= 30 ? "text-red-600" :
+                                  contract.daysUntilExpiry <= 90 ? "text-orange-600" :
+                                  "text-gray-600"
+                                )}>
+                                  {contract.daysUntilExpiry <= 0 ? 'Expired' : `${contract.daysUntilExpiry}d`}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">—</span>
+                              )}
+                            </td>
                             <td className="py-3 px-2 text-right">
                               <Link href={`/contracts/${contract.id}`}>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 hover:bg-blue-50 hover:text-blue-600">
                                   <Eye className="h-3 w-3" />
                                   View
                                 </Button>
@@ -789,9 +1408,14 @@ export default function AIReportBuilderPage() {
                       </tbody>
                     </table>
                     {report.contracts.length > 20 && (
-                      <p className="text-center py-3 text-sm text-gray-500">
-                        Showing 20 of {report.contracts.length} contracts
-                      </p>
+                      <div className="text-center py-4 border-t">
+                        <p className="text-sm text-gray-500 mb-2">
+                          Showing 20 of {report.contracts.length} contracts
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => setShowContractList(false)}>
+                          Collapse List
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardContent>

@@ -220,8 +220,9 @@ export function KeyboardShortcutsExample() {
           <ShortcutItem shortcut="Ctrl + Shift + C" description="Go to contracts" />
           <ShortcutItem shortcut="Ctrl + Shift + R" description="Go to rate cards" />
           <ShortcutItem shortcut="Ctrl + Shift + A" description="Go to analytics" />
-          <ShortcutItem shortcut="Ctrl + K" description="Open search" />
+          <ShortcutItem shortcut="Ctrl + K" description="Open command palette" />
           <ShortcutItem shortcut="/" description="Focus search" />
+          <ShortcutItem shortcut="Ctrl + /" description="Open AI Assistant" />
         </div>
       </div>
     </div>

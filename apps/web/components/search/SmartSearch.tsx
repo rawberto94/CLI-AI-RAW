@@ -52,6 +52,12 @@ export function SmartSearch() {
   const [filters, setFilters] = useState<SearchFilters>({})
   const [recentSearches, setRecentSearches] = useState<string[]>([])
 
+  const hasActiveFilters = Object.values(filters).some((v) => {
+    if (v === undefined || v === null || v === '') return false
+    if (typeof v === 'number' && Number.isNaN(v)) return false
+    return true
+  })
+
   useEffect(() => {
     // Load recent searches from localStorage (client-side only)
     if (typeof window !== 'undefined') {
@@ -66,13 +72,15 @@ export function SmartSearch() {
     }
   }, [])
 
-  const performSearch = async () => {
-    if (!query.trim()) return
+  const performSearch = async (options?: { filters?: SearchFilters }) => {
+    const q = query.trim()
+    if (!q) return
+    const effectiveFilters = options?.filters ?? filters
 
     setIsSearching(true)
 
     // Save to recent searches
-    const updated = [query, ...recentSearches.filter(s => s !== query)].slice(0, 5)
+    const updated = [q, ...recentSearches.filter(s => s !== q)].slice(0, 5)
     setRecentSearches(updated)
     if (typeof window !== 'undefined') {
       try {
@@ -90,7 +98,7 @@ export function SmartSearch() {
             'Content-Type': 'application/json',
             'x-data-mode': dataMode
           },
-          body: JSON.stringify({ query, filters })
+          body: JSON.stringify({ query: q, filters: effectiveFilters })
         })
         const data = await response.json()
         setResults(data.results)
@@ -103,7 +111,7 @@ export function SmartSearch() {
             id: '1',
             title: 'Software Development Services Agreement',
             type: 'contract',
-            snippet: `...found matching terms for "${query}" in the contract scope and deliverables section...`,
+            snippet: `...found matching terms for "${q}" in the contract scope and deliverables section...`,
             metadata: {
               supplier: 'TechCorp Inc',
               value: 1250000,
@@ -116,7 +124,7 @@ export function SmartSearch() {
             id: '2',
             title: 'Rate Card - Senior Developers',
             type: 'artifact',
-            snippet: `...rate information matching "${query}" with competitive pricing and terms...`,
+            snippet: `...rate information matching "${q}" with competitive pricing and terms...`,
             metadata: {
               supplier: 'DevStaff Solutions',
               value: 850000,
@@ -129,7 +137,7 @@ export function SmartSearch() {
             id: '3',
             title: 'Acme Corporation',
             type: 'supplier',
-            snippet: `...supplier profile matching "${query}" with 15 active contracts and excellent ratings...`,
+            snippet: `...supplier profile matching "${q}" with 15 active contracts and excellent ratings...`,
             metadata: {
               value: 3200000,
               status: 'Preferred'
@@ -151,6 +159,14 @@ export function SmartSearch() {
     setQuery('')
     setResults([])
     setFilters({})
+  }
+
+  const resetFilters = async () => {
+    const nextFilters: SearchFilters = {}
+    setFilters(nextFilters)
+    if (query.trim()) {
+      await performSearch({ filters: nextFilters })
+    }
   }
 
   const getTypeIcon = (type: string) => {
@@ -356,7 +372,23 @@ export function SmartSearch() {
           <CardContent className="py-12 text-center">
             <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <p className="text-gray-600 mb-2">No results found for &ldquo;{query}&rdquo;</p>
-            <p className="text-sm text-gray-500">Try different keywords or adjust your filters</p>
+            <p className="text-sm text-gray-500">
+              Try different keywords{hasActiveFilters ? ', reset filters,' : ''} or switch to advanced search.
+            </p>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <Button variant="outline" size="sm" onClick={clearSearch}>
+                Clear search
+              </Button>
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={resetFilters}>
+                  Reset filters
+                </Button>
+              )}
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/search/advanced">Advanced search</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

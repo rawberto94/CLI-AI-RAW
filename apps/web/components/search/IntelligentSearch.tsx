@@ -177,19 +177,6 @@ export function IntelligentSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Global Cmd+K shortcut
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setIsOpen(true);
-      }
-    };
-    document.addEventListener('keydown', handleGlobalKeyDown);
-    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
-
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     saveRecentSearch(query || suggestion.title);
     router.push(suggestion.href);
@@ -248,9 +235,6 @@ export function IntelligentSearch() {
               <X className="h-3.5 w-3.5 text-slate-400" />
             </button>
           )}
-          <kbd className="hidden sm:flex items-center px-1.5 py-0.5 text-[10px] text-slate-400 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono">
-            ⌘K
-          </kbd>
         </div>
       </div>
 

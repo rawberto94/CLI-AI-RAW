@@ -322,6 +322,10 @@ async function handler(request: NextRequest) {
             tags: true,
             viewCount: true,
             lastViewedAt: true,
+            jurisdiction: true,
+            paymentTerms: true,
+            paymentFrequency: true,
+            aiMetadata: true,
           },
         }),
         prisma.contract.count({ where }),
@@ -398,6 +402,16 @@ async function handler(request: NextRequest) {
               tags: contract.tags,
               viewCount: contract.viewCount,
               lastViewedAt: contract.lastViewedAt?.toISOString(),
+              // Enterprise metadata fields
+              jurisdiction: contract.jurisdiction || (contract.aiMetadata as any)?.jurisdiction || null,
+              paymentTerms: contract.paymentTerms || (contract.aiMetadata as any)?.payment_type || null,
+              paymentFrequency: contract.paymentFrequency || (contract.aiMetadata as any)?.billing_frequency_type || null,
+              autoRenewing: (contract.aiMetadata as any)?.auto_renewing ?? null,
+              noticePeriod: (contract.aiMetadata as any)?.notice_period || null,
+              // External parties from enterprise metadata
+              externalParties: (contract.aiMetadata as any)?.external_parties || [],
+              // Extraction confidence
+              extractionConfidence: (contract.aiMetadata as any)?._confidence?.overall ?? null,
             };
           }),
           pagination: {

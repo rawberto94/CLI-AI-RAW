@@ -419,7 +419,9 @@ export default function SettingsClient() {
                     <p>Need more help? Check out:</p>
                     <ul className="mt-2 space-y-1 list-disc list-inside text-slate-500">
                       <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">?</kbd> anytime to see keyboard shortcuts</li>
-                      <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">⌘K</kbd> or <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">Ctrl+K</kbd> for quick search</li>
+                      <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">⌘K</kbd> or <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">Ctrl+K</kbd> to open the command palette</li>
+                      <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">/</kbd> to focus search</li>
+                      <li>Press <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">⌘/</kbd> or <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-xs font-mono">Ctrl+/</kbd> to open the AI Assistant</li>
                     </ul>
                   </div>
                 </CardContent>

@@ -239,26 +239,34 @@ export async function POST(
     const contentHash = generateContentHash(buffer);
     console.log("🔍 Content hash:", contentHash.substring(0, 16) + "...");
     
-    // TEMPORARILY DISABLED: Check for duplicate file
-    // The duplicate detection was returning stale IDs
-    // TODO: Re-enable once root cause is found
-    /*
-    const existingContract = await prisma.contract.findFirst({
-      where: {
-        tenantId,
-        checksum: contentHash,
-        status: { notIn: ['FAILED'] }
-      },
-      select: { id: true, status: true, fileName: true, createdAt: true }
-    });
-    
-    if (existingContract) {
-      const verifyContract = await prisma.contract.findUnique({
-        where: { id: existingContract.id },
-        select: { id: true }
+    // Check for duplicate file using transactional read for consistency
+    try {
+      const existingContract = await prisma.$transaction(async (tx) => {
+        const contract = await tx.contract.findFirst({
+          where: {
+            tenantId,
+            checksum: contentHash,
+            status: { notIn: ['FAILED', 'DELETED'] }
+          },
+          select: { id: true, status: true, fileName: true, createdAt: true }
+        });
+        
+        // Double-check the contract exists in same transaction
+        if (contract) {
+          const verified = await tx.contract.findUnique({
+            where: { id: contract.id },
+            select: { id: true, status: true }
+          });
+          return verified ? contract : null;
+        }
+        return null;
+      }, {
+        isolationLevel: 'ReadCommitted',
+        maxWait: 5000,
+        timeout: 10000,
       });
       
-      if (verifyContract) {
+      if (existingContract) {
         console.log("⚠️ Duplicate file detected:", existingContract.id);
         return NextResponse.json(
           {
@@ -274,9 +282,12 @@ export async function POST(
           { status: 200 }
         );
       }
+    } catch (dupCheckError) {
+      // Log but don't fail - continue with upload
+      console.warn("⚠️ Duplicate check failed, proceeding with upload:", dupCheckError);
     }
-    */
-    console.log("📝 Creating new contract (duplicate detection disabled)");
+    
+    console.log("📝 Creating new contract");
 
     let filePath = objectKey;
     let storageProvider = "s3";

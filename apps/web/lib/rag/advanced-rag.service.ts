@@ -38,6 +38,10 @@ export interface ChunkMetadata {
 export interface SearchResult {
   contractId: string;
   contractName: string;
+  supplierName?: string;
+  status?: string;
+  endDate?: string;
+  totalValue?: number;
   chunkIndex: number;
   text: string;
   score: number;
@@ -206,13 +210,27 @@ export async function expandQuery(
       messages: [
         {
           role: 'system',
-          content: `You are a query expansion assistant for a contract management system. 
-Generate 3 alternative phrasings of the user's search query to improve search recall.
+          content: `You are a query expansion assistant for a contract management system.
+Generate 4 alternative phrasings of the user's search query to improve search recall.
 Return ONLY a JSON array of strings, no explanation.
-Focus on:
-1. Synonyms and related legal terms
-2. More specific versions
-3. Broader category versions`,
+
+**Domain-specific expansion rules:**
+- "termination" → also search "cancellation", "exit clause", "notice period"
+- "payment" → also search "billing", "fees", "compensation", "pricing", "rates"
+- "liability" → also search "indemnification", "limitation of liability", "damages"
+- "confidential" → also search "NDA", "non-disclosure", "proprietary information"
+- "expiration" → also search "term", "renewal", "end date", "contract period"
+- "renewal" → also search "auto-renewal", "extension", "rollover"
+- "intellectual property" → also search "IP", "patents", "trademarks", "copyrights"
+- "SLA" → also search "service level", "performance metrics", "uptime"
+- "force majeure" → also search "acts of god", "unforeseen circumstances"
+- "breach" → also search "violation", "default", "non-compliance"
+
+**Focus on:**
+1. Synonyms and related legal/business terms
+2. More specific versions (narrower scope)
+3. Broader category versions (wider scope)
+4. Common abbreviations or alternate spellings`,
         },
         {
           role: 'user',
@@ -220,14 +238,14 @@ Focus on:
         },
       ],
       temperature: 0.7,
-      max_tokens: 200,
+      max_tokens: 300,
     });
     
     let content = response.choices[0]?.message?.content || '[]';
     // Strip markdown code blocks if present
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const variations = JSON.parse(content) as string[];
-    return [query, ...variations.slice(0, 3)];
+    return [query, ...variations.slice(0, 4)];
   } catch (error) {
     console.error('Query expansion failed:', error);
     return [query];
@@ -606,17 +624,60 @@ export async function hybridSearch(
     const contractIds = [...new Set(finalResults.map(r => r.contractId))];
     const contracts = await prisma.contract.findMany({
       where: { id: { in: contractIds } },
-      select: { id: true, fileName: true },
+      select: { 
+        id: true, 
+        fileName: true,
+        supplierName: true,
+        status: true,
+        endDate: true,
+        totalValue: true,
+        autoRenewal: true,
+      },
     });
     
-    const contractMap = new Map(contracts.map(c => [c.id, c.fileName]));
+    const contractMap = new Map(contracts.map(c => [c.id, c]));
     
-    return finalResults
+    // Apply importance boosting based on contract metadata
+    const boostedResults = finalResults.map(r => {
+      const contract = contractMap.get(r.contractId);
+      let boostFactor = 1.0;
+      
+      if (contract) {
+        // Boost high-value contracts
+        if (contract.totalValue && contract.totalValue >= 500000) boostFactor *= 1.15;
+        else if (contract.totalValue && contract.totalValue >= 100000) boostFactor *= 1.08;
+        
+        // Boost contracts expiring soon (more urgency)
+        if (contract.endDate) {
+          const daysUntilExpiry = Math.floor((new Date(contract.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          if (daysUntilExpiry >= 0 && daysUntilExpiry <= 30) boostFactor *= 1.2;
+          else if (daysUntilExpiry > 30 && daysUntilExpiry <= 90) boostFactor *= 1.1;
+        }
+        
+        // Boost active contracts
+        if (contract.status === 'active') boostFactor *= 1.05;
+        
+        // Boost auto-renewal contracts (important to monitor)
+        if (contract.autoRenewal) boostFactor *= 1.05;
+      }
+      
+      return {
+        ...r,
+        score: Math.min(r.score * boostFactor, 1.0), // Cap at 1.0
+        contractMeta: contract,
+      };
+    }).sort((a, b) => b.score - a.score);
+    
+    return boostedResults
       .filter(r => r.score >= minScore)
       .slice(0, k)
       .map(r => ({
         contractId: r.contractId,
-        contractName: contractMap.get(r.contractId) || 'Unknown',
+        contractName: r.contractMeta?.fileName || 'Unknown',
+        supplierName: r.contractMeta?.supplierName || undefined,
+        status: r.contractMeta?.status || undefined,
+        endDate: r.contractMeta?.endDate?.toISOString() || undefined,
+        totalValue: r.contractMeta?.totalValue || undefined,
         chunkIndex: r.chunkIndex,
         text: r.text,
         score: r.score,

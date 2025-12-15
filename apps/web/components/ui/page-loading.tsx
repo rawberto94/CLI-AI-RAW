@@ -1,13 +1,14 @@
 /**
  * Page Loading Components
  * Unified loading states for pages throughout the app
+ * With premium animations and visual polish
  */
 
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -17,26 +18,119 @@ interface PageLoadingProps {
   className?: string;
 }
 
+// Animated floating orb for background
+const FloatingOrb = ({ 
+  className, 
+  delay = 0, 
+  duration = 3 
+}: { 
+  className?: string; 
+  delay?: number; 
+  duration?: number;
+}) => (
+  <motion.div
+    className={cn("absolute rounded-full blur-3xl opacity-20", className)}
+    animate={{
+      y: [0, -30, 0],
+      scale: [1, 1.1, 1],
+    }}
+    transition={{
+      duration,
+      delay,
+      repeat: Infinity,
+      ease: "easeInOut",
+    }}
+  />
+);
+
 /**
- * Centered spinner with optional text
+ * Premium centered spinner with gradient background and floating orbs
  */
 export function PageSpinner({ title, description, className }: PageLoadingProps) {
   return (
-    <div className={cn("flex flex-col items-center justify-center min-h-[400px] gap-4", className)}>
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-      >
-        <Loader2 className="h-10 w-10 text-blue-600" />
-      </motion.div>
-      {title && <p className="text-slate-600 font-medium">{title}</p>}
-      {description && <p className="text-slate-400 text-sm">{description}</p>}
+    <div className={cn("relative flex flex-col items-center justify-center min-h-[400px] gap-6 overflow-hidden", className)}>
+      {/* Background orbs */}
+      <FloatingOrb className="w-48 h-48 bg-indigo-400 -top-24 -left-24" duration={4} />
+      <FloatingOrb className="w-64 h-64 bg-purple-400 -bottom-32 -right-32" delay={1} duration={5} />
+      
+      {/* Premium spinner */}
+      <div className="relative">
+        {/* Outer glow ring */}
+        <motion.div
+          className="absolute -inset-4 rounded-full bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-xl"
+          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+        
+        {/* Spinning gradient ring */}
+        <motion.div
+          className="relative w-16 h-16 rounded-full"
+          style={{
+            background: 'conic-gradient(from 0deg, transparent, rgba(99, 102, 241, 0.8), rgba(168, 85, 247, 0.8), transparent)',
+          }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        >
+          {/* Inner circle */}
+          <div className="absolute inset-1 rounded-full bg-gradient-to-br from-white to-slate-50 flex items-center justify-center">
+            <motion.div
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Sparkles className="h-6 w-6 text-indigo-600" />
+            </motion.div>
+          </div>
+        </motion.div>
+      </div>
+      
+      {/* Text */}
+      <div className="text-center">
+        {title && (
+          <motion.p 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-slate-700 font-semibold text-lg"
+          >
+            {title}
+          </motion.p>
+        )}
+        {description && (
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-slate-500 text-sm mt-1"
+          >
+            {description}
+          </motion.p>
+        )}
+        {/* Loading dots */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="flex justify-center gap-1 mt-4"
+        >
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-indigo-400"
+              animate={{ y: [0, -6, 0] }}
+              transition={{
+                duration: 0.6,
+                repeat: Infinity,
+                delay: i * 0.15,
+              }}
+            />
+          ))}
+        </motion.div>
+      </div>
     </div>
   );
 }
 
 /**
- * Skeleton pulse component
+ * Skeleton pulse component with gradient shimmer
  */
 export function Skeleton({ 
   className, 
@@ -44,9 +138,14 @@ export function Skeleton({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-slate-200", className)}
+      className={cn(
+        "relative overflow-hidden rounded-md bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-[length:200%_100%] animate-shimmer",
+        className
+      )}
       {...props}
-    />
+    >
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+    </div>
   );
 }
 

@@ -90,7 +90,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog } from '@/components/contracts'
+import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog, EnhancedContractMetadataSection } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { HealthIndicator } from '@/components/contracts/EnhancedContractCard'
 import { ActivityTab } from '@/components/contracts/detail/ActivityTab'
@@ -732,25 +732,29 @@ export default function ContractDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-      {/* Header */}
-      <div className="bg-white/90 backdrop-blur-xl border-b border-white/50 sticky top-0 z-40 shadow-sm">
+      {/* Header - Enhanced with glassmorphism and better visual hierarchy */}
+      <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left: Back + Title */}
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="sm" asChild className="text-slate-600 hover:bg-white/50">
+              <Button variant="ghost" size="sm" asChild className="text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">
                 <Link href="/contracts">
                   <ArrowLeft className="h-4 w-4 mr-1.5" />
                   Contracts
                 </Link>
               </Button>
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="h-6 bg-slate-200" />
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
-                  <FileText className="h-5 w-5 text-white" />
+                <div className="relative group">
+                  <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/25 transition-transform group-hover:scale-105">
+                    <FileText className="h-5 w-5 text-white drop-shadow-sm" />
+                  </div>
+                  {/* Subtle glow effect on hover */}
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity" />
                 </div>
                 <div>
-                  <h1 className="text-base font-semibold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent line-clamp-1">
+                  <h1 className="text-base font-semibold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 bg-clip-text text-transparent line-clamp-1 max-w-[200px] sm:max-w-[300px]">
                     {contract?.filename || 'Contract Details'}
                   </h1>
                   <div className="flex items-center gap-2 mt-0.5">
@@ -762,7 +766,7 @@ export default function ContractDetailPage() {
               </div>
             </div>
             
-            {/* Right: Actions - Simplified */}
+            {/* Right: Actions - Enhanced styling */}
             <div className="flex items-center gap-2">
               {/* Collaboration Presence */}
               <PresenceIndicator maxAvatars={3} showConnectionStatus={false} />
@@ -774,30 +778,30 @@ export default function ContractDetailPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={loadContract} 
-                      className="h-9 w-9"
+                      className="h-9 w-9 hover:bg-slate-100 transition-colors"
                       aria-label="Refresh contract data"
                     >
                       <RefreshCw className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Refresh</TooltipContent>
+                  <TooltipContent className="bg-slate-900 text-white border-slate-700">Refresh</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="shadow-sm hover:shadow-md hover:border-slate-300 transition-all">
                     Actions
                     <ChevronDown className="h-4 w-4 ml-1.5" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => setShowPdfViewer(!showPdfViewer)}>
+                <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200">
+                  <DropdownMenuItem onClick={() => setShowPdfViewer(!showPdfViewer)} className="cursor-pointer">
                     <FileType className="h-4 w-4 mr-2" />
                     {showPdfViewer ? 'Hide Original PDF' : 'View Original PDF'}
                     <span className="ml-auto text-xs text-muted-foreground">P</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setIsEditing(true)} disabled={isEditing}>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)} disabled={isEditing} className="cursor-pointer">
                     <Pencil className="h-4 w-4 mr-2" />
                     Edit Metadata
                     <span className="ml-auto text-xs text-muted-foreground">E</span>
@@ -970,14 +974,15 @@ export default function ContractDetailPage() {
           </motion.div>
         )}
 
-        {/* Contract Health Score - Enhanced Visual */}
+        {/* Contract Health Score - Enhanced with better visual design */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 20 }}
           className="mb-6"
         >
-          <Card className="bg-gradient-to-br from-white to-slate-50/50 border-slate-200/80 overflow-hidden">
-            <CardContent className="p-4">
+          <Card className="bg-gradient-to-br from-white via-white to-slate-50/50 border-slate-200/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
               <div className="flex items-center gap-6">
                 {/* Health Ring */}
                 <div className="relative">
@@ -992,60 +997,88 @@ export default function ContractDetailPage() {
                   />
                 </div>
                 
-                {/* Health Details */}
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">Completeness</p>
-                    <p className="text-lg font-bold text-slate-900">{contract?.status === 'completed' ? '100%' : '75%'}</p>
-                  </div>
-                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">Risk Level</p>
+                {/* Health Details - Enhanced card styling */}
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <motion.div 
+                    whileHover={{ y: -2 }}
+                    className="text-center p-3.5 bg-gradient-to-br from-white to-slate-50 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-default"
+                  >
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Completeness</p>
+                    <p className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">{contract?.status === 'completed' ? '100%' : '75%'}</p>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ y: -2 }}
+                    className={cn(
+                      "text-center p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-default",
+                      riskLevel === 'low' ? 'bg-gradient-to-br from-emerald-50 to-green-50/50 border-emerald-100' : 
+                      riskLevel === 'medium' ? 'bg-gradient-to-br from-amber-50 to-yellow-50/50 border-amber-100' : 
+                      'bg-gradient-to-br from-red-50 to-rose-50/50 border-red-100'
+                    )}
+                  >
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Risk Level</p>
                     <p className={cn(
-                      "text-lg font-bold",
+                      "text-xl font-bold",
                       riskLevel === 'low' ? 'text-emerald-600' : 
                       riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
                     )}>
                       {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
                     </p>
-                  </div>
-                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">AI Artifacts</p>
-                    <p className="text-lg font-bold text-purple-600">{contract?.artifactCount || 5}</p>
-                  </div>
-                  <div className="text-center p-3 bg-white/80 rounded-lg border border-slate-100">
-                    <p className="text-xs text-slate-500 uppercase tracking-wide">Compliance</p>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ y: -2 }}
+                    className="text-center p-3.5 bg-gradient-to-br from-purple-50 to-indigo-50/50 rounded-xl border border-purple-100 shadow-sm hover:shadow-md transition-all cursor-default"
+                  >
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">AI Artifacts</p>
+                    <p className="text-xl font-bold text-purple-600">{contract?.artifactCount || 5}</p>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ y: -2 }}
+                    className={cn(
+                      "text-center p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-default",
+                      complianceData?.compliant 
+                        ? 'bg-gradient-to-br from-emerald-50 to-green-50/50 border-emerald-100' 
+                        : 'bg-gradient-to-br from-amber-50 to-yellow-50/50 border-amber-100'
+                    )}
+                  >
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Compliance</p>
                     <p className={cn(
-                      "text-lg font-bold",
+                      "text-xl font-bold",
                       complianceData?.compliant ? 'text-emerald-600' : 'text-amber-600'
                     )}>
                       {complianceData?.compliant ? 'Pass' : 'Review'}
                     </p>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Quick Stats - Compact inline badges */}
+        {/* Quick Stats - Enhanced with better hover states */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
           className="flex flex-wrap items-center gap-3 mb-6"
         >
           {financialData?.totalValue && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+            <motion.div 
+              whileHover={{ scale: 1.03 }}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200/80 rounded-xl shadow-sm hover:shadow-md transition-all"
+            >
               <DollarSign className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-700">
+              <span className="text-sm font-semibold text-emerald-700">
                 {formatCurrency(financialData.totalValue, financialData.currency || 'USD')}
               </span>
-            </div>
+            </motion.div>
           )}
           
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1.5 border rounded-lg",
-            riskLevel === 'low' ? 'bg-emerald-50 border-emerald-200' : 
-            riskLevel === 'medium' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'
+          <motion.div 
+            whileHover={{ scale: 1.03 }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 border rounded-xl shadow-sm hover:shadow-md transition-all",
+            riskLevel === 'low' ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/80' : 
+            riskLevel === 'medium' ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200/80' : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200/80'
           )}>
             <AlertTriangle className={cn(
               "h-4 w-4",
@@ -1053,47 +1086,55 @@ export default function ContractDetailPage() {
               riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
             )} />
             <span className={cn(
-              "text-sm font-medium",
+              "text-sm font-semibold",
               riskLevel === 'low' ? 'text-emerald-700' : 
               riskLevel === 'medium' ? 'text-amber-700' : 'text-red-700'
             )}>
               {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
             </span>
-          </div>
+          </motion.div>
           
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1.5 border rounded-lg",
-            complianceData?.compliant ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
-          )}>
+          <motion.div 
+            whileHover={{ scale: 1.03 }}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 border rounded-xl shadow-sm hover:shadow-md transition-all",
+              complianceData?.compliant 
+                ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/80' 
+                : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200/80'
+            )}
+          >
             <Shield className={cn(
               "h-4 w-4",
               complianceData?.compliant ? 'text-emerald-600' : 'text-amber-600'
             )} />
             <span className={cn(
-              "text-sm font-medium",
+              "text-sm font-semibold",
               complianceData?.compliant ? 'text-emerald-700' : 'text-amber-700'
             )}>
               {complianceData?.compliant ? 'Compliant' : 'Review Needed'}
             </span>
-          </div>
+          </motion.div>
           
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg">
+          <motion.div 
+            whileHover={{ scale: 1.03 }}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/80 rounded-xl shadow-sm hover:shadow-md transition-all"
+          >
             <Brain className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-medium text-purple-700">
+            <span className="text-sm font-semibold text-purple-700">
               {contract?.artifactCount || 5} AI Artifacts
             </span>
-          </div>
+          </motion.div>
         </motion.div>
 
-        {/* Category & Quick Actions Bar */}
+        {/* Category & Quick Actions Bar - Enhanced */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.03 }}
           className="mb-6 flex flex-wrap items-center gap-4"
         >
-          {/* Category */}
-          <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-2">
+          {/* Category - Enhanced styling */}
+          <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md transition-all">
             <Tag className="h-4 w-4 text-slate-400" />
             {contract?.category ? (
               <button 
@@ -1110,7 +1151,7 @@ export default function ContractDetailPage() {
             ) : (
               <button 
                 onClick={() => setShowCategorySelector(true)}
-                className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1.5"
+                className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1.5 font-medium"
               >
                 <span>Add category</span>
               </button>
@@ -1118,7 +1159,7 @@ export default function ContractDetailPage() {
             {!contract?.category && (
               <button 
                 onClick={handleAICategorize}
-                className="ml-1 text-purple-500 hover:text-purple-700"
+                className="ml-1 text-purple-500 hover:text-purple-700 p-1 rounded-lg hover:bg-purple-50 transition-colors"
                 title="AI suggest category"
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -1126,36 +1167,47 @@ export default function ContractDetailPage() {
             )}
           </div>
           
-          {/* Renewal Soon Alert - Only show when expiring within 90 days */}
+          {/* Renewal Soon Alert - Enhanced styling */}
           {overviewData?.expirationDate && new Date(overviewData.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
-            <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm">
-              <Clock className="h-4 w-4" />
+            <motion.div 
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="flex items-center gap-2 text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/80 rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm"
+            >
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Clock className="h-4 w-4" />
+              </motion.div>
               <span>Renewal Soon</span>
-            </div>
+            </motion.div>
           )}
           
-          {/* Ask AI - Single prominent action */}
-          <button 
+          {/* Ask AI - Enhanced prominent action button */}
+          <motion.button 
             onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
-            className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-sm"
+            whileHover={{ scale: 1.03, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-purple-600 hover:via-purple-700 hover:to-indigo-700 transition-all shadow-md shadow-purple-500/25 hover:shadow-lg hover:shadow-purple-500/30"
           >
             <Sparkles className="h-4 w-4" />
             Ask AI
-          </button>
+          </motion.button>
         </motion.div>
 
-        {/* Main Tabs - Simplified to 3 core tabs */}
+        {/* Main Tabs - Enhanced with better visual hierarchy */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-1.5">
+            <div className="bg-white rounded-xl border border-slate-200/80 p-1.5 shadow-sm">
               <TabsList className="w-full bg-transparent gap-1">
                 <TabsTrigger 
                   value="overview" 
-                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
+                  className="flex-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-100 data-[state=active]:to-slate-50 data-[state=active]:shadow-sm rounded-lg transition-all"
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Summary
@@ -1364,323 +1416,18 @@ export default function ContractDetailPage() {
               />
             </TabsContent>
 
-            {/* Details Tab - Editable Metadata */}
+            {/* Details Tab - Enhanced Metadata using new schema */}
             <TabsContent value="details" className="space-y-6">
-              {/* Success Message */}
-              <AnimatePresence>
-                {saveSuccess && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3"
-                  >
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                    <p className="text-sm font-medium text-emerald-700">
-                      Contract metadata saved successfully and stored in the database.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Editable Contract Information */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base font-semibold flex items-center gap-2">
-                        <Pencil className="h-4 w-4 text-indigo-600" />
-                        Contract Metadata
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {isEditing 
-                          ? 'Edit the AI-extracted metadata. Changes will be saved to the database.' 
-                          : 'Review and edit contract details. Click Edit to make changes.'}
-                      </CardDescription>
-                    </div>
-                    {!isEditing ? (
-                      <Button 
-                        size="sm" 
-                        onClick={() => setIsEditing(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        <Pencil className="h-4 w-4 mr-1.5" />
-                        Edit Metadata
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={handleCancelEdit}
-                          disabled={isSaving}
-                        >
-                          <X className="h-4 w-4 mr-1.5" />
-                          Cancel
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          onClick={handleSaveMetadata}
-                          disabled={isSaving}
-                          className="bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          {isSaving ? (
-                            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-1.5" />
-                          )}
-                          Approve & Save
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Contract ID - Read only */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Contract ID</Label>
-                      <p className="text-sm font-mono text-slate-900 mt-1">{params.id}</p>
-                    </div>
-
-                    {/* File Name - Read only */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Name</Label>
-                      <p className="text-sm text-slate-900 mt-1">{contract?.filename || 'Unknown'}</p>
-                    </div>
-
-                    {/* Contract Type - Editable */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Contract Type</Label>
-                      {isEditing ? (
-                        <Select 
-                          value={metadata.contractType} 
-                          onValueChange={(v) => handleMetadataChange('contractType', v)}
-                        >
-                          <SelectTrigger className="h-9 bg-white">
-                            <SelectValue placeholder="Select type..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CONTRACT_TYPES.map(type => (
-                              <SelectItem key={type} value={type}>{type}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <p className="text-sm text-slate-900">{metadata.contractType || overviewData?.contractType || 'Unknown'}</p>
-                      )}
-                    </div>
-
-                    {/* Status - Read only */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Status</Label>
-                      <div className="mt-1"><StatusBadge status={contract?.status || 'unknown'} /></div>
-                    </div>
-
-                    {/* Total Value - Editable */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Total Value</Label>
-                      {isEditing ? (
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            value={metadata.totalValue}
-                            onChange={(e) => handleMetadataChange('totalValue', e.target.value)}
-                            placeholder="Enter value"
-                            className="h-9 bg-white flex-1"
-                          />
-                          <Select 
-                            value={metadata.currency} 
-                            onValueChange={(v) => handleMetadataChange('currency', v)}
-                          >
-                            <SelectTrigger className="h-9 bg-white w-24">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CURRENCIES.map(c => (
-                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-900">
-                          {metadata.totalValue 
-                            ? `${metadata.currency} ${parseFloat(metadata.totalValue).toLocaleString()}`
-                            : financialData?.totalValue 
-                              ? formatCurrency(financialData.totalValue, financialData.currency || 'USD')
-                              : 'Not specified'}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* File Size/Type - Read only */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide">File Details</Label>
-                      <p className="text-sm text-slate-900 mt-1">
-                        {contract?.fileSize ? `${(contract.fileSize / 1024).toFixed(1)} KB` : 'Unknown'} • {contract?.mimeType || 'Unknown'}
-                      </p>
-                    </div>
-
-                    {/* Effective Date - Editable */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Effective Date</Label>
-                      {isEditing ? (
-                        <Input
-                          type="date"
-                          value={metadata.effectiveDate}
-                          onChange={(e) => handleMetadataChange('effectiveDate', e.target.value)}
-                          className="h-9 bg-white"
-                        />
-                      ) : (
-                        <p className="text-sm text-slate-900">
-                          {metadata.effectiveDate 
-                            ? formatDate(metadata.effectiveDate) 
-                            : overviewData?.effectiveDate 
-                              ? formatDate(overviewData.effectiveDate) 
-                              : 'Not specified'}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Expiration Date - Editable */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Expiration Date</Label>
-                      {isEditing ? (
-                        <Input
-                          type="date"
-                          value={metadata.expirationDate}
-                          onChange={(e) => handleMetadataChange('expirationDate', e.target.value)}
-                          className="h-9 bg-white"
-                        />
-                      ) : (
-                        <p className="text-sm text-slate-900">
-                          {metadata.expirationDate 
-                            ? formatDate(metadata.expirationDate) 
-                            : overviewData?.expirationDate 
-                              ? formatDate(overviewData.expirationDate) 
-                              : 'Not specified'}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Client Name - Editable */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Client / Buyer</Label>
-                      {isEditing ? (
-                        <Input
-                          type="text"
-                          value={metadata.clientName}
-                          onChange={(e) => handleMetadataChange('clientName', e.target.value)}
-                          placeholder="Enter client name"
-                          className="h-9 bg-white"
-                        />
-                      ) : (
-                        <p className="text-sm text-slate-900">
-                          {metadata.clientName || overviewData?.parties?.find((p: any) => ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(p.role))?.name || 'Not specified'}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Supplier Name - Editable */}
-                    <div className="flex flex-col p-3 bg-slate-50 rounded-lg">
-                      <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Supplier / Vendor</Label>
-                      {isEditing ? (
-                        <Input
-                          type="text"
-                          value={metadata.supplierName}
-                          onChange={(e) => handleMetadataChange('supplierName', e.target.value)}
-                          placeholder="Enter supplier name"
-                          className="h-9 bg-white"
-                        />
-                      ) : (
-                        <p className="text-sm text-slate-900">
-                          {metadata.supplierName || overviewData?.parties?.find((p: any) => ['Supplier', 'Vendor', 'Service Provider', 'Provider', 'Contractor', 'Seller'].includes(p.role))?.name || 'Not specified'}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Description - Full width */}
-                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1 block">Description / Summary</Label>
-                    {isEditing ? (
-                      <Textarea
-                        value={metadata.description}
-                        onChange={(e) => handleMetadataChange('description', e.target.value)}
-                        placeholder="Enter contract description or summary..."
-                        className="mt-1 bg-white min-h-[100px]"
-                      />
-                    ) : (
-                      <p className="text-sm text-slate-900 mt-1">
-                        {metadata.description || overviewData?.summary || 'No description available.'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Tags */}
-                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                    <Label className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-                      <Tag className="h-3 w-3" />
-                      Tags
-                    </Label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {metadata.tags.map((tag, i) => (
-                        <Badge 
-                          key={i} 
-                          variant="secondary" 
-                          className={cn(
-                            "text-xs",
-                            isEditing && "pr-1"
-                          )}
-                        >
-                          {tag}
-                          {isEditing && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTag(tag)}
-                              aria-label={`Remove tag ${tag}`}
-                              className="ml-1 hover:text-red-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          )}
-                        </Badge>
-                      ))}
-                      {metadata.tags.length === 0 && !isEditing && (
-                        <span className="text-sm text-slate-500">No tags</span>
-                      )}
-                    </div>
-                    {isEditing && (
-                      <div className="flex gap-2 mt-2">
-                        <Input
-                          type="text"
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddTag();
-                            }
-                          }}
-                          placeholder="Add a tag..."
-                          className="h-8 bg-white text-sm"
-                        />
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={handleAddTag}
-                          className="h-8"
-                        >
-                          Add
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Compliance Details */}
+              <EnhancedContractMetadataSection
+                contractId={params.id as string}
+                tenantId="demo"
+                contract={contract}
+                overviewData={overviewData}
+                financialData={financialData}
+                onRefresh={loadContract}
+              />
+              
+              {/* Compliance Details - Keep for additional context */}
               {complianceData && (
                 <Card>
                   <CardHeader className="pb-3">

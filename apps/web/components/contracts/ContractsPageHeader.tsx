@@ -2,12 +2,14 @@
  * Contract Page Header
  * 
  * Hero header section for the contracts list page
+ * v2.1 - Enhanced refresh with animation feedback
  */
 
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useCallback } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -21,7 +23,9 @@ import {
   SlidersHorizontal,
   Tag,
   Upload,
+  CheckCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // TYPES
@@ -32,6 +36,7 @@ export interface ContractsPageHeaderProps {
   onAdvancedSearch: () => void;
   showTaxonomyLink?: boolean;
   extraActions?: React.ReactNode;
+  isRefreshing?: boolean;
 }
 
 // ============================================================================
@@ -43,7 +48,19 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
   onAdvancedSearch,
   showTaxonomyLink = true,
   extraActions,
+  isRefreshing = false,
 }: ContractsPageHeaderProps) {
+  const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
+  
+  const handleRefresh = useCallback(() => {
+    onRefresh();
+    // Show success indicator after a brief delay
+    setTimeout(() => {
+      setShowRefreshSuccess(true);
+      setTimeout(() => setShowRefreshSuccess(false), 1500);
+    }, 500);
+  }, [onRefresh]);
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900">
       {/* Background Pattern */}
@@ -79,11 +96,31 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={onRefresh}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className={cn(
+                    "bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm transition-all",
+                    showRefreshSuccess && "bg-emerald-500/20 border-emerald-400/40"
+                  )}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
+                  {showRefreshSuccess ? (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="flex items-center"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2 text-emerald-400" />
+                      <span className="text-emerald-400">Updated</span>
+                    </motion.div>
+                  ) : (
+                    <>
+                      <RefreshCw className={cn(
+                        "h-4 w-4 mr-2 transition-transform",
+                        isRefreshing && "animate-spin"
+                      )} />
+                      {isRefreshing ? "Refreshing..." : "Refresh"}
+                    </>
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>

@@ -574,18 +574,27 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
     onSelect?.(contract.id, e.target.checked);
   };
 
+  // Determine if contract needs attention (expiring soon, etc.)
+  const daysUntil = getDaysUntilExpiry(contract.endDate);
+  const needsAttention = daysUntil !== null && daysUntil <= 30 && daysUntil >= 0;
+  const isExpired = daysUntil !== null && daysUntil < 0;
+  const isHighValue = (contract.value || 0) >= 100000;
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -2 }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
       className={cn(
-        "group relative bg-white rounded-xl border shadow-sm transition-all duration-200",
-        isSelected && "ring-2 ring-primary border-primary",
-        isHovered && "shadow-lg border-gray-300",
+        "group relative bg-white rounded-xl border shadow-sm transition-all duration-300 overflow-hidden",
+        isSelected && "ring-2 ring-primary border-primary shadow-lg shadow-primary/10",
+        isHovered && "shadow-xl border-slate-300",
         contract.isPinned && "border-l-4 border-l-amber-400",
+        needsAttention && !isExpired && "border-l-4 border-l-amber-500",
+        isExpired && "border-l-4 border-l-red-500",
         variant === "compact" ? "p-3" : "p-4",
         className
       )}
@@ -596,29 +605,64 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         setShowQuickActions(false);
       }}
     >
+      {/* Premium Gradient Overlay on Hover */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-violet-500/[0.02] pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isHovered ? 1 : 0 }}
+        transition={{ duration: 0.3 }}
+      />
+      
+      {/* Subtle corner accent for high-value contracts */}
+      {isHighValue && (
+        <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden pointer-events-none">
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rotate-45 transform origin-bottom-left" />
+          <DollarSign className="absolute top-1 right-1 w-3 h-3 text-white" />
+        </div>
+      )}
+      
       {/* Selection Checkbox (absolute positioned) */}
-      <div
-        className={cn(
-          "absolute left-3 top-3 transition-opacity duration-200",
-          isHovered || isSelected ? "opacity-100" : "opacity-0"
-        )}
+      <motion.div
+        className="absolute left-3 top-3 z-10"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ 
+          opacity: isHovered || isSelected ? 1 : 0,
+          scale: isHovered || isSelected ? 1 : 0.8
+        }}
+        transition={{ duration: 0.2 }}
       >
         <input
           type="checkbox"
           checked={isSelected}
           onChange={handleCheckboxChange}
-          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer accent-primary"
         />
-      </div>
+      </motion.div>
 
       {/* Pin & Favorite Indicators (top right) */}
-      <div className="absolute top-3 right-3 flex items-center gap-1">
-        {contract.isFavorite && (
-          <Heart className="w-4 h-4 text-red-500 fill-red-500" />
-        )}
-        {contract.isPinned && (
-          <Pin className="w-4 h-4 text-amber-500 fill-amber-500" />
-        )}
+      <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
+        <AnimatePresence>
+          {contract.isFavorite && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25 }}
+            >
+              <Heart className="w-4 h-4 text-red-500 fill-red-500 drop-shadow-sm" />
+            </motion.div>
+          )}
+          {contract.isPinned && (
+            <motion.div
+              initial={{ scale: 0, rotate: -45 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 45 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25 }}
+            >
+              <Pin className="w-4 h-4 text-amber-500 fill-amber-500 drop-shadow-sm" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Main Content */}
@@ -626,7 +670,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         {/* Header Row: Title + Status */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-primary transition-colors">
+            <h3 className="font-semibold text-gray-900 line-clamp-1 group-hover:text-primary transition-colors duration-200">
               {contract.title}
             </h3>
             <p className="text-sm text-muted-foreground">{contract.type}</p>
@@ -634,8 +678,13 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className={cn("text-xs border shrink-0", statusConfig.color)}
+              className={cn(
+                "text-xs border shrink-0 shadow-sm transition-all duration-200",
+                statusConfig.color,
+                isHovered && "shadow-md"
+              )}
             >
+              <span className={cn("w-1.5 h-1.5 rounded-full mr-1.5", statusConfig.dotColor)} />
               <StatusIcon className="w-3 h-3 mr-1" />
               {statusConfig.label}
             </Badge>
@@ -646,11 +695,18 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         {contract.parties && Array.isArray(contract.parties) && contract.parties.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2">
-              {contract.parties.slice(0, 3).map((party: ContractParty) => (
-                <PartyAvatar key={party.id || party.name} party={party} size="sm" />
+              {contract.parties.slice(0, 3).map((party: ContractParty, index: number) => (
+                <motion.div
+                  key={party.id || party.name}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <PartyAvatar party={party} size="sm" />
+                </motion.div>
               ))}
               {contract.parties.length > 3 && (
-                <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-[10px] flex items-center justify-center ring-2 ring-white font-medium">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 text-[10px] flex items-center justify-center ring-2 ring-white font-medium">
                   +{contract.parties.length - 3}
                 </div>
               )}
@@ -665,15 +721,19 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm">
           {contract.value !== undefined && (
             <div className="flex items-center gap-1.5 text-gray-700">
-              <DollarSign className="w-4 h-4 text-emerald-500" />
-              <span className="font-medium">
+              <div className="p-1 rounded-md bg-emerald-50">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <span className="font-semibold text-emerald-700">
                 {formatCurrency(contract.value, contract.currency)}
               </span>
             </div>
           )}
           {contract.endDate && (
             <div className="flex items-center gap-1.5 text-gray-600">
-              <Calendar className="w-4 h-4 text-blue-500" />
+              <div className="p-1 rounded-md bg-blue-50">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              </div>
               <span>{format(parseISO(contract.endDate), "MMM d, yyyy")}</span>
             </div>
           )}
@@ -699,11 +759,12 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
               <Badge
                 key={tag}
                 variant="secondary"
-                className="text-[10px] px-2 py-0 bg-gray-100 text-gray-600 hover:bg-gray-200"
+                className="text-[10px] px-2 py-0 bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
               >
                 {tag}
               </Badge>
             ))}
+
             {contract.tags.length > 3 && (
               <Badge variant="outline" className="text-[10px] px-2 py-0">
                 +{contract.tags.length - 3} more
@@ -736,114 +797,128 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         </div>
       </div>
 
-      {/* Quick Actions Bar (appears on hover) */}
+      {/* Quick Actions Bar (appears on hover) - Premium Glassmorphism */}
       <AnimatePresence>
         {isHovered && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent pt-8 pb-4 px-4 flex items-center justify-between rounded-b-xl"
+            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+            className="absolute bottom-0 left-0 right-0 backdrop-blur-md bg-white/90 border-t border-slate-200/50 pt-3 pb-3 px-4 flex items-center justify-between rounded-b-xl shadow-lg"
           >
-            <div className="flex items-center gap-1">
-              <TooltipProvider>
+            <div className="flex items-center gap-0.5">
+              <TooltipProvider delayDuration={200}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPreview?.(contract.id);
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPreview?.(contract.id);
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
-                  <TooltipContent>Preview</TooltipContent>
+                  <TooltipContent className="bg-slate-900 text-white border-0">Preview</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        contract.isPinned && "text-amber-500"
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPin?.(contract.id);
-                      }}
-                    >
-                      <Pin className={cn("w-4 h-4", contract.isPinned && "fill-current")} />
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 transition-colors",
+                          contract.isPinned 
+                            ? "text-amber-500 bg-amber-50 hover:bg-amber-100" 
+                            : "hover:bg-amber-50 hover:text-amber-600"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPin?.(contract.id);
+                        }}
+                      >
+                        <Pin className={cn("w-4 h-4", contract.isPinned && "fill-current")} />
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
-                  <TooltipContent>{contract.isPinned ? "Unpin" : "Pin"}</TooltipContent>
+                  <TooltipContent className="bg-slate-900 text-white border-0">{contract.isPinned ? "Unpin" : "Pin"}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        contract.isFavorite && "text-red-500"
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onFavorite?.(contract.id);
-                      }}
-                    >
-                      <Heart className={cn("w-4 h-4", contract.isFavorite && "fill-current")} />
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 transition-colors",
+                          contract.isFavorite 
+                            ? "text-red-500 bg-red-50 hover:bg-red-100" 
+                            : "hover:bg-red-50 hover:text-red-600"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onFavorite?.(contract.id);
+                        }}
+                      >
+                        <Heart className={cn("w-4 h-4", contract.isFavorite && "fill-current")} />
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
-                  <TooltipContent>{contract.isFavorite ? "Unfavorite" : "Favorite"}</TooltipContent>
+                  <TooltipContent className="bg-slate-900 text-white border-0">{contract.isFavorite ? "Unfavorite" : "Favorite"}</TooltipContent>
                 </Tooltip>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-purple-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAnalyze?.(contract.id);
-                      }}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                    </Button>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 hover:bg-violet-100 hover:text-violet-600 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAnalyze?.(contract.id);
+                        }}
+                      >
+                        <Sparkles className="w-4 h-4 text-violet-600" />
+                      </Button>
+                    </motion.div>
                   </TooltipTrigger>
-                  <TooltipContent>AI Analyze</TooltipContent>
+                  <TooltipContent className="bg-slate-900 text-white border-0">AI Analyze</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
 
-            <div className="flex items-center gap-1">
-              <Button
-                variant="default"
-                size="sm"
-                className="h-8 px-3"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClick?.(contract.id);
-                }}
-              >
-                Open
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+            <div className="flex items-center gap-2">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  size="sm"
+                  className="h-8 px-4 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 text-white shadow-md shadow-primary/20"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.(contract.id);
+                  }}
+                >
+                  Open
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </motion.div>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-slate-100">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 bg-white/95 backdrop-blur-sm">
                   <DropdownMenuItem onClick={() => onEdit?.(contract.id)}>
                     <Edit className="w-4 h-4 mr-2" />
                     Edit

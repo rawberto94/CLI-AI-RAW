@@ -188,8 +188,31 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
 // Contract Hooks
 // =====================
 
-export function useContracts(filters?: Record<string, unknown>) {
-  return useQuery({
+export interface UseContractsOptions {
+  // Enable automatic polling for live updates
+  pollingEnabled?: boolean;
+  // Polling interval in milliseconds (default: 30000 = 30 seconds)
+  pollingInterval?: number;
+  // Callback when new contracts are detected
+  onNewContract?: (count: number) => void;
+  // Callback when contracts are updated
+  onUpdate?: () => void;
+}
+
+export function useContracts(
+  filters?: Record<string, unknown>,
+  options?: UseContractsOptions
+) {
+  const { 
+    pollingEnabled = false, 
+    pollingInterval = 30000,
+    onNewContract,
+    onUpdate
+  } = options || {};
+  
+  const previousCountRef = useRef<number | null>(null);
+  
+  const query = useQuery({
     queryKey: queryKeys.contracts.list(filters || {}),
     queryFn: async () => {
       // Build clean query params - filter out undefined/null values
@@ -220,12 +243,36 @@ export function useContracts(filters?: Record<string, unknown>) {
       // Extract contracts from API response
       return { 
         contracts: json.data?.contracts || [], 
-        total: json.data?.pagination?.total || 0 
+        total: json.data?.pagination?.total || 0,
+        lastUpdated: new Date().toISOString(),
       };
     },
-    staleTime: 30000, // 30 seconds
+    staleTime: pollingEnabled ? 10000 : 30000, // Shorter stale time when polling
     refetchOnWindowFocus: true,
+    refetchInterval: pollingEnabled ? pollingInterval : false,
+    refetchIntervalInBackground: false, // Don't poll when tab is not active
   });
+  
+  // Detect new contracts and trigger callback
+  useEffect(() => {
+    if (query.data?.total !== undefined && previousCountRef.current !== null) {
+      const newCount = query.data.total - previousCountRef.current;
+      if (newCount > 0 && onNewContract) {
+        onNewContract(newCount);
+      }
+      if (newCount !== 0 && onUpdate) {
+        onUpdate();
+      }
+    }
+    previousCountRef.current = query.data?.total ?? null;
+  }, [query.data?.total, onNewContract, onUpdate]);
+  
+  return {
+    ...query,
+    // Additional helpers
+    lastUpdated: query.data?.lastUpdated,
+    isPolling: pollingEnabled,
+  };
 }
 
 export function useContract(id: string) {

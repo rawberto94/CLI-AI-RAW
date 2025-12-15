@@ -2,63 +2,170 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { useState, Suspense, useEffect } from "react";
+import { useState, Suspense, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { CalendarCheck2, ShieldCheck, Sparkles } from "lucide-react";
+import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap, FileText, Globe } from "lucide-react";
+import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
 
-// ConTigo Logo SVG Component
-function ConTigoLogo({ size = 'lg' }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {
-  const sizes = {
-    sm: { height: 40, fontSize: 24 },
-    md: { height: 56, fontSize: 32 },
-    lg: { height: 72, fontSize: 40 },
-    xl: { height: 96, fontSize: 52 },
-  };
-  const s = sizes[size];
+// Floating Particles Component
+function FloatingParticles() {
+  const particles = useMemo(() => 
+    Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      size: Math.random() * 4 + 2,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      duration: Math.random() * 20 + 15,
+      delay: Math.random() * 5,
+    })), []
+  );
 
   return (
-    <div className="flex items-center gap-3">
-      <svg 
-        width={s.height} 
-        height={s.height} 
-        viewBox="0 0 100 100" 
-        className="flex-shrink-0"
-      >
+    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className="absolute rounded-full bg-white/20"
+          style={{
+            width: particle.size,
+            height: particle.size,
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+          }}
+          animate={{
+            y: [0, -100, 0],
+            x: [0, Math.random() * 50 - 25, 0],
+            opacity: [0, 0.6, 0],
+            scale: [0.5, 1, 0.5],
+          }}
+          transition={{
+            duration: particle.duration,
+            repeat: Infinity,
+            delay: particle.delay,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Animated Gradient Orbs
+function GradientOrbs() {
+  return (
+    <>
+      <motion.div 
+        className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-cyan-400/30 via-teal-500/20 to-emerald-400/30 rounded-full blur-3xl"
+        animate={{ 
+          scale: [1, 1.2, 1],
+          rotate: [0, 90, 0],
+          opacity: [0.3, 0.5, 0.3] 
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div 
+        className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-gradient-to-tr from-violet-500/20 via-purple-400/20 to-fuchsia-400/20 rounded-full blur-3xl"
+        animate={{ 
+          scale: [1, 1.3, 1],
+          rotate: [0, -90, 0],
+          x: [0, 50, 0],
+          y: [0, -30, 0]
+        }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div 
+        className="absolute top-1/3 left-1/3 w-[300px] h-[300px] bg-gradient-to-bl from-amber-400/10 via-orange-400/15 to-rose-400/10 rounded-full blur-3xl"
+        animate={{ 
+          scale: [1, 1.4, 1],
+          opacity: [0.1, 0.25, 0.1],
+          x: [-50, 50, -50],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+      />
+      <motion.div 
+        className="absolute bottom-1/4 right-1/4 w-[250px] h-[250px] bg-gradient-to-tl from-sky-400/15 via-blue-500/20 to-indigo-400/15 rounded-full blur-3xl"
+        animate={{ 
+          scale: [1.2, 1, 1.2],
+          opacity: [0.2, 0.35, 0.2],
+          y: [0, 40, 0],
+        }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
+      />
+    </>
+  );
+}
+
+// Animated Wave Pattern
+function WavePattern() {
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-64 overflow-hidden opacity-30">
+      <svg className="absolute bottom-0 w-full" viewBox="0 0 1440 320" preserveAspectRatio="none">
+        <motion.path
+          fill="url(#waveGradient1)"
+          animate={{
+            d: [
+              "M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
+              "M0,160L48,181.3C96,203,192,245,288,261.3C384,277,480,267,576,234.7C672,203,768,149,864,138.7C960,128,1056,160,1152,176C1248,192,1344,192,1392,192L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
+            ],
+          }}
+          transition={{ duration: 10, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+        />
+        <motion.path
+          fill="url(#waveGradient2)"
+          animate={{
+            d: [
+              "M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,213.3C672,224,768,224,864,213.3C960,203,1056,181,1152,181.3C1248,181,1344,203,1392,213.3L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
+              "M0,256L48,240C96,224,192,192,288,181.3C384,171,480,181,576,197.3C672,213,768,235,864,229.3C960,224,1056,192,1152,176C1248,160,1344,160,1392,160L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z",
+            ],
+          }}
+          transition={{ duration: 8, repeat: Infinity, repeatType: "reverse", ease: "easeInOut", delay: 0.5 }}
+        />
         <defs>
-          <linearGradient id="loginDocGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#2DD4BF" />
-            <stop offset="100%" stopColor="#0F766E" />
+          <linearGradient id="waveGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="white" stopOpacity="0.1" />
+            <stop offset="50%" stopColor="white" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="white" stopOpacity="0.1" />
           </linearGradient>
-          <linearGradient id="loginPenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#0F766E" />
-            <stop offset="100%" stopColor="#065F5B" />
+          <linearGradient id="waveGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="white" stopOpacity="0.05" />
+            <stop offset="50%" stopColor="white" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="white" stopOpacity="0.05" />
           </linearGradient>
         </defs>
-        
-        {/* Document body */}
-        <rect x="10" y="5" width="55" height="70" rx="8" fill="url(#loginDocGradient)" />
-        
-        {/* Document lines */}
-        <rect x="20" y="18" width="22" height="6" rx="3" fill="white" opacity="0.9" />
-        <rect x="20" y="32" width="35" height="6" rx="3" fill="white" opacity="0.9" />
-        <rect x="20" y="46" width="18" height="6" rx="3" fill="white" opacity="0.7" />
-        
-        {/* Pen */}
-        <g transform="translate(55, 55) rotate(-45)">
-          <rect x="-6" y="0" width="12" height="35" rx="2" fill="url(#loginPenGradient)" />
-          <polygon points="-6,35 0,48 6,35" fill="url(#loginPenGradient)" />
-          <rect x="-5" y="3" width="10" height="5" rx="1" fill="#065F5B" />
-        </g>
       </svg>
-      <span className="font-bold tracking-tight" style={{ fontSize: s.fontSize }}>
-        <span className="text-slate-800">Con</span>
-        <span className="text-teal-600">Tigo</span>
-      </span>
     </div>
+  );
+}
+
+// Stats Counter Animation
+function AnimatedCounter({ value, label, icon: Icon }: { value: string; label: string; icon: React.ElementType }) {
+  return (
+    <motion.div 
+      className="text-center"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ scale: 1.05 }}
+    >
+      <div className="flex justify-center mb-2">
+        <div className="p-2 rounded-xl bg-white/10 backdrop-blur-sm">
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+      </div>
+      <motion.div 
+        className="text-2xl font-bold text-white"
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ type: "spring", damping: 10 }}
+      >
+        {value}
+      </motion.div>
+      <div className="text-xs text-white/70">{label}</div>
+    </motion.div>
   );
 }
 
@@ -168,83 +275,180 @@ function SignInForm() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 p-12 flex-col justify-between relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-teal-400/20 rounded-full blur-2xl" />
+      {/* Left side - Branding with vibrant colors */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 via-50% to-fuchsia-600 p-12 flex-col justify-between relative overflow-hidden">
+        {/* Animated gradient orbs */}
+        <GradientOrbs />
         
-        <div className="relative z-10">
+        {/* Floating particles */}
+        <FloatingParticles />
+        
+        {/* Animated wave pattern */}
+        <WavePattern />
+        
+        {/* Animated mesh gradient overlay */}
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAyNHYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+        
+        <motion.div 
+          className="relative z-10"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
           <ConTigoLogo size="lg" />
-        </div>
-        <div className="text-white relative z-10">
-          <h2 className="text-4xl font-bold mb-4">Contract Intelligence Platform</h2>
-          <p className="text-teal-100 text-lg leading-relaxed">
+        </motion.div>
+        
+        <div className="text-white relative z-10 flex-1 flex flex-col justify-center -mt-8">
+          <motion.h2 
+            className="text-4xl font-bold mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-white"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            Contract Intelligence Platform
+          </motion.h2>
+          <motion.p 
+            className="text-purple-100 text-lg leading-relaxed max-w-md"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
             Manage, analyze, and optimize your contracts with AI-powered insights. 
             Streamline your procurement processes and never miss a deadline.
-          </p>
-          <div className="mt-8 grid grid-cols-3 gap-3">
-            <div className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/10">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-lg bg-white/10 p-2">
-                  <CalendarCheck2 className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-base font-semibold text-white">Renewals & deadlines</div>
-                  <div className="text-teal-100 text-sm leading-snug">
-                    Stay ahead of expirations and obligations.
-                  </div>
-                </div>
-              </div>
-            </div>
+          </motion.p>
 
-            <div className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/10">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-lg bg-white/10 p-2">
-                  <ShieldCheck className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-base font-semibold text-white">Risk visibility</div>
-                  <div className="text-teal-100 text-sm leading-snug">
-                    Surface red flags and high-risk terms.
-                  </div>
-                </div>
-              </div>
-            </div>
+          <AuthHeroArt />
 
-            <div className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/10">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-lg bg-white/10 p-2">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-base font-semibold text-white">Actionable insights</div>
-                  <div className="text-teal-100 text-sm leading-snug">
-                    Turn contracts into clear next steps.
+          {/* Stats counters */}
+          <motion.div 
+            className="mt-6 flex justify-start gap-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+          >
+            <AnimatedCounter value="10K+" label="Contracts Managed" icon={FileText} />
+            <AnimatedCounter value="500+" label="Companies Trust Us" icon={Globe} />
+            <AnimatedCounter value="99.9%" label="Uptime SLA" icon={Zap} />
+          </motion.div>
+
+          <motion.div 
+            className="mt-8 grid grid-cols-3 gap-3"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            {[
+              { icon: CalendarCheck2, title: "Smart Renewals", desc: "Auto-track deadlines", color: "from-cyan-400 to-teal-400" },
+              { icon: ShieldCheck, title: "Risk Analysis", desc: "AI-powered insights", color: "from-amber-400 to-orange-400" },
+              { icon: Sparkles, title: "AI Assistant", desc: "Ask anything", color: "from-pink-400 to-rose-400" }
+            ].map((feature, idx) => (
+              <motion.div 
+                key={feature.title}
+                className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-300 group cursor-default"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.5 + idx * 0.1 }}
+                whileHover={{ y: -4, scale: 1.02 }}
+              >
+                <div className="flex flex-col items-center text-center gap-2">
+                  <motion.div 
+                    className={`rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-lg group-hover:shadow-xl transition-shadow`}
+                    whileHover={{ rotate: [0, -10, 10, 0] }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <feature.icon className="h-5 w-5 text-white" />
+                  </motion.div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-white">{feature.title}</div>
+                    <div className="text-purple-200 text-xs leading-snug">
+                      {feature.desc}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+        
+        <motion.div 
+          className="text-purple-200 text-sm relative z-10 flex items-center justify-between"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+        >
+          <span>© 2025 ConTigo. All rights reserved.</span>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs text-emerald-300">SOC 2 Certified</span>
           </div>
-        </div>
-        <div className="text-teal-200 text-sm relative z-10">
-          © 2025 ConTigo. All rights reserved.
-        </div>
+        </motion.div>
       </div>
 
-      {/* Right side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 to-white">
-        <Card className="w-full max-w-md p-6 sm:p-8 shadow-xl border-0 bg-white">
+      {/* Right side - Login Form with animated background */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-purple-50/30 relative overflow-hidden">
+        {/* Animated gradient mesh background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/30 via-transparent to-transparent" />
+        
+        {/* Subtle animated shapes */}
+        <motion.div 
+          className="absolute top-20 right-20 w-32 h-32 rounded-full bg-gradient-to-br from-purple-200/30 to-pink-200/30 blur-2xl"
+          animate={{ 
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3],
+            x: [0, 20, 0],
+          }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div 
+          className="absolute bottom-20 left-20 w-40 h-40 rounded-full bg-gradient-to-tr from-cyan-200/30 to-teal-200/30 blur-2xl"
+          animate={{ 
+            scale: [1.2, 1, 1.2],
+            opacity: [0.3, 0.5, 0.3],
+            y: [0, -20, 0],
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        />
+        
+        {/* Dot pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(#d4d4d8_1px,transparent_1px)] [background-size:20px_20px] opacity-40" />
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, type: "spring", damping: 20 }}
+          className="w-full max-w-md relative z-10"
+        >
+        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-purple-200/30 border border-slate-100/80 bg-white/90 backdrop-blur-xl rounded-2xl">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-8">
+          <motion.div 
+            className="lg:hidden flex justify-center mb-8"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+          >
             <ConTigoLogo size="md" />
-          </div>
+          </motion.div>
 
           <div className="text-center mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-            <p className="text-slate-500 text-sm sm:text-base">
-              Sign in to your account to continue
-            </p>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <motion.div 
+                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 mb-4 shadow-lg shadow-purple-500/30"
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", damping: 15, delay: 0.2 }}
+              >
+                <Lock className="w-7 h-7 text-white" />
+              </motion.div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 tracking-tight">Welcome Back</h1>
+              <p className="text-slate-500 text-sm sm:text-base">
+                Sign in to your account to continue
+              </p>
+            </motion.div>
           </div>
 
         {registered && (
@@ -310,38 +514,52 @@ function SignInForm() {
           </>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={handleEmailChange}
-              placeholder="you@example.com"
-              required
-              disabled={loading}
-              className="mt-1"
-              autoComplete="email"
-              aria-describedby={error ? "signin-error" : undefined}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <Label htmlFor="email" className="text-slate-700 font-medium">Email</Label>
+            <div className="relative mt-1.5">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                placeholder="you@example.com"
+                required
+                disabled={loading}
+                className="pl-10 h-11 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all hover:border-slate-300"
+                autoComplete="email"
+                aria-describedby={error ? "signin-error" : undefined}
+              />
+            </div>
+          </motion.div>
 
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={handlePasswordChange}
-              placeholder="••••••••"
-              required
-              disabled={loading}
-              className="mt-1"
-              autoComplete="current-password"
-              aria-describedby={error ? "signin-error" : undefined}
-            />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
+            <div className="relative mt-1.5">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={handlePasswordChange}
+                placeholder="••••••••"
+                required
+                disabled={loading}
+                className="pl-10 h-11 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all hover:border-slate-300"
+                autoComplete="current-password"
+                aria-describedby={error ? "signin-error" : undefined}
+              />
+            </div>
+          </motion.div>
 
           {error && (
             <div 
@@ -356,40 +574,68 @@ function SignInForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2.5 transition-all focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-            disabled={loading}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
           >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Signing in...
-              </span>
-            ) : "Sign In"}
-          </Button>
+            <Button
+              type="submit"
+              className="w-full h-12 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/35 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 group relative overflow-hidden"
+              disabled={loading}
+            >
+              {/* Animated shimmer effect */}
+              <motion.div 
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full"
+                animate={{ x: ["0%", "200%"] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
+              />
+              {loading ? (
+                <span className="flex items-center gap-2 relative z-10">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Signing in...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2 relative z-10">
+                  Sign In
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </span>
+              )}
+            </Button>
+          </motion.div>
         </form>
 
-        <div className="mt-6 text-center text-sm text-slate-500">
+        <motion.div 
+          className="mt-6 text-center text-sm text-slate-500"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
           Don&apos;t have an account?{" "}
-          <Link href="/auth/signup" className="text-teal-600 hover:text-teal-700 hover:underline font-medium transition-colors">
+          <Link href="/auth/signup" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors hover:underline underline-offset-2">
             Sign up
           </Link>
-        </div>
+        </motion.div>
 
         {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
-            <p>Demo Accounts (dev only):</p>
-            <p className="font-mono mt-1">
-              admin@acme.com | roberto@acme.com
+          <motion.div 
+            className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-400"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3, delay: 0.6 }}
+          >
+            <p className="font-medium text-slate-500">Demo Accounts (dev only):</p>
+            <p className="font-mono mt-1.5 text-slate-600 bg-slate-50 inline-block px-3 py-1 rounded-lg">
+              admin@acme.com <span className="text-slate-400">|</span> roberto@acme.com
             </p>
-            <p className="mt-1">Password: password123</p>
-          </div>
+            <p className="mt-1.5">Password: <span className="font-mono text-slate-600">password123</span></p>
+          </motion.div>
         )}
         </Card>
+        </motion.div>
       </div>
     </div>
   );

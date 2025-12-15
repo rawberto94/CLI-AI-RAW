@@ -39,9 +39,9 @@ export function getRedisClient(): RedisClient {
     
     redisClient = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
       enableReadyCheck: true,
       lazyConnect: true,
+      retryStrategy: (times) => Math.min(times * 100, 3000),
     });
 
     redisClient.on('error', (err: Error) => {
@@ -265,7 +265,7 @@ export async function getCacheStats(): Promise<{
     const keyCount = await redis.dbsize();
     
     const memoryMatch = info.match(/used_memory_human:(\S+)/);
-    const memory = memoryMatch ? memoryMatch[1] : 'unknown';
+    const memory = memoryMatch && memoryMatch[1] ? memoryMatch[1] : 'unknown';
     
     return {
       connected: true,

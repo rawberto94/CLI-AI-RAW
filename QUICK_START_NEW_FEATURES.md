@@ -59,8 +59,7 @@ Visible on the **left side** of every contract detail page (`/contracts/[id]`)
 - Mac: `Cmd + K`
 - Windows/Linux: `Ctrl + K`
 
-**Or click:**
-- Search bar in header (shows "Search... ⌘K")
+**Tip:** Press `/` to focus the global search input.
 
 ### How to Use
 
@@ -95,7 +94,7 @@ Visible on the **left side** of every contract detail page (`/contracts/[id]`)
 
 | Shortcut | Command | Description |
 |----------|---------|-------------|
-| `cmd /` | Search Contracts | Find contracts |
+| `/` | Focus Search | Jump to search |
 
 #### ❓ Help
 
@@ -178,9 +177,9 @@ Don't memorize! Just open palette and type what you want:
 
 **Problem:** `Cmd+K` doesn't work  
 **Solution:** 
-1. Make sure you're on a contract page
-2. Try clicking the search bar in header
-3. Check browser doesn't override shortcut
+1. Click outside any text input first (shortcuts are disabled while typing)
+2. Check your browser/OS isn't overriding the shortcut
+3. Try reloading the page and retry
 
 ### Sidebar Not Showing
 
@@ -289,7 +288,8 @@ Print this out and keep it handy!
 ├─────────────────────────────────────────────────┤
 │           SEARCH                                 │
 ├─────────────────────────────────────────────────┤
-│ Search              │ Cmd+/                     │
+│ Focus Search         │ /                         │
+│ AI Assistant         │ Cmd+/ / Ctrl+/            │
 │ Help                │ ?                         │
 └─────────────────────────────────────────────────┘
 ```

@@ -110,7 +110,9 @@ usePageShortcuts([
 
 **Global shortcuts available:**
 - `?` - Show keyboard shortcuts help
-- `Ctrl+K` or `/` - Open search
+- `Ctrl+K` - Open command palette
+- `/` - Focus search
+- `Ctrl+/` - Open AI assistant
 - `Ctrl+S` - Save
 - `Escape` - Cancel/Close
 - `Ctrl+H` - Go to home
@@ -336,7 +338,9 @@ function MyModal({ isOpen, onClose }) {
 | Shortcut | Action |
 |----------|--------|
 | `?` | Show help |
-| `Ctrl+K` | Search |
+| `Ctrl+K` | Command palette |
+| `/` | Focus search |
+| `Ctrl+/` | AI assistant |
 | `Ctrl+S` | Save |
 | `Escape` | Cancel |
 | `Tab` | Next element |

@@ -95,12 +95,28 @@ import {
   Shield,
   DollarSign,
   Clock,
+  RefreshCw,
+  Building2,
+  AlertTriangle,
+  Bell,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 // Types
+interface ContractPreviewCard {
+  id: string;
+  name: string;
+  supplier?: string;
+  status?: string;
+  value?: number;
+  expirationDate?: string;
+  daysUntilExpiry?: number;
+  riskLevel?: 'low' | 'medium' | 'high';
+  type?: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant" | "system";
@@ -110,6 +126,7 @@ interface Message {
   actions?: ActionButton[];
   status?: "sending" | "sent" | "error";
   reaction?: "like" | "dislike";
+  contractPreviews?: ContractPreviewCard[];
   metadata?: {
     source?: string;
     confidence?: number;
@@ -194,7 +211,7 @@ const QUICK_ACTIONS = [
 ];
 
 const KEYBOARD_SHORTCUTS = [
-  { key: "⌘/Ctrl + K", action: "Open AI Assistant" },
+  { key: "⌘/Ctrl + /", action: "Open AI Assistant" },
   { key: "Escape", action: "Close chat" },
   { key: "⌘/Ctrl + Enter", action: "Send message" },
   { key: "⌘/Ctrl + L", action: "Clear chat" },
@@ -297,6 +314,22 @@ function getPageContext(pathname: string | null): string {
   return 'dashboard';
 }
 
+// Format time ago for artifact sync display
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 export function FloatingAIBubble() {
   const router = useRouter();
   const pathname = usePathname();
@@ -314,6 +347,10 @@ export function FloatingAIBubble() {
     
     return null;
   }, [pathname, searchParams]);
+
+  // Conversation persistence key
+  const STORAGE_KEY = 'contigo-chat-history';
+  const MAX_STORED_MESSAGES = 50; // Limit stored messages to prevent storage bloat
   
   // Core state
   const [isOpen, setIsOpen] = useState(false);
@@ -333,10 +370,98 @@ export function FloatingAIBubble() {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string>("");
   
+  // Artifact context state - for real-time updates
+  const [artifactVersion, setArtifactVersion] = useState(0);
+  const [lastArtifactUpdate, setLastArtifactUpdate] = useState<Date | null>(null);
+  
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  // Load conversation history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Restore messages, converting timestamps back to Date objects
+          const restoredMessages = parsed.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          }));
+          // Keep initial message if history was cleared, or append restored history
+          setMessages([INITIAL_MESSAGE, ...restoredMessages.filter((m: Message) => m.id !== 'initial')]);
+          
+          // Restore conversation context from last messages
+          const lastUserMessage = restoredMessages.filter((m: Message) => m.role === 'user').slice(-1)[0];
+          if (lastUserMessage) {
+            setConversationContext(prev => ({
+              ...prev,
+              lastTopic: lastUserMessage.content?.slice(0, 100),
+            }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore chat history:', e);
+    }
+  }, []);
+
+  // Save conversation history to localStorage when messages change
+  useEffect(() => {
+    try {
+      // Only save non-initial messages, and limit to MAX_STORED_MESSAGES
+      const toStore = messages
+        .filter(m => m.id !== 'initial')
+        .slice(-MAX_STORED_MESSAGES);
+      
+      if (toStore.length > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+      }
+    } catch (e) {
+      console.warn('Failed to save chat history:', e);
+    }
+  }, [messages]);
+
+  // Listen for artifact updates and refresh context
+  useEffect(() => {
+    const handleArtifactUpdate = (event: CustomEvent) => {
+      const { contractId: updatedContractId, type: artifactType } = event.detail || {};
+      
+      // If we're viewing the same contract that was updated, refresh our context
+      if (currentContractId && updatedContractId === currentContractId) {
+        setArtifactVersion(v => v + 1);
+        setLastArtifactUpdate(new Date());
+        
+        // Add a system message to notify user of updated data
+        const updateMessage: Message = {
+          id: `system-update-${Date.now()}`,
+          role: 'system',
+          content: `📊 **Contract data updated!** ${artifactType ? `The ${artifactType.toLowerCase()} analysis has been refreshed.` : 'New analysis available.'} My responses now include the latest extracted information.`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, updateMessage]);
+      }
+    };
+    
+    // Listen for real-time artifact updates
+    window.addEventListener('realtime-event', ((e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.type === 'artifact:updated') {
+        handleArtifactUpdate(customEvent);
+      }
+    }) as EventListener);
+    
+    // Also listen for custom artifact update events
+    window.addEventListener('artifact-updated', handleArtifactUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('realtime-event', handleArtifactUpdate as EventListener);
+      window.removeEventListener('artifact-updated', handleArtifactUpdate as EventListener);
+    };
+  }, [currentContractId]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -355,8 +480,8 @@ export function FloatingAIBubble() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Open with Cmd/Ctrl + K
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      // Open with Cmd/Ctrl + /
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
         e.preventDefault();
         setIsOpen((prev) => !prev);
       }
@@ -453,10 +578,11 @@ export function FloatingAIBubble() {
     );
   }, []);
 
-  // Clear chat
+  // Clear chat (including localStorage)
   const handleClearChat = useCallback(() => {
     setMessages([INITIAL_MESSAGE]);
     setConversationContext({});
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
   // Export chat
@@ -547,6 +673,8 @@ export function FloatingAIBubble() {
             context: currentContractId ? 'contract-detail' : 'global',
             pageContext,
             currentPage: pathname,
+            artifactVersion, // Include artifact version to ensure fresh context
+            forceRefresh: artifactVersion > 0, // Signal to bypass cache if artifacts updated
           },
           useRAG: true, // Always use RAG for smart responses
           useMock: false, // Use real OpenAI
@@ -559,11 +687,14 @@ export function FloatingAIBubble() {
       // Update context based on query
       updateContext(messageContent);
 
+      // Check if it's an error response with recovery suggestions
+      const isErrorResponse = data.error === true && data.errorRecovery;
+
       // Parse actions from API response
       const actions: ActionButton[] = data.suggestedActions?.map((a: any) => ({
         label: a.label,
         action: a.action,
-        variant: a.action.includes('view') ? 'primary' : 'default',
+        variant: a.action.includes('view') ? 'primary' : isErrorResponse ? 'secondary' : 'default',
       })) || [];
 
       // Parse RAG sources from API response
@@ -574,6 +705,19 @@ export function FloatingAIBubble() {
         snippet: r.text?.slice(0, 150),
       })) || [];
 
+      // Parse contract previews from API response
+      const contractPreviews: ContractPreviewCard[] = data.contractPreviews?.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        supplier: c.supplier,
+        status: c.status,
+        value: c.value,
+        expirationDate: c.expirationDate,
+        daysUntilExpiry: c.daysUntilExpiry,
+        riskLevel: c.riskLevel,
+        type: c.type,
+      })) || [];
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -581,13 +725,15 @@ export function FloatingAIBubble() {
         timestamp: new Date(),
         suggestions: data.suggestions,
         actions: actions.length > 0 ? actions : undefined,
+        contractPreviews: contractPreviews.length > 0 ? contractPreviews : undefined,
         metadata: {
-          confidence: data.confidence || 0.95,
+          confidence: isErrorResponse ? 0 : (data.confidence || 0.95),
           processingTime,
-          source: data.sources?.[0] || "ai",
+          source: isErrorResponse ? "error-recovery" : (data.sources?.[0] || "ai"),
           ragSources: ragSources.length > 0 ? ragSources : undefined,
           usedRAG: data.usedRAG || ragSources.length > 0,
           intent: data.intent?.type,
+          isError: isErrorResponse,
         },
       };
 
@@ -871,137 +1017,231 @@ export function FloatingAIBubble() {
   return (
     <TooltipProvider>
       <>
-        {/* Floating Bubble Button */}
+        {/* Floating Bubble Button - Enhanced with better animations */}
         <AnimatePresence>
           {!isOpen && (
             <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
+              initial={{ scale: 0, opacity: 0, rotate: -180 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              exit={{ scale: 0, opacity: 0, rotate: 180 }}
+              transition={{ type: "spring", damping: 15, stiffness: 200 }}
               className="fixed bottom-6 right-6 z-50"
             >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
                     onClick={toggleOpen}
-                    className="relative group"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label="Open AI Assistant"
+                    className="relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-full"
+                    whileHover={{ scale: 1.08, rotate: 5 }}
+                    whileTap={{ scale: 0.92 }}
+                    aria-label="Open AI Assistant (⌘/)"
                   >
-                    {/* Pulse rings */}
-                    <span className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 animate-ping opacity-20" />
-                    <span className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 animate-pulse opacity-30" />
+                    {/* Animated glow rings */}
+                    <motion.span 
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                      animate={{ 
+                        scale: [1, 1.3, 1],
+                        opacity: [0.3, 0, 0.3]
+                      }}
+                      transition={{ 
+                        duration: 2.5,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                    <motion.span 
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"
+                      animate={{ 
+                        scale: [1, 1.5, 1],
+                        opacity: [0.2, 0, 0.2]
+                      }}
+                      transition={{ 
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.5
+                      }}
+                    />
 
-                    {/* Main bubble */}
-                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-2xl shadow-purple-500/30 flex items-center justify-center overflow-hidden transition-transform">
+                    {/* Main bubble with refined gradient */}
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-2xl shadow-purple-500/40 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:shadow-purple-500/60">
                       {/* Shimmer effect */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/20 to-white/0 animate-shimmer" />
+                      <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/25 to-white/0 animate-shimmer" />
                       
-                      {/* Icon */}
-                      <div className="relative z-10">
+                      {/* Inner glow */}
+                      <div className="absolute inset-1 rounded-full bg-gradient-to-br from-white/10 to-transparent" />
+                      
+                      {/* Icon with subtle animation */}
+                      <motion.div 
+                        className="relative z-10"
+                        animate={{ 
+                          y: [0, -2, 0],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ 
+                          duration: 4,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      >
                         <Sparkles className="w-7 h-7 text-white drop-shadow-lg" />
-                      </div>
+                      </motion.div>
 
-                      {/* Floating particles */}
+                      {/* Floating particles - more refined */}
                       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        <div className="absolute w-2 h-2 bg-white/30 rounded-full animate-float-1 top-2 left-3" />
-                        <div className="absolute w-1.5 h-1.5 bg-white/40 rounded-full animate-float-2 bottom-3 right-4" />
-                        <div className="absolute w-1 h-1 bg-white/50 rounded-full animate-float-3 top-4 right-2" />
+                        <motion.div 
+                          className="absolute w-2 h-2 bg-white/40 rounded-full top-2 left-3 blur-[0.5px]"
+                          animate={{ y: [-2, 2, -2], x: [-1, 1, -1], opacity: [0.3, 0.6, 0.3] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                        <motion.div 
+                          className="absolute w-1.5 h-1.5 bg-white/50 rounded-full bottom-3 right-4 blur-[0.5px]"
+                          animate={{ y: [2, -2, 2], x: [1, -1, 1], opacity: [0.4, 0.7, 0.4] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+                        />
+                        <motion.div 
+                          className="absolute w-1 h-1 bg-white/60 rounded-full top-4 right-2 blur-[0.5px]"
+                          animate={{ y: [-1, 3, -1], opacity: [0.5, 0.8, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+                        />
                       </div>
                     </div>
 
-                    {/* Notification badge */}
+                    {/* Notification badge with bounce */}
                     <AnimatePresence>
                       {unreadCount > 0 && (
                         <motion.span
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-lg ring-2 ring-white"
+                          initial={{ scale: 0, y: 10 }}
+                          animate={{ scale: 1, y: 0 }}
+                          exit={{ scale: 0, y: 10 }}
+                          transition={{ type: "spring", damping: 10, stiffness: 300 }}
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-rose-500 rounded-full flex items-center justify-center text-xs text-white font-bold shadow-lg shadow-red-500/30 ring-2 ring-white"
                         >
                           {unreadCount}
                         </motion.span>
                       )}
                     </AnimatePresence>
 
-                    {/* Keyboard shortcut hint */}
-                    <div className="absolute -left-20 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <kbd className="px-2 py-1 text-xs font-mono bg-gray-900 text-gray-300 rounded shadow-lg">
-                        ⌘K
-                      </kbd>
-                    </div>
+                    {/* Keyboard shortcut hint - improved visibility */}
+                    <motion.div 
+                      initial={{ opacity: 0, x: 10 }}
+                      className="absolute -left-24 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none"
+                    >
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-900/95 backdrop-blur-sm rounded-lg shadow-xl">
+                        <kbd className="text-xs font-mono text-gray-300">⌘/</kbd>
+                        <span className="text-xs text-gray-400">open</span>
+                      </div>
+                    </motion.div>
                   </motion.button>
                 </TooltipTrigger>
-                <TooltipContent side="left" className="bg-gray-900 text-white border-gray-800">
-                  <p className="font-medium">AI Assistant</p>
-                  <p className="text-xs text-gray-400">Press ⌘K to open</p>
+                <TooltipContent side="left" className="bg-gray-900/95 backdrop-blur-sm text-white border-gray-700 shadow-xl px-3 py-2">
+                  <p className="font-semibold text-sm">AI Assistant</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Press ⌘/ or Ctrl+/</p>
                 </TooltipContent>
               </Tooltip>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Chat Panel - BIGGER AND CLEANER */}
+        {/* Chat Panel - Enhanced with glassmorphism and better visual hierarchy */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              exit={{ opacity: 0, scale: 0.9, y: 30 }}
+              transition={{ type: "spring", damping: 20, stiffness: 280 }}
               className={`fixed z-50 ${
                 isExpanded
                   ? "inset-2 md:inset-4 lg:inset-8"
                   : "bottom-4 right-4 w-[560px] h-[780px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)]"
               }`}
             >
-              <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-gray-400/30 border border-gray-200">
-                {/* White/Light background */}
-                <div className="absolute inset-0 bg-white" />
+              <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-purple-500/20 border border-gray-200/80 backdrop-blur-sm">
+                {/* White/Light background with subtle pattern */}
+                <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-gray-50/50" />
                 
-                {/* Subtle gradient accent at top */}
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+                {/* Animated gradient accent at top */}
+                <motion.div 
+                  className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                  animate={{
+                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                  }}
+                  transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                  style={{ backgroundSize: "200% 100%" }}
+                />
 
                 {/* Content */}
                 <div className="relative h-full flex flex-col">
-                  {/* Header - Clean white theme */}
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-gray-50/80">
+                  {/* Header - Enhanced with glassmorphism */}
+                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200/80 bg-gradient-to-r from-gray-50/90 to-white/90 backdrop-blur-md">
                     <div className="flex items-center gap-4">
                       <div className="relative">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                          <Bot className="w-6 h-6 text-white" />
-                        </div>
+                        <motion.div 
+                          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25"
+                          whileHover={{ scale: 1.05, rotate: 5 }}
+                          transition={{ type: "spring", damping: 10 }}
+                        >
+                          <Bot className="w-6 h-6 text-white drop-shadow-sm" />
+                        </motion.div>
                         <motion.span
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ repeat: Infinity, duration: 2 }}
-                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 rounded-full border-2 border-white"
+                          animate={{ 
+                            scale: [1, 1.3, 1],
+                            opacity: [1, 0.7, 1]
+                          }}
+                          transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-2 border-white shadow-sm"
                         />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2.5">
                           ConTigo AI
-                          <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-xs border-purple-200 px-2">
-                            <Zap className="w-3 h-3 mr-1" />
-                            RAG
+                          <Badge className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 text-[10px] border-purple-200/50 px-2 py-0.5 font-medium shadow-sm">
+                            <Zap className="w-2.5 h-2.5 mr-1" />
+                            RAG Powered
                           </Badge>
+                          {lastArtifactUpdate && (
+                            <motion.div
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className="flex items-center gap-1"
+                            >
+                              <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 text-[10px] border-green-200/50 px-2 py-0.5 font-medium shadow-sm">
+                                <RefreshCw className="w-2.5 h-2.5 mr-1" />
+                                Live Data
+                              </Badge>
+                            </motion.div>
+                          )}
                         </h3>
                         <p className="text-sm text-gray-500 flex items-center gap-2 mt-0.5">
                           {isTyping ? (
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                              Analyzing contracts...
-                            </span>
+                            <motion.span 
+                              className="flex items-center gap-1.5"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                            >
+                              <motion.span 
+                                className="w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                                animate={{ scale: [1, 1.3, 1] }}
+                                transition={{ repeat: Infinity, duration: 0.8 }}
+                              />
+                              <span className="text-emerald-600 font-medium">Analyzing contracts...</span>
+                            </motion.span>
                           ) : currentContractId ? (
-                            <>
-                              <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                              Viewing contract • Context-aware
-                            </>
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full shadow-sm" />
+                              <span className="text-blue-600">Context-aware mode</span>
+                              {lastArtifactUpdate && (
+                                <span className="text-xs text-green-600">
+                                  • Synced {formatTimeAgo(lastArtifactUpdate)}
+                                </span>
+                              )}
+                            </span>
                           ) : (
-                            <>
-                              <span className="w-2 h-2 bg-green-500 rounded-full" />
-                              Online • {messages.length - 1} messages
-                            </>
+                            <span className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-sm" />
+                              Online • {messages.length - 1} message{messages.length - 1 !== 1 ? 's' : ''}
+                            </span>
                           )}
                         </p>
                       </div>
@@ -1063,15 +1303,21 @@ export function FloatingAIBubble() {
                     </div>
                   </div>
 
-                  {/* Messages - More spacious */}
-                  <div className="flex-1 overflow-hidden bg-gray-50/50">
+                  {/* Messages - Enhanced with better visual hierarchy */}
+                  <div className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50/30 to-gray-50/80">
                     <ScrollArea className="h-full">
                       <div ref={scrollRef} className="p-6 space-y-6">
-                        {messages.map((message) => (
+                        {messages.map((message, msgIndex) => (
                           <motion.div
                             key={message.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{ 
+                              type: "spring", 
+                              damping: 20, 
+                              stiffness: 300,
+                              delay: msgIndex === messages.length - 1 ? 0.1 : 0 
+                            }}
                             className="space-y-3 group"
                           >
                             <div
@@ -1080,221 +1326,369 @@ export function FloatingAIBubble() {
                               }`}
                             >
                               {message.role === "assistant" && (
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mr-3 flex-shrink-0 shadow-md">
-                                  <Sparkles className="w-5 h-5 text-white" />
-                                </div>
+                                <motion.div 
+                                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center mr-3 flex-shrink-0 shadow-lg shadow-purple-500/20"
+                                  whileHover={{ scale: 1.05, rotate: 5 }}
+                                  transition={{ type: "spring", damping: 10 }}
+                                >
+                                  <Sparkles className="w-5 h-5 text-white drop-shadow-sm" />
+                                </motion.div>
                               )}
-                              <div className="relative max-w-[80%]">
-                                <div
+                              <div className="relative max-w-[85%]">
+                                <motion.div
+                                  whileHover={{ scale: 1.01 }}
+                                  transition={{ type: "spring", damping: 20 }}
                                   className={`rounded-2xl px-5 py-4 ${
                                     message.role === "user"
-                                      ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-br-lg shadow-md"
-                                      : "bg-white text-gray-800 rounded-bl-lg shadow-sm border border-gray-100"
+                                      ? "bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white rounded-br-md shadow-lg shadow-blue-500/20"
+                                      : "bg-white/95 backdrop-blur-sm text-gray-800 rounded-bl-md shadow-md border border-gray-100/80 hover:shadow-lg transition-shadow"
                                   }`}
                                 >
                                   <div
-                                    className="text-[15px] leading-relaxed"
+                                    className="text-[15px] leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-a:text-blue-600"
                                     dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
                                   />
                                   
-                                  {/* Metadata footer */}
-                                  <div className={`flex items-center justify-between mt-3 pt-3 border-t ${message.role === "user" ? "border-white/20" : "border-gray-100"}`}>
-                                    <span className={`text-xs ${message.role === "user" ? "text-white/60" : "text-gray-400"}`}>
+                                  {/* Metadata footer - Enhanced */}
+                                  <div className={`flex items-center justify-between mt-3 pt-3 border-t ${message.role === "user" ? "border-white/20" : "border-gray-100/80"}`}>
+                                    <span className={`text-[11px] font-medium ${message.role === "user" ? "text-white/70" : "text-gray-400"}`}>
                                       {message.timestamp.toLocaleTimeString([], {
                                         hour: "2-digit",
                                         minute: "2-digit",
                                       })}
                                     </span>
-                                    <div className="flex items-center gap-3">
-                                      {/* RAG indicator */}
+                                    <div className="flex items-center gap-2">
+                                      {/* RAG indicator - Enhanced */}
                                       {message.metadata?.usedRAG && (
-                                        <span className="text-xs text-blue-500 flex items-center gap-1">
-                                          <Search className="w-3 h-3" />
+                                        <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-purple-200/50">
+                                          <Search className="w-2.5 h-2.5" />
                                           RAG
                                         </span>
                                       )}
                                       {message.metadata?.confidence && message.role === "assistant" && (
-                                        <span className="text-xs text-gray-400 flex items-center gap-1.5">
-                                          <Zap className="w-3 h-3" />
+                                        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200/50">
+                                          <Zap className="w-2.5 h-2.5" />
                                           {Math.round(message.metadata.confidence * 100)}%
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                   
-                                  {/* RAG Sources - collapsible */}
+                                  {/* RAG Sources - Enhanced collapsible section */}
                                   {message.metadata?.ragSources && message.metadata.ragSources.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-gray-100">
-                                      <details className="text-xs">
-                                        <summary className="cursor-pointer text-blue-500 hover:text-blue-600 flex items-center gap-1.5">
+                                    <motion.div 
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      transition={{ delay: 0.3 }}
+                                      className="mt-3 pt-3 border-t border-gray-100/80"
+                                    >
+                                      <details className="text-xs group/sources">
+                                        <summary className="cursor-pointer text-purple-600 hover:text-purple-700 flex items-center gap-1.5 font-medium transition-colors">
                                           <FileText className="w-3 h-3" />
-                                          {message.metadata.ragSources.length} source(s) used
+                                          <span>{message.metadata.ragSources.length} source{message.metadata.ragSources.length !== 1 ? 's' : ''} referenced</span>
+                                          <motion.span 
+                                            className="text-gray-400 ml-auto"
+                                            initial={{ rotate: 0 }}
+                                          >
+                                            ›
+                                          </motion.span>
                                         </summary>
-                                        <ul className="mt-2 space-y-1.5 text-gray-600">
+                                        <ul className="mt-2.5 space-y-2 text-gray-600">
                                           {message.metadata.ragSources.slice(0, 3).map((src, i) => (
-                                            <li key={i} className="flex items-center justify-between gap-2 bg-gray-50 rounded px-2 py-1">
-                                              <span className="truncate">{src.contractName}</span>
-                                              <span className="text-green-600 flex-shrink-0">
+                                            <motion.li 
+                                              key={i} 
+                                              initial={{ opacity: 0, x: -10 }}
+                                              animate={{ opacity: 1, x: 0 }}
+                                              transition={{ delay: i * 0.1 }}
+                                              className="flex items-center justify-between gap-2 bg-gradient-to-r from-gray-50 to-purple-50/30 rounded-lg px-3 py-2 border border-gray-100/80 hover:border-purple-200/50 transition-colors cursor-pointer"
+                                              onClick={() => window.open(`/contracts/${src.contractId}`, '_blank')}
+                                            >
+                                              <div className="flex items-center gap-2 min-w-0">
+                                                <FileText className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                                                <span className="truncate font-medium">{src.contractName}</span>
+                                              </div>
+                                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex-shrink-0">
                                                 {Math.round(src.score * 100)}%
                                               </span>
-                                            </li>
+                                            </motion.li>
                                           ))}
                                         </ul>
                                       </details>
-                                    </div>
+                                    </motion.div>
                                   )}
-                                </div>
 
-                                {/* Message actions - show on hover */}
+                                  {/* Contract Preview Cards - Smart visual cards for found contracts */}
+                                  {message.contractPreviews && message.contractPreviews.length > 0 && (
+                                    <motion.div 
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      transition={{ delay: 0.2 }}
+                                      className="mt-4 space-y-2"
+                                    >
+                                      <div className="text-xs font-semibold text-gray-500 flex items-center gap-1.5 mb-2">
+                                        <FileText className="w-3.5 h-3.5" />
+                                        Found {message.contractPreviews.length} Contract{message.contractPreviews.length !== 1 ? 's' : ''}
+                                      </div>
+                                      <div className="grid gap-2">
+                                        {message.contractPreviews.slice(0, 5).map((contract, i) => (
+                                          <motion.div
+                                            key={contract.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            onClick={() => router.push(`/contracts/${contract.id}`)}
+                                            className="group/card relative bg-gradient-to-r from-white to-blue-50/30 rounded-xl p-3 border border-gray-200/80 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                                          >
+                                            <div className="flex items-start justify-between gap-3">
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                  <h4 className="font-semibold text-sm text-gray-900 truncate group-hover/card:text-blue-600 transition-colors">
+                                                    {contract.name}
+                                                  </h4>
+                                                  {contract.riskLevel && (
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                                                      contract.riskLevel === 'high' ? 'bg-red-100 text-red-700' :
+                                                      contract.riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                                      'bg-green-100 text-green-700'
+                                                    }`}>
+                                                      {contract.riskLevel === 'high' ? '🔴' : contract.riskLevel === 'medium' ? '🟡' : '🟢'}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                                  {contract.supplier && (
+                                                    <span className="flex items-center gap-1">
+                                                      <Building2 className="w-3 h-3" />
+                                                      {contract.supplier}
+                                                    </span>
+                                                  )}
+                                                  {contract.type && (
+                                                    <span className="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                                                      {contract.type}
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div className="text-right flex-shrink-0">
+                                                {contract.value && (
+                                                  <div className="text-sm font-bold text-gray-900">
+                                                    ${contract.value.toLocaleString()}
+                                                  </div>
+                                                )}
+                                                {contract.daysUntilExpiry !== undefined && (
+                                                  <div className={`text-[10px] font-medium ${
+                                                    contract.daysUntilExpiry <= 30 ? 'text-red-600' :
+                                                    contract.daysUntilExpiry <= 90 ? 'text-amber-600' :
+                                                    'text-gray-500'
+                                                  }`}>
+                                                    {contract.daysUntilExpiry <= 0 ? 'Expired' :
+                                                     contract.daysUntilExpiry === 1 ? '1 day left' :
+                                                     `${contract.daysUntilExpiry} days left`}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                                              <ExternalLink className="w-4 h-4 text-blue-500" />
+                                            </div>
+                                          </motion.div>
+                                        ))}
+                                      </div>
+                                      {message.contractPreviews.length > 5 && (
+                                        <button 
+                                          onClick={() => {/* Could expand to show more */}}
+                                          className="w-full text-xs text-center text-blue-600 hover:text-blue-700 py-2 font-medium"
+                                        >
+                                          +{message.contractPreviews.length - 5} more contracts
+                                        </button>
+                                      )}
+                                    </motion.div>
+                                  )}
+                                </motion.div>
+
+                                {/* Message actions - Enhanced floating toolbar */}
                                 {message.role === "assistant" && (
-                                  <div className="absolute -right-3 top-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1.5">
+                                  <motion.div 
+                                    initial={{ opacity: 0, x: 10 }}
+                                    className="absolute -right-2 top-2 opacity-0 group-hover:opacity-100 transition-all duration-200 flex flex-col gap-1"
+                                  >
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button
+                                        <motion.button
+                                          whileHover={{ scale: 1.1 }}
+                                          whileTap={{ scale: 0.9 }}
                                           onClick={() => copyMessage(message.id, message.content)}
-                                          className="w-8 h-8 rounded-lg bg-white hover:bg-gray-50 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors shadow-md border border-gray-200"
+                                          className="w-8 h-8 rounded-xl bg-white/95 backdrop-blur-sm hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-all shadow-lg border border-gray-200/80 hover:border-gray-300"
                                         >
                                           {copiedId === message.id ? (
-                                            <Check className="w-4 h-4 text-green-500" />
+                                            <motion.div
+                                              initial={{ scale: 0 }}
+                                              animate={{ scale: 1 }}
+                                              transition={{ type: "spring", damping: 10 }}
+                                            >
+                                              <Check className="w-4 h-4 text-emerald-500" />
+                                            </motion.div>
                                           ) : (
-                                            <Copy className="w-4 h-4" />
+                                            <Copy className="w-3.5 h-3.5" />
                                           )}
-                                        </button>
+                                        </motion.button>
                                       </TooltipTrigger>
-                                      <TooltipContent side="left" className="text-xs">Copy</TooltipContent>
+                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">Copy</TooltipContent>
                                     </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button
+                                        <motion.button
+                                          whileHover={{ scale: 1.1 }}
+                                          whileTap={{ scale: 0.9 }}
                                           onClick={() => reactToMessage(message.id, "like")}
-                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-md border ${
+                                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
                                             message.reaction === "like"
-                                              ? "bg-green-50 text-green-600 border-green-200"
-                                              : "bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900 border-gray-200"
+                                              ? "bg-emerald-50 text-emerald-600 border-emerald-300 shadow-emerald-500/20"
+                                              : "bg-white/95 hover:bg-gray-50 text-gray-400 hover:text-emerald-600 border-gray-200/80 hover:border-emerald-300"
                                           }`}
                                         >
-                                          <ThumbsUp className="w-4 h-4" />
-                                        </button>
+                                          <ThumbsUp className="w-3.5 h-3.5" />
+                                        </motion.button>
                                       </TooltipTrigger>
-                                      <TooltipContent side="left" className="text-xs">Helpful</TooltipContent>
+                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">Helpful</TooltipContent>
                                     </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <button
+                                        <motion.button
+                                          whileHover={{ scale: 1.1 }}
+                                          whileTap={{ scale: 0.9 }}
                                           onClick={() => reactToMessage(message.id, "dislike")}
-                                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-md border ${
+                                          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
                                             message.reaction === "dislike"
-                                              ? "bg-red-50 text-red-600 border-red-200"
-                                              : "bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-900 border-gray-200"
+                                              ? "bg-red-50 text-red-600 border-red-300 shadow-red-500/20"
+                                              : "bg-white/95 hover:bg-gray-50 text-gray-400 hover:text-red-500 border-gray-200/80 hover:border-red-300"
                                           }`}
                                         >
-                                          <ThumbsDown className="w-4 h-4" />
-                                        </button>
+                                          <ThumbsDown className="w-3.5 h-3.5" />
+                                        </motion.button>
                                       </TooltipTrigger>
-                                      <TooltipContent side="left" className="text-xs">Not helpful</TooltipContent>
+                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">Not helpful</TooltipContent>
                                     </Tooltip>
-                                  </div>
+                                  </motion.div>
                                 )}
                               </div>
                             </div>
 
-                            {/* Action buttons */}
+                            {/* Action buttons - Enhanced */}
                             {message.actions && message.role === "assistant" && (
-                              <div className="flex flex-wrap gap-2 pl-14">
+                              <motion.div 
+                                className="flex flex-wrap gap-2.5 pl-14"
+                                initial={{ opacity: 0, y: 5 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                              >
                                 {message.actions.map((action, idx) => (
                                   <motion.button
                                     key={idx}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: idx * 0.05 }}
+                                    initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ delay: 0.3 + idx * 0.08, type: "spring", damping: 15 }}
+                                    whileHover={{ scale: 1.03, y: -2 }}
+                                    whileTap={{ scale: 0.97 }}
                                     onClick={() => handleAction(action.action)}
-                                    className={`text-sm px-4 py-2 rounded-xl flex items-center gap-2 transition-all ${
+                                    className={`text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all font-medium ${
                                       action.variant === "primary"
-                                        ? "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:shadow-lg hover:shadow-purple-500/25"
-                                        : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200 shadow-sm"
+                                        ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:shadow-purple-500/30 shadow-md"
+                                        : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200/80 shadow-sm hover:shadow-md hover:border-gray-300"
                                     }`}
                                   >
                                     {action.icon && <action.icon className="w-4 h-4" />}
                                     {action.label}
-                                    <ExternalLink className="w-3 h-3 opacity-50" />
+                                    <ExternalLink className="w-3 h-3 opacity-60" />
                                   </motion.button>
                                 ))}
-                              </div>
+                              </motion.div>
                             )}
 
-                            {/* Suggestions */}
+                            {/* Suggestions - Enhanced as pills */}
                             {message.suggestions && message.role === "assistant" && (
-                              <div className="flex flex-wrap gap-2 pl-14">
+                              <motion.div 
+                                className="flex flex-wrap gap-2 pl-14"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.4 }}
+                              >
                                 {message.suggestions.map((suggestion, idx) => (
                                   <motion.button
                                     key={idx}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: idx * 0.05 }}
+                                    initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ delay: 0.5 + idx * 0.06, type: "spring", damping: 15 }}
+                                    whileHover={{ scale: 1.05, y: -1 }}
+                                    whileTap={{ scale: 0.95 }}
                                     onClick={() => handleSendMessage(suggestion)}
-                                    className="text-sm px-4 py-2 rounded-full bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 transition-all shadow-sm"
+                                    className="text-[13px] px-4 py-2 rounded-full bg-white hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 text-gray-600 hover:text-purple-700 border border-gray-200 hover:border-purple-300 transition-all shadow-sm hover:shadow-md font-medium"
                                   >
                                     {suggestion}
                                   </motion.button>
                                 ))}
-                              </div>
+                              </motion.div>
                             )}
                           </motion.div>
                         ))}
 
-                        {/* Typing indicator with thinking status */}
+                        {/* Enhanced typing indicator with animated thinking status */}
                         {isLoading && (
                           <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
                             className="flex items-start gap-3"
                           >
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md flex-shrink-0">
+                            <motion.div 
+                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0"
+                              animate={{ rotate: [0, 5, -5, 0] }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            >
                               <Loader2 className="w-5 h-5 text-white animate-spin" />
-                            </div>
-                            <div className="bg-white rounded-2xl rounded-bl-lg px-5 py-4 shadow-sm border border-gray-100 min-w-[200px]">
-                              <div className="flex items-center gap-3 mb-2">
+                            </motion.div>
+                            <div className="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl rounded-bl-lg px-5 py-4 shadow-md border border-gray-100/80 min-w-[220px] backdrop-blur-sm">
+                              <div className="flex items-center gap-3 mb-3">
                                 <div className="flex gap-1.5">
                                   <motion.span
-                                    animate={{ scale: [1, 1.2, 1] }}
-                                    transition={{ repeat: Infinity, duration: 0.8 }}
-                                    className="w-2 h-2 bg-purple-500 rounded-full"
+                                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ repeat: Infinity, duration: 1, ease: "easeInOut" }}
+                                    className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-sm"
                                   />
                                   <motion.span
-                                    animate={{ scale: [1, 1.2, 1] }}
-                                    transition={{ repeat: Infinity, duration: 0.8, delay: 0.15 }}
-                                    className="w-2 h-2 bg-purple-400 rounded-full"
+                                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ repeat: Infinity, duration: 1, delay: 0.2, ease: "easeInOut" }}
+                                    className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full shadow-sm"
                                   />
                                   <motion.span
-                                    animate={{ scale: [1, 1.2, 1] }}
-                                    transition={{ repeat: Infinity, duration: 0.8, delay: 0.3 }}
-                                    className="w-2 h-2 bg-purple-300 rounded-full"
+                                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
+                                    transition={{ repeat: Infinity, duration: 1, delay: 0.4, ease: "easeInOut" }}
+                                    className="w-2 h-2 bg-gradient-to-r from-purple-300 to-pink-300 rounded-full shadow-sm"
                                   />
                                 </div>
-                                <span className="text-sm font-medium text-gray-700">Thinking</span>
+                                <span className="text-sm font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Thinking</span>
                               </div>
                               <motion.div 
-                                className="space-y-1.5"
+                                className="space-y-2"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                transition={{ delay: 0.3 }}
+                                transition={{ delay: 0.2 }}
                               >
                                 <motion.p 
-                                  className="text-xs text-gray-500 flex items-center gap-1.5"
-                                  initial={{ opacity: 0, x: -5 }}
+                                  className="text-xs text-gray-600 flex items-center gap-2 bg-purple-50/50 rounded-lg px-2.5 py-1.5"
+                                  initial={{ opacity: 0, x: -10 }}
                                   animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: 0.4 }}
+                                  transition={{ delay: 0.3 }}
                                 >
-                                  <Search className="w-3 h-3" />
+                                  <Search className="w-3 h-3 text-purple-500" />
                                   Searching contracts with RAG...
                                 </motion.p>
                                 <motion.p 
-                                  className="text-xs text-gray-400 flex items-center gap-1.5"
-                                  initial={{ opacity: 0, x: -5 }}
-                                  animate={{ opacity: 0.6, x: 0 }}
-                                  transition={{ delay: 0.8 }}
+                                  className="text-xs text-gray-500 flex items-center gap-2 bg-blue-50/50 rounded-lg px-2.5 py-1.5"
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 0.8, x: 0 }}
+                                  transition={{ delay: 0.6 }}
                                 >
-                                  <FileText className="w-3 h-3" />
+                                  <FileText className="w-3 h-3 text-blue-500" />
                                   Analyzing relevant clauses...
                                 </motion.p>
                               </motion.div>
@@ -1305,44 +1699,60 @@ export function FloatingAIBubble() {
                     </ScrollArea>
                   </div>
 
-                  {/* Quick Actions - Show when conversation just started */}
+                  {/* Quick Actions - Enhanced with better visual hierarchy */}
                   {messages.length === 1 && (
-                    <div className="px-6 pb-3 bg-white">
-                      <p className="text-sm text-gray-500 mb-3 flex items-center gap-2 font-medium">
-                        <Zap className="w-4 h-4" />
+                    <div className="px-6 pb-4 bg-gradient-to-b from-white to-gray-50/50">
+                      <p className="text-sm text-gray-600 mb-3 flex items-center gap-2 font-semibold">
+                        <motion.div
+                          animate={{ rotate: [0, 10, -10, 0] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          <Zap className="w-4 h-4 text-amber-500" />
+                        </motion.div>
                         Quick Actions
                       </p>
                       <div className="grid grid-cols-2 gap-3">
                         {QUICK_ACTIONS.slice(0, 4).map((action, idx) => (
                           <motion.button
                             key={idx}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.05 }}
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            transition={{ delay: idx * 0.08, type: "spring", damping: 15 }}
+                            whileHover={{ scale: 1.03, y: -3 }}
+                            whileTap={{ scale: 0.97 }}
                             onClick={() => handleSendMessage(action.query)}
-                            className="group flex items-center gap-3 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-100 hover:border-gray-200 transition-all text-left"
+                            className="group flex items-center gap-3.5 p-4 rounded-2xl bg-white hover:bg-gradient-to-r hover:from-gray-50 hover:to-purple-50/30 border border-gray-100 hover:border-purple-200/50 transition-all text-left shadow-sm hover:shadow-lg"
                           >
-                            <div
-                              className={`w-11 h-11 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-md`}
+                            <motion.div
+                              whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
+                              transition={{ duration: 0.5 }}
+                              className={`w-12 h-12 rounded-xl bg-gradient-to-br ${action.color} flex items-center justify-center flex-shrink-0 shadow-lg`}
                             >
-                              <action.icon className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-sm font-medium text-gray-800 group-hover:text-gray-900 block truncate">
+                              <action.icon className="w-5 h-5 text-white drop-shadow-sm" />
+                            </motion.div>
+                            <div className="min-w-0 flex-1">
+                              <span className="text-sm font-semibold text-gray-800 group-hover:text-purple-700 block truncate transition-colors">
                                 {action.label}
                               </span>
-                              <span className="text-xs text-gray-500 block truncate">
+                              <span className="text-xs text-gray-400 group-hover:text-gray-500 block truncate mt-0.5 transition-colors">
                                 {action.description}
                               </span>
                             </div>
+                            <motion.div 
+                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              initial={{ x: -5 }}
+                              whileHover={{ x: 0 }}
+                            >
+                              <Send className="w-4 h-4 text-purple-400" />
+                            </motion.div>
                           </motion.button>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Input area - Clean white theme */}
-                  <div className="p-6 border-t border-gray-200 bg-white">
+                  {/* Input area - Enhanced with better visual design */}
+                  <div className="p-6 border-t border-gray-200/80 bg-gradient-to-b from-white to-gray-50/30">
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -1350,7 +1760,7 @@ export function FloatingAIBubble() {
                       }}
                       className="flex gap-3"
                     >
-                      <div className="relative flex-1">
+                      <div className="relative flex-1 group">
                         <Input
                           ref={inputRef}
                           value={input}
@@ -1362,63 +1772,76 @@ export function FloatingAIBubble() {
                               : "Try: 'Summarize Deloitte contracts from 2024'"
                           }
                           disabled={isLoading}
-                          className="w-full bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-2xl pr-24 focus:border-purple-500 focus:ring-purple-500/20 h-14 text-base px-5"
+                          className="w-full bg-white border-gray-200 text-gray-900 placeholder:text-gray-400 rounded-2xl pr-24 focus:border-purple-400 focus:ring-purple-500/20 focus:ring-2 h-14 text-base px-5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200"
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                          {/* Voice input button */}
+                          {/* Voice input button - Enhanced */}
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <button
+                              <motion.button
                                 type="button"
                                 onClick={toggleVoiceInput}
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${
                                   isListening
-                                    ? "bg-red-100 text-red-600"
-                                    : "hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+                                    ? "bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-md shadow-red-500/25"
+                                    : "hover:bg-gray-100 text-gray-400 hover:text-gray-700"
                                 }`}
                               >
                                 {isListening ? (
-                                  <MicOff className="w-5 h-5" />
+                                  <motion.div
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ repeat: Infinity, duration: 0.5 }}
+                                  >
+                                    <MicOff className="w-4 h-4" />
+                                  </motion.div>
                                 ) : (
                                   <Mic className="w-4 h-4" />
                                 )}
-                              </button>
+                              </motion.button>
                             </TooltipTrigger>
-                            <TooltipContent className="text-xs">
+                            <TooltipContent className="text-xs bg-gray-900 text-white border-gray-700">
                               {isListening ? "Stop listening" : "Voice input"}
                             </TooltipContent>
                           </Tooltip>
                         </div>
                       </div>
-                      <Button
-                        type="submit"
-                        size="icon"
-                        disabled={!input.trim() || isLoading}
-                        className="h-11 w-11 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4" />
-                        )}
-                      </Button>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          type="submit"
+                          size="icon"
+                          disabled={!input.trim() || isLoading}
+                          className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Send className="w-5 h-5" />
+                          )}
+                        </Button>
+                      </motion.div>
                     </form>
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center gap-3">
-                        <p className="text-[10px] text-gray-500">
-                          <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] text-gray-600">Enter</kbd> send
-                        </p>
-                        <p className="text-[10px] text-gray-500">
-                          <kbd className="px-1 py-0.5 bg-gray-100 border border-gray-200 rounded text-[9px] text-gray-600">⌘K</kbd> toggle
-                        </p>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-4">
+                        <span className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-[10px] text-gray-600 font-mono shadow-sm">Enter</kbd>
+                          <span>send</span>
+                        </span>
+                        <span className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded-md text-[10px] text-gray-600 font-mono shadow-sm">⌘/</kbd>
+                          <span>toggle</span>
+                        </span>
                       </div>
-                      <button 
+                      <motion.button 
                         onClick={() => setShowExamples(true)}
-                        className="text-[10px] text-purple-500 hover:text-purple-700 flex items-center gap-1 transition-colors"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="text-[11px] text-purple-600 hover:text-purple-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-purple-50 transition-colors font-medium"
                       >
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <Sparkles className="w-3 h-3" />
                         View examples
-                      </button>
+                      </motion.button>
                     </div>
                   </div>
                 </div>
@@ -1427,43 +1850,54 @@ export function FloatingAIBubble() {
           )}
         </AnimatePresence>
 
-        {/* Keyboard shortcuts modal */}
+        {/* Keyboard shortcuts modal - Enhanced */}
         <AnimatePresence>
           {showShortcuts && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center"
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center"
               onClick={() => setShowShortcuts(false)}
             >
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white border border-gray-200 rounded-2xl p-6 w-80 shadow-2xl"
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="bg-white border border-gray-200/80 rounded-3xl p-6 w-80 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-gray-900 font-semibold flex items-center gap-2">
-                    <Keyboard className="w-5 h-5" />
-                    Keyboard Shortcuts
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-gray-900 font-bold flex items-center gap-2.5 text-lg">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-gray-200 flex items-center justify-center shadow-sm">
+                      <Keyboard className="w-4 h-4 text-gray-600" />
+                    </div>
+                    Shortcuts
                   </h3>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowShortcuts(false)}
-                    className="text-gray-400 hover:text-gray-900"
+                    className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </motion.button>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {KEYBOARD_SHORTCUTS.map((shortcut, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">{shortcut.action}</span>
-                      <kbd className="px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded text-xs font-mono">
+                    <motion.div 
+                      key={idx} 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="text-sm text-gray-700 font-medium">{shortcut.action}</span>
+                      <kbd className="px-2.5 py-1 bg-white text-gray-600 border border-gray-200 rounded-lg text-xs font-mono shadow-sm">
                         {shortcut.key}
                       </kbd>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </motion.div>
@@ -1471,41 +1905,55 @@ export function FloatingAIBubble() {
           )}
         </AnimatePresence>
 
-        {/* Example prompts modal */}
+        {/* Example prompts modal - Enhanced */}
         <AnimatePresence>
           {showExamples && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
               onClick={() => setShowExamples(false)}
             >
               <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white border border-gray-200 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] overflow-y-auto"
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                transition={{ type: "spring", damping: 20, stiffness: 300 }}
+                className="bg-white border border-gray-200/80 rounded-3xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-gray-900 font-semibold text-lg flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-purple-500" />
+                  <h3 className="text-gray-900 font-bold text-lg flex items-center gap-2.5">
+                    <motion.div 
+                      animate={{ rotate: [0, 10, -10, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25"
+                    >
+                      <Sparkles className="w-5 h-5 text-white" />
+                    </motion.div>
                     Example Prompts
                   </h3>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowExamples(false)}
-                    className="text-gray-400 hover:text-gray-900 p-1"
+                    className="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </motion.button>
                 </div>
-                <p className="text-sm text-gray-500 mb-6">
-                  Click any prompt to try it, or use these as inspiration for your own questions.
+                <p className="text-sm text-gray-500 mb-6 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  💡 Click any prompt to try it, or use these as inspiration for your own questions.
                 </p>
                 <div className="space-y-6">
                   {EXAMPLE_PROMPTS.map((category, idx) => (
-                    <div key={idx}>
+                    <motion.div 
+                      key={idx}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                    >
                       <div className="flex items-center gap-2 mb-3">
                         <category.icon className="w-4 h-4 text-gray-400" />
                         <h4 className="text-sm font-medium text-gray-700">{category.category}</h4>
@@ -1527,7 +1975,7 @@ export function FloatingAIBubble() {
                           </button>
                         ))}
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
                 <div className="mt-6 pt-4 border-t border-gray-100">

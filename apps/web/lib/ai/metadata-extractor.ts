@@ -119,7 +119,7 @@ export class SchemaAwareMetadataExtractor {
     
     // Filter fields to extract
     const fieldsToExtract = schema.fields.filter(field => {
-      if (opts.skipFields.includes(field.id)) return false;
+      if (opts.skipFields.some(token => this.fieldMatchesToken(field, token))) return false;
       if (field.hidden) return false;
       if (!field.aiExtractionEnabled) return false;
       return true;
@@ -486,6 +486,8 @@ Respond with a JSON object:
     const confidence = Math.min((extraction.confidence || 0) / 100, 1);
     const value = this.parseValue(extraction.value, field.type);
 
+    const confidenceThreshold = field.aiConfidenceThreshold ?? opts.confidenceThreshold;
+
     return {
       fieldId: field.id,
       fieldName: field.name,
@@ -505,10 +507,10 @@ Respond with a JSON object:
         confidence: Math.min((alt.confidence || 0) / 100, 1),
         source: alt.source || '',
       })) : [],
-      validationStatus: confidence >= opts.confidenceThreshold ? 'valid' : 'needs_review',
+      validationStatus: confidence >= confidenceThreshold ? 'valid' : 'needs_review',
       validationMessages: [],
       suggestions: [],
-      requiresHumanReview: confidence < opts.confidenceThreshold,
+      requiresHumanReview: confidence < confidenceThreshold,
     };
   }
 
@@ -810,8 +812,8 @@ Respond with a JSON object:
     priorityFields: string[]
   ): MetadataFieldDefinition[] {
     return [...fields].sort((a, b) => {
-      const aPriority = priorityFields.indexOf(a.id);
-      const bPriority = priorityFields.indexOf(b.id);
+      const aPriority = priorityFields.findIndex(token => this.fieldMatchesToken(a, token));
+      const bPriority = priorityFields.findIndex(token => this.fieldMatchesToken(b, token));
       
       if (aPriority !== -1 && bPriority !== -1) {
         return aPriority - bPriority;
@@ -825,6 +827,12 @@ Respond with a JSON object:
       
       return a.sortOrder - b.sortOrder;
     });
+  }
+
+  private fieldMatchesToken(field: MetadataFieldDefinition, token: string): boolean {
+    if (!token) return false;
+    const normalized = String(token).trim().toLowerCase();
+    return field.id.toLowerCase() === normalized || field.name.toLowerCase() === normalized;
   }
 
   private groupFieldsByCategory(
