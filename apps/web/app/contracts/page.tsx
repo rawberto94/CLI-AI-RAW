@@ -445,16 +445,14 @@ const CompactContractRow = memo(function CompactContractRow({
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.15, delay: index * 0.02 }}
-      whileHover={{ x: 2 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2, delay: index * 0.015 }}
       className={cn(
-        "grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 items-center cursor-pointer transition-all duration-200 group border-b border-slate-100/80",
+        "grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 items-center cursor-pointer transition-colors duration-150 group border-b border-slate-100",
         isSelected 
-          ? "bg-gradient-to-r from-blue-50 to-indigo-50/50 hover:from-blue-100/70 hover:to-indigo-100/50" 
-          : "hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50/30",
-        !isSelected && index % 2 === 1 && "bg-slate-50/30"
+          ? "bg-blue-50/70 hover:bg-blue-50" 
+          : "hover:bg-slate-50/80"
       )}
       onClick={onView}
       role="link"
@@ -464,7 +462,7 @@ const CompactContractRow = memo(function CompactContractRow({
     >
       {/* Checkbox */}
       <div
-        className="flex items-center"
+        className="flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -472,29 +470,27 @@ const CompactContractRow = memo(function CompactContractRow({
           checked={isSelected}
           onCheckedChange={onSelect}
           aria-label={`Select ${contract.title}`}
-          className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+          className="border-slate-300 h-4 w-4 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
         />
       </div>
 
-      {/* Contract Title & Category - Enhanced */}
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="p-2 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex-shrink-0 group-hover:from-blue-100 group-hover:to-indigo-50 transition-colors shadow-sm">
-          <FileText className="h-4 w-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
+      {/* Contract Title */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 transition-colors">
+          <FileText className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="font-medium text-slate-800 break-words line-clamp-1 group-hover:text-blue-600 transition-colors text-[13px] leading-tight" title={contract.title}>
+            <p className="font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors text-sm" title={contract.title}>
               {contract.title || 'Untitled Contract'}
             </p>
             {isNew && (
-              <Badge className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-0 text-[10px] px-1.5 py-0 h-4 flex-shrink-0 font-semibold shadow-sm">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-600 flex-shrink-0">
                 New
-              </Badge>
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[11px] text-slate-400">{formatDate(contract.createdAt)}</span>
-          </div>
+          <p className="text-xs text-slate-400 mt-0.5">{formatDate(contract.createdAt)}</p>
         </div>
       </div>
 
@@ -509,29 +505,29 @@ const CompactContractRow = memo(function CompactContractRow({
             size="sm"
           />
         ) : (
-          <span className="text-xs text-slate-400 italic">Uncategorized</span>
+          <span className="text-xs text-slate-400">—</span>
         )}
       </div>
 
       {/* Contract Type */}
       <div className="hidden lg:block min-w-0">
-        <span className="text-sm text-slate-600 truncate block" title={contract.type}>
+        <span className="text-[13px] text-slate-600 truncate block" title={contract.type}>
           {contract.type || '—'}
         </span>
       </div>
 
       {/* Party */}
-      <div className="hidden md:flex items-center gap-2 min-w-0">
-        <span className="text-sm text-slate-600 truncate">
+      <div className="hidden md:block min-w-0">
+        <span className="text-[13px] text-slate-600 truncate block" title={contract.parties?.supplier || contract.parties?.client}>
           {contract.parties?.supplier || contract.parties?.client || '—'}
         </span>
       </div>
 
       {/* Value */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block text-right">
         <span className={cn(
-          "text-sm font-semibold",
-          contract.value ? "text-slate-900" : "text-slate-400"
+          "text-[13px] font-semibold tabular-nums",
+          contract.value ? "text-slate-800" : "text-slate-400"
         )}>
           {formatCurrency(contract.value)}
         </span>
@@ -540,72 +536,69 @@ const CompactContractRow = memo(function CompactContractRow({
       {/* Expiration Date */}
       <div className="hidden md:block">
         {contract.expirationDate ? (
-          <div className={cn(
-            "flex items-center gap-1.5",
-            isExpired ? "text-red-600" : isExpiringSoon ? "text-amber-600" : "text-slate-600"
-          )}>
-            <span className="text-sm">
+          <div className="flex flex-col">
+            <span className={cn(
+              "text-[13px] tabular-nums",
+              isExpired ? "text-red-600" : isExpiringSoon ? "text-amber-600" : "text-slate-600"
+            )}>
               {formatDate(contract.expirationDate)}
             </span>
             {isExpired && (
-              <Badge className="bg-red-100 text-red-700 border-0 text-[10px] px-1.5 py-0 h-4 flex-shrink-0 font-medium">
-                Expired
-              </Badge>
+              <span className="text-[10px] font-medium text-red-500 mt-0.5">Expired</span>
+            )}
+            {!isExpired && isExpiringSoon && (
+              <span className="text-[10px] font-medium text-amber-500 mt-0.5">Soon</span>
             )}
           </div>
         ) : (
-          <span className="text-sm text-slate-400">—</span>
+          <span className="text-[13px] text-slate-400">—</span>
         )}
       </div>
 
-      {/* Status - Enhanced with gradient backgrounds */}
+      {/* Status */}
       <div>
         <span className={cn(
-          "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all",
-          contract.status === 'completed' && "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200/60",
-          contract.status === 'processing' && "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200/60",
-          contract.status === 'failed' && "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200/60",
-          contract.status === 'pending' && "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border border-amber-200/60",
-          !['completed', 'processing', 'failed', 'pending'].includes(contract.status) && "bg-gradient-to-r from-slate-50 to-gray-50 text-slate-700 border border-slate-200/60"
+          "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium",
+          contract.status === 'completed' && "bg-emerald-50 text-emerald-700",
+          contract.status === 'processing' && "bg-blue-50 text-blue-700",
+          contract.status === 'failed' && "bg-red-50 text-red-700",
+          contract.status === 'pending' && "bg-amber-50 text-amber-700",
+          !['completed', 'processing', 'failed', 'pending'].includes(contract.status) && "bg-slate-100 text-slate-600"
         )}>
-          <StatusIcon className={cn("h-3.5 w-3.5", contract.status === 'processing' && "animate-spin")} />
+          <StatusIcon className={cn("h-3 w-3", contract.status === 'processing' && "animate-spin")} />
           {statusConfig.label}
         </span>
       </div>
 
-      {/* Actions - Enhanced with better hover states */}
-      <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+      {/* Actions */}
+      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 rounded-lg hover:bg-slate-200 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all"
+              className="h-7 w-7 p-0 rounded-md hover:bg-slate-100 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
             >
-              <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
+              <MoreHorizontal className="h-4 w-4 text-slate-400" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-white border-slate-200 shadow-xl rounded-xl p-1">
-            <DropdownMenuItem onClick={onView} className="cursor-pointer rounded-lg">
-              <Eye className="h-4 w-4 mr-2 text-slate-500" /> View Details
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={onView} className="text-sm">
+              <Eye className="h-3.5 w-3.5 mr-2 text-slate-500" /> View
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="cursor-pointer rounded-lg">
-              <Brain className="h-4 w-4 mr-2 text-purple-500" /> AI Analysis
+            <DropdownMenuItem onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm">
+              <Brain className="h-3.5 w-3.5 mr-2 text-violet-500" /> AI Analysis
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="my-1" />
-            <DropdownMenuItem onClick={onDownload} className="cursor-pointer rounded-lg">
-              <Download className="h-4 w-4 mr-2 text-slate-500" /> Download
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDownload} className="text-sm">
+              <Download className="h-3.5 w-3.5 mr-2 text-slate-500" /> Download
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onShare} className="cursor-pointer rounded-lg">
-              <Share2 className="h-4 w-4 mr-2 text-slate-500" /> Share
+            <DropdownMenuItem onClick={onShare} className="text-sm">
+              <Share2 className="h-3.5 w-3.5 mr-2 text-slate-500" /> Share
             </DropdownMenuItem>
-            {/* Request Approval - Hidden for now, will be enabled in future */}
-            {/* <DropdownMenuItem onClick={onApproval} className="cursor-pointer rounded-lg">
-              <ClipboardCheck className="h-4 w-4 mr-2 text-slate-500" /> Request Approval
-            </DropdownMenuItem> */}
-            <DropdownMenuSeparator className="my-1" />
-            <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer rounded-lg">
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onDelete} className="text-sm text-red-600 focus:text-red-600 focus:bg-red-50">
+              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -2110,7 +2103,7 @@ export default function ContractsPage() {
         </AnimatePresence>
 
 
-        {/* Enhanced Hero Dashboard */}
+        {/* Compact Hero Dashboard */}
         <ContractsHeroDashboard
           stats={heroStats}
           onUploadClick={() => router.push('/upload')}
@@ -2124,960 +2117,415 @@ export default function ContractsPage() {
             }
           }}
           onAskAIClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
-          className="mb-2"
+          className="mb-4"
         />
 
-        {/* Enhanced Smart Filters with AI Search */}
-        <SmartFilters
-          onFiltersChange={handleSmartFiltersChange}
-          initialFilters={{
-            search: searchQuery,
-            status: statusFilter !== 'all' ? [statusFilter as any] : [],
-            riskLevel: riskFilters as any[],
-            contractType: typeFilters,
-          }}
-          savedPresets={savedFilters.map(f => ({
-            id: f.id,
-            name: f.name,
-            filters: {
-              search: '',
-              status: f.filters.statusFilter !== 'all' ? [f.filters.statusFilter] : [],
-              riskLevel: f.filters.riskFilters || [],
-              contractType: f.filters.typeFilters || [],
-            },
-            isDefault: false,
-          }))}
-          onSavePreset={(name, filters) => {
-            const newFilter = {
-              id: Date.now().toString(),
-              name,
-              filters: {
-                statusFilter: filters.status?.[0] || 'all',
-                typeFilters: filters.contractType || [],
-                riskFilters: filters.riskLevel || [],
-              }
-            };
-            setSavedFilters(prev => [...prev, newFilter]);
-            toast.success(`Filter "${name}" saved`);
-          }}
-          totalResults={sortedContracts.length}
-          className="mb-2"
-        />
-
-        {/* Legacy Stats - Compact (shown as secondary info) */}
-        <div className="hidden lg:grid grid-cols-5 gap-3">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card 
-              className={cn(
-                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-white border-slate-200",
-                statusFilter === 'all' && "ring-2 ring-blue-500 border-blue-300"
-              )}
-              onClick={() => setStatusFilter('all')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {contractsData?.total ?? 0}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">contracts</p>
-                  </div>
-                  <div className="p-2.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <Card 
-              className={cn(
-                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-white border-slate-200",
-                statusFilter === 'completed' && "ring-2 ring-emerald-500 border-emerald-300"
-              )}
-              onClick={() => setStatusFilter('completed')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active</p>
-                    <p className="text-2xl font-bold text-emerald-600 mt-0.5">
-                      {Array.isArray(contracts) ? contracts.filter((c) => c.status === "completed").length : 0}
-                    </p>
-                    <p className="text-xs text-emerald-500 mt-0.5 flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3" />
-                      ready
-                    </p>
-                  </div>
-                  <div className="p-2.5 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
-                    <CheckCircle className="h-5 w-5 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card 
-              data-testid="stat-processing" 
-              className={cn(
-                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-white border-slate-200",
-                statusFilter === 'processing' && "ring-2 ring-blue-500 border-blue-300"
-              )}
-              onClick={() => setStatusFilter('processing')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Processing</p>
-                    <p className="text-2xl font-bold text-blue-600 mt-0.5">
-                      {Array.isArray(contracts) ? contracts.filter((c) => c.status === "processing").length : 0}
-                    </p>
-                    <p className="text-xs text-blue-500 mt-0.5 flex items-center gap-1">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      analyzing
-                    </p>
-                  </div>
-                  <div className="p-2.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <Brain className="h-5 w-5 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <Card 
-              className={cn(
-                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-white border-slate-200",
-                sortField === 'value' && sortDirection === 'desc' && "ring-2 ring-violet-500 border-violet-300"
-              )}
-              onClick={() => {
-                setSortField('value');
-                setSortDirection('desc');
-              }}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Value</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {formatCurrency(
-                        Array.isArray(contracts) ? contracts.reduce((sum, c) => sum + (c.value || 0), 0) : 0
-                      )}
-                    </p>
-                    <p className="text-xs text-violet-500 mt-0.5">portfolio total</p>
-                  </div>
-                  <div className="p-2.5 bg-violet-50 rounded-lg group-hover:bg-violet-100 transition-colors">
-                    <DollarSign className="h-5 w-5 text-violet-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card 
-              className={cn(
-                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 bg-white border-slate-200",
-                categoryFilter === 'uncategorized' && "ring-2 ring-amber-500 border-amber-300"
-              )}
-              onClick={() => setCategoryFilter(categoryFilter === 'uncategorized' ? null : 'uncategorized')}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Categorized</p>
-                    <p className="text-2xl font-bold text-slate-900 mt-0.5">
-                      {categorizedCount}<span className="text-base text-slate-400">/{contracts.length}</span>
-                    </p>
-                    <p className={cn(
-                      "text-xs mt-0.5 flex items-center gap-1",
-                      uncategorizedCount > 0 ? "text-amber-500" : "text-emerald-500"
-                    )}>
-                      {uncategorizedCount > 0 ? (
-                        <>
-                          <AlertTriangle className="h-3 w-3" />
-                          {uncategorizedCount} pending
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-3 w-3" />
-                          complete
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <div className="p-2.5 bg-indigo-50 rounded-lg group-hover:bg-indigo-100 transition-colors">
-                    <Tag className="h-5 w-5 text-indigo-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Search and Filters */}
-        <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
-          <CardContent className="p-0">
-            {/* Quick Presets Row */}
-            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
-              <span className="text-xs font-medium text-slate-500 mr-1">Quick:</span>
-              {QUICK_PRESETS.map((preset) => {
-                const PresetIcon = preset.icon;
-                return (
-                  <Button
-                    key={preset.id}
-                    variant={activePreset === preset.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => activePreset === preset.id ? clearFilters() : applyPreset(preset.id)}
-                    className={cn(
-                      "gap-1.5 text-xs h-7",
-                      activePreset === preset.id 
-                        ? "bg-slate-800 hover:bg-slate-900" 
-                        : "hover:border-slate-300 hover:bg-white"
-                    )}
-                  >
-                    <PresetIcon className={cn("h-3 w-3", activePreset !== preset.id && preset.color)} />
-                    {preset.label}
-                  </Button>
-                );
-              })}
-            </div>
-            
-            {/* Search Row */}
-            <div className="p-4">
-              <div className="flex flex-col sm:flex-row gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    placeholder="Search contracts by name, client, supplier, or type..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 h-10 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 bg-white"
-                    data-testid="contract-search"
-                  />
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100"
-                      onClick={() => setSearchQuery('')}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={cn(
-                    "gap-1.5 h-10 px-3",
-                    showFilters 
-                      ? "bg-blue-50 border-blue-200 text-blue-700" 
-                      : ""
-                  )}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <Badge className="bg-blue-600 text-white h-5 px-1.5 text-xs">
-                      {activeFilterCount}
-                    </Badge>
-                  )}
-                </Button>
-              </div>
-              
-              {/* Collapsible Filters Row */}
-              <AnimatePresence>
-                {showFilters && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t border-slate-100">
-                      {/* Status Filters */}
-                      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg" data-testid="status-filters">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStatusFilter("all")}
-                          data-testid="filter-all"
-                          className={cn(
-                            "h-8 px-3 rounded-md transition-all",
-                            statusFilter === "all" 
-                              ? "bg-white shadow-sm text-blue-700 font-medium" 
-                              : "text-slate-600 hover:text-slate-900"
-                          )}
-                        >
-                          All
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStatusFilter("completed")}
-                          data-testid="filter-active"
-                          className={cn(
-                            "h-8 px-3 rounded-md transition-all",
-                            statusFilter === "completed" 
-                              ? "bg-white shadow-sm text-emerald-700 font-medium" 
-                              : "text-slate-600 hover:text-slate-900"
-                          )}
-                        >
-                          <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                          Active
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStatusFilter("processing")}
-                          data-testid="filter-processing"
-                          className={cn(
-                            "h-8 px-3 rounded-md transition-all",
-                            statusFilter === "processing" 
-                              ? "bg-white shadow-sm text-blue-700 font-medium" 
-                              : "text-slate-600 hover:text-slate-900"
-                          )}
-                        >
-                          <Loader2 className={cn("h-3.5 w-3.5 mr-1.5", statusFilter === "processing" && "animate-spin")} />
-                          Processing
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStatusFilter("failed")}
-                          data-testid="filter-failed"
-                          className={cn(
-                            "h-8 px-3 rounded-md transition-all",
-                            statusFilter === "failed" 
-                              ? "bg-white shadow-sm text-red-700 font-medium" 
-                              : "text-slate-600 hover:text-slate-900"
-                          )}
-                        >
-                          <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
-                          Failed
-                        </Button>
-                      </div>
-
-                      <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
-
-                      {/* Risk Level Filters */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-2 h-8 border-slate-200 hover:border-slate-300 hover:bg-slate-50">
-                            <Shield className="h-4 w-4 text-slate-500" />
-                            Risk
-                            {riskFilters.length > 0 && (
-                              <Badge className="bg-orange-100 text-orange-700 h-5 px-1.5 text-xs border-0">
-                                {riskFilters.length}
-                              </Badge>
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-48">
-                          {RISK_LEVELS.map((level) => (
-                            <DropdownMenuItem
-                              key={level.value}
-                              onClick={() => {
-                          setRiskFilters(prev => 
-                            prev.includes(level.value) 
-                              ? prev.filter(r => r !== level.value)
-                              : [...prev, level.value]
-                          );
-                        }}
-                      >
-                        <Checkbox
-                          checked={riskFilters.includes(level.value)}
-                          className="mr-2"
-                        />
-                        {level.label}
-                      </DropdownMenuItem>
-                    ))}
-                    {riskFilters.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setRiskFilters([])}>
-                          Clear risk filters
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Approval Status Filters - Hidden for now, will be enabled in future */}
-                {/* <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <ClipboardCheck className="h-4 w-4" />
-                      Approval
-                      {approvalFilters.length > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {approvalFilters.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {APPROVAL_STATUSES.map((status) => {
-                      const StatusIcon = status.icon;
-                      return (
-                        <DropdownMenuItem
-                          key={status.value}
-                          onClick={() => {
-                            setApprovalFilters(prev => 
-                              prev.includes(status.value) 
-                                ? prev.filter(a => a !== status.value)
-                                : [...prev, status.value]
-                            );
-                          }}
-                        >
-                          <Checkbox
-                            checked={approvalFilters.includes(status.value)}
-                            className="mr-2"
-                          />
-                          <StatusIcon className={`h-4 w-4 mr-2 ${status.color}`} />
-                          {status.label}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    {approvalFilters.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setApprovalFilters([])}>
-                          Clear approval filters
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu> */}
-
-                <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block" />
-
-                {/* Contract Type Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Tag className="h-4 w-4" />
-                      Type
-                      {typeFilters.length > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {typeFilters.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {CONTRACT_TYPES.map((type) => (
-                      <DropdownMenuItem
-                        key={type}
-                        onClick={() => {
-                          setTypeFilters(prev => 
-                            prev.includes(type) 
-                              ? prev.filter(t => t !== type)
-                              : [...prev, type]
-                          );
-                        }}
-                      >
-                        <Checkbox
-                          checked={typeFilters.includes(type)}
-                          className="mr-2"
-                        />
-                        {type}
-                      </DropdownMenuItem>
-                    ))}
-                    {typeFilters.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setTypeFilters([])}>
-                          Clear type filters
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Category Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Hash className="h-4 w-4" />
-                      Category
-                      {categoryFilter && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          1
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    <DropdownMenuItem
-                      onClick={() => setCategoryFilter(null)}
-                      className={!categoryFilter ? "bg-blue-50" : ""}
-                    >
-                      <div className={cn(
-                        "w-2 h-2 rounded-full mr-2",
-                        !categoryFilter ? "bg-blue-600" : "bg-slate-200"
-                      )} />
-                      All Categories
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => setCategoryFilter('uncategorized')}
-                      className={categoryFilter === 'uncategorized' ? "bg-amber-50" : ""}
-                    >
-                      <div className={cn(
-                        "w-2 h-2 rounded-full mr-2",
-                        categoryFilter === 'uncategorized' ? "bg-amber-600" : "bg-slate-200"
-                      )} />
-                      Uncategorized
-                      <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">
-                        {uncategorizedCount}
-                      </Badge>
-                    </DropdownMenuItem>
-                    {categories.length > 0 && <DropdownMenuSeparator />}
-                    {categories.map((cat) => (
-                      <DropdownMenuItem
-                        key={cat.id}
-                        onClick={() => setCategoryFilter(cat.id)}
-                        className={categoryFilter === cat.id ? "bg-blue-50" : ""}
-                      >
-                        <div 
-                          className="w-2 h-2 rounded-full mr-2"
-                          style={{ backgroundColor: categoryFilter === cat.id ? cat.color : '#e2e8f0' }}
-                        />
-                        <span className="truncate">{cat.name}</span>
-                        {cat.contractCount !== undefined && (
-                          <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">
-                            {cat.contractCount}
-                          </Badge>
-                        )}
-                      </DropdownMenuItem>
-                    ))}
-                    {categoryFilter && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setCategoryFilter(null)}>
-                          Clear category filter
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Value Range Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Banknote className="h-4 w-4" />
-                      Value
-                      {valueRangeFilter && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          1
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    {VALUE_RANGES.map((range) => (
-                      <DropdownMenuItem
-                        key={range.value}
-                        onClick={() => setValueRangeFilter(valueRangeFilter === range.value ? null : range.value)}
-                        className={valueRangeFilter === range.value ? "bg-blue-50" : ""}
-                      >
-                        <div className={cn(
-                          "w-2 h-2 rounded-full mr-2",
-                          valueRangeFilter === range.value ? "bg-blue-600" : "bg-slate-200"
-                        )} />
-                        {range.label}
-                      </DropdownMenuItem>
-                    ))}
-                    {valueRangeFilter && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setValueRangeFilter(null)}>
-                          Clear value filter
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Date Range Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <CalendarDays className="h-4 w-4" />
-                      Created
-                      {dateRangeFilter && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          1
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    {DATE_PRESETS.map((preset) => (
-                      <DropdownMenuItem
-                        key={preset.value}
-                        onClick={() => setDateRangeFilter(dateRangeFilter === preset.value ? null : preset.value)}
-                        className={dateRangeFilter === preset.value ? "bg-blue-50" : ""}
-                      >
-                        <div className={cn(
-                          "w-2 h-2 rounded-full mr-2",
-                          dateRangeFilter === preset.value ? "bg-blue-600" : "bg-slate-200"
-                        )} />
-                        {preset.label}
-                      </DropdownMenuItem>
-                    ))}
-                    {dateRangeFilter && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setDateRangeFilter(null)}>
-                          Clear date filter
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Expiration Filter */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <CalendarClock className="h-4 w-4" />
-                      Expiration
-                      {expirationFilters.length > 0 && (
-                        <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                          {expirationFilters.length}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-52">
-                    {EXPIRATION_FILTERS.map((exp) => {
-                      const ExpIcon = exp.icon;
-                      return (
-                        <DropdownMenuItem
-                          key={exp.value}
-                          onClick={() => {
-                            setExpirationFilters(prev => 
-                              prev.includes(exp.value) 
-                                ? prev.filter(e => e !== exp.value)
-                                : [...prev, exp.value]
-                            );
-                          }}
-                        >
-                          <Checkbox
-                            checked={expirationFilters.includes(exp.value)}
-                            className="mr-2"
-                          />
-                          <ExpIcon className={cn("h-4 w-4 mr-2", exp.color)} />
-                          {exp.label}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                    {expirationFilters.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setExpirationFilters([])}>
-                          Clear expiration filters
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Clear Filters */}
-                {hasActiveFilters && (
+        {/* Search & Filters */}
+        <Card className="bg-white border-slate-200 shadow-sm rounded-xl">
+          <CardContent className="p-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              {/* Main Search Input */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Input
+                  placeholder="Search contracts..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-20 h-9 border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-white text-sm rounded-lg"
+                  data-testid="contract-search"
+                />
+                {searchQuery ? (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={clearFilters}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100 rounded-md"
+                    onClick={() => setSearchQuery('')}
                   >
-                    <X className="h-4 w-4 mr-1" />
-                    Clear all
+                    <X className="h-3.5 w-3.5" />
                   </Button>
+                ) : (
+                  <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 border border-slate-200 rounded">
+                    ⌘K
+                  </kbd>
                 )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              </div>
+              
+              {/* AI Chat Search Button */}
+              <Button
+                onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
+                className="h-9 gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-lg px-4"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span className="hidden sm:inline">Ask AI</span>
+              </Button>
 
-              {/* Active Filter Chips */}
-              {hasActiveFilters && (
+              {/* Filter Toggle */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "inline-flex items-center gap-2 h-9 px-3 text-sm font-medium rounded-lg border transition-colors",
+                  showFilters 
+                    ? "bg-slate-100 border-slate-300 text-slate-900" 
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="bg-violet-600 text-white h-5 min-w-[20px] rounded text-xs flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Compact Inline Filters */}
+            <AnimatePresence>
+              {showFilters && (
                 <motion.div
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-wrap gap-1.5 pt-3 mt-3 border-t border-slate-100"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
                 >
-                  {activePreset && (
-                    <Badge className="bg-slate-800 text-white gap-1 pr-1">
-                      <Zap className="h-3 w-3 text-amber-400" />
-                      {QUICK_PRESETS.find(p => p.id === activePreset)?.label}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-slate-700 rounded-full"
-                        onClick={() => setActivePreset(null)}
-                      >
-                        <X className="h-3 w-3 text-white" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {statusFilter !== 'all' && (
-                    <Badge className="bg-blue-100 text-blue-800 gap-1 pr-1 border-0">
-                      <CheckCircle className="h-3 w-3" />
-                      Status: {statusFilter}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-blue-200 rounded-full"
-                        onClick={() => setStatusFilter('all')}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {searchQuery && (
-                    <Badge className="bg-purple-100 text-purple-800 gap-1 pr-1 border-0">
-                      <Search className="h-3 w-3" />
-                      &ldquo;{searchQuery}&rdquo;
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-purple-200 rounded-full"
-                        onClick={() => setSearchQuery("")}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {typeFilters.map(type => (
-                    <Badge key={type} className="bg-indigo-100 text-indigo-800 gap-1 pr-1 border-0">
-                      <Tag className="h-3 w-3" />
-                      {type}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-indigo-200 rounded-full"
-                        onClick={() => setTypeFilters(prev => prev.filter(t => t !== type))}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                  {riskFilters.map(risk => (
-                    <Badge key={risk} className="bg-orange-100 text-orange-800 gap-1 pr-1 border-0">
-                      <Shield className="h-3 w-3" />
-                      {RISK_LEVELS.find(l => l.value === risk)?.label}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-orange-200 rounded-full"
-                        onClick={() => setRiskFilters(prev => prev.filter(r => r !== risk))}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                  {/* Approval filter badges - Hidden for now, will be enabled in future */}
-                  {/* {approvalFilters.map(approval => (
-                    <Badge key={approval} className="bg-cyan-100 text-cyan-800 gap-1 pr-1 border-0">
-                      <ClipboardCheck className="h-3 w-3" />
-                      {APPROVAL_STATUSES.find(s => s.value === approval)?.label}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-cyan-200 rounded-full"
-                        onClick={() => setApprovalFilters(prev => prev.filter(a => a !== approval))}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))} */}
-                  {valueRangeFilter && (
-                    <Badge className="bg-emerald-100 text-emerald-800 gap-1 pr-1 border-0">
-                      <Banknote className="h-3 w-3" />
-                      {VALUE_RANGES.find(r => r.value === valueRangeFilter)?.label}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-emerald-200 rounded-full"
-                        onClick={() => setValueRangeFilter(null)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {dateRangeFilter && (
-                    <Badge className="bg-pink-100 text-pink-800 gap-1 pr-1 border-0">
-                      <CalendarDays className="h-3 w-3" />
-                      {DATE_PRESETS.find(p => p.value === dateRangeFilter)?.label}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-pink-200 rounded-full"
-                        onClick={() => setDateRangeFilter(null)}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {expirationFilters.map(exp => (
-                    <Badge key={exp} className="bg-orange-100 text-orange-800 gap-1 pr-1 border-0">
-                      <CalendarClock className="h-3 w-3" />
-                      {EXPIRATION_FILTERS.find(e => e.value === exp)?.label}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-orange-200 rounded-full"
-                        onClick={() => setExpirationFilters(prev => prev.filter(e => e !== exp))}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  ))}
-                  {advancedFilters.clientName && (
-                    <Badge className="bg-cyan-100 text-cyan-800 gap-1 pr-1 border-0">
-                      <Building2 className="h-3 w-3" />
-                      Client: {advancedFilters.clientName}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-cyan-200 rounded-full"
-                        onClick={() => setAdvancedFilters(prev => ({ ...prev, clientName: undefined }))}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
-                  )}
-                  {advancedFilters.supplierName && (
-                    <Badge className="bg-teal-100 text-teal-800 gap-1 pr-1 border-0">
-                      <Truck className="h-3 w-3" />
-                      Supplier: {advancedFilters.supplierName}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-4 w-4 p-0 ml-1 hover:bg-teal-200 rounded-full"
-                        onClick={() => setAdvancedFilters(prev => ({ ...prev, supplierName: undefined }))}
+                  <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
+                    {/* Status Pills */}
+                    <div className="flex items-center gap-1" data-testid="status-filters">
+                      <span className="text-xs text-slate-500 mr-1.5">Status:</span>
+                      {[
+                        { id: 'all', label: 'All', dot: 'bg-slate-400' },
+                        { id: 'completed', label: 'Active', dot: 'bg-emerald-500' },
+                        { id: 'processing', label: 'Processing', dot: 'bg-blue-500' },
+                        { id: 'failed', label: 'Failed', dot: 'bg-red-500' },
+                      ].map((status) => (
+                        <button
+                          key={status.id}
+                          onClick={() => setStatusFilter(status.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-all",
+                            statusFilter === status.id 
+                              ? "bg-slate-900 text-white font-medium" 
+                              : "text-slate-600 hover:bg-slate-100"
+                          )}
+                        >
+                          <span className={cn("w-1.5 h-1.5 rounded-full", status.dot)} />
+                          {status.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="h-4 w-px bg-slate-200" />
+
+                    {/* Filter Dropdowns */}
+                    <div className="flex items-center gap-1.5">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
+                            riskFilters.length > 0 
+                              ? "bg-orange-50 border-orange-200 text-orange-700" 
+                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          )}>
+                            <Shield className="h-3.5 w-3.5" />
+                            Risk
+                            {riskFilters.length > 0 && (
+                              <span className="bg-orange-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
+                                {riskFilters.length}
+                              </span>
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-40">
+                          {RISK_LEVELS.map((level) => (
+                            <DropdownMenuItem
+                              key={level.value}
+                              onClick={() => setRiskFilters(prev => 
+                                prev.includes(level.value) ? prev.filter(r => r !== level.value) : [...prev, level.value]
+                              )}
+                              className="text-sm"
+                            >
+                              <Checkbox checked={riskFilters.includes(level.value)} className="mr-2 h-3.5 w-3.5" />
+                              {level.label}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
+                            typeFilters.length > 0 
+                              ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
+                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          )}>
+                            <Tag className="h-3.5 w-3.5" />
+                            Type
+                            {typeFilters.length > 0 && (
+                              <span className="bg-indigo-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
+                                {typeFilters.length}
+                              </span>
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-48">
+                          {CONTRACT_TYPES.map((type) => (
+                            <DropdownMenuItem
+                              key={type}
+                              onClick={() => setTypeFilters(prev => 
+                                prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+                              )}
+                              className="text-sm"
+                            >
+                              <Checkbox checked={typeFilters.includes(type)} className="mr-2 h-3.5 w-3.5" />
+                              {type}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
+                            expirationFilters.length > 0 
+                              ? "bg-amber-50 border-amber-200 text-amber-700" 
+                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          )}>
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            Expires
+                            {expirationFilters.length > 0 && (
+                              <span className="bg-amber-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
+                                {expirationFilters.length}
+                              </span>
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-44">
+                          {EXPIRATION_FILTERS.map((exp) => {
+                            const ExpIcon = exp.icon;
+                            return (
+                              <DropdownMenuItem
+                                key={exp.value}
+                                onClick={() => setExpirationFilters(prev => 
+                                  prev.includes(exp.value) ? prev.filter(e => e !== exp.value) : [...prev, exp.value]
+                                )}
+                                className="text-sm"
+                              >
+                                <Checkbox checked={expirationFilters.includes(exp.value)} className="mr-2 h-3.5 w-3.5" />
+                                <ExpIcon className={cn("h-3.5 w-3.5 mr-1.5", exp.color)} />
+                                {exp.label}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Clear All */}
+                    {hasActiveFilters && (
+                      <button
+                        onClick={clearFilters}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                       >
                         <X className="h-3 w-3" />
-                      </Button>
-                    </Badge>
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Active Filter Summary */}
+                  {hasActiveFilters && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-slate-100"
+                    >
+                      <span className="text-xs text-slate-500">Active:</span>
+                      {searchQuery && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs">
+                          "{searchQuery}"
+                          <button onClick={() => setSearchQuery("")} className="hover:text-red-600"><X className="h-3 w-3" /></button>
+                        </span>
+                      )}
+                      {statusFilter !== 'all' && (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs capitalize">
+                          {statusFilter === 'completed' ? 'Active' : statusFilter}
+                          <button onClick={() => setStatusFilter('all')} className="hover:text-red-600"><X className="h-3 w-3" /></button>
+                        </span>
+                      )}
+                      {riskFilters.map(risk => (
+                        <span key={risk} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">
+                          {RISK_LEVELS.find(l => l.value === risk)?.label}
+                          <button onClick={() => setRiskFilters(prev => prev.filter(r => r !== risk))} className="hover:text-red-600"><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                      {typeFilters.map(type => (
+                        <span key={type} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">
+                          {type}
+                          <button onClick={() => setTypeFilters(prev => prev.filter(t => t !== type))} className="hover:text-red-600"><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                      {expirationFilters.map(exp => (
+                        <span key={exp} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+                          {EXPIRATION_FILTERS.find(e => e.value === exp)?.label}
+                          <button onClick={() => setExpirationFilters(prev => prev.filter(e => e !== exp))} className="hover:text-red-600"><X className="h-3 w-3" /></button>
+                        </span>
+                      ))}
+                    </motion.div>
                   )}
                 </motion.div>
               )}
-            </div>
+            </AnimatePresence>
           </CardContent>
         </Card>
 
-        {/* Inline Stats Summary (when filtered) */}
-        {hasActiveFilters && sortedContracts.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap items-center gap-4 sm:gap-5 px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg"
-          >
-            <div className="flex items-center gap-2">
-              <Hash className="h-4 w-4 text-slate-500" />
-              <span className="text-sm">
-                <span className="font-semibold text-slate-900">{sortedContracts.length}</span>
-                <span className="text-slate-500"> results</span>
+        {/* Processing Contracts Live Tracker */}
+        <AnimatePresence>
+          <ProcessingContractTracker 
+            contracts={contracts} 
+            onContractComplete={(id) => {
+              toast.success('Contract processing completed!', {
+                icon: <CheckCircle className="h-4 w-4 text-emerald-500" />,
+              });
+              refetch();
+            }}
+          />
+        </AnimatePresence>
+
+        {/* View Mode Toggle, Sort & Results Count */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600">
+              <span className="font-semibold text-slate-900 tabular-nums">
+                <AnimatedCounter value={contractsData?.total ?? 0} />
               </span>
-            </div>
-            <div className="h-4 w-px bg-slate-300 hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-slate-500" />
-              <span className="text-sm">
-                <span className="font-semibold text-slate-900">{formatCurrency(filteredStats.totalValue)}</span>
-                <span className="text-slate-500"> total</span>
-              </span>
-            </div>
-            <div className="h-4 w-px bg-slate-300 hidden sm:block" />
-            <div className="flex items-center gap-2">
-              <PieChart className="h-4 w-4 text-slate-500" />
-              <span className="text-sm">
-                <span className="font-semibold text-slate-900">{formatCurrency(filteredStats.avgValue)}</span>
-                <span className="text-slate-500"> avg</span>
-              </span>
-            </div>
-            {filteredStats.highRiskCount > 0 && (
-              <>
-                <div className="h-4 w-px bg-slate-300 hidden sm:block" />
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-red-500" />
-                  <span className="text-sm">
-                    <span className="font-semibold text-red-600">{filteredStats.highRiskCount}</span>
-                    <span className="text-slate-500"> high risk</span>
+              {' '}contracts
+              {hasActiveFilters && (
+                <span className="text-slate-400 ml-1">(filtered)</span>
+              )}
+            </span>
+            
+            {/* Live Update Indicator */}
+            <LiveIndicator
+              isLive={isLiveUpdatesEnabled}
+              lastUpdated={lastUpdated}
+              onToggle={() => setIsLiveUpdatesEnabled(prev => !prev)}
+              isRefetching={isRefetching && !loading}
+            />
+          </div>
+
+          {/* Right side controls */}
+          <div className="flex items-center gap-2">
+            {/* Sort */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
+                  {sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 text-slate-500" /> : <ArrowDown className="h-3.5 w-3.5 text-slate-500" />}
+                  <span className="text-slate-600">
+                    {{
+                      createdAt: 'Date',
+                      title: 'Name',
+                      value: 'Value',
+                      expirationDate: 'Expires',
+                    }[sortField as string] || 'Sort'}
                   </span>
-                </div>
-              </>
-            )}
-            {filteredStats.expiringCount > 0 && (
-              <>
-                <div className="h-4 w-px bg-slate-300 hidden sm:block" />
-                <div className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-amber-500" />
-                  <span className="text-sm">
-                    <span className="font-semibold text-amber-600">{filteredStats.expiringCount}</span>
-                    <span className="text-slate-500"> expiring soon</span>
-                  </span>
-                </div>
-              </>
-            )}
-          </motion.div>
-        )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {[
+                  { field: 'createdAt' as SortField, label: 'Date Created' },
+                  { field: 'title' as SortField, label: 'Name' },
+                  { field: 'value' as SortField, label: 'Value' },
+                  { field: 'expirationDate' as SortField, label: 'Expiration' },
+                ].map((option) => (
+                  <DropdownMenuItem
+                    key={option.field}
+                    onClick={() => {
+                      if (sortField === option.field) {
+                        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortField(option.field);
+                        setSortDirection('desc');
+                      }
+                    }}
+                    className={cn("text-sm", sortField === option.field && "bg-slate-100")}
+                  >
+                    {sortField === option.field && (
+                      sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 mr-2 text-blue-600" /> : <ArrowDown className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                    )}
+                    {option.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* View Mode */}
+            <div className="flex items-center border border-slate-200 rounded-md overflow-hidden">
+              {[
+                { mode: 'compact' as const, icon: LayoutList, label: 'List' },
+                { mode: 'cards' as const, icon: LayoutGrid, label: 'Cards' },
+              ].map((view, idx) => (
+                <Tooltip key={view.mode}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setViewMode(view.mode)}
+                      className={cn(
+                        "h-8 w-8 flex items-center justify-center transition-colors",
+                        idx > 0 && "border-l border-slate-200",
+                        viewMode === view.mode 
+                          ? "bg-slate-900 text-white" 
+                          : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                      )}
+                    >
+                      <view.icon className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{view.label} view</TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+
+            {/* Export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors text-slate-600">
+                  <Download className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Export</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={() => handleExportFiltered('csv')} className="text-sm">
+                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportFiltered('json')} className="text-sm">
+                  <FileDown className="h-4 w-4 mr-2 text-blue-600" /> JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
 
         {/* Uncategorized Contracts Banner */}
         {uncategorizedCount > 0 && uncategorizedCount <= 20 && !categoryFilter && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg"
+            className="flex items-center justify-between gap-4 px-4 py-2.5 bg-amber-50/80 border border-amber-200/60 rounded-lg"
           >
-            <div className="flex items-center gap-3">
-              <Tag className="h-4 w-4 text-amber-600" />
-              <div>
-                <p className="text-sm font-medium text-amber-900">
-                  {uncategorizedCount} contract{uncategorizedCount !== 1 ? 's' : ''} need{uncategorizedCount === 1 ? 's' : ''} categorization
-                </p>
-                <p className="text-xs text-amber-600">
-                  AI can automatically categorize them based on content
-                </p>
-              </div>
+            <div className="flex items-center gap-2.5">
+              <Tag className="h-4 w-4 text-amber-500" />
+              <span className="text-sm text-amber-800">
+                <span className="font-medium">{uncategorizedCount}</span> contract{uncategorizedCount !== 1 ? 's' : ''} need categorization
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setCategoryFilter('uncategorized')}
-                className="border-amber-300 text-amber-700 hover:bg-amber-100 h-8"
+                className="text-amber-700 hover:text-amber-800 hover:bg-amber-100/60 h-7 text-xs"
               >
                 View All
               </Button>
@@ -3117,14 +2565,14 @@ export default function ContractsPage() {
                   }
                 }}
                 disabled={isBulkCategorizing}
-                className="bg-amber-600 hover:bg-amber-700 text-white h-8"
+                className="bg-amber-500 hover:bg-amber-600 text-white h-7 text-xs gap-1.5"
               >
                 {isBulkCategorizing ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  <Sparkles className="h-3.5 w-3.5" />
                 )}
-                Select & Categorize
+                Categorize
               </Button>
             </div>
           </motion.div>
@@ -3142,234 +2590,6 @@ export default function ContractsPage() {
             }}
           />
         </AnimatePresence>
-
-        {/* View Mode Toggle, Sort, Export & Results Count */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <span className="font-medium text-slate-900">
-                <AnimatedCounter value={contractsData?.total ?? 0} />
-              </span>
-              contract{(contractsData?.total ?? 0) !== 1 ? 's' : ''}
-              {hasActiveFilters && (
-                <Badge variant="secondary" className="text-xs">filtered</Badge>
-              )}
-              {newContractsCount > 0 && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="flex items-center gap-1"
-                >
-                  <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs animate-pulse">
-                    +{newContractsCount} new
-                  </Badge>
-                </motion.div>
-              )}
-            </div>
-            
-            {/* Live Update Indicator */}
-            <LiveIndicator
-              isLive={isLiveUpdatesEnabled}
-              lastUpdated={lastUpdated}
-              onToggle={() => setIsLiveUpdatesEnabled(prev => !prev)}
-              isRefetching={isRefetching && !loading}
-            />
-            
-            {/* Save Filter */}
-            {hasActiveFilters && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="gap-1.5 text-slate-600 hover:text-blue-600 h-8"
-                  >
-                    <Bookmark className="h-3.5 w-3.5" />
-                    <span className="text-sm">Save</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <div className="p-2">
-                    <Input
-                      placeholder="Filter name..."
-                      value={filterName}
-                      onChange={(e) => setFilterName(e.target.value)}
-                      className="h-8 text-sm"
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveFilter()}
-                    />
-                  </div>
-                  <DropdownMenuItem 
-                    onClick={handleSaveFilter} 
-                    disabled={!filterName.trim()}
-                  >
-                    <BookmarkCheck className="h-4 w-4 mr-2 text-blue-600" />
-                    Save current filter
-                  </DropdownMenuItem>
-                  {savedFilters.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <div className="px-2 py-1 text-xs font-medium text-slate-500">Saved Filters</div>
-                      {savedFilters.map(filter => (
-                        <DropdownMenuItem key={filter.id} onClick={() => handleLoadFilter(filter)}>
-                          <ListFilter className="h-4 w-4 mr-2" />
-                          {filter.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Export Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-1.5 h-8"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleExportFiltered('csv')}>
-                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
-                  Export as CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExportFiltered('json')}>
-                  <FileText className="h-4 w-4 mr-2 text-blue-600" />
-                  Export as JSON
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            {/* Sort Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="gap-1.5 h-8"
-                >
-                  {sortDirection === 'asc' ? (
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  )}
-                  {SORT_OPTIONS.find(o => o.value === sortField)?.label || 'Sort'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                {SORT_OPTIONS.map((option) => (
-                  <DropdownMenuItem
-                    key={option.value}
-                    onClick={() => {
-                      if (sortField === option.value) {
-                        setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField(option.value);
-                        setSortDirection('desc');
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center justify-between",
-                      sortField === option.value && "bg-blue-50"
-                    )}
-                  >
-                    <span>{option.label}</span>
-                    {sortField === option.value && (
-                      sortDirection === 'asc' ? (
-                        <ArrowUp className="h-3.5 w-3.5 text-blue-600" />
-                      ) : (
-                        <ArrowDown className="h-3.5 w-3.5 text-blue-600" />
-                      )
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
-            {/* View Toggle */}
-            <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 rounded-md border border-slate-200">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setViewMode('compact')}
-                    className={cn(
-                      "h-7 w-7 p-0 rounded",
-                      viewMode === 'compact' 
-                        ? "bg-white shadow-sm text-blue-600" 
-                        : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    <LayoutList className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>List View</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setViewMode('cards')}
-                    className={cn(
-                      "h-7 w-7 p-0 rounded",
-                      viewMode === 'cards' 
-                        ? "bg-white shadow-sm text-blue-600" 
-                        : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Card View</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setViewMode('timeline')}
-                    className={cn(
-                      "h-7 w-7 p-0 rounded",
-                      viewMode === 'timeline' 
-                        ? "bg-white shadow-sm text-emerald-600" 
-                        : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    <GanttChartSquare className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Timeline View</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setViewMode('kanban')}
-                    className={cn(
-                      "h-7 w-7 p-0 rounded",
-                      viewMode === 'kanban' 
-                        ? "bg-white shadow-sm text-violet-600" 
-                        : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    <Kanban className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Kanban View</TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-        </div>
 
         {/* Contracts List */}
         <AnimatePresence mode="wait">
@@ -3413,10 +2633,10 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Card className="overflow-hidden bg-white border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
-                {/* Table Header - Enhanced with gradient background */}
-                <div className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 bg-gradient-to-r from-slate-50 to-slate-100/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
-                  <div className="flex items-center">
+              <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl">
+                {/* Table Header */}
+                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wide sticky top-16 lg:top-0 z-10">
+                  <div className="flex items-center justify-center">
                     <Checkbox
                       checked={allVisibleSelected && paginatedContracts.length > 0}
                       onCheckedChange={() => {
@@ -3427,16 +2647,16 @@ export default function ContractsPage() {
                         });
                       }}
                       aria-label="Select all on this page"
-                      className="border-slate-300"
+                      className="border-slate-300 h-4 w-4"
                     />
                   </div>
-                  <div className="text-slate-600">Contract</div>
+                  <div>Contract</div>
                   <div className="hidden lg:block">Category</div>
                   <div className="hidden lg:block">Type</div>
                   <div className="hidden md:block">Party</div>
-                  <div className="hidden lg:block">Value</div>
+                  <div className="hidden lg:block text-right">Value</div>
                   <div className="hidden md:block">Expires</div>
-                  <div className="text-slate-600">Status</div>
+                  <div>Status</div>
                   <div></div>
                 </div>
                 
