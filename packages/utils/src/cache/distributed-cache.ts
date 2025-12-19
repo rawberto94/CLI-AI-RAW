@@ -26,7 +26,7 @@ export interface CacheEntry<T> {
 
 class DistributedCache {
   private static instance: DistributedCache;
-  private redis: Redis | null = null;
+  private redis: InstanceType<typeof Redis> | null = null;
   private config: CacheConfig;
   private isConnected = false;
 
@@ -58,7 +58,7 @@ class DistributedCache {
     try {
       this.redis = new Redis(this.config.redisUrl!, {
         maxRetriesPerRequest: this.config.maxRetries,
-        retryStrategy: (times) => Math.min(times * 100, 3000),
+        retryStrategy: (times: number) => Math.min(times * 100, 3000),
         lazyConnect: true,
       });
 

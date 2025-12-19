@@ -2,7 +2,7 @@
 // because other modules read DATABASE_URL at module load time
 import './env';
 
-import { getQueueService } from '../../utils/src/queue/queue-service';
+import { getQueueService } from 'utils/queue/queue-service';
 import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';

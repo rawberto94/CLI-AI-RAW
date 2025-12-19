@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Get existing settings
-    let settings = await prisma.tenantSettings.findFirst({
+    const settings = await prisma.tenantSettings.findFirst({
       where: { tenantId },
     });
 

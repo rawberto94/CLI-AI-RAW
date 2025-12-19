@@ -332,9 +332,11 @@ export function EnhancedArtifactViewer({
 
   // Check if a tab is not applicable for this contract type
   const isTabNotApplicable = (tabId: string): boolean => {
-    const artifact = artifacts[tabId] || artifacts[tabId + 'Analysis'] || artifacts[tabId + 'Assessment'];
+    const artifact = (artifacts as Record<string, unknown>)[tabId] || 
+                     (artifacts as Record<string, unknown>)[tabId + 'Analysis'] || 
+                     (artifacts as Record<string, unknown>)[tabId + 'Assessment'];
     if (artifact && typeof artifact === 'object') {
-      const meta = (artifact as any)._extractionMeta;
+      const meta = (artifact as { _extractionMeta?: { isApplicable?: boolean; notApplicable?: boolean } })._extractionMeta;
       return meta?.isApplicable === false || meta?.notApplicable === true;
     }
     return false;
@@ -463,8 +465,8 @@ export function EnhancedArtifactViewer({
   }, [searchQuery, normalizedData]);
 
   // Get current tab config
-  const currentTab = sortedTabs.find(t => t.id === activeTab) || sortedTabs[0];
-  const TabIcon = currentTab.icon;
+  const currentTab = sortedTabs.find(t => t.id === activeTab) ?? sortedTabs[0];
+  const TabIcon = currentTab?.icon;
 
   // Navigate tabs using sorted order
   const goToNextTab = () => {
@@ -972,66 +974,62 @@ export function EnhancedArtifactViewer({
     if (isTabNotApplicable(activeTab)) {
       const contractTypeName = detectedContractType.replace(/_/g, ' ').toLowerCase();
       const contractTypeDisplay = contractTypeName.charAt(0).toUpperCase() + contractTypeName.slice(1);
+      const tabInfo = TABS.find(t => t.id === activeTab);
+      const TabIconComponent = tabInfo?.icon ?? TabIcon ?? FileText;
       
       return (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mb-4">
-            <Ban className="h-8 w-8 text-amber-500" />
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center mb-4">
+            <TabIconComponent className="h-6 w-6 text-amber-400" />
           </div>
-          <h3 className="text-lg font-medium text-slate-900">Not Applicable</h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm">
-            This artifact type is not typically relevant for <span className="font-medium text-amber-600">{contractTypeDisplay}</span> contracts.
-          </p>
-          <p className="text-xs text-slate-400 mt-3 max-w-sm">
-            The AI determined this section doesn&apos;t apply based on the contract structure and type.
+          <h3 className="text-base font-medium text-slate-700">Not Applicable</h3>
+          <p className="text-sm text-slate-400 mt-1.5 max-w-xs">
+            {tabInfo?.label} isn&apos;t typically relevant for <span className="font-medium text-amber-600">{contractTypeDisplay}</span> contracts.
           </p>
         </div>
       );
     }
     
     if (!data) {
+      const tabInfo = TABS.find(t => t.id === activeTab);
+      const TabIconComponent = tabInfo?.icon ?? TabIcon ?? FileText;
       return (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-            <TabIcon className="h-8 w-8 text-slate-400" />
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
+            <TabIconComponent className="h-6 w-6 text-slate-300" />
           </div>
-          <h3 className="text-lg font-medium text-slate-900">No Data Available</h3>
-          <p className="text-sm text-slate-500 mt-1 max-w-sm">
-            This artifact has not been generated yet or no data was extracted.
+          <h3 className="text-base font-medium text-slate-700">No {tabInfo?.label || 'Data'} Found</h3>
+          <p className="text-sm text-slate-400 mt-1.5 max-w-xs">
+            The AI couldn&apos;t extract this information from the contract.
           </p>
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', { 
+              detail: { 
+                autoMessage: `Please analyze the ${tabInfo?.label || activeTab} section of this contract and extract relevant information.`,
+                section: activeTab,
+                contractId: contractId
+              } 
+            }))}
+            className="mt-4 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Ask AI to analyze this section
+          </button>
         </div>
       );
     }
 
-    // Artifact confidence header
+    // Artifact confidence header - simplified inline badge
     const ConfidenceHeader = artifactConfidence ? (
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-indigo-500" />
-          <span className="text-sm font-medium text-slate-700">AI Extracted Data</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Confidence:</span>
-          <div className="flex items-center gap-1.5">
-            <div className="h-1.5 w-16 bg-slate-200 rounded-full overflow-hidden">
-              <div 
-                className={cn(
-                  "h-full rounded-full",
-                  artifactConfidence >= 80 ? "bg-emerald-500" :
-                  artifactConfidence >= 60 ? "bg-amber-500" : "bg-red-500"
-                )}
-                style={{ width: `${Math.min(100, artifactConfidence * 100)}%` }}
-              />
-            </div>
-            <span className={cn(
-              "text-xs font-medium",
-              artifactConfidence >= 80 ? "text-emerald-600" :
-              artifactConfidence >= 60 ? "text-amber-600" : "text-red-600"
-            )}>
-              {Math.round(artifactConfidence * 100)}%
-            </span>
-          </div>
-        </div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className={cn(
+          "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
+          artifactConfidence >= 80 ? "bg-emerald-50 text-emerald-700" :
+          artifactConfidence >= 60 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"
+        )}>
+          <Sparkles className="h-3 w-3" />
+          {Math.round(artifactConfidence * 100)}% confidence
+        </span>
       </div>
     ) : null;
 
@@ -1201,7 +1199,8 @@ export function EnhancedArtifactViewer({
             watchFor: ['Hidden costs', 'Automatic renewals']
           }
         };
-        const financialContext = FINANCIAL_CONTEXT_BY_TYPE[detectedContractType] || FINANCIAL_CONTEXT_BY_TYPE['OTHER'];
+        const defaultFinancial = { keyFields: [] as string[], benchmarks: [] as string[], watchFor: [] as string[] };
+        const financialContext = FINANCIAL_CONTEXT_BY_TYPE[detectedContractType] ?? FINANCIAL_CONTEXT_BY_TYPE['OTHER'] ?? defaultFinancial;
         
         // Normalize penalties array to proper format
         const normalizedPenalties = (data.penalties || []).map((p: any, i: number) => 
@@ -1416,7 +1415,8 @@ export function EnhancedArtifactViewer({
             complianceTips: 'Identify applicable regulations and ensure contract addresses them'
           }
         };
-        const complianceContext = COMPLIANCE_CONTEXT_BY_TYPE[detectedContractType] || COMPLIANCE_CONTEXT_BY_TYPE['OTHER'];
+        const defaultCompliance = { keyRegulations: [] as string[], commonIssues: [] as string[], complianceTips: '' };
+        const complianceContext = COMPLIANCE_CONTEXT_BY_TYPE[detectedContractType] ?? COMPLIANCE_CONTEXT_BY_TYPE['OTHER'] ?? defaultCompliance;
         
         const issues = data.issues || data.requirements || data.checks || [];
         return (
@@ -1544,7 +1544,8 @@ export function EnhancedArtifactViewer({
             trackingTips: 'Create comprehensive obligation register with owners and due dates'
           }
         };
-        const obligationContext = OBLIGATION_CONTEXT_BY_TYPE[detectedContractType] || OBLIGATION_CONTEXT_BY_TYPE['OTHER'];
+        const defaultObligation = { typicalObligations: [] as string[], criticalDeadlines: [] as string[], trackingTips: '' };
+        const obligationContext = OBLIGATION_CONTEXT_BY_TYPE[detectedContractType] ?? OBLIGATION_CONTEXT_BY_TYPE['OTHER'] ?? defaultObligation;
         
         // Map obligations from worker output to UI expected format
         const mappedObligations = (data.obligations || []).map((o: any, i: number) => ({
@@ -1694,7 +1695,8 @@ export function EnhancedArtifactViewer({
             renewalTips: 'Set calendar reminders 90 days before any key date; review terms thoroughly'
           }
         };
-        const renewalContext = RENEWAL_CONTEXT_BY_TYPE[detectedContractType] || RENEWAL_CONTEXT_BY_TYPE['OTHER'];
+        const defaultRenewal = { typicalTerms: [] as string[], watchDates: [] as string[], renewalTips: '' };
+        const renewalContext = RENEWAL_CONTEXT_BY_TYPE[detectedContractType] ?? RENEWAL_CONTEXT_BY_TYPE['OTHER'] ?? defaultRenewal;
         
         // Map renewal data from worker output to UI expected format
         const renewalTermsObj = data.renewalTerms ? {
@@ -1839,7 +1841,8 @@ export function EnhancedArtifactViewer({
             negotiationTips: 'Understand counterparty priorities; always have alternatives ready'
           }
         };
-        const negotiationContext = NEGOTIATION_CONTEXT_BY_TYPE[detectedContractType] || NEGOTIATION_CONTEXT_BY_TYPE['OTHER'];
+        const defaultNegotiation = { keyLeverageAreas: [] as string[], commonConcessions: [] as string[], negotiationTips: '' };
+        const negotiationContext = NEGOTIATION_CONTEXT_BY_TYPE[detectedContractType] ?? NEGOTIATION_CONTEXT_BY_TYPE['OTHER'] ?? defaultNegotiation;
         
         // Map negotiation data from worker output to UI expected format
         const mappedLeveragePoints = (data.leveragePoints || data.strongPoints || []).map((p: any, i: number) => ({
@@ -2087,43 +2090,43 @@ export function EnhancedArtifactViewer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
             onClick={() => setShowSummary(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
+              initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-xl"
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white rounded-lg p-4 max-w-md w-full shadow-xl"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <LayoutList className="h-5 w-5 text-indigo-600" />
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
+                  <LayoutList className="h-4 w-4 text-indigo-600" />
                   Executive Summary
                 </h3>
-                <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-slate-600">
-                  <X className="h-5 w-5" />
+                <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 max-h-64 overflow-auto">
                 {executiveSummary.map((line, i) => (
-                  <p key={i} className="text-sm text-slate-700 leading-relaxed">
+                  <p key={i} className="text-xs text-slate-600 leading-relaxed">
                     {line}
                   </p>
                 ))}
                 {executiveSummary.length === 0 && (
-                  <p className="text-sm text-slate-500 italic">No summary data available yet.</p>
+                  <p className="text-xs text-slate-400 italic">No summary available.</p>
                 )}
               </div>
-              <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowSummary(false)}>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button onClick={() => setShowSummary(false)} className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded">
                   Close
-                </Button>
-                <Button size="sm" onClick={handleExportJSON}>
-                  <FileDown className="h-4 w-4 mr-1" />
+                </button>
+                <button onClick={handleExportJSON} className="px-3 py-1.5 text-xs bg-slate-900 text-white rounded hover:bg-slate-800 flex items-center gap-1">
+                  <FileDown className="h-3 w-3" />
                   Export
-                </Button>
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -2137,55 +2140,49 @@ export function EnhancedArtifactViewer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
             onClick={() => setShowTimeline(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
+              initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-xl max-h-[80vh] overflow-auto"
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white rounded-lg p-4 max-w-sm w-full shadow-xl max-h-[70vh] overflow-auto"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-teal-600" />
-                  Contract Timeline
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
+                  <CalendarDays className="h-4 w-4 text-teal-600" />
+                  Timeline
                 </h3>
-                <button onClick={() => setShowTimeline(false)} className="text-slate-400 hover:text-slate-600">
-                  <X className="h-5 w-5" />
+                <button onClick={() => setShowTimeline(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               {allDates.length > 0 ? (
-                <div className="relative pl-6 space-y-4">
-                  <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-slate-200" />
+                <div className="relative pl-5 space-y-3">
+                  <div className="absolute left-1.5 top-1 bottom-1 w-px bg-slate-200" />
                   {allDates.map((item, i) => (
                     <div key={i} className="relative">
                       <div className={cn(
-                        "absolute -left-4 w-4 h-4 rounded-full border-2 bg-white",
+                        "absolute -left-3.5 w-3 h-3 rounded-full border-2 bg-white",
                         item.type === 'start' ? "border-emerald-500" :
                         item.type === 'end' ? "border-red-500" :
                         item.type === 'deadline' ? "border-amber-500" :
                         "border-blue-500"
                       )} />
-                      <div className="ml-2">
-                        <div className="text-sm font-medium text-slate-900">{item.label}</div>
-                        <div className="text-xs text-slate-500">
-                          {new Date(item.date).toLocaleDateString('en-US', { 
-                            weekday: 'short', 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
+                      <div>
+                        <div className="text-xs font-medium text-slate-700">{item.label}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
-                        <Badge variant="secondary" className="text-xs mt-1">{item.source}</Badge>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500 italic text-center py-8">
-                  No dates found in this contract.
+                <p className="text-xs text-slate-400 italic text-center py-6">
+                  No dates found.
                 </p>
               )}
             </motion.div>
@@ -2200,81 +2197,67 @@ export function EnhancedArtifactViewer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
             onClick={() => setShowActionItems(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
+              initial={{ scale: 0.95, y: 10 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 shadow-xl max-h-[80vh] overflow-auto"
+              exit={{ scale: 0.95, y: 10 }}
+              className="bg-white rounded-lg p-4 max-w-md w-full shadow-xl max-h-[70vh] overflow-auto"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Target className="h-5 w-5 text-indigo-600" />
-                  Contract Action Items
-                  <Badge variant="secondary">{actionItems.length}</Badge>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
+                  <Target className="h-4 w-4 text-indigo-600" />
+                  Action Items
+                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">{actionItems.length}</span>
                 </h3>
-                <button onClick={() => setShowActionItems(false)} className="text-slate-400 hover:text-slate-600">
-                  <X className="h-5 w-5" />
+                <button onClick={() => setShowActionItems(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="h-4 w-4" />
                 </button>
               </div>
               {actionItems.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {actionItems.map((item) => (
                     <div 
                       key={item.id} 
                       className={cn(
-                        "p-3 rounded-lg border flex items-start gap-3",
-                        item.priority === 'urgent' && "bg-rose-50 border-rose-200",
-                        item.priority === 'high' && "bg-amber-50 border-amber-200",
-                        item.priority === 'medium' && "bg-blue-50 border-blue-200",
-                        item.priority === 'low' && "bg-slate-50 border-slate-200"
+                        "px-2.5 py-2 rounded border flex items-center gap-2",
+                        item.priority === 'urgent' && "bg-rose-50/50 border-rose-100",
+                        item.priority === 'high' && "bg-amber-50/50 border-amber-100",
+                        item.priority === 'medium' && "bg-blue-50/50 border-blue-100",
+                        item.priority === 'low' && "bg-slate-50 border-slate-100"
                       )}
                     >
-                      <div className={cn(
-                        "px-2 py-0.5 rounded text-xs font-medium uppercase shrink-0",
-                        item.priority === 'urgent' && "bg-rose-500 text-white",
-                        item.priority === 'high' && "bg-amber-500 text-white",
-                        item.priority === 'medium' && "bg-blue-500 text-white",
-                        item.priority === 'low' && "bg-slate-400 text-white"
-                      )}>
-                        {item.priority}
-                      </div>
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full shrink-0",
+                        item.priority === 'urgent' && "bg-rose-500",
+                        item.priority === 'high' && "bg-amber-500",
+                        item.priority === 'medium' && "bg-blue-500",
+                        item.priority === 'low' && "bg-slate-400"
+                      )} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900">{item.action}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-                          <Badge variant="outline" className="text-xs">{item.category}</Badge>
-                          {item.deadline && (
-                            <span className="flex items-center gap-1">
-                              <CalendarDays className="h-3 w-3" />
-                              {new Date(item.deadline).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
+                        <p className="text-xs font-medium text-slate-700 truncate">{item.action}</p>
+                        <p className="text-[10px] text-slate-400">{item.category}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0"
+                      <button
+                        className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium shrink-0"
                         onClick={() => {
                           setActiveTab(item.source as TabId);
                           setShowActionItems(false);
                         }}
                       >
                         View
-                      </Button>
+                      </button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <Check className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-                  <p className="text-lg font-medium text-slate-900">No action items!</p>
-                  <p className="text-sm text-slate-500 mt-1">
-                    This contract has no urgent issues requiring immediate attention.
-                  </p>
+                <div className="text-center py-6">
+                  <Check className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-slate-700">All clear!</p>
+                  <p className="text-xs text-slate-400 mt-0.5">No action items found.</p>
                 </div>
               )}
             </motion.div>
@@ -2287,98 +2270,62 @@ export function EnhancedArtifactViewer({
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200"
+          className="mb-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-100 flex items-center gap-2"
         >
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-amber-100">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-amber-900">Human Review Recommended</h4>
-              <p className="text-sm text-amber-700 mt-1">
-                AI confidence is {confidenceInfo.avgConfidence}% for this contract. Some extracted values may need verification.
-                Please review highlighted sections before using this data for critical decisions.
-              </p>
-            </div>
-            <Badge className="bg-amber-100 text-amber-800 border-amber-300 shrink-0">
-              {confidenceInfo.avgConfidence}% Confidence
-            </Badge>
-          </div>
+          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700 flex-1">
+            <span className="font-medium">Review recommended</span> — AI confidence is {confidenceInfo.avgConfidence}%
+          </p>
+          <span className="text-[10px] font-medium text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
+            {confidenceInfo.avgConfidence}%
+          </span>
         </motion.div>
       )}
 
-      {/* Confidence Indicator - Shows when confidence is good */}
-      {confidenceInfo.avgConfidence !== null && !confidenceInfo.needsHumanReview && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-emerald-700">
-          <Check className="h-4 w-4" />
-          <span>AI Confidence: {confidenceInfo.avgConfidence}%</span>
-          <div className="h-1.5 w-16 bg-emerald-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-emerald-500 rounded-full" 
-              style={{ width: `${confidenceInfo.avgConfidence}%` }} 
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Contract Type Badge with Key Focus Areas */}
+      {/* Contract Type Badge */}
       {detectedContractType && detectedContractType !== 'OTHER' && (
-        <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-white text-indigo-700 border-indigo-200">
-                <FileText className="h-3 w-3 mr-1" />
-                {detectedContractType.replace(/_/g, ' ')} Contract
-              </Badge>
-              <span className="text-xs text-slate-500">
-                Typical duration: {contractInsights.typicalDuration}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs text-slate-500 mr-1">Key focus:</span>
-              {contractInsights.keyFocus.slice(0, 3).map((focus, i) => (
-                <Badge key={i} variant="secondary" className="text-xs bg-white/80 text-slate-600">
-                  {focus}
-                </Badge>
-              ))}
-            </div>
-          </div>
+        <div className="mb-3 flex items-center gap-1.5 flex-wrap">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-xs font-medium">
+            <FileText className="h-3 w-3" />
+            {detectedContractType.replace(/_/g, ' ')}
+          </span>
+          {contractInsights.keyFocus.slice(0, 3).map((focus, i) => (
+            <span key={i} className="text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded">
+              {focus}
+            </span>
+          ))}
         </div>
       )}
 
       {/* Smart Suggestions Panel */}
       {smartSuggestions.length > 0 && (
-        <div className="mb-4">
+        <div className="mb-3">
           <details className="group">
-            <summary className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 hover:text-slate-900">
-              <Lightbulb className="h-4 w-4 text-amber-500" />
-              <span>{smartSuggestions.length} Smart Suggestion{smartSuggestions.length > 1 ? 's' : ''}</span>
-              <ChevronDown className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" />
+            <summary className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-700">
+              <Lightbulb className="h-3 w-3 text-amber-500" />
+              <span>{smartSuggestions.length} AI Suggestion{smartSuggestions.length > 1 ? 's' : ''}</span>
+              <ChevronDown className="h-3 w-3 text-slate-400 group-open:rotate-180 transition-transform" />
             </summary>
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-1">
               {smartSuggestions.map((suggestion, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "p-3 rounded-lg border text-sm",
+                    "px-2.5 py-1.5 rounded border text-xs flex items-center gap-2",
                     suggestion.priority === 'high' 
-                      ? "bg-red-50 border-red-200 text-red-800"
+                      ? "bg-red-50/50 border-red-100 text-red-700"
                       : suggestion.priority === 'medium'
-                      ? "bg-amber-50 border-amber-200 text-amber-800"
-                      : "bg-blue-50 border-blue-200 text-blue-800"
+                      ? "bg-amber-50/50 border-amber-100 text-amber-700"
+                      : "bg-blue-50/50 border-blue-100 text-blue-700"
                   )}
                 >
-                  <div className="flex items-start gap-2">
-                    <Target className={cn(
-                      "h-4 w-4 mt-0.5 shrink-0",
-                      suggestion.priority === 'high' ? "text-red-500" : 
-                      suggestion.priority === 'medium' ? "text-amber-500" : "text-blue-500"
-                    )} />
-                    <div>
-                      <span className="font-medium">{suggestion.category}:</span>{' '}
-                      <span>{suggestion.suggestion}</span>
-                    </div>
-                  </div>
+                  <span className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    suggestion.priority === 'high' ? "bg-red-500" : 
+                    suggestion.priority === 'medium' ? "bg-amber-500" : "bg-blue-500"
+                  )} />
+                  <span className="font-medium">{suggestion.category}:</span>
+                  <span className="text-slate-600">{suggestion.suggestion}</span>
                 </div>
               ))}
             </div>
@@ -2386,340 +2333,249 @@ export function EnhancedArtifactViewer({
         </div>
       )}
 
-      {/* Quick Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* Quick Stats Bar - Compact horizontal layout */}
+      <div className="flex flex-wrap gap-2 mb-3">
         {stats.totalValue && (
-          <MetricCard
-            title="Contract Value"
-            value={`$${(stats.totalValue / 1000).toFixed(0)}K`}
-            icon={DollarSign}
-            color="green"
-          />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-100 rounded-md">
+            <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+            <span className="text-xs font-semibold text-emerald-700">${(stats.totalValue / 1000).toFixed(0)}K</span>
+          </div>
         )}
         
         {stats.clauseCount > 0 && (
-          <MetricCard
-            title="Key Clauses"
-            value={stats.clauseCount}
-            subtitle="Extracted"
-            icon={FileCheck}
-            color="blue"
-          />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-100 rounded-md">
+            <FileCheck className="h-3.5 w-3.5 text-blue-600" />
+            <span className="text-xs font-semibold text-blue-700">{stats.clauseCount} clauses</span>
+          </div>
         )}
         
         {stats.riskScore !== null && (
-          <MetricCard
-            title="Risk Score"
-            value={`${stats.riskScore}/100`}
-            subtitle={stats.riskScore < 30 ? 'Low Risk' : stats.riskScore < 60 ? 'Medium' : 'High Risk'}
-            icon={AlertTriangle}
-            color={stats.riskScore < 30 ? 'green' : stats.riskScore < 60 ? 'amber' : 'rose'}
-          />
+          <div className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 border rounded-md",
+            stats.riskScore < 30 ? "bg-emerald-50 border-emerald-100" : stats.riskScore < 60 ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"
+          )}>
+            <AlertTriangle className={cn(
+              "h-3.5 w-3.5",
+              stats.riskScore < 30 ? "text-emerald-600" : stats.riskScore < 60 ? "text-amber-600" : "text-rose-600"
+            )} />
+            <span className={cn(
+              "text-xs font-semibold",
+              stats.riskScore < 30 ? "text-emerald-700" : stats.riskScore < 60 ? "text-amber-700" : "text-rose-700"
+            )}>Risk {stats.riskScore}</span>
+          </div>
         )}
         
         {stats.complianceScore !== null && (
-          <MetricCard
-            title="Compliance"
-            value={`${stats.complianceScore}%`}
-            subtitle="Score"
-            icon={Shield}
-            color={stats.complianceScore >= 90 ? 'green' : stats.complianceScore >= 70 ? 'amber' : 'rose'}
-          />
+          <div className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 border rounded-md",
+            stats.complianceScore >= 90 ? "bg-emerald-50 border-emerald-100" : stats.complianceScore >= 70 ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"
+          )}>
+            <Shield className={cn(
+              "h-3.5 w-3.5",
+              stats.complianceScore >= 90 ? "text-emerald-600" : stats.complianceScore >= 70 ? "text-amber-600" : "text-rose-600"
+            )} />
+            <span className={cn(
+              "text-xs font-semibold",
+              stats.complianceScore >= 90 ? "text-emerald-700" : stats.complianceScore >= 70 ? "text-amber-700" : "text-rose-700"
+            )}>{stats.complianceScore}%</span>
+          </div>
         )}
       </div>
 
       {/* Contract Health Score Panel */}
       <div className={cn(
-        "mb-4 p-4 rounded-lg border transition-all",
-        contractHealth.status === 'excellent' && "bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-emerald-500/30",
-        contractHealth.status === 'good' && "bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/30",
-        contractHealth.status === 'fair' && "bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/30",
-        contractHealth.status === 'poor' && "bg-gradient-to-r from-rose-500/10 to-red-500/10 border-rose-500/30"
+        "mb-3 px-3 py-2.5 rounded-lg border flex items-center justify-between",
+        contractHealth.status === 'excellent' && "bg-emerald-50/50 border-emerald-100",
+        contractHealth.status === 'good' && "bg-blue-50/50 border-blue-100",
+        contractHealth.status === 'fair' && "bg-amber-50/50 border-amber-100",
+        contractHealth.status === 'poor' && "bg-rose-50/50 border-rose-100"
       )}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className={cn(
-                "w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold",
-                contractHealth.status === 'excellent' && "bg-emerald-500/20 text-emerald-400",
-                contractHealth.status === 'good' && "bg-blue-500/20 text-blue-400",
-                contractHealth.status === 'fair' && "bg-amber-500/20 text-amber-400",
-                contractHealth.status === 'poor' && "bg-rose-500/20 text-rose-400"
-              )}>
-                {contractHealth.score}
-              </div>
-              <div className={cn(
-                "absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase",
-                contractHealth.status === 'excellent' && "bg-emerald-500 text-white",
-                contractHealth.status === 'good' && "bg-blue-500 text-white",
-                contractHealth.status === 'fair' && "bg-amber-500 text-white",
-                contractHealth.status === 'poor' && "bg-rose-500 text-white"
-              )}>
-                {contractHealth.status}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-zinc-200">Contract Health Score</h3>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                {contractHealth.status === 'excellent' && 'This contract is in excellent shape with minimal concerns.'}
-                {contractHealth.status === 'good' && 'This contract is generally healthy with some areas to monitor.'}
-                {contractHealth.status === 'fair' && 'This contract has notable issues that require attention.'}
-                {contractHealth.status === 'poor' && 'This contract needs immediate review and remediation.'}
-              </p>
-            </div>
+        <div className="flex items-center gap-2.5">
+          <div className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
+            contractHealth.status === 'excellent' && "bg-emerald-100 text-emerald-700",
+            contractHealth.status === 'good' && "bg-blue-100 text-blue-700",
+            contractHealth.status === 'fair' && "bg-amber-100 text-amber-700",
+            contractHealth.status === 'poor' && "bg-rose-100 text-rose-700"
+          )}>
+            {contractHealth.score}
           </div>
-          <div className="flex flex-wrap gap-2 max-w-md">
-            {contractHealth.factors.slice(0, 4).map((factor, i) => (
-              <div 
-                key={i}
-                className={cn(
-                  "px-2 py-1 rounded text-xs",
-                  factor.status === 'good' && "bg-emerald-500/20 text-emerald-400",
-                  factor.status === 'warning' && "bg-amber-500/20 text-amber-400",
-                  factor.status === 'critical' && "bg-rose-500/20 text-rose-400"
-                )}
-              >
-                {factor.label}
-                {factor.impact !== 0 && (
-                  <span className="ml-1 opacity-70">({factor.impact})</span>
-                )}
-              </div>
-            ))}
+          <div>
+            <p className="text-xs font-medium text-slate-700">Health Score</p>
+            <p className="text-[10px] text-slate-400 capitalize">{contractHealth.status}</p>
           </div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {contractHealth.factors.slice(0, 3).map((factor, i) => (
+            <span 
+              key={i}
+              className={cn(
+                "px-1.5 py-0.5 rounded text-[10px] font-medium",
+                factor.status === 'good' && "bg-emerald-100 text-emerald-600",
+                factor.status === 'warning' && "bg-amber-100 text-amber-600",
+                factor.status === 'critical' && "bg-rose-100 text-rose-600"
+              )}
+            >
+              {factor.label}
+            </span>
+          ))}
         </div>
       </div>
 
       {/* Quick Actions Bar */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5">
+          <button
             onClick={() => setShowSummary(true)}
-            className="text-slate-600"
+            className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors"
           >
-            <LayoutList className="h-4 w-4 mr-1" />
+            <LayoutList className="h-3.5 w-3.5" />
             Summary
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+          </button>
+          <button
             onClick={() => setShowTimeline(true)}
-            className="text-slate-600"
+            className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors"
           >
-            <CalendarDays className="h-4 w-4 mr-1" />
+            <CalendarDays className="h-3.5 w-3.5" />
             Timeline
             {allDates.length > 0 && (
-              <Badge variant="secondary" className="ml-1 text-xs">{allDates.length}</Badge>
+              <span className="ml-0.5 px-1 py-0.5 bg-slate-200 text-slate-600 text-[10px] rounded">{allDates.length}</span>
             )}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+          </button>
+          <button
             onClick={() => setShowActionItems(true)}
             className={cn(
-              "text-slate-600",
-              actionItems.some(i => i.priority === 'urgent') && "border-rose-500 text-rose-600"
+              "flex items-center gap-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors",
+              actionItems.some(i => i.priority === 'urgent') 
+                ? "text-rose-600 hover:bg-rose-50" 
+                : "text-slate-600 hover:text-slate-800 hover:bg-slate-100"
             )}
           >
-            <Target className="h-4 w-4 mr-1" />
-            Action Items
+            <Target className="h-3.5 w-3.5" />
+            Actions
             {actionItems.length > 0 && (
-              <Badge 
-                variant={actionItems.some(i => i.priority === 'urgent') ? 'destructive' : 'secondary'} 
-                className="ml-1 text-xs"
-              >
+              <span className={cn(
+                "ml-0.5 px-1 py-0.5 text-[10px] rounded",
+                actionItems.some(i => i.priority === 'urgent') 
+                  ? "bg-rose-100 text-rose-600" 
+                  : "bg-slate-200 text-slate-600"
+              )}>
                 {actionItems.length}
-              </Badge>
+              </span>
             )}
-          </Button>
+          </button>
           {bookmarkedClauses.size > 0 && (
-            <Badge variant="secondary" className="text-xs">
-              <BookmarkPlus className="h-3 w-3 mr-1" />
-              {bookmarkedClauses.size} bookmarked
-            </Badge>
+            <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-md">
+              <BookmarkPlus className="h-3 w-3" />
+              {bookmarkedClauses.size}
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
+        <div className="flex items-center gap-1">
+          <button
             onClick={handleExportJSON}
-            className="text-slate-500"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
             title="Export to JSON"
           >
-            <FileDown className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
+            <FileDown className="h-3.5 w-3.5" />
+          </button>
+          <button
             onClick={() => setShowKeyboardHelp(true)}
-            className="text-slate-500"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
             title="Keyboard shortcuts (?)"
           >
-            <Keyboard className="h-4 w-4" />
-          </Button>
+            <Keyboard className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
       {/* Tab Navigation */}
-      <Card className="border-slate-200/80 overflow-hidden">
-        <div className="border-b border-slate-200 bg-slate-50/50">
-          <div className="flex items-center justify-between px-4 py-2">
+      <Card className="border-slate-200 shadow-sm overflow-hidden">
+        <div className="border-b border-slate-100 bg-white">
+          <div className="px-4 py-1.5">
             {/* Tab Pills - sorted by priority for contract type */}
-            <div className="flex gap-1 overflow-x-auto">
+            <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
               {sortedTabs.map((tab, idx) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 const hasData = normalizedData[tab.id as keyof typeof normalizedData] !== null;
                 const notApplicable = isTabNotApplicable(tab.id);
-                const isPriorityTab = idx < 3; // First 3 tabs are priority for this type
                 
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    disabled={!hasData && !notApplicable}
                     className={cn(
-                      "relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all shrink-0",
+                      "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all shrink-0 rounded-md",
                       isActive 
-                        ? cn("bg-white shadow-sm", notApplicable ? "text-amber-600" : tab.textColor)
-                        : notApplicable
-                        ? "text-amber-500/70 hover:text-amber-600 hover:bg-amber-50/50"
+                        ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
                         : hasData
-                        ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                        : "text-slate-300 cursor-not-allowed"
+                        ? "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+                        : "text-slate-400 hover:text-slate-500 hover:bg-slate-50"
                     )}
-                    title={notApplicable ? `Not applicable for ${detectedContractType} contracts` : isPriorityTab ? `Priority for ${detectedContractType}` : undefined}
                   >
                     <Icon className={cn(
-                      "h-4 w-4",
-                      isActive ? "" : notApplicable ? "text-amber-400" : hasData ? "text-slate-400" : "text-slate-300"
+                      "h-3.5 w-3.5",
+                      isActive ? "text-indigo-600" : hasData ? "text-slate-500" : "text-slate-400"
                     )} />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                    
-                    {/* Priority indicator for top tabs */}
-                    {isPriorityTab && hasData && !notApplicable && !isActive && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-400" title="Priority" />
+                    <span>{tab.label}</span>
+                    {/* Data indicator dot */}
+                    {hasData && !isActive && (
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full" />
                     )}
-                    
-                    {/* Active indicator */}
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className={cn(
-                          "absolute -bottom-2.5 left-4 right-4 h-0.5 rounded-full bg-gradient-to-r",
-                          notApplicable ? "from-amber-400 to-amber-500" : tab.gradient
-                        )}
-                      />
-                    )}
-                    
-                    {/* Not applicable indicator */}
-                    {notApplicable && (
-                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" title="Not applicable" />
-                    )}
-                    
-                    {/* No data indicator */}
-                    {!hasData && !notApplicable && (
-                      <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-slate-300" />
+                    {notApplicable && !isActive && (
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
                     )}
                   </button>
                 );
               })}
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              {/* View/Edit Toggle */}
-              <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
-                <button
-                  onClick={() => setViewMode('view')}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-                    viewMode === 'view' 
-                      ? "bg-white text-slate-900 shadow-sm" 
-                      : "text-slate-500 hover:text-slate-700"
-                  )}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  View
-                </button>
-                <button
-                  onClick={() => setViewMode('edit')}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
-                    viewMode === 'edit' 
-                      ? "bg-white text-indigo-600 shadow-sm" 
-                      : "text-slate-500 hover:text-slate-700"
-                  )}
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                  Edit
-                </button>
-              </div>
-
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
-                <Input
-                  type="search"
-                  placeholder="Search across all artifacts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-56 pl-9 h-9 text-sm bg-white border-slate-200"
-                />
-                
-                {/* Search Results Dropdown */}
-                {searchResults && searchResults.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
-                    <div className="p-2 border-b border-slate-100 text-xs text-slate-500">
-                      Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
-                    </div>
-                    {searchResults.map((result, i) => {
-                      const tab = sortedTabs.find(t => t.id === result.tab);
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setActiveTab(result.tab as TabId);
-                            setSearchQuery('');
-                          }}
-                          className="w-full p-2 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0"
-                        >
-                          <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                            <Badge variant="secondary" className="text-xs py-0">
-                              {tab?.label || result.tab}
-                            </Badge>
-                            <span className="text-slate-400">{result.field}</span>
-                          </div>
-                          <div className="text-sm text-slate-700 line-clamp-2">
-                            {result.value}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                
-                {searchResults && searchResults.length === 0 && searchQuery.length >= 2 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 p-4 text-center">
-                    <p className="text-sm text-slate-500">No results found for &quot;{searchQuery}&quot;</p>
-                  </div>
-                )}
-              </div>
               
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="text-slate-500"
-              >
-                {isFullscreen ? <X className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              </Button>
+              {/* Progress indicator */}
+              <div className="ml-auto flex items-center gap-2 pl-4">
+                <div className="flex items-center bg-slate-100 rounded-md p-0.5">
+                  <button
+                    onClick={() => setViewMode('view')}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all",
+                      viewMode === 'view' 
+                        ? "bg-white text-slate-700 shadow-sm" 
+                        : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <Eye className="h-3 w-3" />
+                    View
+                  </button>
+                  <button
+                    onClick={() => setViewMode('edit')}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all",
+                      viewMode === 'edit' 
+                        ? "bg-white text-indigo-600 shadow-sm" 
+                        : "text-slate-400 hover:text-slate-600"
+                    )}
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    Edit
+                  </button>
+                </div>
+                
+                {/* Legend for indicator dots */}
+                <div className="hidden md:flex items-center gap-3 pl-3 border-l border-slate-200 text-[10px] text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    Has data
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-amber-400 rounded-full" />
+                    N/A
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           {/* Show SmartEditableArtifact in edit mode */}
           {viewMode === 'edit' ? (
             <SmartEditableArtifact
@@ -2751,41 +2607,43 @@ export function EnhancedArtifactViewer({
 
         {/* Footer Navigation - only show in view mode */}
         {viewMode === 'view' && (
-        <div className="border-t border-slate-200 px-6 py-3 bg-slate-50/50 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
+        <div className="border-t border-slate-100 px-4 py-2.5 bg-slate-50/30 flex items-center justify-between">
+          <button
             onClick={goToPrevTab}
-            className="text-slate-600"
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded hover:bg-slate-100"
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Prev
+          </button>
           
-          <div className="flex items-center gap-2">
-            {TABS.map((tab, i) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "w-2 h-2 rounded-full transition-all",
-                  activeTab === tab.id 
-                    ? cn("w-6 bg-gradient-to-r", tab.gradient)
-                    : "bg-slate-300 hover:bg-slate-400"
-                )}
-              />
-            ))}
+          <div className="flex items-center gap-1.5">
+            {sortedTabs.slice(0, 7).map((tab) => {
+              const hasData = normalizedData[tab.id as keyof typeof normalizedData] !== null;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full transition-all",
+                    activeTab === tab.id 
+                      ? "w-4 bg-indigo-500"
+                      : hasData
+                      ? "bg-slate-300 hover:bg-slate-400"
+                      : "bg-slate-200"
+                  )}
+                  title={tab.label}
+                />
+              );
+            })}
           </div>
           
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={goToNextTab}
-            className="text-slate-600"
+            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors px-2 py-1 rounded hover:bg-slate-100"
           >
             Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
         )}
       </Card>

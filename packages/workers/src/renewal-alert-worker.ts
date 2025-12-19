@@ -17,6 +17,7 @@ dotenv.config();
 
 import type { Job } from 'bullmq';
 import pino from 'pino';
+import { getQueueService, JobType } from 'utils/queue/queue-service';
 
 const logger = pino({ name: 'renewal-alert-worker' });
 
@@ -99,7 +100,7 @@ export const RENEWAL_ALERT_CONFIG = {
  * Process a renewal check job
  */
 export async function checkRenewalsJob(
-  job: Job<RenewalCheckJobData>
+  job: JobType<RenewalCheckJobData>
 ): Promise<RenewalCheckResult> {
   const { 
     tenantId, 
@@ -177,7 +178,7 @@ export async function checkRenewalsJob(
             
             alerts.push({
               contractId: contract.id,
-              contractName: contract.name || 'Unnamed Contract',
+              contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
               alertType,
               message: `Contract term ends in ${daysUntilEnd} days`,
               dueDate: renewalData.currentTermEnd,
@@ -201,7 +202,7 @@ export async function checkRenewalsJob(
                 
                 alerts.push({
                   contractId: contract.id,
-                  contractName: contract.name || 'Unnamed Contract',
+                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                   alertType,
                   message: `Opt-out deadline in ${daysUntilOptOut} days: ${deadline.description || 'Auto-renewal opt-out'}`,
                   dueDate: deadline.date,
@@ -231,7 +232,7 @@ export async function checkRenewalsJob(
             if (!existingAlert) {
               alerts.push({
                 contractId: contract.id,
-                contractName: contract.name || 'Unnamed Contract',
+                contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                 alertType,
                 message: `Notice period deadline in ${daysUntilOptOut} days - ${renewalData.renewalTerms.noticePeriodDays || 30} days notice required`,
                 dueDate: renewalData.renewalTerms.optOutDeadline,
@@ -299,7 +300,7 @@ export async function checkRenewalsJob(
  * Schedule daily renewal checks
  */
 export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<RenewalCheckJobData>) {
-  const { getQueueService } = await import('../../utils/src/queue/queue-service');
+  const { getQueueService } = await import('utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 
@@ -328,7 +329,7 @@ export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<
  * Trigger immediate renewal check
  */
 export async function triggerRenewalCheck(data: RenewalCheckJobData) {
-  const { getQueueService } = await import('../../utils/src/queue/queue-service');
+  const { getQueueService } = await import('utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 
@@ -349,10 +350,9 @@ export async function triggerRenewalCheck(data: RenewalCheckJobData) {
  * Register renewal alert worker
  */
 export function registerRenewalAlertWorker() {
-  const { getQueueService } = require('../../utils/src/queue/queue-service');
   const queueService = getQueueService();
 
-  const worker = queueService.registerWorker<RenewalCheckJobData, RenewalCheckResult>(
+  const worker = queueService.registerWorker(
     RENEWAL_ALERT_QUEUE,
     checkRenewalsJob,
     {

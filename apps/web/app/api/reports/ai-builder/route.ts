@@ -1,10 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
+import type { Contract } from '@prisma/client';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
+
+// Extended contract with artifacts for analysis
+interface ContractWithArtifacts extends Contract {
+  artifacts: Array<{ type: string; data: unknown }>;
+}
+
+// Enriched contract for analysis
+interface EnrichedContract {
+  id: string;
+  title: string;
+  supplierName: string;
+  value: number;
+  status: string;
+  effectiveDate: Date | null;
+  expirationDate: Date | null;
+  durationMonths: number;
+  category: string;
+  daysUntilExpiry: number | null;
+  autoRenewal: boolean;
+  riskLevel: string;
+  artifacts: Array<{ type: string; data: unknown }>;
+}
 
 interface ReportFilters {
   suppliers?: string[];
@@ -180,14 +203,14 @@ async function performDeepAnalysis(
       take: 200, // Increased limit for better analysis
       include: {
         artifacts: {
-          where: { status: 'COMPLETE' },
+          where: { status: 'active' },
           select: {
-            artifactType: true,
-            extractedData: true,
+            type: true,
+            data: true,
           },
         },
       },
-    });
+    }) as ContractWithArtifacts[];
     
     console.log(`[AI Report Builder] Found ${contracts.length} contracts`);
     
@@ -197,7 +220,7 @@ async function performDeepAnalysis(
     
     // Calculate durations and enrich contract data
     const now = new Date();
-    const contractsWithDuration = contracts.map(c => {
+    const contractsWithDuration: EnrichedContract[] = contracts.map((c: ContractWithArtifacts) => {
       const effectiveDate = c.effectiveDate ? new Date(c.effectiveDate) : null;
       const expirationDate = c.expirationDate ? new Date(c.expirationDate) : null;
       const durationMonths = effectiveDate && expirationDate
@@ -256,9 +279,12 @@ async function performDeepAnalysis(
     // Calculate average duration per category
     Object.keys(byCategory).forEach(cat => {
       const catContracts = contractsWithDuration.filter(c => c.category === cat && c.durationMonths > 0);
-      byCategory[cat].avgDuration = catContracts.length > 0
-        ? Math.round(catContracts.reduce((sum, c) => sum + c.durationMonths, 0) / catContracts.length)
-        : 0;
+      const catEntry = byCategory[cat];
+      if (catEntry) {
+        catEntry.avgDuration = catContracts.length > 0
+          ? Math.round(catContracts.reduce((sum, c) => sum + c.durationMonths, 0) / catContracts.length)
+          : 0;
+      }
     });
     
     // Group by status
@@ -305,7 +331,8 @@ async function performDeepAnalysis(
     ).length;
     
     // Concentration risk: top supplier % of total value
-    const topSupplierValue = bySupplier.length > 0 ? bySupplier[0].totalValue : 0;
+    const topSupplier = bySupplier[0];
+    const topSupplierValue = topSupplier?.totalValue ?? 0;
     const concentrationRisk = totalValue > 0 ? Math.round((topSupplierValue / totalValue) * 100) : 0;
     
     // Trends calculation
@@ -417,7 +444,7 @@ function getEmptyResult(filters: ReportFilters): DeepAnalysisResult {
   };
 }
 
-function calculateHealthScore(contracts: any[]): number {
+function calculateHealthScore(contracts: EnrichedContract[]): number {
   if (contracts.length === 0) return 0;
   
   let score = 100;
@@ -441,7 +468,7 @@ function calculateHealthScore(contracts: any[]): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function calculateComplianceScore(contracts: any[]): number {
+function calculateComplianceScore(contracts: EnrichedContract[]): number {
   if (contracts.length === 0) return 0;
   
   let score = 100;
@@ -460,7 +487,7 @@ function calculateComplianceScore(contracts: any[]): number {
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-function calculateRiskScore(contracts: any[]): number {
+function calculateRiskScore(contracts: EnrichedContract[]): number {
   if (contracts.length === 0) return 0;
   
   const criticalCount = contracts.filter(c => c.riskLevel === 'critical').length;
@@ -473,8 +500,8 @@ function calculateRiskScore(contracts: any[]): number {
   return Math.min(100, Math.round(riskScore * 10));
 }
 
-function calculateSupplierAnalysis(contracts: any[]): SupplierAnalysis[] {
-  const supplierMap = new Map<string, { contracts: any[] }>();
+function calculateSupplierAnalysis(contracts: EnrichedContract[]): SupplierAnalysis[] {
+  const supplierMap = new Map<string, { contracts: EnrichedContract[] }>();
   
   contracts.forEach(c => {
     if (!supplierMap.has(c.supplierName)) {
@@ -522,7 +549,7 @@ function calculateSupplierAnalysis(contracts: any[]): SupplierAnalysis[] {
   return analysis.sort((a, b) => b.totalValue - a.totalValue).slice(0, 15);
 }
 
-function calculateTrends(contracts: any[]): DeepAnalysisResult['trends'] {
+function calculateTrends(contracts: EnrichedContract[]): DeepAnalysisResult['trends'] {
   const now = new Date();
   const quarters: TrendData[] = [];
   
@@ -567,7 +594,7 @@ function calculateTrends(contracts: any[]): DeepAnalysisResult['trends'] {
   };
 }
 
-function calculateBenchmarks(contracts: any[], totalValue: number): BenchmarkData[] {
+function calculateBenchmarks(contracts: EnrichedContract[], totalValue: number): BenchmarkData[] {
   const avgValue = contracts.length > 0 ? totalValue / contracts.length : 0;
   const avgDuration = contracts.filter(c => c.durationMonths > 0).reduce((sum, c) => sum + c.durationMonths, 0) / 
     Math.max(1, contracts.filter(c => c.durationMonths > 0).length);
@@ -607,13 +634,13 @@ function calculateBenchmarks(contracts: any[], totalValue: number): BenchmarkDat
   ];
 }
 
-function analyzeClausesFromArtifacts(contracts: any[]): ClauseAnalysis[] {
-  const clauseTypes = ['TERMINATION', 'LIABILITY', 'CONFIDENTIALITY', 'PAYMENT', 'SLA'];
+function analyzeClausesFromArtifacts(contracts: EnrichedContract[]): ClauseAnalysis[] {
+  const clauseTypes = ['TERMINATION_CLAUSE', 'LIABILITY_CLAUSE', 'SLA_TERMS', 'FINANCIAL', 'CLAUSES'];
   const analysis: ClauseAnalysis[] = [];
   
   clauseTypes.forEach(clauseType => {
     const contractsWithClause = contracts.filter(c => 
-      c.artifacts?.some((a: any) => a.artifactType === clauseType)
+      c.artifacts?.some((a: any) => a.type === clauseType)
     );
     
     if (contractsWithClause.length > 0) {
@@ -632,9 +659,9 @@ function analyzeClausesFromArtifacts(contracts: any[]): ClauseAnalysis[] {
 }
 
 async function generateRecommendations(
-  contracts: any[], 
+  contracts: EnrichedContract[], 
   suppliers: SupplierAnalysis[], 
-  riskMetrics: any
+  riskMetrics: { expiringIn30Days: number; expiringIn90Days: number; highValueAtRisk: number; concentrationRisk: number }
 ): Promise<DeepAnalysisResult['recommendations']> {
   const recommendations: DeepAnalysisResult['recommendations'] = [];
   
@@ -662,14 +689,15 @@ async function generateRecommendations(
   }
   
   // Concentration risk
-  if (riskMetrics.concentrationRisk > 40 && suppliers.length > 0) {
+  const topSupplier = suppliers[0];
+  if (riskMetrics.concentrationRisk > 40 && topSupplier) {
     recommendations.push({
       type: 'strategic',
       priority: 'medium',
       title: 'Supplier Concentration Risk',
-      description: `${riskMetrics.concentrationRisk}% of total contract value is concentrated with ${suppliers[0].name}. Consider diversifying supplier base.`,
+      description: `${riskMetrics.concentrationRisk}% of total contract value is concentrated with ${topSupplier.name}. Consider diversifying supplier base.`,
       potentialImpact: 'Reduce dependency risk and improve negotiating leverage',
-      affectedContracts: contracts.filter(c => c.supplierName === suppliers[0].name).slice(0, 5).map(c => c.title),
+      affectedContracts: contracts.filter(c => c.supplierName === topSupplier.name).slice(0, 5).map(c => c.title),
     });
   }
   

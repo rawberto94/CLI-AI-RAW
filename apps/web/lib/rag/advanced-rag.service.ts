@@ -631,7 +631,7 @@ export async function hybridSearch(
         status: true,
         endDate: true,
         totalValue: true,
-        autoRenewal: true,
+        autoRenewalEnabled: true,
       },
     });
     
@@ -644,8 +644,9 @@ export async function hybridSearch(
       
       if (contract) {
         // Boost high-value contracts
-        if (contract.totalValue && contract.totalValue >= 500000) boostFactor *= 1.15;
-        else if (contract.totalValue && contract.totalValue >= 100000) boostFactor *= 1.08;
+        const totalVal = contract.totalValue ? Number(contract.totalValue) : 0;
+        if (totalVal >= 500000) boostFactor *= 1.15;
+        else if (totalVal >= 100000) boostFactor *= 1.08;
         
         // Boost contracts expiring soon (more urgency)
         if (contract.endDate) {
@@ -655,10 +656,10 @@ export async function hybridSearch(
         }
         
         // Boost active contracts
-        if (contract.status === 'active') boostFactor *= 1.05;
+        if (contract.status === 'ACTIVE') boostFactor *= 1.05;
         
         // Boost auto-renewal contracts (important to monitor)
-        if (contract.autoRenewal) boostFactor *= 1.05;
+        if (contract.autoRenewalEnabled) boostFactor *= 1.05;
       }
       
       return {
@@ -677,7 +678,7 @@ export async function hybridSearch(
         supplierName: r.contractMeta?.supplierName || undefined,
         status: r.contractMeta?.status || undefined,
         endDate: r.contractMeta?.endDate?.toISOString() || undefined,
-        totalValue: r.contractMeta?.totalValue || undefined,
+        totalValue: r.contractMeta?.totalValue ? Number(r.contractMeta.totalValue) : undefined,
         chunkIndex: r.chunkIndex,
         text: r.text,
         score: r.score,

@@ -134,6 +134,7 @@ interface Message {
     ragSources?: RAGSource[];
     usedRAG?: boolean;
     intent?: string;
+    isError?: boolean;
   };
 }
 
@@ -378,6 +379,7 @@ export function FloatingAIBubble() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const pendingAutoMessageRef = useRef<string | null>(null);
 
   // Load conversation history from localStorage on mount
   useEffect(() => {
@@ -392,7 +394,8 @@ export function FloatingAIBubble() {
             timestamp: new Date(m.timestamp),
           }));
           // Keep initial message if history was cleared, or append restored history
-          setMessages([INITIAL_MESSAGE, ...restoredMessages.filter((m: Message) => m.id !== 'initial')]);
+          // Filter out both 'initial' and 'welcome' to avoid duplicate welcome messages
+          setMessages([INITIAL_MESSAGE, ...restoredMessages.filter((m: Message) => m.id !== 'initial' && m.id !== 'welcome')]);
           
           // Restore conversation context from last messages
           const lastUserMessage = restoredMessages.filter((m: Message) => m.role === 'user').slice(-1)[0];
@@ -504,13 +507,35 @@ export function FloatingAIBubble() {
 
   // Listen for custom event to open chatbot from other components
   useEffect(() => {
-    const handleOpenChatbot = () => {
+    const handleOpenChatbot = (event: Event) => {
+      const customEvent = event as CustomEvent<{ autoMessage?: string; section?: string; contractId?: string }>;
+      
+      // If an autoMessage is provided, store it and trigger when chat opens
+      if (customEvent.detail?.autoMessage) {
+        pendingAutoMessageRef.current = customEvent.detail.autoMessage;
+      }
+      
       setIsOpen(true);
     };
 
     window.addEventListener("openAIChatbot", handleOpenChatbot);
     return () => window.removeEventListener("openAIChatbot", handleOpenChatbot);
   }, []);
+
+  // Process pending auto-message when chat opens
+  useEffect(() => {
+    if (isOpen && pendingAutoMessageRef.current && !isLoading) {
+      const autoMessage = pendingAutoMessageRef.current;
+      pendingAutoMessageRef.current = null; // Clear the ref
+      
+      // Small delay to ensure chat is fully rendered, then set input
+      const timer = setTimeout(() => {
+        setInput(autoMessage);
+      }, 150);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isLoading]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -1702,15 +1727,16 @@ export function FloatingAIBubble() {
                   {/* Quick Actions - Enhanced with better visual hierarchy */}
                   {messages.length === 1 && (
                     <div className="px-6 pb-4 bg-gradient-to-b from-white to-gray-50/50">
-                      <p className="text-sm text-gray-600 mb-3 flex items-center gap-2 font-semibold">
-                        <motion.div
+                      <div className="text-sm text-gray-600 mb-3 flex items-center gap-2 font-semibold">
+                        <motion.span
                           animate={{ rotate: [0, 10, -10, 0] }}
                           transition={{ duration: 2, repeat: Infinity }}
+                          className="inline-flex"
                         >
                           <Zap className="w-4 h-4 text-amber-500" />
-                        </motion.div>
+                        </motion.span>
                         Quick Actions
-                      </p>
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         {QUICK_ACTIONS.slice(0, 4).map((action, idx) => (
                           <motion.button

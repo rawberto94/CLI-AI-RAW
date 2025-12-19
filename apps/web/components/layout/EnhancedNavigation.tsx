@@ -382,7 +382,9 @@ function EnhancedNavigation() {
   // Handle special navigation actions (like opening AI chatbot)
   const handleNavAction = useCallback((action: string) => {
     if (action === 'openAIChatbot') {
-      window.dispatchEvent(new CustomEvent('openAIChatbot'));
+      window.dispatchEvent(new CustomEvent('openAIChatbot', {
+        detail: { autoMessage: 'Hi! How can I help you with your contracts today?' }
+      }));
     }
   }, []);
 

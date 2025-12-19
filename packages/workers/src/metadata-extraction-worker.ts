@@ -176,10 +176,12 @@ export async function processMetadataExtractionJob(
       // Calibrate confidence
       let confidence = result.confidence ?? 0;
       if (confidence > 0) {
-        confidence = calibrationService.getAdjustedConfidence(
-          result.fieldType,
+        const calibrated = calibrationService.calibrateConfidence(
+          tenantId,
+          result.fieldName,
           confidence
         );
+        confidence = calibrated.calibratedConfidence;
         totalConfidence += confidence;
         confidenceCount++;
       }
@@ -310,10 +312,18 @@ export async function processMetadataExtractionJob(
     const averageConfidence = confidenceCount > 0 ? totalConfidence / confidenceCount : 0;
 
     // Record completion in analytics
+    // Map extractionResult.results to ExtractedField format
+    const extractedFields = extractionResult.results.map((r: any) => ({
+      fieldKey: r.key || r.fieldKey || r.name || '',
+      value: r.value,
+      confidence: r.confidence ?? 0,
+      fieldType: r.type || r.fieldType,
+    }));
+    
     await analytics.recordExtractionComplete(
       contractId,
       tenantId,
-      extractionResult.results,
+      extractedFields,
       processingTimeMs,
       "gpt-4o-mini"
     );
@@ -414,7 +424,8 @@ export async function queueMetadataExtractionJob(
   }
 ): Promise<string> {
   // Dynamic import to avoid circular dependencies
-  const { getQueueService, QUEUE_NAMES } = await import("@/lib/queue-service");
+  const { getQueueService } = await import("utils/queue/queue-service");
+  const { QUEUE_NAMES } = await import("utils/queue/contract-queue");
   
   const queueService = getQueueService();
   

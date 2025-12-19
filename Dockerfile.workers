@@ -6,11 +6,14 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm@8.9.0
 
-# Copy package files
+# Copy package files for all workspace packages
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/workers/package.json ./packages/workers/
 COPY packages/utils/package.json ./packages/utils/
 COPY packages/clients/db/package.json ./packages/clients/db/
+COPY packages/clients/openai/package.json ./packages/clients/openai/
+COPY packages/schemas/package.json ./packages/schemas/
+COPY packages/data-orchestration/package.json ./packages/data-orchestration/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -24,17 +27,27 @@ RUN npm install -g pnpm@8.9.0
 
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/workers/node_modules ./packages/workers/node_modules
+COPY --from=deps /app/packages ./packages
 
 # Copy source code
 COPY packages/workers ./packages/workers
 COPY packages/utils ./packages/utils
 COPY packages/clients/db ./packages/clients/db
+COPY packages/clients/openai ./packages/clients/openai
+COPY packages/schemas ./packages/schemas
+COPY packages/data-orchestration ./packages/data-orchestration
+COPY tsconfig.base.json ./tsconfig.base.json
 
 # Generate Prisma client
 RUN cd packages/clients/db && pnpm prisma generate
 
-# Build workers
+# Build workspace dependencies
+RUN cd packages/utils && pnpm build || true
+RUN cd packages/schemas && pnpm build || true
+RUN cd packages/clients/db && pnpm build || true
+RUN cd packages/data-orchestration && pnpm build || true
+
+# Type check workers
 RUN cd packages/workers && pnpm build
 
 # Stage 3: Runner
@@ -43,19 +56,20 @@ WORKDIR /app
 
 ENV NODE_ENV production
 
-# Install pnpm
-RUN npm install -g pnpm@8.9.0
+# Install pnpm and tsx for production TypeScript execution
+RUN npm install -g pnpm@8.9.0 tsx
 
 # Create non-root user
 RUN addgroup --system --gid 1001 workers
 RUN adduser --system --uid 1001 worker
 
-# Copy built application
-COPY --from=builder /app/packages/workers/dist ./dist
-COPY --from=builder /app/packages/workers/node_modules ./node_modules
-COPY --from=builder /app/packages/workers/package.json ./package.json
-COPY --from=builder /app/packages/workers/.env ./.env
+# Copy full workspace (tsx needs source files)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/tsconfig.base.json ./tsconfig.base.json
 
 USER worker
 
-CMD ["node", "dist/index.js"]
+WORKDIR /app/packages/workers
+
+CMD ["tsx", "src/index.ts"]

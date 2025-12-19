@@ -335,7 +335,7 @@ async function handler(request: NextRequest) {
 
       // Fetch category details for contracts that have categories
       const categoryNames = [...new Set(contracts.filter(c => c.category).map(c => c.category!))];
-      let categoryMap: Map<string, { id: string; name: string; color: string; icon: string; path: string }> = new Map();
+      const categoryMap: Map<string, { id: string; name: string; color: string; icon: string; path: string }> = new Map();
       
       if (categoryNames.length > 0) {
         const taxonomyCategories = await prisma.taxonomyCategory.findMany({

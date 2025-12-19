@@ -12,9 +12,10 @@
  */
 
 import { Job } from 'bullmq';
-import getClient from 'clients-db';
-import { getQueueService } from '../../utils/src/queue/queue-service';
-import { QUEUE_NAMES, IndexContractJobData } from '../../utils/src/queue/contract-queue';
+import clientsDb from 'clients-db';
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { QUEUE_NAMES, IndexContractJobData } from 'utils/queue/contract-queue';
 import pino from 'pino';
 
 const logger = pino({ name: 'rag-indexing-worker' });
@@ -157,7 +158,7 @@ function semanticChunk(
  * Process RAG indexing job
  */
 export async function processRAGIndexingJob(
-  job: Job<IndexContractJobData>
+  job: JobType<IndexContractJobData>
 ): Promise<RAGIndexingResult> {
   const startTime = Date.now();
   const { contractId, tenantId } = job.data;
@@ -282,8 +283,8 @@ export async function processRAGIndexingJob(
       
       const response = await retryWithBackoff(() => 
         openai.embeddings.create({ model, input: texts })
-      );
-      embeddings.push(...response.data.map(d => d.embedding));
+      ) as any;
+      embeddings.push(...response.data.map((d: any) => d.embedding));
       
       // Update progress (30% to 80% during embedding)
       const progress = 30 + Math.round((i / chunks.length) * 50);
@@ -334,7 +335,6 @@ export async function processRAGIndexingJob(
       where: { contractId },
       update: { 
         ragSyncedAt: new Date(),
-        updatedAt: new Date(),
       },
       create: {
         contractId,
@@ -396,10 +396,8 @@ export function registerRAGIndexingWorker() {
         max: 20,
         duration: 60000, // 20 jobs per minute max
       },
-      settings: {
-        maxStalledCount: 2,
-        stalledInterval: 30000,
-      },
+      // Note: BullMQ settings like maxStalledCount and stalledInterval are configured
+      // at the BullMQ Worker level, not through our queue-service wrapper
     }
   );
   
@@ -435,7 +433,8 @@ export async function queueRAGIndexing(
 }
 
 // Start worker if this file is run directly
-if (require.main === module) {
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
   logger.info('Starting RAG indexing worker...');
   
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';

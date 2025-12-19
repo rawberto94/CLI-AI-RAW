@@ -45,7 +45,7 @@ export interface MetricsSnapshot {
  */
 class MetricsCollector {
   private queues: Map<string, Queue> = new Map();
-  private workers: Map<string, Worker> = new Map();
+  private workers: Map<string, any> = new Map();
   private metricsHistory: MetricsSnapshot[] = [];
   private maxHistorySize = 100;
 
@@ -60,7 +60,7 @@ class MetricsCollector {
   /**
    * Register a worker for metrics collection
    */
-  registerWorker(name: string, worker: Worker): void {
+  registerWorker(name: string, worker: any): void {
     this.workers.set(name, worker);
     logger.info({ workerName: name }, 'Worker registered for metrics');
   }

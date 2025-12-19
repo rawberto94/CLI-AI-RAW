@@ -50,18 +50,24 @@ function FloatingDocument({
         top: y,
         transformStyle: "preserve-3d",
       }}
-      initial={{ opacity: 0, y: 50, rotateX: -30 }}
+      initial={{ opacity: 0, y: 60, rotateX: -40, scale: 0.8 }}
       animate={{ 
         opacity: 1, 
-        y: [0, -8, 0],
-        rotateX: [0, 2, 0],
-        rotateY: [rotateY, rotateY + 3, rotateY],
+        y: [0, -12, 2, -8, 0],
+        x: [0, 3, -2, 1, 0],
+        rotateX: [0, 4, -2, 3, 0],
+        rotateY: [rotateY, rotateY + 5, rotateY - 2, rotateY + 3, rotateY],
+        rotateZ: [0, 1, -1, 0.5, 0],
+        scale: [1, 1.02, 0.98, 1.01, 1],
       }}
       transition={{ 
-        opacity: { duration: 0.6, delay },
-        y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: delay + 0.5 },
+        opacity: { duration: 0.8, delay },
+        y: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: delay + 0.5 },
+        x: { duration: 7, repeat: Infinity, ease: "easeInOut", delay: delay + 0.3 },
         rotateX: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: delay + 0.3 },
-        rotateY: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: delay + 0.2 },
+        rotateY: { duration: 8, repeat: Infinity, ease: "easeInOut", delay: delay + 0.2 },
+        rotateZ: { duration: 9, repeat: Infinity, ease: "easeInOut", delay: delay + 0.4 },
+        scale: { duration: 5, repeat: Infinity, ease: "easeInOut", delay: delay + 0.6 },
       }}
     >
       <div 
@@ -136,7 +142,7 @@ function FloatingDocument({
             ))}
           </div>
 
-          {/* Signature area */}
+          {/* Signature area - hidden 'raw' signature */}
           <motion.div 
             className="mt-4 pt-3 border-t border-white/30"
             initial={{ opacity: 0 }}
@@ -145,17 +151,30 @@ function FloatingDocument({
           >
             <motion.svg 
               viewBox="0 0 80 20" 
-              className="w-16 h-4 text-white/80"
+              className="w-16 h-4 text-white/70"
             >
+              {/* Stylized 'raw' as signature flourish */}
               <motion.path 
-                d="M5 15 Q 20 5, 35 12 T 75 10"
+                d="M3 14 C5 8, 8 6, 10 10 C11 12, 12 14, 14 10 M16 14 C18 6, 22 6, 24 10 C25 14, 28 14, 30 8 M32 14 L36 6 L38 12 L42 6 L44 14"
                 fill="none" 
                 stroke="currentColor" 
-                strokeWidth="2"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 0.8 }}
+                transition={{ duration: 2, delay: delay + 1.5, ease: "easeOut" }}
+              />
+              {/* Decorative tail */}
+              <motion.path 
+                d="M46 12 Q 55 8, 75 10"
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="1"
                 strokeLinecap="round"
                 initial={{ pathLength: 0 }}
                 animate={{ pathLength: 1 }}
-                transition={{ duration: 1.5, delay: delay + 1.5 }}
+                transition={{ duration: 1, delay: delay + 2.5 }}
               />
             </motion.svg>
           </motion.div>
@@ -173,7 +192,7 @@ function FloatingDocument({
   );
 }
 
-// 3D Floating Orb Component
+// 3D Floating Orb Component with enhanced dynamics
 function FloatingOrb({ 
   size, 
   color, 
@@ -187,21 +206,25 @@ function FloatingOrb({
   y: number; 
   delay?: number;
 }) {
+  const randomOffset = React.useMemo(() => Math.random() * 2, []);
   return (
     <motion.div
-      className={`absolute rounded-full ${color} blur-sm`}
+      className={`absolute rounded-full ${color}`}
       style={{ width: size, height: size, left: x, top: y }}
+      initial={{ opacity: 0, scale: 0 }}
       animate={{
-        y: [0, -20, 0],
-        x: [0, 10, 0],
-        scale: [1, 1.2, 1],
-        opacity: [0.6, 0.9, 0.6],
+        y: [0, -25, 5, -15, 0],
+        x: [0, 15, -8, 10, 0],
+        scale: [1, 1.3, 0.9, 1.2, 1],
+        opacity: [0.5, 0.9, 0.6, 0.85, 0.5],
+        filter: ["blur(2px)", "blur(4px)", "blur(1px)", "blur(3px)", "blur(2px)"],
       }}
       transition={{
-        duration: 4 + Math.random() * 2,
+        duration: 5 + randomOffset,
         repeat: Infinity,
         ease: "easeInOut",
         delay,
+        times: [0, 0.25, 0.5, 0.75, 1],
       }}
     />
   );
@@ -265,11 +288,11 @@ function AIChip({ x, y }: { x: number; y: number }) {
           </svg>
           
           {/* Pulsing nodes */}
-          {[[12, 12], [36, 12], [12, 36], [36, 36]].map(([nx, ny], i) => (
+          {([[12, 12], [36, 12], [12, 36], [36, 36]] as [number, number][]).map(([nx, ny], i) => (
             <motion.div
               key={i}
               className="absolute w-2 h-2 rounded-full bg-cyan-400"
-              style={{ left: nx - 4, top: ny - 4 }}
+              style={{ left: (nx ?? 0) - 4, top: (ny ?? 0) - 4 }}
               animate={{ 
                 scale: [1, 1.5, 1], 
                 opacity: [0.5, 1, 0.5],
@@ -302,32 +325,40 @@ function AIChip({ x, y }: { x: number; y: number }) {
   );
 }
 
-// Data Flow Particles
+// Data Flow Particles with enhanced dynamics
 function DataParticles() {
+  const colors = ["bg-cyan-400", "bg-violet-400", "bg-fuchsia-400", "bg-emerald-400", "bg-amber-400"];
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 15 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute w-1 h-1 rounded-full bg-cyan-400"
-          style={{
-            left: `${10 + Math.random() * 80}%`,
-            top: `${10 + Math.random() * 80}%`,
-          }}
-          animate={{
-            y: [0, -100 - Math.random() * 100],
-            x: [0, (Math.random() - 0.5) * 50],
-            opacity: [0, 1, 0],
-            scale: [0, 1.5, 0],
-          }}
-          transition={{
-            duration: 3 + Math.random() * 2,
-            repeat: Infinity,
-            delay: Math.random() * 3,
-            ease: "easeOut",
-          }}
-        />
-      ))}
+      {Array.from({ length: 20 }).map((_, i) => {
+        const color = colors[i % colors.length];
+        const size = 0.5 + Math.random() * 1.5;
+        return (
+          <motion.div
+            key={i}
+            className={`absolute rounded-full ${color}`}
+            style={{
+              left: `${5 + Math.random() * 90}%`,
+              top: `${80 + Math.random() * 20}%`,
+              width: `${size * 4}px`,
+              height: `${size * 4}px`,
+            }}
+            animate={{
+              y: [-20, -180 - Math.random() * 80],
+              x: [(Math.random() - 0.5) * 30, (Math.random() - 0.5) * 60],
+              opacity: [0, 0.8, 0.6, 0],
+              scale: [0.5, 1.2, 1, 0.3],
+              rotate: [0, 180 + Math.random() * 180],
+            }}
+            transition={{
+              duration: 4 + Math.random() * 3,
+              repeat: Infinity,
+              delay: Math.random() * 4,
+              ease: "easeOut",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -383,8 +414,8 @@ function ConnectionLines() {
 
 export function AuthHeroArt({ className }: { className?: string }) {
   return (
-    <div className={className ?? "relative mt-8 hidden xl:block"}>
-      <div className="relative h-72 w-[28rem] max-w-full" style={{ perspective: "1200px" }}>
+    <div className={className ?? "relative hidden xl:block"}>
+      <div className="relative h-56 xl:h-64 w-80 xl:w-96 mx-auto" style={{ perspective: "1200px" }}>
         {/* Ambient glow */}
         <motion.div 
           className="absolute inset-0 rounded-[3rem] bg-gradient-to-br from-violet-500/20 via-cyan-500/20 to-fuchsia-500/20 blur-3xl"
@@ -403,73 +434,88 @@ export function AuthHeroArt({ className }: { className?: string }) {
         <DataParticles />
 
         {/* Floating orbs */}
-        <FloatingOrb size={20} color="bg-violet-400/60" x={20} y={40} delay={0} />
-        <FloatingOrb size={14} color="bg-cyan-400/60" x={320} y={180} delay={0.5} />
-        <FloatingOrb size={16} color="bg-fuchsia-400/60" x={280} y={30} delay={1} />
-        <FloatingOrb size={12} color="bg-emerald-400/60" x={60} y={200} delay={1.5} />
+        <FloatingOrb size={16} color="bg-violet-400/60" x={20} y={40} delay={0} />
+        <FloatingOrb size={10} color="bg-cyan-400/60" x={280} y={150} delay={0.5} />
+        <FloatingOrb size={12} color="bg-fuchsia-400/60" x={240} y={15} delay={1} />
+        <FloatingOrb size={8} color="bg-emerald-400/60" x={60} y={170} delay={1.5} />
         
-        {/* Main floating documents - arranged in 3D space */}
+        {/* Main floating documents - centered layout */}
         <FloatingDocument 
-          x={10} 
-          y={60} 
+          x={20} 
+          y={40} 
           z={0}
           rotateY={-15}
-          scale={0.85}
+          scale={0.75}
           variant="secondary"
           delay={0.2}
         />
         
         <FloatingDocument 
-          x={120} 
-          y={20} 
+          x={110} 
+          y={5} 
           z={40}
           rotateY={5}
-          scale={1}
+          scale={0.9}
           variant="primary"
           delay={0}
         />
         
         <FloatingDocument 
-          x={230} 
-          y={80} 
+          x={200} 
+          y={55} 
           z={20}
           rotateY={15}
-          scale={0.75}
+          scale={0.65}
           variant="accent"
           delay={0.4}
         />
         
         {/* AI Chip */}
-        <AIChip x={280} y={10} />
+        <AIChip x={250} y={0} />
 
-        {/* Floating icons */}
+        {/* Floating icons with enhanced dynamics */}
         <motion.div
-          className="absolute left-4 top-4 w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/40 flex items-center justify-center"
-          animate={{ y: [0, -10, 0], rotate: [0, 10, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -left-2 -top-2 w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/40 flex items-center justify-center"
+          animate={{ 
+            y: [0, -10, 3, -6, 0], 
+            x: [0, 3, -2, 2, 0],
+            rotate: [0, 10, -4, 6, 0],
+            scale: [1, 1.06, 0.96, 1.03, 1],
+          }}
+          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
         >
-          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 12l2 2 4-4" />
             <circle cx="12" cy="12" r="10" />
           </svg>
         </motion.div>
 
         <motion.div
-          className="absolute right-10 bottom-10 w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 shadow-lg shadow-rose-500/40 flex items-center justify-center"
-          animate={{ y: [0, -15, 0], rotate: [0, -10, 0] }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+          className="absolute right-2 bottom-4 w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 shadow-lg shadow-rose-500/40 flex items-center justify-center"
+          animate={{ 
+            y: [0, -14, 5, -8, 0], 
+            x: [0, -5, 2, -3, 0],
+            rotate: [0, -12, 5, -8, 0],
+            scale: [1, 1.08, 0.94, 1.04, 1],
+          }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
         >
-          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
           </svg>
         </motion.div>
 
         <motion.div
-          className="absolute left-20 bottom-0 w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/40 flex items-center justify-center"
-          animate={{ y: [0, -8, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+          className="absolute left-12 bottom-0 w-6 h-6 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/40 flex items-center justify-center"
+          animate={{ 
+            y: [0, -8, 2, -5, 0], 
+            x: [0, 4, -2, 3, 0],
+            rotate: [0, 12, -6, 8, 0],
+            scale: [1, 1.12, 0.92, 1.06, 1],
+          }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         >
-          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
           </svg>
         </motion.div>

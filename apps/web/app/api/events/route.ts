@@ -221,7 +221,7 @@ function setupEventHandlers(
   userId?: string
 ) {
   const encoder = new TextEncoder();
-  const handlers: Array<{ event: string; handler: Function }> = [];
+  const handlers: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
 
   const sendEvent = (type: string, data: any) => {
     try {
@@ -332,7 +332,7 @@ function setupEventHandlers(
 /**
  * Cleanup event handlers
  */
-function cleanupEventHandlers(handlers: Array<{ event: string; handler: Function }>) {
+function cleanupEventHandlers(handlers: Array<{ event: string; handler: (...args: unknown[]) => void }>) {
   handlers.forEach(({ event, handler }) => {
     eventBus.off(event as any, handler as any);
   });

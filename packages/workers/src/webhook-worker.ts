@@ -3,9 +3,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { Job } from 'bullmq';
-import getClient from 'clients-db';
-import { getQueueService } from '../../utils/src/queue/queue-service';
-import { QUEUE_NAMES, SendWebhookJobData } from '../../utils/src/queue/contract-queue';
+import clientsDb from 'clients-db';
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { QUEUE_NAMES, SendWebhookJobData } from 'utils/queue/contract-queue';
 import pino from 'pino';
 import crypto from 'crypto';
 
@@ -95,7 +96,7 @@ async function sendWebhook(
  * Process webhook delivery job
  */
 export async function processWebhookJob(
-  job: Job<SendWebhookJobData>
+  job: JobType<SendWebhookJobData>
 ): Promise<WebhookDeliveryResult> {
   const { tenantId, event, payload, webhookUrl, secret } = job.data;
 
@@ -111,11 +112,10 @@ export async function processWebhookJob(
       webhookId: payload.webhookId || 'system',
       event,
       payload,
-      url: webhookUrl,
-      status: 'PENDING',
-      attempts: job.attemptsMade + 1,
+      status: 'pending',
+      attempt: job.attemptsMade + 1,
     },
-  }).catch((error) => {
+  }).catch((error: unknown) => {
     logger.error({ error }, 'Failed to create webhook delivery record');
     return null;
   });
@@ -128,14 +128,13 @@ export async function processWebhookJob(
     await prisma.webhookDelivery.update({
       where: { id: delivery.id },
       data: {
-        status: result.success ? 'SUCCESS' : 'FAILED',
+        status: result.success ? 'success' : 'failed',
         statusCode: result.statusCode,
         response: result.response,
         error: result.error,
-        deliveryTime: result.deliveryTime,
-        lastAttemptAt: new Date(),
+        sentAt: new Date(),
       },
-    }).catch((error) => {
+    }).catch((error: unknown) => {
       logger.error({ error, deliveryId: delivery.id }, 'Failed to update webhook delivery');
     });
   }

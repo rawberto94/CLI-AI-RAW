@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
         let riskScore = 50; // Default medium risk
         let complianceScore = 70; // Default compliance
         let financialScore = 60; // Default financial health
-        let operationalScore = 65; // Default operational
+        const operationalScore = 65; // Default operational
 
         // Adjust based on artifacts
         const riskArtifact = contract.artifacts.find(a => a.type === 'RISK');

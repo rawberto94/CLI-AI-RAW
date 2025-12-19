@@ -128,6 +128,7 @@ import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForAppr
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
+import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
 
 // ============ LIVE UPDATE INDICATOR COMPONENT ============
@@ -952,6 +953,7 @@ export default function ContractsPage() {
   const [valueRangeFilter, setValueRangeFilter] = useState<string | null>(null);
   const [dateRangeFilter, setDateRangeFilter] = useState<string | null>(null);
   const [expirationFilters, setExpirationFilters] = useState<string[]>([]);
+  const [supplierFilters, setSupplierFilters] = useState<string[]>([]);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
@@ -1235,6 +1237,7 @@ export default function ContractsPage() {
     setValueRangeFilter(null);
     setDateRangeFilter(null);
     setExpirationFilters([]);
+    setSupplierFilters([]);
     setActivePreset(null);
     setAdvancedFilters({});
     setCategoryFilter(null);
@@ -1375,7 +1378,7 @@ export default function ContractsPage() {
   }, [selectedContracts, crossModule, refetch]);
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
   
   // Count active filters for badge
   const activeFilterCount = [
@@ -1387,6 +1390,7 @@ export default function ContractsPage() {
     valueRangeFilter ? 1 : 0,
     dateRangeFilter ? 1 : 0,
     expirationFilters.length,
+    supplierFilters.length,
     categoryFilter ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
   
@@ -1462,6 +1466,10 @@ export default function ContractsPage() {
         }
       });
 
+      // Supplier filter
+      const matchesSupplier = supplierFilters.length === 0 || 
+        (contract.parties?.supplier && supplierFilters.includes(contract.parties.supplier));
+
       // Advanced filters
       const matchesAdvanced = 
         (!advancedFilters.clientName || contract.parties?.client?.toLowerCase().includes(advancedFilters.clientName.toLowerCase())) &&
@@ -1473,10 +1481,10 @@ export default function ContractsPage() {
       const matchesCategory = !categoryFilter || 
         (categoryFilter === 'uncategorized' ? !contract.category : contract.category?.id === categoryFilter);
 
-      return matchesSearch && matchesStatus && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesAdvanced && matchesCategory;
+      return matchesSearch && matchesStatus && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesSupplier && matchesAdvanced && matchesCategory;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, advancedFilters, categoryFilter]);
+  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, advancedFilters, categoryFilter]);
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
@@ -2116,7 +2124,9 @@ export default function ContractsPage() {
               toast.info('Select exactly 2 contracts to compare');
             }
           }}
-          onAskAIClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
+          onAskAIClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+            detail: { autoMessage: 'Help me find and analyze my contracts' }
+          }))}
           className="mb-4"
         />
 
@@ -2152,10 +2162,12 @@ export default function ContractsPage() {
               
               {/* AI Chat Search Button */}
               <Button
-                onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
-                className="h-9 gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-lg px-4"
+                onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+                  detail: { autoMessage: searchQuery ? `Search for contracts matching: ${searchQuery}` : 'Help me find contracts' }
+                }))}
+                className="h-9 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-lg px-3"
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Ask AI</span>
               </Button>
 
@@ -2321,6 +2333,42 @@ export default function ContractsPage() {
                           })}
                         </DropdownMenuContent>
                       </DropdownMenu>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
+                            supplierFilters.length > 0 
+                              ? "bg-teal-50 border-teal-200 text-teal-700" 
+                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                          )}>
+                            <Building2 className="h-3.5 w-3.5" />
+                            Supplier
+                            {supplierFilters.length > 0 && (
+                              <span className="bg-teal-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
+                                {supplierFilters.length}
+                              </span>
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
+                          {Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort().map((supplier) => (
+                            <DropdownMenuItem
+                              key={supplier}
+                              onClick={() => setSupplierFilters(prev => 
+                                prev.includes(supplier!) ? prev.filter(s => s !== supplier) : [...prev, supplier!]
+                              )}
+                              className="text-sm"
+                            >
+                              <Checkbox checked={supplierFilters.includes(supplier!)} className="mr-2 h-3.5 w-3.5" />
+                              <span className="truncate">{supplier}</span>
+                            </DropdownMenuItem>
+                          ))}
+                          {(!contracts || contracts.every(c => !c.parties?.supplier)) && (
+                            <div className="text-xs text-slate-400 px-2 py-1.5">No suppliers found</div>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
                     {/* Clear All */}
@@ -2345,7 +2393,7 @@ export default function ContractsPage() {
                       <span className="text-xs text-slate-500">Active:</span>
                       {searchQuery && (
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs">
-                          "{searchQuery}"
+                          &quot;{searchQuery}&quot;
                           <button onClick={() => setSearchQuery("")} className="hover:text-red-600"><X className="h-3 w-3" /></button>
                         </span>
                       )}
@@ -2710,7 +2758,12 @@ export default function ContractsPage() {
                     onQuickAction={(action) => {
                       switch (action) {
                         case 'ai':
-                          window.dispatchEvent(new CustomEvent('openAIChatbot'));
+                          window.dispatchEvent(new CustomEvent('openAIChatbot', {
+                            detail: { 
+                              autoMessage: `Tell me about this contract: ${contract.title || 'Unknown'} - ${(contract as any).supplierName || 'Unknown supplier'}`,
+                              contractId: contract.id
+                            }
+                          }));
                           break;
                         case 'preview':
                           handlePreview(originalContract);
@@ -2995,26 +3048,40 @@ export default function ContractsPage() {
           const contract = contracts.find(c => c.id === id);
           if (contract) handleDeleteClick(id, contract.title || 'Contract');
         }}
-        onAskAI={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
+        onAskAI={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+          detail: {
+            autoMessage: previewContract ? `Tell me about this contract: ${previewContract.filename || 'Unknown'}` : 'Help me analyze contracts',
+            contractId: previewContract?.id
+          }
+        }))}
       />
 
       {/* Enhanced Bulk Actions Bar (floating) */}
       <EnhancedBulkActionsBar
         selectedCount={selectedContracts.size}
+        totalCount={filteredContracts.length}
         selectedContracts={enhancedContracts.filter(c => selectedContracts.has(c.id))}
+        onSelectAll={() => {
+          const allIds = new Set(filteredContracts.map(c => c.id));
+          setSelectedContracts(allIds);
+        }}
+        onDeselectAll={() => setSelectedContracts(new Set())}
         onClearSelection={() => setSelectedContracts(new Set())}
         onAction={async (action) => {
           const actionId = typeof action === 'string' ? action : action.id;
           switch (actionId) {
+            case 'export':
             case 'export-pdf':
             case 'export-csv':
             case 'export-json':
               await performBulkAction('export');
               break;
+            case 'analyze':
             case 'ai-analyze':
             case 'ai-summarize':
               await performBulkAction('analyze');
               break;
+            case 'ai_report':
             case 'ai-report':
               setAiReportModalOpen(true);
               break;
@@ -3027,14 +3094,24 @@ export default function ContractsPage() {
             case 'delete':
               handleBulkDeleteClick();
               break;
+            case 'archive':
+              await performBulkAction('delete'); // Using delete for now, could add archive
+              toast.success('Contracts archived');
+              break;
+            case 'tag':
+              toast.info('Tag management coming soon');
+              break;
             case 'compare':
               if (selectedContracts.size === 2) {
                 const ids = Array.from(selectedContracts);
                 router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
+              } else {
+                toast.warning('Please select exactly 2 contracts to compare');
               }
               break;
             default:
-              // Handle any other actions
+              console.log('Unhandled action:', actionId);
+              toast.info(`Action "${actionId}" coming soon`);
               break;
           }
         }}
@@ -3062,6 +3139,9 @@ export default function ContractsPage() {
         onApply={() => setShowMobileFilters(false)}
         onReset={clearFilters}
       />
+
+      {/* Scroll to Top Button */}
+      <ScrollToTopButton threshold={600} />
     </div>
     </TooltipProvider>
   );

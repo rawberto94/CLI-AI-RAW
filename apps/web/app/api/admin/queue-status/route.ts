@@ -22,7 +22,7 @@ export async function GET() {
     // Try to get actual queue stats from Redis/BullMQ
     let queues: any[] = [];
     let recentJobs: any[] = [];
-    let importBatches: any[] = [];
+    const importBatches: any[] = [];
     
     try {
       // In production, connect to actual BullMQ queues

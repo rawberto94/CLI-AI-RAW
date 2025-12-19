@@ -37,8 +37,19 @@ export function ActivityTab({ contractId }: { contractId: string }) {
           const data = await activityRes.json()
 
           const rawActivities = Array.isArray(data?.activities) ? data.activities : []
+          interface RawActivity {
+            id?: unknown;
+            type?: unknown;
+            user?: unknown;
+            userName?: unknown;
+            action?: unknown;
+            title?: unknown;
+            details?: unknown;
+            description?: unknown;
+            timestamp?: unknown;
+          }
           const normalized = rawActivities
-            .map((a: any): ActivityEvent | null => {
+            .map((a: RawActivity): ActivityEvent | null => {
               if (!a) return null
               return {
                 id: String(a.id ?? ''),
@@ -59,7 +70,7 @@ export function ActivityTab({ contractId }: { contractId: string }) {
                 timestamp: String(a.timestamp ?? ''),
               }
             })
-            .filter((a): a is ActivityEvent => a !== null)
+            .filter((a: ActivityEvent | null): a is ActivityEvent => a !== null)
 
           setActivities(normalized)
         } else {

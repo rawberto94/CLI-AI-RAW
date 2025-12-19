@@ -164,6 +164,15 @@ async function handleMetricsJson(res: http.ServerResponse): Promise<void> {
 export function startHealthServer(port: number = 9090): http.Server {
   const server = http.createServer(createHealthHandler());
 
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.warn({ port }, `⚠️ Health port ${port} already in use, skipping health server`);
+      // Don't crash, just skip the health server
+      return;
+    }
+    throw err;
+  });
+
   server.listen(port, () => {
     logger.info({ port }, '🏥 Health check server started');
     logger.info({ 

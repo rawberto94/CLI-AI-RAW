@@ -5,7 +5,6 @@ import { prisma } from '@/lib/prisma';
 function getDateRange(timeframe: string): { start: Date; end: Date; previousStart: Date; previousEnd: Date } {
   const now = new Date();
   const end = now;
-  let start: Date;
   let days: number;
   
   switch (timeframe) {
@@ -25,7 +24,7 @@ function getDateRange(timeframe: string): { start: Date; end: Date; previousStar
       days = 30;
   }
   
-  start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
   const previousEnd = new Date(start.getTime() - 1);
   const previousStart = new Date(previousEnd.getTime() - days * 24 * 60 * 60 * 1000);
   

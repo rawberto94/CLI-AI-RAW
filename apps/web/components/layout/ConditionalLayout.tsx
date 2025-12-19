@@ -17,17 +17,11 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   // Auth pages should not show the navigation
   const isAuthPage = pathname?.startsWith('/auth');
   
-  if (isAuthPage) {
-    // Auth pages: No navigation, no sidebar, full page
-    return (
-      <main className="min-h-screen">
-        {children}
-      </main>
-    );
-  }
-  
-  // Regular pages: Full navigation and layout
+  // useEffect must be called unconditionally (before any early returns)
   useEffect(() => {
+    // Skip for auth pages
+    if (isAuthPage) return;
+    
     const active = document.activeElement as HTMLElement | null;
     const nav = document.getElementById('main-nav');
 
@@ -38,8 +32,18 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
         main?.focus();
       });
     }
-  }, [pathname]);
+  }, [pathname, isAuthPage]);
 
+  if (isAuthPage) {
+    // Auth pages: No navigation, no sidebar, full page
+    return (
+      <main className="min-h-screen">
+        {children}
+      </main>
+    );
+  }
+  
+  // Regular pages: Full navigation and layout
   return (
     <>
       <EnhancedNavigation />

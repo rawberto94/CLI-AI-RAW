@@ -14,6 +14,21 @@
       "import": "./dist/queue/index.js",
       "require": "./dist/queue/index.js"
     },
+    "./queue/queue-service": {
+      "types": "./dist/queue/queue-service.d.ts",
+      "import": "./dist/queue/queue-service.js",
+      "require": "./dist/queue/queue-service.js"
+    },
+    "./queue/contract-queue": {
+      "types": "./dist/queue/contract-queue.d.ts",
+      "import": "./dist/queue/contract-queue.js",
+      "require": "./dist/queue/contract-queue.js"
+    },
+    "./queue/dlq-consumer": {
+      "types": "./dist/queue/dlq-consumer.d.ts",
+      "import": "./dist/queue/dlq-consumer.js",
+      "require": "./dist/queue/dlq-consumer.js"
+    },
     "./cache/distributed-cache": {
       "types": "./dist/cache/distributed-cache.d.ts",
       "import": "./dist/cache/distributed-cache.js",
@@ -24,10 +39,15 @@
       "import": "./dist/events/redis-event-bus.js",
       "require": "./dist/events/redis-event-bus.js"
     },
-    "./queue/dlq-consumer": {
-      "types": "./dist/queue/dlq-consumer.d.ts",
-      "import": "./dist/queue/dlq-consumer.js",
-      "require": "./dist/queue/dlq-consumer.js"
+    "./patterns/circuit-breaker": {
+      "types": "./dist/patterns/circuit-breaker.d.ts",
+      "import": "./dist/patterns/circuit-breaker.js",
+      "require": "./dist/patterns/circuit-breaker.js"
+    },
+    "./patterns/retry": {
+      "types": "./dist/patterns/retry.d.ts",
+      "import": "./dist/patterns/retry.js",
+      "require": "./dist/patterns/retry.js"
     }
   },
   "scripts": {

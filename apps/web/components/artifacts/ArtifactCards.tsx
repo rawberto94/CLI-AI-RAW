@@ -175,19 +175,19 @@ function ExpandableSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
-    <div className="border border-slate-200 rounded-lg overflow-hidden">
+    <div className="border border-slate-100 rounded-lg overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full p-4 flex items-center justify-between bg-slate-50/50 hover:bg-slate-50 transition-colors"
+        className="w-full px-3 py-2.5 flex items-center justify-between bg-slate-50/30 hover:bg-slate-50 transition-colors"
       >
-        <div className="flex items-center gap-3">
-          {Icon && <Icon className="h-4 w-4 text-slate-400" />}
-          <span className="font-medium text-slate-900">{title}</span>
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="h-3.5 w-3.5 text-slate-400" />}
+          <span className="text-xs font-medium text-slate-700">{title}</span>
           {badge}
         </div>
         <ChevronDown 
           className={cn(
-            "h-4 w-4 text-slate-400 transition-transform",
+            "h-3.5 w-3.5 text-slate-400 transition-transform",
             isOpen && "rotate-180"
           )} 
         />
@@ -198,9 +198,9 @@ function ExpandableSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
           >
-            <div className="p-4 border-t border-slate-200">
+            <div className="p-3 border-t border-slate-100">
               {children}
             </div>
           </motion.div>
@@ -439,59 +439,53 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header with confidence */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-800">
             {data.title || 'Contract Overview'}
           </h3>
           {data.contractType && (
-            <Badge variant="secondary" className="mt-2 bg-slate-100">
+            <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] rounded font-medium">
               {data.contractType}
-            </Badge>
+            </span>
           )}
         </div>
         {data.confidence && (
-          <div className="text-right">
-            <span className="text-xs text-slate-500 block mb-1">Confidence</span>
-            <ConfidenceIndicator value={data.confidence} size="md" />
-          </div>
+          <ConfidenceIndicator value={data.confidence} size="sm" />
         )}
       </div>
       
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/50">
-          <p className="text-sm text-slate-700 leading-relaxed">{data.summary}</p>
+        <div className="px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
+          <p className="text-xs text-slate-600 leading-relaxed break-words">{data.summary}</p>
         </div>
       )}
       
       {/* Parties */}
       {data.parties && data.parties.length > 0 && (
         <ExpandableSection 
-          title="Contract Parties" 
+          title="Parties" 
           icon={Users}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.parties.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.parties.length}</span>}
           defaultOpen
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {data.parties.map((party, i) => (
               <div 
                 key={i} 
-                className="p-4 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors"
+                className="px-2.5 py-2 bg-white rounded border border-slate-100 hover:border-slate-200 transition-colors"
               >
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge 
-                    variant="outline"
-                    className="text-[10px] border-indigo-200 text-indigo-600"
-                  >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded font-medium">
                     {party.role}
-                  </Badge>
+                  </span>
+                  <span className="text-xs font-medium text-slate-700">{party.name}</span>
                 </div>
-                <p className="font-medium text-slate-900">{party.name}</p>
                 {party.email && (
-                  <p className="text-sm text-slate-500 mt-1">{party.email}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{party.email}</p>
                 )}
               </div>
             ))}
@@ -501,24 +495,24 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
       
       {/* Key Dates */}
       {data.dates && (
-        <ExpandableSection title="Key Dates" icon={Calendar} defaultOpen>
-          <div className="grid grid-cols-3 gap-4">
+        <ExpandableSection title="Dates" icon={Calendar} defaultOpen>
+          <div className="flex flex-wrap gap-2">
             {data.dates.effective && (
-              <div className="text-center p-4 bg-emerald-50 rounded-lg">
-                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Effective</p>
-                <p className="font-semibold text-slate-900 mt-1">{formatDate(data.dates.effective)}</p>
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-emerald-50 border border-emerald-100 rounded">
+                <span className="text-[10px] text-emerald-600 font-medium">Effective</span>
+                <span className="text-xs font-semibold text-emerald-700">{formatDate(data.dates.effective)}</span>
               </div>
             )}
             {data.dates.signed && (
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Signed</p>
-                <p className="font-semibold text-slate-900 mt-1">{formatDate(data.dates.signed)}</p>
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-blue-50 border border-blue-100 rounded">
+                <span className="text-[10px] text-blue-600 font-medium">Signed</span>
+                <span className="text-xs font-semibold text-blue-700">{formatDate(data.dates.signed)}</span>
               </div>
             )}
             {data.dates.expiration && (
-              <div className="text-center p-4 bg-amber-50 rounded-lg">
-                <p className="text-xs text-amber-600 font-medium uppercase tracking-wide">Expires</p>
-                <p className="font-semibold text-slate-900 mt-1">{formatDate(data.dates.expiration)}</p>
+              <div className="flex items-center gap-1.5 px-2 py-1.5 bg-amber-50 border border-amber-100 rounded">
+                <span className="text-[10px] text-amber-600 font-medium">Expires</span>
+                <span className="text-xs font-semibold text-amber-700">{formatDate(data.dates.expiration)}</span>
               </div>
             )}
           </div>
@@ -530,27 +524,26 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
         <ExpandableSection 
           title="Key Terms" 
           icon={Tag}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.keyTerms.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.keyTerms.length}</span>}
         >
-          <div className="space-y-2">
+          <div className="space-y-1">
             {data.keyTerms.map((item, i) => (
               <div 
                 key={i}
-                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors group"
+                className="flex items-center justify-between px-2 py-1.5 bg-slate-50/50 rounded hover:bg-slate-100 transition-colors group"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-sm text-slate-500 shrink-0">{item.term}:</span>
-                  <span className="font-medium text-slate-900 truncate">{item.value}</span>
-                  {item.confidence && <ConfidenceIndicator value={item.confidence} />}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] text-slate-400 shrink-0">{item.term}</span>
+                  <span className="text-xs font-medium text-slate-700 truncate">{item.value}</span>
                 </div>
                 <button
                   onClick={() => copyTerm(item.term, item.value)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-slate-200 rounded"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 rounded"
                 >
                   {copiedTerm === item.term ? (
-                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                    <Check className="h-3 w-3 text-emerald-600" />
                   ) : (
-                    <Copy className="h-3.5 w-3.5 text-slate-400" />
+                    <Copy className="h-3 w-3 text-slate-400" />
                   )}
                 </button>
               </div>
@@ -562,24 +555,18 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
       {/* Contract Definitions */}
       {data.definitions && data.definitions.length > 0 && (
         <ExpandableSection 
-          title="Defined Terms" 
+          title="Definitions" 
           icon={FileText}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.definitions.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.definitions.length}</span>}
         >
-          <div className="space-y-3">
+          <div className="space-y-2">
             {data.definitions.map((def, i) => (
               <div 
                 key={i}
-                className="p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100"
+                className="px-2.5 py-2 bg-indigo-50/50 rounded border border-indigo-100"
               >
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-indigo-700">&ldquo;{def.term}&rdquo;</span>
-                  <span className="text-slate-600">means</span>
-                </div>
-                <p className="mt-1 text-sm text-slate-700">{def.meaning}</p>
-                {def.source && (
-                  <p className="mt-1 text-xs text-slate-400">Source: {def.source}</p>
-                )}
+                <span className="text-xs font-medium text-indigo-700">&ldquo;{def.term}&rdquo;</span>
+                <p className="mt-0.5 text-[10px] text-slate-600">{def.meaning}</p>
               </div>
             ))}
           </div>
@@ -589,23 +576,21 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
       {/* Referenced Documents / Schedules / Exhibits */}
       {data.referencedDocuments && data.referencedDocuments.length > 0 && (
         <ExpandableSection 
-          title="Referenced Documents" 
+          title="References" 
           icon={ExternalLink}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.referencedDocuments.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.referencedDocuments.length}</span>}
         >
-          <div className="space-y-2">
+          <div className="space-y-1">
             {data.referencedDocuments.map((doc, i) => (
               <div 
                 key={i}
-                className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+                className="flex items-center gap-2 px-2 py-1.5 bg-slate-50/50 rounded"
               >
-                <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                <div>
-                  <span className="font-medium text-slate-900">{doc.name}</span>
-                  {doc.description && (
-                    <span className="text-slate-500 ml-2">— {doc.description}</span>
-                  )}
-                </div>
+                <FileText className="h-3 w-3 text-slate-400 shrink-0" />
+                <span className="text-xs font-medium text-slate-700">{doc.name}</span>
+                {doc.description && (
+                  <span className="text-[10px] text-slate-400">— {doc.description}</span>
+                )}
               </div>
             ))}
           </div>
@@ -732,33 +717,33 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900">Key Clauses</h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {data.totalCount || data.clauses.length} clauses extracted
-          </p>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-800">Clauses</h3>
+          <span className="text-[10px] text-slate-400">
+            {data.totalCount || data.clauses.length} found
+          </span>
         </div>
         
         {/* Filter Pills */}
-        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+        <div className="flex gap-0.5 p-0.5 bg-slate-100 rounded-md">
           {(['all', 'high', 'medium', 'low'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                "px-2 py-1 text-[10px] font-medium rounded transition-all",
                 filter === f 
-                  ? "bg-white text-slate-900 shadow-sm" 
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-slate-700 shadow-sm" 
+                  : "text-slate-500 hover:text-slate-700"
               )}
             >
               {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-              {f !== 'all' && (
-                <span className="ml-1 text-slate-400">
-                  ({importanceCounts[f]})
+              {f !== 'all' && importanceCounts[f] > 0 && (
+                <span className="ml-0.5 text-slate-400">
+                  {importanceCounts[f]}
                 </span>
               )}
             </button>
@@ -767,7 +752,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
       </div>
       
       {/* Clauses List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredClauses.map((clause) => {
           const isExpanded = expandedClauses.has(clause.id);
           
@@ -776,30 +761,30 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
               key={clause.id}
               layout
               className={cn(
-                "border rounded-xl overflow-hidden transition-colors",
-                isExpanded ? "border-indigo-200 bg-indigo-50/30" : "border-slate-200 bg-white hover:border-slate-300"
+                "border rounded-lg overflow-hidden transition-colors",
+                isExpanded ? "border-indigo-200 bg-indigo-50/30" : "border-slate-100 bg-white hover:border-slate-200"
               )}
             >
               <button
                 onClick={() => toggleClause(clause.id)}
-                className="w-full p-4 flex items-start gap-3 text-left"
+                className="w-full px-3 py-2.5 flex items-start gap-2 text-left"
               >
                 <ImportanceDot importance={clause.importance} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-slate-900">{clause.title}</span>
-                    <Badge variant="secondary" className="text-[10px] bg-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-slate-800">{clause.title}</span>
+                    <span className="text-[10px] px-1 py-0.5 bg-slate-100 text-slate-500 rounded">
                       {clause.type}
-                    </Badge>
+                    </span>
                   </div>
                   {!isExpanded && (
-                    <p className="text-sm text-slate-500 mt-1 line-clamp-2">
+                    <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">
                       {clause.content}
                     </p>
                   )}
                 </div>
                 <ChevronRight className={cn(
-                  "h-4 w-4 text-slate-400 transition-transform shrink-0",
+                  "h-3.5 w-3.5 text-slate-400 transition-transform shrink-0 mt-0.5",
                   isExpanded && "rotate-90"
                 )} />
               </button>
@@ -810,47 +795,45 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-slate-200"
+                    className="border-t border-slate-100"
                   >
-                    <div className="p-4 space-y-4">
+                    <div className="px-3 py-2.5 space-y-3">
                       {/* Editable Content */}
                       {editingClauseId === clause.id ? (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           <textarea
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
-                            className="w-full min-h-[120px] p-3 text-sm border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y"
+                            className="w-full min-h-[80px] p-2 text-xs border border-indigo-200 rounded focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-y"
                             autoFocus
                           />
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
                               onClick={cancelEdit}
+                              className="px-2 py-1 text-[10px] text-slate-500 hover:bg-slate-100 rounded"
                             >
                               Cancel
-                            </Button>
-                            <Button
-                              size="sm"
+                            </button>
+                            <button
                               onClick={() => saveEdit(clause.id)}
-                              className="bg-emerald-600 hover:bg-emerald-700"
+                              className="px-2 py-1 text-[10px] bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center gap-1"
                             >
-                              <CheckCircle2 className="h-4 w-4 mr-1" />
+                              <CheckCircle2 className="h-3 w-3" />
                               Save
-                            </Button>
+                            </button>
                           </div>
                         </div>
                       ) : (
                         <div className="group relative">
-                          <p className="text-sm text-slate-700 leading-relaxed">
+                          <p className="text-xs text-slate-600 leading-relaxed">
                             {clause.content}
                           </p>
                           {editable && (
                             <button
                               onClick={() => startEditing(clause)}
-                              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white border border-slate-200 rounded-md shadow-sm hover:bg-slate-50"
+                              className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white border border-slate-200 rounded shadow-sm hover:bg-slate-50"
                             >
-                              <Edit3 className="h-3.5 w-3.5 text-slate-500" />
+                              <Edit3 className="h-3 w-3 text-slate-400" />
                             </button>
                           )}
                         </div>
@@ -858,14 +841,14 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                       
                       {clause.obligations && clause.obligations.length > 0 && (
                         <div>
-                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                          <h5 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
                             Obligations
                           </h5>
-                          <ul className="space-y-1">
+                          <ul className="space-y-0.5">
                             {clause.obligations.map((ob, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                                {ob}
+                              <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
+                                <span className="break-words">{ob}</span>
                               </li>
                             ))}
                           </ul>
@@ -874,14 +857,14 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                       
                       {clause.risks && clause.risks.length > 0 && (
                         <div>
-                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                          <h5 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
                             Risks
                           </h5>
-                          <ul className="space-y-1">
+                          <ul className="space-y-0.5">
                             {clause.risks.map((risk, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                                {risk}
+                              <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600 break-words">
+                                <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                                <span className="break-words">{risk}</span>
                               </li>
                             ))}
                           </ul>
@@ -891,17 +874,16 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                       {/* Cross References */}
                       {clause.crossReferences && clause.crossReferences.length > 0 && (
                         <div>
-                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                          <h5 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
                             Cross References
                           </h5>
-                          <div className="space-y-1">
+                          <div className="flex flex-wrap gap-1">
                             {clause.crossReferences.map((ref, i) => (
-                              <div key={i} className="flex items-center gap-2 text-sm text-indigo-600 bg-indigo-50 rounded px-2 py-1">
-                                <span className="font-mono text-xs">{ref.from}</span>
-                                <ChevronRight className="h-3 w-3" />
-                                <span className="font-mono text-xs">{ref.to}</span>
-                                {ref.context && <span className="text-slate-500 text-xs ml-2">({ref.context})</span>}
-                              </div>
+                              <span key={i} className="inline-flex items-center gap-1 text-[10px] text-indigo-600 bg-indigo-50 rounded px-1.5 py-0.5">
+                                <span className="font-mono">{ref.from}</span>
+                                <ChevronRight className="h-2.5 w-2.5" />
+                                <span className="font-mono">{ref.to}</span>
+                              </span>
                             ))}
                           </div>
                         </div>
@@ -910,8 +892,8 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                       {/* Defined Terms Used */}
                       {clause.definedTermsUsed && clause.definedTermsUsed.length > 0 && (
                         <div>
-                          <h5 className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
-                            Defined Terms Used
+                          <h5 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Defined Terms
                           </h5>
                           <div className="flex flex-wrap gap-1">
                             {clause.definedTermsUsed.map((term, i) => (
@@ -1052,10 +1034,10 @@ export function RiskArtifact({ data, className, isLoading }: RiskArtifactProps) 
 
   const getRiskLevelConfig = (level: string) => {
     const configs = {
-      critical: { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200' },
-      high: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' },
-      medium: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' },
-      low: { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' }
+      critical: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100' },
+      high: { bg: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-100' },
+      medium: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100' },
+      low: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' }
     };
     return configs[level as keyof typeof configs] || configs.medium;
   };
@@ -1063,60 +1045,57 @@ export function RiskArtifact({ data, className, isLoading }: RiskArtifactProps) 
   const levelConfig = getRiskLevelConfig(data.riskLevel);
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header with Score */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <ScoreRing 
             score={data.overallScore} 
-            size="lg"
+            size="sm"
             label="Risk"
           />
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Risk Assessment</h3>
-            <Badge className={cn("mt-1", levelConfig.bg, levelConfig.text)}>
-              {data.riskLevel.toUpperCase()} RISK
-            </Badge>
+            <h3 className="text-sm font-semibold text-slate-800">Risk Assessment</h3>
+            <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", levelConfig.bg, levelConfig.text)}>
+              {data.riskLevel.toUpperCase()}
+            </span>
           </div>
         </div>
         
         <div className="text-right">
-          <p className="text-sm text-slate-500">Factors Identified</p>
-          <p className="text-2xl font-bold text-slate-900">{data.factors.length}</p>
+          <span className="text-[10px] text-slate-400">Factors</span>
+          <p className="text-sm font-bold text-slate-700">{data.factors.length}</p>
         </div>
       </div>
       
       {/* Summary */}
       {data.summary && (
         <div className={cn(
-          "p-4 rounded-xl border",
+          "px-3 py-2 rounded border",
           levelConfig.bg,
           levelConfig.border
         )}>
-          <div className="flex gap-3">
-            <Info className={cn("h-5 w-5 shrink-0 mt-0.5", levelConfig.text)} />
-            <p className="text-sm text-slate-700">{data.summary}</p>
-          </div>
+          <p className="text-xs text-slate-600">{data.summary}</p>
         </div>
       )}
       
       {/* Risk Factors */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {data.factors.map((factor) => (
           <ExpandableSection
             key={factor.id}
             title={factor.category}
             badge={<SeverityBadge severity={factor.severity} />}
           >
-            <div className="space-y-4">
-              <p className="text-sm text-slate-700">{factor.description}</p>
+            <div className="space-y-2">
+              <p className="text-xs text-slate-600">{factor.description}</p>
               
               {factor.mitigation && (
-                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <h5 className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-1">
-                    Recommended Mitigation
+                <div className="px-2 py-1.5 bg-emerald-50 rounded border border-emerald-100">
+                  <h5 className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-0.5">
+                    Mitigation
                   </h5>
-                  <p className="text-sm text-emerald-800">{factor.mitigation}</p>
+                  <p className="text-xs text-emerald-700">{factor.mitigation}</p>
                 </div>
               )}
             </div>
@@ -1243,42 +1222,42 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
   const currency = getCurrency();
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900">Financial Analysis</h3>
+        <h3 className="text-sm font-semibold text-slate-800">Financial</h3>
         {totalValue && (
-          <div className="text-right">
-            <p className="text-sm text-slate-500">Total Value</p>
-            <p className="text-2xl font-bold text-slate-900">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400">Total</span>
+            <span className="text-sm font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
               {formatCurrency(totalValue, currency)}
-            </p>
+            </span>
           </div>
         )}
       </div>
       
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50/50 rounded-xl border border-green-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-emerald-50/50 rounded border border-emerald-100">
+          <p className="text-xs text-slate-600">{data.summary}</p>
         </div>
       )}
       
       {/* Payment Terms */}
       {data.paymentTerms && (
-        <div className="p-4 bg-slate-50 rounded-xl">
-          <h4 className="text-sm font-semibold text-slate-700 mb-2">Payment Terms</h4>
+        <div className="px-3 py-2 bg-slate-50 rounded border border-slate-100">
+          <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Payment Terms</h4>
           {Array.isArray(data.paymentTerms) ? (
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {data.paymentTerms.map((term, i) => (
-                <li key={i} className="text-sm text-slate-600 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <li key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
+                  <span className="w-1 h-1 rounded-full bg-emerald-500" />
                   {typeof term === 'object' ? term.value : term}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-slate-600">{data.paymentTerms}</p>
+            <p className="text-xs text-slate-600">{data.paymentTerms}</p>
           )}
         </div>
       )}
@@ -1286,57 +1265,49 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
       {/* Yearly Payment Breakdown */}
       {data.yearlyBreakdown && data.yearlyBreakdown.length > 0 && (
         <ExpandableSection 
-          title="Payment Schedule by Year" 
+          title="Payment Schedule" 
           icon={Calendar}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-purple-100 text-purple-700">{data.yearlyBreakdown.length} years</Badge>}
+          badge={<span className="ml-1 text-[10px] text-purple-600">{data.yearlyBreakdown.length}yr</span>}
           defaultOpen
         >
-          <div className="space-y-4">
+          <div className="space-y-2">
             {data.yearlyBreakdown.map((yearData, yearIdx) => (
-              <div key={yearIdx} className="border border-purple-200 rounded-lg overflow-hidden bg-gradient-to-br from-purple-50/50 to-white">
-                <div className="bg-gradient-to-r from-purple-100 to-purple-50 px-4 py-3 border-b border-purple-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm">
+              <div key={yearIdx} className="border border-purple-100 rounded overflow-hidden">
+                <div className="bg-purple-50/50 px-2.5 py-1.5 border-b border-purple-100 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px]">
                       {yearData.year}
-                    </div>
-                    <h5 className="font-semibold text-purple-900">{yearData.label}</h5>
+                    </span>
+                    <span className="text-xs font-medium text-purple-800">{yearData.label}</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs text-purple-600">Year Total</span>
-                    <p className="font-bold text-purple-900 text-lg">
-                      {formatCurrency(yearData.subtotal, currency)}
-                    </p>
-                  </div>
+                  <span className="text-xs font-bold text-purple-700">
+                    {formatCurrency(yearData.subtotal, currency)}
+                  </span>
                 </div>
                 
                 {yearData.payments && yearData.payments.length > 0 && (
-                  <div className="p-4">
-                    <div className="space-y-2">
-                      {yearData.payments.map((payment, paymentIdx) => (
-                        <div 
-                          key={paymentIdx} 
-                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-purple-100 hover:border-purple-300 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-medium">
-                              {paymentIdx + 1}
-                            </div>
-                            <div>
-                              <p className="font-medium text-slate-900">{payment.description}</p>
-                              {payment.dueDate && (
-                                <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                                  <Calendar className="w-3 h-3" />
-                                  Due: {payment.dueDate}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <span className="font-semibold text-slate-900">
-                            {formatCurrency(payment.amount, currency)}
+                  <div className="p-2 space-y-1">
+                    {yearData.payments.map((payment, paymentIdx) => (
+                      <div 
+                        key={paymentIdx} 
+                        className="flex items-center justify-between px-2 py-1.5 bg-white rounded border border-purple-50 text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-medium">
+                            {paymentIdx + 1}
                           </span>
+                          <div>
+                            <span className="font-medium text-slate-700">{payment.description}</span>
+                            {payment.dueDate && (
+                              <span className="text-[10px] text-slate-400 ml-2">Due: {payment.dueDate}</span>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        <span className="font-semibold text-slate-700">
+                          {formatCurrency(payment.amount, currency)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1708,9 +1679,9 @@ export function ComplianceArtifact({ data, className, isLoading }: ComplianceArt
 
   const getStatusConfig = (status: ComplianceIssue['status']) => {
     return {
-      'compliant': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle2 },
-      'non-compliant': { bg: 'bg-rose-100', text: 'text-rose-700', icon: AlertTriangle },
-      'review-needed': { bg: 'bg-amber-100', text: 'text-amber-700', icon: Info }
+      'compliant': { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: CheckCircle2 },
+      'non-compliant': { bg: 'bg-rose-50', text: 'text-rose-600', icon: AlertTriangle },
+      'review-needed': { bg: 'bg-amber-50', text: 'text-amber-600', icon: Info }
     }[status];
   };
 
@@ -1721,65 +1692,64 @@ export function ComplianceArtifact({ data, className, isLoading }: ComplianceArt
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header with Score */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <ScoreRing 
             score={data.score} 
-            size="lg"
+            size="sm"
             label="Score"
           />
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Compliance Check</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              {data.regulations?.length || 0} regulations analyzed
-            </p>
+            <h3 className="text-sm font-semibold text-slate-800">Compliance</h3>
+            <span className="text-[10px] text-slate-400">
+              {data.regulations?.length || 0} regulations
+            </span>
           </div>
         </div>
         
         {/* Status Summary */}
-        <div className="flex gap-3">
-          <div className="text-center px-3 py-2 bg-emerald-50 rounded-lg">
-            <p className="text-lg font-bold text-emerald-700">{statusCounts.compliant}</p>
-            <p className="text-[10px] text-emerald-600 uppercase">Compliant</p>
+        <div className="flex gap-1.5">
+          <div className="text-center px-2 py-1 bg-emerald-50 rounded border border-emerald-100">
+            <p className="text-sm font-bold text-emerald-700">{statusCounts.compliant}</p>
+            <p className="text-[8px] text-emerald-600 uppercase">OK</p>
           </div>
-          <div className="text-center px-3 py-2 bg-amber-50 rounded-lg">
-            <p className="text-lg font-bold text-amber-700">{statusCounts['review-needed']}</p>
-            <p className="text-[10px] text-amber-600 uppercase">Review</p>
+          <div className="text-center px-2 py-1 bg-amber-50 rounded border border-amber-100">
+            <p className="text-sm font-bold text-amber-700">{statusCounts['review-needed']}</p>
+            <p className="text-[8px] text-amber-600 uppercase">Review</p>
           </div>
-          <div className="text-center px-3 py-2 bg-rose-50 rounded-lg">
-            <p className="text-lg font-bold text-rose-700">{statusCounts['non-compliant']}</p>
-            <p className="text-[10px] text-rose-600 uppercase">Issues</p>
+          <div className="text-center px-2 py-1 bg-rose-50 rounded border border-rose-100">
+            <p className="text-sm font-bold text-rose-700">{statusCounts['non-compliant']}</p>
+            <p className="text-[8px] text-rose-600 uppercase">Issues</p>
           </div>
         </div>
       </div>
       
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-xl border border-blue-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-blue-50/50 rounded border border-blue-100">
+          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
       
       {/* Regulations */}
       {data.regulations && data.regulations.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1">
           {data.regulations.map((reg, i) => (
-            <Badge 
+            <span 
               key={i} 
-              variant="outline" 
-              className="bg-white border-slate-200 text-slate-600"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white border border-slate-100 rounded text-[10px] text-slate-600"
             >
-              <Scale className="h-3 w-3 mr-1" />
+              <Scale className="h-2.5 w-2.5" />
               {reg}
-            </Badge>
+            </span>
           ))}
         </div>
       )}
       
       {/* Compliance Issues */}
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {data.issues.map((issue) => {
           const config = getStatusConfig(issue.status);
           const StatusIcon = config.icon;
@@ -1788,24 +1758,21 @@ export function ComplianceArtifact({ data, className, isLoading }: ComplianceArt
             <div
               key={issue.id}
               className={cn(
-                "p-4 rounded-xl border transition-colors",
+                "px-2.5 py-2 rounded border",
                 config.bg,
-                "border-slate-200/50"
+                "border-slate-100"
               )}
             >
-              <div className="flex items-start gap-3">
-                <StatusIcon className={cn("h-5 w-5 shrink-0 mt-0.5", config.text)} />
-                <div className="flex-1">
+              <div className="flex items-start gap-2">
+                <StatusIcon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", config.text)} />
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-slate-900">{issue.regulation}</span>
-                    <Badge className={cn("text-[10px]", config.bg, config.text)}>
+                    <span className="text-xs font-medium text-slate-700">{issue.regulation}</span>
+                    <span className={cn("text-[10px] font-medium px-1 py-0.5 rounded", config.bg, config.text)}>
                       {issue.status.replace('-', ' ')}
-                    </Badge>
+                    </span>
                   </div>
-                  <p className="text-sm text-slate-600 mt-1">{issue.requirement}</p>
-                  {issue.details && (
-                    <p className="text-xs text-slate-500 mt-2">{issue.details}</p>
-                  )}
+                  <p className="text-[10px] text-slate-500 mt-0.5 break-words">{issue.requirement}</p>
                 </div>
               </div>
             </div>
@@ -1868,28 +1835,28 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
 
   const getObligationTypeConfig = (type: Obligation['type']) => {
     return {
-      'deliverable': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Deliverable' },
-      'sla': { bg: 'bg-purple-100', text: 'text-purple-700', label: 'SLA' },
-      'milestone': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Milestone' },
-      'reporting': { bg: 'bg-indigo-100', text: 'text-indigo-700', label: 'Reporting' },
-      'compliance': { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Compliance' },
-      'other': { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Other' }
-    }[type] || { bg: 'bg-slate-100', text: 'text-slate-600', label: type };
+      'deliverable': { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Deliverable' },
+      'sla': { bg: 'bg-purple-50', text: 'text-purple-600', label: 'SLA' },
+      'milestone': { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Milestone' },
+      'reporting': { bg: 'bg-indigo-50', text: 'text-indigo-600', label: 'Reporting' },
+      'compliance': { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Compliance' },
+      'other': { bg: 'bg-slate-50', text: 'text-slate-500', label: 'Other' }
+    }[type] || { bg: 'bg-slate-50', text: 'text-slate-500', label: type };
   };
 
   const getStatusConfig = (status?: string) => {
     return {
-      'pending': { bg: 'bg-slate-100', text: 'text-slate-600', icon: Calendar },
-      'in-progress': { bg: 'bg-blue-100', text: 'text-blue-600', icon: TrendingUp },
-      'completed': { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: CheckCircle2 },
-      'overdue': { bg: 'bg-rose-100', text: 'text-rose-600', icon: AlertTriangle },
-      'upcoming': { bg: 'bg-amber-100', text: 'text-amber-600', icon: Calendar },
-      'due': { bg: 'bg-orange-100', text: 'text-orange-600', icon: AlertTriangle },
-      'missed': { bg: 'bg-rose-100', text: 'text-rose-600', icon: AlertTriangle },
-      'met': { bg: 'bg-emerald-100', text: 'text-emerald-600', icon: CheckCircle2 },
-      'at-risk': { bg: 'bg-amber-100', text: 'text-amber-600', icon: AlertTriangle },
-      'breached': { bg: 'bg-rose-100', text: 'text-rose-600', icon: AlertTriangle }
-    }[status || 'pending'] || { bg: 'bg-slate-100', text: 'text-slate-600', icon: Info };
+      'pending': { bg: 'bg-slate-50', text: 'text-slate-500', icon: Calendar },
+      'in-progress': { bg: 'bg-blue-50', text: 'text-blue-500', icon: TrendingUp },
+      'completed': { bg: 'bg-emerald-50', text: 'text-emerald-500', icon: CheckCircle2 },
+      'overdue': { bg: 'bg-rose-50', text: 'text-rose-500', icon: AlertTriangle },
+      'upcoming': { bg: 'bg-amber-50', text: 'text-amber-500', icon: Calendar },
+      'due': { bg: 'bg-orange-50', text: 'text-orange-500', icon: AlertTriangle },
+      'missed': { bg: 'bg-rose-50', text: 'text-rose-500', icon: AlertTriangle },
+      'met': { bg: 'bg-emerald-50', text: 'text-emerald-500', icon: CheckCircle2 },
+      'at-risk': { bg: 'bg-amber-50', text: 'text-amber-500', icon: AlertTriangle },
+      'breached': { bg: 'bg-rose-50', text: 'text-rose-500', icon: AlertTriangle }
+    }[status || 'pending'] || { bg: 'bg-slate-50', text: 'text-slate-500', icon: Info };
   };
 
   const obligationsByParty = data.obligations.reduce((acc, obl) => {
@@ -1900,32 +1867,30 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
   }, {} as Record<string, Obligation[]>);
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <FileCheck className="h-5 w-5 text-blue-500" />
-            Obligations Tracker
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {data.obligations.length} obligations • {data.milestones?.length || 0} milestones
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileCheck className="h-4 w-4 text-blue-500" />
+          <h3 className="text-sm font-semibold text-slate-800">Obligations</h3>
+          <span className="text-[10px] text-slate-400">
+            {data.obligations.length} total • {data.milestones?.length || 0} milestones
+          </span>
         </div>
-        <div className="flex gap-2">
-          <Badge className="bg-blue-100 text-blue-700">
+        <div className="flex gap-1">
+          <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded">
             {data.obligations.filter(o => o.type === 'sla').length} SLAs
-          </Badge>
-          <Badge className="bg-amber-100 text-amber-700">
+          </span>
+          <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded">
             {data.obligations.filter(o => o.status === 'pending' || o.status === 'in-progress').length} Active
-          </Badge>
+          </span>
         </div>
       </div>
 
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-xl border border-blue-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-blue-50/50 rounded border border-blue-100">
+          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
 
@@ -1934,27 +1899,27 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
         <ExpandableSection
           title="SLA Metrics"
           icon={TrendingUp}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.slaMetrics.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.slaMetrics.length}</span>}
           defaultOpen
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {data.slaMetrics.map((sla, i) => {
               const config = getStatusConfig(sla.status);
               const StatusIcon = config.icon;
               return (
-                <div key={i} className={cn("p-3 rounded-lg border", config.bg, "border-slate-200/50")}>
+                <div key={i} className={cn("px-2.5 py-2 rounded border", config.bg, "border-slate-100")}>
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-slate-900 text-sm">{sla.metric}</span>
-                    <StatusIcon className={cn("h-4 w-4", config.text)} />
+                    <span className="text-xs font-medium text-slate-700 break-words">{sla.metric}</span>
+                    <StatusIcon className={cn("h-3 w-3 shrink-0 ml-1", config.text)} />
                   </div>
-                  <p className="text-lg font-bold text-slate-900 mt-1">
-                    Target: {sla.target}
+                  <p className="text-sm font-bold text-slate-800 mt-0.5">
+                    {sla.target}
                   </p>
                   {sla.currentValue && (
-                    <p className="text-xs text-slate-500">Current: {sla.currentValue}</p>
+                    <p className="text-[10px] text-slate-400">Current: {sla.currentValue}</p>
                   )}
                   {sla.penalty && (
-                    <p className="text-xs text-rose-600 mt-1">Penalty: {sla.penalty}</p>
+                    <p className="text-[10px] text-rose-500 mt-0.5">Penalty: {sla.penalty}</p>
                   )}
                 </div>
               );
@@ -1968,28 +1933,28 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
         <ExpandableSection
           title="Milestones"
           icon={Calendar}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.milestones.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.milestones.length}</span>}
         >
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {data.milestones.map((milestone) => {
               const config = getStatusConfig(milestone.status);
               return (
-                <div key={milestone.id} className={cn("p-4 rounded-xl border", config.bg, "border-slate-200/50")}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium text-slate-900">{milestone.name}</h4>
-                      <p className="text-sm text-slate-600 mt-1">{formatDate(milestone.date)}</p>
+                <div key={milestone.id} className={cn("px-2.5 py-2 rounded border", config.bg, "border-slate-100")}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-medium text-slate-700">{milestone.name}</h4>
+                      <span className={cn("text-[10px] px-1 py-0.5 rounded", config.bg, config.text)}>
+                        {milestone.status || 'upcoming'}
+                      </span>
                     </div>
-                    <Badge className={cn("text-[10px]", config.bg, config.text)}>
-                      {milestone.status || 'upcoming'}
-                    </Badge>
+                    <span className="text-[10px] text-slate-400">{formatDate(milestone.date)}</span>
                   </div>
                   {milestone.deliverables.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1">
+                    <div className="mt-1.5 flex flex-wrap gap-1">
                       {milestone.deliverables.map((d, i) => (
-                        <Badge key={i} variant="outline" className="text-[10px] bg-white">
+                        <span key={i} className="text-[10px] px-1.5 py-0.5 bg-white border border-slate-100 rounded text-slate-500">
                           {d}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
                   )}
@@ -2006,44 +1971,44 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
           key={party}
           title={party}
           icon={Users}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{obligations.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{obligations.length}</span>}
           defaultOpen
         >
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {obligations.map((obl) => {
               const typeConfig = getObligationTypeConfig(obl.type);
               const statusConfig = getStatusConfig(obl.status);
               return (
-                <div key={obl.id} className="p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+                <div key={obl.id} className="px-2.5 py-2 bg-white rounded border border-slate-100 hover:border-slate-200 transition-colors">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge className={cn("text-[10px]", typeConfig.bg, typeConfig.text)}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className={cn("text-[10px] px-1 py-0.5 rounded", typeConfig.bg, typeConfig.text)}>
                           {typeConfig.label}
-                        </Badge>
-                        <h4 className="font-medium text-slate-900 text-sm">{obl.title}</h4>
+                        </span>
+                        <h4 className="text-xs font-medium text-slate-700 truncate">{obl.title}</h4>
                       </div>
-                      <p className="text-sm text-slate-600 mt-1">{obl.description}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{obl.description}</p>
                       {obl.slaCriteria && (
-                        <p className="text-xs text-purple-600 mt-1">
-                          SLA: {obl.slaCriteria.metric} - {obl.slaCriteria.target} {obl.slaCriteria.unit || ''}
+                        <p className="text-[10px] text-purple-500 mt-0.5">
+                          SLA: {obl.slaCriteria.metric} - {obl.slaCriteria.target}{obl.slaCriteria.unit || ''}
                         </p>
                       )}
                       {obl.penalty && (
-                        <p className="text-xs text-rose-600 mt-1">Penalty: {obl.penalty}</p>
+                        <p className="text-[10px] text-rose-500">Penalty: {obl.penalty}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
                       {obl.dueDate && (
-                        <p className="text-xs text-slate-500">{formatDate(obl.dueDate)}</p>
+                        <p className="text-[10px] text-slate-400">{formatDate(obl.dueDate)}</p>
                       )}
-                      <Badge className={cn("text-[10px] mt-1", statusConfig.bg, statusConfig.text)}>
+                      <span className={cn("text-[10px] px-1 py-0.5 rounded mt-0.5 inline-block", statusConfig.bg, statusConfig.text)}>
                         {obl.status || 'pending'}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
                   {obl.confidence && obl.confidence < 90 && (
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-1.5">
                       <ConfidenceIndicator value={obl.confidence} />
                     </div>
                   )}
@@ -2102,51 +2067,48 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
 
   const getAlertConfig = (type: 'warning' | 'critical' | 'info') => {
     return {
-      'critical': { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-300', icon: AlertTriangle },
-      'warning': { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300', icon: AlertTriangle },
-      'info': { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300', icon: Info }
+      'critical': { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200', icon: AlertTriangle },
+      'warning': { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200', icon: AlertTriangle },
+      'info': { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', icon: Info }
     }[type];
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-indigo-500" />
-            Renewal & Termination
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Contract renewal terms and deadlines
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-indigo-500" />
+          <h3 className="text-sm font-semibold text-slate-800">Renewal & Termination</h3>
         </div>
-        <Badge className={data.autoRenewal ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}>
-          {data.autoRenewal ? 'Auto-Renewal Enabled' : 'Manual Renewal'}
-        </Badge>
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded", 
+          data.autoRenewal ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500'
+        )}>
+          {data.autoRenewal ? 'Auto-Renewal' : 'Manual'}
+        </span>
       </div>
 
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50/50 rounded-xl border border-indigo-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-indigo-50/50 rounded border border-indigo-100">
+          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
 
       {/* Renewal Alerts */}
       {data.renewalAlerts && data.renewalAlerts.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {data.renewalAlerts.map((alert, i) => {
             const config = getAlertConfig(alert.type);
             const AlertIcon = config.icon;
             return (
-              <div key={i} className={cn("p-4 rounded-xl border", config.bg, config.border)}>
-                <div className="flex items-start gap-3">
-                  <AlertIcon className={cn("h-5 w-5 shrink-0", config.text)} />
-                  <div className="flex-1">
-                    <p className={cn("text-sm font-medium", config.text)}>{alert.message}</p>
+              <div key={i} className={cn("px-2.5 py-2 rounded border", config.bg, config.border)}>
+                <div className="flex items-start gap-2">
+                  <AlertIcon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", config.text)} />
+                  <div className="flex-1 min-w-0">
+                    <p className={cn("text-xs font-medium", config.text)}>{alert.message}</p>
                     {alert.dueDate && (
-                      <p className="text-xs text-slate-500 mt-1">Due: {formatDate(alert.dueDate)}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Due: {formatDate(alert.dueDate)}</p>
                     )}
                   </div>
                 </div>
@@ -2157,33 +2119,29 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
       )}
 
       {/* Key Dates */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="flex flex-wrap gap-2">
         {data.currentTermEnd && (
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <p className="text-xs text-slate-500 uppercase">Current Term Ends</p>
-            <p className="text-lg font-bold text-slate-900 mt-1">{formatDate(data.currentTermEnd)}</p>
+          <div className="px-2.5 py-2 bg-slate-50 rounded border border-slate-100">
+            <p className="text-[10px] text-slate-400 uppercase">Term Ends</p>
+            <p className="text-sm font-bold text-slate-700">{formatDate(data.currentTermEnd)}</p>
           </div>
         )}
         {data.renewalTerms?.optOutDeadline && (
-          <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-            <p className="text-xs text-amber-600 uppercase">Opt-Out Deadline</p>
-            <p className="text-lg font-bold text-amber-700 mt-1">{formatDate(data.renewalTerms.optOutDeadline)}</p>
+          <div className="px-2.5 py-2 bg-amber-50 rounded border border-amber-100">
+            <p className="text-[10px] text-amber-500 uppercase">Opt-Out</p>
+            <p className="text-sm font-bold text-amber-600">{formatDate(data.renewalTerms.optOutDeadline)}</p>
           </div>
         )}
         {data.terminationNotice && (
-          <div className="p-4 bg-rose-50 rounded-xl border border-rose-200">
-            <p className="text-xs text-rose-600 uppercase">Notice Required</p>
-            <p className="text-lg font-bold text-rose-700 mt-1">{data.terminationNotice.requiredDays} days</p>
-            {data.terminationNotice.format && (
-              <p className="text-xs text-slate-500 mt-1">Format: {data.terminationNotice.format}</p>
-            )}
+          <div className="px-2.5 py-2 bg-rose-50 rounded border border-rose-100">
+            <p className="text-[10px] text-rose-500 uppercase">Notice</p>
+            <p className="text-sm font-bold text-rose-600">{data.terminationNotice.requiredDays}d</p>
           </div>
         )}
         {data.renewalTerms && (
-          <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
-            <p className="text-xs text-indigo-600 uppercase">Renewal Period</p>
-            <p className="text-lg font-bold text-indigo-700 mt-1">{data.renewalTerms.renewalPeriod}</p>
-            <p className="text-xs text-slate-500 mt-1">{data.renewalTerms.noticePeriodDays} days notice</p>
+          <div className="px-2.5 py-2 bg-indigo-50 rounded border border-indigo-100">
+            <p className="text-[10px] text-indigo-500 uppercase">Period</p>
+            <p className="text-sm font-bold text-indigo-600">{data.renewalTerms.renewalPeriod}</p>
           </div>
         )}
       </div>
@@ -2193,20 +2151,22 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
         <ExpandableSection
           title="Price Escalation"
           icon={TrendingUp}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.priceEscalation.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.priceEscalation.length}</span>}
         >
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {data.priceEscalation.map((esc, i) => (
-              <div key={i} className="p-3 bg-white rounded-lg border border-slate-200">
+              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-slate-900">{esc.type}</span>
+                  <span className="text-xs font-medium text-slate-700">{esc.type}</span>
                   {esc.percentage && (
-                    <Badge className="bg-amber-100 text-amber-700">+{esc.percentage}%</Badge>
+                    <span className="text-[10px] px-1 py-0.5 bg-amber-50 text-amber-600 rounded">+{esc.percentage}%</span>
                   )}
                 </div>
-                {esc.index && <p className="text-xs text-slate-500 mt-1">Index: {esc.index}</p>}
-                {esc.cap && <p className="text-xs text-slate-500">Cap: {esc.cap}%</p>}
-                {esc.effectiveDate && <p className="text-xs text-slate-500">Effective: {formatDate(esc.effectiveDate)}</p>}
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+                  {esc.index && <p className="text-[10px] text-slate-400">Index: {esc.index}</p>}
+                  {esc.cap && <p className="text-[10px] text-slate-400">Cap: {esc.cap}%</p>}
+                  {esc.effectiveDate && <p className="text-[10px] text-slate-400">{formatDate(esc.effectiveDate)}</p>}
+                </div>
               </div>
             ))}
           </div>
@@ -2218,21 +2178,23 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
         <ExpandableSection
           title="Opt-Out Deadlines"
           icon={AlertTriangle}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-amber-100 text-amber-700">{data.optOutDeadlines.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-amber-500">{data.optOutDeadlines.length}</span>}
           defaultOpen
         >
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {data.optOutDeadlines.map((deadline, i) => (
-              <div key={i} className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <div key={i} className="px-2.5 py-2 bg-amber-50 rounded border border-amber-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-900">{formatDate(deadline.date)}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">{deadline.description}</p>
+                    <p className="text-xs font-medium text-slate-700">{formatDate(deadline.date)}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{deadline.description}</p>
                   </div>
                   {deadline.daysRemaining !== undefined && (
-                    <Badge className={deadline.daysRemaining < 30 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}>
-                      {deadline.daysRemaining} days
-                    </Badge>
+                    <span className={cn("text-[10px] px-1 py-0.5 rounded",
+                      deadline.daysRemaining < 30 ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
+                    )}>
+                      {deadline.daysRemaining}d
+                    </span>
                   )}
                 </div>
               </div>
@@ -2291,37 +2253,32 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
 
   const getStrengthConfig = (strength: string) => {
     return {
-      'strong': { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Strong' },
-      'moderate': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Moderate' },
-      'weak': { bg: 'bg-rose-100', text: 'text-rose-700', label: 'Weak' },
-      'balanced': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Balanced' }
-    }[strength] || { bg: 'bg-slate-100', text: 'text-slate-600', label: strength };
+      'strong': { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'Strong' },
+      'moderate': { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Moderate' },
+      'weak': { bg: 'bg-rose-50', text: 'text-rose-600', label: 'Weak' },
+      'balanced': { bg: 'bg-blue-50', text: 'text-blue-600', label: 'Balanced' }
+    }[strength] || { bg: 'bg-slate-50', text: 'text-slate-500', label: strength };
   };
 
   const leverageConfig = getStrengthConfig(data.overallLeverage || 'balanced');
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Scale className="h-5 w-5 text-purple-500" />
-            Negotiation Intelligence
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            Strategic insights for contract negotiation
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Scale className="h-4 w-4 text-purple-500" />
+          <h3 className="text-sm font-semibold text-slate-800">Negotiation Intel</h3>
         </div>
-        <Badge className={cn(leverageConfig.bg, leverageConfig.text)}>
-          {leverageConfig.label} Position
-        </Badge>
+        <span className={cn("text-[10px] px-1.5 py-0.5 rounded", leverageConfig.bg, leverageConfig.text)}>
+          {leverageConfig.label}
+        </span>
       </div>
 
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50/50 rounded-xl border border-purple-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-purple-50/50 rounded border border-purple-100">
+          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
 
@@ -2330,32 +2287,28 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
         <ExpandableSection
           title="Leverage Points"
           icon={TrendingUp}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-emerald-100 text-emerald-700">{data.leveragePoints.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-emerald-500">{data.leveragePoints.length}</span>}
           defaultOpen
         >
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {data.leveragePoints.map((point) => {
               const strengthConfig = getStrengthConfig(point.strength);
               return (
-                <div key={point.id} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 transition-colors">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Badge className={cn("text-[10px]", strengthConfig.bg, strengthConfig.text)}>
-                          {strengthConfig.label}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px]">{point.category}</Badge>
-                      </div>
-                      <h4 className="font-medium text-slate-900 mt-2">{point.title}</h4>
-                      <p className="text-sm text-slate-600 mt-1">{point.description}</p>
-                      {point.suggestedAction && (
-                        <p className="text-sm text-emerald-600 mt-2 flex items-center gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          {point.suggestedAction}
-                        </p>
-                      )}
-                    </div>
+                <div key={point.id} className="px-2.5 py-2 bg-white rounded border border-slate-100 hover:border-emerald-200 transition-colors">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className={cn("text-[10px] px-1 py-0.5 rounded", strengthConfig.bg, strengthConfig.text)}>
+                      {strengthConfig.label}
+                    </span>
+                    <span className="text-[10px] px-1 py-0.5 bg-slate-50 text-slate-500 rounded">{point.category}</span>
                   </div>
+                  <h4 className="text-xs font-medium text-slate-700">{point.title}</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{point.description}</p>
+                  {point.suggestedAction && (
+                    <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                      <Sparkles className="h-2.5 w-2.5" />
+                      {point.suggestedAction}
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -2368,24 +2321,24 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
         <ExpandableSection
           title="Weak Clauses"
           icon={AlertTriangle}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-rose-100 text-rose-700">{data.weakClauses.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-rose-500">{data.weakClauses.length}</span>}
         >
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {data.weakClauses.map((clause) => (
-              <div key={clause.id} className="p-4 bg-rose-50 rounded-xl border border-rose-200">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-[10px]">{clause.clauseReference}</Badge>
+              <div key={clause.id} className="px-2.5 py-2 bg-rose-50/50 rounded border border-rose-100">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] px-1 py-0.5 bg-white border border-slate-100 text-slate-500 rounded">{clause.clauseReference}</span>
                   <SeverityBadge severity={clause.impact} />
                 </div>
-                <p className="text-sm text-slate-900 font-medium mt-2">{clause.issue}</p>
+                <p className="text-xs font-medium text-slate-700">{clause.issue}</p>
                 {clause.suggestedRevision && (
-                  <div className="mt-3 p-2 bg-white rounded-lg border border-slate-200">
-                    <p className="text-xs text-slate-500 uppercase mb-1">Suggested Revision</p>
-                    <p className="text-sm text-slate-700">{clause.suggestedRevision}</p>
+                  <div className="mt-1.5 px-2 py-1.5 bg-white rounded border border-slate-100">
+                    <p className="text-[10px] text-slate-400 uppercase mb-0.5">Suggested</p>
+                    <p className="text-[10px] text-slate-600">{clause.suggestedRevision}</p>
                   </div>
                 )}
                 {clause.benchmarkComparison && (
-                  <p className="text-xs text-slate-500 mt-2">Market: {clause.benchmarkComparison}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Market: {clause.benchmarkComparison}</p>
                 )}
               </div>
             ))}
@@ -2398,25 +2351,25 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
         <ExpandableSection
           title="Benchmark Gaps"
           icon={TrendingDown}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.benchmarkGaps.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.benchmarkGaps.length}</span>}
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-[10px]">
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="text-left py-2 font-medium text-slate-600">Area</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Current</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Market</th>
-                  <th className="text-left py-2 font-medium text-slate-600">Recommendation</th>
+                  <th className="text-left py-1.5 font-medium text-slate-500">Area</th>
+                  <th className="text-left py-1.5 font-medium text-slate-500">Current</th>
+                  <th className="text-left py-1.5 font-medium text-slate-500">Market</th>
+                  <th className="text-left py-1.5 font-medium text-slate-500">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {data.benchmarkGaps.map((gap, i) => (
-                  <tr key={i} className="border-b border-slate-100 last:border-0">
-                    <td className="py-3 text-slate-900 font-medium">{gap.area}</td>
-                    <td className="py-3 text-rose-600">{gap.currentTerm}</td>
-                    <td className="py-3 text-emerald-600">{gap.marketStandard}</td>
-                    <td className="py-3 text-slate-600">{gap.recommendation}</td>
+                  <tr key={i} className="border-b border-slate-50 last:border-0">
+                    <td className="py-1.5 text-slate-700 font-medium">{gap.area}</td>
+                    <td className="py-1.5 text-rose-500">{gap.currentTerm}</td>
+                    <td className="py-1.5 text-emerald-500">{gap.marketStandard}</td>
+                    <td className="py-1.5 text-slate-500">{gap.recommendation}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2430,25 +2383,22 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
         <ExpandableSection
           title="Negotiation Script"
           icon={Edit3}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.negotiationScript.length} topics</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.negotiationScript.length}</span>}
         >
-          <div className="space-y-4">
+          <div className="space-y-2">
             {data.negotiationScript.map((script, i) => (
-              <div key={i} className="p-4 bg-white rounded-xl border border-slate-200">
-                <h4 className="font-medium text-slate-900">{script.topic}</h4>
-                <div className="mt-3 space-y-2">
-                  <div className="p-2 bg-emerald-50 rounded-lg">
-                    <p className="text-xs text-emerald-600 uppercase mb-1">Opening Position</p>
-                    <p className="text-sm text-slate-700">{script.openingPosition}</p>
+              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
+                <h4 className="text-xs font-medium text-slate-700">{script.topic}</h4>
+                <div className="mt-1.5 space-y-1">
+                  <div className="px-2 py-1 bg-emerald-50 rounded">
+                    <p className="text-[10px] text-emerald-600">{script.openingPosition}</p>
                   </div>
-                  <div className="p-2 bg-amber-50 rounded-lg">
-                    <p className="text-xs text-amber-600 uppercase mb-1">Fallback Position</p>
-                    <p className="text-sm text-slate-700">{script.fallbackPosition}</p>
+                  <div className="px-2 py-1 bg-amber-50 rounded">
+                    <p className="text-[10px] text-amber-600">{script.fallbackPosition}</p>
                   </div>
                   {script.walkAwayPoint && (
-                    <div className="p-2 bg-rose-50 rounded-lg">
-                      <p className="text-xs text-rose-600 uppercase mb-1">Walk Away Point</p>
-                      <p className="text-sm text-slate-700">{script.walkAwayPoint}</p>
+                    <div className="px-2 py-1 bg-rose-50 rounded">
+                      <p className="text-[10px] text-rose-600">{script.walkAwayPoint}</p>
                     </div>
                   )}
                 </div>
@@ -2516,27 +2466,23 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
   return (
     <div className={cn("space-y-6", className)}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Edit3 className="h-5 w-5 text-indigo-500" />
-            Amendments & Changes
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {data.amendments?.length || 0} amendments tracked
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Edit3 className="h-4 w-4 text-indigo-500" />
+          <h3 className="text-sm font-semibold text-slate-800">Amendments</h3>
+          <span className="text-[10px] text-slate-400">{data.amendments?.length || 0} tracked</span>
         </div>
         {data.consolidatedTerms && (
-          <Badge className="bg-blue-100 text-blue-700">
+          <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">
             v{data.consolidatedTerms.version}
-          </Badge>
+          </span>
         )}
       </div>
 
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50/50 rounded-xl border border-indigo-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-indigo-50/50 rounded border border-indigo-100">
+          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
 
@@ -2545,43 +2491,38 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
         <ExpandableSection
           title="Amendments"
           icon={FileText}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.amendments.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.amendments.length}</span>}
           defaultOpen
         >
-          <div className="space-y-4">
+          <div className="space-y-2">
             {data.amendments.map((amendment) => (
-              <div key={amendment.id} className="p-4 bg-white rounded-xl border border-slate-200">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-indigo-100 text-indigo-700">
-                        Amendment #{amendment.amendmentNumber}
-                      </Badge>
-                      <span className="text-xs text-slate-500">{formatDate(amendment.effectiveDate)}</span>
-                    </div>
-                    <h4 className="font-medium text-slate-900 mt-2">{amendment.title}</h4>
-                    <p className="text-sm text-slate-600 mt-1">{amendment.description}</p>
-                  </div>
+              <div key={amendment.id} className="px-2.5 py-2 bg-white rounded border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] px-1 py-0.5 bg-indigo-50 text-indigo-600 rounded">
+                    #{amendment.amendmentNumber}
+                  </span>
+                  <span className="text-xs font-medium text-slate-700 truncate">{amendment.title}</span>
+                  <span className="text-[10px] text-slate-400 shrink-0">{formatDate(amendment.effectiveDate)}</span>
                 </div>
+                <p className="text-[10px] text-slate-500 mt-0.5">{amendment.description}</p>
                 
                 {/* Changed Clauses */}
                 {amendment.changedClauses.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-xs text-slate-500 uppercase">Changes</p>
+                  <div className="mt-1.5 space-y-1">
                     {amendment.changedClauses.map((clause, i) => {
                       const config = getChangeTypeConfig(clause.changeType);
                       return (
-                        <div key={i} className={cn("p-3 rounded-lg", config.bg)}>
+                        <div key={i} className={cn("px-2 py-1.5 rounded", config.bg)}>
                           <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-[10px]">{clause.clauseId}</Badge>
-                            <Badge className={cn("text-[10px]", config.bg, config.text)}>
+                            <span className="text-[10px] text-slate-500">{clause.clauseId}</span>
+                            <span className={cn("text-[10px] px-1 py-0.5 rounded", config.bg, config.text)}>
                               {config.label}
-                            </Badge>
+                            </span>
                           </div>
                           {clause.originalText && (
-                            <p className="text-sm text-slate-500 line-through mt-2">{clause.originalText}</p>
+                            <p className="text-[10px] text-slate-400 line-through mt-0.5">{clause.originalText}</p>
                           )}
-                          <p className="text-sm text-slate-900 mt-1">{clause.newText}</p>
+                          <p className="text-[10px] text-slate-700">{clause.newText}</p>
                         </div>
                       );
                     })}
@@ -2590,10 +2531,10 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
 
                 {/* Signed By */}
                 {amendment.signedBy && amendment.signedBy.length > 0 && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <Users className="h-3 w-3 text-slate-400" />
-                    <span className="text-xs text-slate-500">
-                      Signed by: {amendment.signedBy.join(', ')}
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <Users className="h-2.5 w-2.5 text-slate-400" />
+                    <span className="text-[10px] text-slate-400">
+                      {amendment.signedBy.join(', ')}
                     </span>
                   </div>
                 )}
@@ -2608,23 +2549,20 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
         <ExpandableSection
           title="Change Log"
           icon={Calendar}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.changeLog.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.changeLog.length}</span>}
         >
           <div className="relative">
-            <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200" />
-            <div className="space-y-4">
+            <div className="absolute left-2 top-0 bottom-0 w-px bg-slate-100" />
+            <div className="space-y-1.5">
               {data.changeLog.map((entry, i) => (
-                <div key={i} className="relative pl-10">
-                  <div className="absolute left-2.5 w-3 h-3 rounded-full bg-white border-2 border-indigo-500" />
-                  <div className="p-3 bg-slate-50 rounded-lg">
+                <div key={i} className="relative pl-6">
+                  <div className="absolute left-0.5 w-2 h-2 rounded-full bg-white border border-indigo-400" />
+                  <div className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
                     <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-[10px]">{entry.type}</Badge>
-                      <span className="text-xs text-slate-500">{formatDate(entry.date)}</span>
+                      <span className="text-[10px] px-1 py-0.5 bg-white border border-slate-100 text-slate-500 rounded">{entry.type}</span>
+                      <span className="text-[10px] text-slate-400">{formatDate(entry.date)}</span>
                     </div>
-                    <p className="text-sm text-slate-700 mt-1">{entry.description}</p>
-                    {entry.reference && (
-                      <p className="text-xs text-slate-400 mt-1">Ref: {entry.reference}</p>
-                    )}
+                    <p className="text-[10px] text-slate-600 mt-0.5">{entry.description}</p>
                   </div>
                 </div>
               ))}
@@ -2638,17 +2576,17 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
         <ExpandableSection
           title="Superseded Clauses"
           icon={FileText}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px] bg-slate-100">{data.supersededClauses.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.supersededClauses.length}</span>}
         >
-          <div className="space-y-2">
+          <div className="space-y-1">
             {data.supersededClauses.map((clause, i) => (
-              <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-slate-500 line-through">{clause.originalClause}</span>
-                  <span className="text-slate-400">→</span>
-                  <span className="text-slate-900 font-medium">{clause.supersededBy}</span>
+              <div key={i} className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
+                <div className="flex items-center gap-1.5 text-[10px]">
+                  <span className="text-slate-400 line-through">{clause.originalClause}</span>
+                  <span className="text-slate-300">→</span>
+                  <span className="text-slate-600 font-medium">{clause.supersededBy}</span>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Effective: {formatDate(clause.effectiveDate)}</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">{formatDate(clause.effectiveDate)}</p>
               </div>
             ))}
           </div>
@@ -2706,24 +2644,20 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
+    <div className={cn("space-y-4", className)}>
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-500" />
-            Key Contacts
-          </h3>
-          <p className="text-sm text-slate-500 mt-1">
-            {data.primaryContacts?.length || 0} contacts • {data.escalationPath?.length || 0} escalation levels
-          </p>
-        </div>
+      <div className="flex items-center gap-2">
+        <Users className="h-4 w-4 text-blue-500" />
+        <h3 className="text-sm font-semibold text-slate-800">Key Contacts</h3>
+        <span className="text-[10px] text-slate-400">
+          {data.primaryContacts?.length || 0} contacts • {data.escalationPath?.length || 0} levels
+        </span>
       </div>
 
       {/* Summary */}
       {data.summary && (
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50/50 rounded-xl border border-blue-200/50">
-          <p className="text-sm text-slate-700">{data.summary}</p>
+        <div className="px-3 py-2 bg-blue-50/50 rounded border border-blue-100">
+          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
 
@@ -2732,49 +2666,33 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
         <ExpandableSection
           title="Primary Contacts"
           icon={Users}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.primaryContacts.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.primaryContacts.length}</span>}
           defaultOpen
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {data.primaryContacts.map((contact) => (
-              <div key={contact.id} className="p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-300 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium text-slate-900">{contact.name}</h4>
-                      {contact.isPrimary && (
-                        <Badge className="text-[10px] bg-blue-100 text-blue-700">Primary</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-slate-600">{contact.role}</p>
-                    <Badge variant="outline" className="text-[10px] mt-1">{contact.party}</Badge>
-                  </div>
+              <div key={contact.id} className="px-2.5 py-2 bg-white rounded border border-slate-100 hover:border-blue-200 transition-colors">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-medium text-slate-700">{contact.name}</h4>
+                  {contact.isPrimary && (
+                    <span className="text-[10px] px-1 py-0.5 bg-blue-50 text-blue-600 rounded">Primary</span>
+                  )}
+                  <span className="text-[10px] px-1 py-0.5 bg-slate-50 text-slate-500 rounded">{contact.party}</span>
                 </div>
+                <p className="text-[10px] text-slate-500">{contact.role}</p>
                 
-                <div className="mt-3 space-y-1">
+                <div className="mt-1.5 space-y-0.5">
                   {contact.email && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500">Email:</span>
-                      <button
-                        onClick={() => copyToClipboard(contact.email!)}
-                        className="text-blue-600 hover:underline flex items-center gap-1"
-                      >
-                        {contact.email}
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => copyToClipboard(contact.email!)}
+                      className="text-[10px] text-blue-500 hover:underline flex items-center gap-1"
+                    >
+                      {contact.email}
+                      <Copy className="h-2.5 w-2.5" />
+                    </button>
                   )}
                   {contact.phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-slate-500">Phone:</span>
-                      <span className="text-slate-700">{contact.phone}</span>
-                    </div>
-                  )}
-                  {contact.address && (
-                    <div className="flex items-start gap-2 text-sm">
-                      <span className="text-slate-500 shrink-0">Address:</span>
-                      <span className="text-slate-700">{contact.address}</span>
-                    </div>
+                    <p className="text-[10px] text-slate-500">{contact.phone}</p>
                   )}
                 </div>
               </div>
@@ -2788,27 +2706,27 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
         <ExpandableSection
           title="Escalation Path"
           icon={TrendingUp}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.escalationPath.length} levels</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.escalationPath.length}</span>}
         >
           <div className="relative">
-            <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-500 via-amber-500 to-rose-500" />
-            <div className="space-y-3">
+            <div className="absolute left-2 top-0 bottom-0 w-px bg-gradient-to-b from-emerald-400 via-amber-400 to-rose-400" />
+            <div className="space-y-1.5">
               {data.escalationPath.map((level, i) => (
-                <div key={i} className="relative pl-10">
-                  <div className="absolute left-2 w-5 h-5 rounded-full bg-white border-2 border-indigo-500 flex items-center justify-center">
-                    <span className="text-[10px] font-bold text-indigo-600">{level.level}</span>
+                <div key={i} className="relative pl-6">
+                  <div className="absolute left-0 w-4 h-4 rounded-full bg-white border border-indigo-400 flex items-center justify-center">
+                    <span className="text-[8px] font-bold text-indigo-500">{level.level}</span>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-slate-900">{level.role}</h4>
-                      {level.name && <span className="text-sm text-slate-600">{level.name}</span>}
+                      <h4 className="text-xs font-medium text-slate-700">{level.role}</h4>
+                      {level.name && <span className="text-[10px] text-slate-500">{level.name}</span>}
                     </div>
                     {level.contactInfo && (
-                      <p className="text-sm text-blue-600 mt-1">{level.contactInfo}</p>
+                      <p className="text-[10px] text-blue-500">{level.contactInfo}</p>
                     )}
                     {level.escalationTrigger && (
-                      <p className="text-xs text-slate-500 mt-2">
-                        <span className="font-medium">Trigger:</span> {level.escalationTrigger}
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Trigger: {level.escalationTrigger}
                       </p>
                     )}
                   </div>
@@ -2824,21 +2742,21 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
         <ExpandableSection
           title="Notification Addresses"
           icon={FileText}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.notificationAddresses.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.notificationAddresses.length}</span>}
         >
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {data.notificationAddresses.map((addr, i) => (
-              <div key={i} className="p-3 bg-white rounded-lg border border-slate-200">
+              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-start justify-between">
                   <div>
-                    <Badge variant="outline" className="text-[10px]">{addr.purpose}</Badge>
-                    <p className="text-sm text-slate-900 font-medium mt-1">{addr.party}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">{addr.address}</p>
+                    <span className="text-[10px] px-1 py-0.5 bg-slate-50 text-slate-500 rounded">{addr.purpose}</span>
+                    <p className="text-xs font-medium text-slate-700 mt-0.5">{addr.party}</p>
+                    <p className="text-[10px] text-slate-500">{addr.address}</p>
                   </div>
                   {addr.format && (
-                    <Badge className="text-[10px] bg-slate-100 text-slate-600">
+                    <span className="text-[10px] px-1 py-0.5 bg-slate-50 text-slate-400 rounded">
                       {addr.format}
-                    </Badge>
+                    </span>
                   )}
                 </div>
               </div>
@@ -2852,23 +2770,23 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
         <ExpandableSection
           title="Key Personnel"
           icon={Users}
-          badge={<Badge variant="secondary" className="ml-2 text-[10px]">{data.keyPersonnel.length}</Badge>}
+          badge={<span className="ml-1 text-[10px] text-slate-400">{data.keyPersonnel.length}</span>}
         >
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {data.keyPersonnel.map((person, i) => (
-              <div key={i} className="p-4 bg-white rounded-xl border border-slate-200">
+              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-slate-900">{person.name}</h4>
-                    <p className="text-sm text-slate-600">{person.role}</p>
+                    <h4 className="text-xs font-medium text-slate-700">{person.name}</h4>
+                    <p className="text-[10px] text-slate-500">{person.role}</p>
                   </div>
-                  <Badge variant="outline" className="text-[10px]">{person.party}</Badge>
+                  <span className="text-[10px] px-1 py-0.5 bg-slate-50 text-slate-400 rounded">{person.party}</span>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-1">
+                <div className="mt-1.5 flex flex-wrap gap-1">
                   {person.responsibilities.map((resp, j) => (
-                    <Badge key={j} className="text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                    <span key={j} className="text-[10px] px-1 py-0.5 bg-blue-50 text-blue-600 rounded">
                       {resp}
-                    </Badge>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -2884,19 +2802,19 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
 
 function ArtifactSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div className="space-y-3 animate-pulse">
       <div className="flex items-center justify-between">
-        <div>
-          <div className="h-6 w-48 bg-slate-200 rounded" />
-          <div className="h-4 w-32 bg-slate-100 rounded mt-2" />
+        <div className="flex items-center gap-2">
+          <div className="h-4 w-4 bg-slate-200 rounded" />
+          <div className="h-4 w-32 bg-slate-200 rounded" />
+          <div className="h-3 w-20 bg-slate-100 rounded" />
         </div>
-        <div className="h-16 w-16 bg-slate-200 rounded-full" />
+        <div className="h-5 w-16 bg-slate-100 rounded" />
       </div>
-      <div className="h-20 bg-slate-100 rounded-xl" />
-      <div className="space-y-3">
-        <div className="h-16 bg-slate-100 rounded-xl" />
-        <div className="h-16 bg-slate-100 rounded-xl" />
-        <div className="h-16 bg-slate-100 rounded-xl" />
+      <div className="h-12 bg-slate-50 rounded border border-slate-100" />
+      <div className="space-y-1.5">
+        <div className="h-10 bg-slate-50 rounded border border-slate-100" />
+        <div className="h-10 bg-slate-50 rounded border border-slate-100" />
       </div>
     </div>
   );

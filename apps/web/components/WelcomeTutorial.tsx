@@ -221,7 +221,9 @@ export function WelcomeTutorial() {
     if (step?.action) {
       handleComplete();
       if (step.id === "ai-chatbot") {
-        window.dispatchEvent(new CustomEvent('openAIChatbot'));
+        window.dispatchEvent(new CustomEvent('openAIChatbot', {
+          detail: { autoMessage: 'Hi! I just finished the tutorial. What can you help me with?' }
+        }));
       } else {
         router.push(step.action.href);
       }

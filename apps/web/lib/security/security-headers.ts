@@ -215,7 +215,7 @@ function buildCSPHeader(config: CSPConfig, nonce?: string): string {
         parts.push(directive);
       }
     } else if (Array.isArray(values) && values.length > 0) {
-      let directiveValues = [...values];
+      const directiveValues = [...values];
       
       // Add nonce to script-src if provided
       if (directive === 'script-src' && nonce) {

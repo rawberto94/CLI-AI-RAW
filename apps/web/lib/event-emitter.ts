@@ -37,7 +37,7 @@ export type Unsubscribe = () => void;
 // Typed Event Emitter
 // ============================================================================
 
-export class TypedEventEmitter<Events extends Record<string, unknown>> {
+export class TypedEventEmitter<Events extends Record<string, unknown | undefined>> {
   private handlers = new Map<keyof Events, Set<EventHandler<unknown>>>();
   private onceHandlers = new Map<keyof Events, Set<EventHandler<unknown>>>();
 
@@ -165,6 +165,9 @@ export class TypedEventEmitter<Events extends Record<string, unknown>> {
 // ============================================================================
 
 export interface AppEvents {
+  // Index signature to satisfy Record<string, unknown | undefined>
+  [key: string]: unknown | undefined;
+  
   // Contract events
   'contract:created': { id: string; name: string };
   'contract:updated': { id: string };
@@ -172,13 +175,12 @@ export interface AppEvents {
   'contract:processing:started': { id: string };
   'contract:processing:completed': { id: string };
   'contract:processing:failed': { id: string; error: string };
-
   // Artifact events
   'artifact:generated': { contractId: string; type: string };
   'artifact:updated': { contractId: string; type: string };
 
   // UI events
-  'sidebar:toggle': void;
+  'sidebar:toggle': undefined;
   'modal:open': { id: string; data?: unknown };
   'modal:close': { id: string };
   'toast:show': { message: string; type: 'success' | 'error' | 'warning' | 'info' };
@@ -189,7 +191,7 @@ export interface AppEvents {
 
   // User events
   'user:login': { userId: string };
-  'user:logout': void;
+  'user:logout': undefined;
   'user:preferences:changed': { key: string; value: unknown };
 
   // Navigation events

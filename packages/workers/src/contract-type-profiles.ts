@@ -33,7 +33,7 @@ export type ArtifactType =
   | 'COMPLIANCE'
   | 'OBLIGATIONS'
   | 'RENEWAL'
-  | 'NEGOTIATION'
+  | 'NEGOTIATION_POINTS'
   | 'AMENDMENTS'
   | 'CONTACTS';
 
@@ -87,7 +87,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'optional',
     },
@@ -136,7 +136,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'required',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'required',
       CONTACTS: 'required',
     },
@@ -194,7 +194,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'required',
       CONTACTS: 'required',
     },
@@ -251,7 +251,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'required',
     },
@@ -304,7 +304,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'not-applicable',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'optional',
     },
@@ -367,7 +367,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'required',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'required',
     },
@@ -430,7 +430,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'required',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'optional',
     },
@@ -486,7 +486,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'not-applicable',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'required',
     },
@@ -542,7 +542,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'required',
       CONTACTS: 'required',
     },
@@ -598,7 +598,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'required',
     },
@@ -653,7 +653,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'required',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'optional',
       CONTACTS: 'optional',
     },
@@ -710,7 +710,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'required',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'required',
+      NEGOTIATION_POINTS: 'required',
       AMENDMENTS: 'required',
       CONTACTS: 'required',
     },
@@ -768,7 +768,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'not-applicable',
-      NEGOTIATION: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
       AMENDMENTS: 'not-applicable',
       CONTACTS: 'optional',
     },
@@ -820,7 +820,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       COMPLIANCE: 'optional',
       OBLIGATIONS: 'required',
       RENEWAL: 'optional',
-      NEGOTIATION: 'optional',
+      NEGOTIATION_POINTS: 'optional',
       AMENDMENTS: 'optional',
       CONTACTS: 'optional',
     },
@@ -896,14 +896,15 @@ export function detectContractType(text: string): { type: ContractType; confiden
   // Sort by score descending
   scores.sort((a, b) => b.score - a.score);
 
-  if (scores.length === 0 || scores[0].score < 0.1) {
+  const topScore = scores[0];
+  if (scores.length === 0 || !topScore || topScore.score < 0.1) {
     return { type: 'OTHER', confidence: 0.5, matchedKeywords: [] };
   }
 
   return {
-    type: scores[0].type,
-    confidence: Math.min(0.95, scores[0].score + 0.3), // Boost confidence but cap at 95%
-    matchedKeywords: scores[0].matchedKeywords,
+    type: topScore.type,
+    confidence: Math.min(0.95, topScore.score + 0.3), // Boost confidence but cap at 95%
+    matchedKeywords: topScore.matchedKeywords,
   };
 }
 

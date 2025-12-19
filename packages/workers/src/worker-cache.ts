@@ -51,7 +51,7 @@ export class WorkerCache {
       port: config.port,
       password: config.password,
       maxRetriesPerRequest: 3,
-      retryDelayOnFailover: 100,
+      retryStrategy: (times: number) => Math.min(times * 100, 3000),
       enableReadyCheck: true,
       lazyConnect: true,
     });
@@ -316,7 +316,7 @@ export class WorkerCache {
       const info = await this.redis.info('memory');
       
       const memoryMatch = info.match(/used_memory_human:(\S+)/);
-      const totalMemory = memoryMatch ? memoryMatch[1] : 'unknown';
+      const totalMemory: string = memoryMatch?.[1] ?? 'unknown';
 
       return {
         ocrEntries: ocrKeys.length,

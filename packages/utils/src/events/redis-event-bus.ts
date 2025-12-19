@@ -67,8 +67,8 @@ const CHANNEL_PREFIX = 'cli-ai:events';
 
 class RedisEventBus {
   private static instance: RedisEventBus;
-  private publisher: Redis | null = null;
-  private subscriber: Redis | null = null;
+  private publisher: InstanceType<typeof Redis> | null = null;
+  private subscriber: InstanceType<typeof Redis> | null = null;
   private listeners: Map<string, Set<(payload: EventPayload) => void>> = new Map();
   private isConnected = false;
   private connectionPromise: Promise<void> | null = null;
@@ -101,13 +101,13 @@ class RedisEventBus {
         // Create separate connections for pub and sub (required by Redis)
         this.publisher = new Redis(redisUrl, {
           maxRetriesPerRequest: 3,
-          retryStrategy: (times) => Math.min(times * 100, 3000),
+          retryStrategy: (times: number) => Math.min(times * 100, 3000),
           lazyConnect: true,
         });
 
         this.subscriber = new Redis(redisUrl, {
           maxRetriesPerRequest: 3,
-          retryStrategy: (times) => Math.min(times * 100, 3000),
+          retryStrategy: (times: number) => Math.min(times * 100, 3000),
           lazyConnect: true,
         });
 
@@ -117,7 +117,7 @@ class RedisEventBus {
         ]);
 
         // Setup message handler
-        this.subscriber.on('message', (channel, message) => {
+        this.subscriber.on('message', (channel: string, message: string) => {
           try {
             const payload = JSON.parse(message) as EventPayload;
             const eventListeners = this.listeners.get(payload.event);

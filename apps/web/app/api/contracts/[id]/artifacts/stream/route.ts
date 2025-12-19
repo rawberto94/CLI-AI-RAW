@@ -2,11 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 
+// Bulletproof constants
+const POLL_INTERVAL_MS = 1000; // Poll every 1 second
+const HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
+const MAX_POLL_SECONDS = 300; // 5 minute timeout (increased from 3)
+const EXPECTED_ARTIFACT_COUNT = 10;
+const MAX_CONSECUTIVE_ERRORS = 5;
+
 /**
  * GET /api/contracts/[id]/artifacts/stream
  * 
  * Server-Sent Events (SSE) endpoint for streaming artifact generation progress
  * Returns real-time updates as artifacts are generated
+ * 
+ * Bulletproof features:
+ * - Graceful degradation on database errors
+ * - Automatic completion detection when all artifacts done
+ * - Heartbeat to keep connection alive
+ * - Timeout protection
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -92,7 +105,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       // Poll for artifact updates every 1 second (optimized)
       let updateCount = 0;
       let lastArtifactCount = 0;
-      let maxPolls = 180; // 3 minutes timeout (180 seconds)
+      const maxPolls = MAX_POLL_SECONDS;
+      let consecutiveErrors = 0;
       
       // If already completed, send data once and close immediately
       if (isInitiallyCompleted && !useMockData) {
@@ -142,7 +156,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               status: contract!.status,
               artifactCount: artifacts.length,
               artifacts
-            })}\\n\\n`)
+            })}\n\n`)
           );
           
           controller.close();
@@ -165,16 +179,31 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         // Timeout after max polls with no progress
         if (updateCount >= maxPolls && lastArtifactCount === 0) {
           console.log('[SSE] Timeout: No artifacts generated after', maxPolls, 'seconds');
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({
-              type: 'complete',
-              contractId,
-              status: 'TIMEOUT',
-              artifactCount: 0,
-              artifacts: [],
-              message: 'Processing timeout - please retry'
-            })}\n\n`)
-          );
+          sendEvent({
+            type: 'complete',
+            contractId,
+            status: 'TIMEOUT',
+            artifactCount: 0,
+            artifacts: [],
+            message: 'Processing timeout - please retry'
+          });
+          clearInterval(pollInterval);
+          controller.close();
+          isClosed = true;
+          return;
+        }
+        
+        // Also timeout if we have some artifacts but processing seems stuck
+        if (updateCount >= maxPolls && lastArtifactCount > 0 && lastArtifactCount < EXPECTED_ARTIFACT_COUNT) {
+          console.log('[SSE] Partial timeout: Only', lastArtifactCount, 'artifacts after', maxPolls, 'seconds');
+          // Send what we have and mark as complete
+          sendEvent({ 
+            type: 'complete', 
+            contractId,
+            status: 'PARTIAL',
+            artifactCount: lastArtifactCount,
+            message: 'Processing partially complete - some artifacts may still be generating'
+          });
           clearInterval(pollInterval);
           controller.close();
           isClosed = true;
@@ -253,6 +282,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           // Only send update if artifacts changed or status changed
           if (artifacts.length !== lastArtifactCount || contractStatus === 'COMPLETED' || contractStatus === 'FAILED') {
             lastArtifactCount = artifacts.length;
+            consecutiveErrors = 0; // Reset on successful update
             
             const data = {
               type: 'update',
@@ -270,13 +300,17 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           }
 
           // If contract is completed or failed, close stream
-          if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED') {
+          // Also close if we have 10 completed artifacts (all artifacts generated)
+          const completedArtifacts = artifacts.filter((a: { status: string }) => a.status === 'COMPLETED').length;
+          const allArtifactsComplete = completedArtifacts >= 10;
+          
+          if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED' || allArtifactsComplete) {
             // Send final update with artifacts
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ 
                 type: 'complete', 
                 contractId,
-                status: contractStatus,
+                status: allArtifactsComplete ? 'COMPLETED' : contractStatus,
                 artifactCount: artifacts.length,
                 artifacts
               })}\n\n`)
@@ -287,19 +321,33 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             isClosed = true;
           }
         } catch (error) {
-          console.error('Error polling artifacts:', error);
+          consecutiveErrors++;
+          console.error('Error polling artifacts:', error, 'consecutive:', consecutiveErrors);
+          
+          if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+            // Too many errors, close stream gracefully
+            console.error('[SSE] Too many consecutive errors, closing stream');
+            sendEvent({
+              type: 'error',
+              error: 'Connection issue - please refresh the page',
+              recoverable: false,
+              timestamp: new Date().toISOString()
+            });
+            clearInterval(pollInterval);
+            controller.close();
+            isClosed = true;
+            return;
+          }
           
           // Send error notification but keep stream alive
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({
-              type: 'error',
-              error: 'Temporary polling error',
-              recoverable: true,
-              timestamp: new Date().toISOString()
-            })}\n\n`)
-          );
+          sendEvent({
+            type: 'error',
+            error: 'Temporary polling error',
+            recoverable: true,
+            timestamp: new Date().toISOString()
+          });
         }
-      }, 1000); // Poll every 1 second (optimized)
+      }, POLL_INTERVAL_MS);
 
       // Cleanup on close
       request.signal.addEventListener('abort', () => {

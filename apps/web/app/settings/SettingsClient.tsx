@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from '@/components/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { Toggle } from "@/components/toggle";
+import { Alert, InlineAlert } from "@/components/alert";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/accordion";
 import {
   Settings,
   User,
@@ -93,6 +96,12 @@ const settingsData = {
 export default function SettingsClient() {
   const [activeTab, setActiveTab] = React.useState("general");
   const [showApiKey, setShowApiKey] = React.useState(false);
+  
+  // State for toggles
+  const [emailNotifications, setEmailNotifications] = useState(settingsData.notifications.email);
+  const [pushNotifications, setPushNotifications] = useState(settingsData.notifications.push);
+  const [processingSettings, setProcessingSettings] = useState(settingsData.processing);
+  const [integrationSettings, setIntegrationSettings] = useState(settingsData.integrations);
 
   // Handle save changes
   const handleSaveChanges = useCallback(async () => {
@@ -153,6 +162,15 @@ export default function SettingsClient() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30">
       <div className="p-6 space-y-6">
         <PageBreadcrumb />
+        
+        {/* Security Notice Banner */}
+        <Alert 
+          type="info" 
+          title="Settings are synced across devices"
+          dismissible
+        >
+          Changes you make here will be reflected on all devices where you&apos;re signed in. Some changes may require a page refresh to take effect.
+        </Alert>
         
         {/* Header */}
         <motion.div 
@@ -571,7 +589,7 @@ export default function SettingsClient() {
                     Email Notifications
                   </h4>
                   <div className="space-y-3">
-                    {Object.entries(settingsData.notifications.email).map(
+                    {Object.entries(emailNotifications).map(
                       ([key, value]) => (
                         <div
                           key={key}
@@ -580,14 +598,11 @@ export default function SettingsClient() {
                           <span className="text-sm text-gray-700 capitalize">
                             {key.replace(/([A-Z])/g, " $1").trim()}
                           </span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              defaultChecked={value as boolean}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
+                          <Toggle
+                            checked={value as boolean}
+                            onChange={(checked) => setEmailNotifications(prev => ({ ...prev, [key]: checked }))}
+                            size="sm"
+                          />
                         </div>
                       )
                     )}
@@ -600,7 +615,7 @@ export default function SettingsClient() {
                     Push Notifications
                   </h4>
                   <div className="space-y-3">
-                    {Object.entries(settingsData.notifications.push).map(
+                    {Object.entries(pushNotifications).map(
                       ([key, value]) => (
                         <div
                           key={key}
@@ -609,14 +624,11 @@ export default function SettingsClient() {
                           <span className="text-sm text-gray-700 capitalize">
                             {key.replace(/([A-Z])/g, " $1").trim()}
                           </span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              defaultChecked={value as boolean}
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
+                          <Toggle
+                            checked={value as boolean}
+                            onChange={(checked) => setPushNotifications(prev => ({ ...prev, [key]: checked }))}
+                            size="sm"
+                          />
                         </div>
                       )
                     )}
@@ -648,44 +660,31 @@ export default function SettingsClient() {
                         <span className="text-sm text-gray-700">
                           Auto-process uploads
                         </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked={
-                              settingsData.processing.autoProcessing
-                            }
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                        <Toggle
+                          checked={processingSettings.autoProcessing}
+                          onChange={(checked) => setProcessingSettings(prev => ({ ...prev, autoProcessing: checked }))}
+                          size="sm"
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-700">
                           AI Analysis
                         </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked={settingsData.processing.aiAnalysis}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                        <Toggle
+                          checked={processingSettings.aiAnalysis}
+                          onChange={(checked) => setProcessingSettings(prev => ({ ...prev, aiAnalysis: checked }))}
+                          size="sm"
+                        />
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-700">
                           Risk Assessment
                         </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            defaultChecked={
-                              settingsData.processing.riskAssessment
-                            }
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                        <Toggle
+                          checked={processingSettings.riskAssessment}
+                          onChange={(checked) => setProcessingSettings(prev => ({ ...prev, riskAssessment: checked }))}
+                          size="sm"
+                        />
                       </div>
                     </div>
                   </div>
@@ -796,16 +795,16 @@ export default function SettingsClient() {
                               ? "Configure"
                               : "Setup"}
                           </Button>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              defaultChecked={
-                                (integration as { enabled: boolean }).enabled
-                              }
-                              className="sr-only peer"
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                          </label>
+                          <Toggle
+                            checked={(integration as { enabled: boolean }).enabled}
+                            onChange={(checked) => {
+                              setIntegrationSettings(prev => ({
+                                ...prev,
+                                [key]: { ...prev[key as keyof typeof prev], enabled: checked }
+                              }));
+                            }}
+                            size="sm"
+                          />
                         </div>
                       </div>
                     )

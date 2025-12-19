@@ -372,7 +372,9 @@ export function useContractActions(contractId: string) {
     viewDetails: () => router.push(`/contracts/${contractId}`),
     viewAIAnalysis: () => router.push(`/contracts/${contractId}?tab=artifacts`),
     viewVersions: () => router.push(`/contracts/${contractId}/versions`),
-    askAI: () => window.dispatchEvent(new CustomEvent('openAIChatbot')),
+    askAI: () => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+      detail: { autoMessage: `Tell me about this contract`, contractId }
+    })),
     
     // Sharing
     share: (emails: string[], permission: 'view' | 'comment' | 'edit' = 'view') => {

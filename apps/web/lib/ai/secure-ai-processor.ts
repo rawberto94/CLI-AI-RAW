@@ -1049,7 +1049,7 @@ export async function processDocumentAdvanced(
   } = options;
 
   const startTime = Date.now();
-  let retryCount = 0;
+  const retryCount = 0;
 
   // Report progress
   const report = (stage: ProcessingStage, progress: number, message?: string) => {

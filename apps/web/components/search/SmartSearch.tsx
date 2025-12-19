@@ -212,7 +212,7 @@ export function SmartSearch() {
                   </button>
                 )}
               </div>
-              <Button onClick={performSearch} disabled={isSearching || !query.trim()}>
+              <Button onClick={() => performSearch()} disabled={isSearching || !query.trim()}>
                 {isSearching ? 'Searching...' : 'Search'}
               </Button>
               <Button

@@ -71,13 +71,13 @@ export function ResponsiveProvider({
   const [viewport, setViewport] = useState<ViewportInfo>(() => getViewportInfo(breakpoints));
 
   useEffect(() => {
-    let rafId: number;
-    let resizeTimeout: NodeJS.Timeout;
+    let rafId: number | undefined;
+    let resizeTimeout: NodeJS.Timeout | undefined;
 
     const handleResize = () => {
       // Cancel pending updates
       if (rafId) cancelAnimationFrame(rafId);
-      clearTimeout(resizeTimeout);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
 
       // Debounce with requestAnimationFrame for smooth updates
       rafId = requestAnimationFrame(() => {
@@ -95,7 +95,7 @@ export function ResponsiveProvider({
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
       if (rafId) cancelAnimationFrame(rafId);
-      clearTimeout(resizeTimeout);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
     };
   }, [breakpoints]);
 
@@ -202,7 +202,7 @@ export function useResponsiveValue<T>(values: ResponsiveValue<T>): T {
     // Find the largest matching breakpoint
     for (let i = currentIndex; i >= 0; i--) {
       const bp = breakpointOrder[i];
-      if (values[bp] !== undefined) {
+      if (bp && values[bp] !== undefined) {
         return values[bp] as T;
       }
     }
@@ -313,10 +313,13 @@ export function useIntersection<T extends HTMLElement = HTMLDivElement>(
     if (!element || (frozen.current && freezeOnceVisible)) return;
 
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setEntry(entry);
-        if (entry.isIntersecting && freezeOnceVisible) {
-          frozen.current = true;
+      (entries) => {
+        const observedEntry = entries[0];
+        if (observedEntry) {
+          setEntry(observedEntry);
+          if (observedEntry.isIntersecting && freezeOnceVisible) {
+            frozen.current = true;
+          }
         }
       },
       { root, rootMargin, threshold }
@@ -450,8 +453,8 @@ export function useResponsiveImage(options: ResponsiveImageOptions) {
     const widths = Object.keys(srcSet).map(Number).sort((a, b) => a - b);
     
     // Find the smallest image that's larger than target
-    const optimal = widths.find(w => w >= targetWidth) || widths[widths.length - 1];
-    return srcSet[optimal] || src;
+    const optimalWidth = widths.find(w => w >= targetWidth) ?? widths[widths.length - 1];
+    return optimalWidth !== undefined ? (srcSet[optimalWidth] ?? src) : src;
   }, [src, srcSet, width, pixelRatio]);
 
   const handleLoad = useCallback(() => setIsLoading(false), []);
@@ -517,6 +520,7 @@ export function useTouch<T extends HTMLElement = HTMLDivElement>() {
 
     const handleTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
+      if (!touch) return;
       setTouch({
         isTouching: true,
         touchCount: e.touches.length,
@@ -532,6 +536,7 @@ export function useTouch<T extends HTMLElement = HTMLDivElement>() {
 
     const handleTouchMove = (e: TouchEvent) => {
       const touch = e.touches[0];
+      if (!touch) return;
       setTouch(prev => {
         const deltaX = touch.clientX - prev.startX;
         const deltaY = touch.clientY - prev.startY;

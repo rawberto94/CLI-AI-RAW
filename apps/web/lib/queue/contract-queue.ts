@@ -54,11 +54,13 @@ export interface ContractQueueManager {
     options?: { priority?: number; delay?: number }
   ): Promise<string | null>;
   
-  getJobStatus(jobId: string): Promise<{
-    status: 'pending' | 'running' | 'completed' | 'failed';
+  getJobStatus(queueName: string, jobId: string): Promise<{
+    state?: string;
     progress?: number;
-    result?: any;
-    error?: string;
+    data?: unknown;
+    returnvalue?: unknown;
+    failedReason?: string;
+    attemptsMade?: number;
   } | null>;
 }
 
@@ -91,9 +93,9 @@ export function getContractQueue(): ContractQueueManager {
           console.log('[Queue Stub] Would queue categorization:', { data, options });
           return `stub-job-${Date.now()}`;
         },
-        async getJobStatus(jobId) {
-          console.log('[Queue Stub] Would get job status:', jobId);
-          return { status: 'pending' as const };
+        async getJobStatus(queueName, jobId) {
+          console.log('[Queue Stub] Would get job status:', { queueName, jobId });
+          return { state: 'pending' };
         },
       };
     }

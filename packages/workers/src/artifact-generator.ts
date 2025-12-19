@@ -2,11 +2,13 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST, before any other imports that need them
 dotenv.config();
 
+// Import Job type but use 'any' for actual job params due to compatibility
 import { Job } from 'bullmq';
-import getClient from 'clients-db';
+import clientsDb from 'clients-db';
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { ArtifactType } from 'clients-db';
-import { getQueueService } from '../../utils/src/queue/queue-service';
-import { QUEUE_NAMES, GenerateArtifactsJobData } from '../../utils/src/queue/contract-queue';
+import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { QUEUE_NAMES, GenerateArtifactsJobData } from 'utils/queue/contract-queue';
 import pino from 'pino';
 
 const logger = pino({ name: 'artifact-generator-worker' });
@@ -22,7 +24,7 @@ interface ArtifactResult {
  * Generates AI-powered artifacts for contracts
  */
 export async function generateArtifactsJob(
-  job: Job<GenerateArtifactsJobData>
+  job: JobType<GenerateArtifactsJobData>
 ): Promise<ArtifactResult> {
   const { contractId, tenantId, contractText } = job.data;
 

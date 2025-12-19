@@ -613,13 +613,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         transition={{ duration: 0.3 }}
       />
       
-      {/* Subtle corner accent for high-value contracts */}
-      {isHighValue && (
-        <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden pointer-events-none">
-          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rotate-45 transform origin-bottom-left" />
-          <DollarSign className="absolute top-1 right-1 w-3 h-3 text-white" />
-        </div>
-      )}
+      {/* High-value indicator moved to status area for cleaner design */}
       
       {/* Selection Checkbox (absolute positioned) */}
       <motion.div

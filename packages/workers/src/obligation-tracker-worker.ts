@@ -17,6 +17,7 @@ dotenv.config();
 
 import type { Job } from 'bullmq';
 import pino from 'pino';
+import { getQueueService, JobType } from 'utils/queue/queue-service';
 
 const logger = pino({ name: 'obligation-tracker-worker' });
 
@@ -125,7 +126,7 @@ export const OBLIGATION_TRACKER_CONFIG = {
  * Process an obligation check job
  */
 export async function checkObligationsJob(
-  job: Job<ObligationCheckJobData>
+  job: JobType<ObligationCheckJobData>
 ): Promise<ObligationCheckResult> {
   const { 
     tenantId, 
@@ -210,7 +211,7 @@ export async function checkObligationsJob(
               if (includeOverdue && daysRemaining < 0) {
                 obligations.push({
                   contractId: contract.id,
-                  contractName: contract.name || 'Unnamed Contract',
+                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                   obligationId: obl.id,
                   obligationTitle: obl.title,
                   party: obl.party || 'Unknown',
@@ -232,7 +233,7 @@ export async function checkObligationsJob(
 
                 obligations.push({
                   contractId: contract.id,
-                  contractName: contract.name || 'Unnamed Contract',
+                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                   obligationId: obl.id,
                   obligationTitle: obl.title,
                   party: obl.party || 'Unknown',
@@ -253,7 +254,7 @@ export async function checkObligationsJob(
             if (obl.recurring && !obl.dueDate) {
               obligations.push({
                 contractId: contract.id,
-                contractName: contract.name || 'Unnamed Contract',
+                contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                 obligationId: obl.id,
                 obligationTitle: obl.title,
                 party: obl.party || 'Unknown',
@@ -282,7 +283,7 @@ export async function checkObligationsJob(
               if (includeOverdue && daysRemaining < 0 && milestone.status !== 'completed') {
                 obligations.push({
                   contractId: contract.id,
-                  contractName: contract.name || 'Unnamed Contract',
+                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                   obligationId: milestone.id,
                   obligationTitle: milestone.name,
                   party: 'Both Parties',
@@ -299,7 +300,7 @@ export async function checkObligationsJob(
 
                 obligations.push({
                   contractId: contract.id,
-                  contractName: contract.name || 'Unnamed Contract',
+                  contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                   obligationId: milestone.id,
                   obligationTitle: milestone.name,
                   party: 'Both Parties',
@@ -321,7 +322,7 @@ export async function checkObligationsJob(
             if (sla.status === 'at-risk' || sla.status === 'breached') {
               slaStatuses.push({
                 contractId: contract.id,
-                contractName: contract.name || 'Unnamed Contract',
+                contractName: (contract.originalName ?? contract.fileName) || 'Unnamed Contract',
                 metric: sla.metric,
                 target: sla.target,
                 currentValue: sla.currentValue,
@@ -404,7 +405,7 @@ export async function checkObligationsJob(
  * Schedule daily obligation checks
  */
 export async function scheduleObligationCheck(tenantId?: string, options?: Partial<ObligationCheckJobData>) {
-  const { getQueueService } = await import('../../utils/src/queue/queue-service');
+  const { getQueueService } = await import('utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(OBLIGATION_TRACKER_QUEUE);
 
@@ -432,7 +433,7 @@ export async function scheduleObligationCheck(tenantId?: string, options?: Parti
  * Trigger immediate obligation check
  */
 export async function triggerObligationCheck(data: ObligationCheckJobData) {
-  const { getQueueService } = await import('../../utils/src/queue/queue-service');
+  const { getQueueService } = await import('utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(OBLIGATION_TRACKER_QUEUE);
 
@@ -504,10 +505,9 @@ export async function getContractObligationSummary(contractId: string) {
  * Register obligation tracker worker
  */
 export function registerObligationTrackerWorker() {
-  const { getQueueService } = require('../../utils/src/queue/queue-service');
   const queueService = getQueueService();
 
-  const worker = queueService.registerWorker<ObligationCheckJobData, ObligationCheckResult>(
+  const worker = queueService.registerWorker(
     OBLIGATION_TRACKER_QUEUE,
     checkObligationsJob,
     {

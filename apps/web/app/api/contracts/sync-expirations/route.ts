@@ -84,10 +84,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Renewal status
-        let renewalStatus = isExpired ? 'EXPIRED' : (daysUntilExpiry <= 90 ? 'UPCOMING' : 'PENDING');
+        const renewalStatus = isExpired ? 'EXPIRED' : (daysUntilExpiry <= 90 ? 'UPCOMING' : 'PENDING');
         
         // Recommended action
-        let recommendedAction = isExpired ? 'REVIEW_EXPIRED' : 
+        const recommendedAction = isExpired ? 'REVIEW_EXPIRED' : 
           (daysUntilExpiry <= 30 ? 'URGENT_RENEWAL' : 
            daysUntilExpiry <= 60 ? 'INITIATE_RENEWAL' : 
            daysUntilExpiry <= 90 ? 'PLAN_RENEWAL' : null);

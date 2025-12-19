@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useArtifactStream, type ArtifactUpdate } from '@/hooks/useArtifactStream';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -90,6 +90,13 @@ export function RealtimeArtifactViewer({
   const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
   const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());
   const [localError, setError] = useState<string | null>(null);
+  const [isPollingFallback, setIsPollingFallback] = useState(false);
+  const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const connectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Compute completedCount and isEffectivelyComplete early (before callbacks that need them)
+  const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
+  const isEffectivelyComplete = isComplete || (completedCount >= 10);
 
   // Animate new artifacts
   useEffect(() => {
@@ -107,6 +114,78 @@ export function RealtimeArtifactViewer({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artifacts]);
+
+  // Polling fallback when SSE fails
+  const startPollingFallback = useCallback(async () => {
+    if (isEffectivelyComplete || isConnected) return;
+    
+    setIsPollingFallback(true);
+    console.log('[Viewer] Starting polling fallback');
+    
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/contracts/${contractId}/artifacts`, {
+          headers: { 'x-tenant-id': tenantId }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Check if all artifacts are complete - response is { success, data: [...] }
+          const artifactList = data.data || data.artifacts || [];
+          if (artifactList.length >= 10) {
+            // The artifacts API returns transformed data, count items with content
+            const completed = artifactList.filter((a: any) => 
+              a.data && Object.keys(a.data || {}).length > 0
+            ).length;
+            if (completed >= 10) {
+              console.log('[Viewer] Polling fallback detected all artifacts complete:', completed);
+              setIsPollingFallback(false);
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+              }
+              // Force reload the page to get fresh state
+              window.location.reload();
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[Viewer] Polling fallback error:', e);
+      }
+    };
+    
+    pollingIntervalRef.current = setInterval(poll, 3000);
+    poll(); // Immediate first poll
+  }, [contractId, tenantId, isConnected, isEffectivelyComplete]);
+
+  // Start polling fallback if connection doesn't establish within 10s
+  useEffect(() => {
+    if (!isConnected && !isEffectivelyComplete && !error) {
+      connectionTimeoutRef.current = setTimeout(() => {
+        if (!isConnected && !isEffectivelyComplete) {
+          console.warn('[Viewer] SSE connection taking too long, starting polling fallback');
+          startPollingFallback();
+        }
+      }, 10000);
+    }
+    
+    return () => {
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+    };
+  }, [isConnected, isEffectivelyComplete, error, startPollingFallback]);
+
+  // Cleanup polling on unmount or when complete
+  useEffect(() => {
+    if (isEffectivelyComplete && pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      setIsPollingFallback(false);
+    }
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [isEffectivelyComplete]);
 
   const handleRetry = async (artifactId: string) => {
     setRetryingArtifacts(prev => new Set(prev).add(artifactId));
@@ -153,9 +232,9 @@ export function RealtimeArtifactViewer({
     return aIndex - bIndex;
   });
 
-  const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-  const totalCount = 6; // Expected number of artifacts
-  const progressPercent = (completedCount / totalCount) * 100;
+  // Use actual artifact count, with a minimum of 10 (we generate 10 artifact types)
+  const totalCount = Math.max(10, artifacts.length);
+  const progressPercent = Math.min(100, (completedCount / totalCount) * 100);
 
   return (
     <div className="space-y-6">
@@ -167,7 +246,7 @@ export function RealtimeArtifactViewer({
               <Wifi className="h-4 w-4 text-green-600 animate-pulse" />
               <span className="text-sm text-green-600 font-medium">Live Updates Connected</span>
             </>
-          ) : isComplete ? (
+          ) : isEffectivelyComplete ? (
             <>
               <CheckCircle2 className="h-4 w-4 text-blue-600" />
               <span className="text-sm text-blue-600 font-medium">Processing Complete</span>
@@ -181,6 +260,10 @@ export function RealtimeArtifactViewer({
                 size="sm"
                 onClick={() => {
                   setError(null);
+                  setIsPollingFallback(false);
+                  if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                  }
                   reconnect();
                 }}
                 className="ml-2"
@@ -188,15 +271,20 @@ export function RealtimeArtifactViewer({
                 <RefreshCw className="h-3 w-3" />
               </Button>
             </>
+          ) : isPollingFallback ? (
+            <>
+              <RefreshCw className="h-4 w-4 text-yellow-600 animate-spin" />
+              <span className="text-sm text-yellow-600">Checking status...</span>
+            </>
           ) : (
             <>
-              <WifiOff className="h-4 w-4 text-gray-400 animate-pulse" />
-              <span className="text-sm text-gray-400">Connecting...</span>
+              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+              <span className="text-sm text-blue-500">Connecting to live updates...</span>
             </>
           )}
         </div>
         
-        {!isComplete && (
+        {!isEffectivelyComplete && (
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Clock className="h-4 w-4" />
             <span>{completedCount} of {totalCount} artifacts</span>
@@ -205,7 +293,7 @@ export function RealtimeArtifactViewer({
       </div>
 
       {/* Progress Bar */}
-      {!isComplete && (
+      {!isEffectivelyComplete && (
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-4">
@@ -414,7 +502,7 @@ export function RealtimeArtifactViewer({
       </div>
 
       {/* Completion Summary */}
-      {isComplete && (
+      {isEffectivelyComplete && (
         <Card className="border-green-200 bg-green-50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">

@@ -1,7 +1,109 @@
-import { Queue, Worker, QueueEvents, Job } from 'bullmq';
-import type { ConnectionOptions } from 'bullmq';
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+// BullMQ types are problematic with the current TypeScript module resolution.
+// Using runtime require with inline type definitions as a workaround.
+
 import Redis from 'ioredis';
 import pino from 'pino';
+
+// Type definitions matching BullMQ's actual types
+export type ConnectionOptions = Record<string, any> | typeof Redis.prototype;
+
+export interface JobsOptions {
+  priority?: number;
+  delay?: number;
+  attempts?: number;
+  jobId?: string;
+  removeOnComplete?: boolean | number | { count?: number; age?: number };
+  removeOnFail?: boolean | number | { count?: number; age?: number };
+  backoff?: { type: 'exponential' | 'fixed'; delay: number };
+  parent?: { queue: string; id: string };
+  repeat?: { pattern?: string; every?: number; limit?: number };
+}
+
+export interface QueueBaseOptions {
+  connection?: ConnectionOptions;
+  defaultJobOptions?: JobsOptions;
+}
+
+export interface WorkerOptions {
+  connection?: ConnectionOptions;
+  concurrency?: number;
+  limiter?: { max: number; duration: number };
+}
+
+// Runtime imports
+const bullmq = require('bullmq');
+const Queue = bullmq.Queue;
+const Worker = bullmq.Worker;
+const QueueEvents = bullmq.QueueEvents;
+
+// Type aliases for the BullMQ classes
+type QueueType<T = any> = {
+  add(name: string, data: T, opts?: JobsOptions): Promise<JobType<T>>;
+  getWaitingCount(): Promise<number>;
+  getActiveCount(): Promise<number>;
+  getCompletedCount(): Promise<number>;
+  getFailedCount(): Promise<number>;
+  getDelayedCount(): Promise<number>;
+  getJob(id: string): Promise<JobType<T> | undefined>;
+  isPaused(): Promise<boolean>;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+  obliterate(opts?: { force?: boolean }): Promise<void>;
+  clean(grace: number, limit: number, type: 'completed' | 'failed'): Promise<string[]>;
+  close(): Promise<void>;
+};
+
+type WorkerType = {
+  on(event: 'completed', handler: (job: JobType) => void): void;
+  on(event: 'failed', handler: (job: JobType | undefined, error: Error) => void): void;
+  on(event: 'error', handler: (error: Error) => void): void;
+  off(event: string, handler: (...args: any[]) => void): void;
+  close(): Promise<void>;
+  // Additional properties from BullMQ Worker
+  opts?: any;
+  id?: string;
+  [key: string]: any;
+};
+
+type QueueEventsType = {
+  on(event: 'completed', handler: (args: { jobId: string; returnvalue: any }) => void): void;
+  off(event: string, handler: (...args: any[]) => void): void;
+  close(): Promise<void>;
+};
+
+export type JobType<T = any> = {
+  id?: string;
+  name: string;
+  data: T;
+  opts: JobsOptions;
+  attemptsMade: number;
+  returnvalue?: any;
+  progress?: number | object;
+  failedReason?: string;
+  remove(): Promise<void>;
+  getState(): Promise<'active' | 'completed' | 'failed' | 'waiting' | 'delayed' | 'paused' | 'unknown'>;
+  // Required methods used by workers
+  updateProgress(progress: number | object): Promise<void>;
+  // Additional properties from BullMQ Job to ensure compatibility
+  queue?: any;
+  queueQualifiedName?: string;
+  stacktrace?: string[];
+  delay?: number;
+  timestamp?: number;
+  finishedOn?: number;
+  processedOn?: number;
+  log?(row: string): Promise<void>;
+  moveToFailed?(error: Error, token?: string): Promise<void>;
+  isCompleted?(): Promise<boolean>;
+  isFailed?(): Promise<boolean>;
+  isDelayed?(): Promise<boolean>;
+  isActive?(): Promise<boolean>;
+  isWaiting?(): Promise<boolean>;
+  updateData?(data: T): Promise<void>;
+  extendLock?(token: string, duration: number): Promise<void>;
+  [key: string]: any;
+};
 
 const logger = pino({
   name: 'queue-service',
@@ -9,15 +111,16 @@ const logger = pino({
 });
 
 export interface QueueConfig {
-  connection: ConnectionOptions;
+  connection?: ConnectionOptions;
+  redis?: { url: string } | ConnectionOptions;
   defaultJobOptions?: {
     attempts?: number;
     backoff?: {
       type: 'exponential' | 'fixed';
       delay: number;
     };
-    removeOnComplete?: boolean | number;
-    removeOnFail?: boolean | number;
+    removeOnComplete?: boolean | number | { age?: number; count?: number };
+    removeOnFail?: boolean | number | { age?: number; count?: number };
   };
 }
 
@@ -34,14 +137,24 @@ export interface JobResult {
  * Provides unified interface for job queuing, processing, and monitoring
  */
 export class QueueService {
-  private queues: Map<string, Queue<any>> = new Map();
-  private workers: Map<string, Worker<any>> = new Map();
-  private queueEvents: Map<string, QueueEvents> = new Map();
+  private queues: Map<string, QueueType> = new Map();
+  private workers: Map<string, WorkerType> = new Map();
+  private queueEvents: Map<string, QueueEventsType> = new Map();
   private connection: ConnectionOptions;
-  private redisClient?: Redis;
+  private redisClient?: InstanceType<typeof Redis>;
 
   constructor(config: QueueConfig) {
-    this.connection = config.connection;
+    // Support both 'connection' and 'redis' formats
+    if (config.connection) {
+      this.connection = config.connection;
+    } else if (config.redis) {
+      // Handle redis: { url: string } or redis: ConnectionOptions
+      this.connection = typeof (config.redis as any).url === 'string' 
+        ? config.redis as any  // ioredis can parse the url option
+        : config.redis as ConnectionOptions;
+    } else {
+      this.connection = { host: 'localhost', port: 6379 };
+    }
     
     // Test Redis connection
     this.testConnection();
@@ -74,9 +187,9 @@ export class QueueService {
         removeOnFail?: boolean | number;
       };
     }
-  ): Queue<T> {
+  ): QueueType<T> {
     if (!this.queues.has(queueName)) {
-      const queue = new Queue<T>(queueName, {
+      const queue = new Queue(queueName, {
         connection: this.connection,
         defaultJobOptions: options?.defaultJobOptions || {
           attempts: 3,
@@ -87,13 +200,13 @@ export class QueueService {
           removeOnComplete: 100, // Keep last 100 completed jobs
           removeOnFail: 500, // Keep last 500 failed jobs
         },
-      });
+      }) as QueueType<T>;
 
-      this.queues.set(queueName, queue as Queue);
+      this.queues.set(queueName, queue);
       logger.info({ queueName }, 'Queue created');
     }
 
-    return this.queues.get(queueName) as Queue<T>;
+    return this.queues.get(queueName) as QueueType<T>;
   }
 
   /**
@@ -109,7 +222,7 @@ export class QueueService {
       attempts?: number;
       jobId?: string;
     }
-  ): Promise<Job<T> | null> {
+  ): Promise<JobType<T> | null> {
     try {
       const queue = this.getQueue<T>(queueName);
       
@@ -145,7 +258,7 @@ export class QueueService {
    */
   public registerWorker<T extends JobData = JobData, R extends JobResult = JobResult>(
     queueName: string,
-    processor: (job: Job<T>) => Promise<R>,
+    processor: (job: JobType<T>) => Promise<R>,
     options?: {
       concurrency?: number;
       limiter?: {
@@ -153,15 +266,15 @@ export class QueueService {
         duration: number;
       };
     }
-  ): Worker<T, R> {
+  ): WorkerType {
     if (this.workers.has(queueName)) {
       logger.warn({ queueName }, 'Worker already registered for queue');
-      return this.workers.get(queueName) as Worker<T, R>;
+      return this.workers.get(queueName) as WorkerType;
     }
 
-    const worker = new Worker<T, R>(
+    const worker = new Worker(
       queueName,
-      async (job) => {
+      async (job: JobType<T>) => {
         logger.info(
           {
             queueName,
@@ -207,7 +320,7 @@ export class QueueService {
     );
 
     // Handle worker events
-    worker.on('completed', (job) => {
+    worker.on('completed', (job: JobType) => {
       logger.debug(
         {
           queueName,
@@ -218,7 +331,7 @@ export class QueueService {
       );
     });
 
-    worker.on('failed', (job, error) => {
+    worker.on('failed', (job: JobType | undefined, error: Error) => {
       logger.error(
         {
           queueName,
@@ -230,11 +343,11 @@ export class QueueService {
       );
     });
 
-    worker.on('error', (error) => {
+    worker.on('error', (error: Error) => {
       logger.error({ queueName, error }, 'Worker error');
     });
 
-    this.workers.set(queueName, worker as Worker);
+    this.workers.set(queueName, worker as WorkerType);
     logger.info({ queueName, concurrency: options?.concurrency }, 'Worker registered');
 
     return worker;
@@ -243,7 +356,7 @@ export class QueueService {
   /**
    * Get queue events for monitoring
    */
-  public getQueueEvents(queueName: string): QueueEvents {
+  public getQueueEvents(queueName: string): QueueEventsType {
     if (!this.queueEvents.has(queueName)) {
       const queueEvents = new QueueEvents(queueName, {
         connection: this.connection,
@@ -289,7 +402,7 @@ export class QueueService {
   public async getJob<T extends JobData = JobData>(
     queueName: string,
     jobId: string
-  ): Promise<Job<T> | null> {
+  ): Promise<JobType<T> | null> {
     const queue = this.getQueue<T>(queueName);
     const job = await queue.getJob(jobId);
     return job ?? null;
@@ -320,7 +433,7 @@ export class QueueService {
       attempts?: number;
       jobId?: string;
     }
-  ): Promise<Job<T> | null> {
+  ): Promise<JobType<T> | null> {
     try {
       const queue = this.getQueue<T>(queueName);
       

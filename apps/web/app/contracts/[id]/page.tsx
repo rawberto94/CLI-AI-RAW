@@ -59,12 +59,13 @@ import {
   TrendingUp,
   TrendingDown,
   Activity,
+  Globe,
+  Bell,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactViewer'
-import { ScoreRing } from '@/components/artifacts/ArtifactCards'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
 import { PresenceIndicator } from '@/components/collaboration/PresenceIndicator'
@@ -90,7 +91,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { QuickSummarizeButton, AISummarizer, AIInsightsCard, CompareButton, ContractComparison, ContractHealthScore, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog, EnhancedContractMetadataSection } from '@/components/contracts'
+import { QuickSummarizeButton, AISummarizer, CompareButton, ContractComparison, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog, EnhancedContractMetadataSection } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { HealthIndicator } from '@/components/contracts/EnhancedContractCard'
 import { ActivityTab } from '@/components/contracts/detail/ActivityTab'
@@ -99,6 +100,13 @@ import { StatusBadge } from '@/components/contracts/detail/StatusBadge'
 import { StatCard } from '@/components/contracts/detail/StatCard'
 import { KeyTermBadge } from '@/components/contracts/detail/KeyTermBadge'
 import { useSplitPaneResize } from '@/hooks/use-split-pane-resize'
+import { Breadcrumbs } from '@/components/breadcrumbs'
+import { 
+  formatPaymentType, 
+  formatBillingFrequency, 
+  formatPeriodicity 
+} from '@/lib/types/contract-metadata-schema'
+import type { ExternalParty } from '@/lib/types/contract-metadata-schema'
 
 // ============ TYPES ============
 
@@ -139,35 +147,61 @@ interface ContractData {
   supplierName?: string | null
   description?: string | null
   tags?: string[] | null
+  // Official schema fields
+  document_number?: string | null
+  document_title?: string | null
+  contract_short_description?: string | null
+  jurisdiction?: string | null
+  contract_language?: string | null
+  external_parties?: Array<{ legalName: string; role?: string; legalForm?: string }> | null
+  tcv_amount?: number | null
+  tcv_text?: string | null
+  payment_type?: string | null
+  billing_frequency_type?: string | null
+  periodicity?: string | null
+  signature_date?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  termination_date?: string | null
+  notice_period?: string | null
+  reminder_enabled?: boolean | null
+  reminder_days_before_end?: number | null
 }
 
+/**
+ * Contract Metadata - aligned with official schema
+ * @see lib/types/contract-metadata-schema.ts
+ */
 interface ContractMetadata {
-  contractType: string
-  effectiveDate: string
-  expirationDate: string
-  totalValue: string
+  // Identification
+  document_number: string
+  document_title: string
+  contract_short_description: string
+  jurisdiction: string
+  contract_language: string
+  
+  // Parties (derived from external_parties for display)
+  external_parties: Array<{ legalName: string; role?: string; legalForm?: string }>
+  
+  // Commercials
+  tcv_amount: number
+  tcv_text: string
+  payment_type: string
+  billing_frequency_type: string
+  periodicity: string
   currency: string
-  clientName: string
-  supplierName: string
-  description: string
-  tags: string[]
+  
+  // Dates
+  signature_date: string
+  start_date: string
+  end_date: string
+  termination_date: string
+  
+  // Reminders & Notices
+  reminder_enabled: boolean
+  reminder_days_before_end: number
+  notice_period: string
 }
-
-const CONTRACT_TYPES = [
-  'Service Agreement',
-  'Master Services Agreement',
-  'Statement of Work',
-  'License Agreement',
-  'Non-Disclosure Agreement',
-  'Employment Contract',
-  'Consulting Agreement',
-  'Purchase Agreement',
-  'Lease Agreement',
-  'Partnership Agreement',
-  'Other'
-]
-
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR']
 
 // ============ HELPER COMPONENTS ============
 
@@ -193,6 +227,14 @@ export default function ContractDetailPage() {
   
   // Contract Comparison state
   const [showComparison, setShowComparison] = useState(false)
+  const [contractVersions, setContractVersions] = useState<Array<{
+    id: string;
+    version: string;
+    title: string;
+    createdAt: Date;
+    createdBy: string;
+    status: 'active' | 'archived';
+  }>>([])
   
   // Category state
   const [showCategorySelector, setShowCategorySelector] = useState(false)
@@ -216,17 +258,31 @@ export default function ContractDetailPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [metadata, setMetadata] = useState<ContractMetadata>({
-    contractType: '',
-    effectiveDate: '',
-    expirationDate: '',
-    totalValue: '',
+    // Identification
+    document_number: '',
+    document_title: '',
+    contract_short_description: '',
+    jurisdiction: '',
+    contract_language: '',
+    // Parties
+    external_parties: [],
+    // Commercials
+    tcv_amount: 0,
+    tcv_text: '',
+    payment_type: 'none',
+    billing_frequency_type: 'none',
+    periodicity: 'none',
     currency: 'USD',
-    clientName: '',
-    supplierName: '',
-    description: '',
-    tags: []
+    // Dates
+    signature_date: '',
+    start_date: '',
+    end_date: '',
+    termination_date: '',
+    // Reminders & Notices
+    reminder_enabled: true,
+    reminder_days_before_end: 60,
+    notice_period: ''
   })
-  const [newTag, setNewTag] = useState('')
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -321,6 +377,9 @@ export default function ContractDetailPage() {
       }
       
       setContract(data)
+      
+      // Load versions after contract loads
+      loadVersions()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')
       console.error('Failed to load contract:', err)
@@ -329,52 +388,112 @@ export default function ContractDetailPage() {
     }
   }, [params.id, dataMode])
 
+  // Load contract versions
+  const loadVersions = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/contracts/${params.id}/versions`, {
+        headers: { 'x-data-mode': dataMode }
+      })
+      
+      if (!response.ok) {
+        console.warn('Failed to load versions')
+        return
+      }
+      
+      const data = await response.json()
+      
+      if (data.versions && Array.isArray(data.versions)) {
+        setContractVersions(data.versions.map((v: any) => ({
+          id: v.id,
+          version: `v${v.versionNumber}.0`,
+          title: v.summary || (v.isActive ? 'Current Version' : `Version ${v.versionNumber}`),
+          createdAt: new Date(v.uploadedAt),
+          createdBy: v.uploadedBy || 'System',
+          status: v.isActive ? 'active' as const : 'archived' as const
+        })))
+      }
+    } catch (err) {
+      console.warn('Failed to load versions:', err)
+    }
+  }, [params.id, dataMode])
+
   useEffect(() => {
     loadContract()
   }, [loadContract])
 
   // Initialize metadata when contract loads
-  // IMPORTANT: Prioritize user-edited metadata (from database) over AI-extracted data
+  // Maps contract data to official schema fields
+  // Priority: database fields (user-edited) > AI-extracted data > defaults
   useEffect(() => {
     if (contract) {
       const overviewData = contract.extractedData?.overview
       const financialData = contract.extractedData?.financial
       
-      // Helper to find supplier/vendor party (AI might use different role names)
-      const findSupplierParty = (parties: any[]) => parties?.find((p: any) => 
-        ['Supplier', 'Vendor', 'Service Provider', 'Provider', 'Contractor', 'Seller'].includes(p.role)
-      );
-      
-      // Helper to find client party
-      const findClientParty = (parties: any[]) => parties?.find((p: any) => 
-        ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(p.role)
-      );
-      
-      // Get total value - prioritize database field, fallback to AI extraction
-      const totalValue = contract.totalValue || financialData?.totalValue || overviewData?.totalValue || overviewData?.contractValue || '';
-      const currency = contract.currency || financialData?.currency || overviewData?.currency || 'USD';
-      
       // Format date helper
-      const formatDate = (date: string | Date | null | undefined) => {
+      const formatDateStr = (date: string | Date | null | undefined): string => {
         if (!date) return '';
         try {
-          return new Date(date).toISOString().split('T')[0];
+          const result = new Date(date).toISOString().split('T')[0];
+          return result ?? '';
         } catch {
           return '';
         }
       };
       
+      // Build external_parties from various sources
+      const buildExternalParties = (): Array<{ legalName: string; role?: string; legalForm?: string }> => {
+        // First check if contract has external_parties array
+        if (contract.external_parties && Array.isArray(contract.external_parties)) {
+          return contract.external_parties;
+        }
+        // Fallback to AI-extracted parties
+        if (overviewData?.parties && Array.isArray(overviewData.parties)) {
+          return overviewData.parties.map((p: any) => ({
+            legalName: p.name || p.legalName || '',
+            role: p.role || '',
+            legalForm: p.legalForm || ''
+          }));
+        }
+        // Fallback to legacy clientName/supplierName fields
+        const parties: Array<{ legalName: string; role?: string; legalForm?: string }> = [];
+        if (contract.clientName) {
+          parties.push({ legalName: contract.clientName, role: 'Client' });
+        }
+        if (contract.supplierName) {
+          parties.push({ legalName: contract.supplierName, role: 'Supplier' });
+        }
+        return parties;
+      };
+      
       setMetadata({
-        // Prioritize database fields (user-edited), fallback to AI-extracted
-        contractType: contract.contractType || overviewData?.contractType || '',
-        effectiveDate: formatDate(contract.effectiveDate) || formatDate(overviewData?.effectiveDate) || '',
-        expirationDate: formatDate(contract.expirationDate) || formatDate(overviewData?.expirationDate) || '',
-        totalValue: totalValue?.toString() || '',
-        currency: currency,
-        clientName: contract.clientName || String(findClientParty(overviewData?.parties)?.name ?? ''),
-        supplierName: contract.supplierName || String(findSupplierParty(overviewData?.parties)?.name ?? ''),
-        description: contract.description || overviewData?.summary || '',
-        tags: contract.tags || (Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : [])
+        // Identification
+        document_number: contract.document_number || contract.id || '',
+        document_title: contract.document_title || contract.filename || '',
+        contract_short_description: contract.contract_short_description || contract.description || overviewData?.summary || '',
+        jurisdiction: contract.jurisdiction || overviewData?.jurisdiction || '',
+        contract_language: contract.contract_language || overviewData?.language || 'en',
+        
+        // Parties
+        external_parties: buildExternalParties(),
+        
+        // Commercials - prioritize official schema fields
+        tcv_amount: contract.tcv_amount ?? financialData?.totalValue ?? contract.totalValue ?? 0,
+        tcv_text: contract.tcv_text || financialData?.description || '',
+        payment_type: contract.payment_type || financialData?.paymentType || 'none',
+        billing_frequency_type: contract.billing_frequency_type || financialData?.billingFrequency || 'none',
+        periodicity: contract.periodicity || financialData?.periodicity || 'none',
+        currency: contract.currency || financialData?.currency || 'USD',
+        
+        // Dates - map from official or legacy fields
+        signature_date: formatDateStr(contract.signature_date),
+        start_date: formatDateStr(contract.start_date || contract.effectiveDate || overviewData?.effectiveDate),
+        end_date: formatDateStr(contract.end_date || contract.expirationDate || overviewData?.expirationDate),
+        termination_date: formatDateStr(contract.termination_date),
+        
+        // Reminders & Notices
+        reminder_enabled: contract.reminder_enabled ?? true,
+        reminder_days_before_end: contract.reminder_days_before_end ?? 60,
+        notice_period: contract.notice_period || overviewData?.noticePeriod || ''
       })
     }
   }, [contract])
@@ -382,19 +501,6 @@ export default function ContractDetailPage() {
   // Handle metadata field change
   const handleMetadataChange = (field: keyof ContractMetadata, value: string | string[]) => {
     setMetadata(prev => ({ ...prev, [field]: value }))
-  }
-
-  // Add tag
-  const handleAddTag = () => {
-    if (newTag.trim() && !metadata.tags.includes(newTag.trim())) {
-      setMetadata(prev => ({ ...prev, tags: [...prev.tags, newTag.trim()] }))
-      setNewTag('')
-    }
-  }
-
-  // Remove tag
-  const handleRemoveTag = (tagToRemove: string) => {
-    setMetadata(prev => ({ ...prev, tags: prev.tags.filter(t => t !== tagToRemove) }))
   }
 
   // Download contract
@@ -423,7 +529,7 @@ export default function ContractDetailPage() {
     }
   }, [params.id])
 
-  // Save metadata
+  // Save metadata - Using official schema fields only
   const handleSaveMetadata = async () => {
     setIsSaving(true)
     setSaveSuccess(false)
@@ -436,15 +542,30 @@ export default function ContractDetailPage() {
           'x-data-mode': dataMode
         },
         body: JSON.stringify({
-          contractType: metadata.contractType,
-          effectiveDate: metadata.effectiveDate || null,
-          expirationDate: metadata.expirationDate || null,
-          totalValue: metadata.totalValue ? parseFloat(metadata.totalValue) : null,
+          // Identification
+          document_number: metadata.document_number,
+          document_title: metadata.document_title,
+          contract_short_description: metadata.contract_short_description,
+          jurisdiction: metadata.jurisdiction,
+          contract_language: metadata.contract_language,
+          // Parties
+          external_parties: metadata.external_parties,
+          // Commercial terms
+          tcv_amount: metadata.tcv_amount ? parseFloat(String(metadata.tcv_amount)) : null,
+          tcv_text: metadata.tcv_text,
+          payment_type: metadata.payment_type,
+          billing_frequency_type: metadata.billing_frequency_type,
+          periodicity: metadata.periodicity,
           currency: metadata.currency,
-          clientName: metadata.clientName,
-          supplierName: metadata.supplierName,
-          description: metadata.description,
-          tags: metadata.tags
+          // Dates
+          signature_date: metadata.signature_date || null,
+          start_date: metadata.start_date || null,
+          end_date: metadata.end_date || null,
+          termination_date: metadata.termination_date || null,
+          // Reminders
+          reminder_enabled: metadata.reminder_enabled,
+          reminder_days_before_end: metadata.reminder_days_before_end,
+          notice_period: metadata.notice_period
         })
       })
       
@@ -500,16 +621,38 @@ export default function ContractDetailPage() {
         }
       };
       
+      // Build external parties from contract data
+      const clientParty = findClientParty(overviewData?.parties);
+      const supplierParty = findSupplierParty(overviewData?.parties);
+      const parties: Array<{ legalName: string; role?: string; legalForm?: string }> = [];
+      if (clientParty) parties.push({ legalName: clientParty.name || contract.clientName || '', role: 'Client' });
+      if (supplierParty) parties.push({ legalName: supplierParty.name || contract.supplierName || '', role: 'Supplier' });
+      
       setMetadata({
-        contractType: contract.contractType || overviewData?.contractType || '',
-        effectiveDate: formatDate(contract.effectiveDate) || formatDate(overviewData?.effectiveDate) || '',
-        expirationDate: formatDate(contract.expirationDate) || formatDate(overviewData?.expirationDate) || '',
-        totalValue: totalValue?.toString() || '',
+        // Identification
+        document_number: contract.document_number || contract.id || '',
+        document_title: contract.document_title || overviewData?.title || contract.filename || '',
+        contract_short_description: contract.contract_short_description || contract.description || overviewData?.summary || '',
+        jurisdiction: contract.jurisdiction || overviewData?.jurisdiction || '',
+        contract_language: contract.contract_language || overviewData?.language || 'English',
+        // Parties
+        external_parties: contract.external_parties || parties,
+        // Commercials
+        tcv_amount: contract.tcv_amount || Number(totalValue) || 0,
+        tcv_text: contract.tcv_text || totalValue?.toString() || '',
+        payment_type: contract.payment_type || financialData?.paymentType || 'none',
+        billing_frequency_type: contract.billing_frequency_type || financialData?.billingFrequency || 'none',
+        periodicity: contract.periodicity || financialData?.periodicity || 'none',
         currency: currency,
-        clientName: contract.clientName || String(findClientParty(overviewData?.parties)?.name ?? ''),
-        supplierName: contract.supplierName || String(findSupplierParty(overviewData?.parties)?.name ?? ''),
-        description: contract.description || overviewData?.summary || '',
-        tags: contract.tags || (Array.isArray(contract.extractedData?.tags) ? contract.extractedData.tags : [])
+        // Dates
+        signature_date: contract.signature_date || formatDate(overviewData?.signatureDate) || '',
+        start_date: contract.start_date || formatDate(contract.effectiveDate) || formatDate(overviewData?.effectiveDate) || '',
+        end_date: contract.end_date || formatDate(contract.expirationDate) || formatDate(overviewData?.expirationDate) || '',
+        termination_date: contract.termination_date || '',
+        // Reminders & Notices
+        reminder_enabled: contract.reminder_enabled ?? true,
+        reminder_days_before_end: contract.reminder_days_before_end ?? 60,
+        notice_period: contract.notice_period || overviewData?.noticePeriod || ''
       })
     }
   }
@@ -732,6 +875,17 @@ export default function ContractDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      {/* Breadcrumbs */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <Breadcrumbs 
+          items={[
+            { label: 'Contracts', href: '/contracts', icon: FileText },
+            { label: contract?.filename || 'Contract Details' }
+          ]} 
+          showHomeIcon 
+        />
+      </div>
+      
       {/* Header - Enhanced with glassmorphism and better visual hierarchy */}
       <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-40 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -974,281 +1128,450 @@ export default function ContractDetailPage() {
           </motion.div>
         )}
 
-        {/* Contract Health Score - Enhanced with better visual design */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", damping: 20 }}
-          className="mb-6"
-        >
-          <Card className="bg-gradient-to-br from-white via-white to-slate-50/50 border-slate-200/60 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-6">
-                {/* Health Ring */}
-                <div className="relative">
-                  <HealthIndicator 
-                    health={{
-                      score: riskScore ? Math.max(20, 100 - riskScore) : 85,
-                      issues: riskScore && riskScore >= 70 ? ['High risk score'] : [],
-                      lastChecked: new Date(),
-                    }}
-                    size="lg"
-                    showLabel
-                  />
-                </div>
-                
-                {/* Health Details - Enhanced card styling */}
-                <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <motion.div 
-                    whileHover={{ y: -2 }}
-                    className="text-center p-3.5 bg-gradient-to-br from-white to-slate-50 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-default"
-                  >
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Completeness</p>
-                    <p className="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">{contract?.status === 'completed' ? '100%' : '75%'}</p>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ y: -2 }}
-                    className={cn(
-                      "text-center p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-default",
-                      riskLevel === 'low' ? 'bg-gradient-to-br from-emerald-50 to-green-50/50 border-emerald-100' : 
-                      riskLevel === 'medium' ? 'bg-gradient-to-br from-amber-50 to-yellow-50/50 border-amber-100' : 
-                      'bg-gradient-to-br from-red-50 to-rose-50/50 border-red-100'
-                    )}
-                  >
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Risk Level</p>
-                    <p className={cn(
-                      "text-xl font-bold",
-                      riskLevel === 'low' ? 'text-emerald-600' : 
-                      riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
-                    )}>
-                      {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
-                    </p>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ y: -2 }}
-                    className="text-center p-3.5 bg-gradient-to-br from-purple-50 to-indigo-50/50 rounded-xl border border-purple-100 shadow-sm hover:shadow-md transition-all cursor-default"
-                  >
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">AI Artifacts</p>
-                    <p className="text-xl font-bold text-purple-600">{contract?.artifactCount || 5}</p>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ y: -2 }}
-                    className={cn(
-                      "text-center p-3.5 rounded-xl border shadow-sm hover:shadow-md transition-all cursor-default",
-                      complianceData?.compliant 
-                        ? 'bg-gradient-to-br from-emerald-50 to-green-50/50 border-emerald-100' 
-                        : 'bg-gradient-to-br from-amber-50 to-yellow-50/50 border-amber-100'
-                    )}
-                  >
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1">Compliance</p>
-                    <p className={cn(
-                      "text-xl font-bold",
-                      complianceData?.compliant ? 'text-emerald-600' : 'text-amber-600'
-                    )}>
-                      {complianceData?.compliant ? 'Pass' : 'Review'}
-                    </p>
-                  </motion.div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Quick Stats - Enhanced with better hover states */}
+        {/* Contract Quick Overview - Key Metadata at a Glance */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-wrap items-center gap-3 mb-6"
+          className="mb-6"
         >
-          {financialData?.totalValue && (
-            <motion.div 
-              whileHover={{ scale: 1.03 }}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200/80 rounded-xl shadow-sm hover:shadow-md transition-all"
-            >
-              <DollarSign className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-semibold text-emerald-700">
-                {formatCurrency(financialData.totalValue, financialData.currency || 'USD')}
-              </span>
-            </motion.div>
-          )}
+          {/* Smart Status Banner - Shows the most important thing right now */}
+          {(() => {
+            // Use official schema field: end_date
+            const endDate = metadata.end_date;
+            const daysRemaining = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+            const isExpired = daysRemaining !== null && daysRemaining < 0;
+            const isExpiringSoon = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 90;
+            const isHighRisk = riskLevel === 'high';
+            const needsReview = !complianceData?.compliant;
+            
+            // Determine what to show
+            if (isExpired) {
+              return (
+                <div className="mb-4 flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <div className="flex-1">
+                    <span className="font-semibold">Contract Expired</span>
+                    <span className="mx-2">·</span>
+                    <span>Ended {formatDate(endDate)} ({Math.abs(daysRemaining)} days ago)</span>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">
+                    Initiate Renewal
+                  </Button>
+                </div>
+              );
+            }
+            if (isExpiringSoon) {
+              return (
+                <div className="mb-4 flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700">
+                  <Clock className="h-5 w-5 shrink-0" />
+                  <div className="flex-1">
+                    <span className="font-semibold">Expiring Soon</span>
+                    <span className="mx-2">·</span>
+                    <span>{daysRemaining} days until {formatDate(endDate)}</span>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+                    Set Reminder
+                  </Button>
+                </div>
+              );
+            }
+            if (isHighRisk || needsReview) {
+              return (
+                <div className="mb-4 flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <div className="flex-1">
+                    {isHighRisk && <><span className="font-semibold">High Risk</span><span className="mx-2">·</span></>}
+                    {needsReview && <span>Compliance review needed</span>}
+                    {isHighRisk && !needsReview && <span>Review recommended</span>}
+                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    onClick={() => setActiveTab('overview')}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              );
+            }
+            return null;
+          })()}
           
-          <motion.div 
-            whileHover={{ scale: 1.03 }}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 border rounded-xl shadow-sm hover:shadow-md transition-all",
-            riskLevel === 'low' ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/80' : 
-            riskLevel === 'medium' ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200/80' : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200/80'
-          )}>
-            <AlertTriangle className={cn(
-              "h-4 w-4",
-              riskLevel === 'low' ? 'text-emerald-600' : 
-              riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
-            )} />
-            <span className={cn(
-              "text-sm font-semibold",
-              riskLevel === 'low' ? 'text-emerald-700' : 
-              riskLevel === 'medium' ? 'text-amber-700' : 'text-red-700'
-            )}>
-              {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
-            </span>
-          </motion.div>
-          
-          <motion.div 
-            whileHover={{ scale: 1.03 }}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 border rounded-xl shadow-sm hover:shadow-md transition-all",
-              complianceData?.compliant 
-                ? 'bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200/80' 
-                : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200/80'
-            )}
-          >
-            <Shield className={cn(
-              "h-4 w-4",
-              complianceData?.compliant ? 'text-emerald-600' : 'text-amber-600'
-            )} />
-            <span className={cn(
-              "text-sm font-semibold",
-              complianceData?.compliant ? 'text-emerald-700' : 'text-amber-700'
-            )}>
-              {complianceData?.compliant ? 'Compliant' : 'Review Needed'}
-            </span>
-          </motion.div>
-          
-          <motion.div 
-            whileHover={{ scale: 1.03 }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/80 rounded-xl shadow-sm hover:shadow-md transition-all"
-          >
-            <Brain className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-semibold text-purple-700">
-              {contract?.artifactCount || 5} AI Artifacts
-            </span>
-          </motion.div>
+          <Card className="border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0">
+              {/* Contract Value - The "What" */}
+              <div className="p-5 border-b sm:border-b lg:border-b-0 sm:border-r border-slate-100 bg-gradient-to-br from-emerald-50/40 via-white to-white">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 rounded-lg bg-emerald-100">
+                    <DollarSign className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contract Value</span>
+                </div>
+                <p className="text-2xl font-bold text-slate-900 mb-2">
+                  {metadata.tcv_amount > 0 
+                    ? formatCurrency(metadata.tcv_amount, metadata.currency || 'USD')
+                    : <span className="text-slate-400 text-lg">Not specified</span>}
+                </p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {metadata.payment_type && metadata.payment_type !== 'none' && (
+                    <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs font-medium hover:bg-emerald-100">
+                      {formatPaymentType(metadata.payment_type as any)}
+                    </Badge>
+                  )}
+                  {metadata.periodicity && metadata.periodicity !== 'none' && (
+                    <Badge variant="outline" className="text-xs text-slate-600 border-slate-200">
+                      {formatPeriodicity(metadata.periodicity as any)}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Contracting Parties - The "Who" */}
+              <div className="p-5 border-b lg:border-b-0 sm:border-r border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 rounded-lg bg-blue-100">
+                    <Users className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Parties</span>
+                </div>
+                <div className="space-y-2">
+                  {metadata.external_parties.length > 0 ? (
+                    metadata.external_parties.slice(0, 2).map((party, idx) => {
+                      const isClient = ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role || '');
+                      return (
+                        <div key={idx} className="flex items-center gap-2.5">
+                          <div className={cn(
+                            "w-7 h-7 rounded-full flex items-center justify-center shrink-0",
+                            isClient ? "bg-blue-100" : "bg-purple-100"
+                          )}>
+                            {isClient ? (
+                              <Building className="h-3.5 w-3.5 text-blue-600" />
+                            ) : (
+                              <Users className="h-3.5 w-3.5 text-purple-600" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-800 truncate">{party.legalName}</p>
+                            {party.role && (
+                              <p className={cn(
+                                "text-xs",
+                                isClient ? "text-blue-600" : "text-purple-600"
+                              )}>
+                                {party.role}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-slate-400 italic">No parties identified</p>
+                  )}
+                  {metadata.external_parties.length > 2 && (
+                    <button className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                      +{metadata.external_parties.length - 2} more parties
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Contract Period - The "When" */}
+              <div className="p-5 border-b sm:border-b-0 sm:border-r border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 rounded-lg bg-indigo-100">
+                    <Calendar className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</span>
+                </div>
+                {(() => {
+                  const startDate = metadata.start_date;
+                  const endDate = metadata.end_date;
+                  const daysRemaining = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+                  const isActive = startDate && new Date(startDate) <= new Date() && (!endDate || new Date(endDate) >= new Date());
+                  const isExpired = endDate && new Date(endDate) < new Date();
+                  const isEvergreen = !endDate;
+                  
+                  return (
+                    <div className="space-y-2">
+                      {/* Date Range */}
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-slate-600">{startDate ? formatDate(startDate) : '—'}</span>
+                        <ArrowRight className="h-3.5 w-3.5 text-slate-400" />
+                        <span className={cn(
+                          "font-medium",
+                          isExpired ? "text-red-600" : 
+                          isEvergreen ? "text-blue-600" :
+                          daysRemaining !== null && daysRemaining <= 90 ? "text-amber-600" : 
+                          "text-slate-700"
+                        )}>
+                          {endDate ? formatDate(endDate) : 'Evergreen'}
+                        </span>
+                      </div>
+                      
+                      {/* Status Badge + Days */}
+                      <div className="flex items-center gap-2">
+                        {isExpired ? (
+                          <Badge className="bg-red-100 text-red-700 border-0 text-xs">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            Expired
+                          </Badge>
+                        ) : isEvergreen ? (
+                          <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
+                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5" />
+                            Auto-renewing
+                          </Badge>
+                        ) : isActive ? (
+                          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">
+                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse" />
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-slate-100 text-slate-600 border-0 text-xs">
+                            Not started
+                          </Badge>
+                        )}
+                        {daysRemaining !== null && daysRemaining > 0 && !isEvergreen && (
+                          <span className={cn(
+                            "text-xs font-medium",
+                            daysRemaining <= 30 ? "text-red-600" :
+                            daysRemaining <= 90 ? "text-amber-600" : "text-slate-500"
+                          )}>
+                            {daysRemaining}d left
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Notice Period */}
+                      {metadata.notice_period && !isExpired && (
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <Bell className="h-3 w-3" />
+                          {metadata.notice_period} notice
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Assessment - The "How" */}
+              <div className="p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 rounded-lg bg-amber-100">
+                    <Shield className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assessment</span>
+                </div>
+                <div className="space-y-2.5">
+                  {/* Risk Level - Primary */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-2.5 h-2.5 rounded-full",
+                        riskLevel === 'low' ? 'bg-emerald-500' : 
+                        riskLevel === 'medium' ? 'bg-amber-500' : 
+                        'bg-red-500'
+                      )} />
+                      <span className="text-sm font-medium text-slate-700">Risk</span>
+                    </div>
+                    <Badge 
+                      className={cn(
+                        "text-xs font-medium border-0",
+                        riskLevel === 'low' ? 'bg-emerald-100 text-emerald-700' : 
+                        riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' : 
+                        'bg-red-100 text-red-700'
+                      )}
+                    >
+                      {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)}
+                    </Badge>
+                  </div>
+                  
+                  {/* Compliance */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-2.5 h-2.5 rounded-full",
+                        complianceData?.compliant ? 'bg-emerald-500' : 'bg-amber-500'
+                      )} />
+                      <span className="text-sm font-medium text-slate-700">Compliance</span>
+                    </div>
+                    <Badge 
+                      className={cn(
+                        "text-xs font-medium border-0",
+                        complianceData?.compliant 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : 'bg-amber-100 text-amber-700'
+                      )}
+                    >
+                      {complianceData?.compliant ? 'OK' : 'Review'}
+                    </Badge>
+                  </div>
+                  
+                  {/* Status */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700">Status</span>
+                    <StatusBadge status={contract?.status || 'active'} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
         </motion.div>
 
-        {/* Category & Quick Actions Bar - Enhanced */}
+        {/* Quick Actions Bar - Category, File Info, AI Assistant */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.03 }}
-          className="mb-6 flex flex-wrap items-center gap-4"
+          className="mb-6"
         >
-          {/* Category - Enhanced styling */}
-          <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-slate-200/80 rounded-xl px-4 py-2.5 shadow-sm hover:shadow-md transition-all">
-            <Tag className="h-4 w-4 text-slate-400" />
-            {contract?.category ? (
-              <button 
-                onClick={() => setShowCategorySelector(true)}
-                className="hover:opacity-80 transition-opacity"
-              >
-                <CategoryBadge
-                  category={contract.category.name}
-                  color={contract.category.color}
-                  icon={contract.category.icon}
-                  size="sm"
-                />
-              </button>
-            ) : (
-              <button 
-                onClick={() => setShowCategorySelector(true)}
-                className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1.5 font-medium"
-              >
-                <span>Add category</span>
-              </button>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {/* Category Selector */}
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 hover:border-slate-300 transition-colors">
+              <Tag className="h-3.5 w-3.5 text-slate-400" />
+              {contract?.category ? (
+                <button 
+                  onClick={() => setShowCategorySelector(true)}
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <CategoryBadge
+                    category={contract.category.name}
+                    color={contract.category.color}
+                    icon={contract.category.icon}
+                    size="sm"
+                  />
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <button 
+                    onClick={() => setShowCategorySelector(true)}
+                    className="text-slate-500 hover:text-slate-700 font-medium"
+                  >
+                    Add category
+                  </button>
+                  <button 
+                    onClick={handleAICategorize}
+                    className="text-purple-500 hover:text-purple-700 p-0.5 rounded hover:bg-purple-50 transition-colors"
+                    title="AI suggest category"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {/* File Info - Compact */}
+            <div className="flex items-center gap-2 text-slate-500 bg-slate-50 rounded-lg px-3 py-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="font-medium">{contract?.mimeType?.split('/')[1]?.toUpperCase() || 'PDF'}</span>
+              {contract?.fileSize && (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span>{(contract.fileSize / 1024 / 1024).toFixed(1)} MB</span>
+                </>
+              )}
+              {contract?.uploadDate && (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span>Uploaded {formatDate(contract.uploadDate)}</span>
+                </>
+              )}
+            </div>
+            
+            {/* Jurisdiction & Language (from official schema) */}
+            {(metadata.jurisdiction || metadata.contract_language) && (
+              <div className="flex items-center gap-1.5">
+                {metadata.jurisdiction && (
+                  <Badge variant="outline" className="text-xs bg-white">
+                    <Globe className="h-3 w-3 mr-1" />
+                    {metadata.jurisdiction}
+                  </Badge>
+                )}
+                {metadata.contract_language && (
+                  <Badge variant="outline" className="text-xs bg-white text-slate-500">
+                    {metadata.contract_language.toUpperCase()}
+                  </Badge>
+                )}
+              </div>
             )}
-            {!contract?.category && (
-              <button 
-                onClick={handleAICategorize}
-                className="ml-1 text-purple-500 hover:text-purple-700 p-1 rounded-lg hover:bg-purple-50 transition-colors"
-                title="AI suggest category"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-              </button>
-            )}
+            
+            {/* Spacer */}
+            <div className="flex-1" />
+            
+            {/* Quick AI Analysis Button - uses schema fields */}
+            <button 
+              onClick={() => {
+                // Build party names from external_parties array
+                const partyNames = metadata.external_parties
+                  .filter(p => p.legalName)
+                  .map(p => p.legalName)
+                  .join(' and ');
+                
+                window.dispatchEvent(new CustomEvent('openAIChatbot', {
+                  detail: {
+                    autoMessage: `Analyze this contract "${metadata.document_title || contract?.filename || 'Contract'}"${partyNames ? ` between ${partyNames}` : ''}. What are the key terms, obligations, and risks I should be aware of?`,
+                    contractId: contract?.id
+                  }
+                }));
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-indigo-700 transition-all shadow-sm hover:shadow-md"
+            >
+              <Sparkles className="h-4 w-4" />
+              Analyze with AI
+            </button>
           </div>
-          
-          {/* Renewal Soon Alert - Enhanced styling */}
-          {overviewData?.expirationDate && new Date(overviewData.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) && (
-            <motion.div 
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              className="flex items-center gap-2 text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200/80 rounded-xl px-4 py-2.5 text-sm font-medium shadow-sm"
-            >
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Clock className="h-4 w-4" />
-              </motion.div>
-              <span>Renewal Soon</span>
-            </motion.div>
-          )}
-          
-          {/* Ask AI - Enhanced prominent action button */}
-          <motion.button 
-            onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot'))}
-            whileHover={{ scale: 1.03, y: -2 }}
-            whileTap={{ scale: 0.97 }}
-            className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 via-purple-600 to-indigo-600 text-white text-sm font-semibold rounded-xl hover:from-purple-600 hover:via-purple-700 hover:to-indigo-700 transition-all shadow-md shadow-purple-500/25 hover:shadow-lg hover:shadow-purple-500/30"
-          >
-            <Sparkles className="h-4 w-4" />
-            Ask AI
-          </motion.button>
         </motion.div>
 
-        {/* Main Tabs - Enhanced with better visual hierarchy */}
+        {/* Main Tabs */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200/80 p-1.5 shadow-sm">
-              <TabsList className="w-full bg-transparent gap-1">
-                <TabsTrigger 
-                  value="overview" 
-                  className="flex-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-100 data-[state=active]:to-slate-50 data-[state=active]:shadow-sm rounded-lg transition-all"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Summary
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="details" 
-                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
-                >
-                  <Info className="h-4 w-4 mr-2" />
-                  Edit Details
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="activity" 
-                  className="flex-1 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none rounded-lg"
-                >
-                  <History className="h-4 w-4 mr-2" />
-                  Activity & Reminders
-                </TabsTrigger>
-              </TabsList>
-            </div>
+            <TabsList className="w-full bg-white rounded-lg border border-slate-200 p-1 h-auto">
+              <TabsTrigger 
+                value="overview" 
+                className="flex-1 py-2.5 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md transition-all"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Summary
+              </TabsTrigger>
+              <TabsTrigger 
+                value="details" 
+                className="flex-1 py-2.5 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md transition-all"
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger 
+                value="activity" 
+                className="flex-1 py-2.5 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md transition-all"
+              >
+                <History className="h-4 w-4 mr-2" />
+                Activity
+              </TabsTrigger>
+            </TabsList>
 
-            {/* Summary Tab - Combines Overview + AI Analysis in one flow */}
-            <TabsContent value="overview" className="space-y-6">
-              {/* Summary Card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
+            {/* Summary Tab - Key insights and analysis */}
+            <TabsContent value="overview" className="space-y-4">
+              {/* Executive Summary */}
+              <Card className="border-slate-200 overflow-hidden">
+                <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-slate-100">
+                  <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
                     Executive Summary
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-slate-600 leading-relaxed">
-                    {overviewData?.summary || 'Contract summary will appear here once processing is complete.'}
+                <CardContent className="pt-4">
+                  {/* Main Summary - using contract_short_description from schema */}
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {metadata.contract_short_description || overviewData?.summary || 'Contract summary will appear here once processing is complete.'}
                   </p>
                   
-                  {/* Key Terms */}
+                  {/* Key Terms - Important contractual terms extracted by AI */}
                   {overviewData?.keyTerms && overviewData.keyTerms.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-100">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Key Terms</p>
-                      <div className="flex flex-wrap gap-2">
+                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Key Terms Identified</p>
+                      <div className="flex flex-wrap gap-1.5">
                         {overviewData.keyTerms.map((term: string, i: number) => (
                           <KeyTermBadge key={i} term={term} />
                         ))}
@@ -1258,145 +1581,259 @@ export default function ContractDetailPage() {
                 </CardContent>
               </Card>
 
-              {/* Two Column Layout */}
-              <div className="grid md:grid-cols-2 gap-6">
-                {/* Parties */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Users className="h-4 w-4 text-blue-600" />
+              {/* Parties & Dates Grid */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Parties - using external_parties from schema */}
+                <Card className="border-slate-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Users className="h-4 w-4 text-blue-500" />
                       Contract Parties
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {overviewData?.parties && overviewData.parties.length > 0 ? (
-                      <div className="space-y-3">
+                    {/* Show external_parties from official schema */}
+                    {metadata.external_parties && metadata.external_parties.length > 0 ? (
+                      <div className="space-y-2">
+                        {metadata.external_parties.map((party, i) => {
+                          const isClient = ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role || '');
+                          return (
+                            <div 
+                              key={i}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border",
+                                isClient ? "bg-blue-50 border-blue-100" : "bg-purple-50 border-purple-100"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-9 h-9 rounded-full flex items-center justify-center",
+                                isClient ? "bg-blue-100" : "bg-purple-100"
+                              )}>
+                                {isClient ? (
+                                  <Building className="h-4 w-4 text-blue-600" />
+                                ) : (
+                                  <Users className="h-4 w-4 text-purple-600" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-slate-800 truncate">
+                                  {party.legalName || 'Unknown Party'}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className={cn(
+                                    "text-xs font-medium",
+                                    isClient ? "text-blue-600" : "text-purple-600"
+                                  )}>
+                                    {party.role || 'Party'}
+                                  </p>
+                                  {party.legalForm && (
+                                    <span className="text-xs text-slate-400">· {party.legalForm}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : overviewData?.parties && overviewData.parties.length > 0 ? (
+                      // Fallback to AI-extracted parties if no schema parties
+                      <div className="space-y-2">
                         {overviewData.parties.map((party: any, i: number) => (
                           <div 
                             key={i}
-                            className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-lg border",
+                              ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role)
+                                ? "bg-blue-50 border-blue-100" 
+                                : "bg-purple-50 border-purple-100"
+                            )}
                           >
                             <div className={cn(
-                              "w-10 h-10 rounded-full flex items-center justify-center",
+                              "w-9 h-9 rounded-full flex items-center justify-center",
                               ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role)
                                 ? "bg-blue-100" 
                                 : "bg-purple-100"
                             )}>
                               {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
-                                <Building className="h-5 w-5 text-blue-600" />
+                                <Building className="h-4 w-4 text-blue-600" />
                               ) : (
-                                <Users className="h-5 w-5 text-purple-600" />
+                                <Users className="h-4 w-4 text-purple-600" />
                               )}
                             </div>
-                            <div>
-                              <p className="font-medium text-slate-900">{party.name || 'Unknown Party'}</p>
-                              <p className="text-sm text-slate-500">{party.role || 'Party'}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-800 truncate">{party.name || 'Unknown Party'}</p>
+                              <p className={cn(
+                                "text-xs font-medium",
+                                ['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? "text-blue-600" : "text-purple-600"
+                              )}>
+                                {party.role || 'Party'}
+                              </p>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-500">No parties identified yet.</p>
+                      <p className="text-sm text-slate-500 py-4 text-center">No parties identified yet.</p>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Key Dates */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-emerald-600" />
+                {/* Key Dates - using schema fields: start_date, end_date, signature_date */}
+                <Card className="border-slate-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-emerald-500" />
                       Key Dates
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                        <span className="text-sm font-medium text-emerald-700">Effective Date</span>
-                        <span className="text-sm text-slate-700">
-                          {overviewData?.effectiveDate ? formatDate(overviewData.effectiveDate) : 'Not specified'}
+                    <div className="space-y-2">
+                      {/* Signature Date (if available) */}
+                      {metadata.signature_date && (
+                        <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            <span className="text-sm font-medium text-slate-700">Signed</span>
+                          </div>
+                          <span className="text-sm font-semibold text-blue-700">
+                            {formatDate(metadata.signature_date)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Start Date (from schema: start_date) */}
+                      <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          <span className="text-sm font-medium text-slate-700">Start Date</span>
+                        </div>
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {metadata.start_date ? formatDate(metadata.start_date) : '—'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                        <span className="text-sm font-medium text-blue-700">Upload Date</span>
-                        <span className="text-sm text-slate-700">
-                          {contract?.uploadDate ? formatDate(contract.uploadDate) : 'Not specified'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg">
-                        <span className="text-sm font-medium text-amber-700">Expiration</span>
-                        <span className="text-sm text-slate-700">
-                          {overviewData?.expirationDate ? formatDate(overviewData.expirationDate) : 'Not specified'}
-                        </span>
-                      </div>
+                      
+                      {/* End/Expiration Date (from schema: end_date) */}
+                      {(() => {
+                        const endDate = metadata.end_date;
+                        const isEvergreen = !endDate;
+                        const isExpiringSoon = endDate && new Date(endDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+                        const daysRemaining = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+                        
+                        return (
+                          <div className={cn(
+                            "flex items-center justify-between p-3 rounded-lg border",
+                            isEvergreen ? "bg-blue-50 border-blue-100" :
+                            isExpiringSoon ? "bg-amber-50 border-amber-200" : 
+                            "bg-slate-50 border-slate-100"
+                          )}>
+                            <div className="flex items-center gap-2">
+                              {isEvergreen ? (
+                                <div className="w-4 h-4 flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                </div>
+                              ) : isExpiringSoon ? (
+                                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                              ) : (
+                                <Calendar className="h-4 w-4 text-slate-500" />
+                              )}
+                              <div>
+                                <span className={cn(
+                                  "text-sm font-medium",
+                                  isEvergreen ? "text-blue-700" :
+                                  isExpiringSoon ? "text-amber-700" : "text-slate-600"
+                                )}>
+                                  {isEvergreen ? 'Evergreen' : 'End Date'}
+                                </span>
+                                {daysRemaining !== null && daysRemaining > 0 && (
+                                  <p className={cn(
+                                    "text-xs",
+                                    isExpiringSoon ? "text-amber-600" : "text-slate-500"
+                                  )}>
+                                    {daysRemaining} days remaining
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <span className={cn(
+                              "text-sm font-semibold",
+                              isEvergreen ? "text-blue-700" :
+                              isExpiringSoon ? "text-amber-700" : "text-slate-700"
+                            )}>
+                              {endDate ? formatDate(endDate) : 'No end date'}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                      
+                      {/* Notice Period (if set) */}
+                      {metadata.notice_period && (
+                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <Bell className="h-4 w-4 text-slate-500" />
+                            <span className="text-sm font-medium text-slate-600">Notice Period</span>
+                          </div>
+                          <span className="text-sm font-medium text-slate-700">
+                            {metadata.notice_period}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Risk Summary */}
-              {riskData && (
-                <Card>
-                  <CardHeader className="pb-3">
+              {/* Risk Assessment */}
+              {riskData && riskData.risks && riskData.risks.length > 0 && (
+                <Card className="border-slate-200">
+                  <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                         <AlertTriangle className={cn(
                           "h-4 w-4",
-                          riskLevel === 'low' ? 'text-emerald-600' : 
-                          riskLevel === 'medium' ? 'text-amber-600' : 'text-red-600'
+                          riskLevel === 'low' ? 'text-emerald-500' : 
+                          riskLevel === 'medium' ? 'text-amber-500' : 'text-red-500'
                         )} />
-                        Risk Assessment
+                        Key Risks
                       </CardTitle>
-                      <Badge className={cn(
+                      <span className={cn(
+                        "text-xs font-medium px-2 py-0.5 rounded-full",
                         riskLevel === 'low' ? 'bg-emerald-100 text-emerald-700' : 
                         riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
                       )}>
-                        {riskLevel.charAt(0).toUpperCase() + riskLevel.slice(1)} Risk
-                      </Badge>
+                        {riskData.risks.length} identified
+                      </span>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {riskData.risks && riskData.risks.length > 0 ? (
-                      <div className="space-y-3">
-                        {riskData.risks.map((risk: any, i: number) => (
-                          <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                            <div className={cn(
-                              "w-2 h-2 rounded-full mt-2",
-                              risk.level?.toLowerCase() === 'low' ? 'bg-emerald-500' : 
-                              risk.level?.toLowerCase() === 'medium' ? 'bg-amber-500' : 'bg-red-500'
-                            )} />
-                            <div>
-                              <p className="font-medium text-slate-900">{risk.category}</p>
-                              <p className="text-sm text-slate-600">{risk.description}</p>
-                            </div>
+                    <div className="space-y-2">
+                      {riskData.risks.slice(0, 3).map((risk: any, i: number) => (
+                        <div key={i} className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-lg">
+                          <div className={cn(
+                            "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
+                            risk.level?.toLowerCase() === 'low' ? 'bg-emerald-500' : 
+                            risk.level?.toLowerCase() === 'medium' ? 'bg-amber-500' : 'bg-red-500'
+                          )} />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-800">{risk.category}</p>
+                            <p className="text-xs text-slate-500 line-clamp-2">{risk.description}</p>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">No specific risks identified.</p>
-                    )}
+                        </div>
+                      ))}
+                    </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* AI Insights Card */}
-              <AIInsightsCard
-                contractId={params.id as string}
-                onRefresh={() => {
-                  toast.info('Refreshing AI insights...');
-                }}
-              />
-
-              {/* AI Extracted Details - Integrated into Summary */}
+              {/* AI Extracted Details */}
               {contract?.extractedData && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Brain className="h-4 w-4 text-purple-600" />
-                      AI-Extracted Details
+                <Card className="border-slate-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-purple-500" />
+                      AI Analysis
                     </CardTitle>
-                    <CardDescription>
-                      Detailed analysis of clauses, financials, risk, and compliance
+                    <CardDescription className="text-xs">
+                      Clauses, financials, risk assessment, and compliance details
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -1408,12 +1845,6 @@ export default function ContractDetailPage() {
                   </CardContent>
                 </Card>
               )}
-
-              {/* Contract Health Score */}
-              <ContractHealthScore
-                contractId={params.id as string}
-                variant="full"
-              />
             </TabsContent>
 
             {/* Details Tab - Enhanced Metadata using new schema */}
@@ -1467,33 +1898,49 @@ export default function ContractDetailPage() {
               )}
             </TabsContent>
 
-            {/* Activity & Reminders Tab - Combined for simplicity */}
-            <TabsContent value="activity" className="space-y-6">
-              {/* Reminders Section */}
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-amber-600" />
-                  Reminders
-                </h3>
-                <ContractReminders contractId={params.id as string} />
-              </div>
+            {/* Activity Tab */}
+            <TabsContent value="activity" className="space-y-4">
+              {/* Reminders */}
+              <Card className="border-slate-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    Reminders
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ContractReminders contractId={params.id as string} />
+                </CardContent>
+              </Card>
               
-              <Separator className="my-8" />
-              
-              {/* Activity Section */}
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <History className="h-5 w-5 text-blue-600" />
-                  Recent Activity
-                </h3>
-                <ActivityTab contractId={params.id as string} />
-              </div>
+              {/* Recent Activity */}
+              <Card className="border-slate-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-blue-500" />
+                    Recent Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ActivityTab contractId={params.id as string} />
+                </CardContent>
+              </Card>
               
               {/* Audit Log */}
-              <ContractAuditLog 
-                contractId={params.id as string}
-                maxHeight="400px"
-              />
+              <Card className="border-slate-200">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                    <History className="h-4 w-4 text-slate-500" />
+                    Audit Log
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ContractAuditLog 
+                    contractId={params.id as string}
+                    maxHeight="300px"
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </motion.div>
@@ -1540,9 +1987,8 @@ export default function ContractDetailPage() {
       {/* Contract Comparison Modal */}
       <ContractComparison
         contractId={params.id as string}
-        versions={[
-          { id: 'v2', version: 'v2.0', title: 'Current Version', createdAt: new Date(), createdBy: 'System', status: 'active' as const },
-          { id: 'v1', version: 'v1.0', title: 'Initial Version', createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), createdBy: 'System', status: 'archived' as const },
+        versions={contractVersions.length > 0 ? contractVersions : [
+          { id: contract?.id || 'current', version: 'v1.0', title: 'Current Version', createdAt: contract?.uploadDate ? new Date(contract.uploadDate) : new Date(), createdBy: 'System', status: 'active' as const }
         ]}
         isOpen={showComparison}
         onClose={() => setShowComparison(false)}

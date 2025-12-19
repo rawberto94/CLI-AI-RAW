@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // In production, these would interact with actual BullMQ queues
     // For now, simulate the actions
     let message = '';
-    let success = true;
+    const success = true;
 
     switch (action) {
       case 'pause':

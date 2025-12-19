@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let result: any = {};
+    const result: any = {};
 
     if (artifactId) {
       const sanitizedArtifactId = dataSanitizationService.sanitizeText(artifactId).sanitized;

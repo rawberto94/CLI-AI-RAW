@@ -23,7 +23,7 @@ interface SSEConnection {
 const connections = new Map<string, SSEConnection>();
 
 // Shared Redis subscriber for all SSE connections
-let redisSubscriber: Redis | null = null;
+let redisSubscriber: InstanceType<typeof Redis> | null = null;
 let subscriberReady = false;
 
 function getRedisUrl(): string {
@@ -31,7 +31,7 @@ function getRedisUrl(): string {
     `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
 }
 
-async function ensureRedisSubscriber(): Promise<Redis> {
+async function ensureRedisSubscriber(): Promise<InstanceType<typeof Redis>> {
   if (redisSubscriber && subscriberReady) {
     return redisSubscriber;
   }
@@ -39,7 +39,7 @@ async function ensureRedisSubscriber(): Promise<Redis> {
   try {
     redisSubscriber = new Redis(getRedisUrl(), {
       maxRetriesPerRequest: 3,
-      retryStrategy: (times) => Math.min(times * 100, 3000),
+      retryStrategy: (times: number) => Math.min(times * 100, 3000),
       lazyConnect: true,
     });
 
@@ -47,7 +47,7 @@ async function ensureRedisSubscriber(): Promise<Redis> {
     await redisSubscriber.subscribe(CHANNEL_PREFIX);
 
     // Handle incoming messages and broadcast to SSE connections
-    redisSubscriber.on('message', (channel, message) => {
+    redisSubscriber.on('message', (channel: string, message: string) => {
       if (channel !== CHANNEL_PREFIX) return;
 
       try {
@@ -58,7 +58,7 @@ async function ensureRedisSubscriber(): Promise<Redis> {
       }
     });
 
-    redisSubscriber.on('error', (err) => {
+    redisSubscriber.on('error', (err: Error) => {
       console.error('[SSE] Redis subscriber error:', err);
       subscriberReady = false;
     });

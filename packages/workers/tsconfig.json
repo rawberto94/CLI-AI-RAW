@@ -2,8 +2,25 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "noEmit": true,
+    "composite": false,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022",
+    "baseUrl": ".",
+    "paths": {
+      "utils": ["../utils/src"],
+      "utils/*": ["../utils/src/*"],
+      "clients-db": ["../clients/db"],
+      "clients-db/*": ["../clients/db/*"],
+      "clients-openai": ["../clients/openai/src"],
+      "clients-openai/*": ["../clients/openai/src/*"],
+      "@/*": ["../../apps/web/*"],
+      "@/lib/*": ["../../apps/web/lib/*"]
+    }
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*"
+  ],
   "exclude": ["node_modules", "dist"]
 }

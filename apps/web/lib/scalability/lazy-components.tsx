@@ -73,8 +73,9 @@ function DefaultErrorFallback({ error, reset }: { error: Error; reset: () => voi
 /**
  * Create a lazily-loaded component with error boundary and loading state
  */
-export function lazyComponent<P extends Record<string, unknown>>(
-  importFn: () => Promise<{ default: ComponentType<P> }>,
+export function lazyComponent<P extends Record<string, unknown> = Record<string, unknown>>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  importFn: () => Promise<{ default: ComponentType<any> }>,
   config: LazyLoadConfig<P> = {}
 ) {
   const {
@@ -83,7 +84,7 @@ export function lazyComponent<P extends Record<string, unknown>>(
     preloadOnIdle = false,
   } = config;
 
-  const LazyComponent = dynamic(importFn, {
+  const LazyComponent = dynamic(importFn as () => Promise<{ default: ComponentType<P> }>, {
     loading: () => <LoadingComponent />,
     ssr,
   });
@@ -97,7 +98,6 @@ export function lazyComponent<P extends Record<string, unknown>>(
 
   return LazyComponent;
 }
-
 /**
  * Create a component that preloads on hover/focus
  */
@@ -179,19 +179,19 @@ export const HeavyComponents = {
   
   // PDF Viewer / Artifact Viewer
   PDFViewer: lazyComponent(
-    () => import('@/components/contracts/ArtifactViewer').then(m => ({ default: m.ArtifactViewer as unknown as ComponentType<Record<string, unknown>> })),
+    () => import('@/components/contracts/ArtifactViewer').then(m => ({ default: m.ArtifactViewer })),
     { ssr: false }
   ),
   
   // Rich Text Editor / AI Analysis
   RichTextEditor: lazyComponent(
-    () => import('@/components/contracts/AIAnalysisPanel').then(m => ({ default: m.AIAnalysisPanel as unknown as ComponentType<Record<string, unknown>> })),
+    () => import('@/components/contracts/AIAnalysisPanel').then(m => ({ default: m.AIAnalysisPanel })),
     { ssr: false }
   ),
   
   // Data Tables with Virtual Scrolling
   VirtualDataTable: lazyComponent(
-    () => import('@/components/ui/virtual-list').then(m => ({ default: m.VirtualList as unknown as ComponentType<Record<string, unknown>> })),
+    () => import('@/components/ui/virtual-list').then(m => ({ default: m.VirtualList })),
     { ssr: false }
   ),
 };

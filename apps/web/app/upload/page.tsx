@@ -248,19 +248,22 @@ export default function UploadPage() {
                 : f
             ))
           } else {
-            // Update progress
-            const progressMap: Record<string, number> = {
-              'TEXT_EXTRACTION': 20,
-              'ARTIFACT_GENERATION': 40,
-              'RAG_INDEXING': 60,
-              'METADATA_EXTRACTION': 80,
-              'CATEGORIZATION': 95,
-              'COMPLETED': 100
-            }
-            const progress = progressMap[statusData.currentStage] || 50
+            // Update progress with detailed stage info from API
+            const progress = statusData.progress || 50
+            const stageName = statusData.currentStepName || statusData.currentStep || 'Processing'
+            const artifactsCount = statusData.artifacts?.generated || 0
+            const totalArtifacts = statusData.artifacts?.total || 5
+            
             setFiles(prev => prev.map(f =>
               f.id === uploadFile.id
-                ? { ...f, progress, processingStage: statusData.currentStage }
+                ? { 
+                    ...f, 
+                    progress, 
+                    processingStage: `${stageName}${artifactsCount > 0 ? ` (${artifactsCount}/${totalArtifacts} artifacts)` : ''}`,
+                    estimatedTime: statusData.timing?.estimatedRemainingMs 
+                      ? Math.round(statusData.timing.estimatedRemainingMs / 1000) 
+                      : f.estimatedTime
+                  }
                 : f
             ))
           }
@@ -725,11 +728,15 @@ function FileCard({ file, index, ocrMode, onRemove, onToggleArtifacts }: FileCar
         );
       case 'processing':
         return (
-          <Badge className="bg-indigo-100 text-indigo-700">
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            {file.processingStage 
-              ? file.processingStage.replace(/_/g, ' ').toLowerCase()
-              : 'Processing'}
+          <Badge className="bg-indigo-100 text-indigo-700 gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span className="font-medium">{file.progress}%</span>
+            <span className="text-indigo-500">·</span>
+            <span className="capitalize">
+              {file.processingStage 
+                ? file.processingStage
+                : 'Processing'}
+            </span>
           </Badge>
         );
       case 'completed':

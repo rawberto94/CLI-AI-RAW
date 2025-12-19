@@ -398,7 +398,7 @@ interface UseIntersectionOptions {
  */
 export function useIntersection(
   options: UseIntersectionOptions = {}
-): [React.RefObject<HTMLDivElement>, boolean] {
+): [React.RefObject<HTMLDivElement | null>, boolean] {
   const { threshold = 0.1, rootMargin = '0px', root = null } = options;
   const ref = useRef<HTMLDivElement>(null);
   const [isIntersecting, setIsIntersecting] = React.useState(false);
@@ -408,8 +408,11 @@ export function useIntersection(
     if (!element) return;
     
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsIntersecting(entry.isIntersecting);
+      (entries) => {
+        const observedEntry = entries[0];
+        if (observedEntry) {
+          setIsIntersecting(observedEntry.isIntersecting);
+        }
       },
       { threshold, rootMargin, root }
     );

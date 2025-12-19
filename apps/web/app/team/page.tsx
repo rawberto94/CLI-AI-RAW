@@ -5,10 +5,21 @@
 
 import { Suspense } from 'react';
 import { TeamCollaboration } from '@/components/team';
+import { Users } from 'lucide-react';
+import { Breadcrumbs } from '@/components/breadcrumbs';
+
+const breadcrumbItems = [
+  { label: 'Team', icon: Users },
+];
 
 export default function TeamPage() {
   return (
     <div className="container mx-auto py-8 px-4">
+      {/* Breadcrumbs */}
+      <div className="mb-6">
+        <Breadcrumbs items={breadcrumbItems} showHomeIcon />
+      </div>
+
       <Suspense fallback={
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />

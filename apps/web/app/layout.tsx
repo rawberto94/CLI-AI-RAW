@@ -18,6 +18,9 @@ import { TenantContextBanner } from "@/components/platform/TenantContextBanner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { UndoToastProvider } from "@/components/ui/undo-toast";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { CommandPaletteProvider } from "@/components/command/CommandPalette";
+import { ConfirmProvider } from "@/components/dialogs/ConfirmDialog";
+import { AnnouncerProvider } from "@/components/accessibility";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -58,15 +61,21 @@ export default function RootLayout({
                           <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
                             <ModuleProvider>
                               <FeedbackProvider>
-                                <GlobalKeyboardShortcuts>
-                                <Suspense fallback={null}>
-                                  <TenantContextBanner />
-                                </Suspense>
-                                <HealthBanner />
-                                <ConditionalLayout>
-                                  {children}
-                                </ConditionalLayout>
-                                </GlobalKeyboardShortcuts>
+                                <CommandPaletteProvider>
+                                  <ConfirmProvider>
+                                    <AnnouncerProvider>
+                                    <GlobalKeyboardShortcuts>
+                                    <Suspense fallback={null}>
+                                      <TenantContextBanner />
+                                    </Suspense>
+                                    <HealthBanner />
+                                    <ConditionalLayout>
+                                      {children}
+                                    </ConditionalLayout>
+                                    </GlobalKeyboardShortcuts>
+                                    </AnnouncerProvider>
+                                  </ConfirmProvider>
+                                </CommandPaletteProvider>
                               </FeedbackProvider>
                             </ModuleProvider>
                           </RealTimeProvider>

@@ -36,14 +36,15 @@ interface ContractTemplate {
   name: string
   description: string
   category: string
-  language: string
-  variables: number
-  clauses: number
-  createdBy: string
+  language?: string
+  variables?: number
+  clauses?: number | Array<{ id: string; title?: string; content: string }>
+  createdBy?: string
   createdAt: string
-  lastModified: string
+  lastModified?: string
+  updatedAt?: string
   status: 'draft' | 'active' | 'archived' | 'pending_approval'
-  usageCount: number
+  usageCount?: number
   approvalStatus?: 'pending' | 'approved' | 'rejected' | 'none'
 }
 
@@ -336,7 +337,7 @@ export default function TemplatesPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600 uppercase">Total Usage</p>
                   <p className="text-3xl font-bold text-purple-600 mt-1">
-                    {templates.reduce((sum, t) => sum + t.usageCount, 0)}
+                    {templates.reduce((sum, t) => sum + (t.usageCount ?? 0), 0)}
                   </p>
                 </div>
                 <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
@@ -436,26 +437,26 @@ export default function TemplatesPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 bg-blue-50 rounded-lg">
                       <p className="text-xs text-gray-500 font-medium uppercase">Variables</p>
-                      <p className="text-lg font-bold text-blue-600">{template.variables}</p>
+                      <p className="text-lg font-bold text-blue-600">{template.variables || 0}</p>
                     </div>
                     <div className="p-3 bg-purple-50 rounded-lg">
                       <p className="text-xs text-gray-500 font-medium uppercase">Clauses</p>
-                      <p className="text-lg font-bold text-purple-600">{template.clauses}</p>
+                      <p className="text-lg font-bold text-purple-600">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</p>
                     </div>
                   </div>
 
                   <div className="space-y-2 text-xs text-gray-500">
                     <div className="flex items-center gap-2">
                       <User className="h-3 w-3" />
-                      <span>Created by {template.createdBy}</span>
+                      <span>Created by {template.createdBy || 'System'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-3 w-3" />
-                      <span>Modified {new Date(template.lastModified).toLocaleDateString()}</span>
+                      <span>Modified {new Date(template.lastModified || template.updatedAt || template.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-3 w-3" />
-                      <span>Used {template.usageCount} times</span>
+                      <span>Used {template.usageCount || 0} times</span>
                     </div>
                   </div>
 

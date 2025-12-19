@@ -141,12 +141,22 @@ export class DatabaseManager {
 
         // For write operations, ensure tenantId is present
         if (['create', 'update', 'upsert', 'delete', 'deleteMany', 'updateMany'].includes(params.action)) {
-          if (params.action === 'create' || params.action === 'upsert') {
+          if (params.action === 'create') {
             if (!params.args?.data?.tenantId) {
               console.error(
                 `🚨 TENANT ISOLATION ERROR: Attempted to create ${params.model} without tenantId!`
               );
               throw new Error(`tenantId is required when creating ${params.model}`);
+            }
+          }
+          
+          // For upsert, check the create block (upsert uses create/update, not data)
+          if (params.action === 'upsert') {
+            if (!params.args?.create?.tenantId) {
+              console.error(
+                `🚨 TENANT ISOLATION ERROR: Attempted to upsert ${params.model} without tenantId in create block!`
+              );
+              throw new Error(`tenantId is required in upsert create block for ${params.model}`);
             }
           }
           

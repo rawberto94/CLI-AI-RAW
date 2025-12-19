@@ -150,12 +150,10 @@ export function RobustPDFViewer({
         // Dynamically import PDF.js (legacy build avoids top-level await warnings)
         const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
         
-        // Set up the worker - use the CDN version matching the library version
-        const PDFJS_VERSION = pdfjsLib.version;
-        pdfjsLib.GlobalWorkerOptions.workerSrc =
-          `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+        // Set up the worker - use local worker file from public folder
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.mjs';
         
-        debugLog('[PDFViewer] Using PDF.js version:', PDFJS_VERSION);
+        debugLog('[PDFViewer] Using PDF.js version:', pdfjsLib.version);
         
         // Load the PDF from array buffer
         const loadingTask = pdfjsLib.getDocument({

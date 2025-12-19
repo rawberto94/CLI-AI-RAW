@@ -1,5 +1,4 @@
-import { Job } from 'bullmq';
-import { getQueueService } from './queue-service';
+import { getQueueService, JobType } from './queue-service';
 import pino from 'pino';
 
 const logger = pino({

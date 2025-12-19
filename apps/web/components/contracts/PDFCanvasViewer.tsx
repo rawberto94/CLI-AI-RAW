@@ -74,8 +74,8 @@ export function PDFCanvasViewer({
         // Dynamically import PDF.js (legacy build avoids top-level-await warnings in some Next builds)
         const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
         
-        // Disable worker - works fine for most PDFs and avoids CORS issues
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+        // Use local worker file from public folder
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.mjs';
         
         // Load the PDF
         const loadingTask = pdfjsLib.getDocument({
@@ -189,7 +189,7 @@ export function PDFCanvasViewer({
     const loadPdf = async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.mjs';
         const loadingTask = pdfjsLib.getDocument({
           url: pdfUrl + '?t=' + Date.now(),
         } as Parameters<typeof pdfjsLib.getDocument>[0]);

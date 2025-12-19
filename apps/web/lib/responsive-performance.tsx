@@ -347,11 +347,11 @@ export function ResponsiveFont({
   
   const fontSize = useMemo(() => {
     const breakpointOrder = ['xs', 'sm', 'md', 'lg', 'xl'] as const;
-    const currentIndex = breakpointOrder.indexOf(breakpoint as any);
+    const currentIndex = breakpointOrder.indexOf(breakpoint as typeof breakpointOrder[number]);
     
     for (let i = currentIndex; i >= 0; i--) {
       const bp = breakpointOrder[i];
-      if (size[bp]) return size[bp];
+      if (bp && size[bp]) return size[bp];
     }
     
     return size.md || '1rem';
@@ -422,7 +422,9 @@ export function AspectRatio({ ratio, children, className = '' }: AspectRatioProp
     }
     // Handle string ratios like "16:9"
     const [w, h] = ratio.split(':').map(Number);
-    return `${(h / w) * 100}%`;
+    const width = w ?? 16;
+    const height = h ?? 9;
+    return `${(height / width) * 100}%`;
   }, [ratio]);
 
   return (

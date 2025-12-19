@@ -6,15 +6,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DashboardLayout } from '@/components/layout/AppLayout'
 import { ProfessionalDashboard } from '@/components/dashboard/ProfessionalDashboard'
 import { LazyEnhancedDashboard as EnhancedDashboard } from '@/components/lazy'
-import { TrendingUp, Brain, Sparkles } from 'lucide-react'
+import { TrendingUp, Brain, Sparkles, LayoutDashboard } from 'lucide-react'
+import { Breadcrumbs } from '@/components/breadcrumbs'
 
 export default function DashboardPage() {
+  const breadcrumbItems = [
+    { label: 'Dashboard', icon: LayoutDashboard },
+  ];
+
   return (
     <DashboardLayout
       title="Dashboard"
       description="Portfolio intelligence and analytics"
     >
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumbs */}
+        <div className="mb-4">
+          <Breadcrumbs items={breadcrumbItems} showHomeIcon />
+        </div>
+
         {/* Hero Header */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}

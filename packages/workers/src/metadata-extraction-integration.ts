@@ -259,13 +259,13 @@ export async function applyArtifactMetadataToContract(
 
     const { prisma } = await import("@/lib/prisma");
 
-    // Get existing metadata
+    // Get existing metadata from metadata JSON field
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { contractMetadata: true },
+      select: { metadata: true },
     });
 
-    const existingMetadata = (contract?.contractMetadata as Record<string, any>) || {};
+    const existingMetadata = (contract?.metadata as Record<string, any>) || {};
 
     // Only apply new values (don't overwrite existing)
     const mergedMetadata: Record<string, any> = { ...existingMetadata };
@@ -275,11 +275,11 @@ export async function applyArtifactMetadataToContract(
       }
     }
 
-    // Update contract
+    // Update contract using metadata JSON field
     await prisma.contract.update({
       where: { id: contractId },
       data: {
-        contractMetadata: {
+        metadata: {
           ...mergedMetadata,
           _artifactExtractedAt: new Date().toISOString(),
         },

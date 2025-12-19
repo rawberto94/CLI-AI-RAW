@@ -30,7 +30,19 @@ export async function POST(request: NextRequest) {
       priority = 'normal',
     } = body;
 
-    const workerModule = await optionalImport<{ triggerObligationCheck: (tenantId: string) => Promise<unknown> }>(
+    const workerModule = await optionalImport<{ 
+      triggerObligationCheck: (options: {
+        tenantId: string;
+        daysAhead: number;
+        includeOverdue: boolean;
+        obligationType: string;
+        partyFilter: string | undefined;
+        criticalThresholdDays: number;
+        warningThresholdDays: number;
+        priority: string;
+        source: string;
+      }) => Promise<{ id: string }> 
+    }>(
       '@workspace/workers/obligation-tracker-worker'
     );
 

@@ -335,7 +335,12 @@ export function IntelligentSearch() {
                   All Contracts
                 </button>
                 <button
-                  onClick={() => { window.dispatchEvent(new CustomEvent('openAIChatbot')); setIsOpen(false); }}
+                  onClick={() => { 
+                    window.dispatchEvent(new CustomEvent('openAIChatbot', {
+                      detail: { autoMessage: debouncedQuery ? `Help me find: ${debouncedQuery}` : 'Help me search my contracts' }
+                    })); 
+                    setIsOpen(false); 
+                  }}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-colors"
                 >
                   <Sparkles className="h-4 w-4" />

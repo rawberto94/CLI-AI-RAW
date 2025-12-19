@@ -117,7 +117,6 @@ export async function processCategorizationJob(
         status: true,
         contractType: true,
         category: true,
-        riskScore: true,
       },
     });
 
@@ -173,18 +172,20 @@ export async function processCategorizationJob(
       };
 
       // Update contract
+      const existingContract = await prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { metadata: true },
+      });
+      const existingMetadata = (existingContract?.metadata as Record<string, unknown>) || {};
+      
       await prisma.contract.update({
         where: { id: contractId },
         data: {
           contractType: result.contractType.value,
-          riskScore: riskScoreMap[result.riskLevel.value] || 50,
           keywords: result.subjectTags,
-          // Store full categorization in metadata
-          contractMetadata: {
-            ...((await prisma.contract.findUnique({
-              where: { id: contractId },
-              select: { contractMetadata: true },
-            }))?.contractMetadata as Record<string, unknown> || {}),
+          // Store full categorization in metadata JSON field
+          metadata: JSON.parse(JSON.stringify({
+            ...existingMetadata,
             _categorization: {
               contractType: result.contractType,
               industry: result.industry,
@@ -198,7 +199,7 @@ export async function processCategorizationJob(
               categorizedAt: new Date().toISOString(),
               source,
             },
-          },
+          })),
           updatedAt: new Date(),
         },
       });
@@ -206,14 +207,17 @@ export async function processCategorizationJob(
       console.log(`✅ Auto-applied categorization for contract ${contractId}`);
     } else {
       // Store results but don't apply
+      const existingContract = await prisma.contract.findUnique({
+        where: { id: contractId },
+        select: { metadata: true },
+      });
+      const existingMetadata = (existingContract?.metadata as Record<string, unknown>) || {};
+      
       await prisma.contract.update({
         where: { id: contractId },
         data: {
-          contractMetadata: {
-            ...((await prisma.contract.findUnique({
-              where: { id: contractId },
-              select: { contractMetadata: true },
-            }))?.contractMetadata as Record<string, unknown> || {}),
+          metadata: JSON.parse(JSON.stringify({
+            ...existingMetadata,
             _pendingCategorization: {
               contractType: result.contractType,
               industry: result.industry,
@@ -224,7 +228,7 @@ export async function processCategorizationJob(
               categorizedAt: new Date().toISOString(),
               needsReview: true,
             },
-          },
+          })),
         },
       });
 
@@ -275,7 +279,7 @@ export async function queueCategorizationJob(
     jobId?: string;
   }
 ): Promise<string> {
-  const { getQueueService } = await import("@/lib/queue-service");
+  const { getQueueService } = await import("utils/queue/queue-service");
   
   const queueService = getQueueService();
   const jobId = options?.jobId || `categorize-${data.contractId}-${Date.now()}`;

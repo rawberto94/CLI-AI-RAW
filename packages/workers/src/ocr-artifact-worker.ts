@@ -3,9 +3,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { Job } from 'bullmq';
-import getClient from 'clients-db';
-import { getQueueService } from '../../utils/src/queue/queue-service';
-import { QUEUE_NAMES, ProcessContractJobData, IndexContractJobData } from '../../utils/src/queue/contract-queue';
+import clientsDb from 'clients-db';
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { QUEUE_NAMES, ProcessContractJobData, IndexContractJobData } from 'utils/queue/contract-queue';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -16,9 +17,9 @@ import {
   CircuitBreaker, 
   CircuitState, 
   CircuitBreakerError 
-} from '../../utils/src/patterns/circuit-breaker';
-import { retry, retryOpenAI, retryStorage } from '../../utils/src/patterns/retry';
-import { redisEventBus, RedisEvents, publishJobProgress } from '../../utils/src/events/redis-event-bus';
+} from 'utils/patterns/circuit-breaker';
+import { retry, retryOpenAI, retryStorage } from 'utils/patterns/retry';
+import { redisEventBus, RedisEvents, publishJobProgress } from 'utils/events/redis-event-bus';
 import {
   ContractType,
   ArtifactType,
@@ -27,6 +28,10 @@ import {
   getRelevantArtifacts,
   isArtifactApplicable,
   getEnhancedPromptHints,
+  getContractTypeInsights,
+  getSmartSuggestions,
+  getMissingMandatoryFields,
+  getTabPriorityOrder,
 } from './contract-type-profiles';
 
 const logger = pino({ name: 'ocr-artifact-worker' });
@@ -70,7 +75,7 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 const prisma = getClient();
 
 // Use distributed Redis cache instead of in-memory cache
-import { ocrCache, artifactCache } from '../../utils/src/cache/distributed-cache';
+import { ocrCache, artifactCache } from 'utils/cache/distributed-cache';
 
 // TTL values for reference (applied via the distributed cache)
 const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
@@ -132,10 +137,10 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
   // Check distributed cache first
   if (fileSize) {
     const cacheKey = generateOCRCacheKey(filePath, fileSize);
-    const cached = await ocrCache.get<string>(cacheKey);
+    const cached = await ocrCache.get(cacheKey);
     if (cached) {
       logger.info({ cacheKey }, 'Using cached OCR result from distributed cache');
-      return cached;
+      return cached.text;
     }
   }
   
@@ -184,7 +189,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
       // Cache successful result in distributed cache
       if (fileSize && result && result.length > 100) {
         const cacheKey = generateOCRCacheKey(filePath, fileSize);
-        await ocrCache.set(cacheKey, result, OCR_CACHE_TTL);
+        await ocrCache.set(cacheKey, result);
         logger.info({ cacheKey, textLength: result.length }, 'Cached OCR result in distributed cache');
       }
       
@@ -468,7 +473,7 @@ async function performGPT4OCR(filePath: string): Promise<string> {
  * Downloads file from storage, runs OCR, generates artifacts
  */
 export async function processOCRArtifactJob(
-  job: Job<ProcessContractJobData>
+  job: JobType<ProcessContractJobData>
 ): Promise<OCRArtifactResult> {
   const { contractId, tenantId, filePath } = job.data;
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
@@ -509,15 +514,22 @@ export async function processOCRArtifactJob(
     // 2. Download file from storage to temp location
     let localFilePath: string;
     
+    if (!contract.storagePath) {
+      throw new Error(`Contract ${contractId} has no storage path`);
+    }
+    
+    // Store storagePath in a local const to preserve narrowing inside callbacks
+    const storagePath = contract.storagePath;
+    
     if (contract.storageProvider === 's3') {
-      jobLogger.info({ storagePath: contract.storagePath }, 'Downloading from S3/MinIO');
+      jobLogger.info({ storagePath }, 'Downloading from S3/MinIO');
       
       // Use circuit breaker and retry for storage operations
       const fileBuffer = await storageCircuitBreaker.execute(() => 
         retryStorage(async () => {
           const getObjectCommand = new GetObjectCommand({
             Bucket: process.env.MINIO_BUCKET || 'contracts',
-            Key: contract.storagePath,
+            Key: storagePath,
           });
 
           const response = await s3Client.send(getObjectCommand);
@@ -536,14 +548,14 @@ export async function processOCRArtifactJob(
       
       // Create temp file
       const tempDir = os.tmpdir();
-      const fileName = path.basename(contract.storagePath);
+      const fileName = path.basename(contract.storagePath!);
       localFilePath = path.join(tempDir, `${contractId}-${fileName}`);
       
       await fs.writeFile(localFilePath, fileBuffer);
       jobLogger.info({ localFilePath, size: fileBuffer.length }, 'File downloaded');
     } else {
       // Local file system
-      localFilePath = contract.storagePath;
+      localFilePath = contract.storagePath!;
       jobLogger.info({ localFilePath }, 'Using local file');
     }
 
@@ -585,7 +597,7 @@ export async function processOCRArtifactJob(
       'COMPLIANCE',
       'OBLIGATIONS',
       'RENEWAL',
-      'NEGOTIATION',
+      'NEGOTIATION_POINTS',
       'AMENDMENTS',
       'CONTACTS',
     ];
@@ -693,10 +705,55 @@ export async function processOCRArtifactJob(
     }));
 
     const generatedArtifacts = (await Promise.all(artifactPromises)).filter(Boolean);
+    
+    // ============ ENHANCEMENT: Add industry insights and smart suggestions ============
+    // Enrich OVERVIEW artifact with contract type insights
+    const overviewIdx = generatedArtifacts.findIndex((a: any) => a.type === 'OVERVIEW');
+    if (overviewIdx !== -1) {
+      const overviewArtifact = generatedArtifacts[overviewIdx] as any;
+      if (overviewArtifact?.data && !overviewArtifact.data.error) {
+        const insights = getContractTypeInsights(detectedContractType);
+        overviewArtifact.data.industryInsights = {
+          typicalDuration: insights.typicalDuration,
+          commonIssues: insights.commonIssues,
+          negotiationFocus: insights.negotiationFocus,
+          industryBenchmarks: insights.industryBenchmarks,
+        };
+        
+        // Generate smart suggestions based on extracted data
+        const suggestions = getSmartSuggestions(detectedContractType, overviewArtifact.data);
+        overviewArtifact.data.smartSuggestions = suggestions;
+        
+        jobLogger.info({ 
+          insightsAdded: true,
+          suggestionsCount: suggestions.length,
+        }, 'Added industry insights and smart suggestions to OVERVIEW');
+      }
+    }
+    
+    // Flag low-confidence detections for human review
+    const needsReview = contractTypeDetection.confidence < 0.6;
+    if (needsReview) {
+      jobLogger.warn({ 
+        confidence: contractTypeDetection.confidence,
+        detectedType: detectedContractType,
+      }, 'Low confidence contract type detection - flagging for human review');
+    }
+    
+    // Add review flag to all artifacts
+    generatedArtifacts.forEach((artifact: any) => {
+      if (artifact.data && artifact.data._extractionMeta) {
+        artifact.data._extractionMeta.needsHumanReview = needsReview;
+        artifact.data._extractionMeta.reviewReason = needsReview 
+          ? `Low confidence (${Math.round(contractTypeDetection.confidence * 100)}%) in contract type detection`
+          : null;
+      }
+    });
+    
     const artifactDataArray = [...generatedArtifacts, ...notApplicableArtifactData];
     
     // Use transaction to ensure artifacts and contract update are atomic
-    const artifacts = await prisma.$transaction(async (tx) => {
+    const artifacts = await prisma.$transaction(async (tx: any) => {
       // Batch create all artifacts at once
       const result = await tx.artifact.createMany({
         data: artifactDataArray as any,
@@ -704,15 +761,28 @@ export async function processOCRArtifactJob(
       });
       
       // 4b. Apply OVERVIEW artifact data to contract record for display
-      const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW');
-      if (overviewArtifact && overviewArtifact.data && !overviewArtifact.data.error) {
-        const overviewData = overviewArtifact.data;
+      const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW') as any;
+      if (overviewArtifact?.data && !overviewArtifact.data?.error) {
+        const overviewData = overviewArtifact.data as any;
         const contractUpdate: Record<string, any> = {};
         
-        // Extract contract type
-        if (overviewData.contractType && overviewData.contractType !== 'Unknown') {
-          contractUpdate.contractType = overviewData.contractType;
-        }
+        // IMPROVEMENT: Use keyword-detected contract type (more reliable) with fallback to AI
+        // Prefer our keyword detection over AI-generated type since it's validated against our enum
+        contractUpdate.contractType = detectedContractType; // Use the validated type from detectContractType()
+        
+        // Store detection metadata in aiMetadata for analytics
+        const existingAiMeta: any = contract.aiMetadata || {};
+        contractUpdate.aiMetadata = {
+          ...existingAiMeta,
+          typeDetection: {
+            detectedType: detectedContractType,
+            confidence: contractTypeDetection.confidence,
+            matchedKeywords: contractTypeDetection.matchedKeywords,
+            aiSuggestedType: overviewData.contractType,
+            needsHumanReview: contractTypeDetection.confidence < 0.6,
+            detectedAt: new Date().toISOString(),
+          }
+        };
         
         // Extract parties
         if (overviewData.parties && Array.isArray(overviewData.parties)) {
@@ -793,100 +863,19 @@ export async function processOCRArtifactJob(
       timeout: 30000, // 30s timeout for transaction
     });
 
-    // Skip the old non-transactional OVERVIEW processing since it's now done above
-    const overviewArtifact = null; // Processed in transaction
-    if (overviewArtifact && overviewArtifact.data && !overviewArtifact.data.error) {
-      const overviewData = overviewArtifact.data;
-      const contractUpdate: Record<string, any> = {};
-      
-      // Extract contract type
-      if (overviewData.contractType && overviewData.contractType !== 'Unknown') {
-        contractUpdate.contractType = overviewData.contractType;
-      }
-      
-      // Extract parties
-      if (overviewData.parties && Array.isArray(overviewData.parties)) {
-        const clientParty = overviewData.parties.find((p: any) => 
-          p.role?.toLowerCase().includes('client') || 
-          p.role?.toLowerCase().includes('buyer') ||
-          p.role?.toLowerCase().includes('customer')
-        );
-        const supplierParty = overviewData.parties.find((p: any) => 
-          p.role?.toLowerCase().includes('supplier') || 
-          p.role?.toLowerCase().includes('vendor') ||
-          p.role?.toLowerCase().includes('provider') ||
-          p.role?.toLowerCase().includes('contractor')
-        );
-        
-        if (clientParty?.name) contractUpdate.clientName = clientParty.name;
-        if (supplierParty?.name) contractUpdate.supplierName = supplierParty.name;
-        
-        // If only one party found, use it as supplier
-        if (!contractUpdate.supplierName && !contractUpdate.clientName && overviewData.parties.length > 0) {
-          contractUpdate.supplierName = overviewData.parties[0].name;
-        }
-      }
-      
-      // Extract total value
-      if (overviewData.totalValue && typeof overviewData.totalValue === 'number' && overviewData.totalValue > 0) {
-        contractUpdate.totalValue = overviewData.totalValue;
-      }
-      if (overviewData.currency) {
-        contractUpdate.currency = overviewData.currency;
-      }
-      
-      // Extract dates
-      if (overviewData.effectiveDate) {
-        try {
-          const effDate = new Date(overviewData.effectiveDate);
-          if (!isNaN(effDate.getTime())) {
-            contractUpdate.effectiveDate = effDate;
-          }
-        } catch { /* ignore invalid dates */ }
-      }
-      if (overviewData.expirationDate) {
-        try {
-          const expDate = new Date(overviewData.expirationDate);
-          if (!isNaN(expDate.getTime())) {
-            contractUpdate.expirationDate = expDate;
-          }
-        } catch { /* ignore invalid dates */ }
-      }
-      
-      // Extract contract title if we have a summary
-      if (overviewData.summary && !contract.contractTitle) {
-        // Use first sentence of summary as title, max 100 chars
-        const title = overviewData.summary.split('.')[0].substring(0, 100);
-        if (title.length > 10) {
-          contractUpdate.contractTitle = title;
-        }
-      }
-      
-      // Apply updates if we extracted anything
-      if (Object.keys(contractUpdate).length > 0) {
-        await prisma.contract.updateMany({
-          where: { id: contractId, tenantId },
-          data: {
-            ...contractUpdate,
-            updatedAt: new Date(),
-          },
-        });
-        jobLogger.info({ 
-          fieldsApplied: Object.keys(contractUpdate),
-        }, 'Applied OVERVIEW data to contract record');
-      }
-    }
+    // NOTE: OVERVIEW processing is now done in the transaction above (lines ~760-850)
+    // The old non-transactional code has been removed since OVERVIEW is fully handled in the transaction
 
     // 4c. Build enterprise metadata schema (24-field format) from all artifacts
     const financialArtifact = artifactDataArray.find((a: any) => a.type === 'FINANCIAL');
     const clausesArtifact = artifactDataArray.find((a: any) => a.type === 'CLAUSES');
     const riskArtifact = artifactDataArray.find((a: any) => a.type === 'RISK');
     const complianceArtifact = artifactDataArray.find((a: any) => a.type === 'COMPLIANCE');
-    const overviewArtifactData = (artifactDataArray.find((a: any) => a.type === 'OVERVIEW')?.data) || {};
-    const financialData = financialArtifact?.data || {};
-    const clausesData = clausesArtifact?.data || {};
-    const riskData = riskArtifact?.data || {};
-    const complianceData = complianceArtifact?.data || {};
+    const overviewArtifactData: any = (artifactDataArray.find((a: any) => a.type === 'OVERVIEW')?.data) || {};
+    const financialData: any = financialArtifact?.data || {};
+    const clausesData: any = clausesArtifact?.data || {};
+    const riskData: any = riskArtifact?.data || {};
+    const complianceData: any = complianceArtifact?.data || {};
 
     // Build external parties array from overview
     const externalParties: Array<{company_name: string; role: string; contact_info?: string}> = [];
@@ -1047,7 +1036,7 @@ export async function processOCRArtifactJob(
       prisma.processingJob.findFirst({
         where: { contractId, tenantId },
         orderBy: { createdAt: 'desc' },
-      }).then(processingJob => {
+      }).then((processingJob: any) => {
         if (processingJob) {
           return prisma.processingJob.updateMany({
             where: { id: processingJob.id, tenantId },
@@ -1063,8 +1052,113 @@ export async function processOCRArtifactJob(
     
     const [contractUpdateResult] = await Promise.all(updatePromises);
 
-    if (contractUpdateResult.count === 0) {
+    if (contractUpdateResult && contractUpdateResult.count === 0) {
       jobLogger.warn('Contract update skipped because no matching record was found');
+    }
+
+    // ============ ENHANCEMENT: Populate ContractMetadata with AI insights ============
+    try {
+      const overviewData: any = (artifactDataArray.find((a: any) => a.type === 'OVERVIEW')?.data) || {};
+      const riskData: any = (artifactDataArray.find((a: any) => a.type === 'RISK')?.data) || {};
+      const missingFields = getMissingMandatoryFields(detectedContractType, overviewData);
+      const tabOrder = getTabPriorityOrder(detectedContractType);
+      
+      // Calculate data quality score (0-100)
+      const mandatoryFieldsCount = profile.mandatoryFields.length;
+      const foundMandatoryFields = mandatoryFieldsCount - missingFields.length;
+      const completenessScore = mandatoryFieldsCount > 0 
+        ? Math.round((foundMandatoryFields / mandatoryFieldsCount) * 100) 
+        : 50;
+      
+      // Calculate complexity score based on contract characteristics
+      const complexityScore = Math.min(100, Math.round(
+        (profile.clauseCategories.length * 5) + 
+        (profile.financialFields.length * 5) +
+        (profile.riskCategories.length * 5) +
+        (extractedText.length > 10000 ? 20 : extractedText.length > 5000 ? 10 : 0)
+      ));
+      
+      // Calculate overall quality score
+      const artifactSuccessRate = successfulArtifacts.length / artifactTypes.length;
+      const dataQualityScore = Math.round(
+        (completenessScore * 0.4) + 
+        (contractTypeDetection.confidence * 100 * 0.3) +
+        (artifactSuccessRate * 100 * 0.3)
+      );
+      
+      // Extract risk score from RISK artifact
+      const riskScore = typeof riskData.riskScore === 'number' 
+        ? Math.min(100, Math.max(0, riskData.riskScore))
+        : (riskData.overallRisk === 'high' ? 75 : riskData.overallRisk === 'medium' ? 50 : 25);
+
+      await prisma.contractMetadata.upsert({
+        where: { contractId },
+        create: {
+          contractId,
+          tenantId,
+          updatedBy: 'ocr-artifact-worker',
+          dataQualityScore,
+          riskScore,
+          complexityScore,
+          lastAiAnalysis: new Date(),
+          aiAnalysisVersion: 'ocr-artifact-v2',
+          aiSummary: overviewData.summary || null,
+          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiRiskFactors: riskData.risks || riskData.riskFactors || [],
+          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          searchKeywords: overviewData.keyTerms || [],
+          artifactSummary: {
+            tabPriorityOrder: tabOrder,
+            generatedArtifacts: successfulArtifacts,
+            failedArtifacts,
+            notApplicableArtifacts: notApplicableArtifacts,
+            completenessScore,
+            missingMandatoryFields: missingFields,
+            contractType: detectedContractType,
+            contractTypeConfidence: contractTypeDetection.confidence,
+            industryInsights: overviewData.industryInsights || null,
+          },
+          systemFields: {
+            extractionVersion: '2.0',
+            ocrMode,
+            processedAt: new Date().toISOString(),
+          },
+        },
+        update: {
+          dataQualityScore,
+          riskScore,
+          complexityScore,
+          lastAiAnalysis: new Date(),
+          aiAnalysisVersion: 'ocr-artifact-v2',
+          aiSummary: overviewData.summary || undefined,
+          aiKeyInsights: overviewData.smartSuggestions || [],
+          aiRiskFactors: riskData.risks || riskData.riskFactors || [],
+          aiRecommendations: overviewData.smartSuggestions?.filter((s: any) => s.priority === 'high') || [],
+          searchKeywords: overviewData.keyTerms || [],
+          artifactSummary: {
+            tabPriorityOrder: tabOrder,
+            generatedArtifacts: successfulArtifacts,
+            failedArtifacts,
+            notApplicableArtifacts: notApplicableArtifacts,
+            completenessScore,
+            missingMandatoryFields: missingFields,
+            contractType: detectedContractType,
+            contractTypeConfidence: contractTypeDetection.confidence,
+            industryInsights: overviewData.industryInsights || null,
+          },
+          updatedBy: 'ocr-artifact-worker',
+        },
+      });
+      
+      jobLogger.info({ 
+        dataQualityScore,
+        riskScore,
+        complexityScore,
+        completenessScore,
+        missingMandatoryFields: missingFields.length,
+      }, 'ContractMetadata populated with AI insights');
+    } catch (metadataPopulateError) {
+      jobLogger.warn({ error: metadataPopulateError }, 'Failed to populate ContractMetadata, continuing');
     }
 
     // Clean up temp file if we created one
@@ -1635,7 +1729,7 @@ ${truncatedText}`,
 Contract text:
 ${truncatedText}`,
 
-      NEGOTIATION: `Identify negotiation points and areas for improvement in this contract. Return a JSON object with:
+      NEGOTIATION_POINTS: `Identify negotiation points and areas for improvement in this contract. Return a JSON object with:
 {
   "negotiationPoints": [
     {
@@ -1867,7 +1961,7 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
       recommendations: ['Configure AI analysis for renewal terms extraction'],
       _meta: { fallback: true, reason: 'AI unavailable' }
     },
-    NEGOTIATION: {
+    NEGOTIATION_POINTS: {
       negotiationPoints: [],
       favorabilityScore: 50,
       favorabilityAssessment: 'AI analysis required',
@@ -1919,10 +2013,8 @@ export function registerOCRArtifactWorker() {
         max: maxJobsPerMinute,
         duration: 60000, // Rate limit per minute
       },
-      settings: {
-        maxStalledCount: 3, // Retry up to 3 times if stalled
-        stalledInterval: 20000, // Check for stalled jobs every 20s (faster recovery)
-      },
+      // Note: BullMQ settings like maxStalledCount and stalledInterval are configured
+      // at the BullMQ Worker level, not through our queue-service wrapper
     }
   );
 
@@ -1932,7 +2024,8 @@ export function registerOCRArtifactWorker() {
 }
 
 // Start worker if this file is run directly
-if (require.main === module) {
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+if (isMainModule) {
   logger.info('Starting OCR + Artifact worker...');
   
   // Initialize queue service with config before registering worker

@@ -36,10 +36,11 @@ export async function POST(request: NextRequest) {
     // Check if the query needs RAG search
     let ragContext = '';
     let ragSources: string[] = [];
+    let ragResults: Array<{ contractId?: string; contractName: string; text: string; score: number }> = [];
 
     if (shouldUseRAG(message)) {
       try {
-        const ragResults = await hybridSearch(message, {
+        const searchResults = await hybridSearch(message, {
           mode: 'hybrid',
           k: 5,
           rerank: true,
@@ -47,7 +48,14 @@ export async function POST(request: NextRequest) {
           filters: { tenantId },
         });
 
-        if (ragResults.length > 0) {
+        if (searchResults.length > 0) {
+          ragResults = searchResults.map(r => ({
+            contractId: r.contractId,
+            contractName: r.contractName || 'Unknown Contract',
+            text: r.text,
+            score: r.score,
+          }));
+          
           ragContext = `\n\n**Relevant Contract Information:**\n${ragResults.map((r, i) => 
             `[${i + 1}] From "${r.contractName}" (${Math.round(r.score * 100)}% match):\n${r.text.slice(0, 400)}...`
           ).join('\n\n')}`;
@@ -87,7 +95,7 @@ When answering:
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.7,
-      max_tokens: 1000,
+      max_tokens: 1500,
       stream: true,
     });
 
@@ -96,29 +104,46 @@ When answering:
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Send metadata first
+          // Send metadata first including sources and suggestions
+          const firstResult = ragResults[0];
           const metadata = JSON.stringify({ 
-            type: 'metadata', 
             sources: ragSources,
-            suggestions: ['Tell me more', 'Show related contracts', 'What are the risks?'],
+            suggestedActions: firstResult ? [
+              { label: '📄 View Contract', action: `navigate:/contracts/${firstResult.contractId}` },
+              { label: '🔍 Search More', action: 'search-contracts' },
+            ] : [
+              { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
+              { label: '📊 View Dashboard', action: 'navigate:/dashboard' },
+            ],
           });
           controller.enqueue(encoder.encode(`data: ${metadata}\n\n`));
 
-          // Stream the response
+          // Stream the response content
+          let fullContent = '';
           for await (const chunk of stream) {
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
-              const data = JSON.stringify({ type: 'content', text: content });
+              fullContent += content;
+              const data = JSON.stringify({ content });
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
           }
 
-          // Send done signal
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          // Send completion signal with final metadata
+          const doneData = JSON.stringify({ 
+            done: true,
+            totalTokens: fullContent.length / 4, // Rough estimate
+          });
+          controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
           controller.close();
         } catch (error) {
           console.error('Streaming error:', error);
-          controller.error(error);
+          const errorData = JSON.stringify({ 
+            error: 'Stream interrupted',
+            done: true,
+          });
+          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+          controller.close();
         }
       },
     });
@@ -128,6 +153,7 @@ When answering:
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no', // Disable nginx buffering
       },
     });
 
@@ -146,7 +172,7 @@ function shouldUseRAG(query: string): boolean {
     'find', 'search', 'show me', 'where', 'what', 'which',
     'contract', 'clause', 'term', 'liability', 'termination',
     'payment', 'renewal', 'expire', 'obligation', 'risk',
-    'indemnif', 'sla', 'warranty', 'confidential',
+    'indemnif', 'sla', 'warranty', 'confidential', 'vendor', 'supplier',
   ];
   return ragKeywords.some(keyword => lowerQuery.includes(keyword));
 }

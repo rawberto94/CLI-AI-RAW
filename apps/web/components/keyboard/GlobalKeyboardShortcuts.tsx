@@ -90,7 +90,9 @@ export function GlobalKeyboardShortcuts({ children }: { children: React.ReactNod
       ctrl: true,
       description: 'Open AI Assistant',
       action: () => {
-        window.dispatchEvent(new CustomEvent('openAIChatbot'));
+        window.dispatchEvent(new CustomEvent('openAIChatbot', {
+          detail: { autoMessage: 'Hi! How can I help you?' }
+        }));
       },
       category: 'Actions',
     },

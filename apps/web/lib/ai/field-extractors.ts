@@ -928,7 +928,7 @@ export async function extractFieldsSmart(
     .filter(p => !criticalFields.includes(p.request.context.fieldName))
     .map(p => p.request);
 
-  let allResults: BatchExtractionResult[] = [];
+  const allResults: BatchExtractionResult[] = [];
   let criticalFieldsSuccess = true;
 
   // Process critical fields first

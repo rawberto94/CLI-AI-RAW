@@ -1,7 +1,8 @@
 import { Job } from 'bullmq';
-import getClient from 'clients-db';
-import { getQueueService } from '../../utils/src/queue/queue-service';
-import { QUEUE_NAMES, ProcessContractJobData } from '../../utils/src/queue/contract-queue';
+import clientsDb from 'clients-db';
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { QUEUE_NAMES, ProcessContractJobData } from 'utils/queue/contract-queue';
 import pino from 'pino';
 import fs from 'fs/promises';
 import path from 'path';
@@ -20,7 +21,7 @@ interface ArtifactGenerationResult {
  * Handles end-to-end contract processing pipeline
  */
 export async function processContractJob(
-  job: Job<ProcessContractJobData>
+  job: JobType<ProcessContractJobData>
 ): Promise<ArtifactGenerationResult> {
   const { contractId, tenantId, filePath, originalName } = job.data;
 

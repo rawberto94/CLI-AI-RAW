@@ -4,16 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { contractService } from "@/lib/data-orchestration";
 import { getServerTenantId } from "@/lib/tenant-server";
-import {
-  ensureProcessingJob,
-  retryProcessingJob,
-} from "@/lib/contract-processing";
 import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 import { prisma } from "@/lib/prisma";
-
-// Using singleton prisma instance from @/lib/prisma
 
 export async function POST(
   _request: NextRequest,
@@ -47,25 +40,64 @@ export async function POST(
       );
     }
 
-    // Trigger artifact generation
-    await triggerArtifactGeneration({
+    // Reset contract status to PROCESSING
+    await prisma.contract.update({
+      where: { id: contractId },
+      data: { status: 'PROCESSING' }
+    });
+
+    // Reset or create processing job
+    const existingJob = await prisma.processingJob.findFirst({
+      where: { contractId }
+    });
+
+    if (existingJob) {
+      await prisma.processingJob.update({
+        where: { id: existingJob.id },
+        data: {
+          status: 'PENDING',
+          progress: 0,
+          currentStep: 'queued',
+          error: null,
+          errorStack: null,
+          retryCount: { increment: 1 }
+        }
+      });
+    } else {
+      await prisma.processingJob.create({
+        data: {
+          contractId,
+          tenantId: contract.tenantId,
+          status: 'PENDING',
+          progress: 0,
+          currentStep: 'queued'
+        }
+      });
+    }
+
+    // Delete any existing artifacts to regenerate them
+    await prisma.artifact.deleteMany({
+      where: { contractId }
+    });
+
+    // Trigger artifact generation via queue
+    const queueResult = await triggerArtifactGeneration({
       contractId: contract.id,
       tenantId: contract.tenantId,
       filePath: contract.storagePath ?? '',
       mimeType: contract.mimeType,
-      useQueue: false
+      useQueue: true,
+      isReprocess: true,
+      source: 'reprocess'
     });
-
-    ensureProcessingJob(contractId);
-    const job = retryProcessingJob(contractId);
 
     return NextResponse.json(
       {
         message: "AI analysis started - artifacts will be generated shortly",
         contractId,
-        jobId: job.id,
+        jobId: queueResult.jobId || `retry-${Date.now()}`,
         status: "PROCESSING",
-        progress: job.progress,
+        progress: 5,
       },
       { status: 200 }
     );

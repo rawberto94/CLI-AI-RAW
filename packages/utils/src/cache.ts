@@ -41,7 +41,7 @@ export function getRedisClient(): RedisClient {
       maxRetriesPerRequest: 3,
       enableReadyCheck: true,
       lazyConnect: true,
-      retryStrategy: (times) => Math.min(times * 100, 3000),
+      retryStrategy: (times: number) => Math.min(times * 100, 3000),
     });
 
     redisClient.on('error', (err: Error) => {

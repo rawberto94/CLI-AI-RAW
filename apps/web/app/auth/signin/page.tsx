@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap, FileText, Globe } from "lucide-react";
+import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
 
 // Floating Particles Component
@@ -276,7 +276,7 @@ function SignInForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - Branding with vibrant colors */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 via-50% to-fuchsia-600 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 via-50% to-fuchsia-600 p-16 xl:p-20 flex-col justify-between relative overflow-hidden">
         {/* Animated gradient orbs */}
         <GradientOrbs />
         
@@ -298,9 +298,9 @@ function SignInForm() {
           <ConTigoLogo size="lg" />
         </motion.div>
         
-        <div className="text-white relative z-10 flex-1 flex flex-col justify-center -mt-8">
+        <div className="text-white relative z-10 flex-1 flex flex-col justify-center items-center text-center">
           <motion.h2 
-            className="text-4xl font-bold mb-4 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-100 to-white"
+            className="text-3xl xl:text-4xl font-bold mb-3 tracking-tight"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -308,7 +308,7 @@ function SignInForm() {
             Contract Intelligence Platform
           </motion.h2>
           <motion.p 
-            className="text-purple-100 text-lg leading-relaxed max-w-md"
+            className="text-purple-100 text-base xl:text-lg leading-relaxed max-w-lg"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -317,18 +317,21 @@ function SignInForm() {
             Streamline your procurement processes and never miss a deadline.
           </motion.p>
 
-          <AuthHeroArt />
+          {/* Hero Art - centered */}
+          <div className="mt-8 mb-6 flex justify-center">
+            <AuthHeroArt className="relative" />
+          </div>
 
-          {/* Stats counters */}
+          {/* Vision stats - centered */}
           <motion.div 
-            className="mt-6 flex justify-start gap-8"
+            className="flex justify-center gap-8 xl:gap-10"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.35 }}
           >
-            <AnimatedCounter value="10K+" label="Contracts Managed" icon={FileText} />
-            <AnimatedCounter value="500+" label="Companies Trust Us" icon={Globe} />
-            <AnimatedCounter value="99.9%" label="Uptime SLA" icon={Zap} />
+            <AnimatedCounter value="100%" label="AI-Powered" icon={Sparkles} />
+            <AnimatedCounter value="Zero" label="Missed Deadlines" icon={CalendarCheck2} />
+            <AnimatedCounter value="24/7" label="Smart Insights" icon={Zap} />
           </motion.div>
 
           <motion.div 
@@ -344,23 +347,21 @@ function SignInForm() {
             ].map((feature, idx) => (
               <motion.div 
                 key={feature.title}
-                className="rounded-xl p-4 bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 hover:border-white/40 transition-all duration-300 group cursor-default"
+                className="rounded-xl p-3 bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/15 transition-all duration-300 group cursor-default"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.5 + idx * 0.1 }}
-                whileHover={{ y: -4, scale: 1.02 }}
+                whileHover={{ y: -2 }}
               >
                 <div className="flex flex-col items-center text-center gap-2">
                   <motion.div 
-                    className={`rounded-xl bg-gradient-to-br ${feature.color} p-3 shadow-lg group-hover:shadow-xl transition-shadow`}
-                    whileHover={{ rotate: [0, -10, 10, 0] }}
-                    transition={{ duration: 0.5 }}
+                    className={`rounded-lg bg-gradient-to-br ${feature.color} p-2.5 shadow-md`}
                   >
-                    <feature.icon className="h-5 w-5 text-white" />
+                    <feature.icon className="h-4 w-4 text-white" />
                   </motion.div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white">{feature.title}</div>
-                    <div className="text-purple-200 text-xs leading-snug">
+                    <div className="text-xs font-semibold text-white">{feature.title}</div>
+                    <div className="text-purple-200/80 text-[10px] leading-tight">
                       {feature.desc}
                     </div>
                   </div>

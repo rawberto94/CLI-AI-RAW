@@ -113,7 +113,7 @@ export default function AuthError() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            Let's get you back in
+            Let&apos;s get you back in
           </motion.h2>
           <motion.p 
             className="text-rose-100 text-lg leading-relaxed max-w-md"
@@ -121,7 +121,7 @@ export default function AuthError() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            Authentication didn't complete. Try signing in again, or return to the login page.
+            Authentication didn&apos;t complete. Try signing in again, or return to the login page.
           </motion.p>
           <AuthHeroArt />
         </div>

@@ -6,9 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile, writeFile, mkdir, unlink, rm } from 'fs/promises';
+import { readFile, writeFile, mkdir, rm, readdir } from 'fs/promises';
 import { join } from 'path';
-import { existsSync, createReadStream } from 'fs';
+import { existsSync } from 'fs';
 import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration } from '@/lib/artifact-trigger';
 
@@ -55,18 +55,16 @@ export async function POST(req: NextRequest) {
 
     // Combine all chunks
     const finalFilePath = join(uploadsDir, fileName);
-    const chunkFiles: string[] = [];
     
     // Find all chunks
-    const fs = require('fs');
-    const files = fs.readdirSync(chunksDir);
+    const files = await readdir(chunksDir);
     const chunks = files
       .filter((f: string) => f.startsWith('chunk-'))
       .map((f: string) => ({
         name: f,
         index: parseInt(f.replace('chunk-', '')),
       }))
-      .sort((a: any, b: any) => a.index - b.index);
+      .sort((a: { name: string; index: number }, b: { name: string; index: number }) => a.index - b.index);
 
     console.log(`📦 Combining ${chunks.length} chunks...`);
 
