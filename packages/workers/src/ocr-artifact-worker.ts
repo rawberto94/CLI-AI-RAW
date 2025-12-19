@@ -569,6 +569,22 @@ export async function processOCRArtifactJob(
     
     jobLogger.info({ ocrMode, textLength: extractedText.length }, 'OCR extraction completed');
 
+    // Save extracted text to contract's rawText field for AI processing
+    if (extractedText && extractedText.length > 0) {
+      try {
+        await prisma.contract.updateMany({
+          where: { id: contractId, tenantId },
+          data: {
+            rawText: extractedText,
+            updatedAt: new Date(),
+          },
+        });
+        jobLogger.info({ textLength: extractedText.length }, 'Raw text saved to contract');
+      } catch (rawTextError) {
+        jobLogger.warn({ error: rawTextError }, 'Failed to save rawText, continuing with processing');
+      }
+    }
+
     await job.updateProgress(60);
     await publishJobProgress(job.id || '', contractId, tenantId, 60, 'artifacts', 'Generating AI artifacts');
 
