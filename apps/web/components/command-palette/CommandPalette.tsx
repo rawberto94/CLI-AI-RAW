@@ -303,6 +303,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Type a command or search..."
+                  aria-label="Command palette search"
                   className="flex-1 bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none text-base"
                 />
                 <kbd className="px-2 py-1 text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 rounded">

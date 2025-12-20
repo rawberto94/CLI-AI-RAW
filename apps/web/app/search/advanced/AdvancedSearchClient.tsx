@@ -338,6 +338,7 @@ export default function AdvancedSearchClient() {
                         valueMin: e.target.value,
                       }))
                     }
+                    aria-label="Minimum contract value"
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <input
@@ -350,6 +351,7 @@ export default function AdvancedSearchClient() {
                         valueMax: e.target.value,
                       }))
                     }
+                    aria-label="Maximum contract value"
                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -569,6 +571,7 @@ export default function AdvancedSearchClient() {
                           customFields: newFields,
                         }));
                       }}
+                      aria-label={`Custom field ${index + 1} name`}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -586,6 +589,7 @@ export default function AdvancedSearchClient() {
                           customFields: newFields,
                         }));
                       }}
+                      aria-label={`Custom field ${index + 1} operator`}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Operator</option>
@@ -611,6 +615,7 @@ export default function AdvancedSearchClient() {
                           customFields: newFields,
                         }));
                       }}
+                      aria-label={`Custom field ${index + 1} value`}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -620,6 +625,7 @@ export default function AdvancedSearchClient() {
                       size="sm"
                       onClick={() => removeCustomField(index)}
                       className="p-2"
+                      aria-label={`Remove custom field ${index + 1}`}
                     >
                       <X className="w-4 h-4" />
                     </Button>

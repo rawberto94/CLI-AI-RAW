@@ -411,11 +411,13 @@ export function SubmitForApprovalModal({
                                 }
                                 className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                                 placeholder="Step name..."
+                                aria-label={`Approval step ${index + 1} name`}
                               />
                               {approvalChain.length > 1 && (
                                 <button
                                   onClick={() => handleRemoveStep(chainStep.id)}
                                   className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  aria-label={`Remove approval step ${index + 1}`}
                                 >
                                   <X className="w-4 h-4" />
                                 </button>
@@ -529,6 +531,7 @@ export function SubmitForApprovalModal({
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
+                    aria-label="Approval due date"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -543,6 +546,7 @@ export function SubmitForApprovalModal({
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add context or specific instructions for the approval team..."
+                    aria-label="Notes for reviewers"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 resize-none"
                     rows={3}
                   />

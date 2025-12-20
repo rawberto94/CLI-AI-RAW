@@ -293,6 +293,7 @@ export default function CompareRatesPage() {
                             onChange={(e)=>{
                               setSelected((prev) => e.target.checked ? [...prev, c.id] : prev.filter((x) => x !== c.id));
                             }}
+                            aria-label={`Select ${c.name}`}
                           />
                           <span className="truncate" title={c.name}>{c.name}</span>
                           <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{c.status || '—'}</span>
@@ -423,7 +424,7 @@ export default function CompareRatesPage() {
                       const checked = refSelected.includes(key);
                       return (
                         <tr key={key} className={checked ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}>
-                          <td className="px-3 py-2 text-sm"><input type="checkbox" checked={checked} onChange={(e)=>{
+                          <td className="px-3 py-2 text-sm"><input type="checkbox" checked={checked} aria-label={`Select ${it.role || 'rate'} from ${it.docId}`} onChange={(e)=>{
                             setRefSelected((prev)=> e.target.checked ? [...prev, key] : prev.filter(x=>x!==key));
                           }} /></td>
                           <td className="px-3 py-2 text-xs">{it.docId === 'manual' ? <span className="text-gray-500 inline-flex items-center gap-1"><FileText className="w-3 h-3" /> manual</span> : <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href={`/contracts/${it.docId}`}><FileText className="w-3 h-3" /> {it.docId}</a>}</td>

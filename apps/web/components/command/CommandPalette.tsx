@@ -229,6 +229,7 @@ export function CommandPalette({ isOpen, onClose, customCommands = [] }: Command
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Type a command or search..."
+                  aria-label="Command palette search"
                   className="flex-1 text-sm text-slate-900 placeholder:text-slate-400 outline-none bg-transparent"
                 />
                 <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-400 bg-slate-100 rounded-md">

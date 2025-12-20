@@ -283,6 +283,7 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
                       <input
                         type="text"
                         placeholder={`Reply to ${comment.author}...`}
+                        aria-label={`Reply to ${comment.author}`}
                         className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && e.currentTarget.value) {
@@ -294,6 +295,7 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
                       <button
                         onClick={() => setReplyTo(null)}
                         className="p-2 text-slate-400 hover:text-slate-600"
+                        aria-label="Cancel reply"
                       >
                         <X className="w-4 h-4" />
                       </button>

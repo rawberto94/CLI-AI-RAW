@@ -270,6 +270,7 @@ export function ShareDialog({
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddEmail()}
                     placeholder="Add email addresses"
+                    aria-label="Email address to share with"
                     className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -277,6 +278,7 @@ export function ShareDialog({
                   onClick={handleAddEmail}
                   disabled={!email.includes('@')}
                   className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors"
+                  aria-label="Add email to share list"
                 >
                   <UserPlus className="w-4 h-4" />
                 </button>

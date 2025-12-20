@@ -178,6 +178,7 @@ const ConversationItem = memo(({
                 if (e.key === 'Escape') setIsEditing(false);
               }}
               autoFocus
+              aria-label="Edit conversation title"
               className="w-full px-2 py-0.5 text-sm rounded border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               onClick={(e) => e.stopPropagation()}
             />
@@ -417,12 +418,14 @@ export const ConversationSidebar = memo(({
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search conversations"
             className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2"
+              aria-label="Clear search"
             >
               <X className="h-4 w-4 text-slate-400 hover:text-slate-600" />
             </button>

@@ -166,6 +166,7 @@ function KeywordInput({
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addKeyword())}
           placeholder="Add keyword..."
+          aria-label="Add keyword"
           className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900
                      focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
         />
@@ -190,6 +191,7 @@ function KeywordInput({
               type="button"
               onClick={() => removeKeyword(keyword)}
               className="ml-1 text-slate-400 hover:text-slate-600"
+              aria-label={`Remove keyword ${keyword}`}
             >
               <X className="w-3 h-3" />
             </button>
@@ -1009,6 +1011,7 @@ export default function TaxonomyPage() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search categories..."
+                    aria-label="Search categories"
                     className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg
                              text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
                   />

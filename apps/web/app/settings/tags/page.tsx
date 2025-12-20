@@ -335,6 +335,7 @@ export default function TagManagementPage() {
                   placeholder="Search tags..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search tags"
                   className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -343,6 +344,7 @@ export default function TagManagementPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "name" | "usage")}
+                  aria-label="Sort tags by"
                   className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm"
                 >
                   <option value="name">Name</option>
