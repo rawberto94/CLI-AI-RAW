@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CurrencyAdvancedService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 const currencyAdvancedService = new CurrencyAdvancedService();
 
@@ -7,23 +8,24 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const baseCurrency = searchParams.get('baseCurrency') || 'USD';
-    const tenantId = searchParams.get('tenantId');
+    const tenantId = await getApiTenantId(request);
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
 
     // Detect currency volatility
     const volatilityAlerts = await currencyAdvancedService.detectVolatility(baseCurrency);
 
-    // If tenantId provided, get affected rates
-    let affectedRates = [];
-    if (tenantId) {
-      affectedRates = await currencyAdvancedService.getRatesAffectedByVolatility(tenantId);
-    }
+    // Get affected rates for tenant
+    const affectedRates = await currencyAdvancedService.getRatesAffectedByVolatility(tenantId);
 
     return NextResponse.json({
       baseCurrency,
       alertCount: volatilityAlerts.length,
       alerts: volatilityAlerts,
       affectedRates: affectedRates.length,
-      affectedRateDetails: tenantId ? affectedRates : undefined,
+      affectedRateDetails: affectedRates,
     });
   } catch (error: any) {
     console.error('Error detecting currency volatility:', error);

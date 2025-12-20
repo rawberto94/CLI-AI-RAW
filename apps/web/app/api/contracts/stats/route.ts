@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -69,9 +70,14 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const tenantId = request.headers.get("x-tenant-id") || 
-                     request.nextUrl.searchParams.get("tenantId") || 
-                     "demo";
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
 
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);

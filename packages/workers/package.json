@@ -7,8 +7,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "build:bundle": "tsup",
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
+    "dev": "NODE_OPTIONS=\"--max-old-space-size=8192\" tsx watch src/index.ts",
+    "start": "NODE_OPTIONS=\"--max-old-space-size=8192\" tsx src/index.ts",
     "start:bundle": "node dist/index.js",
     "typecheck": "tsc --noEmit"
   },

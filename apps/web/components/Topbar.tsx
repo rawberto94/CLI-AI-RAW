@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useSession } from "next-auth/react"
-import { User, Settings, LogOut, ChevronDown } from "lucide-react"
+import { User, Settings, LogOut, ChevronDown, Keyboard, HelpCircle, Command, Sparkles } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import IntelligentSearch from "./search/IntelligentSearch"
 import IntelligenceNotifications from "./notifications/IntelligenceNotifications"
 import { 
@@ -13,6 +14,12 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
 
@@ -27,10 +34,28 @@ export function Topbar() {
     .slice(0, 2)
     .toUpperCase() || 'U'
 
+  // Open keyboard shortcuts modal
+  const openShortcuts = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
+  }, []);
+
+  // Open command palette
+  const openCommandPalette = useCallback(() => {
+    // Simulate Ctrl+K
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+  }, []);
+
+  // Open AI assistant
+  const openAIAssistant = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('openAIChatbot', {
+      detail: { autoMessage: 'Hi! How can I help you today?' }
+    }));
+  }, []);
+
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-6 sticky top-0 z-20">
+    <header className="flex h-14 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-6 sticky top-0 z-20 dark:bg-slate-900/80 dark:border-slate-800">
       <div className="flex-1">
-        <h1 className="text-lg font-semibold md:text-xl bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+        <h1 className="text-lg font-semibold md:text-xl bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
           ConTigo
         </h1>
       </div>
@@ -38,6 +63,67 @@ export function Topbar() {
         <div className="ml-auto flex-1 sm:flex-initial max-w-md">
           <IntelligentSearch />
         </div>
+
+        {/* Quick Action Buttons - Desktop Only */}
+        <TooltipProvider delayDuration={300}>
+          <div className="hidden md:flex items-center gap-1">
+            {/* Command Palette Hint */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={openCommandPalette}
+                  className="h-8 px-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                >
+                  <Command className="h-4 w-4" />
+                  <span className="ml-1.5 text-xs text-slate-400 hidden lg:inline">⌘K</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="flex items-center gap-2">
+                <span>Command Palette</span>
+                <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 rounded">⌘K</kbd>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* AI Assistant */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={openAIAssistant}
+                  className="h-8 px-2 text-slate-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400"
+                >
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="flex items-center gap-2">
+                <span>AI Assistant</span>
+                <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 rounded">⌘/</kbd>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Keyboard Shortcuts */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={openShortcuts}
+                  className="h-8 px-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                >
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="flex items-center gap-2">
+                <span>Keyboard Shortcuts</span>
+                <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 rounded">?</kbd>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
+
         <IntelligenceNotifications />
         
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
@@ -73,6 +159,34 @@ export function Topbar() {
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {/* Help & Shortcuts Section */}
+            <DropdownMenuItem 
+              onClick={openShortcuts}
+              className="cursor-pointer"
+            >
+              <Keyboard className="h-4 w-4 mr-2" />
+              Keyboard Shortcuts
+              <kbd className="ml-auto text-xs text-slate-400">?</kbd>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/ai/chat" className="flex items-center gap-2 cursor-pointer">
+                <Sparkles className="h-4 w-4" />
+                AI Assistant
+                <kbd className="ml-auto text-xs text-slate-400">⌘/</kbd>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a 
+                href="https://docs.contigo.ai" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <HelpCircle className="h-4 w-4" />
+                Help & Docs
+              </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 

@@ -11,11 +11,10 @@ const competitiveIntelligenceService = new CompetitiveIntelligenceService(prisma
  */
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    
-    // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
 
     const metrics = await competitiveIntelligenceService.calculateCompetitivenessScore(tenantId);
 

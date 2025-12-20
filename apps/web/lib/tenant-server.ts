@@ -110,11 +110,39 @@ export async function getServerTenantId(): Promise<string> {
  * Get default tenant ID based on environment
  */
 function getDefaultTenantId(): string {
-  if (process.env.NODE_ENV === "production" && process.env.REQUIRE_AUTH === "true") {
-    // In strict production mode, require explicit tenant
+  if (process.env.NODE_ENV === "production") {
+    // In production, require explicit tenant (no fallback)
     throw new Error("Tenant ID required. Please authenticate or provide x-tenant-id header.");
   }
   return "demo";
+}
+
+/**
+ * STRICT: Get tenant ID from request - throws if not provided
+ * Use this for sensitive routes that MUST have tenant isolation
+ */
+export function getRequiredTenantId(request: NextRequest): string {
+  const tenantId = request.headers.get("x-tenant-id");
+  
+  if (!tenantId || tenantId === "undefined" || tenantId === "null") {
+    throw new Error("Tenant ID is required. Provide x-tenant-id header.");
+  }
+  
+  return tenantId;
+}
+
+/**
+ * STRICT: Get tenant ID or null - for validation before queries
+ * Returns null if not provided, allowing the route to return 400
+ */
+export function getTenantIdOrNull(request: NextRequest): string | null {
+  const tenantId = request.headers.get("x-tenant-id");
+  
+  if (!tenantId || tenantId === "undefined" || tenantId === "null") {
+    return null;
+  }
+  
+  return tenantId;
 }
 
 /**

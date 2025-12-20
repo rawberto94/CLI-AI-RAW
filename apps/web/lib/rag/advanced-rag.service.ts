@@ -11,6 +11,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 // ============================================================================
 // Types
@@ -280,39 +281,52 @@ async function vectorSearch(
 ): Promise<VectorResult[]> {
   const vectorQuery = `[${queryEmbedding.join(',')}]`;
   
-  // Build filter conditions
-  const conditions: string[] = [];
+  // Build safe parameterized filter conditions using Prisma.sql
+  const conditions: Prisma.Sql[] = [];
+  
   if (filters.contractIds?.length) {
-    conditions.push(`ce."contractId" IN (${filters.contractIds.map(id => `'${id}'`).join(',')})`);
+    // Validate UUID format to prevent injection
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validIds = filters.contractIds.filter(id => uuidRegex.test(id));
+    if (validIds.length > 0) {
+      conditions.push(Prisma.sql`ce."contractId" IN (${Prisma.join(validIds)})`);
+    }
   }
   if (filters.tenantId) {
-    conditions.push(`c."tenantId" = '${filters.tenantId}'`);
+    conditions.push(Prisma.sql`c."tenantId" = ${filters.tenantId}`);
   }
   if (filters.dateFrom) {
-    conditions.push(`c."createdAt" >= '${filters.dateFrom.toISOString()}'`);
+    conditions.push(Prisma.sql`c."createdAt" >= ${filters.dateFrom}`);
   }
   if (filters.dateTo) {
-    conditions.push(`c."createdAt" <= '${filters.dateTo.toISOString()}'`);
+    conditions.push(Prisma.sql`c."createdAt" <= ${filters.dateTo}`);
   }
   if (filters.status?.length) {
-    conditions.push(`c."status" IN (${filters.status.map(s => `'${s}'`).join(',')})`);
+    // Validate status values against allowed list
+    const validStatuses = ['DRAFT', 'ACTIVE', 'PENDING', 'EXPIRED', 'TERMINATED', 'PROCESSING', 'READY'];
+    const safeStatuses = filters.status.filter(s => validStatuses.includes(s));
+    if (safeStatuses.length > 0) {
+      conditions.push(Prisma.sql`c."status" IN (${Prisma.join(safeStatuses)})`);
+    }
   }
   
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const whereClause = conditions.length > 0 
+    ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` 
+    : Prisma.empty;
   
   try {
-    const results = await prisma.$queryRawUnsafe<VectorResult[]>(`
+    const results = await prisma.$queryRaw<VectorResult[]>`
       SELECT 
         ce."contractId",
         ce."chunkIndex",
         ce."chunkText",
-        1 - (ce."embedding" <=> '${vectorQuery}'::vector) as score
+        1 - (ce."embedding" <=> ${vectorQuery}::vector) as score
       FROM "ContractEmbedding" ce
       JOIN "Contract" c ON c.id = ce."contractId"
       ${whereClause}
       ORDER BY score DESC
       LIMIT ${k}
-    `);
+    `;
     
     return results;
   } catch (error) {
@@ -329,38 +343,51 @@ async function keywordSearch(
   filters: SearchFilters,
   k: number = 20
 ): Promise<KeywordResult[]> {
-  // Build filter conditions
-  const conditions: string[] = [];
+  // Build safe parameterized filter conditions
+  const conditions: Prisma.Sql[] = [];
+  
   if (filters.contractIds?.length) {
-    conditions.push(`ce."contractId" IN (${filters.contractIds.map(id => `'${id}'`).join(',')})`);
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validIds = filters.contractIds.filter(id => uuidRegex.test(id));
+    if (validIds.length > 0) {
+      conditions.push(Prisma.sql`ce."contractId" IN (${Prisma.join(validIds)})`);
+    }
   }
   if (filters.tenantId) {
-    conditions.push(`c."tenantId" = '${filters.tenantId}'`);
+    conditions.push(Prisma.sql`c."tenantId" = ${filters.tenantId}`);
   }
   
-  const whereClause = conditions.length > 0 ? `AND ${conditions.join(' AND ')}` : '';
+  const additionalWhere = conditions.length > 0 
+    ? Prisma.sql`AND ${Prisma.join(conditions, ' AND ')}` 
+    : Prisma.empty;
   
-  // Escape query for tsquery
-  const tsQuery = query
+  // Sanitize query for tsquery - remove special characters and create safe search terms
+  const sanitizedQuery = query
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length > 2)
+    .slice(0, 10) // Limit to 10 terms
     .join(' | ');
   
+  if (!sanitizedQuery) {
+    return [];
+  }
+  
   try {
-    const results = await prisma.$queryRawUnsafe<KeywordResult[]>(`
+    const results = await prisma.$queryRaw<KeywordResult[]>`
       SELECT 
         ce."contractId",
         ce."chunkIndex",
         ce."chunkText",
-        ROW_NUMBER() OVER (ORDER BY ts_rank_cd(to_tsvector('english', ce."chunkText"), plainto_tsquery('english', '${tsQuery}')) DESC) as rank
+        ROW_NUMBER() OVER (ORDER BY ts_rank_cd(to_tsvector('english', ce."chunkText"), plainto_tsquery('english', ${sanitizedQuery})) DESC) as rank
       FROM "ContractEmbedding" ce
       JOIN "Contract" c ON c.id = ce."contractId"
-      WHERE to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', '${tsQuery}')
-      ${whereClause}
+      WHERE to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', ${sanitizedQuery})
+      ${additionalWhere}
       ORDER BY rank ASC
       LIMIT ${k}
-    `);
+    `;
     
     return results;
   } catch (error) {

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateContractHealth, calculatePortfolioHealth } from '@/lib/health/contract-health-score';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +13,15 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
-    const tenantId = searchParams.get('tenantId') || 'default';
+    const tenantId = getApiTenantId(request);
     const type = searchParams.get('type') || 'contract';
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     if (type === 'portfolio') {
       const health = await calculatePortfolioHealth(tenantId);

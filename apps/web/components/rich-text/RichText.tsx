@@ -305,9 +305,21 @@ export function MarkdownEditor({
     }, 0);
   };
 
-  // Simple markdown to HTML conversion (for preview)
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizeHtml = (str: string): string => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  // Simple markdown to HTML conversion (for preview) - with XSS protection
   const parseMarkdown = (md: string): string => {
-    return md
+    // Sanitize first to prevent XSS
+    const sanitized = sanitizeHtml(md);
+    return sanitized
       .replace(/^### (.*$)/gm, '<h3>$1</h3>')
       .replace(/^## (.*$)/gm, '<h2>$1</h2>')
       .replace(/^# (.*$)/gm, '<h1>$1</h1>')

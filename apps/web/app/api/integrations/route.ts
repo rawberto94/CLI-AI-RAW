@@ -283,9 +283,29 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
+  if (!tenantId) {
+    return NextResponse.json(
+      { success: false, error: 'Tenant ID required' },
+      { status: 400 }
+    );
+  }
+
   try {
+    // Verify integration belongs to tenant before deleting
+    const existing = await prisma.integration.findFirst({
+      where: { id: integrationId, tenantId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: 'Integration not found' },
+        { status: 404 }
+      );
+    }
+
     await prisma.integration.delete({
-      where: { id: integrationId },
+      where: { id: existing.id },
     });
 
     return NextResponse.json({

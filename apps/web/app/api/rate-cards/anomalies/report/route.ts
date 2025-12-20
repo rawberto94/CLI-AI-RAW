@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { AnomalyExplainerService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -10,15 +11,10 @@ import { AnomalyExplainerService } from 'data-orchestration/services';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get tenant ID from query params or session
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
+    // Get tenant ID from secure session
+    const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     // Generate anomaly report

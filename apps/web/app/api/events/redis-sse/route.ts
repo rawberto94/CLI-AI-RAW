@@ -122,8 +122,12 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
+  const tenantId = request.headers.get('x-tenant-id');
+  if (!tenantId) {
+    return new Response('Tenant ID is required', { status: 400 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
-  const tenantId = searchParams.get('tenantId') || 'demo';
   const userId = searchParams.get('userId') || undefined;
 
   // Ensure Redis subscriber is running

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+// Tenant isolation helper
+function getTenantId(request: NextRequest): string | null {
+  return request.headers.get('x-tenant-id');
+}
+
 // Simple XLSX generator (no external dependencies)
 function generateXLSX(contract: any): Buffer {
   // Create XML-based XLSX (Office Open XML format)
@@ -265,10 +270,19 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   try {
     const format = request.nextUrl.searchParams.get('format') || 'json'
     const includeArtifacts = request.nextUrl.searchParams.get('includeArtifacts') !== 'false'
+    const tenantId = getTenantId(request);
 
-    // Fetch contract with artifacts
-    const contract = await prisma.contract.findUnique({
-      where: { id: params.id },
+    // Require tenant ID for security
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch contract with artifacts - scoped to tenant
+    const contract = await prisma.contract.findFirst({
+      where: { id: params.id, tenantId },
       include: {
         artifacts: includeArtifacts,
         clauses: true,

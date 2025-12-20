@@ -1,6 +1,26 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+
+// Sanitize HTML to prevent XSS attacks
+const sanitizeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+// Format AI content with markdown and sanitization
+const formatAIContent = (content: string): string => {
+  const sanitized = sanitizeHtml(content);
+  return sanitized
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
+    .replace(/\n/g, '<br />')
+    .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
+      '<a href="/contracts/$2" class="text-blue-600 hover:text-blue-800 hover:underline font-medium">$1</a>');
+};
 import { 
   FileText, 
   Building2, 
@@ -847,11 +867,7 @@ export default function AIReportBuilderPage() {
                   <div 
                     className="prose prose-sm max-w-none text-gray-700 leading-relaxed"
                     dangerouslySetInnerHTML={{ 
-                      __html: report.aiSummary
-                        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
-                        .replace(/\n/g, '<br />')
-                        .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
-                          '<a href="/contracts/$2" class="text-blue-600 hover:text-blue-800 hover:underline font-medium">$1</a>')
+                      __html: formatAIContent(report.aiSummary)
                     }} 
                   />
                 </CardContent>

@@ -13,10 +13,19 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const params = await props.params;
   try {
     const clusterId = params.id;
+    const tenantId = request.headers.get('x-tenant-id');
 
-    // Fetch cluster with all members
-    const cluster = await prisma.rateCardCluster.findUnique({
-      where: { id: clusterId },
+    // Require tenant ID for security
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch cluster with all members - scoped to tenant
+    const cluster = await prisma.rateCardCluster.findFirst({
+      where: { id: clusterId, tenantId },
       include: {
         members: {
           include: {
@@ -29,16 +38,17 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
     if (!cluster) {
       return NextResponse.json(
-        { error: 'Cluster not found' },
+        { error: 'Cluster not found or access denied' },
         { status: 404 }
       );
     }
 
-    // Fetch rate card entries for all members
+    // Fetch rate card entries for all members - scoped to tenant
     const memberIds = cluster.members.map((m) => m.rateCardEntryId);
     const rateCardEntries = await prisma.rateCardEntry.findMany({
       where: {
         id: { in: memberIds },
+        tenantId,
       },
       include: {
         supplier: true,
@@ -125,6 +135,27 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
   const params = await props.params;
   try {
     const clusterId = params.id;
+    const tenantId = request.headers.get('x-tenant-id');
+
+    // Require tenant ID for security
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify cluster belongs to tenant before deletion
+    const cluster = await prisma.rateCardCluster.findFirst({
+      where: { id: clusterId, tenantId },
+    });
+
+    if (!cluster) {
+      return NextResponse.json(
+        { error: 'Cluster not found or access denied' },
+        { status: 404 }
+      );
+    }
 
     // Delete cluster (cascade will delete members)
     await prisma.rateCardCluster.delete({

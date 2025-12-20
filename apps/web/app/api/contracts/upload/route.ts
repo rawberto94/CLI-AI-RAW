@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
@@ -178,7 +179,19 @@ export async function POST(
   console.log("📤 Contract upload request received");
 
   try {
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Tenant ID is required",
+          details: "Please provide x-tenant-id header",
+        },
+        { status: 400 }
+      );
+    }
     console.log("Tenant ID:", tenantId);
 
     const formData = await request.formData();
@@ -509,15 +522,9 @@ export async function POST(
         processingJobId: processingJob.id,
         message: "File uploaded successfully",
       },
-      {
-        status: 201,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-        },
-      }
+      { status: 201 }
     );
+    return cors.addCorsHeaders(response, request, "POST, OPTIONS");
   } catch (error) {
     console.error("❌ Upload error:", error);
     
@@ -555,10 +562,7 @@ export async function POST(
       },
       {
         status: statusCode,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          ...(code === "RATE_LIMITED" ? { "Retry-After": "60" } : {}),
-        },
+        headers: code === "RATE_LIMITED" ? { "Retry-After": "60" } : {},
       }
     );
   }
@@ -573,14 +577,6 @@ export async function POST(
  *
  * Handle CORS preflight requests
  */
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "POST, OPTIONS");
 }

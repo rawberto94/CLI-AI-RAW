@@ -40,11 +40,43 @@ export async function GET(
 
     const tenantId = await getServerTenantId();
 
-    // Get contract directly from database
+    // Get contract with parent and child relationships
     const contract = await prisma.contract.findFirst({
       where: {
         id: contractId,
         tenantId: tenantId,
+      },
+      include: {
+        parentContract: {
+          select: {
+            id: true,
+            contractTitle: true,
+            contractType: true,
+            status: true,
+            clientName: true,
+            supplierName: true,
+            effectiveDate: true,
+            expirationDate: true,
+          },
+        },
+        childContracts: {
+          select: {
+            id: true,
+            contractTitle: true,
+            contractType: true,
+            status: true,
+            relationshipType: true,
+            clientName: true,
+            supplierName: true,
+            effectiveDate: true,
+            expirationDate: true,
+            totalValue: true,
+            createdAt: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 
@@ -87,7 +119,7 @@ export async function GET(
       uploadDate:
         contract.uploadedAt?.toISOString() || new Date().toISOString(),
       status: mapContractStatus(contract.status),
-      tenantId: contract.tenantId || "demo",
+      tenantId: contract.tenantId,
       uploadedBy: contract.uploadedBy || "user",
       fileSize: Number(contract.fileSize) || 0,
       mimeType: contract.mimeType || "application/pdf",
@@ -245,6 +277,37 @@ export async function GET(
             (a: any) => a.type === "CONTACTS" || a.type === "contacts"
           )?.data
         : contractData.extractedData?.contacts,
+      
+      // Contract Hierarchy (Parent-Child Relationships)
+      parentContract: contract.parentContract ? {
+        id: contract.parentContract.id,
+        title: contract.parentContract.contractTitle || 'Untitled',
+        type: contract.parentContract.contractType,
+        status: contract.parentContract.status,
+        clientName: contract.parentContract.clientName,
+        supplierName: contract.parentContract.supplierName,
+        effectiveDate: contract.parentContract.effectiveDate?.toISOString(),
+        expirationDate: contract.parentContract.expirationDate?.toISOString(),
+      } : null,
+      childContracts: contract.childContracts?.map((child: any) => ({
+        id: child.id,
+        title: child.contractTitle || 'Untitled',
+        type: child.contractType,
+        status: child.status,
+        relationshipType: child.relationshipType,
+        clientName: child.clientName,
+        supplierName: child.supplierName,
+        effectiveDate: child.effectiveDate?.toISOString(),
+        expirationDate: child.expirationDate?.toISOString(),
+        totalValue: child.totalValue,
+        createdAt: child.createdAt?.toISOString(),
+      })) || [],
+      
+      // Hierarchy metadata
+      parentContractId: contract.parentContractId,
+      relationshipType: contract.relationshipType,
+      relationshipNote: contract.relationshipNote,
+      linkedAt: contract.linkedAt?.toISOString(),
     };
 
     const responseTime = Date.now() - startTime;

@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,15 +27,35 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Build dynamic where clause
-    const conditions: string[] = [`tenant_id = '${tenantId}'`];
-    if (status) conditions.push(`status = '${status}'`);
-    if (alertType) conditions.push(`alert_type = '${alertType}'`);
-    if (severity) conditions.push(`severity = '${severity}'`);
-    if (contractId) conditions.push(`contract_id = '${contractId}'`);
+    // Validate input against allowed values to prevent SQL injection
+    const validStatuses = ['PENDING', 'SENT', 'ACKNOWLEDGED'];
+    const validSeverities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const validAlertTypes = ['EXPIRATION_30_DAYS', 'EXPIRATION_60_DAYS', 'EXPIRATION_90_DAYS', 'RENEWAL_DUE', 'NOTICE_DEADLINE'];
+    
+    // Build safe parameterized query using Prisma.sql
+    const conditions: Prisma.Sql[] = [Prisma.sql`tenant_id = ${tenantId}`];
+    
+    if (status && validStatuses.includes(status)) {
+      conditions.push(Prisma.sql`status = ${status}`);
+    }
+    if (alertType && validAlertTypes.includes(alertType)) {
+      conditions.push(Prisma.sql`alert_type = ${alertType}`);
+    }
+    if (severity && validSeverities.includes(severity)) {
+      conditions.push(Prisma.sql`severity = ${severity}`);
+    }
+    if (contractId) {
+      // Validate UUID format to prevent injection
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(contractId)) {
+        conditions.push(Prisma.sql`contract_id = ${contractId}`);
+      }
+    }
 
-    // Query alerts
-    const alerts = await prisma.$queryRawUnsafe<Array<{
+    const whereClause = Prisma.join(conditions, ' AND ');
+
+    // Query alerts with safe parameterized query
+    const alerts = await prisma.$queryRaw<Array<{
       id: string;
       contract_id: string;
       alert_type: string;
@@ -54,19 +75,19 @@ export async function GET(request: NextRequest) {
       days_before_expiry: number;
       metadata: any;
       created_at: Date;
-    }>>(`
+    }>>`
       SELECT 
         id, contract_id, alert_type, severity, title, message,
         recipients, sent_to, status, sent_at, delivered_at,
         acknowledged_by, acknowledged_at, acknowledged_action, snooze_until,
         scheduled_for, days_before_expiry, metadata, created_at
       FROM expiration_alerts
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${whereClause}
       ORDER BY 
         CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END,
         scheduled_for ASC
       LIMIT ${limit} OFFSET ${offset}
-    `);
+    `;
 
     // Get summary stats
     const stats = await prisma.$queryRaw<Array<{

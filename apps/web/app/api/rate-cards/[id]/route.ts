@@ -145,7 +145,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     const entry = await rateCardService.getEntry(id, tenantId);
 
@@ -171,7 +179,15 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
     
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Convert date strings to Date objects
     if (body.effectiveDate) {
@@ -204,7 +220,15 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.nextUrl.searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     await rateCardService.deleteEntry(id, tenantId);
 

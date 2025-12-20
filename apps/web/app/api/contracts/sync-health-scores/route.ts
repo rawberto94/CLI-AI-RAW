@@ -9,8 +9,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const body = await request.json().catch(() => ({}));
-    const tenantId = body.tenantId || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
     
     // Get contracts with artifacts - use raw SQL to avoid enum issues
     const contracts = await prisma.contract.findMany({
@@ -173,8 +175,10 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
 
     const stats = await prisma.$queryRaw<Array<{
       total: bigint; avg_overall: number; avg_risk: number; avg_compliance: number;

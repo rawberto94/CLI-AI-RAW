@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { automatedReportingService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { tenantId, userId, schedule } = body;
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
 
-    if (!tenantId || !userId || !schedule) {
+    const body = await request.json();
+    const { userId, schedule } = body;
+
+    if (!userId || !schedule) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -31,14 +37,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
+    const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Missing tenantId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     const reports = await automatedReportingService.getScheduledReports(

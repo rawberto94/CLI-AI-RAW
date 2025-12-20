@@ -30,6 +30,8 @@ import {
   Target,
   Scale,
   Heart,
+  Link2,
+  GitBranch,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,6 +73,24 @@ export interface ContractHealth {
   lastChecked?: Date;
 }
 
+export interface ContractHierarchyInfo {
+  parentContract?: {
+    id: string;
+    fileName: string;
+    contractType?: string;
+  };
+  childContracts?: Array<{
+    id: string;
+    fileName: string;
+    contractType?: string;
+    relationshipType?: string;
+  }>;
+  parentContractId?: string;
+  relationshipType?: string;
+  childCount?: number;
+  hasHierarchy?: boolean;
+}
+
 export interface EnhancedContract {
   id: string;
   title?: string;
@@ -99,6 +119,12 @@ export interface EnhancedContract {
   keyTerms?: string[];
   category?: { id: string; name: string; color: string; icon?: string };
   processing?: { progress: number; currentStage?: string };
+  // Contract hierarchy
+  hierarchy?: ContractHierarchyInfo;
+  parentContractId?: string;
+  parentContract?: { id: string; fileName: string; contractType?: string };
+  childContracts?: Array<{ id: string; fileName: string; contractType?: string; relationshipType?: string }>;
+  hasHierarchy?: boolean;
 }
 
 export interface EnhancedContractCardProps {
@@ -421,6 +447,77 @@ const ExpiryBadge = memo(function ExpiryBadge({ endDate, status }: ExpiryBadgePr
   );
 });
 
+// ============================================================================
+// HierarchyBadge Component - Shows parent/child contract relationships
+// ============================================================================
+
+interface HierarchyBadgeProps {
+  contract: EnhancedContract;
+}
+
+const HierarchyBadge = memo(function HierarchyBadge({ contract }: HierarchyBadgeProps) {
+  const hasParent = contract.parentContractId || contract.parentContract || contract.hierarchy?.parentContract;
+  const childCount = contract.childContracts?.length || contract.hierarchy?.childContracts?.length || contract.hierarchy?.childCount || 0;
+  const hasHierarchy = hasParent || childCount > 0 || contract.hasHierarchy;
+  
+  if (!hasHierarchy) return null;
+
+  const parentName = contract.parentContract?.fileName || contract.hierarchy?.parentContract?.fileName;
+  const relationshipType = contract.hierarchy?.relationshipType;
+  
+  // Format relationship type for display
+  const formatRelationship = (type?: string) => {
+    if (!type) return "";
+    return type.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
+              hasParent ? "bg-indigo-100 text-indigo-700" : "bg-purple-100 text-purple-700"
+            )}
+          >
+            {hasParent ? (
+              <>
+                <Link2 className="w-3 h-3" />
+                <span>Linked</span>
+              </>
+            ) : (
+              <>
+                <GitBranch className="w-3 h-3" />
+                <span>{childCount} child{childCount !== 1 ? "ren" : ""}</span>
+              </>
+            )}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          <div className="text-xs space-y-1">
+            {hasParent && (
+              <div>
+                <span className="font-medium">Parent: </span>
+                <span className="text-muted-foreground">{parentName || "Linked contract"}</span>
+                {relationshipType && (
+                  <span className="text-muted-foreground"> ({formatRelationship(relationshipType)})</span>
+                )}
+              </div>
+            )}
+            {childCount > 0 && (
+              <div>
+                <span className="font-medium">Children: </span>
+                <span className="text-muted-foreground">{childCount} linked contract{childCount !== 1 ? "s" : ""}</span>
+              </div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+});
+
 interface CompletenessBarProps {
   percentage?: number;
 }
@@ -711,7 +808,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
           </div>
         )}
 
-        {/* Info Row: Value, Date, Expiry */}
+        {/* Info Row: Value, Date, Expiry, Hierarchy */}
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm">
           {contract.value !== undefined && (
             <div className="flex items-center gap-1.5 text-gray-700">
@@ -732,6 +829,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
             </div>
           )}
           <ExpiryBadge endDate={contract.endDate} status={contract.status} />
+          <HierarchyBadge contract={contract} />
         </div>
 
         {/* Health & Completeness Row */}
@@ -1014,6 +1112,7 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
             {contract.title}
           </h4>
           <ExpiryBadge endDate={contract.endDate} status={contract.status} />
+          <HierarchyBadge contract={contract} />
         </div>
         <p className="text-sm text-muted-foreground truncate">{contract.type}</p>
       </div>
@@ -1140,4 +1239,4 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
 // Export all (HealthIndicator already exported with its declaration)
 // ============================================================================
 
-export { PartyAvatar, ExpiryBadge, CompletenessBar, QuickPreview };
+export { PartyAvatar, ExpiryBadge, HierarchyBadge, CompletenessBar, QuickPreview };

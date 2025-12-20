@@ -15,6 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { z } from "zod";
@@ -537,13 +538,6 @@ Hardware,Hardware purchases,IT & Technology,computer;server;equipment,#10B981,cp
 // OPTIONS - CORS
 // ============================================================================
 
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "GET, POST, OPTIONS");
 }

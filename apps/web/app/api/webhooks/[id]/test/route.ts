@@ -22,7 +22,14 @@ async function getPrisma() {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     
     const prisma = await getPrisma();
     let webhook: WebhookConfig | null = null;

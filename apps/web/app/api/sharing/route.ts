@@ -226,6 +226,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const tenantId = await getApiTenantId(request);
     const body = await request.json();
     const { shareId, permission, expiresAt, isActive } = body;
 
@@ -237,8 +238,21 @@ export async function PATCH(request: NextRequest) {
     }
 
     try {
+      // Verify share belongs to tenant before updating
+      const existingShare = await prisma.documentShare.findFirst({
+        where: { id: shareId, tenantId },
+        select: { id: true },
+      });
+
+      if (!existingShare) {
+        return NextResponse.json(
+          { success: false, error: 'Share not found' },
+          { status: 404 }
+        );
+      }
+
       const share = await prisma.documentShare.update({
-        where: { id: shareId },
+        where: { id: existingShare.id },
         data: {
           ...(permission && { permission }),
           ...(expiresAt !== undefined && { expiresAt: expiresAt ? new Date(expiresAt) : null }),
@@ -277,6 +291,7 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);
     const shareId = searchParams.get('id');
 
@@ -288,8 +303,21 @@ export async function DELETE(request: NextRequest) {
     }
 
     try {
+      // Verify share belongs to tenant before revoking
+      const existingShare = await prisma.documentShare.findFirst({
+        where: { id: shareId, tenantId },
+        select: { id: true },
+      });
+
+      if (!existingShare) {
+        return NextResponse.json(
+          { success: false, error: 'Share not found' },
+          { status: 404 }
+        );
+      }
+
       await prisma.documentShare.update({
-        where: { id: shareId },
+        where: { id: existingShare.id },
         data: { isActive: false },
       });
 

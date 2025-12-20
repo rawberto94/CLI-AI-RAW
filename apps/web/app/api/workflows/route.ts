@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,15 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const isActive = searchParams.get('isActive');
@@ -69,7 +78,15 @@ interface WorkflowStepInput {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const body = await request.json();
 
     const { name, description, type, steps, isActive } = body;
@@ -137,6 +154,15 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const body = await request.json();
     const { id, steps, ...updates } = body;
 
@@ -147,16 +173,29 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Verify workflow belongs to tenant before updating
+    const existingWorkflow = await prisma.workflow.findFirst({
+      where: { id, tenantId },
+      select: { id: true },
+    });
+
+    if (!existingWorkflow) {
+      return NextResponse.json(
+        { success: false, error: 'Workflow not found' },
+        { status: 404 }
+      );
+    }
+
     // If updating steps, delete old ones and create new ones
     if (steps) {
       await prisma.workflowStep.deleteMany({
-        where: { workflowId: id },
+        where: { workflowId: existingWorkflow.id },
       });
 
       await prisma.workflowStep.createMany({
         data: (steps as WorkflowStepInput[]).map((step, index) => {
           const stepData: Prisma.WorkflowStepCreateManyInput = {
-            workflowId: id,
+            workflowId: existingWorkflow.id,
             name: step.name,
             order: step.order ?? index,
             type: step.type || 'APPROVAL',
@@ -173,7 +212,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const workflow = await prisma.workflow.update({
-      where: { id },
+      where: { id: existingWorkflow.id },
       data: {
         ...updates,
         updatedAt: new Date(),
@@ -203,19 +242,41 @@ export async function PATCH(request: NextRequest) {
  * DELETE /api/workflows - Delete workflow
  */
 export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-
-  if (!id) {
-    return NextResponse.json(
-      { success: false, error: 'Workflow ID is required' },
-      { status: 400 }
-    );
-  }
-
   try {
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Workflow ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Verify workflow belongs to tenant before deleting
+    const existingWorkflow = await prisma.workflow.findFirst({
+      where: { id, tenantId },
+      select: { id: true },
+    });
+
+    if (!existingWorkflow) {
+      return NextResponse.json(
+        { success: false, error: 'Workflow not found' },
+        { status: 404 }
+      );
+    }
+
     await prisma.workflow.delete({
-      where: { id },
+      where: { id: existingWorkflow.id },
     });
 
     return NextResponse.json({

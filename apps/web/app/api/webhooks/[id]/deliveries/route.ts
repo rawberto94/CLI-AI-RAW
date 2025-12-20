@@ -21,7 +21,15 @@ async function getPrisma() {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     
     const page = parseInt(searchParams.get('page') || '1', 10);

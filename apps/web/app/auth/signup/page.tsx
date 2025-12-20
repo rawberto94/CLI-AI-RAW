@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Building2, User, Mail, Lock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { Building2, User, Mail, Lock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Shield, Zap, Eye, EyeOff, Quote, Star, Check } from "lucide-react";
 import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
 
 // Floating Particles Component
@@ -141,11 +141,35 @@ function SignUpForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<{
     tenantName: string;
     tenantId: string;
     email: string;
   } | null>(null);
+
+  // Password strength calculation
+  const passwordStrength = useMemo(() => {
+    const password = formData.password;
+    if (!password) return { score: 0, label: "", color: "" };
+    
+    let score = 0;
+    const checks = {
+      length: password.length >= 8,
+      lowercase: /[a-z]/.test(password),
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+    
+    score = Object.values(checks).filter(Boolean).length;
+    
+    if (score <= 2) return { score, label: "Weak", color: "bg-red-500", checks };
+    if (score === 3) return { score, label: "Fair", color: "bg-amber-500", checks };
+    if (score === 4) return { score, label: "Good", color: "bg-emerald-400", checks };
+    return { score, label: "Strong", color: "bg-emerald-500", checks };
+  }, [formData.password]);
   
   // Configured providers
   const [providers, setProviders] = useState<string[]>(["credentials"]);
@@ -668,15 +692,67 @@ function SignUpForm() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Min. 8 characters"
                   required
                   disabled={loading}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {/* Password strength indicator */}
+              {formData.password && (
+                <motion.div 
+                  className="mt-2 space-y-2"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div
+                        className={`h-full ${passwordStrength.color} rounded-full`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${(passwordStrength.score / 5) * 100}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                    <span className={`text-xs font-medium ${
+                      passwordStrength.score <= 2 ? "text-red-500" : 
+                      passwordStrength.score === 3 ? "text-amber-500" : "text-emerald-500"
+                    }`}>
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 text-[10px]">
+                    {[
+                      { key: "length", label: "8+ characters" },
+                      { key: "uppercase", label: "Uppercase" },
+                      { key: "lowercase", label: "Lowercase" },
+                      { key: "number", label: "Number" },
+                    ].map((req) => (
+                      <div 
+                        key={req.key} 
+                        className={`flex items-center gap-1 ${
+                          (passwordStrength as any).checks?.[req.key] ? "text-emerald-600" : "text-slate-400"
+                        }`}
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>{req.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <div>
@@ -685,15 +761,48 @@ function SignUpForm() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="Confirm password"
                   required
                   disabled={loading}
-                  className="pl-10"
+                  className={`pl-10 pr-10 ${
+                    formData.confirmPassword && formData.password !== formData.confirmPassword 
+                      ? "border-red-300 focus:border-red-500" 
+                      : formData.confirmPassword && formData.password === formData.confirmPassword
+                      ? "border-emerald-300 focus:border-emerald-500"
+                      : ""
+                  }`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <motion.p 
+                  className="text-xs text-red-500 mt-1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  Passwords don&apos;t match
+                </motion.p>
+              )}
+              {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                <motion.p 
+                  className="text-xs text-emerald-500 mt-1 flex items-center gap-1"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <CheckCircle2 className="w-3 h-3" />
+                  Passwords match
+                </motion.p>
+              )}
             </div>
 
             <Button 

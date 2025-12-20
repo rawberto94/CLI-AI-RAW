@@ -43,8 +43,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
   const params = await props.params;
   try {
     const { contractId } = params;
-    const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
     const userId = request.headers.get('x-user-id') || 'system';
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     const body: SaveRateCardRequest = await request.json();
 

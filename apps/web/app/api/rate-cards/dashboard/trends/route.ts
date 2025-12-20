@@ -3,8 +3,15 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+
+    // Require tenant ID for security
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Get rate inflation by role category
     const ratesByCategory = await prisma.rateCardEntry.findMany({

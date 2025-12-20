@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = request.nextUrl.searchParams.get('tenantId') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const now = new Date();
     const todayStart = new Date(now.setHours(0, 0, 0, 0));
 

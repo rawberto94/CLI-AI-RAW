@@ -196,9 +196,9 @@ export default function MetadataSettingsPage() {
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Settings className="h-8 w-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Coming Soon</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a Section</h3>
                 <p className="text-gray-500">
-                  This settings section is under development.
+                  Choose a settings section from the sidebar to configure.
                 </p>
               </div>
             )}

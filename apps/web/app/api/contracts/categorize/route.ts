@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import {
   categorizeContract,
   categorizeContracts,
@@ -46,7 +47,16 @@ type CategorizationRequest =
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+    
     const body: CategorizationRequest = await request.json();
 
     // Determine request type
@@ -178,13 +188,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "POST, OPTIONS");
 }

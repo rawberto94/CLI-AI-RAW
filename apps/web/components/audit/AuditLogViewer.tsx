@@ -74,59 +74,9 @@ const actionIcons: Record<string, React.ElementType> = {
   import: Upload,
 };
 
-// Mock data generator
-function generateMockLogs(): AuditLogEntry[] {
-  const actions = [
-    { action: 'contract.created', category: 'contract' as const },
-    { action: 'contract.updated', category: 'contract' as const },
-    { action: 'contract.deleted', category: 'contract' as const },
-    { action: 'contract.exported', category: 'contract' as const },
-    { action: 'user.login', category: 'user' as const },
-    { action: 'user.logout', category: 'user' as const },
-    { action: 'user.created', category: 'user' as const },
-    { action: 'api_key.created', category: 'security' as const },
-    { action: 'api_key.revoked', category: 'security' as const },
-    { action: 'webhook.created', category: 'integration' as const },
-    { action: 'data.imported', category: 'data' as const },
-    { action: 'data.synced', category: 'data' as const },
-    { action: 'settings.updated', category: 'system' as const },
-    { action: 'backup.created', category: 'system' as const },
-  ];
-
-  const users = [
-    { id: 'usr_1', name: 'John Doe', email: 'john@example.com', type: 'user' as const },
-    { id: 'usr_2', name: 'Jane Smith', email: 'jane@example.com', type: 'user' as const },
-    { id: 'sys_1', name: 'System', email: 'system@internal', type: 'system' as const },
-    { id: 'api_1', name: 'API Client', email: 'api@integration', type: 'api' as const },
-  ];
-
-  return Array.from({ length: 50 }, (_, i) => {
-    const actionConfig = actions[Math.floor(Math.random() * actions.length)]!;
-    const user = users[Math.floor(Math.random() * users.length)]!;
-    const success = Math.random() > 0.1;
-
-    return {
-      id: `log_${Date.now()}_${i}`,
-      timestamp: new Date(Date.now() - i * 600000 - Math.random() * 300000),
-      action: actionConfig.action,
-      category: actionConfig.category,
-      actor: user,
-      resource: actionConfig.category === 'contract' ? {
-        type: 'contract',
-        id: `ctr_${Math.floor(Math.random() * 1000)}`,
-        name: `Contract #${Math.floor(Math.random() * 1000)}`,
-      } : undefined,
-      details: {
-        changes: actionConfig.action.includes('update') ? { status: { from: 'draft', to: 'active' } } : undefined,
-        source: 'web',
-        duration_ms: Math.floor(Math.random() * 500),
-      },
-      ipAddress: `192.168.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`,
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-      success,
-      errorMessage: success ? undefined : 'Permission denied',
-    };
-  });
+// Empty state when no audit logs available
+function getEmptyLogs(): AuditLogEntry[] {
+  return [];
 }
 
 export const AuditLogViewer = memo(function AuditLogViewer({
@@ -143,8 +93,8 @@ export const AuditLogViewer = memo(function AuditLogViewer({
     pageSize: 100,
   });
   
-  // Fall back to mock data if no data from API
-  const logs = data?.logs ?? generateMockLogs();
+  // Fall back to empty state if no data from API
+  const logs = data?.logs ?? getEmptyLogs();
   
   // Local UI state
   const [searchQuery, setSearchQuery] = useState('');

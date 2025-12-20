@@ -124,8 +124,20 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
       .slice(0, 2);
   };
 
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizeHtml = (str: string): string => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
   const highlightMentions = (content: string) => {
-    return content.replace(
+    // Sanitize first to prevent XSS, then highlight mentions
+    const sanitized = sanitizeHtml(content);
+    return sanitized.replace(
       /@([A-Za-z\s]+)/g,
       '<span class="text-blue-600 font-medium">@$1</span>'
     );

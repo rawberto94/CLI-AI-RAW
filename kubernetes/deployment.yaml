@@ -126,16 +126,16 @@ spec:
           image: redis:7-alpine
           ports:
             - containerPort: 6379
-          command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+          command: ["redis-server", "--appendonly", "yes", "--maxmemory", "1gb", "--maxmemory-policy", "allkeys-lru"]
           volumeMounts:
             - name: redis-data
               mountPath: /data
           resources:
             requests:
-              memory: "128Mi"
+              memory: "256Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "1536Mi"
               cpu: "500m"
           livenessProbe:
             exec:
@@ -210,10 +210,10 @@ spec:
                 name: app-secrets
           resources:
             requests:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "250m"
             limits:
-              memory: "2Gi"
+              memory: "4Gi"
               cpu: "1000m"
           livenessProbe:
             httpGet:
@@ -271,10 +271,10 @@ spec:
                 name: app-secrets
           resources:
             requests:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "100m"
             limits:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "500m"
           livenessProbe:
             httpGet:
@@ -414,10 +414,10 @@ spec:
               name: health
           resources:
             requests:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "250m"
             limits:
-              memory: "2Gi"
+              memory: "4Gi"
               cpu: "1000m"
           livenessProbe:
             httpGet:

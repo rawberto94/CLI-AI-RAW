@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 // Helper to get date range from timeframe
 function getDateRange(timeframe: string): { start: Date; end: Date; previousStart: Date; previousEnd: Date } {
@@ -35,24 +36,24 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const timeframe = searchParams.get('timeframe') || '30d';
-    const tenantId = searchParams.get('tenantId');
+    const tenantId = await getApiTenantId(request);
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
     
     const { start, end, previousStart, previousEnd } = getDateRange(timeframe);
     
     // Build where clause
     const whereClause: any = {
       createdAt: { gte: start, lte: end },
+      tenantId,
     };
-    if (tenantId) {
-      whereClause.tenantId = tenantId;
-    }
     
     const previousWhereClause: any = {
       createdAt: { gte: previousStart, lte: previousEnd },
+      tenantId,
     };
-    if (tenantId) {
-      previousWhereClause.tenantId = tenantId;
-    }
 
     // Execute all queries in parallel for performance
     const [

@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 
 // Type definition for enterprise metadata schema
@@ -65,7 +66,15 @@ export async function GET(
   try {
     const params = await context.params;
     const contractId = params.id;
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json({
+        success: false,
+        error: "Tenant ID is required"
+      }, { status: 400 });
+    }
 
     if (!contractId) {
       return NextResponse.json({
@@ -193,7 +202,16 @@ export async function PUT(
   try {
     const params = await context.params;
     const contractId = params.id;
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json({
+        success: false,
+        error: "Tenant ID is required"
+      }, { status: 400 });
+    }
+    
     const body = await request.json();
     const metadata = body.metadata || body;
 
@@ -308,14 +326,6 @@ export async function PUT(
 /**
  * OPTIONS handler for CORS
  */
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-      "Access-Control-Max-Age": "86400"
-    }
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "GET, PUT, OPTIONS");
 }

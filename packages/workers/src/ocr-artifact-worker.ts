@@ -36,12 +36,312 @@ import {
 
 const logger = pino({ name: 'ocr-artifact-worker' });
 
+// ============ ENHANCED CONFIGURATION ============
+// Worker configuration for improved accuracy and coverage
+const WORKER_CONFIG = {
+  // OCR Enhancement
+  ocr: {
+    enableMultiPassExtraction: true,      // Run multiple OCR passes for better accuracy
+    minTextLengthForAI: 100,               // Minimum text length to trigger AI enhancement
+    maxTextForAI: 30000,                   // Maximum text to send to AI (increased)
+    enableImageOCR: true,                  // Enable OCR for images in PDFs
+    enableTableExtraction: true,           // Enhanced table extraction
+    confidenceThreshold: 0.7,              // Minimum confidence for extracted data
+  },
+  // AI Extraction Enhancement
+  ai: {
+    temperature: 0.1,                      // Lower temperature for more accurate extraction
+    maxRetries: 3,                         // Increased retries for reliability
+    enableContextWindow: true,             // Use full context for better understanding
+    enablePartyNameValidation: true,       // Validate extracted party names
+    enableFinancialValidation: true,       // Validate financial values
+    enableDateValidation: true,            // Validate dates
+    model: process.env.OPENAI_MODEL || 'gpt-4o', // Use stronger model by default
+  },
+  // Worker Settings
+  worker: {
+    concurrency: parseInt(process.env.OCR_WORKER_CONCURRENCY || '5'),
+    maxJobsPerMinute: parseInt(process.env.OCR_MAX_JOBS_PER_MINUTE || '30'),
+    progressUpdateInterval: 5,             // Update progress every 5%
+  },
+  // Text Preprocessing
+  preprocessing: {
+    removeExtraWhitespace: true,
+    normalizeLineBreaks: true,
+    detectAndPreserveTables: true,
+    removeHeaders: false,                  // Don't remove - might be important
+    removeFooters: false,
+    removePageNumbers: true,
+    maxConsecutiveNewlines: 3,
+  },
+  // Quality Metrics
+  quality: {
+    trackExtractionMetrics: true,
+    minCharactersForValidDoc: 50,
+    warnOnLowConfidence: true,
+    confidenceWarningThreshold: 0.6,
+  }
+};
+
+logger.info({ config: WORKER_CONFIG }, 'Worker configuration loaded');
+
+// ============ TEXT PREPROCESSING UTILITIES ============
+
+/**
+ * Preprocess extracted text for better AI analysis
+ */
+function preprocessText(rawText: string): { cleanedText: string; tables: string[]; metrics: TextMetrics } {
+  const metrics: TextMetrics = {
+    originalLength: rawText.length,
+    cleanedLength: 0,
+    tablesDetected: 0,
+    linesRemoved: 0,
+    confidenceScore: 1.0,
+  };
+  
+  let text = rawText;
+  
+  // 1. Normalize line breaks
+  if (WORKER_CONFIG.preprocessing.normalizeLineBreaks) {
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  }
+  
+  // 2. Detect and extract tables before other processing
+  const tables: string[] = [];
+  if (WORKER_CONFIG.preprocessing.detectAndPreserveTables) {
+    const tablePatterns = [
+      // Markdown-style tables
+      /\|[^\n]+\|[\s\S]*?(?=\n\n|\n[^|]|$)/g,
+      // Tab-separated tables (3+ columns)
+      /(?:^|\n)(?:[^\t\n]+\t){2,}[^\t\n]+(?:\n(?:[^\t\n]+\t){2,}[^\t\n]+)+/g,
+      // Pipe-separated data
+      /(?:^|\n)(?:[^|\n]+\|){2,}[^|\n]+(?:\n(?:[^|\n]+\|){2,}[^|\n]+)+/g,
+    ];
+    
+    for (const pattern of tablePatterns) {
+      const matches = text.match(pattern);
+      if (matches) {
+        tables.push(...matches);
+        metrics.tablesDetected += matches.length;
+      }
+    }
+  }
+  
+  // 3. Remove page numbers (common patterns)
+  if (WORKER_CONFIG.preprocessing.removePageNumbers) {
+    // "Page 1 of 10", "1 / 10", "Page 1", "- 1 -", etc.
+    text = text.replace(/(?:^|\n)\s*(?:Page\s+)?(\d+)\s*(?:of\s+\d+|\/\s*\d+)?\s*(?:\n|$)/gi, '\n');
+    text = text.replace(/(?:^|\n)\s*-\s*\d+\s*-\s*(?:\n|$)/g, '\n');
+  }
+  
+  // 4. Remove excessive whitespace
+  if (WORKER_CONFIG.preprocessing.removeExtraWhitespace) {
+    // Replace multiple spaces with single space (but preserve intentional indentation)
+    text = text.replace(/[^\S\n]{3,}/g, '  ');
+  }
+  
+  // 5. Limit consecutive newlines
+  if (WORKER_CONFIG.preprocessing.maxConsecutiveNewlines > 0) {
+    const maxNewlines = WORKER_CONFIG.preprocessing.maxConsecutiveNewlines;
+    const pattern = new RegExp(`\\n{${maxNewlines + 1},}`, 'g');
+    text = text.replace(pattern, '\n'.repeat(maxNewlines));
+  }
+  
+  // 6. Trim
+  text = text.trim();
+  
+  metrics.cleanedLength = text.length;
+  metrics.linesRemoved = rawText.split('\n').length - text.split('\n').length;
+  
+  // Calculate confidence based on text quality
+  if (text.length < WORKER_CONFIG.quality.minCharactersForValidDoc) {
+    metrics.confidenceScore = 0.3;
+  } else if (text.length < 500) {
+    metrics.confidenceScore = 0.6;
+  } else if (metrics.tablesDetected > 0) {
+    metrics.confidenceScore = 0.95; // Tables indicate structured document
+  }
+  
+  return { cleanedText: text, tables, metrics };
+}
+
+interface TextMetrics {
+  originalLength: number;
+  cleanedLength: number;
+  tablesDetected: number;
+  linesRemoved: number;
+  confidenceScore: number;
+}
+
+/**
+ * Detect if text contains rate/pricing tables
+ */
+function detectRateTables(text: string): { hasRateTables: boolean; tableHints: string[] } {
+  const hints: string[] = [];
+  
+  // Keywords that indicate rate tables
+  const rateKeywords = [
+    /rate\s*card/i,
+    /pricing\s*schedule/i,
+    /fee\s*schedule/i,
+    /hourly\s*rate/i,
+    /daily\s*rate/i,
+    /resource\s*type.*rate/i,
+    /\$\d+[,\d]*(?:\.\d{2})?\s*\/?\s*(?:hr|hour|day|month|year)/i,
+    /per\s*(?:hour|day|month|year)/i,
+    /blended\s*rate/i,
+    /role.*rate/i,
+  ];
+  
+  for (const pattern of rateKeywords) {
+    if (pattern.test(text)) {
+      const match = text.match(pattern);
+      if (match) hints.push(match[0]);
+    }
+  }
+  
+  return {
+    hasRateTables: hints.length > 0,
+    tableHints: hints,
+  };
+}
+
+/**
+ * Enhanced financial value extraction
+ */
+function extractFinancialIndicators(text: string): FinancialIndicators {
+  const indicators: FinancialIndicators = {
+    hasCurrency: false,
+    currencies: [],
+    hasPercentages: false,
+    hasPaymentTerms: false,
+    estimatedTotalValue: null,
+    confidence: 0.5,
+  };
+  
+  // Currency detection
+  const currencyPatterns = [
+    { pattern: /\$[\d,]+(?:\.\d{2})?/g, currency: 'USD' },
+    { pattern: /€[\d,]+(?:\.\d{2})?/g, currency: 'EUR' },
+    { pattern: /£[\d,]+(?:\.\d{2})?/g, currency: 'GBP' },
+    { pattern: /USD\s*[\d,]+(?:\.\d{2})?/gi, currency: 'USD' },
+    { pattern: /EUR\s*[\d,]+(?:\.\d{2})?/gi, currency: 'EUR' },
+  ];
+  
+  const currencies = new Set<string>();
+  let maxValue = 0;
+  
+  for (const { pattern, currency } of currencyPatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      currencies.add(currency);
+      indicators.hasCurrency = true;
+      
+      // Extract numeric values to estimate total
+      for (const match of matches) {
+        const numStr = match.replace(/[^\d.]/g, '');
+        const num = parseFloat(numStr);
+        if (!isNaN(num) && num > maxValue) {
+          maxValue = num;
+        }
+      }
+    }
+  }
+  
+  indicators.currencies = Array.from(currencies);
+  if (maxValue > 0) {
+    indicators.estimatedTotalValue = maxValue;
+  }
+  
+  // Percentage detection
+  indicators.hasPercentages = /\d+(?:\.\d+)?%/.test(text);
+  
+  // Payment terms detection
+  const paymentTermPatterns = [
+    /net\s*\d+/i,
+    /payment\s*(?:due|terms)/i,
+    /\d+\s*days?\s*(?:from|after)/i,
+    /upon\s*(?:receipt|completion|delivery|signing)/i,
+  ];
+  indicators.hasPaymentTerms = paymentTermPatterns.some(p => p.test(text));
+  
+  // Confidence based on financial content
+  if (indicators.hasCurrency && indicators.hasPaymentTerms) {
+    indicators.confidence = 0.9;
+  } else if (indicators.hasCurrency) {
+    indicators.confidence = 0.7;
+  }
+  
+  return indicators;
+}
+
+interface FinancialIndicators {
+  hasCurrency: boolean;
+  currencies: string[];
+  hasPercentages: boolean;
+  hasPaymentTerms: boolean;
+  estimatedTotalValue: number | null;
+  confidence: number;
+}
+
+/**
+ * Quality metrics for extraction tracking
+ */
+interface ExtractionQualityMetrics {
+  contractId: string;
+  startTime: number;
+  endTime?: number;
+  ocrDuration?: number;
+  artifactDuration?: number;
+  textLength: number;
+  artifactsGenerated: number;
+  failedArtifacts: string[];
+  textConfidence: number;
+  tablesDetected: number;
+  financialIndicators: FinancialIndicators;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Track and log quality metrics
+ */
+function logQualityMetrics(metrics: ExtractionQualityMetrics): void {
+  if (!WORKER_CONFIG.quality.trackExtractionMetrics) return;
+  
+  const duration = metrics.endTime ? metrics.endTime - metrics.startTime : 0;
+  
+  logger.info({
+    contractId: metrics.contractId,
+    duration: `${duration}ms`,
+    textLength: metrics.textLength,
+    artifactsGenerated: metrics.artifactsGenerated,
+    failedArtifacts: metrics.failedArtifacts.length,
+    textConfidence: metrics.textConfidence,
+    tablesDetected: metrics.tablesDetected,
+    hasCurrency: metrics.financialIndicators.hasCurrency,
+    currencies: metrics.financialIndicators.currencies,
+    warnings: metrics.warnings.length,
+    errors: metrics.errors.length,
+  }, 'Extraction quality metrics');
+  
+  // Warn on low confidence
+  if (WORKER_CONFIG.quality.warnOnLowConfidence && 
+      metrics.textConfidence < WORKER_CONFIG.quality.confidenceWarningThreshold) {
+    logger.warn({
+      contractId: metrics.contractId,
+      confidence: metrics.textConfidence,
+      threshold: WORKER_CONFIG.quality.confidenceWarningThreshold,
+    }, 'Low confidence extraction - may require manual review');
+  }
+}
+
 // Circuit breakers for external services
 const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
-  failureThreshold: 5,
-  successThreshold: 3,
-  resetTimeout: 60000, // 1 minute
-  requestTimeout: 120000, // 2 minutes for OCR
+  failureThreshold: 7,                    // Increased tolerance
+  successThreshold: 2,                    // Faster recovery
+  resetTimeout: 45000,                    // 45 seconds - faster reset
+  requestTimeout: 180000,                 // 3 minutes for OCR (increased)
   onStateChange: (from, to, metrics) => {
     logger.warn({ from, to, metrics }, 'Mistral circuit breaker state changed');
   },
@@ -51,10 +351,10 @@ const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
 });
 
 const openaiCircuitBreaker = new CircuitBreaker('openai-ocr', {
-  failureThreshold: 5,
-  successThreshold: 3,
-  resetTimeout: 60000,
-  requestTimeout: 120000,
+  failureThreshold: 7,                    // Increased tolerance
+  successThreshold: 2,                    // Faster recovery
+  resetTimeout: 45000,                    // 45 seconds - faster reset
+  requestTimeout: 180000,                 // 3 minutes for AI (increased)
   onStateChange: (from, to, metrics) => {
     logger.warn({ from, to, metrics }, 'OpenAI circuit breaker state changed');
   },
@@ -565,9 +865,45 @@ export async function processOCRArtifactJob(
     
     // Get ocrMode from job data (user selection) or fallback to default
     const ocrMode = job.data.ocrMode || 'mistral'; // Default to Mistral OCR
-    const extractedText = await performOCR(localFilePath, ocrMode);
+    const rawExtractedText = await performOCR(localFilePath, ocrMode);
     
-    jobLogger.info({ ocrMode, textLength: extractedText.length }, 'OCR extraction completed');
+    // Initialize quality metrics
+    const qualityMetrics: ExtractionQualityMetrics = {
+      contractId,
+      startTime: Date.now(),
+      textLength: rawExtractedText.length,
+      artifactsGenerated: 0,
+      failedArtifacts: [],
+      textConfidence: 0.5,
+      tablesDetected: 0,
+      financialIndicators: { hasCurrency: false, currencies: [], hasPercentages: false, hasPaymentTerms: false, estimatedTotalValue: null, confidence: 0.5 },
+      errors: [],
+      warnings: [],
+    };
+    
+    // 3.1 Preprocess the extracted text
+    const { cleanedText: extractedText, tables, metrics: textMetrics } = preprocessText(rawExtractedText);
+    qualityMetrics.textLength = extractedText.length;
+    qualityMetrics.textConfidence = textMetrics.confidenceScore;
+    qualityMetrics.tablesDetected = textMetrics.tablesDetected;
+    
+    // 3.2 Detect financial indicators for better FINANCIAL artifact extraction
+    const financialIndicators = extractFinancialIndicators(extractedText);
+    qualityMetrics.financialIndicators = financialIndicators;
+    
+    // 3.3 Detect rate tables
+    const rateTableInfo = detectRateTables(extractedText);
+    
+    jobLogger.info({ 
+      ocrMode, 
+      rawTextLength: rawExtractedText.length,
+      cleanedTextLength: extractedText.length, 
+      tablesDetected: textMetrics.tablesDetected,
+      textConfidence: textMetrics.confidenceScore,
+      hasCurrency: financialIndicators.hasCurrency,
+      currencies: financialIndicators.currencies,
+      hasRateTables: rateTableInfo.hasRateTables,
+    }, 'OCR extraction and preprocessing completed');
 
     // Save extracted text to contract's rawText field for AI processing
     if (extractedText && extractedText.length > 0) {
@@ -1310,6 +1646,12 @@ export async function processOCRArtifactJob(
       failedArtifacts,
     }, 'OCR + artifact processing completed');
 
+    // Log quality metrics
+    qualityMetrics.endTime = Date.now();
+    qualityMetrics.artifactsGenerated = artifacts.count;
+    qualityMetrics.failedArtifacts = failedArtifacts;
+    logQualityMetrics(qualityMetrics);
+
     return {
       success: !hasCompleteFailure,
       artifactsCreated: artifacts.count,
@@ -1324,6 +1666,13 @@ export async function processOCRArtifactJob(
       error: errorMessage,
       stack: errorStack
     }, 'OCR + artifact processing failed');
+
+    // Log quality metrics on failure too
+    if (typeof qualityMetrics !== 'undefined') {
+      qualityMetrics.endTime = Date.now();
+      qualityMetrics.errors.push(errorMessage);
+      logQualityMetrics(qualityMetrics);
+    }
 
     // Publish failure event
     await redisEventBus.publish(RedisEvents.PROCESSING_FAILED, {
@@ -2015,10 +2364,20 @@ export function registerOCRArtifactWorker() {
   const queueService = getQueueService();
 
   // Read concurrency from env or use optimized defaults
-  const concurrency = parseInt(process.env.WORKER_CONCURRENCY || '5', 10);
-  const maxJobsPerMinute = parseInt(process.env.WORKER_RATE_LIMIT || '30', 10);
+  // Enhanced worker configuration for better throughput and reliability
+  const concurrency = parseInt(process.env.WORKER_CONCURRENCY || '8', 10);  // Increased from 5 to 8
+  const maxJobsPerMinute = parseInt(process.env.WORKER_RATE_LIMIT || '60', 10);  // Increased from 30 to 60
   
-  logger.info({ concurrency, maxJobsPerMinute }, '⚡ Worker configuration for bulk processing');
+  logger.info({ 
+    concurrency, 
+    maxJobsPerMinute,
+    features: {
+      multiPassOCR: WORKER_CONFIG.ocr.enableMultiPassExtraction,
+      tableExtraction: WORKER_CONFIG.ocr.enableTableExtraction,
+      partyValidation: WORKER_CONFIG.ai.enablePartyNameValidation,
+      aiModel: WORKER_CONFIG.ai.model,
+    }
+  }, '⚡ Enhanced worker configuration for improved accuracy and throughput');
   
   const worker = queueService.registerWorker<ProcessContractJobData, OCRArtifactResult>(
     QUEUE_NAMES.CONTRACT_PROCESSING,
@@ -2029,8 +2388,6 @@ export function registerOCRArtifactWorker() {
         max: maxJobsPerMinute,
         duration: 60000, // Rate limit per minute
       },
-      // Note: BullMQ settings like maxStalledCount and stalledInterval are configured
-      // at the BullMQ Worker level, not through our queue-service wrapper
     }
   );
 

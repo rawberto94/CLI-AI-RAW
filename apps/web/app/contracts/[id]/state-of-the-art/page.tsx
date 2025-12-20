@@ -586,7 +586,11 @@ export default function StateOfTheArtContractPage() {
                   <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
                   <CardHeader>
                     <CardTitle>AI-Powered Insights</CardTitle>
-                    <CardDescription>Coming soon...</CardDescription>
+                    <CardDescription>
+                      {artifacts && artifacts.length > 0 
+                        ? 'Review the generated artifacts above for AI insights about this contract.' 
+                        : 'Generate artifacts to unlock AI-powered insights about this contract.'}
+                    </CardDescription>
                   </CardHeader>
                 </Card>
               </motion.div>

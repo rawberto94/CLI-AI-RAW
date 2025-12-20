@@ -10,6 +10,9 @@ import { prisma } from '@/lib/prisma';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs/promises';
 import path from 'path';
+import { getApiTenantId } from '@/lib/tenant-server';
+import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
+import cors from '@/lib/security/cors';
 
 // Initialize S3 client for MinIO
 const s3Client = new S3Client({
@@ -43,9 +46,17 @@ export async function GET(
       );
     }
 
-    // Get contract from database
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get contract from database with tenant isolation
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       select: {
         id: true,
         fileName: true,
@@ -102,18 +113,31 @@ export async function GET(
 
     // If S3 failed or not S3 path, try local file system
     if (!fileBuffer) {
-      const localPath = contract.storagePath || path.join(process.cwd(), 'uploads', contract.fileName || '');
+      // Sanitize file paths to prevent path traversal
+      const safeFileName = contract.fileName ? sanitizePath(contract.fileName) : '';
+      const safeStoragePath = contract.storagePath ? sanitizePath(contract.storagePath) : '';
+      
+      // Check for path traversal attempts
+      if (hasPathTraversal(contract.fileName || '') || hasPathTraversal(contract.storagePath || '')) {
+        console.error('Path traversal attempt detected:', { fileName: contract.fileName, storagePath: contract.storagePath });
+        return NextResponse.json(
+          { success: false, error: 'Invalid file path' },
+          { status: 400 }
+        );
+      }
+      
+      const localPath = safeStoragePath || path.join(process.cwd(), 'uploads', safeFileName);
       
       try {
         // Check if file exists
         await fs.access(localPath);
         fileBuffer = await fs.readFile(localPath);
       } catch (localError) {
-        // Try alternate paths
+        // Try alternate paths with sanitized filename
         const alternatePaths = [
-          path.join(process.cwd(), 'uploads', contractId, contract.fileName || ''),
-          path.join(process.cwd(), 'data', 'contracts', contract.fileName || ''),
-          path.join('/tmp', 'uploads', contract.fileName || ''),
+          path.join(process.cwd(), 'uploads', contractId, safeFileName),
+          path.join(process.cwd(), 'data', 'contracts', safeFileName),
+          path.join('/tmp', 'uploads', safeFileName),
         ];
 
         let found = false;
@@ -157,7 +181,11 @@ export async function GET(
     headers.set('Cache-Control', 'private, max-age=3600'); // Cache for 1 hour
     headers.set('X-Content-Type-Options', 'nosniff');
     // Allow embedding - don't set X-Frame-Options to allow PDF viewing
-    headers.set('Access-Control-Allow-Origin', '*');
+    // CORS handled by cors utility for production security
+    const corsOrigin = cors.getCorsOrigin(request);
+    if (corsOrigin) {
+      headers.set('Access-Control-Allow-Origin', corsOrigin);
+    }
     headers.set('Access-Control-Expose-Headers', 'Content-Length, Content-Type');
 
     return new NextResponse(new Uint8Array(fileBuffer), {

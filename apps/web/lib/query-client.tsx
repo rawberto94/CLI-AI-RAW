@@ -21,6 +21,8 @@ export const STALE_TIMES = {
   realtime: 10 * 1000,         // 10 seconds
   // Never stale (force refetch every time)
   never: 0,
+  // Infinite - never refetch automatically
+  infinite: Infinity,
 };
 
 // Query key prefixes for categorization
@@ -47,16 +49,22 @@ const defaultQueryClientOptions = {
     refetchOnWindowFocus: true,
     // Refetch on reconnect
     refetchOnReconnect: true,
+    // Don't refetch on mount if data is fresh
+    refetchOnMount: true,
     // Don't throw errors on failed queries (handle in UI)
     throwOnError: false,
     // Enable network mode for better offline support
     networkMode: 'offlineFirst' as const,
+    // Use structural sharing for better performance
+    structuralSharing: true,
   },
   mutations: {
     // Retry mutations once
     retry: 1,
-    // Network mode for mutations
+    // Network mode for mutations - only run when online
     networkMode: 'online' as const,
+    // Optimistic updates should not throw
+    throwOnError: false,
   },
 };
 

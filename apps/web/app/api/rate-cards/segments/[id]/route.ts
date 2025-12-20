@@ -12,11 +12,16 @@ const segmentService = new SegmentManagementService(prisma);
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const searchParams = request.nextUrl.searchParams;
-    
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     const segment = await segmentService.getSegment(params.id, tenantId);
 
@@ -41,8 +46,16 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
-    const userId = session?.user?.id || body.userId || 'system';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    const userId = session?.user?.id || 'system';
 
     const segment = await segmentService.updateSegment(
       params.id,
@@ -73,12 +86,18 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const searchParams = request.nextUrl.searchParams;
-    
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
-    const userId = session?.user?.id || searchParams.get('userId') || 'system';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    const userId = session?.user?.id || 'system';
 
     await segmentService.deleteSegment(params.id, tenantId, userId);
 

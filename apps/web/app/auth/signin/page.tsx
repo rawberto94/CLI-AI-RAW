@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap } from "lucide-react";
+import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap, Eye, EyeOff, Quote, Star } from "lucide-react";
 import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
 
 // Floating Particles Component
@@ -169,6 +169,101 @@ function AnimatedCounter({ value, label, icon: Icon }: { value: string; label: s
   );
 }
 
+// Testimonial Data
+const testimonials = [
+  {
+    quote: "ConTigo reduced our contract review time by 75%. The AI insights are incredibly accurate.",
+    author: "Sarah Chen",
+    role: "VP of Procurement",
+    company: "TechCorp Inc.",
+    avatar: "SC",
+    rating: 5,
+  },
+  {
+    quote: "Finally, a contract management tool that understands our workflow. Game-changer for our legal team.",
+    author: "Michael Torres",
+    role: "General Counsel",
+    company: "Global Logistics",
+    avatar: "MT",
+    rating: 5,
+  },
+  {
+    quote: "The automated alerts saved us from missing a critical renewal. Worth every penny.",
+    author: "Emily Watson",
+    role: "Contract Manager",
+    company: "Healthcare Plus",
+    avatar: "EW",
+    rating: 5,
+  },
+];
+
+// Auto-rotating Testimonial Component
+function TestimonialCarousel() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const testimonial = testimonials[currentIndex];
+
+  return (
+    <motion.div 
+      className="relative mt-6 max-w-md mx-auto"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.5 }}
+    >
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
+        <Quote className="w-6 h-6 text-white/40 mb-3" />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="text-white/90 text-sm leading-relaxed mb-4">
+              "{testimonial.quote}"
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center text-white font-semibold text-sm border border-white/20">
+                {testimonial.avatar}
+              </div>
+              <div className="flex-1">
+                <div className="text-white font-medium text-sm">{testimonial.author}</div>
+                <div className="text-purple-200 text-xs">{testimonial.role}, {testimonial.company}</div>
+              </div>
+              <div className="flex gap-0.5">
+                {Array.from({ length: testimonial.rating }).map((_, i) => (
+                  <Star key={i} className="w-3 h-3 text-amber-400 fill-amber-400" />
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+        {/* Pagination dots */}
+        <div className="flex justify-center gap-1.5 mt-4">
+          {testimonials.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                idx === currentIndex ? "bg-white w-6" : "bg-white/30 hover:bg-white/50"
+              }`}
+              aria-label={`Go to testimonial ${idx + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // SSO Provider Icons
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -207,9 +302,11 @@ function SignInForm() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
   
   // Configured providers (would be passed from server in production)
   const [providers, setProviders] = useState<string[]>(["credentials"]);
@@ -369,6 +466,9 @@ function SignInForm() {
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Testimonial Carousel */}
+          <TestimonialCarousel />
         </div>
         
         <motion.div 
@@ -453,25 +553,35 @@ function SignInForm() {
           </div>
 
         {registered && (
-          <div className="mb-4 p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md">
+          <motion.div 
+            className="mb-4 p-3 text-sm text-green-600 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
             Account created successfully! Please sign in.
-          </div>
+          </motion.div>
         )}
 
         {/* SSO Buttons */}
         {hasSSO && (
           <>
-            <div className="space-y-3 mb-6">
+            <motion.div 
+              className="space-y-3 mb-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
               {providers.includes("google") && (
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-3"
+                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 group"
                   onClick={() => handleSSOSignIn("google")}
                   disabled={ssoLoading !== null}
                 >
-                  <GoogleIcon className="w-5 h-5" />
-                  {ssoLoading === "google" ? "Signing in..." : "Continue with Google"}
+                  <GoogleIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-medium">{ssoLoading === "google" ? "Signing in..." : "Continue with Google"}</span>
                 </Button>
               )}
               
@@ -479,12 +589,12 @@ function SignInForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-3"
+                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 group"
                   onClick={() => handleSSOSignIn("microsoft-entra-id")}
                   disabled={ssoLoading !== null}
                 >
-                  <MicrosoftIcon className="w-5 h-5" />
-                  {ssoLoading === "microsoft-entra-id" ? "Signing in..." : "Continue with Microsoft"}
+                  <MicrosoftIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-medium">{ssoLoading === "microsoft-entra-id" ? "Signing in..." : "Continue with Microsoft"}</span>
                 </Button>
               )}
               
@@ -492,22 +602,22 @@ function SignInForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full flex items-center justify-center gap-3"
+                  className="w-full h-11 flex items-center justify-center gap-3 rounded-xl border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 group"
                   onClick={() => handleSSOSignIn("github")}
                   disabled={ssoLoading !== null}
                 >
-                  <GitHubIcon className="w-5 h-5" />
-                  {ssoLoading === "github" ? "Signing in..." : "Continue with GitHub"}
+                  <GitHubIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  <span className="font-medium">{ssoLoading === "github" ? "Signing in..." : "Continue with GitHub"}</span>
                 </Button>
               )}
-            </div>
+            </motion.div>
 
             <div className="relative mb-6">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-slate-200" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
+                <span className="bg-white px-3 text-slate-400 font-medium">
                   Or continue with email
                 </span>
               </div>
@@ -544,29 +654,64 @@ function SignInForm() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
           >
-            <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-slate-700 font-medium">Password</Label>
+              <Link href="/auth/forgot-password" className="text-xs text-purple-600 hover:text-purple-700 hover:underline underline-offset-2 transition-colors">
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative mt-1.5">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={handlePasswordChange}
                 placeholder="••••••••"
                 required
                 disabled={loading}
-                className="pl-10 h-11 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all hover:border-slate-300"
+                className="pl-10 pr-10 h-11 rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 transition-all hover:border-slate-300"
                 autoComplete="current-password"
                 aria-describedby={error ? "signin-error" : undefined}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus:text-purple-500"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </motion.div>
 
+          {/* Remember me checkbox */}
+          <motion.div
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.35 }}
+          >
+            <input
+              id="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500/20 transition-colors cursor-pointer"
+            />
+            <Label htmlFor="remember-me" className="text-sm text-slate-600 font-normal cursor-pointer select-none">
+              Remember me for 30 days
+            </Label>
+          </motion.div>
+
           {error && (
-            <div 
+            <motion.div 
               id="signin-error"
               role="alert"
-              className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md flex items-center gap-2 animate-in slide-in-from-top-1 duration-200"
+              className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2"
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.2 }}
             >
               <svg className="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -636,6 +781,26 @@ function SignInForm() {
           </motion.div>
         )}
         </Card>
+
+        {/* Trusted By Section */}
+        <motion.div 
+          className="mt-8 text-center"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.7 }}
+        >
+          <p className="text-xs text-slate-400 mb-4">Trusted by leading companies worldwide</p>
+          <div className="flex items-center justify-center gap-6 opacity-50 grayscale hover:opacity-70 hover:grayscale-0 transition-all duration-500">
+            {/* Placeholder company logos - these would be actual logos in production */}
+            <div className="text-slate-400 font-semibold text-sm">TechCorp</div>
+            <div className="w-px h-4 bg-slate-200" />
+            <div className="text-slate-400 font-semibold text-sm">GlobalTech</div>
+            <div className="w-px h-4 bg-slate-200" />
+            <div className="text-slate-400 font-semibold text-sm">Innovate</div>
+            <div className="w-px h-4 bg-slate-200" />
+            <div className="text-slate-400 font-semibold text-sm">Enterprise</div>
+          </div>
+        </motion.div>
         </motion.div>
       </div>
     </div>
@@ -644,7 +809,14 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+          <p className="text-slate-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    }>
       <SignInForm />
     </Suspense>
   );

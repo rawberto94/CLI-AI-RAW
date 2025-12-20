@@ -6,7 +6,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { operation, contractIds } = body
     const dataMode = request.headers.get('x-data-mode') || 'real'
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const tenantId = request.headers.get('x-tenant-id')
+
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      )
+    }
 
     if (!contractIds || !Array.isArray(contractIds) || contractIds.length === 0) {
       return NextResponse.json(

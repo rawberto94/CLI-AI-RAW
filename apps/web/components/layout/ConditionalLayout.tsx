@@ -5,6 +5,8 @@ import EnhancedNavigation from '@/components/layout/EnhancedNavigation';
 import { FloatingDataModeToggle } from '@/components/ui/DataModeToggle';
 import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 import { WelcomeTutorial } from '@/components/WelcomeTutorial';
+import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
+import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist';
 import { Suspense, useEffect } from 'react';
 
 interface ConditionalLayoutProps {
@@ -62,6 +64,12 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
       </Suspense>
       <Suspense fallback={null}>
         <WelcomeTutorial />
+      </Suspense>
+      {/* Mobile bottom navigation */}
+      <MobileBottomNav />
+      {/* Onboarding checklist for new users */}
+      <Suspense fallback={null}>
+        <OnboardingChecklist />
       </Suspense>
     </>
   );

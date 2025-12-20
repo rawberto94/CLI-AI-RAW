@@ -8,6 +8,15 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
   try {
     const { id } = params;
     const body = await request.json();
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    // Require tenant ID for security
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     
     // Check data mode from header
     const dataMode = request.headers.get('x-data-mode') || 'real';
@@ -44,14 +53,14 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       editedBy,
     } = body;
 
-    // Fetch current rate card
-    const currentRateCard = await prisma.rateCardEntry.findUnique({
-      where: { id },
+    // Fetch current rate card - scoped to tenant
+    const currentRateCard = await prisma.rateCardEntry.findFirst({
+      where: { id, tenantId },
     });
 
     if (!currentRateCard) {
       return NextResponse.json(
-        { error: 'Rate card not found' },
+        { error: 'Rate card not found or access denied' },
         { status: 404 }
       );
     }
@@ -144,9 +153,17 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const params = await props.params;
   try {
     const { id } = params;
+    const tenantId = request.headers.get('x-tenant-id');
 
-    const rateCard = await prisma.rateCardEntry.findUnique({
-      where: { id },
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    const rateCard = await prisma.rateCardEntry.findFirst({
+      where: { id, tenantId },
       include: {
         supplier: true,
         contract: {

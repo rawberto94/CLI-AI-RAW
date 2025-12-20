@@ -14,9 +14,99 @@ import pino from 'pino';
 const logger = pino({ name: 'artifact-generator-worker' });
 const prisma = getClient();
 
+// Enhanced configuration for error recovery
+const ARTIFACT_CONFIG = {
+  maxRetries: 3,
+  retryDelayMs: 1000,
+  retryBackoffMultiplier: 2,
+  timeoutMs: 120000, // 2 minutes per artifact
+  enableFallbackOnError: true,
+  continueOnPartialFailure: true,
+};
+
+/**
+ * Retry helper with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries: number;
+    initialDelay: number;
+    backoffMultiplier: number;
+    operationName: string;
+  }
+): Promise<T> {
+  let lastError: Error | null = null;
+  let delay = options.initialDelay;
+  
+  for (let attempt = 1; attempt <= options.maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      
+      if (attempt < options.maxRetries) {
+        logger.warn({
+          operation: options.operationName,
+          attempt,
+          maxRetries: options.maxRetries,
+          delay,
+          error: lastError.message,
+        }, `${options.operationName} failed, retrying...`);
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= options.backoffMultiplier;
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+/**
+ * Safely parse JSON with error handling
+ */
+function safeParseJSON(text: string, artifactType: string): Record<string, any> | null {
+  try {
+    // Remove markdown code blocks if present
+    let cleanText = text.trim();
+    if (cleanText.startsWith('```json')) {
+      cleanText = cleanText.slice(7);
+    } else if (cleanText.startsWith('```')) {
+      cleanText = cleanText.slice(3);
+    }
+    if (cleanText.endsWith('```')) {
+      cleanText = cleanText.slice(0, -3);
+    }
+    cleanText = cleanText.trim();
+    
+    return JSON.parse(cleanText);
+  } catch (error) {
+    logger.warn({
+      artifactType,
+      error: error instanceof Error ? error.message : String(error),
+      textPreview: text.substring(0, 200),
+    }, 'Failed to parse JSON response');
+    
+    // Try to extract JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch {
+        return null;
+      }
+    }
+    
+    return null;
+  }
+}
+
 interface ArtifactResult {
   artifactsCreated: number;
   artifactIds: string[];
+  failedArtifacts?: string[];
+  partialSuccess?: boolean;
 }
 
 /**
@@ -62,27 +152,44 @@ export async function generateArtifactsJob(
     ];
 
     let progressBase = 10;
+    const failedArtifacts: string[] = [];
 
-    // Generate each artifact
+    // Generate each artifact with retry logic
     for (const { type, weight } of artifactTypes) {
       try {
         logger.info({ contractId, type }, `Generating ${type} artifact`);
 
-        // Simulate AI generation (replace with actual OpenAI call)
-        const artifactData = await generateArtifactData(type, contractText, contractId);
+        // Use retry with backoff for better reliability
+        const artifactData = await retryWithBackoff(
+          () => generateArtifactData(type, contractText, contractId),
+          {
+            maxRetries: ARTIFACT_CONFIG.maxRetries,
+            initialDelay: ARTIFACT_CONFIG.retryDelayMs,
+            backoffMultiplier: ARTIFACT_CONFIG.retryBackoffMultiplier,
+            operationName: `Generate ${type}`,
+          }
+        );
 
-        // Save artifact to database
-        const artifact = await prisma.artifact.create({
-          data: {
-            contractId,
-            tenantId,
-            type,
-            data: artifactData,
-            validationStatus: 'valid',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        });
+        // Save artifact to database with retry
+        const artifact = await retryWithBackoff(
+          () => prisma.artifact.create({
+            data: {
+              contractId,
+              tenantId,
+              type,
+              data: artifactData,
+              validationStatus: 'valid',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          }),
+          {
+            maxRetries: 2,
+            initialDelay: 500,
+            backoffMultiplier: 2,
+            operationName: `Save ${type} artifact`,
+          }
+        );
 
         artifactIds.push(artifact.id);
         logger.info({ contractId, artifactId: artifact.id, type }, 'Artifact created');
@@ -90,16 +197,48 @@ export async function generateArtifactsJob(
         progressBase += weight;
         await job.updateProgress(progressBase);
       } catch (error) {
-        logger.error({ error, contractId, type }, `Failed to generate ${type} artifact`);
-        // Continue with other artifacts even if one fails
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error({ error: errorMsg, contractId, type }, `Failed to generate ${type} artifact after retries`);
+        failedArtifacts.push(type);
+        
+        // If fallback is enabled, try to create a minimal artifact
+        if (ARTIFACT_CONFIG.enableFallbackOnError) {
+          try {
+            const fallbackData = getFallbackArtifactData(type, contractId);
+            await prisma.artifact.create({
+              data: {
+                contractId,
+                tenantId,
+                type,
+                data: { ...fallbackData, _fallback: true, _error: errorMsg },
+                validationStatus: 'needs_review',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+              },
+            });
+            logger.info({ contractId, type }, 'Fallback artifact created');
+          } catch (fallbackError) {
+            logger.warn({ contractId, type, fallbackError }, 'Failed to create fallback artifact');
+          }
+        }
+        
+        // Continue with other artifacts if configured
+        if (!ARTIFACT_CONFIG.continueOnPartialFailure) {
+          throw error;
+        }
       }
     }
 
-    // Update contract status to completed
+    // Determine final status
+    const hasPartialSuccess = failedArtifacts.length > 0 && artifactIds.length > 0;
+    const hasCompleteFailure = artifactIds.length === 0;
+    const finalStatus = hasCompleteFailure ? 'FAILED' : 'COMPLETED';
+
+    // Update contract status based on outcome
     await prisma.contract.update({
       where: { id: contractId },
       data: {
-        status: 'COMPLETED',
+        status: finalStatus,
         updatedAt: new Date(),
       },
     });
@@ -107,13 +246,20 @@ export async function generateArtifactsJob(
     await job.updateProgress(100);
 
     logger.info(
-      { contractId, artifactCount: artifactIds.length },
+      { 
+        contractId, 
+        artifactCount: artifactIds.length,
+        failedCount: failedArtifacts.length,
+        partialSuccess: hasPartialSuccess,
+      },
       'Artifact generation completed'
     );
 
     return {
       artifactsCreated: artifactIds.length,
       artifactIds,
+      failedArtifacts: failedArtifacts.length > 0 ? failedArtifacts : undefined,
+      partialSuccess: hasPartialSuccess,
     };
   } catch (error) {
     logger.error({ error, contractId, jobId: job.id }, 'Artifact generation failed');
@@ -173,14 +319,31 @@ If you cannot find specific information, return null - NEVER fabricate data.`;
 {
   "summary": { "value": "A 2-3 sentence executive summary", "source": "quote or section ref", "extractedFromText": true },
   "contractType": { "value": "Type (Service Agreement, NDA, MSA, SOW, etc)", "source": "where found", "extractedFromText": true },
-  "parties": [{"name": "Party name", "role": "Client/Vendor/etc", "source": "quote showing party name"}],
+  "parties": [
+    {
+      "name": "ACTUAL company/person name (e.g., 'Acme Corporation', 'John Smith LLC') - NOT generic placeholders",
+      "role": "Client/Vendor/Service Provider/etc",
+      "source": "Direct quote showing the party name from the contract",
+      "isPlaceholder": false
+    }
+  ],
   "effectiveDate": { "value": "YYYY-MM-DD", "source": "quote", "extractedFromText": true } or null,
   "expirationDate": { "value": "YYYY-MM-DD", "source": "quote", "extractedFromText": true } or null,
   "totalValue": { "value": number, "source": "quote", "extractedFromText": true } or null,
   "currency": "USD/EUR/GBP/etc",
   "keyTerms": ["list", "of", "key", "terms"],
+  "governingLaw": "State/Country if mentioned",
+  "jurisdiction": "Court jurisdiction if mentioned",
+  "redFlags": ["List any concerning terms or missing protections"],
   "certainty": 0.85
 }
+
+CRITICAL PARTY NAME EXTRACTION RULES:
+1. Extract the ACTUAL company/person names, NOT placeholder text like "Client Name" or "Service Provider"
+2. Look for party names in: opening paragraphs, signature blocks, recitals, definitions section
+3. If the document uses placeholders (e.g., "[Client Name]", "Client Name", "Party A"), set isPlaceholder: true
+4. Search for patterns like "between X and Y", "This agreement is entered into by", signature lines
+5. If only placeholders exist, still extract them but mark isPlaceholder: true
 
 IMPORTANT: Only include data EXPLICITLY stated in the contract. Use null for missing fields.
 

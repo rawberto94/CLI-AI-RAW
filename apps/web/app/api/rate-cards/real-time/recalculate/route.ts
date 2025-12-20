@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/security/tenant';
 import { RealTimeBenchmarkService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
@@ -15,6 +16,11 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -27,9 +33,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify rate card exists
+    // Verify rate card exists with tenant isolation
     const rateCard = await prisma.rateCardEntry.findUnique({
-      where: { id: rateCardEntryId },
+      where: { id: rateCardEntryId, tenantId },
     });
 
     if (!rateCard) {

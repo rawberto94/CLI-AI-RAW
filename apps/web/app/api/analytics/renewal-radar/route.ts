@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const contractId = searchParams.get('contractId');
-    const tenantId = searchParams.get('tenantId') || 'default';
+    const tenantId = getApiTenantId(request);
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
 
     const renewalEngine = analyticalIntelligenceService.getRenewalEngine();
 

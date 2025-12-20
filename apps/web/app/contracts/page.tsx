@@ -128,6 +128,12 @@ import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForAppr
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
+import { QuickStatsBar, generateContractStats } from "@/components/contracts/QuickStatsBar";
+import { ContractHoverPreview } from "@/components/contracts/ContractHoverPreview";
+import { KeyboardShortcutsHint } from "@/components/contracts/KeyboardShortcutsHelp";
+import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
+import { CommandPaletteSearch } from "@/components/contracts/CommandPaletteSearch";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
 
@@ -958,6 +964,7 @@ export default function ContractsPage() {
   const [showFilters, setShowFilters] = useState(true);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   
   // Category filter state
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -1074,6 +1081,18 @@ export default function ContractsPage() {
       }
     };
     fetchCategories();
+  }, []);
+
+  // Command palette keyboard shortcut (⌘K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   
   // Bulk categorize selected contracts
@@ -1542,7 +1561,7 @@ export default function ContractsPage() {
     const thirtyDays = 30 * 24 * 60 * 60 * 1000;
     const ninetyDays = 90 * 24 * 60 * 60 * 1000;
     
-    // Calculate week-over-week trends (mock data for now - would come from API)
+    // Calculate real trends from actual contract data
     const totalValue = contracts.reduce((sum, c) => sum + (c.value || 0), 0);
     const expiringSoon = contracts.filter(c => {
       if (!c.expirationDate) return false;
@@ -1552,11 +1571,29 @@ export default function ContractsPage() {
     const highRisk = contracts.filter(c => (c.riskScore || 0) >= 70).length;
     const processing = contracts.filter(c => c.status === 'processing').length;
     
+    // Calculate real month-over-month change
+    const thisMonth = contracts.filter(c => {
+      if (!c.createdAt) return false;
+      const created = new Date(c.createdAt);
+      const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+      return created >= monthAgo;
+    }).length;
+    const previousMonth = contracts.filter(c => {
+      if (!c.createdAt) return false;
+      const created = new Date(c.createdAt);
+      const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+      const twoMonthsAgo = new Date(now - 60 * 24 * 60 * 60 * 1000);
+      return created >= twoMonthsAgo && created < monthAgo;
+    }).length;
+    const monthlyChange = previousMonth > 0 
+      ? Math.round(((thisMonth - previousMonth) / previousMonth) * 100 * 10) / 10 
+      : thisMonth > 0 ? 100 : 0;
+    
     return {
       totalContracts: contractsData?.total ?? contracts.length,
       activeContracts: contracts.filter(c => c.status === 'completed').length,
       totalValue,
-      monthlyChange: 12.5, // Would come from API - mock for now
+      monthlyChange,
       expiringSoon,
       expiringThisWeek: contracts.filter(c => {
         if (!c.expirationDate) return false;
@@ -1571,16 +1608,28 @@ export default function ContractsPage() {
         if (!c.createdAt) return false;
         return new Date(c.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000;
       }).length,
-      // Sparkline data (mock - would come from analytics API)
-      trendData: [
-        { date: 'Mon', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-        { date: 'Tue', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-        { date: 'Wed', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-        { date: 'Thu', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-        { date: 'Fri', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-        { date: 'Sat', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-        { date: 'Sun', contracts: Math.floor(Math.random() * 5) + 1, value: Math.floor(Math.random() * 50000) + 10000 },
-      ],
+      // Calculate real sparkline data from actual contracts
+      trendData: (() => {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const last7Days = Array.from({ length: 7 }, (_, i) => {
+          const date = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
+          const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+          const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+          
+          const dayContracts = contracts.filter(c => {
+            if (!c.createdAt) return false;
+            const created = new Date(c.createdAt);
+            return created >= dayStart && created < dayEnd;
+          });
+          
+          return {
+            date: days[date.getDay()],
+            contracts: dayContracts.length,
+            value: dayContracts.reduce((sum, c) => sum + (c.value || 0), 0)
+          };
+        });
+        return last7Days;
+      })(),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contracts, contractsData?.total]);
@@ -1612,6 +1661,11 @@ export default function ContractsPage() {
       completeness: contract.status === 'completed' ? 100 : contract.status === 'processing' ? (contract.processing?.progress || 50) : 0,
       keyTerms: [],
       tags: [],
+      // Include hierarchy info
+      parentContractId: contract.parentContractId,
+      parentContract: contract.parentContract,
+      childContracts: contract.childContracts,
+      hasHierarchy: contract.hasHierarchy,
     } satisfies EnhancedContract));
   }, [paginatedContracts, favoriteContracts]);
 
@@ -1870,7 +1924,7 @@ export default function ContractsPage() {
         <div className="min-h-screen bg-slate-50">
           <ContractsPageHeader
             onRefresh={() => refetch()}
-            onAdvancedSearch={() => {}}
+            onAdvancedSearch={() => setShowAdvancedSearch(true)}
             isRefreshing={true}
           />
           <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
@@ -1938,6 +1992,31 @@ export default function ContractsPage() {
 
   return (
     <TooltipProvider>
+    {/* Command Palette for Quick Search (⌘K) */}
+    <CommandPaletteSearch
+      isOpen={showCommandPalette}
+      onClose={() => setShowCommandPalette(false)}
+      onSearch={(query) => {
+        setSearchQuery(query);
+        setShowCommandPalette(false);
+      }}
+      onAISearch={(query) => {
+        window.dispatchEvent(new CustomEvent('openAIChatbot', {
+          detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
+        }));
+        setShowCommandPalette(false);
+      }}
+      onFilterChange={(filter, value) => {
+        if (filter === 'risk') setRiskFilters([value]);
+        if (filter === 'status') setStatusFilter(value);
+        if (filter === 'expiration') setExpirationFilters([value]);
+      }}
+      onNavigate={(contractId) => pushToContract(contractId)}
+      recentContracts={contracts.slice(0, 5).map(c => ({ id: c.id, title: c.filename || c.title || 'Untitled' }))}
+      onUploadClick={() => router.push('/upload')}
+      onExportClick={() => handleExportFiltered('csv')}
+    />
+    
     <div className="min-h-screen bg-slate-50">
       <ContractsPageHeader
         onRefresh={() => refetch()}
@@ -2130,304 +2209,63 @@ export default function ContractsPage() {
           className="mb-4"
         />
 
-        {/* Search & Filters */}
-        <Card className="bg-white border-slate-200 shadow-sm rounded-xl">
-          <CardContent className="p-3">
-            <div className="flex flex-col sm:flex-row gap-2">
-              {/* Main Search Input */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <Input
-                  placeholder="Search contracts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-20 h-9 border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 bg-white text-sm rounded-lg"
-                  data-testid="contract-search"
-                />
-                {searchQuery ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100 rounded-md"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                ) : (
-                  <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 border border-slate-200 rounded">
-                    ⌘K
-                  </kbd>
-                )}
-              </div>
-              
-              {/* AI Chat Search Button */}
-              <Button
-                onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
-                  detail: { autoMessage: searchQuery ? `Search for contracts matching: ${searchQuery}` : 'Help me find contracts' }
-                }))}
-                className="h-9 gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-medium rounded-lg px-3"
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ask AI</span>
-              </Button>
+        {/* Quick Stats Bar - Inline summary with clickable filters */}
+        <QuickStatsBar
+          stats={generateContractStats({
+            total: contractsData?.total ?? contracts.length,
+            totalValue: contracts.reduce((sum, c) => sum + (c.value || 0), 0),
+            expiringSoon: contracts.filter(c => {
+              if (!c.expirationDate) return false;
+              const days = Math.ceil((new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              return days >= 0 && days <= 30;
+            }).length,
+            highRisk: contracts.filter(c => (c.riskScore || 0) >= 70).length,
+            processing: contracts.filter(c => c.status === 'processing').length,
+            recentlyAdded: contracts.filter(c => {
+              if (!c.createdAt) return false;
+              return new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
+            }).length,
+            onFilterClick: (filter) => {
+              clearFilters();
+              if (filter === 'expiring') setExpirationFilters(['expiring-30']);
+              if (filter === 'high-risk') setRiskFilters(['high']);
+              if (filter === 'processing') setStatusFilter('processing');
+              if (filter === 'recent') setDateRangeFilter('week');
+            },
+          })}
+          compact
+          className="mb-3"
+        />
 
-              {/* Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={cn(
-                  "inline-flex items-center gap-2 h-9 px-3 text-sm font-medium rounded-lg border transition-colors",
-                  showFilters 
-                    ? "bg-slate-100 border-slate-300 text-slate-900" 
-                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                )}
-              >
-                <Filter className="h-4 w-4" />
-                <span className="hidden sm:inline">Filters</span>
-                {activeFilterCount > 0 && (
-                  <span className="bg-violet-600 text-white h-5 min-w-[20px] rounded text-xs flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Compact Inline Filters */}
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
-                    {/* Status Pills */}
-                    <div className="flex items-center gap-1" data-testid="status-filters">
-                      <span className="text-xs text-slate-500 mr-1.5">Status:</span>
-                      {[
-                        { id: 'all', label: 'All', dot: 'bg-slate-400' },
-                        { id: 'completed', label: 'Active', dot: 'bg-emerald-500' },
-                        { id: 'processing', label: 'Processing', dot: 'bg-blue-500' },
-                        { id: 'failed', label: 'Failed', dot: 'bg-red-500' },
-                      ].map((status) => (
-                        <button
-                          key={status.id}
-                          onClick={() => setStatusFilter(status.id)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-all",
-                            statusFilter === status.id 
-                              ? "bg-slate-900 text-white font-medium" 
-                              : "text-slate-600 hover:bg-slate-100"
-                          )}
-                        >
-                          <span className={cn("w-1.5 h-1.5 rounded-full", status.dot)} />
-                          {status.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="h-4 w-px bg-slate-200" />
-
-                    {/* Filter Dropdowns */}
-                    <div className="flex items-center gap-1.5">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
-                            riskFilters.length > 0 
-                              ? "bg-orange-50 border-orange-200 text-orange-700" 
-                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                          )}>
-                            <Shield className="h-3.5 w-3.5" />
-                            Risk
-                            {riskFilters.length > 0 && (
-                              <span className="bg-orange-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
-                                {riskFilters.length}
-                              </span>
-                            )}
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-40">
-                          {RISK_LEVELS.map((level) => (
-                            <DropdownMenuItem
-                              key={level.value}
-                              onClick={() => setRiskFilters(prev => 
-                                prev.includes(level.value) ? prev.filter(r => r !== level.value) : [...prev, level.value]
-                              )}
-                              className="text-sm"
-                            >
-                              <Checkbox checked={riskFilters.includes(level.value)} className="mr-2 h-3.5 w-3.5" />
-                              {level.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
-                            typeFilters.length > 0 
-                              ? "bg-indigo-50 border-indigo-200 text-indigo-700" 
-                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                          )}>
-                            <Tag className="h-3.5 w-3.5" />
-                            Type
-                            {typeFilters.length > 0 && (
-                              <span className="bg-indigo-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
-                                {typeFilters.length}
-                              </span>
-                            )}
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-48">
-                          {CONTRACT_TYPES.map((type) => (
-                            <DropdownMenuItem
-                              key={type}
-                              onClick={() => setTypeFilters(prev => 
-                                prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-                              )}
-                              className="text-sm"
-                            >
-                              <Checkbox checked={typeFilters.includes(type)} className="mr-2 h-3.5 w-3.5" />
-                              {type}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
-                            expirationFilters.length > 0 
-                              ? "bg-amber-50 border-amber-200 text-amber-700" 
-                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                          )}>
-                            <CalendarClock className="h-3.5 w-3.5" />
-                            Expires
-                            {expirationFilters.length > 0 && (
-                              <span className="bg-amber-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
-                                {expirationFilters.length}
-                              </span>
-                            )}
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-44">
-                          {EXPIRATION_FILTERS.map((exp) => {
-                            const ExpIcon = exp.icon;
-                            return (
-                              <DropdownMenuItem
-                                key={exp.value}
-                                onClick={() => setExpirationFilters(prev => 
-                                  prev.includes(exp.value) ? prev.filter(e => e !== exp.value) : [...prev, exp.value]
-                                )}
-                                className="text-sm"
-                              >
-                                <Checkbox checked={expirationFilters.includes(exp.value)} className="mr-2 h-3.5 w-3.5" />
-                                <ExpIcon className={cn("h-3.5 w-3.5 mr-1.5", exp.color)} />
-                                {exp.label}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all border",
-                            supplierFilters.length > 0 
-                              ? "bg-teal-50 border-teal-200 text-teal-700" 
-                              : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                          )}>
-                            <Building2 className="h-3.5 w-3.5" />
-                            Supplier
-                            {supplierFilters.length > 0 && (
-                              <span className="bg-teal-500 text-white w-4 h-4 rounded-full text-[10px] flex items-center justify-center">
-                                {supplierFilters.length}
-                              </span>
-                            )}
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56 max-h-64 overflow-y-auto">
-                          {Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort().map((supplier) => (
-                            <DropdownMenuItem
-                              key={supplier}
-                              onClick={() => setSupplierFilters(prev => 
-                                prev.includes(supplier!) ? prev.filter(s => s !== supplier) : [...prev, supplier!]
-                              )}
-                              className="text-sm"
-                            >
-                              <Checkbox checked={supplierFilters.includes(supplier!)} className="mr-2 h-3.5 w-3.5" />
-                              <span className="truncate">{supplier}</span>
-                            </DropdownMenuItem>
-                          ))}
-                          {(!contracts || contracts.every(c => !c.parties?.supplier)) && (
-                            <div className="text-xs text-slate-400 px-2 py-1.5">No suppliers found</div>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    {/* Clear All */}
-                    {hasActiveFilters && (
-                      <button
-                        onClick={clearFilters}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Active Filter Summary */}
-                  {hasActiveFilters && (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-slate-100"
-                    >
-                      <span className="text-xs text-slate-500">Active:</span>
-                      {searchQuery && (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs">
-                          &quot;{searchQuery}&quot;
-                          <button onClick={() => setSearchQuery("")} className="hover:text-red-600"><X className="h-3 w-3" /></button>
-                        </span>
-                      )}
-                      {statusFilter !== 'all' && (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 text-slate-700 rounded text-xs capitalize">
-                          {statusFilter === 'completed' ? 'Active' : statusFilter}
-                          <button onClick={() => setStatusFilter('all')} className="hover:text-red-600"><X className="h-3 w-3" /></button>
-                        </span>
-                      )}
-                      {riskFilters.map(risk => (
-                        <span key={risk} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">
-                          {RISK_LEVELS.find(l => l.value === risk)?.label}
-                          <button onClick={() => setRiskFilters(prev => prev.filter(r => r !== risk))} className="hover:text-red-600"><X className="h-3 w-3" /></button>
-                        </span>
-                      ))}
-                      {typeFilters.map(type => (
-                        <span key={type} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs">
-                          {type}
-                          <button onClick={() => setTypeFilters(prev => prev.filter(t => t !== type))} className="hover:text-red-600"><X className="h-3 w-3" /></button>
-                        </span>
-                      ))}
-                      {expirationFilters.map(exp => (
-                        <span key={exp} className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
-                          {EXPIRATION_FILTERS.find(e => e.value === exp)?.label}
-                          <button onClick={() => setExpirationFilters(prev => prev.filter(e => e !== exp))} className="hover:text-red-600"><X className="h-3 w-3" /></button>
-                        </span>
-                      ))}
-                    </motion.div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </CardContent>
-        </Card>
+        {/* State of the Art Search & Filters */}
+        <StateOfTheArtSearch
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          riskFilters={riskFilters}
+          onRiskFiltersChange={setRiskFilters}
+          typeFilters={typeFilters}
+          onTypeFiltersChange={setTypeFilters}
+          expirationFilters={expirationFilters}
+          onExpirationFiltersChange={setExpirationFilters}
+          supplierFilters={supplierFilters}
+          onSupplierFiltersChange={setSupplierFilters}
+          categoryFilter={null}
+          onCategoryFilterChange={() => {}}
+          valueRangeFilter={null}
+          onValueRangeFilterChange={() => {}}
+          dateRangeFilter={dateRangeFilter}
+          onDateRangeFilterChange={setDateRangeFilter}
+          suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
+          categories={[]}
+          onClearFilters={clearFilters}
+          onAISearchClick={(query) => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+            detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
+          }))}
+          activeFilterCount={activeFilterCount}
+          totalResults={contractsData?.total ?? 0}
+        />
 
         {/* Processing Contracts Live Tracker */}
         <AnimatePresence>
@@ -2552,6 +2390,22 @@ export default function ContractsPage() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Keyboard Shortcuts Hint */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    // Dispatch keyboard shortcut help event
+                    window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
+                  }}
+                  className="h-8 w-8 flex items-center justify-center border border-slate-200 rounded-md hover:bg-slate-50 transition-colors text-slate-400 hover:text-slate-600"
+                >
+                  <kbd className="text-[10px] font-mono">?</kbd>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Keyboard shortcuts</TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -3099,7 +2953,9 @@ export default function ContractsPage() {
               toast.success('Contracts archived');
               break;
             case 'tag':
-              toast.info('Tag management coming soon');
+              // Open tag management dialog
+              toast.info('Opening tag management for selected contracts');
+              router.push(`/settings/tags?contracts=${Array.from(selectedContracts).join(',')}`);
               break;
             case 'compare':
               if (selectedContracts.size === 2) {
@@ -3111,7 +2967,7 @@ export default function ContractsPage() {
               break;
             default:
               console.log('Unhandled action:', actionId);
-              toast.info(`Action "${actionId}" coming soon`);
+              toast.warning(`Action "${actionId}" is not available for the current selection`);
               break;
           }
         }}

@@ -70,7 +70,15 @@ async function getPrisma() {
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     
     let webhooks: WebhookConfig[] = [];
     
@@ -89,9 +97,15 @@ export async function GET(request: NextRequest) {
       webhooks = Array.from(webhookStore.values()).filter(w => w.tenantId === tenantId);
     }
 
+    // Mask secrets before returning - never expose webhook secrets in API responses
+    const safeWebhooks = webhooks.map(w => ({
+      ...w,
+      secret: w.secret ? `${w.secret.substring(0, 4)}...${w.secret.substring(w.secret.length - 4)}` : undefined,
+    }));
+
     return NextResponse.json({
       success: true,
-      data: webhooks,
+      data: safeWebhooks,
       meta: {
         total: webhooks.length,
         supportedEvents: WEBHOOK_EVENTS,
@@ -112,7 +126,16 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const body = await request.json();
     
     const { name, url, events, isActive = true } = body;
@@ -177,7 +200,13 @@ export async function POST(request: NextRequest) {
         const dbWebhook = await (prisma as unknown as { webhookConfig: { create: (opts: unknown) => Promise<WebhookConfig> } }).webhookConfig.create({
           data: webhook,
         });
-        return NextResponse.json({ success: true, data: dbWebhook, message: 'Webhook created successfully' }, { status: 201 });
+        // Note: Secret is returned once on creation so user can store it - subsequent GETs will mask it
+        return NextResponse.json({ 
+          success: true, 
+          data: dbWebhook, 
+          message: 'Webhook created successfully. Save the secret now - it will not be shown again.',
+          _warning: 'Store this secret securely. It will be masked in future responses.'
+        }, { status: 201 });
       } catch {
         webhookStore.set(webhook.id, webhook);
       }
@@ -185,7 +214,13 @@ export async function POST(request: NextRequest) {
       webhookStore.set(webhook.id, webhook);
     }
 
-    return NextResponse.json({ success: true, data: webhook, message: 'Webhook created successfully' }, { status: 201 });
+    // Note: Secret is returned once on creation so user can store it - subsequent GETs will mask it
+    return NextResponse.json({ 
+      success: true, 
+      data: webhook, 
+      message: 'Webhook created successfully. Save the secret now - it will not be shown again.',
+      _warning: 'Store this secret securely. It will be masked in future responses.'
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating webhook:', error);
     return NextResponse.json({ success: false, error: 'Failed to create webhook' }, { status: 500 });
@@ -198,7 +233,16 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     const webhookId = searchParams.get('id');
     

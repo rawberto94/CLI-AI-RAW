@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 
 // ============================================================================
@@ -99,7 +100,15 @@ async function calculateCategoryPath(
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     
     const includeInactive = searchParams.get("includeInactive") === "true";
@@ -173,7 +182,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+    
     const body: TaxonomyCategoryInput = await request.json();
 
     // Validate required fields
@@ -299,13 +316,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "GET, POST, PUT, DELETE, OPTIONS");
 }

@@ -10,8 +10,10 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const body = await request.json().catch(() => ({}));
-    const tenantId = body.tenantId || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
     
     // Get all contracts with expiration dates
     const contracts = await prisma.contract.findMany({
@@ -169,8 +171,10 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
 
     const stats = await prisma.$queryRaw<Array<{
       total: bigint; expired: bigint; critical: bigint; high: bigint;

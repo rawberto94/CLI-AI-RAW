@@ -21,7 +21,14 @@ async function getPrisma() {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     
     const prisma = await getPrisma();
     let webhook: WebhookConfig | null = null;
@@ -43,7 +50,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: false, error: 'Webhook not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: webhook });
+    // Mask secret before returning - never expose full webhook secrets
+    const safeWebhook = {
+      ...webhook,
+      secret: webhook.secret ? `${webhook.secret.substring(0, 4)}...${webhook.secret.substring(webhook.secret.length - 4)}` : undefined,
+    };
+
+    return NextResponse.json({ success: true, data: safeWebhook });
   } catch (error) {
     console.error('Error fetching webhook:', error);
     return NextResponse.json({ success: false, error: 'Failed to fetch webhook' }, { status: 500 });
@@ -53,7 +66,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const body = await request.json();
     
     const { name, url, events, isActive } = body;
@@ -99,7 +120,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
           where: { id, tenantId },
           data: updateData,
         });
-        return NextResponse.json({ success: true, data: webhook, message: 'Webhook updated successfully' });
+        // Mask secret in response
+        const safeWebhook = { ...webhook, secret: webhook.secret ? `${webhook.secret.substring(0, 4)}...` : undefined };
+        return NextResponse.json({ success: true, data: safeWebhook, message: 'Webhook updated successfully' });
       } catch { /* try in-memory */ }
     }
     
@@ -107,7 +130,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (stored && stored.tenantId === tenantId) {
       const updated = { ...stored, ...updateData };
       webhookStore.set(id, updated);
-      return NextResponse.json({ success: true, data: updated, message: 'Webhook updated successfully' });
+      // Mask secret in response
+      const safeUpdated = { ...updated, secret: updated.secret ? `${updated.secret.substring(0, 4)}...` : undefined };
+      return NextResponse.json({ success: true, data: safeUpdated, message: 'Webhook updated successfully' });
     }
 
     return NextResponse.json({ success: false, error: 'Webhook not found' }, { status: 404 });
@@ -120,7 +145,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     
     const prisma = await getPrisma();
     

@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 
 // ============================================================================
@@ -73,7 +74,15 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     const includeChildren = searchParams.get("includeChildren") === "true";
 
@@ -135,7 +144,15 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+    
     const body: TaxonomyCategoryUpdate = await request.json();
 
     // Find existing category
@@ -308,7 +325,15 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+    
     const { searchParams } = new URL(request.url);
     
     // Options for deletion
@@ -447,13 +472,6 @@ export async function DELETE(
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "GET, PUT, DELETE, OPTIONS");
 }

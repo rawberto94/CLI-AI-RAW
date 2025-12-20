@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from '@/lib/security/tenant';
 import { StrategicRecommendationsService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
+    const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     // Generate strategic recommendations

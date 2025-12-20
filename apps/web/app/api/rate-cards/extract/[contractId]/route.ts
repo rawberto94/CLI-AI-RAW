@@ -14,13 +14,20 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
   try {
     const { contractId } = params;
 
-    // Get tenant ID from session/auth (placeholder)
-    const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';
+    // Get tenant ID from header
+    const tenantId = request.headers.get('x-tenant-id');
     const userId = request.headers.get('x-user-id') || 'system';
 
-    // Validate contract exists and has text
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate contract exists and has text - scoped to tenant
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       select: {
         id: true,
         rawText: true,
@@ -152,7 +159,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ contr
   const params = await props.params;
   try {
     const { contractId } = params;
-    const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Check if rate cards already exist for this contract
     const existingRateCards = await (prisma as any).rateCardEntry.findMany({

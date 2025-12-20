@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { negotiationScenarioService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
+    const tenantId = await getApiTenantId(request);
     const volume = searchParams.get('volume');
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Missing tenantId' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     const scenarios = await negotiationScenarioService.generateScenarios(

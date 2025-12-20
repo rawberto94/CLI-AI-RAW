@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 /**
  * GET /api/rate-cards/comparisons/[id]/export
@@ -8,12 +9,17 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const format = searchParams.get('format') || 'pdf';
 
-    // Fetch the comparison with all details
+    // Fetch the comparison with all details - tenant isolated
     const comparison = await prisma.rateComparison.findUnique({
-      where: { id: params.id },
+      where: { id: params.id, tenantId },
       include: {
         targetRate: true,
       },

@@ -11,13 +11,14 @@ const rateCardService = new RateCardEntryService(prisma);
  */
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
-    
-    // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
 
     if (!query || query.length < 2) {
       return NextResponse.json([]);

@@ -32,10 +32,11 @@ COPY . .
 # Generate Prisma client
 RUN cd packages/clients/db && pnpm prisma generate
 
-# Build Next.js app
+# Build Next.js app with increased memory
 WORKDIR /app/apps/web
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NODE_ENV production
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN pnpm build
 
 # Stage 3: Runner
@@ -44,6 +45,7 @@ WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs

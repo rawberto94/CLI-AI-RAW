@@ -7,13 +7,16 @@
  * - Auto-categorize contract
  * - Calculate health score
  * - Trigger notifications
+ * - Index for RAG search
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 import { runPostProcessingHooks } from "@/lib/post-processing-hooks";
 import { AutoPopulateService, type AutoPopulateConfig } from "@/lib/services/auto-populate.service";
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
+import { triggerContractReindex } from "@/lib/rag/reindex-trigger";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -24,7 +27,8 @@ type HookType =
   | "metadata-extraction"  // AI-powered metadata extraction
   | "categorization"       // Auto-categorize contract type
   | "health-score"         // Calculate contract health
-  | "notifications";       // Send relevant notifications
+  | "notifications"        // Send relevant notifications
+  | "rag-indexing";        // Index for RAG search
 
 interface PostProcessRequest {
   hooks?: HookType[];
@@ -53,7 +57,7 @@ export async function POST(
     // Get options from body
     const body: PostProcessRequest = await request.json().catch(() => ({}));
     const { 
-      hooks = ["metadata-extraction", "categorization"], 
+      hooks = ["metadata-extraction", "categorization", "rag-indexing"], 
       metadataOptions = {} 
     } = body;
 
@@ -148,6 +152,31 @@ export async function POST(
       }
     }
 
+    // 5. RAG Indexing - Index contract text for semantic search
+    if (hooks.includes("rag-indexing")) {
+      try {
+        console.log(`🔍 Indexing contract for RAG search: ${contractId}...`);
+        const reindexResult = await triggerContractReindex(contractId, {
+          tenantId,
+          deleteExisting: true,
+        });
+        results.ragIndexing = {
+          success: reindexResult.success,
+          chunksCreated: reindexResult.chunksCreated,
+          error: reindexResult.error,
+        };
+        if (reindexResult.success) {
+          console.log(`✅ RAG indexing complete: ${reindexResult.chunksCreated} chunks created`);
+        } else {
+          console.warn(`⚠️ RAG indexing failed: ${reindexResult.error}`);
+        }
+      } catch (error) {
+        console.error("RAG indexing error:", error);
+        errors.ragIndexing = error instanceof Error ? error.message : "Unknown error";
+        results.ragIndexing = { success: false };
+      }
+    }
+
     const hasErrors = Object.keys(errors).length > 0;
     const allFailed = Object.values(results).every(r => !r.success);
 
@@ -180,13 +209,6 @@ export async function POST(
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "POST, OPTIONS");
 }

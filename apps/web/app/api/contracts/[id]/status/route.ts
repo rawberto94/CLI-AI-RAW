@@ -15,6 +15,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Tenant isolation helper
+function getTenantId(request: NextRequest): string | null {
+  return request.headers.get('x-tenant-id');
+}
+
 // Processing stage definitions with estimated durations
 const PROCESSING_STAGES = {
   upload: { order: 1, name: 'Upload', estimatedMs: 5000 },
@@ -62,6 +67,7 @@ export async function GET(
   try {
     const params = await context.params;
     const contractId = params.id;
+    const tenantId = getTenantId(request);
 
     if (!contractId) {
       return NextResponse.json(
@@ -70,9 +76,16 @@ export async function GET(
       );
     }
 
-    // Fetch contract with artifacts and processing job
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch contract with artifacts and processing job - scoped to tenant
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       include: {
         artifacts: {
           select: {

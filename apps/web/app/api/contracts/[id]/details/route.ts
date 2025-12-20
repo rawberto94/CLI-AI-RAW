@@ -15,6 +15,7 @@ export async function GET(
   try {
     const params = await context.params;
     const contractId = params.id;
+    const tenantId = request.headers.get('x-tenant-id');
 
     if (!contractId) {
       return NextResponse.json(
@@ -23,9 +24,16 @@ export async function GET(
       );
     }
 
-    // Fetch contract with artifacts
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch contract with artifacts - scoped to tenant
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       include: {
         artifacts: {
           orderBy: { createdAt: 'desc' }

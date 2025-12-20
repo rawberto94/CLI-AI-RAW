@@ -16,3 +16,6 @@ export {
   MobileNavigationProvider,
   BottomNavigation,
 } from './MobileNavigation';
+
+// Search Spotlight
+export { SearchSpotlight, useSearchSpotlight } from './SearchSpotlight';

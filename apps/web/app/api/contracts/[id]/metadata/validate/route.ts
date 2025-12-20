@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import cors from '@/lib/security/cors';
 import OpenAI from 'openai';
 import { getApiTenantId } from '@/lib/tenant-server';
 
@@ -529,14 +530,6 @@ function generateMockValidation(fields: [string, any][]): ValidationResult {
 /**
  * OPTIONS handler for CORS
  */
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-tenant-id',
-      'Access-Control-Max-Age': '86400'
-    }
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, 'GET, POST, PUT, OPTIONS');
 }

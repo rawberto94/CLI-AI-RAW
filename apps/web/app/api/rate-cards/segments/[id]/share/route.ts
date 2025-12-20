@@ -16,8 +16,16 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
-    const userId = session?.user?.id || body.userId || 'system';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    const userId = session?.user?.id || 'system';
 
     const segment = await segmentService.shareSegment(params.id, tenantId, userId);
 
@@ -38,12 +46,18 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const searchParams = request.nextUrl.searchParams;
-    
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
-    const userId = session?.user?.id || searchParams.get('userId') || 'system';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    const userId = session?.user?.id || 'system';
 
     const segment = await segmentService.unshareSegment(params.id, tenantId, userId);
 

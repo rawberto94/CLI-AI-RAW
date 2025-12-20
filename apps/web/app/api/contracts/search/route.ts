@@ -37,6 +37,13 @@ type HybridSearchResult = {
     uploadedAt: Date;
     status: string;
   };
+  // Contract hierarchy
+  hierarchy?: {
+    parentContractId?: string | null;
+    parentContract?: { id: string; fileName: string; contractType?: string | null } | null;
+    childCount?: number;
+    hasHierarchy?: boolean;
+  };
 };
 
 type HybridSearchResponse = {
@@ -150,6 +157,10 @@ async function performRealSearch(
       .filter((value) => value.includes(normalizedQuery))
       .map((value) => value.replace(normalizedQuery, `<mark>${normalizedQuery}</mark>`));
 
+    // Extract hierarchy info from contract
+    const childCount = (contract as any)._count?.childContracts ?? (contract as any).childContracts?.length ?? 0;
+    const hasHierarchy = !!(contract as any).parentContractId || childCount > 0;
+
     return {
       id: `${contract.id}-match-${index}`,
       contractId: contract.id,
@@ -171,6 +182,13 @@ async function performRealSearch(
         uploadedAt: contract.uploadedAt || contract.createdAt,
         status: contract.status.toLowerCase(),
       },
+      // Include hierarchy information
+      hierarchy: hasHierarchy ? {
+        parentContractId: (contract as any).parentContractId ?? null,
+        parentContract: (contract as any).parentContract ?? null,
+        childCount,
+        hasHierarchy,
+      } : undefined,
     };
   });
 

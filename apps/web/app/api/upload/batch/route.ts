@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       items.push({ name, blob: one as Blob, filename: name })
     }
 
-    // Resolve tenant id from header, cookie, or query param; default to demo in dev/local
+    // Resolve tenant id from header, cookie, or query param
     const url = new URL(req.url)
     let tenant = req.headers.get('x-tenant-id') || url.searchParams.get('tenant') || undefined
     if (!tenant) {
@@ -38,7 +38,11 @@ export async function POST(req: Request) {
         if (m && m[1]) tenant = decodeURIComponent(m[1])
       } catch {}
     }
-    if (!tenant && process.env['NODE_ENV'] !== 'production') tenant = 'demo'
+    
+    // Require tenant ID - no fallback to demo
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant ID is required" }, { status: 400 })
+    }
 
     const results = []
     

@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,9 +49,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
 
   try {
-    const tenantId = request.headers.get("x-tenant-id") || 
-                     searchParams.get("tenantId") || 
-                     "demo";
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
     
     const groupBy = (searchParams.get("groupBy") || "status") as GroupBy;
     const includeContracts = searchParams.get("includeContracts") === "true";

@@ -6,12 +6,24 @@
  * - Rate limiting
  * - Security headers
  * - Tenant ID injection
+ * - Request tracing (X-Request-ID)
+ * - Performance timing
  */
 
 export const runtime = 'nodejs'; // Force nodejs runtime for middleware
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+
+/**
+ * Generate a unique request ID for tracing
+ * Format: prefix_timestamp_random (e.g., req_1703097600000_a1b2c3d4)
+ */
+function generateRequestId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 10);
+  return `req_${timestamp}_${random}`;
+}
 
 // Rate limiting configuration (in-memory for middleware)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -112,6 +124,10 @@ function hasAdminAccess(role: string | undefined): boolean {
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+  const startTime = Date.now();
+  
+  // Generate or use existing request ID for tracing
+  const requestId = req.headers.get('x-request-id') || generateRequestId();
 
   // Rate limiting for API routes with tiered limits
   if (pathname.startsWith("/api/")) {
@@ -132,33 +148,41 @@ export default auth((req) => {
     const rateLimit = checkRateLimit(identifier, maxRequests);
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: 'Too Many Requests', message: 'Rate limit exceeded' },
+        { error: 'Too Many Requests', message: 'Rate limit exceeded', requestId },
         { 
           status: 429,
           headers: {
             'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
             'X-RateLimit-Remaining': '0',
             'Retry-After': '60',
+            'X-Request-ID': requestId,
           },
         }
       );
     }
   }
 
+  // Helper to add tracing headers to responses
+  const addTracingHeaders = (response: NextResponse): NextResponse => {
+    response.headers.set('X-Request-ID', requestId);
+    response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`);
+    return response;
+  };
+
   // Allow public paths
   if (publicPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+    return addTracingHeaders(NextResponse.next());
   }
 
   // Allow public API paths
   if (publicApiPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+    return addTracingHeaders(NextResponse.next());
   }
 
   // Allow dev-only API paths in development mode
   const isDevelopment = process.env.NODE_ENV === 'development';
   if (isDevelopment && devOnlyApiPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+    return addTracingHeaders(NextResponse.next());
   }
 
   // Check if user is authenticated
@@ -174,10 +198,11 @@ export default auth((req) => {
     if (!hasAdminAccess(userRole)) {
       // Return 403 for API routes, redirect for pages
       if (pathname.startsWith("/api/")) {
-        return NextResponse.json(
-          { error: "Forbidden", message: "Admin access required" },
+        const response = NextResponse.json(
+          { error: "Forbidden", message: "Admin access required", requestId },
           { status: 403 }
         );
+        return addTracingHeaders(response);
       }
       return NextResponse.redirect(new URL("/", req.url));
     }
@@ -187,17 +212,19 @@ export default auth((req) => {
   const requireAuth = process.env.REQUIRE_AUTH === "true";
   if (requireAuth && !req.auth.user?.tenantId) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json(
-        { error: "Unauthorized", message: "Tenant ID required" },
+      const response = NextResponse.json(
+        { error: "Unauthorized", message: "Tenant ID required", requestId },
         { status: 401 }
       );
+      return addTracingHeaders(response);
     }
     return NextResponse.redirect(new URL("/auth/signin", req.url));
   }
 
-  // Add tenant ID and user ID to headers for API routes
+  // Add tenant ID, user ID, and request ID to headers for API routes
   if (pathname.startsWith("/api/")) {
     const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-request-id", requestId);
     if (req.auth.user?.tenantId) {
       requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
     }
@@ -205,15 +232,18 @@ export default auth((req) => {
       requestHeaders.set("x-user-id", req.auth.user.id);
     }
 
-    return NextResponse.next({
+    const response = NextResponse.next({
       request: {
         headers: requestHeaders,
       },
     });
+    return addTracingHeaders(response);
   }
 
   // Apply security headers
   const response = NextResponse.next();
+  response.headers.set('X-Request-ID', requestId);
+  response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`);
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'origin-when-cross-origin');

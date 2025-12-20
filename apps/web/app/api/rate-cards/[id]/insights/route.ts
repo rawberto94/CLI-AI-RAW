@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from '@/lib/security/tenant';
 import { AIInsightsGeneratorService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
@@ -7,11 +8,16 @@ import { AIInsightsGeneratorService } from 'data-orchestration/services';
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
+
     const { id } = params;
 
-    // Get rate card entry
+    // Get rate card entry with tenant isolation
     const rateCard = await prisma.rateCardEntry.findUnique({
-      where: { id },
+      where: { id, tenantId },
     });
 
     if (!rateCard) {

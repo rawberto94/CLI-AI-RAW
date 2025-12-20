@@ -3,7 +3,9 @@ export {
   TourProvider,
   useTour,
   FeatureBeacon,
-  OnboardingChecklist,
+  OnboardingChecklist as OnboardingChecklistLegacy,
   WelcomeModal,
   Coachmark,
 } from './Onboarding';
+export { QuickStartGuide, useQuickStartGuide } from './QuickStartGuide';
+export { OnboardingChecklist, useOnboardingStep } from './OnboardingChecklist';

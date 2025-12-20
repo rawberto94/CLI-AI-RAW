@@ -31,7 +31,15 @@ export async function POST(request: NextRequest) {
     }
     
     const body: TriggerPayload = await request.json();
-    const tenantId = body.tenantId || request.headers.get('x-tenant-id') || 'demo';
+    const tenantId = body.tenantId || request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const { event, data } = body;
     
     if (!event || !WEBHOOK_EVENTS.includes(event)) {

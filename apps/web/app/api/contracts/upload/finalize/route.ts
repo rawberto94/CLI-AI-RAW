@@ -7,10 +7,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile, writeFile, mkdir, rm, readdir } from 'fs/promises';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { existsSync } from 'fs';
 import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration } from '@/lib/artifact-trigger';
+import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -35,6 +36,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Prevent path traversal attacks - sanitize fileName
+    if (hasPathTraversal(fileName)) {
+      return NextResponse.json(
+        { error: 'Invalid file name' },
+        { status: 400 }
+      );
+    }
+    
+    // Use only the basename to prevent directory traversal
+    const safeFileName = basename(sanitizePath(fileName)) || `contract-${Date.now()}`;
+
     console.log(`🔄 Finalizing upload: ${uploadId}`);
 
     // Get chunks directory
@@ -54,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Combine all chunks
-    const finalFilePath = join(uploadsDir, fileName);
+    const finalFilePath = join(uploadsDir, safeFileName);
     
     // Find all chunks
     const files = await readdir(chunksDir);
@@ -84,7 +96,7 @@ export async function POST(req: NextRequest) {
     console.log(`✅ File combined: ${fileSize} bytes`);
 
     // Detect MIME type
-    const ext = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+    const ext = safeFileName.toLowerCase().substring(safeFileName.lastIndexOf('.'));
     const mimeTypes: Record<string, string> = {
       '.pdf': 'application/pdf',
       '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -99,10 +111,10 @@ export async function POST(req: NextRequest) {
         tenantId,
         status: 'PROCESSING',
         storagePath: finalFilePath,
-        fileName,
+        fileName: safeFileName,
         fileSize: BigInt(fileSize),
         mimeType,
-        originalName: fileName,
+        originalName: fileName,  // Keep original for display purposes
         uploadedBy: 'system',
         createdAt: new Date(),
         updatedAt: new Date(),

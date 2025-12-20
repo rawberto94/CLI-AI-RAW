@@ -289,7 +289,7 @@ export function WelcomeTutorial() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 40 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-2xl"
+          className="relative w-full max-w-3xl"
           role="dialog"
           aria-modal="true"
           aria-labelledby="contigo-tutorial-title"
@@ -351,10 +351,10 @@ export function WelcomeTutorial() {
 
               {/* Step indicator */}
               <div className="relative z-10 flex items-center gap-2 mb-6">
-                <span className="px-3 py-1 text-xs font-semibold rounded-full bg-white/20 text-white backdrop-blur-sm">
+                <span className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/30 text-white backdrop-blur-sm shadow-sm">
                   {currentStep + 1} / {tutorialSteps.length}
                 </span>
-                <span className="text-white/60 text-sm">{step.subtitle}</span>
+                <span className="text-white/80 text-sm font-medium">{step.subtitle}</span>
               </div>
 
               {/* Icon and title */}
@@ -393,8 +393,8 @@ export function WelcomeTutorial() {
             </div>
 
             {/* Features grid */}
-            <div className="p-8">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-8 pt-6 pb-8">
+              <div className="grid grid-cols-2 gap-5">
                 {step.features.map((feature, index) => {
                   const FeatureIcon = feature.icon;
                   return (
@@ -404,15 +404,15 @@ export function WelcomeTutorial() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 + index * 0.08 }}
                       whileHover={{ scale: 1.02, x: 4 }}
-                      className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600 transition-all cursor-default"
+                      className="flex items-start gap-4 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-500 hover:bg-white dark:hover:bg-slate-800 shadow-sm hover:shadow-md transition-all cursor-default"
                     >
                       <div className={cn(
-                        "flex-shrink-0 p-2 rounded-lg bg-gradient-to-br text-white",
+                        "flex-shrink-0 p-2.5 rounded-lg bg-gradient-to-br text-white shadow-md",
                         step.gradient
                       )}>
-                        <FeatureIcon className="h-4 w-4" />
+                        <FeatureIcon className="h-5 w-5" />
                       </div>
-                      <span className="text-sm text-slate-700 dark:text-slate-300 font-medium leading-tight">
+                      <span className="text-sm text-slate-800 dark:text-slate-200 font-semibold leading-tight">
                         {feature.text}
                       </span>
                     </motion.div>

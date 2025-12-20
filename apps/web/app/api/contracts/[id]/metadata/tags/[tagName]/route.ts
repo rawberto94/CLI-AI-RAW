@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { metadataEditorService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 /**
  * DELETE /api/contracts/[id]/metadata/tags/[tagName]
@@ -12,19 +13,16 @@ export async function DELETE(
   const params = await props.params;
   try {
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
+    const tenantId = await getApiTenantId(request);
     const userId = searchParams.get('userId');
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
 
     if (!userId) {
       return NextResponse.json(
         { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
         { status: 400 }
       );
     }

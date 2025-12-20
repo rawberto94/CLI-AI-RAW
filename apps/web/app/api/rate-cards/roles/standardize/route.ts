@@ -9,7 +9,15 @@ import { roleStandardizationService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const body = await request.json();
 
     const { roleOriginal, context } = body;

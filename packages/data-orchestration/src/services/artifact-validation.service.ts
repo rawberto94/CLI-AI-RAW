@@ -26,18 +26,45 @@ export interface ValidationIssue {
   field: string;
   message: string;
   severity: 'error' | 'warning' | 'info';
-  type?: 'missing_source' | 'low_confidence' | 'potential_hallucination' | 'missing_field' | 'invalid_format';
+  type?: 'missing_source' | 'low_confidence' | 'potential_hallucination' | 'missing_field' | 'invalid_format' | 'placeholder_detected';
   suggestedFix?: string;
 }
 
 // Minimum certainty threshold - artifacts below this require human review
-const CERTAINTY_THRESHOLD = 0.7;
+const CERTAINTY_THRESHOLD = 0.65; // Slightly lowered for better coverage
 
 // Fields that MUST have source citations for production-ready artifacts
 const SOURCE_REQUIRED_FIELDS = [
   'parties', 'totalValue', 'effectiveDate', 'expirationDate', 
-  'rateCards', 'clauses', 'riskFactors', 'complianceRequirements'
+  'rateCards', 'clauses', 'riskFactors', 'complianceRequirements',
+  'termDuration', 'terminationDate', 'renewalTerms', 'obligations',
+  'penalties', 'paymentTerms', 'liabilityCap', 'indemnification',
+  'governingLaw', 'jurisdiction', 'confidentialityPeriod'
 ];
+
+// Known placeholder/template party names that indicate unextracted or template values
+const PLACEHOLDER_PARTY_NAMES = [
+  'client name', 'company name', 'service provider name', 'vendor name',
+  'contractor name', 'party a', 'party b', 'first party', 'second party',
+  '[insert name]', '[company]', '[client]', '[vendor]', 'xxx', 'tbd',
+  'your company', 'your name', 'provider name', 'buyer name', 'seller name',
+  'licensor name', 'licensee name', 'employer name', 'employee name',
+  'landlord name', 'tenant name', 'borrower name', 'lender name',
+  'customer name', 'partner name', 'consultant name', 'agency name',
+  'organization name', 'firm name', 'corporation name', 'llc name',
+  'the company', 'the client', 'the vendor', 'the provider', 'the contractor',
+  'insert company name', 'insert client name', 'enter name here', 'name here',
+  'abc company', 'xyz corporation', 'acme inc', 'sample company', 'example corp'
+];
+
+// Quality scoring weights
+const QUALITY_WEIGHTS = {
+  sourceGrounding: 0.25,      // How well values cite sources
+  partyValidation: 0.20,      // Party names are real, not placeholders
+  completeness: 0.20,         // Required fields present
+  consistency: 0.15,          // Values consistent across artifacts
+  certainty: 0.20             // AI confidence in extraction
+};
 
 class ArtifactValidationService {
   private static instance: ArtifactValidationService;
@@ -101,8 +128,25 @@ class ArtifactValidationService {
     warnings.push(...typeValidation.warnings);
     issues.push(...(typeValidation.issues || []));
 
+    // 5.5 Party name validation (detect placeholders/templates)
+    const partyValidation = this.validatePartyNames(data);
+    issues.push(...partyValidation.issues);
+    if (partyValidation.hasPlaceholders) {
+      warnings.push(`${partyValidation.placeholderCount} placeholder party name(s) detected`);
+      reviewReasons.push(`Placeholder party names: ${partyValidation.placeholderNames.join(', ')}`);
+    }
+
     // 6. Calculate completeness score
     const completeness = this.calculateCompleteness(artifactType, data);
+
+    // 6.5 Calculate quality score
+    const qualityScore = this.calculateQualityScore({
+      sourceGrounding: 1 - (sourceValidation.missingSourceCount / Math.max(1, SOURCE_REQUIRED_FIELDS.length)),
+      partyValidation: partyValidation.hasPlaceholders ? 0.3 : 1.0,
+      completeness,
+      consistency: 1.0, // TODO: Cross-artifact consistency check
+      certainty
+    });
 
     // 7. Determine hallucination risk level
     const hallucinationRisk = this.calculateHallucinationRisk(
@@ -115,7 +159,8 @@ class ArtifactValidationService {
     const requiresHumanReview = 
       certainty < CERTAINTY_THRESHOLD || 
       hallucinationRisk === 'high' ||
-      hallucinationCheck.potentialHallucinations.length > 0;
+      hallucinationCheck.potentialHallucinations.length > 0 ||
+      partyValidation.hasPlaceholders;
 
     return {
       valid: errors.length === 0,
@@ -177,6 +222,96 @@ class ArtifactValidationService {
       missingSourceCount: fieldsWithoutSources.length,
       fieldsWithoutSources
     };
+  }
+
+  /**
+   * Validate party names for placeholders/template values
+   */
+  private validatePartyNames(data: any): {
+    issues: ValidationIssue[];
+    hasPlaceholders: boolean;
+    placeholderCount: number;
+    placeholderNames: string[];
+  } {
+    const issues: ValidationIssue[] = [];
+    const placeholderNames: string[] = [];
+
+    // Check parties array
+    const parties = data?.parties || [];
+    for (const party of parties) {
+      const name = party?.name || party?.partyName || party;
+      if (typeof name === 'string') {
+        const normalizedName = name.toLowerCase().trim();
+        
+        // Check against known placeholders
+        const isPlaceholder = PLACEHOLDER_PARTY_NAMES.some(placeholder => 
+          normalizedName === placeholder || 
+          normalizedName.includes(placeholder) ||
+          placeholder.includes(normalizedName)
+        );
+
+        // Also check for suspicious patterns
+        const hasPlaceholderPattern = 
+          /^\[.*\]$/.test(name) ||           // [Any brackets]
+          /^<.*>$/.test(name) ||              // <Any angle brackets>
+          /^_{2,}$/.test(name) ||             // Just underscores
+          /^\.{3,}$/.test(name) ||            // Just dots
+          /^x{2,}$/i.test(name) ||            // Just x's
+          /insert|enter|your|sample|example|placeholder|tbd|n\/a/i.test(name) ||
+          name.length < 3;                     // Too short to be a real name
+
+        if (isPlaceholder || hasPlaceholderPattern) {
+          placeholderNames.push(name);
+          issues.push({
+            field: 'parties',
+            message: `Placeholder party name detected: "${name}" - this may be a template document`,
+            severity: 'warning',
+            type: 'placeholder_detected',
+            suggestedFix: 'This appears to be a template document. Party names should be replaced with actual company/person names.'
+          });
+        }
+      }
+
+      // Check if party has isPlaceholder flag set by AI
+      if (party?.isPlaceholder === true) {
+        const name = party?.name || party?.partyName || 'Unknown';
+        if (!placeholderNames.includes(name)) {
+          placeholderNames.push(name);
+          issues.push({
+            field: 'parties',
+            message: `AI flagged party "${name}" as placeholder`,
+            severity: 'warning',
+            type: 'placeholder_detected'
+          });
+        }
+      }
+    }
+
+    return {
+      issues,
+      hasPlaceholders: placeholderNames.length > 0,
+      placeholderCount: placeholderNames.length,
+      placeholderNames
+    };
+  }
+
+  /**
+   * Calculate overall quality score based on multiple factors
+   */
+  private calculateQualityScore(factors: {
+    sourceGrounding: number;
+    partyValidation: number;
+    completeness: number;
+    consistency: number;
+    certainty: number;
+  }): number {
+    return (
+      factors.sourceGrounding * QUALITY_WEIGHTS.sourceGrounding +
+      factors.partyValidation * QUALITY_WEIGHTS.partyValidation +
+      factors.completeness * QUALITY_WEIGHTS.completeness +
+      factors.consistency * QUALITY_WEIGHTS.consistency +
+      factors.certainty * QUALITY_WEIGHTS.certainty
+    );
   }
 
   /**

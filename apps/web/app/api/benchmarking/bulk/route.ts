@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -16,14 +17,9 @@ const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { tenantId } = body;
-
+    const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'tenantId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     // Run in background (don't await)
@@ -58,14 +54,9 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const tenantId = searchParams.get('tenantId');
-
+    const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'tenantId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     const rateCards = await prisma.rateCardEntry.findMany({

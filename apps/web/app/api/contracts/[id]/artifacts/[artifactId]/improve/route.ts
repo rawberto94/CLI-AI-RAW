@@ -10,6 +10,11 @@ export async function POST(
 ) {
   const params = await props.params;
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const body = await request.json();
     const { userPrompt, userId } = body;
 
@@ -17,11 +22,11 @@ export async function POST(
     if (!userPrompt) return NextResponse.json({ error: 'userPrompt required' }, { status: 400 });
 
     const client = dbAdaptor.getClient();
-    const artifact = await client.artifact.findUnique({ where: { id: params.artifactId } });
+    const artifact = await client.artifact.findFirst({ where: { id: params.artifactId, tenantId } });
     if (!artifact) return NextResponse.json({ error: 'Artifact not found' }, { status: 404 });
     if (artifact.contractId !== params.id) return NextResponse.json({ error: 'Artifact does not belong to contract' }, { status: 403 });
 
-    const contract = await client.contract.findUnique({ where: { id: params.id } });
+    const contract = await client.contract.findFirst({ where: { id: params.id, tenantId } });
     const artifactData = artifact.data as any;
     const rawText = contract?.rawText || artifactData?.text || '';
     if (!rawText) return NextResponse.json({ error: 'No rawText available to improve from' }, { status: 400 });

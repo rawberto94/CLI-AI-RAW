@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 // ============================================================================
 // Types
@@ -197,7 +198,7 @@ export async function POST(
     const logEntry: AuditLogEntry = {
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       contractId,
-      tenantId: body.tenantId || 'default',
+      tenantId: getApiTenantId(request) || body.tenantId || 'unknown',
       userId,
       userName,
       action,

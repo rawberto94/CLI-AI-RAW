@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import { getApiTenantId } from "@/lib/tenant-server";
 
 // Mock data for processing status (fallback)
 const mockJobs = [
@@ -259,7 +260,14 @@ export async function GET(request: NextRequest) {
     const contractId = searchParams.get("contractId");
     const jobId = searchParams.get("jobId");
     const type = searchParams.get("type") || "status";
-    const tenantId = request.headers.get("x-tenant-id") || "default";
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
 
     // If requesting specific contract status
     if (contractId && type === "status") {
@@ -381,7 +389,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, jobId, data } = body;
-    const tenantId = request.headers.get("x-tenant-id") || "default";
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
 
     // Simulate processing time
     await new Promise((resolve) => setTimeout(resolve, 200));

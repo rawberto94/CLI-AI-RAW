@@ -3,6 +3,28 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PageBreadcrumb } from "@/components/navigation";
+
+// Sanitize HTML to prevent XSS attacks
+const sanitizeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
+// Format AI analysis content with markdown and sanitization
+const formatAIAnalysis = (content: string): string => {
+  const sanitized = sanitizeHtml(content);
+  return sanitized
+    .replace(/## (.*)/g, '<h2 class="text-lg font-bold text-gray-900 mt-4 mb-2 flex items-center gap-2">$1</h2>')
+    .replace(/### (.*)/g, '<h3 class="text-base font-semibold text-gray-800 mt-3 mb-1">$1</h3>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
+    .replace(/\n/g, '<br />')
+    .replace(/\|(.*?)\|/g, '<span class="font-mono text-sm bg-gray-100 px-1 rounded">$1</span>');
+};
+
 import {
   ArrowLeftRight,
   Search,
@@ -1115,13 +1137,7 @@ export default function ContractComparisonPage() {
                     <div 
                       className="prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
-                        __html: aiAnalysis
-                          ?.replace(/## (.*)/g, '<h2 class="text-lg font-bold text-gray-900 mt-4 mb-2 flex items-center gap-2">$1</h2>')
-                          .replace(/### (.*)/g, '<h3 class="text-base font-semibold text-gray-800 mt-3 mb-1">$1</h3>')
-                          .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
-                          .replace(/\n/g, '<br />')
-                          .replace(/\|(.*?)\|/g, '<span class="font-mono text-sm bg-gray-100 px-1 rounded">$1</span>')
-                          || ''
+                        __html: formatAIAnalysis(aiAnalysis || '')
                       }}
                     />
                   )}

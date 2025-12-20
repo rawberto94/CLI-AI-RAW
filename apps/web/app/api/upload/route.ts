@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import cors from "@/lib/security/cors";
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // Get the full URL and replace the path
@@ -20,26 +21,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     duplex: "half",
   });
 
-  // Return the response from the correct endpoint
+  // Return the response from the correct endpoint with proper CORS
   const data = await response.json();
-  return NextResponse.json(data, { 
-    status: response.status,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id, x-data-mode",
-    }
-  });
+  const jsonResponse = NextResponse.json(data, { status: response.status });
+  return cors.addCorsHeaders(jsonResponse, request, "POST, OPTIONS");
 }
 
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, x-tenant-id, x-data-mode",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, "POST, OPTIONS");
 }

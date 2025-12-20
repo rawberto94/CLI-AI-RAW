@@ -274,10 +274,23 @@ export async function POST(request: NextRequest) {
     // Extract contract ID from renewal ID if needed
     const actualContractId = contractId || renewalId?.replace('renewal-', '');
 
+    // Verify contract belongs to tenant before any action
+    const contract = await prisma.contract.findFirst({
+      where: { id: actualContractId, tenantId },
+      select: { id: true, autoRenewalEnabled: true },
+    });
+
+    if (!contract) {
+      return NextResponse.json(
+        { success: false, error: 'Contract not found' },
+        { status: 404 }
+      );
+    }
+
     if (action === 'initiate') {
       // Update contract to track renewal initiation
       await prisma.contract.update({
-        where: { id: actualContractId },
+        where: { id: contract.id },
         data: {
           renewalStatus: 'INITIATED',
           renewalInitiatedAt: new Date(),
@@ -299,7 +312,7 @@ export async function POST(request: NextRequest) {
     if (action === 'send-notice') {
       // Track notice sent via renewal notes
       await prisma.contract.update({
-        where: { id: actualContractId },
+        where: { id: contract.id },
         data: {
           renewalNotes: `Notice sent on ${new Date().toISOString()}`,
           updatedAt: new Date(),
@@ -318,25 +331,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'toggle-auto-renewal') {
-      const contract = await prisma.contract.findUnique({
-        where: { id: actualContractId },
-        select: { autoRenewalEnabled: true },
-      });
-
       await prisma.contract.update({
-        where: { id: actualContractId },
+        where: { id: contract.id },
         data: {
-          autoRenewalEnabled: !contract?.autoRenewalEnabled,
+          autoRenewalEnabled: !contract.autoRenewalEnabled,
           updatedAt: new Date(),
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `Auto-renewal ${contract?.autoRenewalEnabled ? 'disabled' : 'enabled'}`,
+        message: `Auto-renewal ${contract.autoRenewalEnabled ? 'disabled' : 'enabled'}`,
         data: {
           renewalId,
-          autoRenewal: !contract?.autoRenewalEnabled,
+          autoRenewal: !contract.autoRenewalEnabled,
           updatedAt: new Date().toISOString(),
         },
       });
@@ -344,7 +352,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'complete') {
       await prisma.contract.update({
-        where: { id: actualContractId },
+        where: { id: contract.id },
         data: {
           renewalStatus: 'COMPLETED',
           renewalCompletedAt: new Date(),
@@ -369,7 +377,7 @@ export async function POST(request: NextRequest) {
       
       if (startDate || endDate) {
         await prisma.contract.update({
-          where: { id: actualContractId },
+          where: { id: contract.id },
           data: {
             ...(startDate && { startDate: new Date(startDate), effectiveDate: new Date(startDate) }),
             ...(endDate && { endDate: new Date(endDate), expirationDate: new Date(endDate) }),
@@ -418,10 +426,23 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Verify contract belongs to tenant before any updates
+    const contract = await prisma.contract.findFirst({
+      where: { id: actualContractId, tenantId },
+      select: { id: true },
+    });
+
+    if (!contract) {
+      return NextResponse.json(
+        { success: false, error: 'Contract not found' },
+        { status: 404 }
+      );
+    }
+
     // Update contract fields if provided
     if (updates.endDate || updates.startDate || updates.value) {
       await prisma.contract.update({
-        where: { id: actualContractId },
+        where: { id: contract.id },
         data: {
           ...(updates.startDate && { 
             startDate: new Date(updates.startDate),
@@ -440,7 +461,7 @@ export async function PATCH(request: NextRequest) {
     // Update contract renewal fields if provided
     if (updates.autoRenewal !== undefined || updates.noticePeriod || updates.renewalStatus) {
       await prisma.contract.update({
-        where: { id: actualContractId },
+        where: { id: contract.id },
         data: {
           ...(updates.autoRenewal !== undefined && { autoRenewalEnabled: updates.autoRenewal }),
           ...(updates.noticePeriod && { noticePeriodDays: updates.noticePeriod }),

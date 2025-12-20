@@ -151,6 +151,12 @@ export default function SettingsClient() {
       href: "/settings/metadata",
     },
     {
+      id: "tags",
+      name: "Tags",
+      icon: <Tag className="w-4 h-4" />,
+      href: "/settings/tags",
+    },
+    {
       id: "taxonomy",
       name: "Taxonomy",
       icon: <FolderTree className="w-4 h-4" />,

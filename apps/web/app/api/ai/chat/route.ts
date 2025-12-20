@@ -3925,6 +3925,38 @@ async function getContractContext(contractId: string): Promise<string> {
           },
           // Get ALL artifacts, not just 5
         },
+        // Include parent and child contracts for hierarchy context
+        parentContract: {
+          select: {
+            id: true,
+            contractTitle: true,
+            fileName: true,
+            contractType: true,
+            status: true,
+            clientName: true,
+            supplierName: true,
+            totalValue: true,
+            effectiveDate: true,
+            expirationDate: true,
+          },
+        },
+        childContracts: {
+          select: {
+            id: true,
+            contractTitle: true,
+            fileName: true,
+            contractType: true,
+            status: true,
+            relationshipType: true,
+            clientName: true,
+            supplierName: true,
+            totalValue: true,
+            effectiveDate: true,
+            expirationDate: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 20, // Limit to prevent context overflow
+        },
       },
     });
 
@@ -3964,6 +3996,49 @@ async function getContractContext(contractId: string): Promise<string> {
     if (aiMeta.jurisdiction) context += `• Jurisdiction: ${aiMeta.jurisdiction}\n`;
     if (aiMeta.contract_language) context += `• Language: ${aiMeta.contract_language}\n`;
     if (aiMeta.notice_period) context += `• Notice Period: ${aiMeta.notice_period}\n`;
+
+    // Contract Hierarchy Context
+    const parentContract = (contract as any).parentContract;
+    const childContracts = (contract as any).childContracts || [];
+    
+    if (parentContract || childContracts.length > 0) {
+      context += `\n**Contract Hierarchy:**\n`;
+      
+      if (parentContract) {
+        const parentName = parentContract.contractTitle || parentContract.fileName || 'Untitled';
+        const parentType = parentContract.contractType || 'Contract';
+        const relType = contract.relationshipType ? ` (${contract.relationshipType.replace(/_/g, ' ')})` : '';
+        context += `• Parent Contract${relType}: ${parentName} (${parentType})\n`;
+        context += `  - ID: ${parentContract.id}\n`;
+        if (parentContract.clientName || parentContract.supplierName) {
+          context += `  - Party: ${parentContract.clientName || parentContract.supplierName}\n`;
+        }
+        if (parentContract.totalValue) {
+          context += `  - Value: ${Number(parentContract.totalValue).toLocaleString()}\n`;
+        }
+        if (parentContract.status) {
+          context += `  - Status: ${parentContract.status}\n`;
+        }
+      }
+      
+      if (childContracts.length > 0) {
+        context += `• Child Contracts (${childContracts.length}):\n`;
+        const totalChildValue = childContracts.reduce((sum: number, c: any) => sum + (Number(c.totalValue) || 0), 0);
+        if (totalChildValue > 0) {
+          context += `  - Combined Value: ${totalChildValue.toLocaleString()}\n`;
+        }
+        childContracts.slice(0, 10).forEach((child: any) => {
+          const childName = child.contractTitle || child.fileName || 'Untitled';
+          const childType = child.contractType || child.relationshipType || 'Contract';
+          context += `  - ${childName} (${childType.replace(/_/g, ' ')}) - ${child.status}`;
+          if (child.totalValue) context += ` - $${Number(child.totalValue).toLocaleString()}`;
+          context += `\n`;
+        });
+        if (childContracts.length > 10) {
+          context += `  - ... and ${childContracts.length - 10} more\n`;
+        }
+      }
+    }
 
     // Comprehensive artifact context builder
     if (contract.artifacts && contract.artifacts.length > 0) {
@@ -6113,6 +6188,11 @@ function shouldUseRAG(query: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const { message, contractId, context: initialContext, conversationHistory } = await request.json()
     let context = initialContext || {};
 
@@ -6130,7 +6210,6 @@ export async function POST(request: NextRequest) {
 
     // Detect intent from the message
     const intent = detectIntent(message);
-    const tenantId = 'demo'; // TODO: Get from auth
 
     // Build database context based on detected intent
     let additionalContext = '';

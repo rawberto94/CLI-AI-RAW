@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getApiTenantId } from '@/lib/tenant-server'
 
 /**
  * LEAN API: Quick approval actions
@@ -32,8 +33,15 @@ const DEFAULT_WORKFLOW = {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001'
+    const tenantId = getApiTenantId(request)
     const userId = request.headers.get('x-user-id') || 'system'
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      )
+    }
     const body: QuickActionBody = await request.json()
 
     const { contractId, action, comment } = body
@@ -211,7 +219,14 @@ export async function POST(request: NextRequest) {
 // GET - List pending approvals with simplified response
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001'
+    const tenantId = getApiTenantId(request)
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      )
+    }
 
     const pendingExecutions = await prisma.workflowExecution.findMany({
       where: {

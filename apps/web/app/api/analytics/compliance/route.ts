@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyticalIntelligenceService } from "@/lib/services/analytical-intelligence.service";
+import { getApiTenantId } from '@/lib/security/tenant';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
     const contractId = searchParams.get("contractId");
-    const tenantId = searchParams.get("tenantId") || "default";
+    const tenantId = await getApiTenantId(request);
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
 
     const complianceEngine =
       analyticalIntelligenceService.getComplianceEngine();

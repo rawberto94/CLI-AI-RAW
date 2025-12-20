@@ -122,67 +122,9 @@ const actionConfig: Record<string, { icon: React.ElementType; label: string; des
   tag: { icon: Tag, label: 'Apply Tags', description: 'Apply specified tags to contract' },
 };
 
-// Mock workflows
-function generateMockWorkflows(): AutomationWorkflow[] {
-  return [
-    {
-      id: 'wf_1',
-      name: 'Auto-Process New Uploads',
-      description: 'Automatically extract metadata, categorize, and generate artifacts for new uploads',
-      enabled: true,
-      trigger: { type: 'upload', config: {} },
-      conditions: [],
-      actions: [
-        { id: 'a1', type: 'extract_metadata', config: {}, order: 1 },
-        { id: 'a2', type: 'categorize', config: {}, order: 2 },
-        { id: 'a3', type: 'generate_artifacts', config: {}, order: 3 },
-      ],
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      lastRun: new Date(Date.now() - 3600000),
-      runCount: 234,
-      successCount: 228,
-      failureCount: 6,
-    },
-    {
-      id: 'wf_2',
-      name: 'Expiration Alerts',
-      description: 'Notify stakeholders 30 days before contract expiration',
-      enabled: true,
-      trigger: { type: 'expiration', config: { daysBefore: 30 } },
-      conditions: [
-        { field: 'status', operator: 'equals', value: 'active' },
-      ],
-      actions: [
-        { id: 'a1', type: 'notify', config: { recipients: ['contract-admins'] }, order: 1 },
-        { id: 'a2', type: 'tag', config: { tags: ['expiring-soon'] }, order: 2 },
-      ],
-      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      lastRun: new Date(Date.now() - 86400000),
-      runCount: 45,
-      successCount: 45,
-      failureCount: 0,
-    },
-    {
-      id: 'wf_3',
-      name: 'High-Value Contract Webhook',
-      description: 'Notify external system when high-value contracts are processed',
-      enabled: false,
-      trigger: { type: 'status_change', config: { newStatus: 'processed' } },
-      conditions: [
-        { field: 'value', operator: 'greater_than', value: 100000 },
-      ],
-      actions: [
-        { id: 'a1', type: 'webhook', config: { url: 'https://api.example.com/contracts' }, order: 1 },
-      ],
-      createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-      updatedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      runCount: 12,
-      successCount: 10,
-      failureCount: 2,
-    },
-  ];
+// Empty state when no workflows exist yet
+function getEmptyWorkflows(): AutomationWorkflow[] {
+  return [];
 }
 
 export const WorkflowAutomation = memo(function WorkflowAutomation({
@@ -216,10 +158,10 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
           lastRun: w.lastRun ? new Date(w.lastRun) : undefined,
         })));
       } else {
-        setWorkflows(generateMockWorkflows());
+        setWorkflows(getEmptyWorkflows());
       }
     } catch {
-      setWorkflows(generateMockWorkflows());
+      setWorkflows(getEmptyWorkflows());
     } finally {
       setLoading(false);
     }

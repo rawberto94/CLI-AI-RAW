@@ -201,10 +201,28 @@ ${SOURCE_CITATION_PROMPT}`;
 You provide accurate, structured data with high attention to detail. Always include a certainty score.
 
 CRITICAL: You must ONLY extract information that is EXPLICITLY stated in the contract text.
-- Party names must be exact matches from the document
+- Party names must be ACTUAL entity names (companies, individuals) - NOT template placeholders
 - Dates must be explicitly mentioned (do not calculate or infer)
 - Contract type must be stated or clearly implied by document title/structure
 - If jurisdiction is not mentioned, return null (do not guess based on party names)
+
+PARTY NAME VALIDATION - DETECT PLACEHOLDERS:
+These are PLACEHOLDERS, not real party names - DO NOT extract them as parties:
+- Generic labels: "Client", "Customer", "Vendor", "Contractor", "Provider", "Party A", "Party B"
+- Template markers: "[Client Name]", "[Company Name]", "{{CompanyName}}", "_________"
+- Description patterns: "The Client", "The Contractor", "Client Name", "Company Name Here"
+- Placeholder indicators: "XYZ Company", "ABC Corp", "Sample Company", "Example Corp"
+- Form field markers: "______", "[Insert Name]", "(Name)", "[TBD]"
+
+REAL party names typically:
+- Have specific proper names (e.g., "Acme Industries Inc.", "John Smith", "TechSolutions LLC")
+- Include legal entity designators (Inc., LLC, Ltd., Corp., GmbH, S.A., etc.)
+- Have unique identifiers (registration numbers, addresses)
+
+If the document contains ONLY placeholder party names:
+- Set parties as empty array []
+- Set isTemplate: true in additionalData
+- Add warning: "Document appears to be a template with placeholder party names"
 
 CONTEXTUAL AI EXTRACTION - CAPTURE ALL RELEVANT INFORMATION:
 Every contract is unique. Beyond the standard fields, you MUST:
@@ -213,6 +231,19 @@ Every contract is unique. Beyond the standard fields, you MUST:
 3. EXTRACT any definitions, recitals, background sections, or preambles verbatim
 4. CAPTURE referenced documents, attachments, schedules, exhibits mentioned
 5. NOTE any unique terminology or abbreviations defined in the contract
+
+PARENT CONTRACT / RELATED CONTRACT EXTRACTION:
+If this document is an Amendment, Addendum, SOW, Change Order, or Variation:
+1. EXTRACT the parent/master contract reference (title, date, document number)
+2. Set "parentContractReference" with the master agreement details
+3. Identify the relationship type: SOW_UNDER_MSA, AMENDMENT, ADDENDUM, RENEWAL, CHANGE_ORDER, VARIATION, SUPPLEMENT, EXTENSION
+
+Look for phrases indicating parent contracts:
+- "This Amendment to the Master Services Agreement dated..."
+- "pursuant to the Agreement between..."
+- "This Statement of Work is entered into under..."
+- "Amendment No. 1 to Contract No. 12345"
+- "This Addendum supplements the Agreement..."
 
 Use the "additionalData" field for ANY contract-specific information not fitting standard fields.
 Use the "rawSections" field to preserve exact text of important sections.`,
@@ -315,7 +346,9 @@ IMPORTANT: This is CONTEXTUAL AI extraction - go beyond the standard fields:
         additionalData: 'object - ANY additional overview info specific to this contract (project names, references, special terms)',
         rawSections: 'object - key/value pairs preserving exact text of important sections (recitals, definitions, preambles)',
         referencedDocuments: 'array of { name: string, description: string, source: string } - schedules, exhibits, attachments',
-        definitions: 'array of { term: string, meaning: string, source: string, extractedFromText: boolean } - defined terms'
+        definitions: 'array of { term: string, meaning: string, source: string, extractedFromText: boolean } - defined terms',
+        parentContractReference: '{ title: string, documentNumber?: string, date?: string, relationshipType: string, source: string } or null - reference to parent/master agreement if this is an amendment, SOW, addendum, etc.',
+        relatedContractReferences: 'array of { title: string, documentNumber?: string, relationshipType: string, source: string } - any other contracts referenced in this document'
       },
       
       validationRules: [
@@ -336,7 +369,12 @@ IMPORTANT: This is CONTEXTUAL AI extraction - go beyond the standard fields:
         'If document title is ambiguous, lower certainty to below 0.7',
         'Party types (corporation, llc, individual) must be based on explicit text indicators',
         'additionalData values must come from the contract - do not invent',
-        'rawSections must be EXACT quotes from the document'
+        'rawSections must be EXACT quotes from the document',
+        'REJECT placeholder party names - "Client Name", "[Company]", "Party A" are NOT real parties',
+        'If document has blank signature lines without actual names, it is likely a template',
+        'Flag documents with generic placeholders by setting isTemplate: true in additionalData',
+        'DO NOT extract "Service Provider", "Client", "Vendor" as party names - these are roles not names',
+        'A real party name has a specific proper noun (e.g., "Microsoft Corporation", not "The Client")'
       ],
 
       requiredFields: ['parties', 'contractType'],

@@ -75,6 +75,16 @@ export {
   type ExpansionOptions,
 } from './query-expansion.service';
 
+// Re-indexing Triggers
+export {
+  triggerContractReindex,
+  queueContractReindex,
+  checkContractNeedsReindex,
+  findContractsNeedingReindex,
+  type ReindexOptions,
+  type ReindexResult,
+} from './reindex-trigger';
+
 /**
  * Quick Start Guide:
  * 

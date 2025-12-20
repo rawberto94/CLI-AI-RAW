@@ -56,8 +56,22 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
   };
 
   const handleExport = () => {
-    // TODO: Implement export functionality
-    toast.info("Export functionality coming soon!");
+    // Export comparison as JSON that can be loaded later
+    try {
+      const exportData = JSON.stringify(comparison, null, 2);
+      const blob = new Blob([exportData], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `contract-comparison-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Comparison exported!");
+    } catch {
+      toast.error("Failed to export comparison");
+    }
   };
 
   const handleSyncScroll = (index: number, scrollTop: number) => {

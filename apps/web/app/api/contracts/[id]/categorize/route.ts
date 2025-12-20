@@ -21,7 +21,10 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     const { id: contractId } = await params;
-    const tenantId = request.headers.get("x-tenant-id") || "demo";
+    const tenantId = request.headers.get("x-tenant-id");
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
 
     // Get optional body parameters
     const body = await request.json().catch(() => ({}));

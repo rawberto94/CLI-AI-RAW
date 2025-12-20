@@ -255,7 +255,15 @@ export async function GET(request: NextRequest) {
     // ===== REAL DATA MODE: Direct Prisma Queries =====
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required. Please authenticate or provide x-tenant-id header.' },
+        { status: 400 }
+      );
+    }
     
     // Build where clause from filters
     const where: any = { tenantId };
@@ -360,7 +368,16 @@ export async function POST(request: NextRequest) {
     
     // Get authenticated user from session
     const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
+    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    
+    // Require tenant ID for data isolation
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required. Please authenticate or provide x-tenant-id header.' },
+        { status: 400 }
+      );
+    }
+    
     const userId = session?.user?.id || body.userId || 'system';
 
     // Convert date strings to Date objects

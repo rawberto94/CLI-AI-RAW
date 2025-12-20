@@ -91,7 +91,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { QuickSummarizeButton, AISummarizer, CompareButton, ContractComparison, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog, EnhancedContractMetadataSection } from '@/components/contracts'
+import { QuickSummarizeButton, AISummarizer, CompareButton, ContractComparison, CategoryBadge, CategorySelector, ContractReminders, ContractAuditLog, EnhancedContractMetadataSection, ContractHierarchy } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { HealthIndicator } from '@/components/contracts/EnhancedContractCard'
 import { ActivityTab } from '@/components/contracts/detail/ActivityTab'
@@ -99,6 +99,14 @@ import { CopyableId } from '@/components/contracts/detail/CopyableId'
 import { StatusBadge } from '@/components/contracts/detail/StatusBadge'
 import { StatCard } from '@/components/contracts/detail/StatCard'
 import { KeyTermBadge } from '@/components/contracts/detail/KeyTermBadge'
+import {
+  QuickActionBar,
+  ContractLifecycleTimeline,
+  SectionNavigator,
+  SmartInsightsPanel,
+  EnhancedEmptyState,
+  InlineEditField,
+} from '@/components/contracts/detail'
 import { useSplitPaneResize } from '@/hooks/use-split-pane-resize'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { 
@@ -166,6 +174,34 @@ interface ContractData {
   notice_period?: string | null
   reminder_enabled?: boolean | null
   reminder_days_before_end?: number | null
+  // Contract Hierarchy (Parent-Child Relationships)
+  parentContract?: {
+    id: string
+    title: string
+    type: string | null
+    status: string
+    clientName: string | null
+    supplierName: string | null
+    effectiveDate: string | null
+    expirationDate: string | null
+  } | null
+  childContracts?: Array<{
+    id: string
+    title: string
+    type: string | null
+    status: string
+    relationshipType: string | null
+    clientName: string | null
+    supplierName: string | null
+    effectiveDate: string | null
+    expirationDate: string | null
+    totalValue: number | null
+    createdAt: string | null
+  }>
+  parentContractId?: string | null
+  relationshipType?: string | null
+  relationshipNote?: string | null
+  linkedAt?: string | null
 }
 
 /**
@@ -247,6 +283,8 @@ export default function ContractDetailPage() {
   
   // PDF Viewer state
   const [showPdfViewer, setShowPdfViewer] = useState(false)
+  const [currentPdfPage, setCurrentPdfPage] = useState(1)
+  const [totalPdfPages, setTotalPdfPages] = useState(1)
   const {
     containerRef: splitContainerRef,
     ratio: pdfSplitRatio,
@@ -1128,6 +1166,47 @@ export default function ContractDetailPage() {
           </motion.div>
         )}
 
+        {/* Contract Lifecycle Timeline - Visual progress indicator */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <ContractLifecycleTimeline
+            uploadDate={contract?.uploadDate}
+            processingCompleteDate={contract?.status === 'ready' || contract?.status === 'processed' ? contract?.uploadDate : undefined}
+            effectiveDate={metadata.start_date || undefined}
+            expirationDate={metadata.end_date || undefined}
+            terminationDate={metadata.termination_date || undefined}
+            status={contract?.status || 'processing'}
+            processingProgress={contract?.processing?.progress}
+          />
+        </motion.div>
+
+        {/* Smart Insights Panel - Collapsible sidebar with AI insights */}
+        <SmartInsightsPanel
+          insights={contract?.insights?.map((insight: any, idx: number) => ({
+            id: insight.id || `insight-${idx}`,
+            type: insight.type === 'risk' ? 'risk' : insight.type === 'opportunity' ? 'opportunity' : insight.type === 'action' ? 'action' : 'info',
+            priority: insight.priority || 'medium',
+            title: insight.title || insight.summary || 'Insight',
+            description: insight.description || insight.details || '',
+            category: insight.category || 'General',
+            actionable: !!insight.action,
+            actionLabel: insight.actionLabel,
+            onAction: insight.action,
+          })) || []}
+          riskLevel={riskLevel as 'low' | 'medium' | 'high'}
+          riskScore={riskScore}
+          complianceStatus={complianceData?.compliant ?? true}
+          contractValue={metadata.tcv_amount}
+          daysToExpiry={metadata.end_date ? Math.ceil((new Date(metadata.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null}
+          onAIAnalyze={() => setShowAISummarizer(true)}
+        />
+
+        {/* Section Navigator - Side navigation for long content */}
+        <SectionNavigator activeTab={activeTab} />
+
         {/* Contract Quick Overview - Key Metadata at a Glance */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -1858,6 +1937,45 @@ export default function ContractDetailPage() {
                 onRefresh={loadContract}
               />
               
+              {/* Contract Hierarchy - Parent/Child Relationships */}
+              <ContractHierarchy
+                contractId={params.id as string}
+                contractTitle={contract?.filename}
+                parentContract={contract?.parentContract}
+                childContracts={contract?.childContracts}
+                parentContractId={contract?.parentContractId}
+                relationshipType={contract?.relationshipType}
+                relationshipNote={contract?.relationshipNote}
+                linkedAt={contract?.linkedAt}
+                isEditing={isEditing}
+                onLinkParent={async (parentId, relType, note) => {
+                  const response = await fetch(`/api/contracts/${params.id}/hierarchy`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      parentContractId: parentId,
+                      relationshipType: relType,
+                      relationshipNote: note,
+                    }),
+                  })
+                  if (!response.ok) {
+                    const error = await response.json()
+                    throw new Error(error.error || 'Failed to link parent contract')
+                  }
+                  await loadContract()
+                }}
+                onUnlinkParent={async () => {
+                  const response = await fetch(`/api/contracts/${params.id}/hierarchy`, {
+                    method: 'DELETE',
+                  })
+                  if (!response.ok) {
+                    const error = await response.json()
+                    throw new Error(error.error || 'Failed to unlink parent contract')
+                  }
+                  await loadContract()
+                }}
+              />
+              
               {/* Compliance Details - Keep for additional context */}
               {complianceData && (
                 <Card>
@@ -1974,6 +2092,29 @@ export default function ContractDetailPage() {
           setTimeout(() => setIsGeneratingSummary(false), 500);
         }}
         isLoading={isGeneratingSummary}
+      />
+
+      {/* Quick Action Bar - Floating action bar with primary actions */}
+      <QuickActionBar
+        contractId={params.id as string}
+        isEditing={isEditing}
+        isPDFVisible={showPdfViewer}
+        onEdit={() => setIsEditing(true)}
+        onDownload={handleDownload}
+        onShare={() => setShowShareDialog(true)}
+        onAIAnalyze={() => setShowAISummarizer(true)}
+        onViewPDF={() => setShowPdfViewer(!showPdfViewer)}
+        onCompare={() => setShowComparison(true)}
+        onCopyId={() => {
+          navigator.clipboard.writeText(params.id as string);
+          toast.success('Contract ID copied to clipboard');
+        }}
+        onSetReminder={() => {
+          toast.info('Reminder feature coming soon');
+        }}
+        onViewHistory={() => {
+          setActiveTab('activity');
+        }}
       />
 
       {/* AI Summarizer Modal */}

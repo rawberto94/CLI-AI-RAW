@@ -9,9 +9,13 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
-    const tenantId = request.headers.get('x-tenant-id') || 'default-tenant';
 
     if (query.length < 2) {
       return NextResponse.json({ suggestions: [] });

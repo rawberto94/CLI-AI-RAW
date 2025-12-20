@@ -52,43 +52,25 @@ interface DashboardOverviewProps {
   className?: string;
 }
 
-// Mock data
-function generateMockMetrics(): DashboardMetrics {
+// Empty state when no data available
+function getEmptyMetrics(): DashboardMetrics {
   return {
-    totalContracts: 1247,
-    activeContracts: 892,
-    expiringContracts: 45,
-    atRiskContracts: 12,
-    totalValue: 45670000,
-    processingQueue: 8,
-    completedToday: 23,
-    avgProcessingTime: 4.2,
+    totalContracts: 0,
+    activeContracts: 0,
+    expiringContracts: 0,
+    atRiskContracts: 0,
+    totalValue: 0,
+    processingQueue: 0,
+    completedToday: 0,
+    avgProcessingTime: 0,
     trends: {
-      contracts: { value: 1247, change: 12.5 },
-      value: { value: 45670000, change: 8.3 },
-      risk: { value: 12, change: -25 },
+      contracts: { value: 0, change: 0 },
+      value: { value: 0, change: 0 },
+      risk: { value: 0, change: 0 },
     },
-    byType: [
-      { type: 'MSA', count: 342 },
-      { type: 'NDA', count: 289 },
-      { type: 'SOW', count: 234 },
-      { type: 'Amendment', count: 187 },
-      { type: 'License', count: 145 },
-      { type: 'Other', count: 50 },
-    ],
-    byStatus: [
-      { status: 'Active', count: 892 },
-      { status: 'Pending', count: 156 },
-      { status: 'Expired', count: 123 },
-      { status: 'Draft', count: 76 },
-    ],
-    recentActivity: [
-      { id: '1', action: 'Created', contract: 'MSA - Acme Corp', time: new Date(Date.now() - 300000) },
-      { id: '2', action: 'Processed', contract: 'NDA - TechStart Inc', time: new Date(Date.now() - 600000) },
-      { id: '3', action: 'Analyzed', contract: 'SOW - GlobalServ', time: new Date(Date.now() - 1200000) },
-      { id: '4', action: 'Exported', contract: 'License - DataFlow', time: new Date(Date.now() - 1800000) },
-      { id: '5', action: 'Updated', contract: 'Amendment - CloudPro', time: new Date(Date.now() - 3600000) },
-    ],
+    byType: [],
+    byStatus: [],
+    recentActivity: [],
   };
 }
 
@@ -126,10 +108,10 @@ export const DashboardOverview = memo(function DashboardOverview({
         const data = await response.json();
         setMetrics(data);
       } else {
-        setMetrics(generateMockMetrics());
+        setMetrics(getEmptyMetrics());
       }
     } catch {
-      setMetrics(generateMockMetrics());
+      setMetrics(getEmptyMetrics());
     } finally {
       setLoading(false);
     }

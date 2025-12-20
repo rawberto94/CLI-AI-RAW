@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { BenchmarkNotificationService } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,16 +19,13 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = searchParams.get('tenantId');
+    const tenantId = await getApiTenantId(request);
     const limit = parseInt(searchParams.get('limit') || '100');
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
     const type = searchParams.get('type') as any;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
     // Initialize service

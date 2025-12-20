@@ -26,9 +26,16 @@ export async function POST(
       );
     }
 
-    // Get workflow details
-    const workflow = await prisma.workflow.findUnique({
-      where: { id: workflowId },
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get workflow details - verify it belongs to tenant
+    const workflow = await prisma.workflow.findFirst({
+      where: { id: workflowId, tenantId },
       include: {
         steps: {
           orderBy: { order: 'asc' }

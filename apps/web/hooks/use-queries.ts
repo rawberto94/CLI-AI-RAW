@@ -36,6 +36,21 @@ export interface Contract {
   } | null;
   type?: string;
   createdAt?: string;
+  // Contract hierarchy fields
+  parentContractId?: string | null;
+  parentContract?: {
+    id: string;
+    fileName: string;
+    contractType?: string | null;
+  } | null;
+  childContracts?: Array<{
+    id: string;
+    fileName: string;
+    contractType?: string | null;
+    relationshipType?: string;
+  }>;
+  hasHierarchy?: boolean;
+  relationshipType?: string;
 }
 
 export interface Workflow {
@@ -355,7 +370,23 @@ export function useDeleteTemplate() {
   return useMutation({
     mutationFn: (id: string) => 
       fetchAPI<{ success: boolean }>(`/api/templates/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
+    // Optimistic update - immediately remove from list
+    onMutate: async (deletedId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.templates.lists() });
+      const previousTemplates = queryClient.getQueryData<{ templates: Template[] }>(queryKeys.templates.lists());
+      
+      queryClient.setQueryData<{ templates: Template[] }>(queryKeys.templates.lists(), (old) => ({
+        templates: (old?.templates || []).filter(t => t.id !== deletedId),
+      }));
+      
+      return { previousTemplates };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousTemplates) {
+        queryClient.setQueryData(queryKeys.templates.lists(), context.previousTemplates);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.templates.all });
     },
   });
@@ -401,7 +432,23 @@ export function useDeleteWorkflow() {
   return useMutation({
     mutationFn: (id: string) => 
       fetchAPI<{ success: boolean }>(`/api/workflows/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
+    // Optimistic update - immediately remove from list
+    onMutate: async (deletedId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.workflows.lists() });
+      const previousWorkflows = queryClient.getQueryData<{ workflows: Workflow[] }>(queryKeys.workflows.lists());
+      
+      queryClient.setQueryData<{ workflows: Workflow[] }>(queryKeys.workflows.lists(), (old) => ({
+        workflows: (old?.workflows || []).filter(w => w.id !== deletedId),
+      }));
+      
+      return { previousWorkflows };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousWorkflows) {
+        queryClient.setQueryData(queryKeys.workflows.lists(), context.previousWorkflows);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workflows.all });
     },
   });

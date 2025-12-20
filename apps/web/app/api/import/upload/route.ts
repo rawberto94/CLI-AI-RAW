@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import cors from '@/lib/security/cors';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
@@ -288,13 +289,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 // OPTIONS endpoint for CORS preflight
-export async function OPTIONS(): Promise<NextResponse> {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-tenant-id',
-    },
-  });
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return cors.optionsResponse(request, 'GET, POST, OPTIONS');
 }

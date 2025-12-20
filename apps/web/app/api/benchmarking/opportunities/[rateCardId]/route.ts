@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { getApiTenantId } from '@/lib/security/tenant';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -44,12 +45,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = searchParams.get('tenantId');
+    const tenantId = await getApiTenantId(request);
     const status = searchParams.get('status');
     const minSavings = searchParams.get('minSavings');
 
-    const where: any = {};
-    if (tenantId) where.tenantId = tenantId;
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
+
+    const where: any = { tenantId };
     if (status) where.status = status;
     if (minSavings) where.annualSavingsPotential = { gte: parseFloat(minSavings) };
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const contractId = params.id;
 
     // First verify contract exists
@@ -115,7 +124,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const contractId = params.id;
     const body = await request.json();
 
@@ -238,7 +255,15 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const contractId = params.id;
     const body = await request.json();
 
@@ -362,7 +387,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'tenant_demo_001';
+    const tenantId = getApiTenantId(request);
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
+    
     const contractId = params.id;
 
     // Find existing workflow execution for this contract

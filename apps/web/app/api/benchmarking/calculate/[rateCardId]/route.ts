@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/security/tenant';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
@@ -16,7 +17,21 @@ const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
   try {
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
+
     const { rateCardId } = params;
+
+    // Verify rate card belongs to tenant before calculating
+    const rateCard = await prisma.rateCardEntry.findUnique({
+      where: { id: rateCardId, tenantId },
+    });
+
+    if (!rateCard) {
+      return NextResponse.json({ error: 'Rate card not found' }, { status: 404 });
+    }
 
     const result = await benchmarkingEngine.calculateBenchmark(rateCardId);
 
@@ -43,10 +58,16 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
 export async function GET(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
   try {
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
+
     const { rateCardId } = params;
 
+    // Tenant-isolated query
     const rateCard = await prisma.rateCardEntry.findUnique({
-      where: { id: rateCardId },
+      where: { id: rateCardId, tenantId },
       include: {
         benchmarkSnapshots: {
           take: 1,

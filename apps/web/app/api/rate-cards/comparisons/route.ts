@@ -8,8 +8,15 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = searchParams.get('tenantId') || 'default-tenant';
+    const tenantId = request.headers.get('x-tenant-id');
     const userId = searchParams.get('userId');
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     const where: any = { tenantId };
     if (userId) {
@@ -41,7 +48,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, rateCardIds, comparisonType, tenantId, userId } = body;
+    const { name, description, rateCardIds, comparisonType, userId } = body;
+    const tenantId = request.headers.get('x-tenant-id');
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
 
     if (!name || !rateCardIds || rateCardIds.length < 2) {
       return NextResponse.json(
@@ -53,7 +68,7 @@ export async function POST(request: NextRequest) {
     // Create the comparison
     const comparison = await prisma.rateComparison.create({
       data: {
-        tenantId: tenantId || 'default-tenant',
+        tenantId,
         comparisonName: name,
         comparisonType: comparisonType || 'CUSTOM',
         createdBy: userId || 'system',

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { getApiTenantId } from '@/lib/security/tenant';
 import { SavingsOpportunityService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from '@/lib/cache';
 
@@ -7,8 +8,12 @@ import { withCache, CacheKeys } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getApiTenantId(request);
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const tenantId = searchParams.get('tenantId') || 'demo-tenant';
     const status = searchParams.get('status');
     const category = searchParams.get('category');
     const minSavings = searchParams.get('minSavings');

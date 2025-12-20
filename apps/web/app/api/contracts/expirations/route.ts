@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,16 +37,35 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Build dynamic where clause
-    const conditions: string[] = [`tenant_id = '${tenantId}'`];
-    if (risk) conditions.push(`expiration_risk = '${risk}'`);
-    if (status) conditions.push(`renewal_status = '${status}'`);
-    if (isExpired === 'true') conditions.push(`is_expired = true`);
-    if (isExpired === 'false') conditions.push(`is_expired = false`);
-    if (daysMax) conditions.push(`days_until_expiry <= ${parseInt(daysMax)}`);
+    // Validate input against allowed values to prevent SQL injection
+    const validRisks = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+    const validStatuses = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'EXPIRED', 'RENEWED'];
 
-    // Query expirations from dedicated table
-    const expirations = await prisma.$queryRawUnsafe<Array<{
+    // Build safe parameterized query using Prisma.sql
+    const conditions: Prisma.Sql[] = [Prisma.sql`tenant_id = ${tenantId}`];
+    
+    if (risk && validRisks.includes(risk)) {
+      conditions.push(Prisma.sql`expiration_risk = ${risk}`);
+    }
+    if (status && validStatuses.includes(status)) {
+      conditions.push(Prisma.sql`renewal_status = ${status}`);
+    }
+    if (isExpired === 'true') {
+      conditions.push(Prisma.sql`is_expired = true`);
+    } else if (isExpired === 'false') {
+      conditions.push(Prisma.sql`is_expired = false`);
+    }
+    if (daysMax) {
+      const daysMaxInt = parseInt(daysMax);
+      if (!isNaN(daysMaxInt) && daysMaxInt >= 0) {
+        conditions.push(Prisma.sql`days_until_expiry <= ${daysMaxInt}`);
+      }
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+
+    // Query expirations with safe parameterized query
+    const expirations = await prisma.$queryRaw<Array<{
       id: string;
       contract_id: string;
       contract_title: string;
@@ -69,7 +89,7 @@ export async function GET(request: NextRequest) {
       alerts_sent: any;
       last_alert_sent: Date;
       updated_at: Date;
-    }>>(`
+    }>>`
       SELECT 
         id, contract_id, contract_title, supplier_name, client_name, contract_type,
         expiration_date, days_until_expiry, is_expired, expiration_risk, renewal_status,
@@ -77,12 +97,12 @@ export async function GET(request: NextRequest) {
         owner_name, assigned_to, notice_deadline, notice_given, auto_renewal_enabled,
         alerts_sent, last_alert_sent, updated_at
       FROM contract_expirations
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${whereClause}
       ORDER BY 
         CASE WHEN is_expired THEN 0 ELSE 1 END,
         days_until_expiry ASC
       LIMIT ${limit} OFFSET ${offset}
-    `);
+    `;
 
     // Get summary stats
     const stats = await prisma.$queryRaw<Array<{

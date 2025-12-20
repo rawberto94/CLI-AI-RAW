@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import cors from '@/lib/security/cors';
 import { getServerTenantId } from '@/lib/tenant-server';
 import {
   testConnection,
@@ -105,13 +106,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-tenant-id',
-    },
-  });
+export async function OPTIONS(request: NextRequest) {
+  return cors.optionsResponse(request, 'POST, OPTIONS');
 }

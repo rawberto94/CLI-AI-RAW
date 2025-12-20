@@ -109,8 +109,13 @@ export async function POST(
   const { id: contractId } = await params;
   
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const body: GenerationRequest = await request.json();
-    const { topic, focusArea, customPrompt, tenantId = 'demo' } = body;
+    const { topic, focusArea, customPrompt } = body;
 
     // Validate topic
     if (!topic || !TOPIC_PROMPTS[topic]) {

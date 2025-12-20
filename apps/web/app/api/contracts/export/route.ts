@@ -36,6 +36,18 @@ const fieldMappings: Record<string, string | ((contract: Record<string, unknown>
     const summary = artifacts?.find(a => a.type === 'summary');
     return summary?.content || null;
   },
+  // Contract hierarchy fields
+  parentContract: (c) => {
+    const parent = c.parentContract as { id: string; fileName: string } | undefined;
+    return parent?.fileName || null;
+  },
+  parentContractId: 'parentContractId',
+  relationshipType: 'relationshipType',
+  relationshipNote: 'relationshipNote',
+  childContractCount: (c) => {
+    const children = c.childContracts as unknown[] | undefined;
+    return children?.length ?? 0;
+  },
 };
 
 export async function POST(request: NextRequest) {
@@ -58,11 +70,24 @@ export async function POST(request: NextRequest) {
     }
     
     // Fetch contracts
+    const includeHierarchy = 
+      config.includeFields.includes('parentContract') || 
+      config.includeFields.includes('parentContractId') ||
+      config.includeFields.includes('relationshipType') ||
+      config.includeFields.includes('relationshipNote') ||
+      config.includeFields.includes('childContractCount');
+      
     const contracts = await prisma.contract.findMany({
       where,
       include: {
         artifacts: config.includeFields.includes('summary') || config.includeFields.includes('artifacts'),
         supplier: config.includeFields.includes('supplier'),
+        parentContract: includeHierarchy ? {
+          select: { id: true, fileName: true, contractType: true }
+        } : false,
+        childContracts: includeHierarchy ? {
+          select: { id: true, fileName: true, contractType: true }
+        } : false,
       },
       orderBy: { createdAt: 'desc' },
     });

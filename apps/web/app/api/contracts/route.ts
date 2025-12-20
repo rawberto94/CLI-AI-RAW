@@ -326,6 +326,22 @@ async function handler(request: NextRequest) {
             paymentTerms: true,
             paymentFrequency: true,
             aiMetadata: true,
+            // Contract hierarchy fields
+            parentContractId: true,
+            relationshipType: true,
+            parentContract: {
+              select: {
+                id: true,
+                contractTitle: true,
+                fileName: true,
+                contractType: true,
+              },
+            },
+            _count: {
+              select: {
+                childContracts: true,
+              },
+            },
           },
         }),
         prisma.contract.count({ where }),
@@ -412,6 +428,16 @@ async function handler(request: NextRequest) {
               externalParties: (contract.aiMetadata as any)?.external_parties || [],
               // Extraction confidence
               extractionConfidence: (contract.aiMetadata as any)?._confidence?.overall ?? null,
+              // Contract hierarchy info
+              parentContractId: (contract as any).parentContractId || null,
+              relationshipType: (contract as any).relationshipType || null,
+              parentContract: (contract as any).parentContract ? {
+                id: (contract as any).parentContract.id,
+                title: (contract as any).parentContract.contractTitle || (contract as any).parentContract.fileName,
+                type: (contract as any).parentContract.contractType,
+              } : null,
+              childContractCount: (contract as any)._count?.childContracts || 0,
+              hasHierarchy: !!(contract as any).parentContractId || ((contract as any)._count?.childContracts || 0) > 0,
             };
           }),
           pagination: {

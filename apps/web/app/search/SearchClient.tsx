@@ -24,6 +24,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+// Sanitize HTML to prevent XSS attacks
+const sanitizeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 // Mock search results data
 const searchData = {
   recentSearches: [
@@ -329,7 +339,7 @@ export default function SearchClient() {
                                 <ArrowRight className="w-3 h-3 mt-0.5 text-blue-600 flex-shrink-0" />
                                 <span
                                   dangerouslySetInnerHTML={{
-                                    __html: highlight,
+                                    __html: sanitizeHtml(highlight),
                                   }}
                                 />
                               </li>

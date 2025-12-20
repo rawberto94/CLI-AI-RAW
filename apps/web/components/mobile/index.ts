@@ -38,3 +38,6 @@ export {
   HapticButton,
   type HapticButtonProps,
 } from './MobileComponents';
+
+// Mobile bottom navigation
+export { MobileBottomNav } from './MobileBottomNav';

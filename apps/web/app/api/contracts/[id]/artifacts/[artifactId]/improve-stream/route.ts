@@ -13,6 +13,14 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const tenantId = request.headers.get('x-tenant-id');
+  if (!tenantId) {
+    return new Response(
+      JSON.stringify({ error: 'Tenant ID is required' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   const body = await request.json();
   const { userPrompt, userId } = body;
 
@@ -24,7 +32,7 @@ export async function POST(
   }
 
   const client = dbAdaptor.getClient();
-  const artifact = await client.artifact.findUnique({ where: { id: params.artifactId } });
+  const artifact = await client.artifact.findFirst({ where: { id: params.artifactId, tenantId } });
 
   if (!artifact) {
     return new Response(
@@ -40,7 +48,7 @@ export async function POST(
     );
   }
 
-  const contract = await client.contract.findUnique({ where: { id: params.id } });
+  const contract = await client.contract.findFirst({ where: { id: params.id, tenantId } });
   const rawText = contract?.rawText || '';
 
   if (!rawText) {

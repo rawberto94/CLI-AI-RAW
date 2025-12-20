@@ -20,88 +20,96 @@ import { prisma } from '@/lib/prisma';
  */
 export async function POST(request: NextRequest) {
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const body = await request.json();
     const { 
       format = 'csv', 
       filters = {}, 
       advancedFilter = null,
-      includeFilterMetadata = true,
-      tenantId = 'default-tenant'
+      includeFilterMetadata = true
     } = body;
 
-    // Build WHERE clause based on filters
-    const conditions: string[] = [`"tenantId" = '${tenantId}'`];
+    // Build WHERE clause using Prisma's safe ORM (no raw SQL injection)
+    const whereClause: any = { tenantId };
     
     if (filters.supplier) {
-      conditions.push(`"supplierName" ILIKE '%${filters.supplier}%'`);
+      whereClause.supplierName = { contains: filters.supplier, mode: 'insensitive' };
     }
     if (filters.role) {
-      conditions.push(`"roleStandardized" ILIKE '%${filters.role}%'`);
+      whereClause.roleStandardized = { contains: filters.role, mode: 'insensitive' };
     }
     if (filters.seniority) {
-      conditions.push(`"seniority" = '${filters.seniority}'`);
+      whereClause.seniority = filters.seniority;
     }
     if (filters.lineOfService) {
-      conditions.push(`"lineOfService" = '${filters.lineOfService}'`);
+      whereClause.lineOfService = filters.lineOfService;
     }
     if (filters.country) {
-      conditions.push(`"country" = '${filters.country}'`);
+      whereClause.country = filters.country;
     }
     if (filters.region) {
-      conditions.push(`"region" = '${filters.region}'`);
+      whereClause.region = filters.region;
     }
-    if (filters.dateFrom) {
-      conditions.push(`"effectiveDate" >= '${filters.dateFrom}'`);
+    if (filters.dateFrom || filters.dateTo) {
+      whereClause.effectiveDate = {};
+      if (filters.dateFrom) {
+        whereClause.effectiveDate.gte = new Date(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        whereClause.effectiveDate.lte = new Date(filters.dateTo);
+      }
     }
-    if (filters.dateTo) {
-      conditions.push(`"effectiveDate" <= '${filters.dateTo}'`);
-    }
-    if (filters.rateMin) {
-      conditions.push(`"dailyRateUSD" >= ${filters.rateMin}`);
-    }
-    if (filters.rateMax) {
-      conditions.push(`"dailyRateUSD" <= ${filters.rateMax}`);
+    if (filters.rateMin || filters.rateMax) {
+      whereClause.dailyRateUSD = {};
+      if (filters.rateMin) {
+        whereClause.dailyRateUSD.gte = parseFloat(filters.rateMin);
+      }
+      if (filters.rateMax) {
+        whereClause.dailyRateUSD.lte = parseFloat(filters.rateMax);
+      }
     }
 
-    const whereClause = conditions.join(' AND ');
-
-    // Fetch rate cards with new fields
-    const rateCards = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT
-        "id",
-        "clientName",
-        "clientId",
-        "supplierName",
-        "roleOriginal",
-        "roleStandardized",
-        "seniority",
-        "lineOfService",
-        "country",
-        "region",
-        "dailyRate",
-        "currency",
-        "dailyRateUSD",
-        "dailyRateCHF",
-        "effectiveDate",
-        "expiryDate",
-        "volumeCommitted",
-        "marketRateMedian",
-        "percentileRank",
-        "savingsAmount",
-        "isBaseline",
-        "baselineType",
-        "isNegotiated",
-        "negotiationDate",
-        "negotiatedBy",
-        "msaReference",
-        "isEditable",
-        "editedBy",
-        "editedAt",
-        "createdAt"
-      FROM "RateCardEntry"
-      WHERE ${whereClause}
-      ORDER BY "createdAt" DESC
-    `);
+    // Fetch rate cards with safe ORM query
+    const rateCards = await prisma.rateCardEntry.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        clientName: true,
+        clientId: true,
+        supplierName: true,
+        roleOriginal: true,
+        roleStandardized: true,
+        seniority: true,
+        lineOfService: true,
+        country: true,
+        region: true,
+        dailyRate: true,
+        currency: true,
+        dailyRateUSD: true,
+        dailyRateCHF: true,
+        effectiveDate: true,
+        expiryDate: true,
+        volumeCommitted: true,
+        marketRateMedian: true,
+        percentileRank: true,
+        savingsAmount: true,
+        isBaseline: true,
+        baselineType: true,
+        isNegotiated: true,
+        negotiationDate: true,
+        negotiatedBy: true,
+        msaReference: true,
+        isEditable: true,
+        editedBy: true,
+        editedAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
     // Prepare filter metadata
     const filterMetadata = includeFilterMetadata ? {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 /**
  * GET /api/rate-cards/comparisons/[id]
@@ -7,9 +8,18 @@ import { prisma } from '@/lib/prisma';
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const tenantId = getApiTenantId(request);
+  
+  if (!tenantId) {
+    return NextResponse.json(
+      { error: 'Tenant ID required' },
+      { status: 400 }
+    );
+  }
+  
   try {
-    const comparison = await prisma.rateComparison.findUnique({
-      where: { id: params.id },
+    const comparison = await prisma.rateComparison.findFirst({
+      where: { id: params.id, tenantId },
       include: {
         targetRate: true,
       },
@@ -38,12 +48,34 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
  */
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const tenantId = getApiTenantId(request);
+  
+  if (!tenantId) {
+    return NextResponse.json(
+      { error: 'Tenant ID required' },
+      { status: 400 }
+    );
+  }
+  
   try {
+    // Verify comparison belongs to tenant
+    const existing = await prisma.rateComparison.findFirst({
+      where: { id: params.id, tenantId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Comparison not found' },
+        { status: 404 }
+      );
+    }
+
     const body = await request.json();
     const { name, description, isShared } = body;
 
     const comparison = await prisma.rateComparison.update({
-      where: { id: params.id },
+      where: { id: existing.id },
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
@@ -70,9 +102,31 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const tenantId = getApiTenantId(request);
+  
+  if (!tenantId) {
+    return NextResponse.json(
+      { error: 'Tenant ID required' },
+      { status: 400 }
+    );
+  }
+  
   try {
+    // Verify comparison belongs to tenant
+    const existing = await prisma.rateComparison.findFirst({
+      where: { id: params.id, tenantId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Comparison not found' },
+        { status: 404 }
+      );
+    }
+
     await prisma.rateComparison.delete({
-      where: { id: params.id },
+      where: { id: existing.id },
     });
 
     return NextResponse.json({ success: true });

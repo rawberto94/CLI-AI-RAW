@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,12 +57,20 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
 
-    // Try to get from stored health scores first - use $queryRawUnsafe for dynamic queries
-    const whereClause = contractId 
-      ? `tenant_id = '${tenantId}' AND contract_id = '${contractId}'`
-      : `tenant_id = '${tenantId}'`;
+    // Build safe parameterized query using Prisma.sql
+    const conditions: Prisma.Sql[] = [Prisma.sql`tenant_id = ${tenantId}`];
+    
+    if (contractId) {
+      // Validate UUID format to prevent injection
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(contractId)) {
+        conditions.push(Prisma.sql`contract_id = ${contractId}`);
+      }
+    }
+    
+    const whereClause = Prisma.join(conditions, ' AND ');
       
-    const storedScores = await prisma.$queryRawUnsafe<Array<{
+    const storedScores = await prisma.$queryRaw<Array<{
       contract_id: string;
       overall_score: number;
       risk_score: number;
@@ -90,7 +99,7 @@ export async function GET(request: NextRequest) {
       WHERE ${whereClause}
       ORDER BY overall_score ASC
       LIMIT ${limit}
-    `);
+    `;
 
     // Get contract details
     const contractIds = storedScores.map(s => s.contract_id);

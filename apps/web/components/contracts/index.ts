@@ -76,6 +76,9 @@ export type { ViewMode } from './ContractViewControls';
 export { ContractsPageHeader, CompactHeader, ContractsPageHeader as ContractsHeader } from './ContractsPageHeader';
 export type { ContractsPageHeaderProps, ContractsPageHeaderProps as ContractsHeaderProps } from './ContractsPageHeader';
 
+// Contract Hierarchy (Parent-Child Relationships)
+export { ContractHierarchy } from './ContractHierarchy';
+
 // Notification Banners
 export {
   UncategorizedBanner,

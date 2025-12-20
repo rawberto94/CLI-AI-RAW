@@ -11,11 +11,12 @@ const advancedFilterService = new AdvancedFilterService(prisma);
  */
 export async function POST(request: NextRequest) {
   try {
+    const tenantId = request.headers.get('x-tenant-id');
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
+
     const body = await request.json();
-    
-    // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || body.tenantId || 'default-tenant';
     const filter = body.filter;
 
     if (!filter) {
