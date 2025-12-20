@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { getErrorMessage, JsonRecord } from '@/lib/types/common';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -32,16 +33,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        ...(result as any),
+        ...(result as JsonRecord),
         duration: `${(duration / 1000).toFixed(2)}s`,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in bulk benchmark:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to calculate bulk benchmarks',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );
@@ -80,12 +81,12 @@ export async function GET(request: NextRequest) {
         positionDistribution: {},
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting bulk status:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to get bulk status',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );

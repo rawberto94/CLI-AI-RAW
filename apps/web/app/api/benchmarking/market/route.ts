@@ -6,6 +6,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { getErrorMessage } from '@/lib/types/common';
+
+interface MarketCriteria {
+  role?: string;
+  seniority?: string;
+  country?: string;
+  lineOfService?: string;
+}
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -30,18 +38,18 @@ export async function GET(request: NextRequest) {
       Object.entries(criteria).filter(([_, v]) => v !== undefined)
     );
 
-    const intelligence = await benchmarkingEngine.calculateMarketIntelligence(cleanCriteria as any);
+    const intelligence = await benchmarkingEngine.calculateMarketIntelligence(cleanCriteria as MarketCriteria);
 
     return NextResponse.json({
       success: true,
       data: intelligence,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting market intelligence:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to get market intelligence',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );

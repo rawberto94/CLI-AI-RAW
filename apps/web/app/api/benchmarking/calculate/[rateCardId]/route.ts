@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { getErrorMessage } from '@/lib/types/common';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -39,12 +40,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
       success: true,
       data: result,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error calculating benchmark:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to calculate benchmark',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );
@@ -102,12 +103,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
         benchmark,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting benchmark:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to get benchmark',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );

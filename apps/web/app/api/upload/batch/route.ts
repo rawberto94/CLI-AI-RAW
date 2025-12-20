@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/config"
+import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 
 // Explicitly mark this route as dynamic (file uploads always dynamic)
 export const runtime = "nodejs"
@@ -10,18 +11,18 @@ export const maxDuration = 300
 export async function POST(req: Request) {
   try {
     const form = await req.formData()
-    const files = form.getAll("files") as any[]
+    const files = form.getAll("files")
     const items: Array<{ name: string; blob: Blob; filename: string }> = []
     for (const f of files) {
-      if (f && typeof (f as any).arrayBuffer === "function") {
-        const name = (f as any).name || "upload.bin"
+      if (isUploadedFile(f)) {
+        const name = f.name || "upload.bin"
         items.push({ name, blob: f as Blob, filename: name })
       }
     }
     if (items.length === 0) {
       // Fallback: accept a single "file" field
-      const one = form.get("file") as any
-      if (!one || typeof one?.arrayBuffer !== "function") {
+      const one = form.get("file")
+      if (!one || !isUploadedFile(one)) {
         return NextResponse.json({ error: "Missing files" }, { status: 400 })
       }
       const name = one.name || "upload.bin"
@@ -93,8 +94,8 @@ export async function POST(req: Request) {
       success: results.filter(r => r.status === 'success').length,
       failed: results.filter(r => r.status === 'error').length
     }, { status: 201 })
-  } catch (e: any) {
+  } catch (e) {
     console.error("Batch upload error:", e)
-    return NextResponse.json({ error: `Upload failed: ${e?.message || "unknown error"}` }, { status: 500 })
+    return NextResponse.json({ error: `Upload failed: ${getErrorMessage(e)}` }, { status: 500 })
   }
 }

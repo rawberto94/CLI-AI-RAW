@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { getErrorMessage } from '@/lib/types/common';
+import type { Prisma } from '@prisma/client';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -25,12 +27,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
       success: true,
       data: opportunities,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error detecting opportunities:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to detect opportunities',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
-    const where: any = { tenantId };
+    const where: Prisma.RateSavingsOpportunityWhereInput = { tenantId };
     if (status) where.status = status;
     if (minSavings) where.annualSavingsPotential = { gte: parseFloat(minSavings) };
 
@@ -82,12 +84,12 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error getting opportunities:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to get opportunities',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     );

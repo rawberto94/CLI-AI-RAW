@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
-import type { Contract } from '@prisma/client';
+import type { Contract, Prisma } from '@prisma/client';
+import { getErrorMessage } from '@/lib/types/common';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -138,7 +139,7 @@ async function performDeepAnalysis(
 ): Promise<DeepAnalysisResult> {
   try {
     // Build dynamic query (always exclude DELETED)
-    const where: any = { 
+    const where: Prisma.ContractWhereInput = { 
       tenantId,
       status: { not: 'DELETED' },
     };
@@ -640,7 +641,7 @@ function analyzeClausesFromArtifacts(contracts: EnrichedContract[]): ClauseAnaly
   
   clauseTypes.forEach(clauseType => {
     const contractsWithClause = contracts.filter(c => 
-      c.artifacts?.some((a: any) => a.type === clauseType)
+      c.artifacts?.some((a: { type: string; data: unknown }) => a.type === clauseType)
     );
     
     if (contractsWithClause.length > 0) {
@@ -881,10 +882,10 @@ export async function POST(request: NextRequest) {
         filtersApplied: Object.values(filters || {}).flat().length,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[AI Report Builder] Error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to generate report' },
+      { success: false, error: getErrorMessage(error) },
       { status: 500 }
     );
   }
