@@ -115,6 +115,7 @@ export { useUndoableAction, useUndoableDelete, showUndoToast } from './useUndoab
 export { useDebounce, useDebounceCallback } from './useDebounce';
 export { useThrottle, useThrottleCallback, useRafThrottle, useThrottledState } from './useThrottle';
 export { useInlineEdit, useSimpleInlineEdit } from './useInlineEdit';
+export { useFormValidation } from './useFormValidation';
 export { 
   usePrevious, 
   usePreviousDistinct, 
