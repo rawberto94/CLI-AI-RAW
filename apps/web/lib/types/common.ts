@@ -644,3 +644,199 @@ export type ArrayElement<T> = T extends (infer E)[] ? E : never;
  * Safe record accessor
  */
 export type SafeRecord<K extends string | number | symbol, V> = Partial<Record<K, V>>;
+
+// ============================================================================
+// API Route Helper Types
+// ============================================================================
+
+/**
+ * Error with typed cause for catch blocks
+ * Use instead of `catch (error: any)`
+ */
+export interface CaughtError extends Error {
+  message: string;
+  name: string;
+  stack?: string;
+  cause?: unknown;
+  code?: string | number;
+}
+
+/**
+ * Type guard for caught errors
+ */
+export function isCaughtError(error: unknown): error is CaughtError {
+  return error instanceof Error;
+}
+
+/**
+ * Get error message safely
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'An unknown error occurred';
+}
+
+/**
+ * Custom field schema definition
+ */
+export interface CustomFieldDefinition {
+  name: string;
+  type: 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multiselect';
+  label: string;
+  required?: boolean;
+  hidden?: boolean;
+  aiExtractionEnabled?: boolean;
+  options?: Array<{ value: string; label: string }>;
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+    message?: string;
+  };
+}
+
+/**
+ * Tenant settings custom fields
+ */
+export interface TenantCustomFields {
+  predefinedTags?: Array<string | { name: string; color?: string }>;
+  fieldSchema?: CustomFieldDefinition[];
+  [key: string]: unknown;
+}
+
+/**
+ * Import job data
+ */
+export interface ImportJobData {
+  id: string;
+  type: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress?: number;
+  totalItems?: number;
+  processedItems?: number;
+  errors: ImportError[];
+  warnings: ImportWarning[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ImportError {
+  row?: number;
+  field?: string;
+  message: string;
+  code?: string;
+}
+
+export interface ImportWarning {
+  row?: number;
+  field?: string;
+  message: string;
+  code?: string;
+}
+
+/**
+ * Extraction result from AI processing
+ */
+export interface ExtractionResult {
+  fieldName: string;
+  value: string | number | boolean | string[] | null;
+  confidence: number;
+  source?: string;
+}
+
+/**
+ * Metrics data from monitoring
+ */
+export interface MetricsData {
+  cpu?: {
+    usage: number;
+    cores?: number;
+  };
+  memory?: {
+    used: number;
+    total: number;
+    percentage: number;
+  };
+  disk?: {
+    used: number;
+    total: number;
+    percentage: number;
+  };
+  network?: {
+    bytesIn: number;
+    bytesOut: number;
+  };
+  [key: string]: unknown;
+}
+
+/**
+ * Alert rule configuration
+ */
+export interface AlertRule {
+  id: string;
+  name: string;
+  type: string;
+  threshold: number;
+  enabled: boolean;
+  recipients: string[];
+  metadata?: JsonRecord;
+}
+
+/**
+ * Alert notification
+ */
+export interface AlertNotification {
+  id: string;
+  ruleId: string;
+  type: string;
+  message: string;
+  sentTo: string[];
+  sentAt: Date;
+  acknowledged?: boolean;
+  acknowledgedBy?: string;
+  acknowledgedAt?: Date;
+}
+
+/**
+ * Signature request data
+ */
+export interface SignatureRequest {
+  id: string;
+  contractId: string;
+  status: 'pending' | 'signed' | 'declined' | 'expired';
+  signers: SignatureRequestSigner[];
+  createdAt: Date;
+  expiresAt?: Date;
+}
+
+export interface SignatureRequestSigner {
+  email: string;
+  name?: string;
+  status: 'pending' | 'signed' | 'declined';
+  signedAt?: Date;
+}
+
+/**
+ * File upload data
+ */
+export interface UploadedFile {
+  name: string;
+  size: number;
+  type: string;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+}
+
+/**
+ * Type guard for uploaded file
+ */
+export function isUploadedFile(value: unknown): value is UploadedFile {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    'arrayBuffer' in value &&
+    typeof (value as UploadedFile).arrayBuffer === 'function'
+  );
+}
+
