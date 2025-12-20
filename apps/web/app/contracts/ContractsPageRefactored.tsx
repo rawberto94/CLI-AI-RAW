@@ -249,7 +249,7 @@ const ContractRow = memo(function ContractRow({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onView}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onView} aria-label="View contract">
                 <Eye className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -257,7 +257,7 @@ const ContractRow = memo(function ContractRow({
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShare}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onShare} aria-label="Share contract">
                 <Share2 className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
@@ -266,7 +266,7 @@ const ContractRow = memo(function ContractRow({
         </TooltipProvider>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More actions">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -729,7 +729,7 @@ export default function ContractsPageRefactored() {
           </DropdownMenu>
 
           {/* View Mode */}
-          <div className="flex gap-1 p-1 bg-muted rounded-lg">
+          <div className="flex gap-1 p-1 bg-muted rounded-lg" role="group" aria-label="View mode">
             {VIEW_MODES.map(mode => {
               const Icon = mode.icon;
               return (
@@ -743,6 +743,8 @@ export default function ContractsPageRefactored() {
                         viewMode === mode.id && 'bg-background shadow-sm'
                       )}
                       onClick={() => setViewMode(mode.id as ViewMode)}
+                      aria-label={mode.label}
+                      aria-pressed={viewMode === mode.id}
                     >
                       <Icon className="h-4 w-4" />
                     </Button>

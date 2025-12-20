@@ -365,7 +365,7 @@ function WorkflowStepCard({ step, index, isLast, onEdit, onDelete, onDuplicate }
               {/* Actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Step actions">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -482,7 +482,7 @@ function WorkflowCard({ workflow, onEdit, onDuplicate, onToggleActive, onDelete 
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Workflow actions">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

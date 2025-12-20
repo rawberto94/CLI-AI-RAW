@@ -412,10 +412,12 @@ export function ShareDialog({
                 readOnly
                 value={`${typeof window !== 'undefined' ? window.location.origin : ''}/${documentType}s/${documentId}`}
                 className="flex-1 bg-transparent text-sm text-slate-600 outline-none"
+                aria-label="Share link"
               />
               <button
                 onClick={handleCopyLink}
                 className="px-3 py-1 bg-slate-200 text-slate-700 rounded-md text-sm hover:bg-slate-300 transition-colors flex items-center gap-1"
+                aria-label={linkCopied ? 'Link copied' : 'Copy share link'}
               >
                 {linkCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 {linkCopied ? 'Copied!' : 'Copy'}

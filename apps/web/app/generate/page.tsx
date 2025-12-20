@@ -408,7 +408,7 @@ function DraftCard({ draft }: { draft: ContractDraft }) {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Draft actions">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -661,7 +661,7 @@ export default function ContractGenerationPage() {
                 className="pl-9"
               />
             </div>
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" aria-label="Filter drafts">
               <Filter className="h-4 w-4" />
             </Button>
             <div className="flex items-center border rounded-md">
@@ -670,6 +670,8 @@ export default function ContractGenerationPage() {
                 size="icon"
                 className="rounded-r-none"
                 onClick={() => setViewMode('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
               >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
@@ -678,6 +680,8 @@ export default function ContractGenerationPage() {
                 size="icon"
                 className="rounded-l-none"
                 onClick={() => setViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
               >
                 <List className="h-4 w-4" />
               </Button>

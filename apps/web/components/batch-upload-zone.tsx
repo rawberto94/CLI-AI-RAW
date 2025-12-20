@@ -537,7 +537,7 @@ export function BatchUploadZone({
           }
         `}
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} aria-label="Upload files for batch processing" />
         <Upload
           className={`mx-auto h-12 w-12 mb-4 ${
             isDragActive ? "text-blue-500" : "text-gray-400"

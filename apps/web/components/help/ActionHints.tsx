@@ -283,6 +283,7 @@ export function ActionHints({ context, className }: ActionHintsProps) {
             variant="ghost"
             onClick={() => dismissHint(currentHint.id)}
             className="h-6 w-6 text-amber-500 hover:text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/50 flex-shrink-0"
+            aria-label="Dismiss hint"
           >
             <X className="h-3.5 w-3.5" />
           </Button>

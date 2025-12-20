@@ -100,10 +100,11 @@ export function BulkBaselineComparison() {
         {/* Filters */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="minVariance" className="block text-sm font-medium mb-1">
               Minimum Variance % to Show
             </label>
             <input
+              id="minVariance"
               type="number"
               className="w-full border rounded px-3 py-2"
               value={filters.minVariancePercentage}
@@ -115,10 +116,11 @@ export function BulkBaselineComparison() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor="baselineTypes" className="block text-sm font-medium mb-1">
               Baseline Types (optional)
             </label>
             <select
+              id="baselineTypes"
               multiple
               className="w-full border rounded px-3 py-2"
               value={filters.baselineTypes}

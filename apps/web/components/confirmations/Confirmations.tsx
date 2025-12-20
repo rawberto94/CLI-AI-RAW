@@ -222,10 +222,11 @@ function ConfirmationDialog({
             {/* Input Confirmation */}
             {options.inputConfirmation && (
               <div className="mt-4">
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <label htmlFor="confirmationInput" className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
                   {options.inputConfirmation.label}
                 </label>
                 <input
+                  id="confirmationInput"
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}

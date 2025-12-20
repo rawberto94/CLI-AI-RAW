@@ -727,6 +727,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
           checked={isSelected}
           onChange={handleCheckboxChange}
           className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer accent-primary"
+          aria-label={`Select ${contract.contractTitle || contract.originalName || 'contract'}`}
         />
       </motion.div>
 

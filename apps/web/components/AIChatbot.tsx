@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -66,6 +68,18 @@ import {
   ExternalLink,
   ThumbsUp,
   ThumbsDown,
+  Wifi,
+  WifiOff,
+  Volume2,
+  VolumeX,
+  Pin,
+  ArrowDown,
+  Wand2,
+  Check,
+  XCircle,
+  CornerDownLeft,
+  Expand,
+  Shrink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -79,6 +93,24 @@ const KEYBOARD_SHORTCUTS = {
   newChat: { key: 'n', ctrl: true, shift: true, description: 'New conversation' },
   focus: { key: '/', ctrl: false, description: 'Focus input' },
 };
+
+// API retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelay: 1000,
+  maxDelay: 10000,
+};
+
+// Thinking stages for enhanced UX
+const THINKING_STAGES = [
+  { text: 'Understanding your question...', duration: 800 },
+  { text: 'Searching contract database...', duration: 1200 },
+  { text: 'Analyzing relevant documents...', duration: 1500 },
+  { text: 'Generating response...', duration: 1000 },
+];
+
+// Character limit for input
+const MAX_INPUT_LENGTH = 2000;
 
 interface Message {
   id: string;
@@ -98,6 +130,7 @@ interface Message {
   };
   isStreaming?: boolean;
   feedback?: 'positive' | 'negative';
+  reactions?: string[];
   attachments?: Array<{
     name: string;
     type: string;
@@ -112,6 +145,9 @@ interface Message {
     expiresIn?: number;
   }>;
 }
+
+// Quick reactions
+const QUICK_REACTIONS = ['👍', '❤️', '🎉', '💡', '🙏'];
 
 interface ChatSession {
   id: string;
@@ -154,9 +190,25 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const [thinkingStage, setThinkingStage] = useState(0);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [responseTime, setResponseTime] = useState<number | null>(null);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [pendingRetry, setPendingRetry] = useState<Message | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Message[]>([]);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const responseStartTimeRef = useRef<number>(0);
 
   const contextualSuggestions: Record<string, string[]> = {
     global: [
@@ -287,6 +339,11 @@ How can I help you today?`;
         e.preventDefault();
         handleNewConversation();
       }
+      // Ctrl/Cmd + F for search (when chat is open)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && isOpen && !isMinimized) {
+        e.preventDefault();
+        setShowSearch(true);
+      }
       // / to focus input when chat is open
       if (e.key === '/' && isOpen && !isMinimized && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
@@ -294,19 +351,84 @@ How can I help you today?`;
       }
       // Escape to close
       if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
+        if (showSearch) {
+          setShowSearch(false);
+        } else {
+          setIsOpen(false);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isMinimized]);
+  }, [isOpen, isMinimized, showSearch]);
 
+  // Network status monitoring
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success('Connection restored');
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.error('Connection lost - messages will be sent when reconnected');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOnline(navigator.onLine);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Scroll management with show/hide button
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const isNearBottom = scrollRef.current.scrollHeight - scrollRef.current.scrollTop - scrollRef.current.clientHeight < 100;
+      if (isNearBottom) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        setShowScrollButton(false);
+      } else {
+        setShowScrollButton(true);
+      }
     }
   }, [messages, streamingText]);
+
+  // Thinking stage animation
+  useEffect(() => {
+    if (isLoading && !isStreaming) {
+      const interval = setInterval(() => {
+        setThinkingStage(prev => (prev + 1) % THINKING_STAGES.length);
+      }, THINKING_STAGES[thinkingStage]?.duration || 1000);
+      return () => clearInterval(interval);
+    } else {
+      setThinkingStage(0);
+    }
+  }, [isLoading, isStreaming, thinkingStage]);
+
+  // Scroll to bottom helper
+  const scrollToBottom = useCallback(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setShowScrollButton(false);
+    }
+  }, []);
+
+  // Play notification sound
+  const playNotificationSound = useCallback(() => {
+    if (soundEnabled && typeof window !== 'undefined') {
+      try {
+        const audio = new Audio('/sounds/notification.mp3');
+        audio.volume = 0.3;
+        audio.play().catch(() => {/* Ignore audio errors */});
+      } catch {
+        // Ignore audio errors
+      }
+    }
+  }, [soundEnabled]);
 
   // Create new conversation
   const handleNewConversation = useCallback(() => {
@@ -384,6 +506,50 @@ How can I help you today?`;
     ));
     // TODO: Send feedback to server for improvement
     toast.success(feedback === 'positive' ? 'Thanks for the feedback!' : 'We\'ll improve based on your feedback');
+  }, []);
+
+  // Search messages
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    const results = messages.filter(m => 
+      m.content.toLowerCase().includes(lowerQuery) ||
+      m.sources?.some(s => s.toLowerCase().includes(lowerQuery))
+    );
+    setSearchResults(results);
+  }, [messages]);
+
+  // Jump to message
+  const jumpToMessage = useCallback((messageId: string) => {
+    setHighlightedMessageId(messageId);
+    setShowSearch(false);
+    
+    // Scroll to message
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    // Clear highlight after 2 seconds
+    setTimeout(() => setHighlightedMessageId(null), 2000);
+  }, []);
+
+  // Add reaction to message
+  const addReaction = useCallback((messageId: string, emoji: string) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      const reactions = m.reactions || [];
+      if (reactions.includes(emoji)) {
+        // Remove if already exists
+        return { ...m, reactions: reactions.filter(r => r !== emoji) };
+      }
+      return { ...m, reactions: [...reactions, emoji] };
+    }));
   }, []);
 
   // Voice input handling
@@ -467,10 +633,19 @@ How can I help you today?`;
     setIsLoading(false);
   }, []);
 
-  // Send with streaming support
-  const handleSend = async (message?: string) => {
+  // Send with streaming support and retry logic
+  const handleSend = async (message?: string, retryAttempt = 0) => {
     const userMessage = message || input.trim();
     if (!userMessage || isLoading) return;
+
+    // Check online status
+    if (!isOnline) {
+      toast.error('No internet connection. Please check your network.');
+      return;
+    }
+
+    // Track response time
+    responseStartTimeRef.current = Date.now();
 
     // Create session if needed
     if (!currentSessionId) {
@@ -492,19 +667,24 @@ How can I help you today?`;
       size: attachedFile.size,
     } : undefined;
 
-    const newUserMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: userMessage,
-      timestamp: new Date(),
-      attachments: attachmentInfo ? [attachmentInfo] : undefined,
-    };
+    // Only add user message if this is not a retry
+    if (retryAttempt === 0) {
+      const newUserMessage: Message = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date(),
+        attachments: attachmentInfo ? [attachmentInfo] : undefined,
+      };
 
-    setMessages((prev) => [...prev, newUserMessage]);
-    setInput('');
-    setAttachedFile(null);
+      setMessages((prev) => [...prev, newUserMessage]);
+      setInput('');
+      setAttachedFile(null);
+    }
+    
     setIsLoading(true);
     setStreamingText('');
+    setRetryCount(retryAttempt);
 
     // Try streaming first
     abortControllerRef.current = new AbortController();
@@ -563,6 +743,11 @@ How can I help you today?`;
       }
 
       setIsStreaming(false);
+      
+      // Calculate response time
+      const responseTimeMs = Date.now() - responseStartTimeRef.current;
+      setResponseTime(responseTimeMs);
+      
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -574,6 +759,10 @@ How can I help you today?`;
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setStreamingText('');
+      setRetryCount(0);
+      
+      // Play notification sound
+      playNotificationSound();
 
     } catch (streamError: unknown) {
       // Fallback to non-streaming if streaming fails or is aborted
@@ -602,6 +791,10 @@ How can I help you today?`;
         if (!response.ok) throw new Error('Failed to get response');
 
         const data = await response.json();
+        
+        // Calculate response time
+        const responseTimeMs = Date.now() - responseStartTimeRef.current;
+        setResponseTime(responseTimeMs);
 
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
@@ -614,23 +807,43 @@ How can I help you today?`;
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
+        setRetryCount(0);
+        playNotificationSound();
 
         if (data.suggestions && data.suggestions.length > 0) {
           setSuggestions(data.suggestions);
         }
       } catch (error) {
         console.error('AI Chat error:', error);
+        
+        // Retry logic
+        if (retryAttempt < RETRY_CONFIG.maxRetries) {
+          const delay = Math.min(
+            RETRY_CONFIG.baseDelay * Math.pow(2, retryAttempt),
+            RETRY_CONFIG.maxDelay
+          );
+          
+          toast.info(`Retrying in ${delay / 1000}s... (Attempt ${retryAttempt + 1}/${RETRY_CONFIG.maxRetries})`);
+          
+          setTimeout(() => {
+            handleSend(userMessage, retryAttempt + 1);
+          }, delay);
+          return;
+        }
+        
         const errorMessage: Message = {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: 'I apologize, but I encountered an error. Please try again or rephrase your question.',
+          content: `I apologize, but I encountered an error after ${RETRY_CONFIG.maxRetries} attempts. This could be due to:\n\n• Network connectivity issues\n• Server temporarily unavailable\n• High demand\n\nPlease try again in a moment, or rephrase your question.`,
           timestamp: new Date(),
           suggestedActions: [
-            { label: '🔄 Retry', action: 'retry' },
+            { label: '🔄 Retry Now', action: 'retry' },
             { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
+            { label: '💬 Start Fresh', action: 'new-conversation' },
           ],
         };
         setMessages((prev) => [...prev, errorMessage]);
+        setPendingRetry({ ...errorMessage, content: userMessage });
       }
     } finally {
       setIsLoading(false);
@@ -777,11 +990,20 @@ Would you like me to notify the first approver or do anything else?`,
         router.push('/approvals?filter=urgent');
         break;
       case 'retry':
-        // Retry the last user message
-        const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
-        if (lastUserMsg) {
-          handleSend(lastUserMsg.content);
+        // Retry the last user message or pending retry
+        if (pendingRetry) {
+          const retryContent = pendingRetry.content;
+          setPendingRetry(null);
+          handleSend(retryContent);
+        } else {
+          const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+          if (lastUserMsg) {
+            handleSend(lastUserMsg.content);
+          }
         }
+        break;
+      case 'new-conversation':
+        handleNewConversation();
         break;
       default:
         console.log('Unknown action:', action);
@@ -793,20 +1015,36 @@ Would you like me to notify the first approver or do anything else?`,
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              onClick={() => setIsOpen(true)}
-              className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 z-50 group"
-              size="icon"
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
             >
-              <MessageSquare className="h-6 w-6 group-hover:scale-110 transition-transform" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500"></span>
-              </span>
-            </Button>
+              <Button
+                onClick={() => setIsOpen(true)}
+                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 z-50 group"
+                size="icon"
+              >
+                <MessageSquare className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className={cn(
+                    "animate-ping absolute inline-flex h-full w-full rounded-full opacity-75",
+                    isOnline ? "bg-green-400" : "bg-red-400"
+                  )}></span>
+                  <span className={cn(
+                    "relative inline-flex rounded-full h-4 w-4",
+                    isOnline ? "bg-green-500" : "bg-red-500"
+                  )}></span>
+                </span>
+              </Button>
+            </motion.div>
           </TooltipTrigger>
           <TooltipContent side="left">
-            <p>AI Assistant <kbd className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-xs">⌘K</kbd></p>
+            <p className="flex items-center gap-2">
+              AI Assistant 
+              {!isOnline && <span className="text-red-400">(Offline)</span>}
+              <kbd className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-xs">⌘K</kbd>
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -815,87 +1053,208 @@ Would you like me to notify the first approver or do anything else?`,
 
   if (isMinimized) {
     return (
-      <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50">
-        <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              <CardTitle className="text-sm">AI Assistant</CardTitle>
-              <Badge className="bg-white/20 text-white border-0 text-xs">
-                {messages.length - 1} messages
-              </Badge>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+      >
+        <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50">
+          <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                <CardTitle className="text-sm">AI Assistant</CardTitle>
+                {/* Network Status */}
+                <span className={cn(
+                  "inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full",
+                  isOnline ? "bg-green-500/30" : "bg-red-500/30"
+                )}>
+                  {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                </span>
+                <Badge className="bg-white/20 text-white border-0 text-xs">
+                  {messages.length - 1} msgs
+                </Badge>
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsMinimized(false)}
+                  className="h-7 w-7 p-0 text-white hover:bg-white/20"
+                >
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsOpen(false)}
+                  className="h-7 w-7 p-0 text-white hover:bg-white/20"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMinimized(false)}
-                className="h-7 w-7 p-0 text-white hover:bg-white/20"
-              >
-                <Maximize2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOpen(false)}
-                className="h-7 w-7 p-0 text-white hover:bg-white/20"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
+      </motion.div>
     );
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-[520px] h-[750px] shadow-2xl z-50 flex flex-col overflow-hidden">
-      {/* Header */}
-      <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex-shrink-0">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Sparkles className="h-5 w-5 animate-pulse" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">AI Assistant</CardTitle>
-              <p className="text-xs text-white/80">
-                {isStreaming ? 'Typing...' : 'Powered by GPT-4'}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-1">
-            {/* Options Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-white hover:bg-white/20"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={handleNewConversation}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  New conversation
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowHistory(true)}>
-                  <History className="h-4 w-4 mr-2" />
-                  Chat history
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportConversation}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export chat
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowShortcuts(true)}>
-                  <Keyboard className="h-4 w-4 mr-2" />
-                  Keyboard shortcuts
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.2 }}
+        role="dialog"
+        aria-label="AI Chat Assistant"
+        aria-modal="true"
+      >
+        <Card 
+          className={cn(
+            "fixed bottom-6 right-6 shadow-2xl z-50 flex flex-col overflow-hidden transition-all duration-300",
+            isExpanded ? "w-[700px] h-[85vh]" : "w-[520px] h-[750px]",
+            isPinned && "ring-2 ring-blue-400"
+          )}
+          aria-labelledby="chatbot-title"
+        >
+          {/* Header */}
+          <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex-shrink-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                </div>
+                <div>
+                  <CardTitle id="chatbot-title" className="text-lg flex items-center gap-2">
+                    AI Assistant
+                    {/* Network Status Indicator */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className={cn(
+                            "inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full",
+                            isOnline ? "bg-green-500/30 text-green-100" : "bg-red-500/30 text-red-100"
+                          )}>
+                            {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{isOnline ? 'Connected' : 'Offline - Messages will be sent when reconnected'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </CardTitle>
+                  <p className="text-xs text-white/80 flex items-center gap-2">
+                    {isStreaming ? (
+                      <>
+                        <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                        {THINKING_STAGES[thinkingStage].text}
+                      </>
+                    ) : responseTime ? (
+                      <>Powered by GPT-4 • Last response: {(responseTime / 1000).toFixed(1)}s</>
+                    ) : (
+                      'Powered by GPT-4'
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                {/* Sound Toggle */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSoundEnabled(!soundEnabled)}
+                        className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                      >
+                        {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{soundEnabled ? 'Mute notifications' : 'Enable notifications'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                {/* Pin Toggle */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsPinned(!isPinned)}
+                        className={cn(
+                          "h-8 w-8 p-0 text-white hover:bg-white/20",
+                          isPinned && "bg-white/20"
+                        )}
+                      >
+                        <Pin className={cn("h-4 w-4", isPinned && "fill-white")} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isPinned ? 'Unpin chat' : 'Pin chat (stay on top)'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                {/* Expand Toggle */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                      >
+                        {isExpanded ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isExpanded ? 'Compact view' : 'Expand chat'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                {/* Options Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={handleNewConversation}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      New conversation
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowSearch(true)}>
+                      <Search className="h-4 w-4 mr-2" />
+                      Search messages
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowHistory(true)}>
+                      <History className="h-4 w-4 mr-2" />
+                      Chat history
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportConversation}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export chat
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowShortcuts(true)}>
+                      <Keyboard className="h-4 w-4 mr-2" />
+                      Keyboard shortcuts
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
             </DropdownMenu>
             <Button
               variant="ghost"
@@ -916,58 +1275,169 @@ Would you like me to notify the first approver or do anything else?`,
           </div>
         </div>
 
-        {/* Context Badge */}
-        {context !== 'global' && (
-          <div className="flex items-center mt-3 pt-3 border-t border-white/20">
-            <Badge className="bg-white/20 text-white border-0">
-              {context.charAt(0).toUpperCase() + context.slice(1)} Context
+        {/* Context Badge & Stats */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
+          <div className="flex items-center gap-2">
+            {context !== 'global' && (
+              <Badge className="bg-white/20 text-white border-0">
+                {context.charAt(0).toUpperCase() + context.slice(1)} Context
+              </Badge>
+            )}
+            <Badge className="bg-white/10 text-white/80 border-0 text-xs">
+              {messages.length - 1} messages
             </Badge>
-            <span className="text-xs text-white/60 ml-2">AI has full access to your contract data</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-white/60">
+            {responseTime && (
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {(responseTime / 1000).toFixed(1)}s avg
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Thinking Progress Bar */}
+        {isStreaming && (
+          <div className="mt-3 pt-3 border-t border-white/20">
+            <div className="flex items-center justify-between text-xs text-white/80 mb-1">
+              <span className="flex items-center gap-1">
+                <Wand2 className="h-3 w-3 animate-spin" />
+                {THINKING_STAGES[thinkingStage].text}
+              </span>
+              <span>{Math.min((thinkingStage + 1) * 25, 95)}%</span>
+            </div>
+            <Progress value={Math.min((thinkingStage + 1) * 25, 95)} className="h-1 bg-white/20" />
           </div>
         )}
       </CardHeader>
+      
+      {/* Offline Banner */}
+      <AnimatePresence>
+        {!isOnline && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 flex items-center justify-between overflow-hidden"
+          >
+            <div className="flex items-center gap-2 text-sm text-yellow-800">
+              <WifiOff className="h-4 w-4" />
+              <span>You&apos;re offline. Messages will be sent when reconnected.</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-yellow-700 hover:bg-yellow-100"
+              onClick={() => window.location.reload()}
+            >
+              <RefreshCw className="h-3 w-3 mr-1" />
+              Refresh
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Quick Actions Bar */}
+      {messages.length > 1 && (
+        <div className="px-4 py-2 border-b bg-gray-50/80 flex items-center gap-2 overflow-x-auto flex-shrink-0">
+          <span className="text-xs text-gray-500 whitespace-nowrap">Quick:</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap"
+            onClick={() => handleSend("What needs my attention today?")}
+            disabled={isLoading}
+          >
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Attention
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap"
+            onClick={() => handleSend("Summarize our conversation so far")}
+            disabled={isLoading}
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            Summarize
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap"
+            onClick={() => handleSend("What are the next steps?")}
+            disabled={isLoading}
+          >
+            <TrendingUp className="h-3 w-3 mr-1" />
+            Next Steps
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-xs whitespace-nowrap"
+            onClick={() => router.push('/contracts')}
+          >
+            <ExternalLink className="h-3 w-3 mr-1" />
+            Contracts
+          </Button>
+        </div>
+      )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        <div ref={scrollRef} className="space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={cn(
-                'flex gap-3',
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              )}
-            >
-              {message.role === 'assistant' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-white" />
-                </div>
-              )}
+      <div className="relative flex-1">
+        <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
+          <div ref={scrollRef} className="space-y-4" role="log" aria-live="polite" aria-label="Chat messages">
+            <AnimatePresence mode="popLayout">
+              {messages.map((message) => (
+                <motion.div
+                  key={message.id}
+                  id={`message-${message.id}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ 
+                    opacity: 1, 
+                    y: 0,
+                    scale: highlightedMessageId === message.id ? 1.02 : 1,
+                    boxShadow: highlightedMessageId === message.id ? '0 0 0 3px rgba(59, 130, 246, 0.5)' : 'none'
+                  }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    'flex gap-3 rounded-lg transition-all',
+                    message.role === 'user' ? 'justify-end' : 'justify-start',
+                    highlightedMessageId === message.id && 'bg-blue-50 p-2 -mx-2'
+                  )}
+                >
+                  {message.role === 'assistant' && (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <Bot className="h-5 w-5 text-white" />
+                    </div>
+                  )}
 
-              <div
-                className={cn(
-                  'max-w-[85%] rounded-2xl px-4 py-3',
-                  message.role === 'user'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                )}
-              >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  <div
+                    className={cn(
+                      'max-w-[85%] rounded-2xl px-4 py-3',
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    )}
+                  >
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
 
-                {/* Sources */}
-                {message.sources && message.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-300/30">
-                    <p className="text-xs font-medium mb-2 flex items-center gap-1">
-                      <BookOpen className="h-3 w-3" />
-                      Sources:
-                    </p>
-                    <div className="space-y-1">
-                      {message.sources.map((source, idx) => (
-                        <button
-                          key={idx}
-                          className="text-xs text-blue-600 hover:underline block"
-                          onClick={() => console.log('Navigate to:', source)}
-                        >
+                    {/* Sources */}
+                    {message.sources && message.sources.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-300/30">
+                        <p className="text-xs font-medium mb-2 flex items-center gap-1">
+                          <BookOpen className="h-3 w-3" />
+                          Sources:
+                        </p>
+                        <div className="space-y-1">
+                          {message.sources.map((source, idx) => (
+                            <button
+                              key={idx}
+                              className="text-xs text-blue-600 hover:underline block"
+                              onClick={() => console.log('Navigate to:', source)}
+                            >
                           • {source}
                         </button>
                       ))}
@@ -997,11 +1467,15 @@ Would you like me to notify the first approver or do anything else?`,
                 )}
 
                 <p className="text-xs opacity-60 mt-2 flex items-center justify-between">
-                  <span>
+                  <span className="flex items-center gap-1">
                     {message.timestamp.toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
+                    {/* Message status for user messages */}
+                    {message.role === 'user' && (
+                      <Check className="h-3 w-3 text-white/80" />
+                    )}
                   </span>
                   {/* Message actions for assistant messages */}
                   {message.role === 'assistant' && message.id !== 'welcome' && (
@@ -1033,9 +1507,40 @@ Would you like me to notify the first approver or do anything else?`,
                       >
                         <ThumbsDown className="h-3 w-3" />
                       </button>
+                      {/* Quick emoji reactions */}
+                      <div className="flex items-center gap-0.5 ml-1 border-l pl-1 border-gray-200">
+                        {QUICK_REACTIONS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => addReaction(message.id, emoji)}
+                            className={cn(
+                              "p-0.5 hover:bg-gray-200 rounded transition-colors text-xs",
+                              message.reactions?.includes(emoji) && "bg-blue-100"
+                            )}
+                            title={`React with ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </p>
+                
+                {/* Display reactions */}
+                {message.reactions && message.reactions.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {message.reactions.map((emoji, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-1.5 py-0.5 bg-blue-50 rounded-full text-xs cursor-pointer hover:bg-blue-100"
+                        onClick={() => addReaction(message.id, emoji)}
+                      >
+                        {emoji}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Attachments display */}
                 {message.attachments && message.attachments.length > 0 && (
@@ -1095,12 +1600,17 @@ Would you like me to notify the first approver or do anything else?`,
                   <User className="h-5 w-5 text-white" />
                 </div>
               )}
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
 
           {/* Streaming response */}
           {isStreaming && streamingText && (
-            <div className="flex gap-3 justify-start">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3 justify-start"
+            >
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
@@ -1114,53 +1624,89 @@ Would you like me to notify the first approver or do anything else?`,
                   </div>
                   <button
                     onClick={cancelStreaming}
-                    className="text-xs text-red-500 hover:underline"
+                    className="text-xs text-red-500 hover:underline flex items-center gap-1"
                   >
-                    Stop
+                    <XCircle className="h-3 w-3" />
+                    Stop generating
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Loading (non-streaming) */}
           {isLoading && !isStreaming && (
-            <div className="flex gap-3 justify-start">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3 justify-start"
+            >
               <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="bg-gray-100 rounded-2xl px-4 py-3">
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <span className="text-sm text-gray-600">Thinking...</span>
+                  <span className="text-sm text-gray-600">{THINKING_STAGES[thinkingStage].text}</span>
+                </div>
+                <div className="mt-2">
+                  <Progress value={Math.min((thinkingStage + 1) * 25, 95)} className="h-1" />
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       </ScrollArea>
+      
+      {/* Scroll to bottom button */}
+      <AnimatePresence>
+        {showScrollButton && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={scrollToBottom}
+            className="absolute bottom-24 right-8 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+          >
+            <ArrowDown className="h-4 w-4" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </div>
 
-      {/* Suggestions */}
-      {suggestions.length > 0 && messages.length <= 1 && (
-        <div className="px-4 py-2 border-t bg-gray-50 flex-shrink-0">
+      {/* Quick Suggestions - show for initial or after responses */}
+      {suggestions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="px-4 py-2 border-t bg-gray-50 flex-shrink-0"
+        >
           <p className="text-xs font-medium text-gray-600 mb-2 flex items-center gap-1">
-            <Zap className="h-3 w-3" />
-            Quick Questions:
+            <Zap className="h-3 w-3 text-yellow-500" />
+            {messages.length <= 1 ? 'Quick Questions:' : 'Follow-up Questions:'}
           </p>
           <div className="flex flex-wrap gap-2">
-            {suggestions.slice(0, 4).map((suggestion, idx) => (
-              <Button
+            {suggestions.slice(0, messages.length <= 1 ? 4 : 3).map((suggestion, idx) => (
+              <motion.div
                 key={idx}
-                variant="outline"
-                size="sm"
-                className="text-xs h-7 hover:bg-blue-50 hover:border-blue-300 transition-colors"
-                onClick={() => handleSuggestionClick(suggestion)}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: idx * 0.05 }}
               >
-                {suggestion}
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-7 hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                >
+                  <Sparkles className="h-3 w-3 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                  {suggestion}
+                </Button>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Attached file indicator */}
@@ -1192,6 +1738,7 @@ Would you like me to notify the first approver or do anything else?`,
             onChange={handleFileSelect}
             className="hidden"
             accept=".pdf,.doc,.docx,.txt,.json"
+            aria-label="Attach file to chat"
           />
           
           {/* Attachment button */}
@@ -1203,6 +1750,7 @@ Would you like me to notify the first approver or do anything else?`,
                   size="sm"
                   className="h-10 w-10 p-0 flex-shrink-0"
                   onClick={() => fileInputRef.current?.click()}
+                  aria-label="Attach file"
                 >
                   <Paperclip className="h-4 w-4 text-gray-500" />
                 </Button>
@@ -1212,21 +1760,41 @@ Would you like me to notify the first approver or do anything else?`,
           </TooltipProvider>
 
           {/* Text input - now a textarea for multiline */}
-          <Textarea
-            ref={inputRef}
-            placeholder="Ask me anything about your contracts..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            disabled={isLoading}
-            className="flex-1 min-h-[40px] max-h-[120px] resize-none"
-            rows={1}
-          />
+          <div className="flex-1 relative">
+            <Textarea
+              ref={inputRef}
+              placeholder={isOnline ? "Ask me anything about your contracts..." : "You're offline. Message will be sent when reconnected..."}
+              value={input}
+              onChange={(e) => {
+                if (e.target.value.length <= MAX_INPUT_LENGTH) {
+                  setInput(e.target.value);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              disabled={isLoading}
+              className={cn(
+                "flex-1 min-h-[40px] max-h-[120px] resize-none pr-16",
+                !isOnline && "bg-gray-50"
+              )}
+              rows={1}
+            />
+            {/* Character counter */}
+            <span className={cn(
+              "absolute bottom-2 right-2 text-xs",
+              input.length > MAX_INPUT_LENGTH * 0.9 
+                ? "text-red-500" 
+                : input.length > MAX_INPUT_LENGTH * 0.7 
+                  ? "text-yellow-500" 
+                  : "text-gray-400"
+            )}>
+              {input.length}/{MAX_INPUT_LENGTH}
+            </span>
+          </div>
 
           {/* Voice input button */}
           <TooltipProvider>
@@ -1253,25 +1821,60 @@ Would you like me to notify the first approver or do anything else?`,
           </TooltipProvider>
 
           {/* Send button */}
-          <Button
-            onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
-            className="h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim() || isLoading || !isOnline}
+                  className={cn(
+                    "h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all",
+                    !isOnline && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <CornerDownLeft className="h-3 w-3 ml-1 opacity-60" />
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Send message <kbd className="ml-1 px-1 py-0.5 bg-gray-100 rounded text-xs">Enter</kbd></p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-gray-500">
-            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">Enter</kbd> to send • 
-            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs ml-1">Shift+Enter</kbd> for new line
+          <p className="text-xs text-gray-500 flex items-center gap-2">
+            <span>
+              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">Enter</kbd> send
+            </span>
+            <span>•</span>
+            <span>
+              <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs">Shift+Enter</kbd> new line
+            </span>
+            {retryCount > 0 && (
+              <>
+                <span>•</span>
+                <span className="text-yellow-600 flex items-center gap-1">
+                  <RefreshCw className="h-3 w-3" />
+                  Retry {retryCount}/{RETRY_CONFIG.maxRetries}
+                </span>
+              </>
+            )}
           </p>
-          <p className="text-xs text-gray-400">
-            {messages.length - 1} messages
+          <p className="text-xs text-gray-400 flex items-center gap-2">
+            {!isOnline && (
+              <span className="text-red-500 flex items-center gap-1">
+                <WifiOff className="h-3 w-3" />
+                Offline
+              </span>
+            )}
+            <span>{messages.length - 1} messages</span>
           </p>
         </div>
       </div>
@@ -1348,6 +1951,13 @@ Would you like me to notify the first approver or do anything else?`,
               </div>
             </div>
             <div className="flex items-center justify-between">
+              <span className="text-sm">Search messages</span>
+              <div className="flex gap-1">
+                <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">⌘</kbd>
+                <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">F</kbd>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-sm">Focus input</span>
               <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">/</kbd>
             </div>
@@ -1358,6 +1968,63 @@ Would you like me to notify the first approver or do anything else?`,
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Search Modal */}
+      <Dialog open={showSearch} onOpenChange={setShowSearch}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Search Messages
+            </DialogTitle>
+            <DialogDescription>
+              Find messages in this conversation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="max-h-[300px] overflow-y-auto space-y-2">
+              {searchResults.length === 0 && searchQuery && (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No messages found
+                </p>
+              )}
+              {searchResults.map((result) => (
+                <button
+                  key={result.id}
+                  onClick={() => jumpToMessage(result.id)}
+                  className="w-full text-left p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {result.role === 'user' ? (
+                      <User className="h-4 w-4 text-purple-500" />
+                    ) : (
+                      <Bot className="h-4 w-4 text-blue-500" />
+                    )}
+                    <span className="text-xs text-gray-500">
+                      {result.timestamp.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 line-clamp-2">
+                    {result.content.substring(0, 150)}
+                    {result.content.length > 150 && '...'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
+    </motion.div>
+    </AnimatePresence>
   );
 }

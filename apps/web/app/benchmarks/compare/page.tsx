@@ -279,6 +279,7 @@ export default function CompareRatesPage() {
                       onChange={(e)=>setContractSearch(e.target.value)}
                       placeholder="Search contracts..."
                       className="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                      aria-label="Search contracts"
                     />
                   </div>
                   <div className="max-h-64 overflow-auto">
@@ -396,9 +397,9 @@ export default function CompareRatesPage() {
               </div>
               {refFiltersOpen && (
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <input value={refQuery.role} onChange={(e)=>setRefQuery(q=>({...q, role: e.target.value}))} placeholder="Filter role" className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" />
-                  <input value={refQuery.country} onChange={(e)=>setRefQuery(q=>({...q, country: e.target.value}))} placeholder="Filter country" className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" />
-                  <input value={refQuery.lineOfService} onChange={(e)=>setRefQuery(q=>({...q, lineOfService: e.target.value}))} placeholder="Filter line of service" className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" />
+                  <input value={refQuery.role} onChange={(e)=>setRefQuery(q=>({...q, role: e.target.value}))} placeholder="Filter role" className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" aria-label="Filter by role" />
+                  <input value={refQuery.country} onChange={(e)=>setRefQuery(q=>({...q, country: e.target.value}))} placeholder="Filter country" className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" aria-label="Filter by country" />
+                  <input value={refQuery.lineOfService} onChange={(e)=>setRefQuery(q=>({...q, lineOfService: e.target.value}))} placeholder="Filter line of service" className="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm" aria-label="Filter by line of service" />
                   <button onClick={() => setRefQuery({ role: '', country: '', lineOfService: '' })} className="text-xs text-gray-600 dark:text-gray-300 underline">Clear filters</button>
                 </div>
               )}

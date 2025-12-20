@@ -169,6 +169,7 @@ export default function ImportWizardPage() {
                     file:text-sm file:font-semibold
                     file:bg-blue-50 file:text-blue-700
                     hover:file:bg-blue-100"
+                  aria-label="Select rate card file to import"
                 />
               </div>
 

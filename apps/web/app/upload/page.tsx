@@ -194,6 +194,7 @@ export default function UploadPage() {
       const response = await fetch('/api/contracts/upload', {
         method: 'POST',
         headers: {
+          'x-tenant-id': 'demo',
           'x-data-mode': dataMode
         },
         body: formData
@@ -470,7 +471,7 @@ export default function UploadPage() {
               !isDragActive && "border-slate-200 hover:border-indigo-300 hover:shadow-xl"
             )}
           >
-            <input {...getInputProps()} />
+            <input {...getInputProps()} aria-label="Upload contract files" />
             
             <div className="p-14 text-center">
               <motion.div

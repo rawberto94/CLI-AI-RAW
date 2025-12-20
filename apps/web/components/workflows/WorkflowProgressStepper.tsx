@@ -259,7 +259,7 @@ export function WorkflowProgressStepper({
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
                       {step.assignee.avatar ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={step.assignee.avatar} alt="" className="w-full h-full rounded-full" />
+                        <img src={step.assignee.avatar} alt={`${step.assignee.name}'s avatar`} className="w-full h-full rounded-full" />
                       ) : (
                         step.assignee.name.charAt(0)
                       )}

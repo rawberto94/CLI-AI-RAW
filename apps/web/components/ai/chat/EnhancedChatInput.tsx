@@ -371,6 +371,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
           accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
           onChange={handleFileSelect}
           className="hidden"
+          aria-label="Attach files to message"
         />
         <TooltipProvider>
           <Tooltip>
@@ -381,6 +382,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
                 className="h-8 w-8 p-0 flex-shrink-0"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled}
+                aria-label="Attach file"
               >
                 <Paperclip className="h-4 w-4" />
               </Button>

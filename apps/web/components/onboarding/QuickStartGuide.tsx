@@ -193,7 +193,7 @@ export function QuickStartGuide({ isOpen, onClose, onComplete }: QuickStartGuide
                   <p className="text-xs text-slate-500">Step {currentStep + 1} of {steps.length}</p>
                 </div>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleSkip}>
+              <Button variant="ghost" size="icon" onClick={handleSkip} aria-label="Close quick start guide">
                 <X className="h-4 w-4" />
               </Button>
             </div>

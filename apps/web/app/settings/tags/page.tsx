@@ -475,10 +475,11 @@ export default function TagManagementPage() {
                 <div className="space-y-4">
                   {/* Tag Name */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    <label htmlFor="tagName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                       Tag Name *
                     </label>
                     <input
+                      id="tagName"
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}

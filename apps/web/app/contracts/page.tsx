@@ -2209,34 +2209,6 @@ export default function ContractsPage() {
           className="mb-4"
         />
 
-        {/* Quick Stats Bar - Inline summary with clickable filters */}
-        <QuickStatsBar
-          stats={generateContractStats({
-            total: contractsData?.total ?? contracts.length,
-            totalValue: contracts.reduce((sum, c) => sum + (c.value || 0), 0),
-            expiringSoon: contracts.filter(c => {
-              if (!c.expirationDate) return false;
-              const days = Math.ceil((new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              return days >= 0 && days <= 30;
-            }).length,
-            highRisk: contracts.filter(c => (c.riskScore || 0) >= 70).length,
-            processing: contracts.filter(c => c.status === 'processing').length,
-            recentlyAdded: contracts.filter(c => {
-              if (!c.createdAt) return false;
-              return new Date(c.createdAt).getTime() > Date.now() - 7 * 24 * 60 * 60 * 1000;
-            }).length,
-            onFilterClick: (filter) => {
-              clearFilters();
-              if (filter === 'expiring') setExpirationFilters(['expiring-30']);
-              if (filter === 'high-risk') setRiskFilters(['high']);
-              if (filter === 'processing') setStatusFilter('processing');
-              if (filter === 'recent') setDateRangeFilter('week');
-            },
-          })}
-          compact
-          className="mb-3"
-        />
-
         {/* State of the Art Search & Filters */}
         <StateOfTheArtSearch
           searchQuery={searchQuery}

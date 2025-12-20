@@ -953,6 +953,7 @@ export default function ContractComparisonPage() {
                         size="icon"
                         onClick={swapGroups}
                         disabled={group1Contracts.length === 0 && group2Contracts.length === 0}
+                        aria-label="Swap contract groups"
                       >
                         <ArrowLeftRight className="w-4 h-4" />
                       </Button>

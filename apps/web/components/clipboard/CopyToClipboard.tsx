@@ -273,6 +273,7 @@ export function ShareLink({ url, label = 'Share link', className }: ShareLinkPro
           value={url}
           readOnly
           className="flex-1 bg-transparent text-sm text-slate-700 outline-none min-w-0"
+          aria-label="URL to copy"
         />
       </div>
       <button

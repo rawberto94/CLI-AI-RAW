@@ -347,7 +347,7 @@ export default function PlatformAdminPage() {
                   className="pl-9 w-64"
                 />
               </div>
-              <Button variant="outline" size="icon" onClick={loadTenants}>
+              <Button variant="outline" size="icon" onClick={loadTenants} aria-label="Refresh client list">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
@@ -413,7 +413,7 @@ export default function PlatformAdminPage() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" aria-label="Tenant actions">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>

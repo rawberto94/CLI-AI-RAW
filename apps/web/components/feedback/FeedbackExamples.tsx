@@ -229,10 +229,11 @@ export function FeedbackExamples() {
         <h3 className="text-lg font-semibold">Form Field Errors</h3>
         <form onSubmit={handleFormSubmit} className="space-y-4 max-w-md">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="contractName" className="block text-sm font-medium text-gray-700 mb-1">
               Contract Name
             </label>
             <input
+              id="contractName"
               type="text"
               className={`
                 w-full px-3 py-2 border rounded-lg

@@ -495,7 +495,8 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
         className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         {user.avatar ? (
-          <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatar} alt={`${user.name}'s profile photo`} className="w-8 h-8 rounded-full" />
         ) : (
           <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
             <span className="text-sm font-medium text-blue-600 dark:text-blue-400">

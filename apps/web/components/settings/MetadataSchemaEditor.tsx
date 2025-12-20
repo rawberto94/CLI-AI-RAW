@@ -919,10 +919,11 @@ function FieldEditorModal({
           {/* Basic Info */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="fieldName" className="block text-sm font-medium text-gray-700 mb-1">
                 Field Name (Technical)
               </label>
               <input
+                id="fieldName"
                 type="text"
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
@@ -931,10 +932,11 @@ function FieldEditorModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="displayLabel" className="block text-sm font-medium text-gray-700 mb-1">
                 Display Label
               </label>
               <input
+                id="displayLabel"
                 type="text"
                 value={formData.label || ''}
                 onChange={(e) => setFormData({ ...formData, label: e.target.value })}
@@ -946,10 +948,11 @@ function FieldEditorModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="fieldType" className="block text-sm font-medium text-gray-700 mb-1">
                 Field Type
               </label>
               <select
+                id="fieldType"
                 value={formData.type || 'text'}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg"
@@ -1101,10 +1104,11 @@ function FieldEditorModal({
           {/* AI Extraction Hint */}
           {formData.aiExtractionEnabled && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="aiExtractionHint" className="block text-sm font-medium text-gray-700 mb-1">
                 AI Extraction Hint
               </label>
               <input
+                id="aiExtractionHint"
                 type="text"
                 value={formData.aiExtractionHint || ''}
                 onChange={(e) => setFormData({ ...formData, aiExtractionHint: e.target.value })}
@@ -1174,10 +1178,11 @@ function CategoryEditorModal({
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="categoryName" className="block text-sm font-medium text-gray-700 mb-1">
               Category Name (Technical)
             </label>
             <input
+              id="categoryName"
               type="text"
               value={formData.name || ''}
               onChange={(e) => setFormData({ ...formData, name: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
@@ -1186,10 +1191,11 @@ function CategoryEditorModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="categoryLabel" className="block text-sm font-medium text-gray-700 mb-1">
               Display Label
             </label>
             <input
+              id="categoryLabel"
               type="text"
               value={formData.label || ''}
               onChange={(e) => setFormData({ ...formData, label: e.target.value })}
@@ -1218,10 +1224,11 @@ function CategoryEditorModal({
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="categoryDescription" className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
             <input
+              id="categoryDescription"
               type="text"
               value={formData.description || ''}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

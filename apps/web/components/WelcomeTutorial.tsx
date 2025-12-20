@@ -329,6 +329,9 @@ export function WelcomeTutorial() {
               className={cn("relative p-8 pb-12 overflow-hidden bg-gradient-to-br", step.gradient)}
               style={{ backgroundImage: step.bgPattern }}
             >
+              {/* Dark overlay for better text readability */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+              
               {/* Animated circles in background */}
               <motion.div
                 className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10"
@@ -351,10 +354,10 @@ export function WelcomeTutorial() {
 
               {/* Step indicator */}
               <div className="relative z-10 flex items-center gap-2 mb-6">
-                <span className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/30 text-white backdrop-blur-sm shadow-sm">
+                <span className="px-3 py-1.5 text-xs font-bold rounded-full bg-white/90 text-slate-800 backdrop-blur-sm shadow-lg border border-white/50">
                   {currentStep + 1} / {tutorialSteps.length}
                 </span>
-                <span className="text-white/80 text-sm font-medium">{step.subtitle}</span>
+                <span className="text-white text-sm font-bold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' }}>{step.subtitle}</span>
               </div>
 
               {/* Icon and title */}
@@ -364,9 +367,9 @@ export function WelcomeTutorial() {
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", damping: 15, stiffness: 200 }}
-                  className="flex-shrink-0 p-4 rounded-2xl bg-white/20 backdrop-blur-sm shadow-lg"
+                  className="flex-shrink-0 p-4 rounded-2xl bg-white/90 backdrop-blur-sm shadow-xl border border-white/50"
                 >
-                  <Icon className="h-10 w-10 text-white" />
+                  <Icon className="h-10 w-10 text-violet-600" />
                 </motion.div>
                 <div>
                   <motion.h2 
@@ -375,6 +378,7 @@ export function WelcomeTutorial() {
                     animate={{ opacity: 1, x: 0 }}
                     id="contigo-tutorial-title"
                     className="text-3xl font-bold text-white mb-2"
+                    style={{ textShadow: '0 2px 4px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.3)' }}
                   >
                     {step.title}
                   </motion.h2>
@@ -384,7 +388,8 @@ export function WelcomeTutorial() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.1 }}
                     id="contigo-tutorial-desc"
-                    className="text-white/80 text-lg max-w-md"
+                    className="text-white text-lg max-w-md font-medium"
+                    style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' }}
                   >
                     {step.description}
                   </motion.p>

@@ -187,10 +187,11 @@ export default function AdvancedSearchClient() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="keywords" className="block text-sm font-medium text-gray-700 mb-2">
                   Keywords
                 </label>
                 <input
+                  id="keywords"
                   type="text"
                   placeholder="Search contract content, terms, clauses..."
                   value={searchCriteria.keywords}
@@ -206,10 +207,11 @@ export default function AdvancedSearchClient() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="contractType" className="block text-sm font-medium text-gray-700 mb-2">
                     Contract Type
                   </label>
                   <select
+                    id="contractType"
                     value={searchCriteria.contractType}
                     onChange={(e) =>
                       setSearchCriteria((prev) => ({
@@ -472,10 +474,11 @@ export default function AdvancedSearchClient() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="complianceMin" className="block text-sm font-medium text-gray-700 mb-2">
                   Minimum Compliance Score
                 </label>
                 <input
+                  id="complianceMin"
                   type="number"
                   placeholder="Minimum compliance %"
                   min="0"

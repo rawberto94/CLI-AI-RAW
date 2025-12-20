@@ -103,10 +103,11 @@ export function AlertRuleBuilder({ tenantId, userId, onSave }: AlertRuleBuilderP
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">
+          <label htmlFor="threshold" className="block text-sm font-medium mb-1">
             Threshold (%)
           </label>
           <input
+            id="threshold"
             type="number"
             value={rule.threshold}
             onChange={(e) => setRule({ ...rule, threshold: Number(e.target.value) })}
@@ -118,12 +119,13 @@ export function AlertRuleBuilder({ tenantId, userId, onSave }: AlertRuleBuilderP
 
         <div className="flex items-center">
           <input
+            id="enableRule"
             type="checkbox"
             checked={rule.enabled}
             onChange={(e) => setRule({ ...rule, enabled: e.target.checked })}
             className="mr-2"
           />
-          <label className="text-sm font-medium">Enable this rule</label>
+          <label htmlFor="enableRule" className="text-sm font-medium">Enable this rule</label>
         </div>
 
         <Button

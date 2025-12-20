@@ -305,20 +305,22 @@ export default function SettingsClient() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
                         Full Name
                       </label>
                       <input
+                        id="fullName"
                         type="text"
                         defaultValue={settingsData.user.name}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="emailAddress" className="block text-sm font-medium text-gray-700 mb-2">
                         Email Address
                       </label>
                       <input
+                        id="emailAddress"
                         type="email"
                         defaultValue={settingsData.user.email}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -327,10 +329,11 @@ export default function SettingsClient() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="userRole" className="block text-sm font-medium text-gray-700 mb-2">
                       Role
                     </label>
                     <input
+                      id="userRole"
                       type="text"
                       value={settingsData.user.role}
                       disabled
@@ -549,11 +552,12 @@ export default function SettingsClient() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="primaryApiKey" className="block text-sm font-medium text-gray-700 mb-2">
                       Primary API Key
                     </label>
                     <div className="flex items-center gap-2">
                       <input
+                        id="primaryApiKey"
                         type={showApiKey ? "text" : "password"}
                         value="sk-1234567890abcdef..."
                         disabled
@@ -563,6 +567,7 @@ export default function SettingsClient() {
                         variant="outline"
                         size="sm"
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? "Hide API key" : "Show API key"}
                       >
                         {showApiKey ? (
                           <EyeOff className="w-4 h-4" />

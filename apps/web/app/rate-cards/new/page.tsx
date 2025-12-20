@@ -176,10 +176,11 @@ export default function AddRateCardPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label htmlFor="supplierName" className="block text-sm font-medium text-slate-700 mb-2">
                     Supplier Name *
                   </label>
                   <input
+                    id="supplierName"
                     type="text"
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
@@ -189,10 +190,11 @@ export default function AddRateCardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label htmlFor="clientName" className="block text-sm font-medium text-slate-700 mb-2">
                     Client Name
                   </label>
                   <input
+                    id="clientName"
                     type="text"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
@@ -204,10 +206,11 @@ export default function AddRateCardPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label htmlFor="currency" className="block text-sm font-medium text-slate-700 mb-2">
                     Currency
                   </label>
                   <select
+                    id="currency"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -218,10 +221,11 @@ export default function AddRateCardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label htmlFor="validFrom" className="block text-sm font-medium text-slate-700 mb-2">
                     Valid From
                   </label>
                   <input
+                    id="validFrom"
                     type="date"
                     value={validFrom}
                     onChange={(e) => setValidFrom(e.target.value)}
@@ -229,10 +233,11 @@ export default function AddRateCardPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <label htmlFor="validTo" className="block text-sm font-medium text-slate-700 mb-2">
                     Valid To
                   </label>
                   <input
+                    id="validTo"
                     type="date"
                     value={validTo}
                     onChange={(e) => setValidTo(e.target.value)}
@@ -272,6 +277,7 @@ export default function AddRateCardPage() {
                         type="button"
                         onClick={() => removeRole(role.id)}
                         className="text-red-600 hover:text-red-700"
+                        aria-label={`Remove ${role.role || 'role'}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -280,10 +286,11 @@ export default function AddRateCardPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor={`role-name-${role.id}`} className="block text-sm font-medium text-gray-700 mb-1">
                         Role *
                       </label>
                       <input
+                        id={`role-name-${role.id}`}
                         type="text"
                         value={role.role}
                         onChange={(e) => updateRole(role.id, 'role', e.target.value)}
@@ -300,10 +307,11 @@ export default function AddRateCardPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor={`role-level-${role.id}`} className="block text-sm font-medium text-gray-700 mb-1">
                         Level *
                       </label>
                       <input
+                        id={`role-level-${role.id}`}
                         type="text"
                         value={role.level}
                         onChange={(e) => updateRole(role.id, 'level', e.target.value)}
@@ -320,10 +328,11 @@ export default function AddRateCardPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor={`role-location-${role.id}`} className="block text-sm font-medium text-gray-700 mb-1">
                         Location *
                       </label>
                       <input
+                        id={`role-location-${role.id}`}
                         type="text"
                         value={role.location}
                         onChange={(e) => updateRole(role.id, 'location', e.target.value)}
@@ -340,10 +349,11 @@ export default function AddRateCardPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor={`role-rate-${role.id}`} className="block text-sm font-medium text-gray-700 mb-1">
                         Daily Rate ({currency}) *
                       </label>
                       <input
+                        id={`role-rate-${role.id}`}
                         type="number"
                         value={role.dailyRate || ''}
                         onChange={(e) => updateRole(role.id, 'dailyRate', Number(e.target.value))}
@@ -356,10 +366,11 @@ export default function AddRateCardPage() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor={`role-service-${role.id}`} className="block text-sm font-medium text-gray-700 mb-1">
                         Service Line
                       </label>
                       <input
+                        id={`role-service-${role.id}`}
                         type="text"
                         value={role.serviceLine}
                         onChange={(e) => updateRole(role.id, 'serviceLine', e.target.value)}

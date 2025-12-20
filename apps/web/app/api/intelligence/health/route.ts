@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       opportunities: any;
       active_alerts: any;
       calculated_at: Date;
-    }>>(`
+    }>>(Prisma.sql`
       SELECT 
         contract_id, overall_score, risk_score, compliance_score, financial_score,
         operational_score, renewal_readiness, document_quality,
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
       WHERE ${whereClause}
       ORDER BY overall_score ASC
       LIMIT ${limit}
-    `;
+    `);
 
     // Get contract details
     const contractIds = storedScores.map(s => s.contract_id);

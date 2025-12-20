@@ -387,7 +387,7 @@ function TemplateCard({
 
             {/* Actions */}
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleFavorite}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
                 {isFavorite ? (
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                 ) : (
@@ -399,7 +399,7 @@ function TemplateCard({
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Template actions">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -448,6 +448,7 @@ function TemplateCard({
                 size="icon"
                 className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={onToggleFavorite}
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               >
                 {isFavorite ? (
                   <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -461,6 +462,7 @@ function TemplateCard({
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Template actions"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
@@ -826,6 +828,7 @@ export function TemplateManager() {
             size="icon" 
             onClick={handleRefresh}
             disabled={loading}
+            aria-label="Refresh templates"
           >
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
           </Button>
@@ -881,6 +884,8 @@ export function TemplateManager() {
                 size="icon"
                 className="rounded-r-none"
                 onClick={() => setViewMode('grid')}
+                aria-label="Grid view"
+                aria-pressed={viewMode === 'grid'}
               >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
@@ -889,6 +894,8 @@ export function TemplateManager() {
                 size="icon"
                 className="rounded-l-none"
                 onClick={() => setViewMode('list')}
+                aria-label="List view"
+                aria-pressed={viewMode === 'list'}
               >
                 <List className="h-4 w-4" />
               </Button>
