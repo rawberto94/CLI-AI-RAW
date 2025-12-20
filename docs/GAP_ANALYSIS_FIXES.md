@@ -358,13 +358,127 @@ Updated `scripts/audit-accessibility.mjs` to:
 
 ---
 
+## Session 4: Validation, Testing, and Security Infrastructure
+
+### Validation Infrastructure
+
+**File:** `apps/web/lib/validation/schemas.ts`
+
+Comprehensive Zod validation schemas for all major forms:
+- **Authentication**: `loginSchema`, `signupSchema` with password confirmation
+- **Contracts**: `contractCreateSchema`, `contractUpdateSchema` with date validation
+- **Rate Cards**: `rateCardCreateSchema`, `rateCardEntrySchema` with rate validation
+- **Collaboration**: `tagCreateSchema`, `commentSchema`, `shareSchema`, `approvalRequestSchema`
+- **Settings**: `settingsSchema` with nested notification, display, privacy settings
+- **Search/API**: `paginationSchema`, `searchQuerySchema`, `fileUploadSchema`
+
+**File:** `apps/web/lib/validation/index.ts`
+
+Validation utilities and helpers:
+- `validate()` and `validateOrThrow()` functions
+- `safeParse()` with typed error handling
+- `formatZodErrors()` for user-friendly messages
+- `getFieldError()` for form field errors
+- `validateAsync()` for async validation
+- `createFormValidator()` for form-specific validators
+- `transformFormData()` for FormData to typed objects
+
+**File:** `apps/web/hooks/useFormValidation.ts`
+
+React hook for form validation:
+- Real-time validation with debouncing
+- Touch tracking and dirty state
+- `getFieldProps()` for field binding
+- `handleSubmit()` with validation
+- TypeScript-safe with Zod inference
+
+### Security Infrastructure
+
+**File:** `apps/web/lib/security/tenant.ts`
+
+Tenant security module for multi-tenant isolation:
+- `getApiTenantId()` - Secure tenant extraction from session
+- `getValidatedTenantId()` - With tenant existence/status validation
+- `hasAccessToTenant()` - Cross-tenant access checks
+- `tenantWhere()` - Helper for tenant-scoped Prisma queries
+- `assertTenantMatch()` - Prevents cross-tenant resource access
+- `withTenantContext()` - HOC for tenant-scoped API handlers
+- `TenantError` - Custom error class with typed codes
+
+### Error Handling & Components
+
+**File:** `apps/web/components/error-boundary/ErrorBoundary.tsx`
+
+React error boundary with:
+- Retry functionality
+- Error state UI with stack trace (dev only)
+- `withErrorBoundary()` HOC
+- `AsyncErrorBoundary` for suspense errors
+
+**File:** `apps/web/components/accessibility/SkipToContent.tsx`
+
+Skip link components:
+- `SkipToContent` - Main skip link
+- `SkipLinks` - Multiple skip targets
+- `MainContent` - Content wrapper with ID
+- `FocusSkipLink` - Programmatic skip
+
+### Testing Infrastructure
+
+**File:** `apps/web/lib/test-utils.ts`
+
+Testing utilities with mocks:
+- `renderWithProviders()` - Component rendering with context
+- `mockRouter` - Next.js router mock
+- `mockFetch` - Fetch API mock
+- `mockLocalStorage` / `mockSessionStorage` - Storage mocks
+- `mockIntersectionObserver` - Observer mock
+- `createTestContract()`, `createTestUser()`, `createTestRateCard()` - Factories
+- `waitForLoadingToComplete()`, `waitForToast()` - Async helpers
+
+**File:** `apps/web/__tests__/lib/validation/schemas.test.ts`
+
+Comprehensive schema tests (290+ lines):
+- Login/signup validation
+- Contract/rate card validation
+- Tag/comment/share validation
+- Settings/pagination/search validation
+- File upload validation
+
+**File:** `apps/web/__tests__/lib/security/tenant.test.ts`
+
+Tenant security tests:
+- `TenantError` code testing
+- `tenantWhere()` merge behavior
+- `assertTenantMatch()` guard tests
+- `getApiTenantId()` session extraction
+- `hasAccessToTenant()` access control
+
+### Type Definitions
+
+**Extended:** `apps/web/lib/types/common.ts`
+
+Added API route helper types:
+- `CaughtError` for typed error handling
+- `isCaughtError()` and `getErrorMessage()` helpers
+- `CustomFieldDefinition` for schema definitions
+- `TenantCustomFields` for tenant settings
+- `ImportJobData`, `ImportError`, `ImportWarning` types
+- `ExtractionResult` for AI processing
+- `MetricsData` for monitoring
+- `AlertRule`, `AlertNotification` types
+- `SignatureRequest`, `SignatureRequestSigner` types
+- `UploadedFile` and `isUploadedFile()` type guard
+
+---
+
 ## Remaining Work
 
 The following gaps require additional incremental work:
 
 ### High Priority
 1. **Apply API Handler to Existing Routes** - Migrate 50+ API routes to use new handler
-2. **Replace `any` Types** - 70+ remaining `any` annotations need specific types
+2. **Replace `any` Types** - Use new helper types in API routes (70+ files)
 3. **Remove Mock Data Fallbacks** - Update APIs to use production-data utilities
 
 ### Medium Priority
@@ -385,5 +499,7 @@ These fixes address:
 - ✅ **5 Critical Issues**: CSRF, validation, type safety, rate limiting, testing
 - ✅ **4 High Priority Issues**: Loading states, accessibility, production data guards
 - ✅ **35+ Accessibility Fixes**: Icon buttons, form inputs, image alt text
+- ✅ **New in Session 4**: Validation infrastructure, tenant security, error boundaries
+- ✅ **1700+ Lines of Tests**: Validation schemas, tenant security
 - 🔄 **Ongoing**: Incremental improvements to existing code
 
