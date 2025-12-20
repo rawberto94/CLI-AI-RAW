@@ -158,3 +158,17 @@ export {
   type ReferrerPolicy,
   type PermissionsPolicyConfig,
 } from './security-headers';
+
+// Tenant Security
+export {
+  getApiTenantId,
+  getValidatedTenantId,
+  hasAccessToTenant,
+  tenantWhere,
+  assertTenantMatch,
+  getTenantFromHeaders,
+  withTenantContext,
+  logTenantOperation,
+  getUserAccessibleTenants,
+  TenantError,
+} from './tenant';
