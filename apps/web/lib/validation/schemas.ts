@@ -164,7 +164,7 @@ export const contractCreateSchema = z.object({
   { message: 'End date must be after start date', path: ['endDate'] }
 );
 
-export const contractUpdateSchema = contractCreateSchema.partial();
+export const contractUpdateSchema = contractCreateSchema.innerType().partial();
 
 export const contractSearchSchema = z.object({
   query: z.string().optional(),
@@ -216,7 +216,7 @@ export const rateCardCreateSchema = z.object({
   { message: 'Valid to date must be after valid from date', path: ['validTo'] }
 );
 
-export const rateCardUpdateSchema = rateCardCreateSchema.partial();
+export const rateCardUpdateSchema = rateCardCreateSchema.innerType().partial();
 
 // ============================================================================
 // SETTINGS SCHEMAS

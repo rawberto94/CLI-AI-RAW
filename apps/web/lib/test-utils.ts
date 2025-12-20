@@ -20,12 +20,8 @@ interface AllProvidersProps {
  * Wrapper component that includes all providers for testing.
  * Add providers here as needed (QueryClient, Theme, etc.)
  */
-function AllProviders({ children }: AllProvidersProps): JSX.Element {
-  return (
-    <>
-      {children}
-    </>
-  );
+function AllProviders({ children }: AllProvidersProps): React.ReactElement {
+  return React.createElement(React.Fragment, null, children);
 }
 
 // ============================================================================
