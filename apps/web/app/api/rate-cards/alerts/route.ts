@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(notifications);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching alerts:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch alerts' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch alerts' },
       { status: 500 }
     );
   }
@@ -47,10 +47,10 @@ export async function PATCH(request: NextRequest) {
     await notificationService.markAsRead(notificationId);
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating alert:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update alert' },
+      { error: error instanceof Error ? error.message : 'Failed to update alert' },
       { status: 500 }
     );
   }

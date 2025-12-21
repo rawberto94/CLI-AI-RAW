@@ -328,8 +328,13 @@ function getQueueStatus() {
 /**
  * Broadcast message to connections
  */
-function broadcastMessage(body: any) {
-  const { target, tenantId, userId, message } = body;
+function broadcastMessage(body: Record<string, unknown>) {
+  const { target, tenantId, userId, message } = body as {
+    target?: string;
+    tenantId?: string;
+    userId?: string;
+    message?: unknown;
+  };
 
   if (!message) {
     return NextResponse.json(
@@ -362,7 +367,7 @@ function broadcastMessage(body: any) {
           { status: 400 }
         );
       }
-      successCount = sseConnectionManager.broadcastToTenant(tenantId, message);
+      successCount = sseConnectionManager.broadcastToTenant(tenantId as string, message);
       break;
     
     case 'user':
@@ -377,7 +382,7 @@ function broadcastMessage(body: any) {
           { status: 400 }
         );
       }
-      successCount = sseConnectionManager.broadcastToUser(userId, message);
+      successCount = sseConnectionManager.broadcastToUser(userId as string, message);
       break;
     
     default:

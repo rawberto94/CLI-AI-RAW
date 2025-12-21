@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(intelligence);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching market intelligence:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch market intelligence' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch market intelligence' },
       { status: 500 }
     );
   }

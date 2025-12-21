@@ -28,6 +28,10 @@ import {
   Clock,
   Menu,
   ArrowLeftRight,
+  GraduationCap,
+  BookOpen,
+  Rocket,
+  PlayCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -64,6 +68,18 @@ interface NavItem {
 // Navigation groups - ONLY showing currently active features
 // See UNUSED_FILES.md for future upgrades (Renewals, Approvals, etc.)
 const navigationGroups: NavGroup[] = [
+  {
+    id: 'getting-started',
+    label: 'Getting Started',
+    icon: Rocket,
+    defaultOpen: true,
+    gradient: 'from-violet-500 to-purple-500',
+    items: [
+      { href: "/tour", label: "App Tour", icon: PlayCircle, description: "Interactive walkthrough of all features", isNew: true, tourId: "app-tour" },
+      { href: "/tour#learn", label: "Learning Center", icon: GraduationCap, description: "Tutorials and best practices", tourId: "learning-center" },
+      { href: "/tour#guides", label: "Feature Guides", icon: BookOpen, description: "Step-by-step feature guides", tourId: "feature-guides" },
+    ],
+  },
   {
     id: 'core',
     label: 'Overview',

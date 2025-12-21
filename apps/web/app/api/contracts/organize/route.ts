@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
 
       groups = await Promise.all(
         valueRanges.map(async (range) => {
-          const where: any = { tenantId, status: { not: "DELETED" } };
+          const where: Record<string, unknown> = { tenantId, status: { not: "DELETED" } };
           
           if (range.min === null) {
             where.totalValue = null;

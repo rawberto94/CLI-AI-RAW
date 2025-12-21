@@ -14,6 +14,32 @@ import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Stored factor data structure
+ */
+interface StoredFactor {
+  name?: string;
+  score?: number;
+  weight?: number;
+  description?: string;
+}
+
+/**
+ * Stored alert data structure
+ */
+interface StoredAlert {
+  message?: string;
+  severity?: 'low' | 'medium' | 'high';
+}
+
+/**
+ * Risk artifact data structure
+ */
+interface RiskArtifactData {
+  overallScore?: number;
+  risks?: unknown[];
+}
+
 interface HealthScore {
   contractId: string;
   contractName: string;
@@ -83,11 +109,11 @@ export async function GET(request: NextRequest) {
       score_change: number;
       trend_direction: string;
       alert_level: string;
-      factors: any;
-      strengths: any;
-      weaknesses: any;
-      opportunities: any;
-      active_alerts: any;
+      factors: StoredFactor[];
+      strengths: string[];
+      weaknesses: string[];
+      opportunities: string[];
+      active_alerts: StoredAlert[];
       calculated_at: Date;
     }>>(Prisma.sql`
       SELECT 
@@ -125,12 +151,12 @@ export async function GET(request: NextRequest) {
       
       // Build factors from stored data
       const storedFactors = Array.isArray(score.factors) ? score.factors : [];
-      const factors = storedFactors.length > 0 ? storedFactors.map((f: any, i: number) => ({
+      const factors = storedFactors.length > 0 ? storedFactors.map((f: StoredFactor, i: number) => ({
         id: `factor-${i}`,
         name: f.name || 'Unknown Factor',
         score: f.score || 50,
         weight: f.weight || 0.2,
-        status: f.score >= 70 ? 'good' : f.score >= 40 ? 'warning' : 'critical',
+        status: (f.score || 50) >= 70 ? 'good' : (f.score || 50) >= 40 ? 'warning' : 'critical',
         description: f.description || '',
       })) : [
         { id: 'risk', name: 'Risk Analysis', score: score.risk_score, weight: 0.25, status: score.risk_score >= 70 ? 'good' : score.risk_score >= 40 ? 'warning' : 'critical', description: 'Contract risk assessment' },
@@ -153,7 +179,7 @@ export async function GET(request: NextRequest) {
           description: w,
           impact: 'Medium',
         })),
-        ...alerts.map((a: any, i: number) => ({
+        ...alerts.map((a: StoredAlert, i: number) => ({
           id: `action-alert-${i}`,
           type: a.severity === 'high' ? 'urgent' as const : 'recommended' as const,
           title: a.message || 'Alert Action Required',
@@ -199,7 +225,7 @@ export async function GET(request: NextRequest) {
         let riskScore = 75;
         
         if (riskArtifact?.data) {
-          const riskData = riskArtifact.data as any;
+          const riskData = riskArtifact.data as RiskArtifactData;
           if (riskData.overallScore !== undefined) {
             riskScore = 100 - riskData.overallScore;
           } else if (riskData.risks?.length) {

@@ -206,7 +206,7 @@ async function handler(request: NextRequest) {
   const VALID_STATUSES = ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED', 'ARCHIVED'];
 
   // Build where clause
-  const where: any = { 
+  const where: Record<string, unknown> = { 
     tenantId,
     status: { not: 'DELETED' },
   };
@@ -269,7 +269,7 @@ async function handler(request: NextRequest) {
   }
 
   // Build orderBy
-  const orderBy: any = {};
+  const orderBy: Record<string, string> = {};
   orderBy[sortBy] = sortOrder;
 
   // Build cache key

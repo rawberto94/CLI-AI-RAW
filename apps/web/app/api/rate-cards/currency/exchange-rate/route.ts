@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
       timestamp,
       source: 'exchangerate-api.io',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching exchange rate:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch exchange rate' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch exchange rate' },
       { status: 500 }
     );
   }

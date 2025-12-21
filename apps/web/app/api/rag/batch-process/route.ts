@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 Batch RAG processing for tenant: ${tenantId}`);
 
     // Find contracts to process
-    const whereClause: any = { tenantId };
+    const whereClause: Record<string, unknown> = { tenantId };
     
     if (contractIds && contractIds.length > 0) {
       whereClause.id = { in: contractIds };

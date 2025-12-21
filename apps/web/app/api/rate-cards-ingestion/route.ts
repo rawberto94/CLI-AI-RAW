@@ -18,7 +18,19 @@ export async function GET() {
       });
     }
 
-    const rateCards = result.map((card: any) => ({
+    interface RateCardData {
+      id: string;
+      supplierName: string;
+      effectiveDate: Date;
+      expiryDate?: Date | null;
+      originalCurrency: string;
+      status: string;
+      importedAt: Date;
+      importedBy: string;
+      roles?: unknown[];
+    }
+
+    const rateCards = result.map((card: RateCardData) => ({
       id: card.id,
       supplierName: card.supplierName,
       effectiveDate: card.effectiveDate.toISOString(),

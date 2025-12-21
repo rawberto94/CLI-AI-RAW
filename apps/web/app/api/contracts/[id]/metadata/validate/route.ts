@@ -17,7 +17,7 @@ const openai = new OpenAI({
 
 interface MetadataField {
   key: string;
-  value: any;
+  value: unknown;
   status: 'pending' | 'validated' | 'rejected' | 'modified';
   aiConfidence: number;
   humanValidated: boolean;
@@ -26,10 +26,21 @@ interface MetadataField {
 }
 
 interface ValidationRequest {
-  fields: Record<string, any>;
+  fields: Record<string, unknown>;
   contractText?: string;
   validateAll?: boolean;
   fieldsToValidate?: string[];
+}
+
+/**
+ * AI validation result item
+ */
+interface AIValidationItem {
+  key: string;
+  isValid: boolean;
+  confidence: number;
+  suggestedValue?: unknown;
+  notes?: string;
 }
 
 interface ValidationResult {
@@ -303,11 +314,15 @@ Respond in JSON format:
       response_format: { type: 'json_object' }
     });
 
-    const result = JSON.parse(completion.choices[0]?.message?.content || '{}');
+    const result = JSON.parse(completion.choices[0]?.message?.content || '{}') as {
+      validations?: AIValidationItem[];
+      overallConfidence?: number;
+      suggestions?: string[];
+    };
     
     // Transform AI response to our format
     const validatedFields: MetadataField[] = fields.map(([key, value]) => {
-      const aiValidation = result.validations?.find((v: any) => v.key === key);
+      const aiValidation = result.validations?.find((v: AIValidationItem) => v.key === key);
       return {
         key,
         value,
@@ -344,7 +359,7 @@ Respond in JSON format:
   }
 }
 
-function validateWithRules(fields: [string, any][]): ValidationResult {
+function validateWithRules(fields: [string, unknown][]): ValidationResult {
   const validatedFields: MetadataField[] = fields.map(([key, value]) => {
     const confidence = calculateRuleBasedConfidence(key, value);
     const suggestions = generateSuggestions(key, value);
@@ -382,7 +397,7 @@ function validateWithRules(fields: [string, any][]): ValidationResult {
   };
 }
 
-function calculateRuleBasedConfidence(key: string, value: any): number {
+function calculateRuleBasedConfidence(key: string, value: unknown): number {
   // Base confidence
   let confidence = 60;
 
@@ -430,7 +445,7 @@ function calculateRuleBasedConfidence(key: string, value: any): number {
   return Math.min(100, Math.max(0, confidence));
 }
 
-function generateSuggestions(key: string, value: any): string[] {
+function generateSuggestions(key: string, value: unknown): string[] {
   const suggestions: string[] = [];
   const keyLower = key.toLowerCase();
 
@@ -450,7 +465,7 @@ function generateSuggestions(key: string, value: any): string[] {
   return suggestions;
 }
 
-function validateField(key: string, value: any): string[] {
+function validateField(key: string, value: unknown): string[] {
   const errors: string[] = [];
   const keyLower = key.toLowerCase();
 
@@ -481,9 +496,9 @@ function isRequiredField(key: string): boolean {
   return requiredFields.some(f => key.toLowerCase().includes(f.toLowerCase()));
 }
 
-function isValidDate(value: any): boolean {
+function isValidDate(value: unknown): boolean {
   if (!value) return false;
-  const date = new Date(value);
+  const date = new Date(value as string | number | Date);
   return !isNaN(date.getTime());
 }
 
@@ -492,7 +507,7 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-function generateMockValidation(fields: [string, any][]): ValidationResult {
+function generateMockValidation(fields: [string, unknown][]): ValidationResult {
   const validatedFields: MetadataField[] = fields.map(([key, value]) => {
     const confidence = Math.floor(Math.random() * 30) + 65; // 65-95
     const isValid = confidence >= 75;

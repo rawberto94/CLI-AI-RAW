@@ -156,19 +156,43 @@ export async function POST(request: NextRequest) {
       report: result,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('AI Report generation error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Report generation failed',
+        error: error instanceof Error ? error.message : 'Report generation failed',
       },
       { status: 500 }
     );
   }
 }
 
-function calculatePortfolioStats(contracts: any[]) {
+/**
+ * Contract input for report generation
+ */
+interface ContractInput {
+  id: string;
+  fileName?: string | null;
+  contractTitle?: string | null;
+  title?: string;
+  status?: string | null;
+  totalValue?: number | null;
+  riskLevel?: string | null;
+  expirationDate?: Date | null;
+}
+
+/**
+ * Portfolio statistics
+ */
+interface PortfolioStats {
+  totalValue: number;
+  averageValue: number;
+  riskDistribution: Record<string, number>;
+  statusDistribution: Record<string, number>;
+}
+
+function calculatePortfolioStats(contracts: ContractInput[]): PortfolioStats {
   const totalValue = contracts.reduce((sum, c) => sum + (c.totalValue || 0), 0);
   const averageValue = contracts.length > 0 ? totalValue / contracts.length : 0;
 
@@ -193,7 +217,7 @@ function calculatePortfolioStats(contracts: any[]) {
 
 async function generateAIReport(
   contracts: ContractSummary[],
-  stats: any,
+  stats: PortfolioStats,
   reportType: string
 ): Promise<Partial<AIReportResult>> {
   const contractList = contracts.map(c => `
@@ -281,7 +305,7 @@ Focus on:
   }
 }
 
-function generateMockReport(contracts: any[]): any {
+function generateMockReport(contracts: ContractInput[]): { success: boolean; processingTime: number; report: Partial<AIReportResult> } {
   const stats = calculatePortfolioStats(contracts);
   
   const expiringContracts = contracts.filter(c => {

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'annualSavings';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     
     if (status) {
       where.status = status;
@@ -88,10 +88,10 @@ export async function GET(request: NextRequest) {
       })),
       summary,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching opportunities:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -119,10 +119,10 @@ export async function POST(request: NextRequest) {
       count: detectedOpportunities.length,
       opportunities: detectedOpportunities,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error detecting opportunities:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

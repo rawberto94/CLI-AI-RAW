@@ -16,12 +16,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       success: true,
       data: qualityScore,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error calculating quality score:', error);
     return NextResponse.json(
       { 
         error: 'Failed to calculate quality score',
-        message: error.message 
+        message: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }
     );

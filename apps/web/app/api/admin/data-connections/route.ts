@@ -3,6 +3,22 @@ import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { randomUUID } from 'crypto';
 
+/** Data connection configuration stored in tenant settings */
+interface DataConnection {
+  id: string;
+  type: string;
+  name: string;
+  status: string;
+  host?: string;
+  database?: string;
+  syncMode?: string;
+  autoSync?: boolean;
+  syncFrequency?: string;
+  contractTableName?: string;
+  createdAt: string;
+  encryptedConfig?: string;
+}
+
 /**
  * GET /api/admin/data-connections
  * List all data connections for the tenant
@@ -33,15 +49,15 @@ export async function GET() {
       },
     });
 
-    let dataConnections: any[] = [];
+    let dataConnections: DataConnection[] = [];
     
     if (connections?.customFields) {
       try {
         const customFields = typeof connections.customFields === 'string' 
           ? JSON.parse(connections.customFields) 
           : connections.customFields;
-        dataConnections = customFields.dataConnections || [];
-      } catch (e) {
+        dataConnections = (customFields as Record<string, unknown>).dataConnections as DataConnection[] || [];
+      } catch {
         dataConnections = [];
       }
     }
@@ -114,15 +130,15 @@ export async function POST(request: NextRequest) {
       where: { tenantId },
     });
 
-    let existingConnections: any[] = [];
+    let existingConnections: DataConnection[] = [];
     
     if (settings?.customFields) {
       try {
         const customFields = typeof settings.customFields === 'string' 
           ? JSON.parse(settings.customFields) 
           : settings.customFields;
-        existingConnections = customFields.dataConnections || [];
-      } catch (e) {
+        existingConnections = (customFields as Record<string, unknown>).dataConnections as DataConnection[] || [];
+      } catch {
         existingConnections = [];
       }
     }

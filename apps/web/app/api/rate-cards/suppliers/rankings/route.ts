@@ -49,10 +49,10 @@ export async function GET(request: NextRequest) {
       count: rankings.length,
       generatedAt: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching supplier rankings:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch supplier rankings' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch supplier rankings' },
       { status: 500 }
     );
   }

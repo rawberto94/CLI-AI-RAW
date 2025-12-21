@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
         portfolio,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating strategic recommendations:', error);
     return NextResponse.json(
       { 
         error: 'Failed to generate strategic recommendations',
-        message: error.message 
+        message: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }
     );

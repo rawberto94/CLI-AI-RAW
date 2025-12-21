@@ -992,7 +992,7 @@ function detectIntent(query: string): DetectedIntent {
 // Search for matching contracts
 async function findMatchingContracts(entities: DetectedIntent['entities'], tenantId: string) {
   try {
-    const searchTerms: any[] = [];
+    const searchTerms: Record<string, unknown>[] = [];
     
     if (entities.contractName) {
       // Search in contractTitle field only
@@ -1064,7 +1064,7 @@ async function listExpiringContracts(daysUntilExpiry: number, tenantId: string, 
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + daysUntilExpiry);
     
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenantId,
       expirationDate: {
         lte: expiryDate,
@@ -1162,7 +1162,8 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
 
     // Parse artifact data for insights
     const getArtifactData = (type: string) => {
-      const artifact = (contract as any).artifacts?.find((a: any) => a.type === type);
+      const contractWithArtifacts = contract as { artifacts?: Array<{ type: string; data?: unknown }> };
+      const artifact = contractWithArtifacts.artifacts?.find((a) => a.type === type);
       return artifact?.data || {};
     };
 
@@ -1200,7 +1201,7 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
         keyTerms: overview.keyTerms || [],
         paymentTerms: financial.paymentTerms || financial.paymentSchedule || 'Not specified',
         totalCommitment: financial.totalContractValue || financial.totalCommitment,
-        criticalClauses: clauses.clauses?.filter((c: any) => c.risk === 'high' || c.importance === 'critical')?.slice(0, 5) || [],
+        criticalClauses: clauses.clauses?.filter((c: { risk?: string; importance?: string }) => c.risk === 'high' || c.importance === 'critical')?.slice(0, 5) || [],
         terminationNotice: renewal.noticePeriodDays || clauses.terminationNoticeDays || 'Not specified',
         autoRenewalTerms: renewal.autoRenewalTerms || (contract.autoRenewalEnabled ? 'Enabled' : 'Disabled'),
       },
@@ -1334,7 +1335,7 @@ async function searchContractsFlexible(searchTerm: string, tenantId: string, lim
 async function getProactiveInsights(tenantId: string): Promise<{
   criticalAlerts: string[];
   insights: string[];
-  urgentContracts: any[];
+  urgentContracts: Array<{ id: string; contractTitle?: string | null; expirationDate?: Date | null; totalValue?: number | null }>;
 }> {
   try {
     const now = new Date();
@@ -1438,8 +1439,8 @@ async function compareContracts(
   contractNameB: string,
   tenantId: string
 ): Promise<{
-  contractA: any | null;
-  contractB: any | null;
+  contractA: Record<string, unknown> | null;
+  contractB: Record<string, unknown> | null;
   comparison: {
     field: string;
     valueA: string;
@@ -1509,8 +1510,8 @@ async function compareContracts(
     }[] = [];
 
     // Compare basic fields
-    const formatValue = (v: any) => v ? String(v) : 'N/A';
-    const formatMoney = (v: any) => v ? `$${Number(v).toLocaleString()}` : 'N/A';
+    const formatValue = (v: unknown) => v ? String(v) : 'N/A';
+    const formatMoney = (v: unknown) => v ? `$${Number(v).toLocaleString()}` : 'N/A';
     const formatDate = (d: Date | null) => d ? new Date(d).toLocaleDateString() : 'N/A';
 
     comparison.push({
@@ -1566,8 +1567,8 @@ async function compareContracts(
     });
 
     // Get artifact data for deeper comparison
-    const getArtifactData = (artifacts: any[], type: string) => {
-      const artifact = artifacts.find((a: any) => a.type === type);
+    const getArtifactData = (artifacts: Array<{ type?: string; data?: unknown }>, type: string) => {
+      const artifact = artifacts.find((a) => a.type === type);
       return artifact?.data || {};
     };
 
@@ -1643,7 +1644,7 @@ async function compareContracts(
 // Count contracts (with optional supplier filter)
 async function countContracts(tenantId: string, supplierName?: string) {
   try {
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     if (supplierName) {
       where.supplierName = { contains: supplierName, mode: 'insensitive' };
     }
@@ -1724,7 +1725,7 @@ async function getSupplierSummary(supplierName: string, tenantId: string) {
 // Get total spend analysis
 async function getSpendAnalysis(tenantId: string, supplierName?: string) {
   try {
-    const where: any = { tenantId, status: { not: 'CANCELLED' } };
+    const where: Record<string, unknown> = { tenantId, status: { not: 'CANCELLED' } };
     if (supplierName) {
       where.supplierName = { contains: supplierName, mode: 'insensitive' };
     }
@@ -2011,7 +2012,7 @@ async function getPaymentTermsAnalysis(tenantId: string) {
       acc[terms].value += Number(c.totalValue) || 0;
       acc[terms].contracts.push(c);
       return acc;
-    }, {} as Record<string, { count: number; value: number; contracts: any[] }>);
+    }, {} as Record<string, { count: number; value: number; contracts: Array<{ paymentTerms?: string | null; totalValue?: number | null }> }>);
 
     return {
       byTerms: Object.entries(byTerms)
@@ -2033,7 +2034,7 @@ async function getPaymentTermsAnalysis(tenantId: string) {
 // Get compliance status for contracts
 async function getComplianceStatus(tenantId: string, supplierName?: string) {
   try {
-    const where: any = { tenantId, status: { not: 'CANCELLED' } };
+    const where: Record<string, unknown> = { tenantId, status: { not: 'CANCELLED' } };
     if (supplierName) {
       where.supplierName = { contains: supplierName, mode: 'insensitive' };
     }
@@ -2194,7 +2195,7 @@ async function performDeepAnalysis(
   
   try {
     // Build dynamic query
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     
     if (supplierName) {
       where.supplierName = { contains: supplierName, mode: 'insensitive' };
@@ -2392,7 +2393,7 @@ async function performDeepAnalysis(
 // Get rate comparison data
 async function getRateComparison(tenantId: string, supplierName?: string) {
   try {
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     if (supplierName) {
       where.supplierName = { contains: supplierName, mode: 'insensitive' };
     }
@@ -2459,9 +2460,9 @@ interface ContractComparisonData {
     id: string;
     type: string;
     title: string;
-    content: any;
+    content: Record<string, unknown>;
   }>;
-  metadata: any;
+  metadata: Record<string, unknown>;
   keyTerms: string[];
   clauses: Record<string, string | null>;
   rates?: Array<{
@@ -2480,14 +2481,14 @@ interface ComparisonResult {
   differences: {
     field: string;
     label: string;
-    value1: any;
-    value2: any;
+    value1: unknown;
+    value2: unknown;
     analysis: string;
   }[];
   similarities: {
     field: string;
     label: string;
-    sharedValue: any;
+    sharedValue: unknown;
   }[];
   summary: string;
   keyInsights: string[];
@@ -2724,7 +2725,7 @@ async function performContractComparison(
   };
   
   // Helper function to analyze difference
-  const analyzeDifference = (field: string, val1: any, val2: any): string => {
+  const analyzeDifference = (field: string, val1: unknown, val2: unknown): string => {
     if (val1 === null && val2 === null) return 'Both contracts are missing this information';
     if (val1 === null) return `Only ${entity2Name} has this defined`;
     if (val2 === null) return `Only ${entity1Name} has this defined`;
@@ -3186,7 +3187,7 @@ async function performGroupComparison(
   const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   
   // Helper to convert Decimal to number
-  const toNumber = (val: any): number => {
+  const toNumber = (val: unknown): number => {
     if (val === null || val === undefined) return 0;
     if (typeof val === 'number') return val;
     return parseFloat(String(val)) || 0;
@@ -3209,7 +3210,7 @@ async function performGroupComparison(
   
   // Fetch contracts for each group
   for (const group of groups) {
-    const whereClause: any = { tenantId };
+    const whereClause: Record<string, unknown> = { tenantId };
     
     // Build filter based on group criteria
     if (group.supplier) {
@@ -3670,7 +3671,7 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
 // Find master agreements for a supplier
 async function findMasterAgreements(supplierName: string, tenantId: string, year?: string) {
   try {
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenantId,
       supplierName: { contains: supplierName, mode: 'insensitive' },
       contractType: { in: ['MSA', 'MASTER', 'MASTER_AGREEMENT', 'MASTER SERVICE AGREEMENT'] },
@@ -3970,7 +3971,7 @@ async function getContractContext(contractId: string): Promise<string> {
     // Build parties list from external_parties (official schema) or fallback to legacy
     const externalParties = aiMeta.external_parties || [];
     const partiesList = externalParties.length > 0
-      ? externalParties.map((p: any) => `${p.legalName}${p.role ? ` (${p.role})` : ''}`).join(', ')
+      ? externalParties.map((p: { legalName?: string; name?: string; role?: string }) => `${p.legalName}${p.role ? ` (${p.role})` : ''}`).join(', ')
       : contract.supplierName || contract.clientName || 'Not specified';
 
     let context = `\n\n**Current Contract Details:**\n`;
@@ -4023,11 +4024,11 @@ async function getContractContext(contractId: string): Promise<string> {
       
       if (childContracts.length > 0) {
         context += `• Child Contracts (${childContracts.length}):\n`;
-        const totalChildValue = childContracts.reduce((sum: number, c: any) => sum + (Number(c.totalValue) || 0), 0);
+        const totalChildValue = childContracts.reduce((sum: number, c: { totalValue?: number; contractTitle?: string; name?: string; status?: string; id?: string }) => sum + (Number(c.totalValue) || 0), 0);
         if (totalChildValue > 0) {
           context += `  - Combined Value: ${totalChildValue.toLocaleString()}\n`;
         }
-        childContracts.slice(0, 10).forEach((child: any) => {
+        childContracts.slice(0, 10).forEach((child: { contractTitle?: string; fileName?: string; contractType?: string; relationshipType?: string; status?: string; totalValue?: number }) => {
           const childName = child.contractTitle || child.fileName || 'Untitled';
           const childType = child.contractType || child.relationshipType || 'Contract';
           context += `  - ${childName} (${childType.replace(/_/g, ' ')}) - ${child.status}`;
@@ -4059,9 +4060,9 @@ async function getContractContext(contractId: string): Promise<string> {
               if (data.keyTerms?.length) context += `**Key Terms:** ${data.keyTerms.slice(0, 10).join(', ')}\n`;
               // Use external_parties from schema or fall back to overview parties
               if (externalParties.length > 0) {
-                context += `**Parties:** ${externalParties.map((p: any) => `${p.legalName} (${p.role || 'Party'})`).join(', ')}\n`;
+                context += `**Parties:** ${externalParties.map((p: { legalName?: string; name?: string; role?: string }) => `${p.legalName} (${p.role || 'Party'})`).join(', ')}\n`;
               } else if (data.parties?.length) {
-                context += `**Parties:** ${data.parties.map((p: any) => p.name || p).join(', ')}\n`;
+                context += `**Parties:** ${data.parties.map((p: { legalName?: string; name?: string; role?: string }) => p.name || p).join(', ')}\n`;
               }
               // Use schema dates or artifact dates
               const overviewStartDate = aiMeta.start_date || data.effectiveDate || data.start_date;
@@ -4071,7 +4072,7 @@ async function getContractContext(contractId: string): Promise<string> {
               if (data.contractValue || aiMeta.tcv_amount) context += `**Contract Value:** ${aiMeta.tcv_amount || data.contractValue}\n`;
               if (data.governingLaw || aiMeta.jurisdiction) context += `**Governing Law:** ${aiMeta.jurisdiction || data.governingLaw}\n`;
               if (data.additionalFindings?.length) {
-                context += `**Additional Findings:** ${data.additionalFindings.map((f: any) => `${f.field}: ${f.value}`).join('; ')}\n`;
+                context += `**Additional Findings:** ${data.additionalFindings.map((f: { field?: string; value?: unknown }) => `${f.field}: ${f.value}`).join('; ')}\n`;
               }
               if (data.openEndedNotes) context += `**Notes:** ${data.openEndedNotes}\n`;
               break;
@@ -4079,7 +4080,7 @@ async function getContractContext(contractId: string): Promise<string> {
             case 'CLAUSES':
               context += `\n### Key Clauses (${data.clauses?.length || 0} found)\n`;
               if (data.clauses?.length) {
-                data.clauses.slice(0, 15).forEach((clause: any, i: number) => {
+                data.clauses.slice(0, 15).forEach((clause: { type?: string; risk?: string; importance?: string; title?: string; name?: string; content?: string; risks?: string[] }, i: number) => {
                   context += `${i + 1}. **${clause.title || clause.name}** (${clause.importance || 'medium'} priority)\n`;
                   if (clause.content) context += `   ${String(clause.content).slice(0, 200)}\n`;
                   if (clause.risks?.length) context += `   ⚠️ Risks: ${clause.risks.join(', ')}\n`;
@@ -4088,7 +4089,7 @@ async function getContractContext(contractId: string): Promise<string> {
               if (data.missingClauses?.length) context += `**Missing Clauses:** ${data.missingClauses.join(', ')}\n`;
               if (data.unusualClauses?.length) context += `**Unusual Clauses:** ${data.unusualClauses.join(', ')}\n`;
               if (data.additionalFindings?.length) {
-                context += `**Additional Clause Findings:** ${data.additionalFindings.map((f: any) => f.value).join('; ')}\n`;
+                context += `**Additional Clause Findings:** ${data.additionalFindings.map((f: { field?: string; value?: unknown }) => f.value).join('; ')}\n`;
               }
               break;
               
@@ -4098,18 +4099,18 @@ async function getContractContext(contractId: string): Promise<string> {
               if (data.paymentTerms) context += `**Payment Terms:** ${data.paymentTerms}\n`;
               if (data.rateCards?.length) {
                 context += `**Rate Cards (${data.rateCards.length}):**\n`;
-                data.rateCards.slice(0, 10).forEach((rate: any) => {
+                data.rateCards.slice(0, 10).forEach((rate: { role?: string; rate?: number; currency?: string; unit?: string }) => {
                   context += `  • ${rate.role}: ${rate.currency || 'USD'} ${rate.rate}/${rate.unit || 'hour'}\n`;
                 });
               }
               if (data.penalties?.length) {
-                context += `**Penalties:** ${data.penalties.map((p: any) => p.description || p.type).join('; ')}\n`;
+                context += `**Penalties:** ${data.penalties.map((p: { description?: string; type?: string }) => p.description || p.type).join('; ')}\n`;
               }
               if (data.discounts?.length) {
-                context += `**Discounts:** ${data.discounts.map((d: any) => `${d.value}${d.unit === 'percentage' ? '%' : ''} ${d.description || d.type}`).join('; ')}\n`;
+                context += `**Discounts:** ${data.discounts.map((d: { value?: number; unit?: string; description?: string; type?: string }) => `${d.value}${d.unit === 'percentage' ? '%' : ''} ${d.description || d.type}`).join('; ')}\n`;
               }
               if (data.additionalFindings?.length) {
-                context += `**Additional Financial Info:** ${data.additionalFindings.map((f: any) => `${f.field}: ${f.value}`).join('; ')}\n`;
+                context += `**Additional Financial Info:** ${data.additionalFindings.map((f: { field?: string; value?: unknown }) => `${f.field}: ${f.value}`).join('; ')}\n`;
               }
               break;
               
@@ -4119,7 +4120,7 @@ async function getContractContext(contractId: string): Promise<string> {
               if (data.risks?.length || data.riskFactors?.length) {
                 const risks = data.risks || data.riskFactors || [];
                 context += `**Risk Factors (${risks.length}):**\n`;
-                risks.slice(0, 8).forEach((risk: any) => {
+                risks.slice(0, 8).forEach((risk: { level?: string; severity?: string; factor?: string; description?: string; mitigation?: string; title?: string; category?: string }) => {
                   context += `  • [${risk.level || risk.severity || 'medium'}] ${risk.title || risk.category}: ${String(risk.description).slice(0, 150)}\n`;
                   if (risk.mitigation) context += `    → Mitigation: ${String(risk.mitigation).slice(0, 100)}\n`;
                 });
@@ -4133,13 +4134,13 @@ async function getContractContext(contractId: string): Promise<string> {
               context += `**Compliance Score:** ${data.complianceScore || data.score || 'N/A'}%\n`;
               if (data.checks?.length) {
                 context += `**Compliance Checks:**\n`;
-                data.checks.slice(0, 10).forEach((check: any) => {
+                data.checks.slice(0, 10).forEach((check: { regulation?: string; status?: string; requirement?: string }) => {
                   const icon = check.status === 'compliant' ? '✅' : check.status === 'non-compliant' ? '❌' : '⚠️';
                   context += `  ${icon} ${check.regulation}: ${check.status}\n`;
                 });
               }
               if (data.issues?.length) {
-                context += `**Issues:** ${data.issues.map((i: any) => `[${i.severity}] ${i.description}`).join('; ')}\n`;
+                context += `**Issues:** ${data.issues.map((i: { severity?: string; description?: string }) => `[${i.severity}] ${i.description}`).join('; ')}\n`;
               }
               break;
               
@@ -4147,7 +4148,7 @@ async function getContractContext(contractId: string): Promise<string> {
               context += `\n### Obligations & Milestones\n`;
               if (data.obligations?.length) {
                 context += `**Obligations (${data.obligations.length}):**\n`;
-                data.obligations.slice(0, 10).forEach((ob: any) => {
+                data.obligations.slice(0, 10).forEach((ob: { party?: string; obligation?: string; title?: string; type?: string; dueDate?: string }) => {
                   context += `  • ${ob.party}: ${ob.obligation || ob.title} (${ob.type || 'general'})`;
                   if (ob.dueDate) context += ` - Due: ${ob.dueDate}`;
                   context += `\n`;
@@ -4155,7 +4156,7 @@ async function getContractContext(contractId: string): Promise<string> {
               }
               if (data.milestones?.length) {
                 context += `**Milestones (${data.milestones.length}):**\n`;
-                data.milestones.slice(0, 8).forEach((m: any) => {
+                data.milestones.slice(0, 8).forEach((m: { name?: string; dueDate?: string; date?: string }) => {
                   context += `  • ${m.name}: ${m.dueDate || m.date || 'No date'}\n`;
                 });
               }
@@ -4180,7 +4181,7 @@ async function getContractContext(contractId: string): Promise<string> {
               if (data.favorabilityAssessment) context += `**Assessment:** ${data.favorabilityAssessment}\n`;
               if (data.negotiationPoints?.length) {
                 context += `**Points to Negotiate (${data.negotiationPoints.length}):**\n`;
-                data.negotiationPoints.slice(0, 5).forEach((np: any) => {
+                data.negotiationPoints.slice(0, 5).forEach((np: { priority?: string; clause?: string; concern?: string; suggestedChange?: string }) => {
                   context += `  • [${np.priority}] ${np.clause}: ${np.concern}\n`;
                   if (np.suggestedChange) context += `    → Suggest: ${String(np.suggestedChange).slice(0, 100)}\n`;
                 });
@@ -4193,7 +4194,7 @@ async function getContractContext(contractId: string): Promise<string> {
               context += `\n### Amendments History\n`;
               if (data.amendments?.length) {
                 context += `**Amendments (${data.amendments.length}):**\n`;
-                data.amendments.forEach((a: any) => {
+                data.amendments.forEach((a: { number?: string; title?: string; summary?: string; date?: string }) => {
                   context += `  • ${a.number || a.title}: ${a.summary || 'See details'} (${a.date || 'No date'})\n`;
                 });
               } else {
@@ -4204,12 +4205,12 @@ async function getContractContext(contractId: string): Promise<string> {
             case 'CONTACTS':
               context += `\n### Key Contacts\n`;
               if (data.contacts?.length) {
-                data.contacts.slice(0, 8).forEach((c: any) => {
+                data.contacts.slice(0, 8).forEach((c: { name?: string; role?: string; partyType?: string; email?: string; phone?: string }) => {
                   context += `  • ${c.name} (${c.role || c.partyType}): ${c.email || c.phone || 'No contact info'}\n`;
                 });
               }
               if (data.signatories?.length) {
-                context += `**Signatories:** ${data.signatories.map((s: any) => `${s.name} (${s.title})`).join(', ')}\n`;
+                context += `**Signatories:** ${data.signatories.map((s: { name?: string; title?: string }) => `${s.name} (${s.title})`).join(', ')}\n`;
               }
               break;
               
@@ -4227,7 +4228,7 @@ async function getContractContext(contractId: string): Promise<string> {
     }
 
     // Add last updated timestamp
-    const latestArtifact = contract.artifacts?.reduce((latest: any, a: any) => 
+    const latestArtifact = contract.artifacts?.reduce((latest: { updatedAt?: Date } | null, a: { updatedAt?: Date }) => 
       !latest || (a.updatedAt && a.updatedAt > latest.updatedAt) ? a : latest, null);
     if (latestArtifact?.updatedAt) {
       context += `\n---\n*Artifacts last updated: ${latestArtifact.updatedAt.toLocaleString()}*\n`;
@@ -4241,7 +4242,7 @@ async function getContractContext(contractId: string): Promise<string> {
 }
 
 // Mock AI responses based on context
-const mockAIResponses: Record<string, (query: string, context: any) => any> = {
+const mockAIResponses: Record<string, (query: string, context: Record<string, unknown>) => Record<string, unknown>> = {
   // ============================================
   // PROCUREMENT AGENT RESPONSES
   // ============================================
@@ -4269,7 +4270,7 @@ Would you like me to:
       };
     }
 
-    const contractList = contracts.map((c: any, i: number) => {
+    const contractList = contracts.map((c: { totalValue?: number; contractTitle?: string; name?: string; status?: string; id?: string; expirationDate?: string | Date; value?: number }, i: number) => {
       const expiry = c.expirationDate ? new Date(c.expirationDate) : null;
       const daysLeft = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
       const urgency = daysLeft !== null && daysLeft <= 30 ? '🔴' : daysLeft !== null && daysLeft <= 90 ? '🟡' : '🟢';
@@ -4281,7 +4282,7 @@ Would you like me to:
    • Expires: ${expiryText}`;
     }).join('\n\n');
 
-    const expiringCount = contracts.filter((c: any) => {
+    const expiringCount = contracts.filter((c: { expirationDate?: string | Date }) => {
       if (!c.expirationDate) return false;
       const expiry = new Date(c.expirationDate);
       const daysLeft = Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -4299,9 +4300,9 @@ ${contractList}
 **Summary:** ${expiringCount} contract(s) expiring in the next 90 days.
 
 Would you like me to start a renewal for any of these?`,
-      sources: contracts.map((c: any) => `Contract: ${c.contractTitle || c.name}`),
-      suggestedActions: contracts.slice(0, 3).map((c: any) => ({
-        label: `🔄 Renew: ${(c.contractTitle || c.name).slice(0, 25)}...`,
+      sources: contracts.map((c: { contractTitle?: string; name?: string }) => `Contract: ${c.contractTitle || c.name}`),
+      suggestedActions: contracts.slice(0, 3).map((c: { contractTitle?: string; name?: string; id?: string }) => ({
+        label: `🔄 Renew: ${(c.contractTitle || c.name || '').slice(0, 25)}...`,
         action: `start-renewal:${c.id}`,
       })),
       suggestions: [
@@ -4333,9 +4334,9 @@ Your procurement portfolio is in good shape for now!`,
       };
     }
 
-    const totalValue = contracts.reduce((sum: number, c: any) => sum + (Number(c.value) || 0), 0);
+    const totalValue = contracts.reduce((sum: number, c: { value?: number | string }) => sum + (Number(c.value) || 0), 0);
     
-    const contractList = contracts.map((c: any, i: number) => {
+    const contractList = contracts.map((c: { contractTitle?: string; name?: string; id?: string; expirationDate?: string | Date; supplierName?: string; value?: number | string; status?: string }, i: number) => {
       const expiry = c.expirationDate ? new Date(c.expirationDate) : null;
       const daysLeft = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
       const urgency = daysLeft !== null && daysLeft <= 7 ? '🔴 CRITICAL' : daysLeft !== null && daysLeft <= 30 ? '🟠 URGENT' : '🟡 UPCOMING';
@@ -4388,7 +4389,7 @@ I recommend starting the renewal process for critical contracts immediately.`,
       };
     }
 
-    const contractList = contracts.slice(0, 10).map((c: any, i: number) => {
+    const contractList = contracts.slice(0, 10).map((c: { contractTitle?: string; name?: string; id?: string; supplierName?: string; value?: number | string }, i: number) => {
       const value = c.value ? `$${Number(c.value).toLocaleString()}` : 'N/A';
       return `${i + 1}. [📄 ${c.contractTitle || c.name}](/contracts/${c.id})
    • Supplier: ${c.supplierName || 'N/A'} | Value: ${value}`;
@@ -4551,7 +4552,7 @@ ${categoryBreakdown}
       };
     }
 
-    const opportunityList = savingsData.opportunities.slice(0, 5).map((opp: any, i: number) => 
+    const opportunityList = savingsData.opportunities.slice(0, 5).map((opp: { title?: string; potentialSavingsAmount?: number; category?: string; confidence?: string; contract?: { contractTitle?: string } }, i: number) => 
       `${i + 1}. **${opp.title}**\n   • Potential: $${Number(opp.potentialSavingsAmount).toLocaleString()}\n   • Category: ${opp.category} | Confidence: ${opp.confidence}\n   • Contract: ${opp.contract?.contractTitle || 'N/A'}`
     ).join('\n\n');
 
@@ -4591,8 +4592,8 @@ ${opportunityList}
       };
     }
 
-    const supplierList = topSuppliersData.suppliers.map((s: any, i: number) => 
-      `${i + 1}. **${s.name}**\n   • Total Value: $${s.totalValue.toLocaleString()}\n   • Contracts: ${s.count} (${s.activeCount} active)\n   • Expiring Soon: ${s.expiringCount > 0 ? `⚠️ ${s.expiringCount}` : '✅ None'}`
+    const supplierList = topSuppliersData.suppliers.map((s: { name?: string; totalValue?: number; count?: number; activeCount?: number; expiringCount?: number }, i: number) => 
+      `${i + 1}. **${s.name}**\n   • Total Value: $${(s.totalValue || 0).toLocaleString()}\n   • Contracts: ${s.count} (${s.activeCount} active)\n   • Expiring Soon: ${(s.expiringCount || 0) > 0 ? `⚠️ ${s.expiringCount}` : '✅ None'}`
     ).join('\n\n');
 
     return {
@@ -4629,7 +4630,7 @@ ${supplierList}
       };
     }
 
-    const riskList = riskData.contracts.slice(0, 5).map((c: any, i: number) => {
+    const riskList = riskData.contracts.slice(0, 5).map((c: { expirationRisk?: string; contractTitle?: string; id?: string; daysUntilExpiry?: number; supplierName?: string; autoRenewalEnabled?: boolean }, i: number) => {
       const riskIcon = c.expirationRisk === 'CRITICAL' ? '🔴' : c.expirationRisk === 'HIGH' ? '🟠' : '🟡';
       return `${i + 1}. ${riskIcon} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • Risk: ${c.expirationRisk || 'HIGH'} | Days Left: ${c.daysUntilExpiry || 'N/A'}\n   • Supplier: ${c.supplierName || 'Unknown'}\n   • Auto-Renew: ${c.autoRenewalEnabled ? '⚠️ Yes' : 'No'}`;
     }).join('\n\n');
@@ -4671,7 +4672,7 @@ ${riskList}
       };
     }
 
-    const contractList = autoRenewalData.contracts.slice(0, 8).map((c: any, i: number) => {
+    const contractList = autoRenewalData.contracts.slice(0, 8).map((c: { expirationDate?: string | Date; daysUntilExpiry?: number; contractTitle?: string; id?: string; supplierName?: string }, i: number) => {
       const expiry = c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A';
       const urgent = c.daysUntilExpiry && c.daysUntilExpiry <= 30 ? '⚠️' : '';
       return `${i + 1}. ${urgent} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • Supplier: ${c.supplierName} | Renews: ${expiry}`;
@@ -4711,8 +4712,8 @@ ${contractList}
       };
     }
 
-    const l1List = categoryData.byL1Category.slice(0, 6).map((cat: any, i: number) => 
-      `${i + 1}. **${cat.name}**: $${cat.value.toLocaleString()}\n   • ${cat.count} contracts | ${cat.supplierCount} suppliers`
+    const l1List = categoryData.byL1Category.slice(0, 6).map((cat: { name?: string; value?: number; count?: number; supplierCount?: number }, i: number) => 
+      `${i + 1}. **${cat.name}**: $${(cat.value || 0).toLocaleString()}\n   • ${cat.count} contracts | ${cat.supplierCount} suppliers`
     ).join('\n\n');
 
     return {
@@ -4749,8 +4750,8 @@ ${l1List}
       };
     }
 
-    const termsList = paymentData.byTerms.slice(0, 5).map((t: any, i: number) => 
-      `${i + 1}. **${t.terms}**: ${t.count} contracts ($${t.value.toLocaleString()})`
+    const termsList = paymentData.byTerms.slice(0, 5).map((t: { terms?: string; count?: number; value?: number }, i: number) => 
+      `${i + 1}. **${t.terms}**: ${t.count} contracts ($${(t.value || 0).toLocaleString()})`
     ).join('\n');
 
     return {
@@ -4786,8 +4787,8 @@ ${termsList}
       };
     }
 
-    const issueList = complianceData.contracts.slice(0, 5).map((c: any, i: number) => {
-      const issueIcon = c.complianceScore < 60 ? '🔴' : c.complianceScore < 80 ? '🟠' : '🟡';
+    const issueList = complianceData.contracts.slice(0, 5).map((c: { complianceScore?: number; contractTitle?: string; id?: string; issueCount?: number; supplierName?: string; lastAuditDate?: string }, i: number) => {
+      const issueIcon = (c.complianceScore || 0) < 60 ? '🔴' : (c.complianceScore || 0) < 80 ? '🟠' : '🟡';
       return `${i + 1}. ${issueIcon} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • Score: ${c.complianceScore}% | Issues: ${c.issueCount}\n   • Supplier: ${c.supplierName || 'Unknown'}\n   • Last Audit: ${c.lastAuditDate || 'Never'}`;
     }).join('\n\n');
 
@@ -4851,7 +4852,7 @@ ${metrics}
 • Relationship Duration: ${performanceData.relationshipMonths} months
 
 **Recent Activity:**
-${performanceData.recentIssues?.length > 0 ? performanceData.recentIssues.map((issue: any) => `• ⚠️ ${issue}`).join('\n') : '• ✅ No recent issues'}
+${performanceData.recentIssues?.length > 0 ? performanceData.recentIssues.map((issue: string) => `• ⚠️ ${issue}`).join('\n') : '• ✅ No recent issues'}
 
 💡 *${performanceData.overallScore >= 80 ? 'This is a high-performing supplier.' : 'Consider discussing improvement areas.'}*`,
       sources: ['Supplier Performance Analytics', 'Contract Database'],
@@ -4879,12 +4880,12 @@ ${performanceData.recentIssues?.length > 0 ? performanceData.recentIssues.map((i
       };
     }
 
-    const rateList = rateData.rateCards.slice(0, 5).map((card: any, i: number) => {
-      const compIcon = card.vsMarket < 0 ? '🟢' : card.vsMarket < 10 ? '🟡' : '🔴';
-      return `${i + 1}. **${card.roleName || card.serviceType}**\n   • Your Rate: $${card.rate.toLocaleString()}/hr\n   • Market Avg: $${card.marketRate.toLocaleString()}/hr\n   • ${compIcon} ${card.vsMarket > 0 ? '+' : ''}${card.vsMarket}% vs market`;
+    const rateList = rateData.rateCards.slice(0, 5).map((card: { roleName?: string; serviceType?: string; rate?: number; marketRate?: number; vsMarket?: number }, i: number) => {
+      const compIcon = (card.vsMarket || 0) < 0 ? '🟢' : (card.vsMarket || 0) < 10 ? '🟡' : '🔴';
+      return `${i + 1}. **${card.roleName || card.serviceType}**\n   • Your Rate: $${(card.rate || 0).toLocaleString()}/hr\n   • Market Avg: $${(card.marketRate || 0).toLocaleString()}/hr\n   • ${compIcon} ${(card.vsMarket || 0) > 0 ? '+' : ''}${card.vsMarket}% vs market`;
     }).join('\n\n');
 
-    const avgVariance = rateData.rateCards.reduce((sum: number, c: any) => sum + c.vsMarket, 0) / rateData.rateCards.length;
+    const avgVariance = rateData.rateCards.reduce((sum: number, c: { vsMarket?: number }) => sum + (c.vsMarket || 0), 0) / rateData.rateCards.length;
 
     return {
       response: `💰 **Rate Comparison${supplierName ? `: ${supplierName}` : ''}**
@@ -4973,7 +4974,7 @@ ${avgVariance > 5 ? '⚠️ *Your rates are above market average. Consider reneg
     if (parentContracts && parentContracts.length > 0) {
       const parent = parentContracts[0];
       const displayName = supplierName || parent.supplierName || 'the selected contract';
-      const parentList = parentContracts.map((p: any, i: number) => {
+      const parentList = parentContracts.map((p: { effectiveDate?: string | Date; childContracts?: unknown[]; contractTitle?: string; contractType?: string; status?: string; id?: string }, i: number) => {
         const effective = p.effectiveDate ? new Date(p.effectiveDate).getFullYear() : 'N/A';
         const childCount = p.childContracts?.length || 0;
         return `${i + 1}. **${p.contractTitle || p.contractType}** (${effective})
@@ -4998,13 +4999,13 @@ I'll link your new ${contractType} to: **${parent.contractTitle}**
 
 Ready to proceed?` : `
 Please select which contract to link to, or I can help you find the right one.`}`,
-        sources: parentContracts.map((p: any) => `Contract: ${p.contractTitle}`),
+        sources: parentContracts.map((p: { contractTitle?: string }) => `Contract: ${p.contractTitle}`),
         suggestedActions: parentContracts.length === 1 ? [
           { label: `📝 Create ${contractType} Draft`, action: `create-draft:${contractType}:${parent.id}` },
           { label: '📋 Use Template', action: `use-template:${contractType}` },
           { label: '📅 Schedule Kickoff', action: 'schedule-meeting' },
-        ] : parentContracts.slice(0, 3).map((p: any) => ({
-          label: `🔗 Link to ${(p.contractTitle || p.contractType).slice(0, 20)}...`,
+        ] : parentContracts.slice(0, 3).map((p: { contractTitle?: string; contractType?: string; id?: string }) => ({
+          label: `🔗 Link to ${(p.contractTitle || p.contractType || '').slice(0, 20)}...`,
           action: `select-parent:${p.id}`,
         })),
         suggestions: [
@@ -5018,7 +5019,7 @@ Please select which contract to link to, or I can help you find the right one.`}
           contractType,
           supplierName,
           parentContractId: parentContracts.length === 1 ? parent.id : null,
-          parentContracts: parentContracts.map((p: any) => ({
+          parentContracts: parentContracts.map((p: { id?: string; contractTitle?: string; contractType?: string }) => ({
             id: p.id,
             title: p.contractTitle,
             type: p.contractType,
@@ -5092,7 +5093,7 @@ I couldn't find any active Master Agreements with "${supplierName}".
       };
     }
 
-    const msaList = masterAgreements.map((msa: any, i: number) => {
+    const msaList = masterAgreements.map((msa: { effectiveDate?: string | Date; expirationDate?: string | Date; childContracts?: unknown[]; totalValue?: number | string; contractTitle?: string; status?: string; id?: string }, i: number) => {
       const effective = msa.effectiveDate ? new Date(msa.effectiveDate).toLocaleDateString() : 'N/A';
       const expiry = msa.expirationDate ? new Date(msa.expirationDate).toLocaleDateString() : 'No expiry';
       const childCount = msa.childContracts?.length || 0;
@@ -5115,8 +5116,8 @@ ${msaList}
 - Create a new SOW under any MSA
 - View linked contracts
 - Start renewal process`,
-      sources: masterAgreements.map((m: any) => `MSA: ${m.contractTitle}`),
-      suggestedActions: masterAgreements.slice(0, 2).map((m: any) => ({
+      sources: masterAgreements.map((m: { contractTitle?: string }) => `MSA: ${m.contractTitle}`),
+      suggestedActions: masterAgreements.slice(0, 2).map((m: { contractTitle?: string; id?: string }) => ({
         label: `📝 Create SOW under ${(m.contractTitle || 'MSA').slice(0, 15)}...`,
         action: `create-sow:${m.id}`,
       })).concat([
@@ -5159,14 +5160,14 @@ ${msaList}
     
     if (children.length > 0) {
       hierarchyView += `**📎 Linked Contracts (${children.length}):**\n`;
-      children.forEach((child: any, i: number) => {
+      children.forEach((child: { contractTitle?: string; contractType?: string; relationshipType?: string; status?: string }, i: number) => {
         const prefix = i === children.length - 1 ? '└──' : '├──';
         hierarchyView += `${prefix} ${child.contractTitle || child.contractType}\n`;
         hierarchyView += `    • Type: ${child.relationshipType || child.contractType} | Status: ${child.status}\n`;
       });
     }
 
-    const totalValue = children.reduce((sum: number, c: any) => sum + (Number(c.totalValue) || 0), Number(contract.totalValue) || 0);
+    const totalValue = children.reduce((sum: number, c: { totalValue?: number | string }) => sum + (Number(c.totalValue) || 0), Number(contract.totalValue) || 0);
 
     return {
       response: `🌳 **Contract Hierarchy**
@@ -5176,7 +5177,7 @@ ${hierarchyView}
 **Summary:**
 • Total contracts in tree: ${1 + children.length + (parent ? 1 : 0)}
 • Combined value: $${totalValue.toLocaleString()}
-• Active children: ${children.filter((c: any) => c.status === 'ACTIVE').length}`,
+• Active children: ${children.filter((c: { status?: string }) => c.status === 'ACTIVE').length}`,
       sources: [`Contract: ${contract.contractTitle}`],
       suggestedActions: [
         { label: '📝 Add New SOW', action: `create-sow:${contract.id}` },
@@ -5308,7 +5309,7 @@ Would you like a detailed risk report?`,
     if (matchedContracts && matchedContracts.length > 0) {
       const contract = matchedContracts[0];
       const workflowList = workflows?.length > 0 
-        ? workflows.map((w: any, i: number) => `${i + 1}. **${w.name}** - ${w.steps?.length || 0} steps`).join('\n')
+        ? workflows.map((w: { name?: string; steps?: unknown[] }, i: number) => `${i + 1}. **${w.name}** - ${w.steps?.length || 0} steps`).join('\n')
         : '1. **Standard Renewal** - 3 steps (Legal → Finance → VP Approval)';
       
       return {
@@ -5399,7 +5400,7 @@ What would you like to do?`,
     const { stats, hierarchy } = taxonomyData;
     
     // Format the hierarchy nicely
-    const categoryList = hierarchy.slice(0, 8).map((cat: any, i: number) => {
+    const categoryList = hierarchy.slice(0, 8).map((cat: { name?: string; code?: string; children?: unknown[]; contractCount?: number }, i: number) => {
       const childCount = cat.children?.length || 0;
       const contractCount = cat.contractCount || 0;
       return `${i + 1}. **${cat.name}** (${cat.code || 'N/A'})\n   • ${childCount} subcategories | ${contractCount} contracts`;
@@ -5454,11 +5455,11 @@ ${categoryList}
     
     const parentInfo = parent ? `Part of: **${parent.name}**` : 'Top-level category';
     const childList = children && children.length > 0 
-      ? children.slice(0, 5).map((c: any) => `• ${c.name} (${c.code})`).join('\n')
+      ? children.slice(0, 5).map((c: { name?: string; code?: string }) => `• ${c.name} (${c.code})`).join('\n')
       : 'No subcategories';
     
     const contractList = sampleContracts && sampleContracts.length > 0
-      ? sampleContracts.slice(0, 3).map((c: any, i: number) => 
+      ? sampleContracts.slice(0, 3).map((c: { contractTitle?: string; id?: string; totalValue?: number | string }, i: number) => 
           `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n')
       : 'No contracts in this category';
@@ -5516,7 +5517,7 @@ ${contractList}`,
 This contract is already categorized. Would you like to change it?
 
 **Other Options:**
-${suggestions.slice(0, 3).map((s: any, i: number) => `${i + 1}. ${s.name} (${s.code})`).join('\n')}`,
+${suggestions.slice(0, 3).map((s: { name?: string; code?: string }, i: number) => `${i + 1}. ${s.name} (${s.code})`).join('\n')}`,
         sources: ['Taxonomy Database'],
         suggestedActions: [
           { label: '✏️ Change Category', action: `change-category:${contract?.id}` },
@@ -5530,7 +5531,7 @@ ${suggestions.slice(0, 3).map((s: any, i: number) => `${i + 1}. ${s.name} (${s.c
     }
 
     const suggestionList = suggestions.length > 0
-      ? suggestions.slice(0, 5).map((s: any, i: number) => 
+      ? suggestions.slice(0, 5).map((s: { name?: string; code?: string; _count?: { contracts?: number } }, i: number) => 
           `${i + 1}. **${s.name}** (${s.code})\n   • ${s._count?.contracts || 0} existing contracts`
         ).join('\n\n')
       : 'No strong matches found. Browse all categories to assign.';
@@ -5572,7 +5573,7 @@ ${suggestionList}
 
     const { category, contracts, totalContracts, totalValue } = categoryContracts;
     
-    const contractList = contracts.slice(0, 10).map((c: any, i: number) => {
+    const contractList = contracts.slice(0, 10).map((c: { status?: string; totalValue?: number | string; contractTitle?: string; id?: string; supplierName?: string }, i: number) => {
       const statusIcon = c.status === 'ACTIVE' ? '🟢' : c.status === 'EXPIRED' ? '🔴' : '🟡';
       const value = c.totalValue ? `$${Number(c.totalValue).toLocaleString()}` : 'N/A';
       return `${i + 1}. ${statusIcon} [📄 ${c.contractTitle}](/contracts/${c.id})\n   • ${c.supplierName} | ${value}`;
@@ -5627,7 +5628,7 @@ Could you provide more details about what you'd like to know?`,
   }),
 };
 
-function selectResponse(query: string, context: any) {
+function selectResponse(query: string, context: Record<string, unknown>) {
   const lowerQuery = query.toLowerCase();
 
   // ============================================
@@ -5916,14 +5917,14 @@ function selectResponse(query: string, context: any) {
   return mockAIResponses['default']?.(query, context);
 }
 
-async function getOpenAIResponse(message: string, conversationHistory: any[], context: any) {
+async function getOpenAIResponse(message: string, conversationHistory: Array<{ role?: string; content?: string }>, context: Record<string, unknown>) {
   try {
     // Check if the query needs RAG search
     const needsRAG = shouldUseRAG(message);
     let ragContext = '';
     let ragSources: string[] = [];
     let contractContext = '';
-    let ragSearchResults: any[] = []; // Store actual RAG results
+    let ragSearchResults: Array<{ contractId?: string; contractName?: string; score?: number; content?: string }> = []; // Store actual RAG results
 
     // If we have a specific contract ID, fetch its details directly
     if (context?.contractId) {
@@ -6031,9 +6032,9 @@ ${contractContext || 'No specific contract selected.'}
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
-      ...conversationHistory.slice(-10).map((msg: any) => ({
+      ...conversationHistory.slice(-10).map((msg: { role?: string; content?: string }) => ({
         role: msg.role as 'user' | 'assistant',
-        content: msg.content,
+        content: msg.content || '',
       })),
       { role: 'user', content: message },
     ];
@@ -6073,15 +6074,15 @@ ${contractContext || 'No specific contract selected.'}
       suggestedActions: smartSuggestedActions,
       suggestions: smartSuggestions,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('OpenAI API error:', error);
-    throw new Error(`OpenAI API error: ${error.message}`);
+    throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 // Generate smart, context-aware suggested actions
-function generateSmartSuggestedActions(intent: any, ragResults: any[], context: any): any[] {
-  const actions: any[] = [];
+function generateSmartSuggestedActions(intent: { type?: string; action?: string; entities?: Record<string, unknown> }, ragResults: Array<{ contractId?: string; contractName?: string }>, context: Record<string, unknown>): Array<{ label: string; action: string }> {
+  const actions: Array<{ label: string; action: string }> = [];
   
   // Intent-based actions
   if (intent?.type === 'list') {
@@ -6121,7 +6122,7 @@ function generateSmartSuggestedActions(intent: any, ragResults: any[], context: 
 }
 
 // Generate smart follow-up suggestions based on context
-function generateSmartFollowUpSuggestions(query: string, intent: any, ragResults: any[]): string[] {
+function generateSmartFollowUpSuggestions(query: string, intent: { type?: string; action?: string; entities?: Record<string, unknown> }, ragResults: Array<{ contractId?: string; contractName?: string }>): string[] {
   const suggestions: string[] = [];
   const lowerQuery = query.toLowerCase();
   
@@ -6213,12 +6214,12 @@ export async function POST(request: NextRequest) {
 
     // Build database context based on detected intent
     let additionalContext = '';
-    let contractPreviews: any[] = []; // Store contracts for visual preview cards
+    let contractPreviews: Array<{ id?: string; name?: string; supplier?: string; status?: string; value?: number; expirationDate?: string | null; daysUntilExpiry?: number | null; riskLevel?: string; type?: string }> = []; // Store contracts for visual preview cards
     let proactiveAlerts: string[] = []; // Store proactive alerts to show
     let proactiveInsightsData: string[] = []; // Store insights
     
     // Helper to format contracts for preview cards - declare before use
-    const formatContractForPreview = (c: any) => {
+    const formatContractForPreview = (c: { id?: string; contractTitle?: string; name?: string; supplierName?: string; status?: string; totalValue?: number | string; value?: number | string; expirationDate?: string | Date; contractType?: string; type?: string }) => {
       const expiry = c.expirationDate ? new Date(c.expirationDate) : null;
       const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
       
@@ -6302,7 +6303,7 @@ export async function POST(request: NextRequest) {
         // Add critical clauses
         if (intel.insights.criticalClauses && intel.insights.criticalClauses.length > 0) {
           additionalContext += `\n**⚠️ Critical Clauses:**\n`;
-          intel.insights.criticalClauses.forEach((clause: any) => {
+          intel.insights.criticalClauses.forEach((clause: { title?: string; type?: string; summary?: string; text?: string }) => {
             additionalContext += `- ${clause.title || clause.type}: ${clause.summary || clause.text?.slice(0, 150) || 'See contract'}\n`;
           });
         }
@@ -6310,7 +6311,7 @@ export async function POST(request: NextRequest) {
         // Add risks
         if (intel.risks.factors && intel.risks.factors.length > 0) {
           additionalContext += `\n**🚨 Risk Factors (${intel.risks.level}):**\n`;
-          intel.risks.factors.slice(0, 5).forEach((risk: any) => {
+          intel.risks.factors.slice(0, 5).forEach((risk: string | { description?: string; factor?: string }) => {
             additionalContext += `- ${typeof risk === 'string' ? risk : risk.description || risk.factor}\n`;
           });
         }
@@ -6318,7 +6319,7 @@ export async function POST(request: NextRequest) {
         // Add obligations if available
         if (intel.obligations.ourObligations && intel.obligations.ourObligations.length > 0) {
           additionalContext += `\n**📋 Our Key Obligations:**\n`;
-          intel.obligations.ourObligations.slice(0, 5).forEach((obl: any) => {
+          intel.obligations.ourObligations.slice(0, 5).forEach((obl: string | { description?: string; title?: string }) => {
             additionalContext += `- ${typeof obl === 'string' ? obl : obl.description || obl.title}\n`;
           });
         }
@@ -6326,7 +6327,7 @@ export async function POST(request: NextRequest) {
         // Add rate card snippet if available
         if (intel.rates && intel.rates.length > 0) {
           additionalContext += `\n**💰 Rate Card (${intel.rates.length} roles):**\n`;
-          intel.rates.slice(0, 5).forEach((rate: any) => {
+          intel.rates.slice(0, 5).forEach((rate: { role?: string; title?: string; rate?: number; hourlyRate?: number; amount?: number }) => {
             additionalContext += `- ${rate.role || rate.title}: $${rate.rate || rate.hourlyRate || rate.amount}/hr\n`;
           });
         }
@@ -6337,7 +6338,7 @@ export async function POST(request: NextRequest) {
         }
         if (intel.relationships.children && intel.relationships.children.length > 0) {
           additionalContext += `\n**🔗 Child Contracts (${intel.relationships.children.length}):**\n`;
-          intel.relationships.children.slice(0, 3).forEach((child: any) => {
+          intel.relationships.children.slice(0, 3).forEach((child: { contractTitle?: string; id?: string; contractType?: string }) => {
             additionalContext += `- [${child.contractTitle}](/contracts/${child.id}) (${child.contractType})\n`;
           });
         }
@@ -6369,7 +6370,7 @@ export async function POST(request: NextRequest) {
     
     // For list intents - query database and add to context
     if (intent.type === 'list') {
-      let contracts: any[] = [];
+      let contracts: Array<{ id?: string; contractTitle?: string; status?: string; totalValue?: number | string; expirationDate?: string | Date; supplierName?: string }> = [];
       if (intent.action === 'list_by_supplier' && intent.entities.supplierName) {
         contracts = await listContractsBySupplier(intent.entities.supplierName, tenantId);
         contractPreviews = contracts.map(formatContractForPreview);
@@ -6894,7 +6895,7 @@ export async function POST(request: NextRequest) {
           }
           additionalContext += `\n- Current: [${hierarchy.contractTitle}](/contracts/${hierarchy.id}) (${hierarchy.status}, Value: $${Number(hierarchy.totalValue || 0).toLocaleString()})`;
           if (hierarchy.childContracts && hierarchy.childContracts.length > 0) {
-            additionalContext += `\n- Children (${hierarchy.childContracts.length}):\n${hierarchy.childContracts.map((c: any) => 
+            additionalContext += `\n- Children (${hierarchy.childContracts.length}):\n${hierarchy.childContracts.map((c: { contractTitle?: string; id?: string; contractType?: string; status?: string }) => 
               `  - [${c.contractTitle}](/contracts/${c.id}) (${c.contractType}, ${c.status})`
             ).join('\n')}`;
           }
@@ -6926,7 +6927,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- Total Opportunities: ${savingsData.count}`;
         additionalContext += `\n- Potential Savings: $${savingsData.totalPotentialSavings.toLocaleString()}`;
         if (savingsData.opportunities.length > 0) {
-          additionalContext += `\n\nTop Opportunities:\n${savingsData.opportunities.slice(0, 5).map((opp: any, i: number) => 
+          additionalContext += `\n\nTop Opportunities:\n${savingsData.opportunities.slice(0, 5).map((opp: { title?: string; potentialSavingsAmount?: number; category?: string; confidence?: string; contract?: { contractTitle?: string } }, i: number) => 
             `${i + 1}. ${opp.title}: $${Number(opp.potentialSavingsAmount).toLocaleString()} potential savings\n   - Category: ${opp.category} | Confidence: ${opp.confidence}\n   - Contract: ${opp.contract?.contractTitle || 'N/A'}`
           ).join('\n')}`;
         }
@@ -6937,7 +6938,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- High Risk: ${riskData.highRiskCount} contracts`;
         additionalContext += `\n- Auto-Renewal Enabled: ${riskData.autoRenewalCount} contracts`;
         if (riskData.contracts.length > 0) {
-          additionalContext += `\n\nContracts Requiring Attention:\n${riskData.contracts.slice(0, 8).map((c: any, i: number) => 
+          additionalContext += `\n\nContracts Requiring Attention:\n${riskData.contracts.slice(0, 8).map((c: { contractTitle?: string; id?: string; expirationRisk?: string; daysUntilExpiry?: number; supplierName?: string; autoRenewalEnabled?: boolean }, i: number) => 
             `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id})\n   - Risk Level: ${c.expirationRisk || 'HIGH'} | Days Until Expiry: ${c.daysUntilExpiry || 'N/A'}\n   - Supplier: ${c.supplierName} | Auto-Renew: ${c.autoRenewalEnabled ? 'Yes' : 'No'}`
           ).join('\n')}`;
         }
@@ -6951,7 +6952,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- Compliant: ${complianceData.compliantCount} (${compliancePercent}%)`;
         additionalContext += `\n- Issues Found: ${complianceData.issueCount}`;
         if (complianceData.contracts.length > 0) {
-          additionalContext += `\n\nContracts with Issues:\n${complianceData.contracts.slice(0, 5).map((c: any) => 
+          additionalContext += `\n\nContracts with Issues:\n${complianceData.contracts.slice(0, 5).map((c: { contractTitle?: string; id?: string; complianceScore?: number; issueCount?: number }) => 
             `- [📄 ${c.contractTitle}](/contracts/${c.id}) (Score: ${c.complianceScore}%, Issues: ${c.issueCount})`
           ).join('\n')}`;
         }
@@ -6971,10 +6972,10 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n\n**Rate Comparison${intent.entities.supplierName ? ` for ${intent.entities.supplierName}` : ''}:**`;
         additionalContext += `\n- Rate Cards Analyzed: ${rateData.rateCards.length}`;
         if (rateData.rateCards.length > 0) {
-          const avgVariance = rateData.rateCards.reduce((sum: number, c: any) => sum + c.vsMarket, 0) / rateData.rateCards.length;
+          const avgVariance = rateData.rateCards.reduce((sum: number, c: { vsMarket?: number }) => sum + (c.vsMarket || 0), 0) / rateData.rateCards.length;
           additionalContext += `\n- Overall Position: ${avgVariance < 0 ? 'Below Market' : avgVariance < 10 ? 'At Market' : 'Above Market'} (${avgVariance > 0 ? '+' : ''}${avgVariance.toFixed(1)}% vs market)`;
-          additionalContext += `\n\nRate Details:\n${rateData.rateCards.slice(0, 8).map((card: any) => 
-            `- ${card.roleName}: $${card.rate}/hr (Market: $${card.marketRate}/hr, ${card.vsMarket > 0 ? '+' : ''}${card.vsMarket}%)`
+          additionalContext += `\n\nRate Details:\n${rateData.rateCards.slice(0, 8).map((card: { roleName?: string; rate?: number; marketRate?: number; vsMarket?: number }) => 
+            `- ${card.roleName}: $${card.rate}/hr (Market: $${card.marketRate}/hr, ${(card.vsMarket || 0) > 0 ? '+' : ''}${card.vsMarket}%)`
           ).join('\n')}`;
         }
       } else if (intent.action === 'top_suppliers') {
@@ -6990,12 +6991,12 @@ export async function POST(request: NextRequest) {
         }
       } else if (intent.action === 'auto_renewals') {
         const riskData = await getRiskAssessment(tenantId);
-        const autoRenewalContracts = riskData.contracts.filter((c: any) => c.autoRenewalEnabled);
+        const autoRenewalContracts = riskData.contracts.filter((c: { autoRenewalEnabled?: boolean }) => c.autoRenewalEnabled);
         additionalContext += `\n\n**Auto-Renewal Contracts:**`;
         additionalContext += `\n- Total with Auto-Renewal: ${riskData.autoRenewalCount}`;
-        additionalContext += `\n- Renewing in 90 Days: ${autoRenewalContracts.filter((c: any) => c.daysUntilExpiry && c.daysUntilExpiry <= 90).length}`;
+        additionalContext += `\n- Renewing in 90 Days: ${autoRenewalContracts.filter((c: { daysUntilExpiry?: number }) => c.daysUntilExpiry && c.daysUntilExpiry <= 90).length}`;
         if (autoRenewalContracts.length > 0) {
-          additionalContext += `\n\nContracts:\n${autoRenewalContracts.slice(0, 8).map((c: any) => 
+          additionalContext += `\n\nContracts:\n${autoRenewalContracts.slice(0, 8).map((c: { contractTitle?: string; supplierName?: string; expirationDate?: string | Date }) => 
             `- ${c.contractTitle} (Supplier: ${c.supplierName}, Renews: ${c.expirationDate ? new Date(c.expirationDate).toLocaleDateString() : 'N/A'})`
           ).join('\n')}`;
         }
@@ -7048,7 +7049,7 @@ export async function POST(request: NextRequest) {
           }),
         ]);
         
-        const calcStats = (contracts: any[]) => ({
+        const calcStats = (contracts: Array<{ totalValue?: number | string; status?: string }>) => ({
           count: contracts.length,
           totalValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
           avgValue: contracts.length > 0 ? contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0) / contracts.length : 0,
@@ -7087,7 +7088,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- L1 Categories: ${taxonomyData.stats.totalL1}`;
         additionalContext += `\n- L2 Subcategories: ${taxonomyData.stats.totalL2}`;
         if (taxonomyData.hierarchy.length > 0) {
-          additionalContext += `\n\nTop-Level Categories:\n${taxonomyData.hierarchy.slice(0, 10).map((cat: any, i: number) => 
+          additionalContext += `\n\nTop-Level Categories:\n${taxonomyData.hierarchy.slice(0, 10).map((cat: { name?: string; path?: string; children?: unknown[] }, i: number) => 
             `${i + 1}. ${cat.name} (${cat.path || 'N/A'}) - ${cat.children?.length || 0} subcategories`
           ).join('\n')}`;
         }
@@ -7099,7 +7100,7 @@ export async function POST(request: NextRequest) {
           additionalContext += `\n- Path: ${categoryDetails.path || 'N/A'}`;
           additionalContext += `\n- Level: L${categoryDetails.level}`;
           if (categoryDetails.children && categoryDetails.children.length > 0) {
-            additionalContext += `\n\nSubcategories: ${categoryDetails.children.map((c: any) => c.name).join(', ')}`;
+            additionalContext += `\n\nSubcategories: ${categoryDetails.children.map((c: { name?: string }) => c.name).join(', ')}`;
           }
           context = { ...context, categoryDetails };
         }
@@ -7113,7 +7114,7 @@ export async function POST(request: NextRequest) {
             additionalContext += `\n- Currently uncategorized`;
           }
           if (categorySuggestion.suggestions.length > 0) {
-            additionalContext += `\n\nSuggested Categories:\n${categorySuggestion.suggestions.slice(0, 5).map((s: any, i: number) => 
+            additionalContext += `\n\nSuggested Categories:\n${categorySuggestion.suggestions.slice(0, 5).map((s: { name?: string; code?: string }, i: number) => 
               `${i + 1}. ${s.name} (${s.code})`
             ).join('\n')}`;
           }
@@ -7126,7 +7127,7 @@ export async function POST(request: NextRequest) {
           additionalContext += `\n- Total Contracts: ${categoryContracts.totalContracts}`;
           additionalContext += `\n- Total Value: $${categoryContracts.totalValue.toLocaleString()}`;
           if (categoryContracts.contracts.length > 0) {
-            additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: any, i: number) => 
+            additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: { contractTitle?: string; id?: string; supplierName?: string; totalValue?: number | string }, i: number) => 
               `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - ${c.supplierName} - $${Number(c.totalValue || 0).toLocaleString()}`
             ).join('\n')}`;
           }
@@ -7157,12 +7158,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(response)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Chat API error:', error);
     
     // Generate helpful error response with recovery suggestions
-    const errorCode = error.code || 'UNKNOWN_ERROR';
-    const errorMessage = error.message || 'Failed to process chat message';
+    const err = error as { code?: string; message?: string };
+    const errorCode = err.code || 'UNKNOWN_ERROR';
+    const errorMessage = err.message || 'Failed to process chat message';
     
     let userFriendlyMessage = 'I encountered an issue processing your request.';
     let recoverySuggestions: string[] = [];

@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       notice_deadline: Date;
       notice_given: boolean;
       auto_renewal_enabled: boolean;
-      alerts_sent: any;
+      alerts_sent: number[];
       last_alert_sent: Date;
       updated_at: Date;
     }>>`

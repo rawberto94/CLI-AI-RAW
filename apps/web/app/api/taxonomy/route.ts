@@ -117,7 +117,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const withContractCounts = searchParams.get("withContractCounts") === "true";
 
     // Build where clause
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     if (!includeInactive) {
       where.isActive = true;
     }

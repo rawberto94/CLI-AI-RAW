@@ -23,7 +23,7 @@ interface SaveRateCardRequest {
       unit: 'hours' | 'days' | 'months';
     };
     volumeDiscount?: string;
-    additionalInfo?: any;
+    additionalInfo?: Record<string, unknown>;
     confidence: number;
   }>;
   supplierInfo: {

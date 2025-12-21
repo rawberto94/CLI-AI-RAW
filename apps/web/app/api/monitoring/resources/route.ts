@@ -139,10 +139,31 @@ async function collectMetrics() {
   });
 }
 
+interface MetricsData {
+  timestamp: string | Date;
+  memory: {
+    heapUsed: number;
+    heapTotal: number;
+    heapUtilization: number;
+    external: number;
+    rss: number;
+    arrayBuffers: number;
+    cacheSize: number;
+    cacheEntries: number;
+    cacheUtilization: number;
+  };
+  cpu: {
+    usage: number;
+    loadAverage: number[];
+    cores: number;
+    model: string;
+  };
+}
+
 /**
  * Format metrics for response
  */
-function formatMetrics(metrics: any) {
+function formatMetrics(metrics: MetricsData) {
   return {
     timestamp: metrics.timestamp,
     memory: {

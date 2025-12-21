@@ -16,13 +16,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       success: true,
       data: brief,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating negotiation brief:', error);
     
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to generate negotiation brief',
+        error: error instanceof Error ? error.message : 'Failed to generate negotiation brief',
       },
       { status: 500 }
     );

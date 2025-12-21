@@ -117,10 +117,10 @@ export async function POST(
         }
 
         // Parse and validate final content
-        let resultData: any = {};
+        let resultData: Record<string, unknown> = {};
         try {
-          resultData = JSON.parse(fullContent);
-        } catch (err) {
+          resultData = JSON.parse(fullContent) as Record<string, unknown>;
+        } catch {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'error', error: 'Failed to parse JSON response' })}\n\n`)
           );
@@ -136,12 +136,13 @@ export async function POST(
 
         // Update artifact with enhanced metadata
         const { editableArtifactService } = await import('data-orchestration/services');
+        const existingMetadata = (resultData._metadata as Record<string, unknown>) ?? {};
         await editableArtifactService.updateArtifact(
           artifact.id,
           {
             ...resultData,
             _metadata: {
-              ...resultData._metadata,
+              ...existingMetadata,
               previousConfidence,
               newConfidence,
               improvedAt: new Date().toISOString(),
@@ -164,12 +165,12 @@ export async function POST(
         );
 
         controller.close();
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Streaming improvement error:', error);
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ 
             type: 'error', 
-            error: error.message || 'Streaming failed' 
+            error: error instanceof Error ? error.message : 'Streaming failed' 
           })}\n\n`)
         );
         controller.close();

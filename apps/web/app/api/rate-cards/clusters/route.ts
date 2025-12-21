@@ -82,10 +82,10 @@ export async function GET(request: NextRequest) {
           consolidationOpportunities.length + arbitrageOpportunities.length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching clusters:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch clusters' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch clusters' },
       { status: 500 }
     );
   }

@@ -36,7 +36,23 @@ export async function GET(
       source: rateCard.source,
     };
 
-    const roles = (rateCard.roles || []).map((role: any) => ({
+    interface Role {
+      id: string;
+      standardizedRole: string;
+      originalRoleName: string;
+      seniorityLevel: string;
+      serviceLine: string;
+      country: string;
+      city: string;
+      dailyRate: number | { toString(): string };
+      hourlyRate: number | { toString(): string };
+      monthlyRate: number | { toString(): string };
+      baseCurrency: string;
+      confidence: number | { toString(): string };
+      dataQuality: string;
+    }
+
+    const roles = (rateCard.roles || []).map((role: Role) => ({
       id: role.id,
       standardizedRole: role.standardizedRole,
       originalRoleName: role.originalRoleName,

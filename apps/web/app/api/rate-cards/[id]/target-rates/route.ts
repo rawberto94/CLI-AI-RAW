@@ -15,13 +15,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       success: true,
       data: targetRates,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error suggesting target rates:', error);
     
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to suggest target rates',
+        error: error instanceof Error ? error.message : 'Failed to suggest target rates',
       },
       { status: 500 }
     );

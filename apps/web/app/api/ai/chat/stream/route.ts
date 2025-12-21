@@ -83,7 +83,7 @@ When answering:
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
-      ...conversationHistory.slice(-10).map((msg: any) => ({
+      ...conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
         role: msg.role as 'user' | 'assistant',
         content: msg.content,
       })),
@@ -157,10 +157,10 @@ When answering:
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Streaming chat error:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Failed to process request' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to process request' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

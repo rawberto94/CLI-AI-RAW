@@ -12,6 +12,28 @@ import { getServerTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Health score data types
+ */
+interface HealthFactor {
+  name: string;
+  score: number;
+  weight: number;
+  description?: string;
+}
+
+interface HealthAlert {
+  id?: string;
+  message: string;
+  severity: 'low' | 'medium' | 'high';
+  createdAt?: string;
+}
+
+interface TrendHistoryEntry {
+  date: string;
+  score: number;
+}
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
@@ -49,16 +71,16 @@ export async function GET(request: NextRequest) {
       operational_score: number;
       renewal_readiness: number;
       document_quality: number;
-      factors: any;
-      strengths: any;
-      weaknesses: any;
-      opportunities: any;
+      factors: HealthFactor[];
+      strengths: string[];
+      weaknesses: string[];
+      opportunities: string[];
       previous_score: number;
       score_change: number;
       trend_direction: string;
-      trend_history: any;
+      trend_history: TrendHistoryEntry[];
       alert_level: string;
-      active_alerts: any;
+      active_alerts: HealthAlert[];
       alert_count: number;
       industry_average: number;
       percentile_rank: number;

@@ -140,11 +140,23 @@ async function performRealSearch(
     };
   }
 
-  const contracts = Array.isArray(result.data) ? result.data : (result.data as any).contracts || [];
-  const totalCount = (result as any).pagination?.total || contracts.length;
+  const contracts = Array.isArray(result.data) ? result.data : (result.data as Record<string, unknown>).contracts || [];
+  const totalCount = (result as { pagination?: { total: number } }).pagination?.total || contracts.length;
   const normalizedQuery = query.toLowerCase();
 
-  const results: HybridSearchResult[] = contracts.map((contract: any, index: number) => {
+  interface ContractResult {
+    id: string;
+    fileName?: string;
+    contractTitle?: string;
+    clientName?: string;
+    supplierName?: string;
+    contractType?: string;
+    parentContractId?: string;
+    childContracts?: unknown[];
+    _count?: { childContracts?: number };
+  }
+
+  const results: HybridSearchResult[] = (contracts as ContractResult[]).map((contract: ContractResult, index: number) => {
     const scoreBase = 0.92 - index * 0.05;
     const score = Math.max(0.4, Math.min(0.95, scoreBase));
     const keywordScore = mode === "semantic" ? score * 0.6 : score;
@@ -158,8 +170,8 @@ async function performRealSearch(
       .map((value) => value.replace(normalizedQuery, `<mark>${normalizedQuery}</mark>`));
 
     // Extract hierarchy info from contract
-    const childCount = (contract as any)._count?.childContracts ?? (contract as any).childContracts?.length ?? 0;
-    const hasHierarchy = !!(contract as any).parentContractId || childCount > 0;
+    const childCount = contract._count?.childContracts ?? contract.childContracts?.length ?? 0;
+    const hasHierarchy = !!contract.parentContractId || childCount > 0;
 
     return {
       id: `${contract.id}-match-${index}`,

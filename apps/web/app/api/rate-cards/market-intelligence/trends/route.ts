@@ -17,10 +17,10 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(trends);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching emerging trends:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch emerging trends' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch emerging trends' },
       { status: 500 }
     );
   }

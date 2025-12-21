@@ -4,8 +4,19 @@ import { getApiTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Version difference entry
+ */
+interface VersionDifference {
+  field: string;
+  label?: string;
+  oldValue: unknown;
+  newValue: unknown;
+  changeType: 'added' | 'modified' | 'removed';
+}
+
 // Mock comparison data for demonstration
-const getMockDifferences = () => [
+const getMockDifferences = (): VersionDifference[] => [
       {
         field: 'totalValue',
         label: 'Contract Value',
@@ -109,7 +120,7 @@ export async function GET(
       }
 
       // Extract differences from version changes field
-      const differences = version2.changes || [];
+      const differences = (version2.changes || []) as VersionDifference[];
 
       return NextResponse.json({
         success: true,
@@ -117,9 +128,9 @@ export async function GET(
         source: 'database',
         summary: {
           totalChanges: Array.isArray(differences) ? differences.length : 0,
-          added: Array.isArray(differences) ? differences.filter((d: any) => d.changeType === 'added').length : 0,
-          modified: Array.isArray(differences) ? differences.filter((d: any) => d.changeType === 'modified').length : 0,
-          removed: Array.isArray(differences) ? differences.filter((d: any) => d.changeType === 'removed').length : 0,
+          added: Array.isArray(differences) ? differences.filter((d: VersionDifference) => d.changeType === 'added').length : 0,
+          modified: Array.isArray(differences) ? differences.filter((d: VersionDifference) => d.changeType === 'modified').length : 0,
+          removed: Array.isArray(differences) ? differences.filter((d: VersionDifference) => d.changeType === 'removed').length : 0,
         }
       });
 

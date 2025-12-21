@@ -234,7 +234,7 @@ Be concise but comprehensive.`,
           processingTime: Date.now() - startTime,
         },
       });
-    } catch (openaiError: any) {
+    } catch (openaiError: unknown) {
       console.error('OpenAI API error:', openaiError);
       
       // Return fallback analysis on OpenAI error
@@ -244,7 +244,7 @@ Be concise but comprehensive.`,
           analysis: generateFallbackAnalysis(group1, group2, metrics),
           metrics,
           source: 'fallback',
-          error: openaiError.message,
+          error: openaiError instanceof Error ? openaiError.message : 'OpenAI error',
         },
       });
     }

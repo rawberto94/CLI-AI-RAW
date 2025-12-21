@@ -37,10 +37,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       success: true,
       opportunity,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching opportunity details:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -88,10 +88,10 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       success: true,
       opportunity: updated,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating opportunity:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -130,10 +130,10 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
       success: true,
       message: 'Opportunity deleted',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting opportunity:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

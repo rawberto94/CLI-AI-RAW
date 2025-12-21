@@ -28,6 +28,14 @@ interface ExtractRequest {
 }
 
 /**
+ * Field data with confidence for applying metadata
+ */
+interface FieldConfidenceData {
+  value?: unknown;
+  confidence: number;
+}
+
+/**
  * POST /api/contracts/[id]/extract-metadata - Extract metadata from contract
  */
 export async function POST(
@@ -193,7 +201,7 @@ export async function PUT(
     let fieldsToApply = fields;
     if (applyHighConfidenceOnly) {
       fieldsToApply = Object.fromEntries(
-        Object.entries(fields).filter(([_, data]: [string, any]) => 
+        Object.entries(fields).filter(([_, data]: [string, FieldConfidenceData]) => 
           data.confidence >= confidenceThreshold
         )
       );
@@ -295,7 +303,7 @@ async function saveExtractionResults(
         where: { contractId },
         data: {
           customFields: JSON.parse(JSON.stringify({
-            ...(existing.customFields as any || {}),
+            ...((existing.customFields as Record<string, unknown>) || {}),
             _aiExtraction: extractionData,
           })),
           lastUpdated: new Date(),
@@ -327,7 +335,7 @@ async function saveExtractionResults(
 
 async function getExtractionResults(
   contractId: string
-): Promise<any | null> {
+): Promise<Record<string, unknown> | null> {
   try {
     const { prisma } = await import('@/lib/prisma');
     
@@ -336,8 +344,8 @@ async function getExtractionResults(
       select: { customFields: true }
     });
 
-    const customFields = metadata?.customFields as any;
-    return customFields?._aiExtraction || null;
+    const customFields = metadata?.customFields as Record<string, unknown> | null;
+    return (customFields?._aiExtraction as Record<string, unknown>) || null;
   } catch (error) {
     console.error('Error getting extraction results:', error);
     return null;
@@ -347,7 +355,7 @@ async function getExtractionResults(
 async function applyMetadataToContract(
   contractId: string,
   tenantId: string,
-  fields: Record<string, any>,
+  fields: Record<string, unknown>,
   markAsValidated: boolean
 ): Promise<void> {
   try {
@@ -358,12 +366,13 @@ async function applyMetadataToContract(
     });
 
     const now = new Date();
-    const appliedFields: Record<string, any> = {};
+    const appliedFields: Record<string, unknown> = {};
     
     for (const [key, data] of Object.entries(fields)) {
-      appliedFields[key] = typeof data === 'object' && data.value !== undefined 
-        ? data.value 
-        : data;
+      const typedData = data as { value?: unknown } | unknown;
+      appliedFields[key] = typeof typedData === 'object' && typedData !== null && 'value' in typedData
+        ? typedData.value 
+        : typedData;
     }
 
     // Normalize common legacy keys
@@ -382,8 +391,8 @@ async function applyMetadataToContract(
       appliedFields.supplier_name = appliedFields.party_b_name;
     }
 
-    const customFields = {
-      ...(existing?.customFields as any || {}),
+    const customFields: Record<string, unknown> = {
+      ...((existing?.customFields as Record<string, unknown>) || {}),
       ...appliedFields,
       _metadata: {
         appliedAt: now.toISOString(),
@@ -393,7 +402,7 @@ async function applyMetadataToContract(
       }
     };
 
-    const contractUpdates: Record<string, any> = {};
+    const contractUpdates: Record<string, unknown> = {};
     if (typeof appliedFields.contract_title === 'string') contractUpdates.contractTitle = appliedFields.contract_title;
     if (typeof appliedFields.client_name === 'string') contractUpdates.clientName = appliedFields.client_name;
     if (typeof appliedFields.supplier_name === 'string') contractUpdates.supplierName = appliedFields.supplier_name;
@@ -460,13 +469,48 @@ async function applyMetadataToContract(
   }
 }
 
+interface SchemaField {
+  id: string;
+  name: string;
+  label: string;
+  type: string;
+  category?: string;
+  aiExtractionEnabled?: boolean;
+  hidden?: boolean;
+  options?: Array<{ value: string; label: string }>;
+}
+
+interface MetadataSchema {
+  id: string;
+  version: number;
+  fields: SchemaField[];
+}
+
+interface MockExtractionResult {
+  fieldId: string;
+  fieldName: string;
+  fieldLabel: string;
+  fieldType: string;
+  category?: string;
+  value: unknown;
+  rawValue: string;
+  confidence: number;
+  confidenceExplanation: string;
+  source: { text: string };
+  alternatives: unknown[];
+  validationStatus: string;
+  validationMessages: string[];
+  suggestions: string[];
+  requiresHumanReview: boolean;
+}
+
 function generateMockExtraction(
-  schema: any,
+  schema: MetadataSchema,
   documentText: string
 ): MetadataExtractionResult {
-  const results = schema.fields
-    .filter((f: any) => f.aiExtractionEnabled && !f.hidden)
-    .map((field: any) => {
+  const results: MockExtractionResult[] = schema.fields
+    .filter((f: SchemaField) => f.aiExtractionEnabled && !f.hidden)
+    .map((field: SchemaField) => {
       // Generate mock value based on field type
       const mockValue = generateMockValue(field, documentText);
       const confidence = Math.random() * 0.4 + 0.5; // 50-90%
@@ -490,7 +534,7 @@ function generateMockExtraction(
       };
     });
 
-  const extracted = results.filter((r: any) => r.value !== null);
+  const extracted = results.filter((r: MockExtractionResult) => r.value !== null);
 
   return {
     schemaId: schema.id,
@@ -500,16 +544,16 @@ function generateMockExtraction(
     summary: {
       totalFields: results.length,
       extractedFields: extracted.length,
-      highConfidenceFields: results.filter((r: any) => r.confidence >= 0.8).length,
-      lowConfidenceFields: results.filter((r: any) => r.confidence < 0.6).length,
-      failedFields: results.filter((r: any) => r.value === null).length,
+      highConfidenceFields: results.filter((r: MockExtractionResult) => r.confidence >= 0.8).length,
+      lowConfidenceFields: results.filter((r: MockExtractionResult) => r.confidence < 0.6).length,
+      failedFields: results.filter((r: MockExtractionResult) => r.value === null).length,
       averageConfidence: extracted.length > 0
-        ? extracted.reduce((sum: number, r: any) => sum + r.confidence, 0) / extracted.length
+        ? extracted.reduce((sum: number, r: MockExtractionResult) => sum + r.confidence, 0) / extracted.length
         : 0,
       extractionTime: 100,
       passesCompleted: 1,
     },
-    rawExtractions: results.reduce((acc: any, r: any) => ({
+    rawExtractions: results.reduce((acc: Record<string, unknown>, r: MockExtractionResult) => ({
       ...acc,
       [r.fieldName]: r.value
     }), {}),
@@ -518,7 +562,7 @@ function generateMockExtraction(
   };
 }
 
-function generateMockValue(field: any, documentText: string): any {
+function generateMockValue(field: SchemaField, documentText: string): unknown {
   switch (field.type) {
     case 'date':
       return new Date().toISOString().split('T')[0];
@@ -540,7 +584,7 @@ function generateMockValue(field: any, documentText: string): any {
     case 'multiselect':
       if (field.options && field.options.length > 0) {
         const count = Math.floor(Math.random() * 3) + 1;
-        return field.options.slice(0, count).map((o: any) => o.value);
+        return field.options.slice(0, count).map((o: { value: string; label: string }) => o.value);
       }
       return [];
     case 'email':

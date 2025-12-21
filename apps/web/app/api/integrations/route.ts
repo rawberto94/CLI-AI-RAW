@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Build where clause
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     if (type) where.type = type;
     if (status) where.status = status;
 

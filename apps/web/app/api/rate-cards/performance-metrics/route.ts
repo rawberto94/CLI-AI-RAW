@@ -43,7 +43,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function calculateHealthScore(cacheStats: any, poolStats: any): number {
+interface CacheStats {
+  hitRate: string;
+}
+
+interface PoolStats {
+  utilizationRate: number;
+  slowQueryRate: number;
+  errorRate: number;
+}
+
+function calculateHealthScore(cacheStats: CacheStats, poolStats: PoolStats): number {
   let score = 100;
 
   // Cache hit rate (target: >95%)

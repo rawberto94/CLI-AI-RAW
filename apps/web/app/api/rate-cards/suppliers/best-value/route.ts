@@ -28,10 +28,10 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ suppliers: bestValue });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching best value suppliers:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch best value suppliers' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch best value suppliers' },
       { status: 500 }
     );
   }

@@ -1,6 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 
+/**
+ * Rate card artifact data types
+ */
+interface RateCardArtifactData {
+  rates?: RateData[];
+  rateCards?: RateData[];
+}
+
+interface RateData {
+  roleOriginal?: string;
+  role?: string;
+  position?: string;
+  roleStandardized?: string;
+  roleCategory?: string;
+  category?: string;
+  seniority?: string;
+  dailyRate?: number;
+  rate?: number;
+  dailyRateUSD?: number;
+  dailyRateCHF?: number;
+  currency?: string;
+  country?: string;
+  region?: string;
+  lineOfService?: string;
+  supplierTier?: string;
+  supplierCountry?: string;
+  supplierRegion?: string;
+  effectiveDate?: string | Date;
+  volumeCommitted?: number;
+  quantity?: number;
+}
+
+interface ImportError {
+  rate?: string;
+  artifactId?: string;
+  error: string;
+}
+
 // Using singleton prisma instance from @/lib/prisma
 
 /**
@@ -42,12 +80,12 @@ export async function POST(request: NextRequest) {
 
     // Extract rate card data from artifacts
     const rateCardArtifacts = contract.artifacts;
-    const importedRates: any[] = [];
-    const errors: any[] = [];
+    const importedRates: Array<{ id: string; roleStandardized: string | null }> = [];
+    const errors: ImportError[] = [];
 
     for (const artifact of rateCardArtifacts) {
       try {
-        const rateCardData = artifact.data as any;
+        const rateCardData = artifact.data as RateCardArtifactData;
         
         // Handle different artifact data structures
         const rates = Array.isArray(rateCardData.rates) 
@@ -89,17 +127,17 @@ export async function POST(request: NextRequest) {
             });
 
             importedRates.push(rateCardEntry);
-          } catch (rateError: any) {
+          } catch (rateError: unknown) {
             errors.push({
               rate: rate.roleOriginal || rate.role,
-              error: rateError.message
+              error: rateError instanceof Error ? rateError.message : 'Unknown error'
             });
           }
         }
-      } catch (artifactError: any) {
+      } catch (artifactError: unknown) {
         errors.push({
           artifactId: artifact.id,
-          error: artifactError.message
+          error: artifactError instanceof Error ? artifactError.message : 'Unknown error'
         });
       }
     }
@@ -114,10 +152,10 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error importing rate cards from contract:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

@@ -100,10 +100,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       alternatives,
       generatedAt: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching supplier intelligence:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch supplier intelligence' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch supplier intelligence' },
       { status: 500 }
     );
   }

@@ -16,12 +16,56 @@ interface CreateSignatureRequest {
   expiresAt?: string;
 }
 
-// SignatureRequest model may not exist in schema yet - use any for runtime fallback
+// SignatureRequest model may not exist in schema yet - use typed fallback
+interface SignatureRequestWhereInput {
+  contractId?: string;
+  status?: string;
+}
+
+interface SignatureRequestFindManyArgs {
+  where?: SignatureRequestWhereInput;
+  include?: {
+    signers?: boolean;
+    contract?: {
+      select?: {
+        id?: boolean;
+        filename?: boolean;
+        contractTitle?: boolean;
+        supplierName?: boolean;
+      };
+    };
+  };
+  orderBy?: { createdAt: 'desc' | 'asc' };
+  skip?: number;
+  take?: number;
+}
+
+interface SignatureRequestCreateArgs {
+  data: {
+    contractId: string;
+    status: string;
+    message?: string;
+    expiresAt?: Date;
+    signers?: {
+      create: Array<{
+        name: string;
+        email: string;
+        role: string;
+        order: number;
+        status: string;
+      }>;
+    };
+  };
+  include?: {
+    signers?: boolean;
+  };
+}
+
 type PrismaWithSignatureRequest = typeof prisma & {
   signatureRequest: {
-    findMany: (args: any) => Promise<any[]>;
-    count: (args: any) => Promise<number>;
-    create: (args: any) => Promise<any>;
+    findMany: (args: SignatureRequestFindManyArgs) => Promise<unknown[]>;
+    count: (args: { where?: SignatureRequestWhereInput }) => Promise<number>;
+    create: (args: SignatureRequestCreateArgs) => Promise<unknown>;
   };
 };
 
@@ -37,7 +81,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
 
     // Build filter
-    const where: any = {};
+    const where: SignatureRequestWhereInput = {};
     if (contractId) where.contractId = contractId;
     if (status) where.status = status;
 

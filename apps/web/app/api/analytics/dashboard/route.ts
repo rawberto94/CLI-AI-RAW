@@ -45,12 +45,12 @@ export async function GET(request: NextRequest) {
     const { start, end, previousStart, previousEnd } = getDateRange(timeframe);
     
     // Build where clause
-    const whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       createdAt: { gte: start, lte: end },
       tenantId,
     };
     
-    const previousWhereClause: any = {
+    const previousWhereClause: Record<string, unknown> = {
       createdAt: { gte: previousStart, lte: previousEnd },
       tenantId,
     };

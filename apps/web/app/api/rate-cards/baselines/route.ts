@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const isActive = searchParams.get('isActive');
     const approvalStatus = searchParams.get('approvalStatus');
 
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenantId: user.tenantId,
     };
 

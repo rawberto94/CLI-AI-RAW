@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+/** Rate card entry update data structure */
+interface RateCardUpdateData {
+  clientName?: string;
+  clientId?: string | null;
+  isBaseline?: boolean;
+  baselineType?: string;
+  isNegotiated?: boolean;
+  negotiationDate?: Date;
+  negotiatedBy?: string;
+  msaReference?: string;
+  editedBy?: string;
+  editedAt?: Date;
+}
+
 /**
  * POST /api/rate-cards/bulk-update
  * Bulk update rate card entries
@@ -30,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare update data
-    const updateData: any = {};
+    const updateData: RateCardUpdateData = {};
     
     if (updates.clientName !== undefined) {
       updateData.clientName = updates.clientName;
@@ -85,7 +99,7 @@ export async function POST(request: NextRequest) {
             changes: JSON.stringify(updates),
             timestamp: new Date(),
           },
-        }).catch((error: any) => {
+        }).catch((error: unknown) => {
           console.error(`Failed to create audit log for ${id}:`, error);
           // Don't fail the whole operation if audit log fails
         })

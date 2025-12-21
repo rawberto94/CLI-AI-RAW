@@ -411,7 +411,7 @@ export default function SettingsClient() {
                 </CardContent>
               </Card>
 
-              {/* Help & Support Card with Restart Tour */}
+              {/* Help & Support Card with Tour Links */}
               <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -422,25 +422,39 @@ export default function SettingsClient() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-purple-200">
                     <div>
-                      <h4 className="font-medium text-purple-900">Guided Tour</h4>
+                      <h4 className="font-medium text-purple-900">App Tour & Learning Center</h4>
                       <p className="text-sm text-purple-700">
-                        Take a quick tour of the main features
+                        Interactive walkthrough and feature guides
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        localStorage.removeItem('onboarding-completed');
-                        window.location.href = '/';
-                      }}
-                      className="bg-white border-purple-300 text-purple-700 hover:bg-purple-100"
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Restart Tour
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Link href="/tour">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-white border-purple-300 text-purple-700 hover:bg-purple-100"
+                        >
+                          <Play className="w-4 h-4 mr-2" />
+                          Open Tour
+                        </Button>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          localStorage.removeItem('contigo_tour_progress');
+                          localStorage.removeItem('contigo_tour_completed');
+                          localStorage.removeItem('contigo-tutorial-completed');
+                          localStorage.removeItem('contigo-welcome-banner-dismissed');
+                          window.location.href = '/tour';
+                        }}
+                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                      >
+                        Restart
+                      </Button>
+                    </div>
                   </div>
                   <div className="text-sm text-slate-600">
                     <p>Need more help? Check out:</p>

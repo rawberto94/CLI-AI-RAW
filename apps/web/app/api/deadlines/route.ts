@@ -116,8 +116,23 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    interface Deadline {
+      id: string;
+      contractId: string;
+      contractName: string;
+      type: string;
+      date: string;
+      description: string;
+      status: string;
+      daysUntil: number;
+      value?: number;
+      currency?: string;
+      clientName?: string;
+      supplierName?: string;
+    }
+
     // Transform contracts into deadlines
-    const deadlines: any[] = [];
+    const deadlines: Deadline[] = [];
     const now = new Date();
 
     contracts.forEach(contract => {

@@ -48,12 +48,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         summary,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching rate cards:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to fetch rate cards',
+        error: error instanceof Error ? error.message : 'Failed to fetch rate cards',
       },
       { status: 500 }
     );

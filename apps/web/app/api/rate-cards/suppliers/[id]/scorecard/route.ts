@@ -44,10 +44,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       scorecard,
       stability,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching supplier scorecard:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch supplier scorecard' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch supplier scorecard' },
       { status: 500 }
     );
   }
@@ -75,10 +75,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     });
 
     return NextResponse.json({ scorecard });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error calculating supplier scorecard:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to calculate supplier scorecard' },
+      { error: error instanceof Error ? error.message : 'Failed to calculate supplier scorecard' },
       { status: 500 }
     );
   }

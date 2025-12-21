@@ -211,7 +211,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
 
         try {
-          let artifacts: any[] = [];
+          interface StreamArtifact {
+            id?: string;
+            type: string;
+            status?: string;
+            confidence?: number;
+            data?: Record<string, unknown>;
+          }
+
+          let artifacts: StreamArtifact[] = [];
           let contractStatus = 'PROCESSING';
           
           if (useMockData) {
@@ -301,7 +309,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
           // If contract is completed or failed, close stream
           // Also close if we have 10 completed artifacts (all artifacts generated)
-          const completedArtifacts = artifacts.filter((a: { status: string }) => a.status === 'COMPLETED').length;
+          const completedArtifacts = artifacts.filter((a: StreamArtifact) => a.status === 'COMPLETED').length;
           const allArtifactsComplete = completedArtifacts >= 10;
           
           if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED' || allArtifactsComplete) {

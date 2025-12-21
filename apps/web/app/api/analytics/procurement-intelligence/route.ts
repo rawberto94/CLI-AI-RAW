@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const mode: DataMode = dataMode === 'mock' ? 'mock' : 'real';
 
     // Build params object from all query parameters
-    const params: any = {};
+    const params: Record<string, string> = {};
     searchParams.forEach((value, key) => {
       if (key !== 'moduleName' && key !== 'mode') {
         params[key] = value;
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get data based on moduleName and mode
-    let data: any;
+    let data: unknown;
     let source: string;
     
     if (mode === 'mock') {

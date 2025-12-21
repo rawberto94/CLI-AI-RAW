@@ -53,10 +53,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(report);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating report:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate report' },
+      { error: error instanceof Error ? error.message : 'Failed to generate report' },
       { status: 500 }
     );
   }

@@ -36,9 +36,20 @@ export async function POST(request: NextRequest) {
     const results = {
       imported: 0,
       failed: 0,
-      errors: [] as any[],
+      errors: [] as { rowIndex: number; error: string }[],
       rateCardIds: [] as string[],
     };
+
+    interface ImportRow {
+      index: number;
+      data: {
+        roleStandardized?: string;
+        roleOriginal: string;
+        lineOfService?: string;
+        seniority?: string;
+        supplierName: string;
+      };
+    }
 
     // Process in batches to avoid overwhelming the database
     const BATCH_SIZE = 50;
@@ -46,7 +57,7 @@ export async function POST(request: NextRequest) {
       const batch = rows.slice(i, i + BATCH_SIZE);
       
       await Promise.all(
-        batch.map(async (row: any) => {
+        batch.map(async (row: ImportRow) => {
           try {
             const data = row.data;
 

@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         }));
     } else if (filter) {
       // Filter-based selection
-      const where: any = { tenantId };
+      const where: Record<string, unknown> = { tenantId };
 
       if (filter.status) {
         where.status = filter.status;

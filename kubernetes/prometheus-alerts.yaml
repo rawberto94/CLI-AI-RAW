@@ -1,0 +1,204 @@
+# Prometheus Alerting Rules
+# Configure these rules in your Prometheus/Alertmanager setup
+# These are ready-to-use rules for the Contract Intelligence Platform
+
+groups:
+  - name: contract-intelligence-alerts
+    rules:
+      # ===========================================
+      # Application Health Alerts
+      # ===========================================
+      
+      - alert: ApplicationDown
+        expr: app_healthy == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Application is unhealthy"
+          description: "The Contract Intelligence application has been unhealthy for more than 1 minute."
+          runbook_url: "https://github.com/rawberto94/CLI-AI-RAW/blob/main/docs/INCIDENT_RUNBOOKS.md#-inc-001-application-not-responding"
+
+      - alert: ApplicationHighMemory
+        expr: (nodejs_memory_heap_used_bytes / nodejs_memory_heap_total_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Node.js heap usage is above 85% for more than 5 minutes. Current: {{ $value | humanizePercentage }}"
+          runbook_url: "https://github.com/rawberto94/CLI-AI-RAW/blob/main/docs/INCIDENT_RUNBOOKS.md#-inc-004-high-memory-usage"
+
+      - alert: ApplicationCriticalMemory
+        expr: (nodejs_memory_heap_used_bytes / nodejs_memory_heap_total_bytes) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical memory usage - OOM imminent"
+          description: "Node.js heap usage is above 95%. Application may crash soon."
+          runbook_url: "https://github.com/rawberto94/CLI-AI-RAW/blob/main/docs/INCIDENT_RUNBOOKS.md#-inc-004-high-memory-usage"
+
+      # ===========================================
+      # Database Alerts
+      # ===========================================
+      
+      - alert: DatabaseDown
+        expr: database_connected == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection lost"
+          description: "Cannot connect to PostgreSQL database."
+          runbook_url: "https://github.com/rawberto94/CLI-AI-RAW/blob/main/docs/INCIDENT_RUNBOOKS.md#-inc-002-database-connection-issues"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: database_connections_active > 90
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Active database connections are above 90. Consider increasing pool size or investigating long-running queries."
+
+      # ===========================================
+      # Redis Alerts
+      # ===========================================
+      
+      - alert: RedisDown
+        expr: redis_connected == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis connection lost"
+          description: "Cannot connect to Redis. Caching and queues may be affected."
+          runbook_url: "https://github.com/rawberto94/CLI-AI-RAW/blob/main/docs/INCIDENT_RUNBOOKS.md#-inc-003-redis-connectionmemory-issues"
+
+      - alert: RedisHighKeyCount
+        expr: redis_keys_total > 1000000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis key count is very high"
+          description: "Redis has over 1 million keys. Consider reviewing cache eviction policy."
+
+      # ===========================================
+      # Contract Processing Alerts
+      # ===========================================
+      
+      - alert: ContractProcessingBacklog
+        expr: contracts_by_status{status="pending"} > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Contract processing backlog"
+          description: "More than 100 contracts pending processing for over 10 minutes. Workers may be overwhelmed."
+          runbook_url: "https://github.com/rawberto94/CLI-AI-RAW/blob/main/docs/INCIDENT_RUNBOOKS.md#-inc-005-worker-queue-backup"
+
+      - alert: ContractProcessingStuck
+        expr: contracts_by_status{status="processing"} > 50
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Contracts stuck in processing"
+          description: "More than 50 contracts stuck in processing state for over 30 minutes."
+
+      - alert: HighContractFailureRate
+        expr: (contracts_by_status{status="failed"} / (contracts_by_status{status="completed"} + contracts_by_status{status="failed"})) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High contract processing failure rate"
+          description: "More than 10% of contracts are failing to process."
+
+      # ===========================================
+      # API Performance Alerts
+      # ===========================================
+      
+      - alert: MetricsEndpointSlow
+        expr: metrics_endpoint_duration_ms > 5000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Metrics endpoint is slow"
+          description: "Metrics collection is taking more than 5 seconds. Database or system may be under heavy load."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API error rate"
+          description: "More than 5% of API requests are returning 5xx errors."
+
+      - alert: CriticalErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.20
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical API error rate"
+          description: "More than 20% of API requests are returning 5xx errors."
+
+      # ===========================================
+      # Uptime Alerts
+      # ===========================================
+      
+      - alert: RecentRestart
+        expr: process_uptime_seconds < 300
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Application recently restarted"
+          description: "Application has been running for less than 5 minutes. May have crashed or been deployed."
+
+  # ===========================================
+  # Alertmanager Routing Configuration
+  # ===========================================
+  # Add this to your alertmanager.yml
+
+# route:
+#   receiver: 'default-receiver'
+#   group_by: ['alertname', 'severity']
+#   group_wait: 30s
+#   group_interval: 5m
+#   repeat_interval: 4h
+#   routes:
+#     - match:
+#         severity: critical
+#       receiver: 'critical-receiver'
+#       continue: true
+#     - match:
+#         severity: warning
+#       receiver: 'warning-receiver'
+
+# receivers:
+#   - name: 'default-receiver'
+#     # Configure your default notification channel
+#     # Options: email, slack, pagerduty, opsgenie, victorops, webhook
+    
+#   - name: 'critical-receiver'
+#     slack_configs:
+#       - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+#         channel: '#alerts-critical'
+#         title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+#         text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+#     pagerduty_configs:
+#       - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+#         severity: critical
+        
+#   - name: 'warning-receiver'
+#     slack_configs:
+#       - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+#         channel: '#alerts'
+#         title: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
+#         text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'

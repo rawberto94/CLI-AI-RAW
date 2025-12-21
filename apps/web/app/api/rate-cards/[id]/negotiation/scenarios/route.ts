@@ -20,10 +20,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     );
 
     return NextResponse.json(scenarios);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error generating scenarios:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate scenarios' },
+      { error: error instanceof Error ? error.message : 'Failed to generate scenarios' },
       { status: 500 }
     );
   }

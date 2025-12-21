@@ -170,7 +170,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Get overall queue stats
     const stats = queue.getStats();
 
-    const response: any = {
+    interface BulkExtractResponse {
+      success: boolean;
+      stats: {
+        pending: number;
+        running: number;
+        completed: number;
+        failed: number;
+        successRate: number;
+        averageProcessingTimeMs: number;
+      };
+    }
+
+    const response: BulkExtractResponse = {
       success: true,
       stats: {
         pending: stats.pending,

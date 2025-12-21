@@ -60,7 +60,7 @@ const sseConnectionManager = {
     controller: ReadableStreamDefaultController,
     tenantId: string,
     userId?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, string | null | undefined>
   ): SSEConnection => {
     const id = `sse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const connection: SSEConnection = {
@@ -216,6 +216,25 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * SSE event payload types
+ */
+interface SSEEventPayload {
+  tenantId?: string;
+  userId?: string;
+  contractId?: string;
+  artifactId?: string;
+  rateCardId?: string;
+  jobId?: string;
+  progress?: number;
+  status?: string;
+  message?: string;
+  data?: unknown;
+  [key: string]: unknown;
+}
+
+type SSEEventHandler = (data: SSEEventPayload) => void;
+
+/**
  * Setup event handlers for this connection
  */
 function setupEventHandlers(
@@ -225,9 +244,9 @@ function setupEventHandlers(
   userId?: string
 ) {
   const encoder = new TextEncoder();
-  const handlers: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
+  const handlers: Array<{ event: string; handler: SSEEventHandler }> = [];
 
-  const sendEvent = (type: string, data: any) => {
+  const sendEvent = (type: string, data: SSEEventPayload) => {
     try {
       // Filter by tenant
       if (data.tenantId && data.tenantId !== tenantId) {
@@ -253,9 +272,9 @@ function setupEventHandlers(
   };
 
   // Contract events
-  const contractCreatedHandler = (data: any) => sendEvent('contract:created', data);
-  const contractUpdatedHandler = (data: any) => sendEvent('contract:updated', data);
-  const processingCompletedHandler = (data: any) => sendEvent('contract:completed', data);
+  const contractCreatedHandler: SSEEventHandler = (data) => sendEvent('contract:created', data);
+  const contractUpdatedHandler: SSEEventHandler = (data) => sendEvent('contract:updated', data);
+  const processingCompletedHandler: SSEEventHandler = (data) => sendEvent('contract:completed', data);
 
   eventBus.on(Events.CONTRACT_CREATED, contractCreatedHandler);
   eventBus.on(Events.CONTRACT_UPDATED, contractUpdatedHandler);
@@ -268,8 +287,8 @@ function setupEventHandlers(
   );
 
   // Artifact events
-  const artifactGeneratedHandler = (data: any) => sendEvent('artifact:generated', data);
-  const artifactUpdatedHandler = (data: any) => sendEvent('artifact:updated', data);
+  const artifactGeneratedHandler: SSEEventHandler = (data) => sendEvent('artifact:generated', data);
+  const artifactUpdatedHandler: SSEEventHandler = (data) => sendEvent('artifact:updated', data);
 
   eventBus.on(Events.ARTIFACT_GENERATED, artifactGeneratedHandler);
   eventBus.on(Events.ARTIFACT_UPDATED, artifactUpdatedHandler);
@@ -280,9 +299,9 @@ function setupEventHandlers(
   );
 
   // Rate card events
-  const rateCardCreatedHandler = (data: any) => sendEvent('ratecard:created', data);
-  const rateCardUpdatedHandler = (data: any) => sendEvent('ratecard:updated', data);
-  const rateCardImportedHandler = (data: any) => sendEvent('ratecard:imported', data);
+  const rateCardCreatedHandler: SSEEventHandler = (data) => sendEvent('ratecard:created', data);
+  const rateCardUpdatedHandler: SSEEventHandler = (data) => sendEvent('ratecard:updated', data);
+  const rateCardImportedHandler: SSEEventHandler = (data) => sendEvent('ratecard:imported', data);
 
   eventBus.on(Events.RATE_CARD_CREATED, rateCardCreatedHandler);
   eventBus.on(Events.RATE_CARD_UPDATED, rateCardUpdatedHandler);
@@ -295,8 +314,8 @@ function setupEventHandlers(
   );
 
   // Benchmark events
-  const benchmarkCalculatedHandler = (data: any) => sendEvent('benchmark:calculated', data);
-  const benchmarkInvalidatedHandler = (data: any) => sendEvent('benchmark:invalidated', data);
+  const benchmarkCalculatedHandler: SSEEventHandler = (data) => sendEvent('benchmark:calculated', data);
+  const benchmarkInvalidatedHandler: SSEEventHandler = (data) => sendEvent('benchmark:invalidated', data);
 
   eventBus.on(Events.BENCHMARK_CALCULATED, benchmarkCalculatedHandler);
   eventBus.on(Events.BENCHMARK_INVALIDATED, benchmarkInvalidatedHandler);
@@ -307,8 +326,8 @@ function setupEventHandlers(
   );
 
   // Job progress events
-  const jobProgressHandler = (data: any) => sendEvent('job:progress', data);
-  const jobStatusChangedHandler = (data: any) => sendEvent('job:status', data);
+  const jobProgressHandler: SSEEventHandler = (data) => sendEvent('job:progress', data);
+  const jobStatusChangedHandler: SSEEventHandler = (data) => sendEvent('job:status', data);
 
   eventBus.on(Events.JOB_PROGRESS, jobProgressHandler);
   eventBus.on(Events.JOB_STATUS_CHANGED, jobStatusChangedHandler);
@@ -319,7 +338,7 @@ function setupEventHandlers(
   );
 
   // Notification events
-  const notificationHandler = (data: any) => {
+  const notificationHandler: SSEEventHandler = (data) => {
     // Filter by user if specified
     if (userId && data.userId && data.userId !== userId) {
       return;
@@ -336,9 +355,9 @@ function setupEventHandlers(
 /**
  * Cleanup event handlers
  */
-function cleanupEventHandlers(handlers: Array<{ event: string; handler: (...args: unknown[]) => void }>) {
+function cleanupEventHandlers(handlers: Array<{ event: string; handler: SSEEventHandler }>) {
   handlers.forEach(({ event, handler }) => {
-    eventBus.off(event as any, handler as any);
+    eventBus.off(event as Events | 'notification', handler);
   });
 }
 

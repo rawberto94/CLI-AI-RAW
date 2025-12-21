@@ -36,12 +36,12 @@ export async function GET(request: NextRequest) {
         lowQualityRateCards,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching quality issues:', error);
     return NextResponse.json(
       { 
         error: 'Failed to fetch quality issues',
-        message: error.message 
+        message: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }
     );

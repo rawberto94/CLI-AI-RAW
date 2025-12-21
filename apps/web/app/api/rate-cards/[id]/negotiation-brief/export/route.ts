@@ -2,6 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NegotiationAssistantService } from 'data-orchestration/services';
 
+/**
+ * Type definitions for negotiation brief export
+ */
+interface LeveragePoint {
+  point: string;
+  category: string;
+  strength: string;
+}
+
+interface TalkingPoint {
+  point: string;
+  priority: number;
+  supportingData: string;
+  impact: string;
+}
+
+interface AlternativeSupplier {
+  supplierName: string;
+  country: string;
+  dailyRate: number;
+  savingsPercent: number;
+  savingsAmount: number;
+  pros: string[];
+  cons: string[];
+}
+
+interface NegotiationRisk {
+  risk: string;
+  severity: 'low' | 'medium' | 'high';
+  mitigation: string;
+}
+
+interface NegotiationBrief {
+  currentSituation: {
+    supplierName: string;
+    volumeCommitted?: number;
+    [key: string]: unknown;
+  };
+  targetRates: {
+    justification: string;
+    [key: string]: unknown;
+  };
+  leverage: LeveragePoint[];
+  talkingPoints: TalkingPoint[];
+  alternatives: AlternativeSupplier[];
+  recommendedStrategy: string;
+  risks: NegotiationRisk[];
+}
+
 const negotiationService = new NegotiationAssistantService(prisma);
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -23,20 +72,21 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         'Content-Disposition': `inline; filename="negotiation-brief-${rateCardId}.html"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error exporting negotiation brief:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to export negotiation brief';
 
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to export negotiation brief',
+        error: errorMessage,
       },
       { status: 500 }
     );
   }
 }
 
-function generateNegotiationBriefHTML(brief: any): string {
+function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -487,7 +537,7 @@ function generateNegotiationBriefHTML(brief: any): string {
   <h2>Leverage Points</h2>
   ${brief.leverage
     .map(
-      (point: any) => `
+      (point: LeveragePoint) => `
     <div class="leverage-point">
       <strong>${point.point}</strong>
       <div style="margin-top: 5px; font-size: 12px; color: #64748b;">
@@ -502,9 +552,9 @@ function generateNegotiationBriefHTML(brief: any): string {
   <div class="page-break"></div>
   <h2>Negotiation Talking Points</h2>
   ${brief.talkingPoints
-    .sort((a: any, b: any) => a.priority - b.priority)
+    .sort((a: TalkingPoint, b: TalkingPoint) => a.priority - b.priority)
     .map(
-      (point: any) => `
+      (point: TalkingPoint) => `
     <div class="talking-point">
       <div class="talking-point-header">
         ${point.point}
@@ -531,7 +581,7 @@ function generateNegotiationBriefHTML(brief: any): string {
   <h2>Alternative Suppliers</h2>
   ${brief.alternatives
     .map(
-      (alt: any) => `
+      (alt: AlternativeSupplier) => `
     <div class="alternative-supplier">
       <div class="alternative-header">
         <div>
@@ -579,7 +629,7 @@ function generateNegotiationBriefHTML(brief: any): string {
   <h2>Risk Assessment</h2>
   ${brief.risks
     .map(
-      (risk: any) => `
+      (risk: NegotiationRisk) => `
     <div class="risk-item">
       <div class="risk-header">
         ${risk.risk}

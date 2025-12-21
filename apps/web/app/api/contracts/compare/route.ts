@@ -107,22 +107,57 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Contract data from database for comparison
+ */
+interface ContractWithMetadata {
+  id: string;
+  contractTitle?: string | null;
+  supplierName?: string | null;
+  status: string;
+  totalValue?: number | null;
+  annualValue?: number | null;
+  effectiveDate?: Date | null;
+  expirationDate?: Date | null;
+  categoryL1?: string | null;
+  categoryL2?: string | null;
+  paymentTerms?: string | null;
+  paymentFrequency?: string | null;
+  autoRenewalEnabled?: boolean | null;
+  noticePeriodDays?: number | null;
+  currency?: string | null;
+  contractType?: string | null;
+  name?: string | null;
+  fileName?: string | null;
+  metadata?: Record<string, unknown> | null;
+  type?: string | null;
+  value?: number | null;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  contractMetadata?: unknown;
+  artifacts?: unknown[];
+}
+
+interface ComparisonDifference {
+  field: string;
+  label: string;
+  value1: string | number | boolean;
+  value2: string | number | boolean;
+  analysis: string;
+  advantage?: 'entity1' | 'entity2' | 'neutral';
+}
+
+interface ComparisonSimilarity {
+  field: string;
+  label: string;
+  sharedValue: string | number | boolean;
+}
+
 // Enhanced comparison for two contracts (new format)
-async function compareContractsEnhanced(contract1: any, contract2: any) {
-  const differences: Array<{
-    field: string;
-    label: string;
-    value1: any;
-    value2: any;
-    analysis: string;
-    advantage?: 'entity1' | 'entity2' | 'neutral';
-  }> = [];
+async function compareContractsEnhanced(contract1: ContractWithMetadata, contract2: ContractWithMetadata) {
+  const differences: ComparisonDifference[] = [];
   
-  const similarities: Array<{
-    field: string;
-    label: string;
-    sharedValue: any;
-  }> = [];
+  const similarities: ComparisonSimilarity[] = [];
   
   const keyInsights: string[] = [];
 
@@ -135,7 +170,7 @@ async function compareContractsEnhanced(contract1: any, contract2: any) {
     }).format(value);
   };
 
-  const getDuration = (c: any) => {
+  const getDuration = (c: ContractWithMetadata) => {
     if (!c.effectiveDate || !c.expirationDate) return 0;
     const start = new Date(c.effectiveDate);
     const end = new Date(c.expirationDate);
@@ -324,20 +359,20 @@ async function compareContractsEnhanced(contract1: any, contract2: any) {
   };
 }
 
-async function compareContracts(contracts: any[]): Promise<ComparisonResult> {
+async function compareContracts(contracts: ContractWithMetadata[]): Promise<ComparisonResult> {
   // Extract key terms from each contract
   const contractTerms = contracts.map(contract => {
-    const metadata = contract.metadata as Record<string, unknown> || {};
+    const metadata = (contract.metadata || {}) as Record<string, unknown>;
     return {
       id: contract.id,
       name: contract.name || contract.fileName || 'Unnamed Contract',
       terms: (metadata.keyTerms || []) as string[],
-      value: metadata.totalValue || contract.value || 0,
-      startDate: metadata.startDate || contract.startDate,
-      endDate: metadata.endDate || contract.endDate,
+      value: (metadata.totalValue as number) || contract.value || 0,
+      startDate: (metadata.startDate as string) || (contract.startDate?.toISOString()),
+      endDate: (metadata.endDate as string) || (contract.endDate?.toISOString()),
       parties: (metadata.parties || []) as string[],
-      riskLevel: metadata.riskLevel || 'unknown',
-      contractType: metadata.contractType || contract.type || 'Unknown',
+      riskLevel: (metadata.riskLevel as string) || 'unknown',
+      contractType: (metadata.contractType as string) || contract.type || 'Unknown',
     };
   });
 
@@ -436,10 +471,22 @@ async function compareContracts(contracts: any[]): Promise<ComparisonResult> {
   };
 }
 
+interface ContractTerm {
+  id: string;
+  name: string;
+  terms: string[];
+  value: number;
+  startDate?: string;
+  endDate?: string;
+  parties: string[];
+  riskLevel: string;
+  contractType: string;
+}
+
 function generateComparisonSummary(
-  contracts: any[],
+  contracts: ContractTerm[],
   commonClauses: string[],
-  differences: any[]
+  differences: ComparisonResult['comparison']['differences']
 ): string {
   const parts: string[] = [];
 

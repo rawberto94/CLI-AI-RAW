@@ -19,6 +19,14 @@ interface TagWithUsage {
   createdBy?: string;
 }
 
+/** Predefined tag entry stored in tenant settings */
+interface TagEntry {
+  name: string;
+  color?: string;
+  description?: string;
+  createdAt?: string;
+}
+
 /**
  * GET /api/tags
  * Get all unique tags for a tenant with usage counts
@@ -175,12 +183,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const customFields = (tenantSettings.customFields as any) || {};
-    const predefinedTags = customFields.predefinedTags || [];
+    const customFields = (tenantSettings.customFields as Record<string, unknown>) || {};
+    const predefinedTags = (customFields.predefinedTags as Array<string | TagEntry>) || [];
 
     // Check if tag already exists
     const existingIndex = predefinedTags.findIndex(
-      (t: any) => (typeof t === 'string' ? t : t.name).toLowerCase() === normalizedName.toLowerCase()
+      (t) => (typeof t === 'string' ? t : t.name).toLowerCase() === normalizedName.toLowerCase()
     );
 
     const newTag = {
@@ -247,12 +255,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Tag not found' }, { status: 404 });
     }
 
-    const customFields = (tenantSettings.customFields as any) || {};
-    const predefinedTags = customFields.predefinedTags || [];
+    const customFields = (tenantSettings.customFields as Record<string, unknown>) || {};
+    const predefinedTags = (customFields.predefinedTags as Array<string | TagEntry>) || [];
 
     // Filter out the tag to delete
     const filteredTags = predefinedTags.filter(
-      (t: any) => (typeof t === 'string' ? t : t.name).toLowerCase() !== tagName.toLowerCase()
+      (t) => (typeof t === 'string' ? t : t.name).toLowerCase() !== tagName.toLowerCase()
     );
 
     if (filteredTags.length === predefinedTags.length) {

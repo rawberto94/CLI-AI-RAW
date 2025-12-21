@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     startDate.setDate(startDate.getDate() - days);
 
     // Build where clause
-    const whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       tenantId,
       action: queryType ? `ai.${queryType}` : { startsWith: 'ai.' },
       createdAt: { gte: startDate },

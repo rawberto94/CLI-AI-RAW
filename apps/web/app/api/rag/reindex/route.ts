@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 RAG Reindex triggered for tenant: ${tenantId}`);
 
     const results: Array<{ contractId: string; status: 'success' | 'skipped' | 'error'; message?: string }> = [];
-    const whereClause: any = { tenantId, isDeleted: false };
+    const whereClause: Record<string, unknown> = { tenantId, isDeleted: false };
 
     // Build query based on options
     if (contractIds && contractIds.length > 0) {

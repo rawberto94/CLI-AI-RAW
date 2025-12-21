@@ -297,6 +297,7 @@ function FileUploadRow({ item, onRemove, onRetry }: FileUploadRowProps) {
       {/* Preview/Icon */}
       <div className="flex-shrink-0">
         {item.preview ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img 
             src={item.preview} 
             alt={item.file.name}

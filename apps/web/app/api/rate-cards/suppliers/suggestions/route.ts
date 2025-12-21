@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const suggestions = suppliers.map((s: any) => s.name);
+    const suggestions = suppliers.map((s: { name: string }) => s.name);
 
     return NextResponse.json({ suggestions });
   } catch (error) {

@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(trendingRoles);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching trending roles:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch trending roles' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch trending roles' },
       { status: 500 }
     );
   }

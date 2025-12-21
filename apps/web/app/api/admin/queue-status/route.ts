@@ -2,6 +2,54 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 
 /**
+ * Queue status information
+ */
+interface QueueStatus {
+  name: string;
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+  paused: boolean;
+}
+
+/**
+ * Job information
+ */
+interface JobInfo {
+  id: string;
+  name: string;
+  queue: string;
+  status: 'waiting' | 'active' | 'completed' | 'failed';
+  progress: number;
+  data: {
+    contractId: string;
+    contractTitle: string;
+    tenantId: string;
+    source: string;
+  };
+  attemptsMade: number;
+  maxAttempts: number;
+  createdAt: string;
+  duration: number;
+  failedReason?: string;
+}
+
+/**
+ * Import batch information
+ */
+interface ImportBatch {
+  id: string;
+  name: string;
+  status: string;
+  totalContracts: number;
+  processedContracts: number;
+  failedContracts: number;
+  createdAt: string;
+}
+
+/**
  * GET /api/admin/queue-status
  * Get status of all processing queues and recent jobs
  */
@@ -20,9 +68,9 @@ export async function GET() {
     }
 
     // Try to get actual queue stats from Redis/BullMQ
-    let queues: any[] = [];
-    let recentJobs: any[] = [];
-    const importBatches: any[] = [];
+    let queues: QueueStatus[] = [];
+    let recentJobs: JobInfo[] = [];
+    const importBatches: ImportBatch[] = [];
     
     try {
       // In production, connect to actual BullMQ queues
@@ -82,8 +130,8 @@ export async function GET() {
       recentJobs = Array.from({ length: 15 }, (_, i) => ({
         id: `job-${Date.now()}-${i}`,
         name: `process-contract-${i}`,
-        queue: queueNames[Math.floor(Math.random() * queueNames.length)],
-        status: statuses[Math.floor(Math.random() * statuses.length)],
+        queue: queueNames[Math.floor(Math.random() * queueNames.length)] ?? 'default',
+        status: statuses[Math.floor(Math.random() * statuses.length)] ?? 'waiting',
         progress: Math.floor(Math.random() * 100),
         data: {
           contractId: `contract-${i}`,

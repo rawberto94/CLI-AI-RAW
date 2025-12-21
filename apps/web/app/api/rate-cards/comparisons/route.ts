@@ -18,11 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const where: any = { tenantId };
-    if (userId) {
-      where.userId = userId;
-    }
-
+  const where: Record<string, unknown> = { tenantId };
     const comparisons = await prisma.rateComparison.findMany({
       where,
       orderBy: { createdAt: 'desc' },

@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result: any = {};
+    const result: Record<string, unknown> = {};
 
     if (artifactId) {
       const sanitizedArtifactId = dataSanitizationService.sanitizeText(artifactId).sanitized;

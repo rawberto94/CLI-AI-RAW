@@ -56,18 +56,19 @@ export async function POST(request: NextRequest) {
       duration: null, // Could add duration if needed
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Transcribe] Error:', error);
 
     // Handle specific OpenAI errors
-    if (error.code === 'audio_too_short') {
+    const errorCode = (error as { code?: string })?.code;
+    if (errorCode === 'audio_too_short') {
       return NextResponse.json(
         { error: 'Audio too short. Please speak for at least 1 second.' },
         { status: 400 }
       );
     }
 
-    if (error.code === 'invalid_audio') {
+    if (errorCode === 'invalid_audio') {
       return NextResponse.json(
         { error: 'Invalid audio format. Please try again.' },
         { status: 400 }

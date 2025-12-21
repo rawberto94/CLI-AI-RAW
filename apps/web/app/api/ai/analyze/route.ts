@@ -166,12 +166,12 @@ export async function POST(request: NextRequest) {
       ...result,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Contract analysis error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Analysis failed',
+        error: error instanceof Error ? error.message : 'Analysis failed',
         processingTime: Date.now() - startTime,
       },
       { status: 500 }

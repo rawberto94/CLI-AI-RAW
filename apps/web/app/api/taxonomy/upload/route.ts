@@ -132,6 +132,21 @@ function parseCSV(content: string): CategoryRow[] {
   return rows;
 }
 
+/** JSON taxonomy item that may be flat or hierarchical */
+interface TaxonomyJsonItem {
+  name: string;
+  description?: string;
+  parent?: string;
+  parentName?: string;
+  parentPath?: string;
+  keywords?: string | string[];
+  color?: string;
+  icon?: string;
+  aiClassificationPrompt?: string;
+  aiPrompt?: string;
+  children?: TaxonomyJsonItem[];
+}
+
 /**
  * Parse JSON content - supports both flat and hierarchical formats
  */
@@ -141,7 +156,7 @@ function parseJSON(content: string): { rows: CategoryRow[]; isHierarchical: bool
   // Check if it's an array of flat categories or hierarchical
   if (Array.isArray(data)) {
     // Check if any item has 'children' - hierarchical format
-    const hasChildren = data.some((item: any) => item.children && Array.isArray(item.children));
+    const hasChildren = data.some((item: TaxonomyJsonItem) => item.children && Array.isArray(item.children));
     
     if (hasChildren) {
       // Flatten hierarchical structure
@@ -170,7 +185,7 @@ function parseJSON(content: string): { rows: CategoryRow[]; isHierarchical: bool
     } else {
       // Flat array format
       return {
-        rows: data.map((item: any) => ({
+        rows: (data as TaxonomyJsonItem[]).map((item) => ({
           name: item.name,
           description: item.description,
           parent: item.parent || item.parentName,

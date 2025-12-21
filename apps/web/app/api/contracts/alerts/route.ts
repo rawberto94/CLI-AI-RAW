@@ -54,6 +54,24 @@ export async function GET(request: NextRequest) {
 
     const whereClause = Prisma.join(conditions, ' AND ');
 
+    /**
+     * Alert recipient structure
+     */
+    interface AlertRecipient {
+      email?: string;
+      name?: string;
+      userId?: string;
+      notificationType?: string;
+    }
+
+    interface AlertMetadata {
+      contractName?: string;
+      expiryDate?: string;
+      daysRemaining?: number;
+      totalValue?: number;
+      [key: string]: unknown;
+    }
+
     // Query alerts with safe parameterized query
     const alerts = await prisma.$queryRaw<Array<{
       id: string;
@@ -62,8 +80,8 @@ export async function GET(request: NextRequest) {
       severity: string;
       title: string;
       message: string;
-      recipients: any;
-      sent_to: any;
+      recipients: AlertRecipient[];
+      sent_to: AlertRecipient[];
       status: string;
       sent_at: Date;
       delivered_at: Date;
@@ -73,7 +91,7 @@ export async function GET(request: NextRequest) {
       snooze_until: Date;
       scheduled_for: Date;
       days_before_expiry: number;
-      metadata: any;
+      metadata: AlertMetadata;
       created_at: Date;
     }>>`
       SELECT 

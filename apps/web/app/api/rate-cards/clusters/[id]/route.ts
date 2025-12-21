@@ -99,12 +99,26 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       acc[key].count++;
       acc[key].rates.push(parseFloat(rc.dailyRateUSD.toString()));
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Record<string, {
+      supplierId: string;
+      supplierName: string;
+      count: number;
+      avgRate: number;
+      rates: number[];
+    }>);
+
+    interface SupplierGroup {
+      supplierId: string;
+      supplierName: string;
+      count: number;
+      avgRate: number;
+      rates: number[];
+    }
 
     // Calculate average rate per supplier
-    Object.values(supplierGroups).forEach((group: any) => {
+    Object.values(supplierGroups).forEach((group: SupplierGroup) => {
       group.avgRate = group.rates.reduce((sum: number, r: number) => sum + r, 0) / group.rates.length;
-      delete group.rates; // Remove raw rates from response
+      delete (group as Partial<SupplierGroup>).rates; // Remove raw rates from response
     });
 
     return NextResponse.json({
@@ -122,10 +136,10 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       consolidationOpportunities,
       arbitrageOpportunities,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching cluster details:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch cluster details' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -166,10 +180,10 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
       success: true,
       message: 'Cluster deleted successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error deleting cluster:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to delete cluster' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

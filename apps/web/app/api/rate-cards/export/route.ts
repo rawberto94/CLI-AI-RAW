@@ -6,6 +6,62 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+
+/**
+ * Rate card filter types
+ */
+interface RateCardFilters {
+  supplier?: string;
+  role?: string;
+  seniority?: string;
+  lineOfService?: string;
+  country?: string;
+  region?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  rateMin?: string;
+  rateMax?: string;
+  rootGroup?: unknown; // For advanced filter
+}
+
+/**
+ * Rate card export entry
+ */
+interface RateCardExportEntry {
+  id: string;
+  clientName: string | null;
+  clientId: string | null;
+  supplierName: string | null;
+  roleOriginal: string | null;
+  roleStandardized: string | null;
+  seniority: string | null;
+  lineOfService: string | null;
+  country: string | null;
+  region: string | null;
+  dailyRate: number | null;
+  currency: string | null;
+  dailyRateUSD: number | null;
+  dailyRateCHF: number | null;
+  effectiveDate: Date | null;
+  expiryDate: Date | null;
+  volumeCommitted: number | null;
+  marketRateMedian: number | null;
+  percentileRank: number | null;
+  savingsAmount: number | null;
+  isBaseline: boolean | null;
+}
+
+/**
+ * Filter metadata for export
+ */
+interface FilterMetadata {
+  exportDate: string;
+  totalRecords: number;
+  filterSummary: string;
+  filters: RateCardFilters;
+  advancedFilter?: unknown;
+}
 
 /**
  * POST /api/rate-cards/export
@@ -34,7 +90,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Build WHERE clause using Prisma's safe ORM (no raw SQL injection)
-    const whereClause: any = { tenantId };
+    const whereClause: Prisma.RateCardEntryWhereInput = { tenantId };
     
     if (filters.supplier) {
       whereClause.supplierName = { contains: filters.supplier, mode: 'insensitive' };
@@ -140,7 +196,7 @@ export async function POST(request: NextRequest) {
 /**
  * Generate human-readable filter summary
  */
-function generateFilterSummary(filters: any): string {
+function generateFilterSummary(filters: RateCardFilters | null): string {
   if (!filters) return 'No filters applied';
 
   // Handle advanced filter
@@ -174,7 +230,7 @@ function generateFilterSummary(filters: any): string {
 /**
  * Export to CSV format
  */
-function exportToCSV(rateCards: any[], filterMetadata: any = null): NextResponse {
+function exportToCSV(rateCards: RateCardExportEntry[], filterMetadata: FilterMetadata | null = null): NextResponse {
   const lines: string[] = [];
 
   // Add filter metadata as comments
@@ -269,7 +325,7 @@ function exportToCSV(rateCards: any[], filterMetadata: any = null): NextResponse
  * Export to Excel format (simplified - returns CSV with .xlsx extension)
  * For full Excel support, would need a library like exceljs
  */
-function exportToExcel(rateCards: any[], filterMetadata: any = null): NextResponse {
+function exportToExcel(rateCards: RateCardExportEntry[], filterMetadata: FilterMetadata | null = null): NextResponse {
   // For now, return CSV with Excel-friendly formatting
   const csvResponse = exportToCSV(rateCards, filterMetadata);
   
@@ -285,7 +341,7 @@ function exportToExcel(rateCards: any[], filterMetadata: any = null): NextRespon
  * Export to PDF format (simplified - returns text)
  * For full PDF support, would need a library like pdfkit or puppeteer
  */
-function exportToPDF(rateCards: any[], filterMetadata: any = null): NextResponse {
+function exportToPDF(rateCards: RateCardExportEntry[], filterMetadata: FilterMetadata | null = null): NextResponse {
   let content = `Rate Card Export Report
 Generated: ${new Date().toLocaleString()}
 Total Records: ${rateCards.length}

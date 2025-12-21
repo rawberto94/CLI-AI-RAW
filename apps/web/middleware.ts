@@ -74,39 +74,33 @@ function checkRateLimit(identifier: string, maxRequests?: number): { allowed: bo
   return { allowed: true, remaining: limit - entry.count };
 }
 
-// Paths that don't require authentication
+// Paths that don't require authentication (only auth-related pages)
 const publicPaths = [
   "/auth/signin",
   "/auth/signup", 
   "/auth/error",
+  "/auth/forgot-password",
+  "/auth/reset-password",
   "/api/auth",
-  "/upload", // Allow upload page for testing
-  "/test-upload", // Allow test upload page
-  "/contracts", // Allow contracts pages for development
 ];
 
-// API routes that don't require authentication  
+// API routes that don't require authentication (health checks only)
 const publicApiPaths = [
   "/api/health",
   "/api/healthz",
+  "/api/ready",
   "/api/web-health",
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
-  "/api/events", // Allow SSE endpoint for real-time updates
 ];
 
-// API routes that are open in development only
-const devOnlyApiPaths = [
-  "/api/ai",
-  "/api/contracts",
-  "/api/dashboard/stats",
-  "/api/dashboard/renewals",
-  "/api/renewals",
-  "/api/approvals",
-  "/api/governance",
-  "/api/intelligence",
-  "/api/workflows",
-  "/api/sharing",
+// Static/public assets that bypass auth
+const staticPaths = [
+  "/_next",
+  "/favicon",
+  "/icons",
+  "/images",
+  "/fonts",
 ];
 
 // Routes that require admin or owner role
@@ -169,24 +163,32 @@ export default auth((req) => {
     return response;
   };
 
-  // Allow public paths
+  // Allow static assets
+  if (staticPaths.some((path) => pathname.startsWith(path))) {
+    return addTracingHeaders(NextResponse.next());
+  }
+
+  // Allow public paths (auth pages only)
   if (publicPaths.some((path) => pathname.startsWith(path))) {
     return addTracingHeaders(NextResponse.next());
   }
 
-  // Allow public API paths
+  // Allow public API paths (health checks only)
   if (publicApiPaths.some((path) => pathname.startsWith(path))) {
     return addTracingHeaders(NextResponse.next());
   }
 
-  // Allow dev-only API paths in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  if (isDevelopment && devOnlyApiPaths.some((path) => pathname.startsWith(path))) {
-    return addTracingHeaders(NextResponse.next());
-  }
-
-  // Check if user is authenticated
+  // Check if user is authenticated - redirect to sign-in if not
   if (!req.auth) {
+    // For API routes, return 401 Unauthorized
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.json(
+        { error: "Unauthorized", message: "Authentication required", requestId },
+        { status: 401 }
+      );
+      return addTracingHeaders(response);
+    }
+    // For pages, redirect to sign-in with callback URL
     const signInUrl = new URL("/auth/signin", req.url);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);

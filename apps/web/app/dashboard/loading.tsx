@@ -1,26 +1,53 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { LayoutDashboard, Loader2 } from 'lucide-react';
+import { LayoutDashboard, BarChart3, TrendingUp, Activity } from 'lucide-react';
 
 export default function DashboardLoading() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         className="flex flex-col items-center"
       >
         <div className="relative">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
-            <LayoutDashboard className="w-8 h-8 text-blue-600" />
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 flex items-center justify-center shadow-2xl shadow-blue-500/30"
+          >
+            <LayoutDashboard className="w-10 h-10 text-white" />
+          </motion.div>
+          
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            className="absolute -bottom-1 -right-1"
+            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0"
           >
-            <Loader2 className="w-6 h-6 text-cyan-600" />
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md">
+              <BarChart3 className="h-4 w-4 text-blue-500" />
+            </div>
+          </motion.div>
+          
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0"
+          >
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </div>
+          </motion.div>
+          
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0"
+          >
+            <div className="absolute top-1/2 -right-4 -translate-y-1/2 p-2 bg-white rounded-lg shadow-md">
+              <Activity className="h-4 w-4 text-purple-500" />
+            </div>
           </motion.div>
         </div>
         
@@ -28,35 +55,24 @@ export default function DashboardLoading() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="mt-6 text-center"
+          className="mt-8 text-center"
         >
-          <h2 className="text-lg font-semibold text-gray-900">Loading Dashboard</h2>
-          <p className="text-sm text-gray-500 mt-1">Preparing your overview...</p>
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+            Loading Dashboard
+          </h2>
+          <p className="text-sm text-slate-500 mt-2">Preparing your overview...</p>
         </motion.div>
-        
-        {/* Dashboard skeleton */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 w-full max-w-4xl"
-        >
-          {/* Stats row */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div 
-                key={i}
-                className="h-24 bg-gradient-to-r from-gray-100 to-gray-50 rounded-xl animate-pulse"
-                style={{ animationDelay: `${i * 0.1}s` }}
-              />
-            ))}
-          </div>
-          {/* Chart area */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-64 bg-gradient-to-r from-gray-100 to-gray-50 rounded-xl animate-pulse" />
-            <div className="h-64 bg-gradient-to-r from-gray-100 to-gray-50 rounded-xl animate-pulse" style={{ animationDelay: '0.2s' }} />
-          </div>
-        </motion.div>
+
+        <div className="flex items-center justify-center gap-2 mt-6">
+          {[0, 1, 2].map((i) => (
+            <motion.div
+              key={i}
+              animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+              className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"
+            />
+          ))}
+        </div>
       </motion.div>
     </div>
   );

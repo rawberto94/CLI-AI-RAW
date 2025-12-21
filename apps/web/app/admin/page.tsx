@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Building2, 
   Users, 
@@ -17,7 +18,10 @@ import {
   X,
   Copy,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Zap,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -284,105 +288,125 @@ export default function TenantAdminPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Building2 className="h-8 w-8" />
-            Organization Settings
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your organization, team members, and settings
-          </p>
-        </div>
-        <Button onClick={loadData} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="container mx-auto py-8 px-4 max-w-6xl">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between mb-8"
+        >
+          <div className="flex items-center gap-4">
+            <motion.div 
+              className="p-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 text-white shadow-xl shadow-purple-500/30"
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Building2 className="h-8 w-8" />
+            </motion.div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                Organization Settings
+              </h1>
+              <p className="text-slate-500 mt-1">
+                Manage your organization, team members, and settings
+              </p>
+            </div>
+          </div>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button onClick={loadData} variant="outline" size="sm" className="bg-white/80 backdrop-blur-sm shadow-sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </motion.div>
+        </motion.div>
 
-      {error && (
-        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-destructive">
-          <AlertCircle className="h-5 w-5 flex-shrink-0" />
-          <span>{error}</span>
-          <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
+        <AnimatePresence>
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center gap-2 text-destructive"
+            >
+              <AlertCircle className="h-5 w-5 flex-shrink-0" />
+              <span>{error}</span>
+              <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto">
+                <X className="h-4 w-4" />
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Organization Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Team Members</p>
-                <p className="text-2xl font-bold">{tenantInfo?._count?.users || 0}</p>
-              </div>
-              <Users className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Contracts</p>
-                <p className="text-2xl font-bold">{tenantInfo?._count?.contracts || 0}</p>
-              </div>
-              <Shield className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Storage Used</p>
-                <p className="text-2xl font-bold">{formatBytes(tenantInfo?.usage?.storageUsed || 0)}</p>
-              </div>
-              <Settings className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Plan</p>
-                <p className="text-2xl font-bold capitalize">{tenantInfo?.subscription?.plan?.toLowerCase() || "Free"}</p>
-              </div>
-              <Crown className="h-8 w-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Organization Overview Cards */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+        >
+          {[
+            { label: 'Team Members', value: tenantInfo?._count?.users || 0, icon: Users, gradient: 'from-blue-500 to-cyan-500' },
+            { label: 'Contracts', value: tenantInfo?._count?.contracts || 0, icon: FileText, gradient: 'from-emerald-500 to-teal-500' },
+            { label: 'Storage Used', value: formatBytes(tenantInfo?.usage?.storageUsed || 0), icon: BarChart3, gradient: 'from-amber-500 to-orange-500' },
+            { label: 'Plan', value: tenantInfo?.subscription?.plan?.toLowerCase() || 'Free', icon: Crown, gradient: 'from-purple-500 to-pink-500', capitalize: true },
+          ].map((stat, i) => {
+            const StatIcon = stat.icon;
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.05 * i + 0.2 }}
+              >
+                <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl transition-all">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-slate-500">{stat.label}</p>
+                        <p className={`text-2xl font-bold text-slate-900 ${stat.capitalize ? 'capitalize' : ''}`}>
+                          {stat.value}
+                        </p>
+                      </div>
+                      <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} text-white shadow-lg`}>
+                        <StatIcon className="h-6 w-6" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="team" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Team
-          </TabsTrigger>
-          <TabsTrigger value="invitations" className="flex items-center gap-2">
-            <Mail className="h-4 w-4" />
-            Invitations
-            {invitations.filter(i => i.status === "PENDING").length > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {invitations.filter(i => i.status === "PENDING").length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="organization" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Organization
-          </TabsTrigger>
-        </TabsList>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6 bg-white/80 backdrop-blur-sm p-1 shadow-sm">
+              <TabsTrigger value="team" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+                <Users className="h-4 w-4" />
+                Team
+              </TabsTrigger>
+              <TabsTrigger value="invitations" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+                <Mail className="h-4 w-4" />
+                Invitations
+                {invitations.filter(i => i.status === "PENDING").length > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">
+                    {invitations.filter(i => i.status === "PENDING").length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+                <Building2 className="h-4 w-4" />
+                Organization
+              </TabsTrigger>
+            </TabsList>
 
         {/* Team Tab */}
-        <TabsContent value="team">
-          <Card>
+            <TabsContent value="team">
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Team Members</CardTitle>
@@ -540,8 +564,8 @@ export default function TenantAdminPage() {
         </TabsContent>
 
         {/* Invitations Tab */}
-        <TabsContent value="invitations">
-          <Card>
+            <TabsContent value="invitations">
+              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
             <CardHeader>
               <CardTitle>Pending Invitations</CardTitle>
               <CardDescription>Track and manage pending team invitations</CardDescription>
@@ -616,9 +640,9 @@ export default function TenantAdminPage() {
         </TabsContent>
 
         {/* Organization Tab */}
-        <TabsContent value="organization">
-          <div className="grid gap-6">
-            <Card>
+            <TabsContent value="organization">
+              <div className="grid gap-6">
+                <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle>Organization Details</CardTitle>
                 <CardDescription>Update your organization information</CardDescription>
@@ -658,38 +682,44 @@ export default function TenantAdminPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle>Subscription</CardTitle>
                 <CardDescription>Your current plan and usage</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
                   <div>
-                    <p className="font-medium text-lg capitalize">
+                    <p className="font-medium text-lg capitalize text-indigo-900">
                       {tenantInfo?.subscription?.plan?.toLowerCase() || "Free"} Plan
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-indigo-600">
                       {tenantInfo?.usage?.contractsProcessed || 0} contracts processed
                     </p>
                   </div>
-                  <Button variant="outline">Upgrade Plan</Button>
+                  <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600">
+                    Upgrade Plan
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-destructive">
+            <Card className="border-destructive/50 bg-white/90 backdrop-blur-sm shadow-lg">
               <CardHeader>
                 <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                <CardDescription>Irreversible actions</CardDescription>
+                <CardDescription>Irreversible actions - proceed with caution</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="destructive">Delete Organization</Button>
+                <Button variant="destructive" className="shadow-lg shadow-red-500/20">
+                  Delete Organization
+                </Button>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
       </Tabs>
+    </motion.div>
+    </div>
     </div>
   );
 }

@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(adjusted);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error adjusting rate for PPP:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to adjust rate for PPP' },
+      { error: error instanceof Error ? error.message : 'Failed to adjust rate for PPP' },
       { status: 500 }
     );
   }
@@ -68,10 +68,10 @@ export async function GET(request: NextRequest) {
       { error: 'Invalid action parameter' },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in PPP adjustment endpoint:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to process PPP adjustment request' },
+      { error: error instanceof Error ? error.message : 'Failed to process PPP adjustment request' },
       { status: 500 }
     );
   }

@@ -1,13 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/**
+ * Export data types
+ */
+interface ExportArtifact {
+  id: string;
+  type: string;
+  data: string | Record<string, unknown> | unknown[];
+  contractId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ExportClause {
+  id: string;
+  content: string;
+  type?: string | null;
+  contractId: string;
+}
+
+interface ContractExportData {
+  id: string;
+  contractTitle?: string | null;
+  fileName: string | null;
+  status: string;
+  contractType?: string | null;
+  clientName?: string | null;
+  supplierName?: string | null;
+  totalValue?: number | null;
+  currency?: string | null;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  expirationDate?: Date | null;
+  uploadedAt: Date;
+  jurisdiction?: string | null;
+  category?: string | null;
+  description?: string | null;
+  artifacts?: ExportArtifact[];
+  clauses?: ExportClause[];
+  tenantId: string;
+}
+
+interface RiskItem {
+  level?: string;
+  severity?: string;
+  description?: string;
+  text?: string;
+}
+
 // Tenant isolation helper
 function getTenantId(request: NextRequest): string | null {
   return request.headers.get('x-tenant-id');
 }
 
 // Simple XLSX generator (no external dependencies)
-function generateXLSX(contract: any): Buffer {
+function generateXLSX(contract: ContractExportData): Buffer {
   // Create XML-based XLSX (Office Open XML format)
   const escapeXml = (str: string) => 
     String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -49,7 +97,7 @@ function generateXLSX(contract: any): Buffer {
     rows.push(['']);
     rows.push(['Artifacts']);
     rows.push(['Type', 'Content Preview']);
-    contract.artifacts.forEach((artifact: any) => {
+    contract.artifacts.forEach((artifact: ExportArtifact) => {
       const preview = typeof artifact.data === 'string' 
         ? artifact.data.substring(0, 200) + (artifact.data.length > 200 ? '...' : '')
         : JSON.stringify(artifact.data).substring(0, 200);
@@ -76,16 +124,16 @@ function generateXLSX(contract: any): Buffer {
 }
 
 // PDF generation using text-based format (HTML that can be printed as PDF)
-function generatePDFContent(contract: any): string {
-  const formatDate = (date: any) => date ? new Date(date).toLocaleDateString() : 'N/A';
-  const formatValue = (val: any, currency?: string) => 
+function generatePDFContent(contract: ContractExportData): string {
+  const formatDate = (date: Date | null | undefined) => date ? new Date(date).toLocaleDateString() : 'N/A';
+  const formatValue = (val: number | null | undefined, currency?: string | null) => 
     val ? `${currency || 'USD'} ${Number(val).toLocaleString()}` : 'N/A';
 
   const artifacts = contract.artifacts || [];
-  const summary = artifacts.find((a: any) => a.type === 'summary');
-  const keyTerms = artifacts.find((a: any) => a.type === 'key_terms');
-  const obligations = artifacts.find((a: any) => a.type === 'obligations');
-  const risks = artifacts.find((a: any) => a.type === 'risks');
+  const summary = artifacts.find((a: ExportArtifact) => a.type === 'summary');
+  const keyTerms = artifacts.find((a: ExportArtifact) => a.type === 'key_terms');
+  const obligations = artifacts.find((a: ExportArtifact) => a.type === 'obligations');
+  const risks = artifacts.find((a: ExportArtifact) => a.type === 'risks');
 
   return `
 <!DOCTYPE html>
@@ -239,12 +287,12 @@ function generatePDFContent(contract: any): string {
 </html>`;
 }
 
-function formatArtifactData(data: any): string {
+function formatArtifactData(data: string | Record<string, unknown> | unknown[]): string {
   if (typeof data === 'string') return `<p>${data}</p>`;
   if (Array.isArray(data)) {
     return `<ul>${data.map(item => `<li>${typeof item === 'object' ? JSON.stringify(item) : item}</li>`).join('')}</ul>`;
   }
-  if (typeof data === 'object') {
+  if (typeof data === 'object' && data !== null) {
     return `<table>
       ${Object.entries(data).map(([key, value]) => 
         `<tr><td class="label">${key}</td><td>${typeof value === 'object' ? JSON.stringify(value) : value}</td></tr>`
@@ -254,9 +302,9 @@ function formatArtifactData(data: any): string {
   return String(data);
 }
 
-function formatRisks(data: any): string {
+function formatRisks(data: string | RiskItem[] | Record<string, unknown> | unknown[]): string {
   if (Array.isArray(data)) {
-    return `<ul>${data.map((risk: any) => {
+    return `<ul>${data.map((risk: RiskItem | string) => {
       const level = typeof risk === 'object' ? (risk.level || risk.severity || 'medium') : 'medium';
       const text = typeof risk === 'object' ? (risk.description || risk.text || JSON.stringify(risk)) : risk;
       return `<li class="risk-${level.toLowerCase()}">${text}</li>`;

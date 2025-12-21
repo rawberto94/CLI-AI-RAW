@@ -74,10 +74,10 @@ export async function GET(request: NextRequest) {
       statistics,
       generatedAt: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching supplier alerts:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch supplier alerts' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -101,10 +101,10 @@ export async function POST(request: NextRequest) {
       alerts,
       generatedAt: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error detecting supplier alerts:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to detect supplier alerts' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -177,10 +177,10 @@ export async function PATCH(request: NextRequest) {
       message: `Alert ${action}d successfully`,
       alert: updatedAlert
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating supplier alert:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update supplier alert' },
+      { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

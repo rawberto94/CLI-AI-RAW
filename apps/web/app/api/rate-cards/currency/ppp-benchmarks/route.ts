@@ -35,10 +35,10 @@ export async function GET(request: NextRequest) {
       targetCountry,
       message: 'PPP-adjusted benchmarks calculated successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error calculating PPP-adjusted benchmarks:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to calculate PPP-adjusted benchmarks' },
+      { error: error instanceof Error ? error.message : 'Failed to calculate PPP-adjusted benchmarks' },
       { status: 500 }
     );
   }

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get('source');
 
     // Build where clause
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     if (status) where.status = status;
     if (source) where.source = source;
 

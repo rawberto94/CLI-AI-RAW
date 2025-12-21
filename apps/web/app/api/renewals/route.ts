@@ -55,7 +55,38 @@ function calculateNoticeStatus(daysUntilExpiry: number, noticePeriod: number): R
   return 'not-due';
 }
 
-function calculateHealthScore(contract: any): number {
+/**
+ * Contract artifact types for renewals
+ */
+interface RiskArtifactData {
+  overallScore?: number;
+}
+
+interface FinancialArtifactData {
+  totalValue?: number;
+  contractValue?: number;
+}
+
+interface OverviewParty {
+  name?: string;
+  role?: string;
+}
+
+interface OverviewArtifactData {
+  parties?: OverviewParty[];
+}
+
+interface ContractArtifact {
+  type: string;
+  data: unknown;
+}
+
+interface ContractWithArtifacts {
+  artifacts?: ContractArtifact[];
+  renewalStatus?: string | null;
+}
+
+function calculateHealthScore(contract: ContractWithArtifacts): number {
   let score = 80; // Base score
   
   // Adjust based on artifacts
@@ -63,9 +94,9 @@ function calculateHealthScore(contract: any): number {
     score += 5;
     
     // Check risk artifact
-    const riskArtifact = contract.artifacts.find((a: any) => a.type === 'RISK');
+    const riskArtifact = contract.artifacts.find((a: ContractArtifact) => a.type === 'RISK');
     if (riskArtifact?.data) {
-      const riskData = riskArtifact.data as any;
+      const riskData = riskArtifact.data as RiskArtifactData;
       if (riskData.overallScore !== undefined) {
         // Invert risk score (low risk = high health)
         score = Math.max(20, 100 - riskData.overallScore);
@@ -129,7 +160,7 @@ export async function GET(request: NextRequest) {
       let contractValue = contract.totalValue ? Number(contract.totalValue) : null;
       const financialArtifact = contract.artifacts.find(a => a.type === 'FINANCIAL');
       if (!contractValue && financialArtifact?.data) {
-        const financialData = financialArtifact.data as any;
+        const financialData = financialArtifact.data as FinancialArtifactData;
         contractValue = financialData.totalValue || financialData.contractValue || null;
       }
 
@@ -137,8 +168,8 @@ export async function GET(request: NextRequest) {
       let supplier = contract.supplierName || null;
       const overviewArtifact = contract.artifacts.find(a => a.type === 'OVERVIEW');
       if (!supplier && overviewArtifact?.data) {
-        const overviewData = overviewArtifact.data as any;
-        const vendorParty = overviewData.parties?.find((p: any) => 
+        const overviewData = overviewArtifact.data as OverviewArtifactData;
+        const vendorParty = overviewData.parties?.find((p: OverviewParty) => 
           p.role?.toLowerCase().includes('vendor') || 
           p.role?.toLowerCase().includes('provider') ||
           p.role?.toLowerCase().includes('supplier')

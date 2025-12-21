@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+/**
+ * Rate trend data types
+ */
+interface RatePoint {
+  date: Date | null;
+  rate: number | null;
+}
+
+interface CategoryTrend {
+  category: string;
+  rates: RatePoint[];
+  avgRate: number;
+  count: number;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const tenantId = request.headers.get('x-tenant-id');
@@ -25,7 +40,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Group by role category and calculate trends
-    const categoryTrends: Record<string, any> = {};
+    const categoryTrends: Record<string, CategoryTrend> = {};
     
     ratesByCategory.forEach((rate) => {
       const category = rate.roleCategory || 'Uncategorized';
@@ -45,20 +60,20 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate average rates and trends
-    const rateInflationByCategory = Object.values(categoryTrends).map((trend: any) => {
-      const rates = trend.rates.sort((a: any, b: any) => 
-        new Date(a.date).getTime() - new Date(b.date).getTime()
+    const rateInflationByCategory = Object.values(categoryTrends).map((trend: CategoryTrend) => {
+      const rates = trend.rates.sort((a: RatePoint, b: RatePoint) => 
+        new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime()
       );
       
-      const avgRate = rates.reduce((sum: number, r: any) => sum + (r.rate || 0), 0) / rates.length;
+      const avgRate = rates.reduce((sum: number, r: RatePoint) => sum + (r.rate || 0), 0) / rates.length;
       
       // Calculate trend (compare first half vs second half)
       const midpoint = Math.floor(rates.length / 2);
       const firstHalf = rates.slice(0, midpoint);
       const secondHalf = rates.slice(midpoint);
       
-      const firstAvg = firstHalf.reduce((sum: number, r: any) => sum + (r.rate || 0), 0) / firstHalf.length;
-      const secondAvg = secondHalf.reduce((sum: number, r: any) => sum + (r.rate || 0), 0) / secondHalf.length;
+      const firstAvg = firstHalf.reduce((sum: number, r: RatePoint) => sum + (r.rate || 0), 0) / firstHalf.length;
+      const secondAvg = secondHalf.reduce((sum: number, r: RatePoint) => sum + (r.rate || 0), 0) / secondHalf.length;
       
       const changePercent = firstAvg > 0 ? ((secondAvg - firstAvg) / firstAvg) * 100 : 0;
       

@@ -151,12 +151,12 @@ export async function POST(request: NextRequest) {
         results.imported++;
         results.imported_records.push(rateCardEntry);
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         results.invalid++;
         results.errors.push({
           row: rowNumber,
           data: row,
-          errors: [error.message]
+          errors: [error instanceof Error ? error.message : 'Unknown error']
         });
       }
     }
@@ -177,10 +177,10 @@ export async function POST(request: NextRequest) {
       imported_records: validateOnly ? [] : results.imported_records
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error importing CSV:', error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

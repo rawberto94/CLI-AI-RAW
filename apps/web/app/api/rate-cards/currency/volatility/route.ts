@@ -27,10 +27,10 @@ export async function GET(request: NextRequest) {
       affectedRates: affectedRates.length,
       affectedRateDetails: affectedRates,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error detecting currency volatility:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to detect currency volatility' },
+      { error: error instanceof Error ? error.message : 'Failed to detect currency volatility' },
       { status: 500 }
     );
   }

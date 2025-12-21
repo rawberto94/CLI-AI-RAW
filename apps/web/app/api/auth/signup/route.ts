@@ -188,12 +188,13 @@ export async function POST(request: NextRequest) {
         lastName: user.lastName,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Signup error:", error);
 
-    if (error.name === "ZodError") {
+    if (error instanceof Error && error.name === "ZodError") {
+      const zodError = error as { errors?: Array<{ message?: string }> };
       return NextResponse.json(
-        { error: error.errors[0]?.message || "Invalid input" },
+        { error: zodError.errors?.[0]?.message || "Invalid input" },
         { status: 400 }
       );
     }

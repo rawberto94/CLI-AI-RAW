@@ -182,12 +182,12 @@ Focus on: ${comparisonFocus === 'all' ? 'all aspects' : comparisonFocus}`;
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Contract comparison error:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Comparison failed',
+        error: error instanceof Error ? error.message : 'Comparison failed',
         processingTime: Date.now() - startTime,
       },
       { status: 500 }

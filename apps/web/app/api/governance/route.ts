@@ -30,8 +30,19 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    interface RiskFlag {
+      id: string;
+      type: string;
+      severity: string;
+      title: string;
+      contract: string | null;
+      contractId: string;
+      status: string;
+      description?: string;
+    }
+
     // Extract risk flags from RISK artifacts
-    const riskFlags: any[] = [];
+    const riskFlags: RiskFlag[] = [];
     let totalViolations = 0;
     let criticalCount = 0;
 

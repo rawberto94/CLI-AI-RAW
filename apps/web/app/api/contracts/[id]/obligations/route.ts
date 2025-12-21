@@ -11,6 +11,41 @@ import { getServerTenantId } from '@/lib/tenant-server';
 export const dynamic = 'force-dynamic';
 
 /**
+ * Obligation data types
+ */
+interface Obligation {
+  id?: string;
+  title?: string;
+  description?: string;
+  party?: string;
+  type?: string;
+  dueDate?: string | Date;
+  status?: 'pending' | 'in-progress' | 'completed' | 'overdue';
+}
+
+interface Milestone {
+  id?: string;
+  title?: string;
+  date?: string | Date;
+  status?: 'pending' | 'completed';
+}
+
+interface SLAMetric {
+  id?: string;
+  name?: string;
+  target?: string | number;
+  status?: 'on-track' | 'at-risk' | 'breached';
+}
+
+interface ObligationsArtifactData {
+  summary?: string;
+  obligations?: Obligation[];
+  milestones?: Milestone[];
+  slaMetrics?: SLAMetric[];
+  reportingRequirements?: unknown[];
+}
+
+/**
  * GET /api/contracts/[id]/obligations
  * Get obligation summary for a specific contract
  */
@@ -53,7 +88,7 @@ export async function GET(
       });
     }
 
-    const data = artifact.data as any;
+    const data = artifact.data as ObligationsArtifactData;
     const today = new Date();
 
     // Calculate obligation stats
@@ -61,24 +96,24 @@ export async function GET(
     const milestones = data.milestones || [];
     const slaMetrics = data.slaMetrics || [];
 
-    const upcomingObligations = obligations.filter((obl: any) => {
+    const upcomingObligations = obligations.filter((obl: Obligation) => {
       if (!obl.dueDate) return false;
       const dueDate = new Date(obl.dueDate);
       const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       return daysRemaining >= 0 && daysRemaining <= 30;
     });
 
-    const overdueObligations = obligations.filter((obl: any) => {
+    const overdueObligations = obligations.filter((obl: Obligation) => {
       if (!obl.dueDate) return false;
       const dueDate = new Date(obl.dueDate);
       return dueDate < today && obl.status !== 'completed';
     });
 
-    const atRiskSLAs = slaMetrics.filter((sla: any) => 
+    const atRiskSLAs = slaMetrics.filter((sla: SLAMetric) => 
       sla.status === 'at-risk' || sla.status === 'breached'
     );
 
-    const upcomingMilestones = milestones.filter((ms: any) => {
+    const upcomingMilestones = milestones.filter((ms: Milestone) => {
       if (!ms.date) return false;
       const msDate = new Date(ms.date);
       const daysRemaining = Math.ceil((msDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -86,7 +121,7 @@ export async function GET(
     });
 
     // Group obligations by party
-    const byParty = obligations.reduce((acc: any, obl: any) => {
+    const byParty = obligations.reduce((acc: Record<string, Obligation[]>, obl: Obligation) => {
       const party = obl.party || 'Unassigned';
       if (!acc[party]) acc[party] = [];
       acc[party].push(obl);
@@ -94,7 +129,7 @@ export async function GET(
     }, {});
 
     // Group obligations by type
-    const byType = obligations.reduce((acc: any, obl: any) => {
+    const byType = obligations.reduce((acc: Record<string, number>, obl: Obligation) => {
       const type = obl.type || 'other';
       if (!acc[type]) acc[type] = 0;
       acc[type]++;

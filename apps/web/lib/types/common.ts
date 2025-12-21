@@ -840,3 +840,394 @@ export function isUploadedFile(value: unknown): value is UploadedFile {
   );
 }
 
+// ============================================================================
+// AI Chat Types
+// ============================================================================
+
+/**
+ * AI chat message
+ */
+export interface AIChatMessage {
+  id?: string;
+  role: 'system' | 'user' | 'assistant' | 'function' | 'tool';
+  content: string | null;
+  name?: string;
+  function_call?: AIFunctionCall;
+  tool_calls?: AIToolCall[];
+}
+
+export interface AIFunctionCall {
+  name: string;
+  arguments: string;
+}
+
+export interface AIToolCall {
+  id: string;
+  type: 'function';
+  function: AIFunctionCall;
+}
+
+/**
+ * AI chat request body
+ */
+export interface AIChatRequestBody {
+  messages: AIChatMessage[];
+  contractId?: string;
+  conversationId?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  stream?: boolean;
+  tools?: AITool[];
+}
+
+export interface AITool {
+  type: 'function';
+  function: {
+    name: string;
+    description: string;
+    parameters: JsonRecord;
+  };
+}
+
+/**
+ * AI chat response
+ */
+export interface AIChatResponse {
+  id: string;
+  choices: AIChatChoice[];
+  usage?: AIChatUsage;
+  model: string;
+  created: number;
+}
+
+export interface AIChatChoice {
+  index: number;
+  message: AIChatMessage;
+  finish_reason: 'stop' | 'length' | 'function_call' | 'tool_calls' | null;
+}
+
+export interface AIChatUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+/**
+ * Contract context for AI chat
+ */
+export interface AIContractContext {
+  id: string;
+  name: string;
+  summary?: string;
+  parties?: string[];
+  startDate?: string;
+  endDate?: string;
+  value?: number;
+  currency?: string;
+  keyTerms?: string[];
+  obligations?: AIObligationSummary[];
+  risks?: AIRiskSummary[];
+}
+
+export interface AIObligationSummary {
+  description: string;
+  dueDate?: string;
+  party?: string;
+  status?: string;
+}
+
+export interface AIRiskSummary {
+  type: string;
+  severity: 'low' | 'medium' | 'high';
+  description: string;
+}
+
+// ============================================================================
+// Contract Export Types
+// ============================================================================
+
+/**
+ * Contract export options
+ */
+export interface ContractExportOptions {
+  format: 'pdf' | 'docx' | 'json' | 'csv';
+  includeMetadata?: boolean;
+  includeHistory?: boolean;
+  includeArtifacts?: boolean;
+  includeComments?: boolean;
+  redactSensitive?: boolean;
+  watermark?: string;
+}
+
+/**
+ * Contract compare result
+ */
+export interface ContractCompareResult {
+  similarity: number;
+  differences: ContractDifference[];
+  summary: string;
+}
+
+export interface ContractDifference {
+  field: string;
+  contract1Value: JsonValue;
+  contract2Value: JsonValue;
+  significance: 'low' | 'medium' | 'high';
+}
+
+// ============================================================================
+// Events SSE Types  
+// ============================================================================
+
+/**
+ * Server-Sent Event data
+ */
+export interface SSEEventData {
+  type: string;
+  data: JsonRecord;
+  id?: string;
+  retry?: number;
+}
+
+/**
+ * Event subscription
+ */
+export interface EventSubscription {
+  id: string;
+  tenantId: string;
+  userId: string;
+  channels: string[];
+  createdAt: Date;
+  lastPing?: Date;
+}
+
+// ============================================================================
+// Health Check Types
+// ============================================================================
+
+/**
+ * Health check result
+ */
+export interface HealthCheckResult {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  version?: string;
+  checks: HealthCheckItem[];
+}
+
+export interface HealthCheckItem {
+  name: string;
+  status: 'pass' | 'warn' | 'fail';
+  latency?: number;
+  message?: string;
+  details?: JsonRecord;
+}
+
+// ============================================================================
+// Rate Card Types
+// ============================================================================
+
+/**
+ * Rate card negotiation brief
+ */
+export interface NegotiationBrief {
+  rateCardId: string;
+  rateCardName: string;
+  supplier: string;
+  summary: string;
+  recommendations: NegotiationRecommendation[];
+  marketComparison?: MarketComparisonData;
+  historicalTrends?: TrendData[];
+}
+
+export interface NegotiationRecommendation {
+  role: string;
+  currentRate: number;
+  recommendedRate: number;
+  marketRate: number;
+  savings: number;
+  confidence: number;
+  rationale: string;
+}
+
+export interface MarketComparisonData {
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+  sampleSize: number;
+}
+
+export interface TrendData {
+  period: string;
+  value: number;
+  change?: number;
+}
+
+// ============================================================================
+// Intelligence Types
+// ============================================================================
+
+/**
+ * Intelligence insights
+ */
+export interface IntelligenceInsight {
+  id: string;
+  type: 'trend' | 'anomaly' | 'recommendation' | 'prediction';
+  title: string;
+  description: string;
+  confidence: number;
+  impact: 'low' | 'medium' | 'high';
+  data: JsonRecord;
+  createdAt: Date;
+}
+
+/**
+ * Intelligence query
+ */
+export interface IntelligenceQuery {
+  question: string;
+  context?: string;
+  filters?: IntelligenceFilters;
+}
+
+export interface IntelligenceFilters {
+  dateRange?: { start: string; end: string };
+  contractTypes?: string[];
+  suppliers?: string[];
+  regions?: string[];
+}
+
+// ============================================================================
+// Metadata Extraction Types
+// ============================================================================
+
+/**
+ * Extracted metadata
+ */
+export interface ExtractedMetadata {
+  title?: string;
+  parties?: ExtractedParty[];
+  dates?: ExtractedDates;
+  value?: ExtractedValue;
+  terms?: ExtractedTerm[];
+  clauses?: ExtractedClause[];
+  risks?: ExtractedRisk[];
+  obligations?: ExtractedObligation[];
+  confidence: number;
+}
+
+export interface ExtractedParty {
+  name: string;
+  role: 'buyer' | 'seller' | 'vendor' | 'client' | 'other';
+  address?: string;
+  contact?: string;
+}
+
+export interface ExtractedDates {
+  effective?: string;
+  expiry?: string;
+  renewal?: string;
+  signed?: string;
+}
+
+export interface ExtractedValue {
+  amount: number;
+  currency: string;
+  type: 'fixed' | 'variable' | 'estimated';
+}
+
+export interface ExtractedTerm {
+  name: string;
+  value: string;
+  category?: string;
+}
+
+export interface ExtractedClause {
+  type: string;
+  text: string;
+  page?: number;
+  risk?: 'low' | 'medium' | 'high';
+}
+
+export interface ExtractedRisk {
+  type: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  mitigation?: string;
+}
+
+export interface ExtractedObligation {
+  party: string;
+  description: string;
+  dueDate?: string;
+  recurring?: boolean;
+  frequency?: string;
+}
+
+// ============================================================================
+// Validation Helpers
+// ============================================================================
+
+/**
+ * Type guard for checking if value is a non-null object
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type guard for checking if value is an array
+ */
+export function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+/**
+ * Type guard for checking if value is a string
+ */
+export function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+/**
+ * Type guard for checking if value is a number
+ */
+export function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && !isNaN(value);
+}
+
+/**
+ * Safely get a string property from unknown data
+ */
+export function getString(obj: unknown, key: string, defaultValue = ''): string {
+  if (isObject(obj) && key in obj) {
+    const value = obj[key];
+    return isString(value) ? value : defaultValue;
+  }
+  return defaultValue;
+}
+
+/**
+ * Safely get a number property from unknown data
+ */
+export function getNumber(obj: unknown, key: string, defaultValue = 0): number {
+  if (isObject(obj) && key in obj) {
+    const value = obj[key];
+    return isNumber(value) ? value : defaultValue;
+  }
+  return defaultValue;
+}
+
+/**
+ * Safely get an array property from unknown data
+ */
+export function getArray<T>(obj: unknown, key: string, defaultValue: T[] = []): T[] {
+  if (isObject(obj) && key in obj) {
+    const value = obj[key];
+    return isArray(value) ? (value as T[]) : defaultValue;
+  }
+  return defaultValue;
+}
+

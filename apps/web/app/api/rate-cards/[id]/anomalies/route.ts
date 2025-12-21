@@ -45,12 +45,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         explanations,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error detecting anomalies:', error);
     return NextResponse.json(
       { 
         error: 'Failed to detect anomalies',
-        message: error.message 
+        message: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }
     );

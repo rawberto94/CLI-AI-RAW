@@ -284,10 +284,10 @@ export async function PUT(
     
     // Map external parties to legacy client/supplier fields
     if (metadata.external_parties && Array.isArray(metadata.external_parties)) {
-      const client = metadata.external_parties.find((p: any) => 
+      const client = metadata.external_parties.find((p: { role?: string; legalName?: string }) => 
         p.role?.toLowerCase().includes('client') || p.role?.toLowerCase().includes('buyer')
       );
-      const supplier = metadata.external_parties.find((p: any) => 
+      const supplier = metadata.external_parties.find((p: { role?: string; legalName?: string }) => 
         p.role?.toLowerCase().includes('supplier') || p.role?.toLowerCase().includes('vendor') || p.role?.toLowerCase().includes('provider')
       );
       if (client) legacyUpdates.clientName = client.legalName;

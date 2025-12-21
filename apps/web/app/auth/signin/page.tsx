@@ -1,16 +1,17 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
-import { useState, Suspense, useEffect, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState, Suspense, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap, Eye, EyeOff, Quote, Star } from "lucide-react";
+import { CalendarCheck2, ShieldCheck, Sparkles, Mail, Lock, ArrowRight, CheckCircle2, Zap, Eye, EyeOff, Quote, Star, Hexagon, Binary, CircuitBoard } from "lucide-react";
 import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
+import { WelcomeTransition } from "@/components/enhanced/welcome-transition";
 
 // Floating Particles Component
 function FloatingParticles() {
@@ -296,6 +297,7 @@ function GitHubIcon({ className }: { className?: string }) {
 }
 
 function SignInForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const registered = searchParams.get("registered") === "true";
@@ -307,6 +309,7 @@ function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   
   // Configured providers (would be passed from server in production)
   const [providers, setProviders] = useState<string[]>(["credentials"]);
@@ -337,15 +340,20 @@ function SignInForm() {
 
       if (result?.error) {
         setError("Invalid email or password");
+        setLoading(false);
       } else if (result?.ok) {
-        window.location.href = callbackUrl;
+        // Show welcome transition before redirecting
+        setShowWelcome(true);
       }
     } catch (error) {
       setError("An error occurred. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleWelcomeComplete = useCallback(() => {
+    router.push(callbackUrl);
+  }, [router, callbackUrl]);
 
   const handleSSOSignIn = async (provider: string) => {
     setSsoLoading(provider);
@@ -370,10 +378,42 @@ function SignInForm() {
     if (error) setError("");
   };
 
+  // Show welcome transition after successful login
+  if (showWelcome) {
+    return (
+      <WelcomeTransition 
+        userName={email}
+        redirectUrl={callbackUrl}
+        duration={3500}
+        onComplete={handleWelcomeComplete}
+        tagline="Your intelligent contract management platform awaits"
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex">
       {/* Left side - Branding with vibrant colors */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 via-50% to-fuchsia-600 p-16 xl:p-20 flex-col justify-between relative overflow-hidden">
+        {/* Cyber grid overlay for futuristic look */}
+        <div className="absolute inset-0 overflow-hidden opacity-20">
+          <svg className="absolute inset-0 w-full h-full">
+            <defs>
+              <pattern id="cyberGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#cyberGrid)" />
+          </svg>
+          {/* Animated scan line */}
+          <motion.div
+            className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+            initial={{ top: "0%" }}
+            animate={{ top: "100%" }}
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
+        
         {/* Animated gradient orbs */}
         <GradientOrbs />
         
@@ -491,6 +531,18 @@ function SignInForm() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/30 via-transparent to-transparent" />
         
+        {/* Futuristic hexagon pattern */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          <svg className="w-full h-full">
+            <defs>
+              <pattern id="hexPattern" width="56" height="100" patternUnits="userSpaceOnUse" patternTransform="scale(0.5)">
+                <path d="M28 0L56 25L56 75L28 100L0 75L0 25Z" fill="none" stroke="currentColor" strokeWidth="1" className="text-purple-900" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#hexPattern)" />
+          </svg>
+        </div>
+        
         {/* Subtle animated shapes */}
         <motion.div 
           className="absolute top-20 right-20 w-32 h-32 rounded-full bg-gradient-to-br from-purple-200/30 to-pink-200/30 blur-2xl"
@@ -511,6 +563,29 @@ function SignInForm() {
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         />
         
+        {/* Floating tech icons */}
+        <motion.div
+          className="absolute top-1/4 left-10 text-purple-200/30"
+          animate={{ y: [0, -10, 0], rotate: [0, 5, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Hexagon className="w-8 h-8" />
+        </motion.div>
+        <motion.div
+          className="absolute bottom-1/3 right-10 text-cyan-200/30"
+          animate={{ y: [0, 10, 0], rotate: [0, -5, 0] }}
+          transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        >
+          <CircuitBoard className="w-10 h-10" />
+        </motion.div>
+        <motion.div
+          className="absolute top-1/3 right-1/4 text-fuchsia-200/20"
+          animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        >
+          <Binary className="w-6 h-6" />
+        </motion.div>
+        
         {/* Dot pattern */}
         <div className="absolute inset-0 bg-[radial-gradient(#d4d4d8_1px,transparent_1px)] [background-size:20px_20px] opacity-40" />
         
@@ -520,7 +595,29 @@ function SignInForm() {
           transition={{ duration: 0.5, type: "spring", damping: 20 }}
           className="w-full max-w-md relative z-10"
         >
-        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-purple-200/30 border border-slate-100/80 bg-white/90 backdrop-blur-xl rounded-2xl">
+        {/* Holographic border glow */}
+        <motion.div
+          className="absolute -inset-0.5 rounded-[18px] bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500 opacity-0 blur-sm group-hover:opacity-20 transition-opacity duration-500"
+          animate={{ 
+            background: [
+              "linear-gradient(0deg, #8b5cf6, #a855f7, #d946ef)",
+              "linear-gradient(90deg, #8b5cf6, #a855f7, #d946ef)",
+              "linear-gradient(180deg, #8b5cf6, #a855f7, #d946ef)",
+              "linear-gradient(270deg, #8b5cf6, #a855f7, #d946ef)",
+              "linear-gradient(360deg, #8b5cf6, #a855f7, #d946ef)",
+            ]
+          }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          style={{ opacity: 0.15 }}
+        />
+        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-purple-200/30 border border-slate-100/80 bg-white/90 backdrop-blur-xl rounded-2xl relative overflow-hidden group">
+          {/* Inner glow line animation */}
+          <motion.div 
+            className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-400/50 to-transparent"
+            animate={{ x: ["-100%", "100%"] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          />
+          
           {/* Mobile Logo */}
           <motion.div 
             className="lg:hidden flex justify-center mb-8"
@@ -537,17 +634,40 @@ function SignInForm() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
             >
-              <motion.div 
-                className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 mb-4 shadow-lg shadow-purple-500/30"
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", damping: 15, delay: 0.2 }}
-              >
-                <Lock className="w-7 h-7 text-white" />
-              </motion.div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 tracking-tight">Welcome Back</h1>
+              {/* Futuristic icon with rings */}
+              <div className="relative inline-flex items-center justify-center mb-4">
+                {/* Rotating outer ring */}
+                <motion.div
+                  className="absolute w-20 h-20 rounded-full border-2 border-dashed border-purple-300/50"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                />
+                {/* Pulsing middle ring */}
+                <motion.div
+                  className="absolute w-[72px] h-[72px] rounded-full border border-purple-400/30"
+                  animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+                {/* Main icon container */}
+                <motion.div 
+                  className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-purple-500/30"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", damping: 15, delay: 0.2 }}
+                  whileHover={{ scale: 1.05, rotate: 5 }}
+                >
+                  {/* Inner glow */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-t from-transparent to-white/20" />
+                  <Lock className="w-7 h-7 text-white relative z-10" />
+                </motion.div>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 tracking-tight">
+                <span className="bg-gradient-to-r from-slate-900 via-purple-900 to-slate-900 bg-clip-text text-transparent">
+                  Welcome Back
+                </span>
+              </h1>
               <p className="text-slate-500 text-sm sm:text-base">
-                Sign in to your account to continue
+                Access your secure <span className="text-purple-600 font-medium">ConTigo</span> dashboard
               </p>
             </motion.div>
           </div>
@@ -724,17 +844,38 @@ function SignInForm() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.4 }}
+            className="relative group"
           >
+            {/* Cyber glow effect behind button */}
+            <motion.div
+              className="absolute -inset-1 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 opacity-0 group-hover:opacity-70 blur-lg transition-all duration-500"
+              animate={{
+                background: [
+                  "linear-gradient(90deg, #7c3aed, #9333ea, #c026d3)",
+                  "linear-gradient(180deg, #7c3aed, #9333ea, #c026d3)",
+                  "linear-gradient(270deg, #7c3aed, #9333ea, #c026d3)",
+                  "linear-gradient(360deg, #7c3aed, #9333ea, #c026d3)",
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            />
             <Button
               type="submit"
-              className="w-full h-12 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/35 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 group relative overflow-hidden"
+              className="relative w-full h-12 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/35 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 overflow-hidden border border-purple-400/20"
               disabled={loading}
             >
               {/* Animated shimmer effect */}
               <motion.div 
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full"
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full"
                 animate={{ x: ["0%", "200%"] }}
                 transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
+              />
+              {/* Scan line effect */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent"
+                animate={{ y: ["-100%", "100%"] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                style={{ height: "30%" }}
               />
               {loading ? (
                 <span className="flex items-center gap-2 relative z-10">
@@ -742,13 +883,17 @@ function SignInForm() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Signing in...
+                  <span className="tracking-wide">Authenticating...</span>
                 </span>
               ) : (
-                <span className="flex items-center justify-center gap-2 relative z-10">
-                  Sign In
+                <motion.span 
+                  className="flex items-center justify-center gap-2 relative z-10"
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span className="tracking-wide">Enter ConTigo</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
+                </motion.span>
               )}
             </Button>
           </motion.div>

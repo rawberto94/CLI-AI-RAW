@@ -47,16 +47,23 @@ export async function GET(
 
     const responseTime = Date.now() - startTime;
 
+    interface ArtifactData {
+      id?: string;
+      type?: string;
+      data?: Record<string, unknown> | null;
+      confidence?: number;
+    }
+
     // Transform artifacts for UI compatibility
     const artifactsData = result.data ?? [];
-    const transformedArtifacts = artifactsData.map((artifact: any) => {
-        const artifactData = artifact.data as any || {};
+    const transformedArtifacts = artifactsData.map((artifact: ArtifactData) => {
+        const artifactData = (artifact.data as Record<string, unknown>) || {};
         return {
           id: artifact.id,
           type: artifact.type,
           data: artifact.data,
           confidence: Number(artifact.confidence || 0),
-          completeness: artifactData.completeness || 0,
+          completeness: (artifactData.completeness as number) || 0,
         };
     });
 

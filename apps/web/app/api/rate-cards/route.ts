@@ -11,6 +11,29 @@ export const revalidate = 300;
 
 // Mock rate cards data for testing
 /**
+ * Mock rate card entry structure
+ */
+interface MockRateCard {
+  id: string;
+  rateCardId: string;
+  originalRoleName: string;
+  standardizedRole: string;
+  roleCategory: string;
+  seniorityLevel: string;
+  serviceLine: string;
+  lineOfService: string;
+  country: string;
+  dailyRate: number;
+  currency: string;
+  supplierId: string;
+  supplierName: string;
+  effectiveDate: string;
+  expiryDate: string;
+  isBaseline: boolean;
+  isNegotiated: boolean;
+}
+
+/**
  * Return mock rate card data for testing
  */
 function returnMockRateCards(searchParams: URLSearchParams) {
@@ -18,7 +41,7 @@ function returnMockRateCards(searchParams: URLSearchParams) {
   const page = parseInt(searchParams.get('page') || '1');
   const pageSize = parseInt(searchParams.get('pageSize') || '50');
   
-  const mockRateCards: any[] = [
+  const mockRateCards: MockRateCard[] = [
     {
       id: "rate-acc-se1",
       rateCardId: "card-acc-001",
@@ -266,7 +289,23 @@ export async function GET(request: NextRequest) {
     }
     
     // Build where clause from filters
-    const where: any = { tenantId };
+    const where: {
+      tenantId: string;
+      contractId?: string;
+      supplierId?: string;
+      supplierName?: { contains: string; mode: 'insensitive' };
+      roleStandardized?: { contains: string; mode: 'insensitive' };
+      seniority?: string;
+      lineOfService?: string;
+      country?: string;
+      region?: string;
+      source?: string;
+      clientName?: { contains: string; mode: 'insensitive' };
+      dailyRate?: { gte?: number; lte?: number };
+      effectiveDate?: { gte?: Date; lte?: Date };
+      isBaseline?: boolean;
+      isNegotiated?: boolean;
+    } = { tenantId };
     
     if (searchParams.get('contractId')) where.contractId = searchParams.get('contractId');
     if (searchParams.get('supplierId')) where.supplierId = searchParams.get('supplierId');
@@ -330,7 +369,8 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Deduplicate rate cards based on role, seniority, and rate
-    const deduplicatedData = rateCards.reduce((acc: any[], card: any) => {
+    type RateCardWithContract = Awaited<ReturnType<typeof prisma.rateCardEntry.findMany>>[number];
+    const deduplicatedData = rateCards.reduce((acc: RateCardWithContract[], card: RateCardWithContract) => {
       const key = `${card.roleStandardized || card.roleOriginal}-${card.seniority}-${card.dailyRate}-${card.supplierName}`;
       const exists = acc.some(existing => 
         `${existing.roleStandardized || existing.roleOriginal}-${existing.seniority}-${existing.dailyRate}-${existing.supplierName}` === key

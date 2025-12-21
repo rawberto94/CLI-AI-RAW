@@ -15,13 +15,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       success: true,
       data: alternatives,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error finding alternative suppliers:', error);
     
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to find alternative suppliers',
+        error: error instanceof Error ? error.message : 'Failed to find alternative suppliers',
       },
       { status: 500 }
     );

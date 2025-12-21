@@ -23,6 +23,14 @@ interface PopulateResult {
   error?: string;
 }
 
+/**
+ * Party data from OVERVIEW artifact
+ */
+interface PartyData {
+  name?: string;
+  role?: string;
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const tenantId = await getApiTenantId(request);
@@ -34,7 +42,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const dryRun = body.dryRun === true; // Preview without updating
     
     // Find contracts to process
-    const whereClause: any = {
+    const whereClause: {
+      tenantId: string;
+      status: string;
+      id?: { in: string[] };
+      OR?: Array<{ [key: string]: unknown }>;
+    } = {
       tenantId,
       status: 'COMPLETED', // Only process completed contracts
     };
@@ -124,12 +137,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       
       // Extract parties
       if (overviewData.parties && Array.isArray(overviewData.parties)) {
-        const clientParty = overviewData.parties.find((p: any) => 
+        const clientParty = overviewData.parties.find((p: PartyData) => 
           p.role?.toLowerCase().includes('client') || 
           p.role?.toLowerCase().includes('buyer') ||
           p.role?.toLowerCase().includes('customer')
         );
-        const supplierParty = overviewData.parties.find((p: any) => 
+        const supplierParty = overviewData.parties.find((p: PartyData) => 
           p.role?.toLowerCase().includes('supplier') || 
           p.role?.toLowerCase().includes('vendor') ||
           p.role?.toLowerCase().includes('provider') ||

@@ -24,6 +24,23 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
     const offset = parseInt(searchParams.get('offset') || '0');
 
+    /**
+     * Renewal terms JSON structure
+     */
+    interface RenewalTerms {
+      paymentTerms?: string;
+      noticePeriod?: number;
+      autoRenewal?: boolean;
+      [key: string]: unknown;
+    }
+
+    interface KeyChange {
+      field: string;
+      oldValue: unknown;
+      newValue: unknown;
+      description?: string;
+    }
+
     // Query renewal history
     const renewals = await prisma.$queryRaw<Array<{
       id: string;
@@ -33,17 +50,17 @@ export async function GET(request: NextRequest) {
       previous_start_date: Date;
       previous_end_date: Date;
       previous_value: number;
-      previous_terms: any;
+      previous_terms: RenewalTerms;
       new_start_date: Date;
       new_end_date: Date;
       new_value: number;
-      new_terms: any;
+      new_terms: RenewalTerms;
       value_change: number;
       value_change_percent: number;
       term_extension: number;
       negotiation_days: number;
       negotiation_rounds: number;
-      key_changes: any;
+      key_changes: KeyChange[];
       initiated_by: string;
       initiated_at: Date;
       approved_by: string;
