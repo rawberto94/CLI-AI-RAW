@@ -1,4 +1,3 @@
-export { WelcomeTour, useResetTour } from './WelcomeTour';
 export {
   TourProvider,
   useTour,
@@ -9,3 +8,4 @@ export {
 } from './Onboarding';
 export { QuickStartGuide, useQuickStartGuide } from './QuickStartGuide';
 export { OnboardingChecklist, useOnboardingStep } from './OnboardingChecklist';
+export { OnboardingTour, useOnboardingTour } from './OnboardingTour';

@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,6 +65,7 @@ export function ContractMetadataEditor({
   const [saving, setSaving] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const toast = useToast();
+  const { data: session } = useSession();
   
   // Extract values from FieldMetadata or use raw values
   const extractValue = (field: any) => {
@@ -165,7 +167,7 @@ export function ContractMetadataEditor({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          updatedBy: 'user' // TODO: Get from auth context
+          updatedBy: session?.user?.id || session?.user?.name || 'anonymous'
         })
       });
 

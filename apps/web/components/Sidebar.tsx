@@ -373,15 +373,40 @@ function MobileSidebar({
             </TooltipProvider>
             
             {/* Footer */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200/60 bg-white/80">
-              <button
-                type="button"
-                onClick={resetTutorial}
-                className="flex items-center gap-2 w-full px-3 py-2.5 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200/60 bg-white/90 backdrop-blur-sm">
+              {/* Guided Tour CTA */}
+              <Link
+                href="/tour"
+                onClick={onClose}
+                className="flex items-center gap-3 w-full px-3 py-2.5 mb-3 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/25"
               >
-                <HelpCircle className="h-4 w-4" />
-                <span className="font-medium">Show Welcome Guide</span>
-              </button>
+                <div className="p-1.5 bg-white/20 rounded-lg">
+                  <PlayCircle className="h-4 w-4" />
+                </div>
+                <div className="flex-1">
+                  <span className="font-semibold">Start Guided Tour</span>
+                  <span className="block text-[10px] text-white/80">Learn all features</span>
+                </div>
+                <ChevronRight className="h-4 w-4 text-white/70" />
+              </Link>
+              
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={resetTutorial}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  <span className="font-medium">Quick Start Guide</span>
+                </button>
+                
+                <Link href="/tour#learn" onClick={onClose}>
+                  <div className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
+                    <GraduationCap className="h-4 w-4" />
+                    <span className="font-medium">Learning Center</span>
+                  </div>
+                </Link>
+              </div>
             </div>
           </motion.div>
         </>
@@ -553,6 +578,27 @@ export function Sidebar() {
 
         {/* Footer with enhanced styling */}
         <div className="p-3 border-t border-slate-200/60 bg-gradient-to-t from-slate-100/80 to-transparent">
+          {/* Guided Tour CTA */}
+          <motion.div 
+            whileHover={{ scale: 1.01 }} 
+            whileTap={{ scale: 0.99 }}
+            className="mb-3"
+          >
+            <Link
+              href="/tour"
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/25 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+            >
+              <div className="p-1.5 bg-white/20 rounded-lg">
+                <PlayCircle className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <span className="font-semibold">Start Guided Tour</span>
+                <span className="block text-[10px] text-white/80">Learn all features in 5 min</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-white/70" />
+            </Link>
+          </motion.div>
+          
           {/* Quick Actions */}
           <div className="space-y-1 mb-2">
             {/* Welcome Guide */}
@@ -565,6 +611,17 @@ export function Sidebar() {
               <HelpCircle className="h-4 w-4" />
               <span className="font-medium">Quick Start Guide</span>
             </motion.button>
+            
+            {/* Learning Center Link */}
+            <Link href="/tour#learn">
+              <motion.div
+                whileHover={{ x: 2 }}
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+              >
+                <GraduationCap className="h-4 w-4" />
+                <span className="font-medium">Learning Center</span>
+              </motion.div>
+            </Link>
             
             {/* Keyboard Shortcuts */}
             <motion.button

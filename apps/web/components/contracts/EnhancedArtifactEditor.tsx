@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -173,6 +174,7 @@ export function EnhancedArtifactEditor({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Basic Info']));
   const [viewMode, setViewMode] = useState<'form' | 'json'>('form');
   const [changedFields, setChangedFields] = useState<Set<string>>(new Set());
+  const { data: session } = useSession();
 
   // Get field schema for this artifact type
   const fieldSchema = useMemo(() => {
@@ -304,7 +306,7 @@ export function EnhancedArtifactEditor({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             updates: editedData,
-            userId: 'current-user', // TODO: Get from auth context
+            userId: session?.user?.id || 'anonymous',
             reason: 'Manual edit via Enhanced Editor',
           }),
         }

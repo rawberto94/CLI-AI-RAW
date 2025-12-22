@@ -65,3 +65,9 @@ export {
 export {
   AnalyticalIntelligenceService,
 } from './analytical-intelligence.service';
+
+// Email Service
+export {
+  EmailService,
+  type SendEmailOptions,
+} from './email.service';

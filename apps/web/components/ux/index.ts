@@ -83,7 +83,6 @@ export * from './clipboard';
 // Layout
 export * from './accordion';
 export * from './sortable';
-export * from './progress';
 
 // Interactive - Floating Action Button
 export * from './fab';

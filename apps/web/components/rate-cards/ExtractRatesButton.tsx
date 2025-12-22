@@ -6,7 +6,9 @@
  */
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
+import { getTenantId } from '@/lib/tenant';
 import { FileText, Loader2 } from 'lucide-react';
 import { RateCardExtractionModal } from './RateCardExtractionModal';
 import toast from 'react-hot-toast';
@@ -27,6 +29,7 @@ export function ExtractRatesButton({
   const [isExtracting, setIsExtracting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [extractionResult, setExtractionResult] = useState<any>(null);
+  const { data: session } = useSession();
 
   const handleExtract = async () => {
     setIsExtracting(true);
@@ -35,7 +38,7 @@ export function ExtractRatesButton({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'default-tenant', // TODO: Get from auth
+          'x-tenant-id': getTenantId(),
         },
       });
 
@@ -70,8 +73,8 @@ export function ExtractRatesButton({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'default-tenant', // TODO: Get from auth
-          'x-user-id': 'current-user', // TODO: Get from auth
+          'x-tenant-id': getTenantId(),
+          'x-user-id': session?.user?.id || 'anonymous',
         },
         body: JSON.stringify({
           rates,

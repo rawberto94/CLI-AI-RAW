@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +26,7 @@ export function ArtifactEditor({
   const [editedData, setEditedData] = useState(artifact.data);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { data: session } = useSession();
 
   const handleFieldChange = (fieldPath: string, value: any) => {
     setEditedData((prev: any) => {
@@ -63,7 +65,7 @@ export function ArtifactEditor({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             updates: editedData,
-            userId: 'current-user', // TODO: Get from auth context
+            userId: session?.user?.id || 'anonymous',
             reason: 'Manual edit via UI',
           }),
         }
