@@ -106,12 +106,18 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const tenantId = request.headers.get('x-tenant-id');
+  const searchParams = request.nextUrl.searchParams;
+  // EventSource cannot reliably set custom headers, so support tenantId via query param.
+  // Priority: x-tenant-id header > tenantId query param > demo (dev only)
+  const tenantId =
+    request.headers.get('x-tenant-id') ||
+    searchParams.get('tenantId') ||
+    (process.env.NODE_ENV === 'production' ? null : 'demo');
+
   if (!tenantId) {
     return new Response('Tenant ID is required', { status: 400 });
   }
 
-  const searchParams = request.nextUrl.searchParams;
   const userId = searchParams.get('userId') || undefined;
 
   // Create a readable stream

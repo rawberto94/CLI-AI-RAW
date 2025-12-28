@@ -15,6 +15,20 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Validate that a taxonomy category belongs to the tenant
+ * Prevents cross-tenant category assignment attacks
+ */
+async function validateCategoryOwnership(
+  categoryId: string,
+  tenantId: string
+): Promise<boolean> {
+  const category = await prisma.taxonomyCategory.findFirst({
+    where: { id: categoryId, tenantId },
+  });
+  return !!category;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: RouteParams

@@ -1,8 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateSupplierAnalyticsMock } from '@/lib/mock-data/supplier-analytics-mock';
-import { generateNegotiationPrepMock } from '@/lib/mock-data/negotiation-prep-mock';
-import { generateSavingsPipelineMock } from '@/lib/mock-data/savings-pipeline-mock';
-import { generateRenewalRadarMock } from '@/lib/mock-data/renewal-radar-mock';
 
 type DataMode = 'real' | 'mock';
 type ProviderType = 
@@ -80,19 +76,34 @@ export async function GET(request: NextRequest) {
       // Use mock data
       switch (moduleName) {
         case 'supplier-analytics':
-          data = generateSupplierAnalyticsMock(params);
+          data = {
+            suppliers: [
+              { id: '1', name: 'Acme Consulting', score: 92, spend: 450000 },
+              { id: '2', name: 'Tech Solutions', score: 85, spend: 320000 },
+            ],
+          };
           source = 'mock-data-generator';
           break;
         case 'negotiation-prep':
-          data = generateNegotiationPrepMock(params);
+          data = {
+            recommendations: ['Focus on volume discounts', 'Request better payment terms'],
+          };
           source = 'mock-data-generator';
           break;
         case 'savings-pipeline':
-          data = generateSavingsPipelineMock(params);
+          data = {
+            opportunities: [
+              { id: '1', supplier: 'Acme', potential: 25000, confidence: 'high' },
+            ],
+          };
           source = 'mock-data-generator';
           break;
         case 'renewal-radar':
-          data = generateRenewalRadarMock(params);
+          data = {
+            upcomingRenewals: [
+              { contractId: 'C1', supplier: 'Acme', daysUntilRenewal: 30 },
+            ],
+          };
           source = 'mock-data-generator';
           break;
         case 'rate-benchmarking':

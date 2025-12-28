@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
+import { ContractLifecycleSelector } from '@/components/contracts/ContractLifecycleSelector'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload,
@@ -56,11 +57,10 @@ const OCR_ENGINES = {
     id: 'azure',
     name: 'Azure Document AI',
     description: 'Enterprise security, Swiss/EU data residency, GDPR compliant',
-    icon: Shield,
-    color: 'from-blue-500 to-cyan-600',
-    bgColor: 'bg-blue-50',
-    textColor: 'text-blue-700',
-    borderColor: 'border-blue-200',
+    color: 'from-blue-500 to-cyan-600 dark:from-blue-600 dark:to-cyan-700',
+    bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+    textColor: 'text-blue-700 dark:text-blue-300',
+    borderColor: 'border-blue-200 dark:border-blue-700',
     baseTime: 12,
     perMbTime: 6,
     accuracy: 97,
@@ -70,11 +70,10 @@ const OCR_ENGINES = {
     id: 'gpt4',
     name: 'GPT-4 Vision',
     description: 'Highest accuracy for complex documents',
-    icon: Brain,
-    color: 'from-violet-500 to-purple-600',
-    bgColor: 'bg-violet-50',
-    textColor: 'text-violet-700',
-    borderColor: 'border-violet-200',
+    color: 'from-violet-500 to-purple-600 dark:from-violet-600 dark:to-purple-700',
+    bgColor: 'bg-violet-50 dark:bg-violet-900/20',
+    textColor: 'text-violet-700 dark:text-violet-300',
+    borderColor: 'border-violet-200 dark:border-violet-700',
     baseTime: 15,
     perMbTime: 8,
     accuracy: 98,
@@ -84,11 +83,10 @@ const OCR_ENGINES = {
     id: 'mistral',
     name: 'Mistral OCR',
     description: 'Fast processing with great quality',
-    icon: Zap,
-    color: 'from-amber-500 to-orange-600',
-    bgColor: 'bg-amber-50',
-    textColor: 'text-amber-700',
-    borderColor: 'border-amber-200',
+    color: 'from-amber-500 to-orange-600 dark:from-amber-600 dark:to-orange-700',
+    bgColor: 'bg-amber-50 dark:bg-amber-900/20',
+    textColor: 'text-amber-700 dark:text-amber-300',
+    borderColor: 'border-amber-200 dark:border-amber-700',
     baseTime: 10,
     perMbTime: 5,
     accuracy: 94,
@@ -98,17 +96,26 @@ const OCR_ENGINES = {
     id: 'tesseract',
     name: 'Tesseract Local',
     description: 'No data leaves your infrastructure',
-    icon: Shield,
-    color: 'from-slate-500 to-gray-600',
-    bgColor: 'bg-slate-50',
-    textColor: 'text-slate-700',
-    borderColor: 'border-slate-200',
+    color: 'from-slate-500 to-gray-600 dark:from-slate-600 dark:to-gray-700',
+    bgColor: 'bg-slate-50 dark:bg-slate-900/20',
+    textColor: 'text-slate-700 dark:text-slate-300',
+    borderColor: 'border-slate-200 dark:border-slate-700',
     baseTime: 5,
     perMbTime: 3,
     accuracy: 85,
     badge: 'Privacy'
   }
-} as const;
+}
+
+const getEngineIcon = (engineId: string) => {
+  const icons: Record<string, any> = {
+    azure: Shield,
+    gpt4: Brain,
+    mistral: Zap,
+    tesseract: Shield,
+  };
+  return icons[engineId] || Shield;
+};
 
 type OcrMode = keyof typeof OCR_ENGINES;
 
@@ -142,6 +149,7 @@ export default function UploadPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [ocrMode, setOcrMode] = useState<OcrMode>('gpt4')
   const [showEngineSelector, setShowEngineSelector] = useState(false)
+  const [lifecycle, setLifecycle] = useState<'NEW' | 'EXISTING' | 'AMENDMENT' | 'RENEWAL'>('NEW')
 
   // Compute statistics
   const stats = useMemo(() => {
@@ -182,6 +190,7 @@ export default function UploadPage() {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('ocrMode', ocrMode)
+    formData.append('lifecycle', lifecycle)
 
     // Update status to uploading
     setFiles(prev => prev.map(f => 
@@ -312,7 +321,7 @@ export default function UploadPage() {
   }
 
   const currentEngine = OCR_ENGINES[ocrMode];
-  const EngineIcon = currentEngine.icon;
+  const EngineIcon = getEngineIcon(currentEngine.id);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 overflow-x-hidden">
@@ -376,7 +385,7 @@ export default function UploadPage() {
                       </CardHeader>
                       <CardContent className="p-2">
                         {Object.values(OCR_ENGINES).map((engine) => {
-                          const Icon = engine.icon;
+                          const Icon = getEngineIcon(engine.id);
                           const isSelected = ocrMode === engine.id;
                           return (
                             <button
@@ -452,6 +461,19 @@ export default function UploadPage() {
               )}
             </div>
           </div>
+        </motion.div>
+
+        {/* Contract Lifecycle Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-6"
+        >
+          <ContractLifecycleSelector
+            value={lifecycle}
+            onChange={setLifecycle}
+          />
         </motion.div>
 
         {/* Drop Zone */}
@@ -653,34 +675,36 @@ export default function UploadPage() {
                   step: '1',
                   title: 'Text Extraction',
                   description: 'AI extracts all text and structure from your document',
-                  icon: FileText,
+                  iconName: 'FileText',
                   color: 'from-blue-500 to-cyan-500'
                 },
                 {
                   step: '2',
                   title: 'AI Analysis',
                   description: 'Generate overview, clauses, financial, risk & compliance artifacts',
-                  icon: Brain,
+                  iconName: 'Brain',
                   color: 'from-violet-500 to-purple-500'
                 },
                 {
                   step: '3',
                   title: 'Ready to Use',
                   description: 'Search, analyze, and manage your contract with AI insights',
-                  icon: Sparkles,
+                  iconName: 'Sparkles',
                   color: 'from-amber-500 to-orange-500'
                 }
-              ].map((step, i) => (
-                <div 
-                  key={step.step}
-                  className="relative p-5 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 transition-colors"
-                >
+              ].map((step, i) => {
+                const StepIcon = step.iconName === 'FileText' ? FileText : step.iconName === 'Brain' ? Brain : Sparkles;
+                return (
+                  <div 
+                    key={step.step}
+                    className="relative p-5 rounded-xl bg-white border border-slate-200/80 hover:border-slate-300 transition-colors"
+                  >
                   <div className="flex items-start gap-4">
                     <div className={cn(
                       "w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center shadow-sm",
                       step.color
                     )}>
-                      <step.icon className="h-5 w-5 text-white" />
+                      <StepIcon className="h-5 w-5 text-white" />
                     </div>
                     <div>
                       <p className="font-medium text-slate-900">{step.title}</p>
@@ -691,8 +715,9 @@ export default function UploadPage() {
                   {i < 2 && (
                     <ChevronRight className="hidden md:block absolute -right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                   )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}

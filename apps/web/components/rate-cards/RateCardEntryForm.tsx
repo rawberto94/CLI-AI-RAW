@@ -13,8 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Loader2, Save, X, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import { Loader2, Save, X, AlertCircle, CheckCircle, Sparkles, RefreshCw, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useCurrencyConverter } from '@/lib/services/currency.service';
 
 interface RateCardFormData {
   // Source
@@ -70,8 +71,11 @@ export function RateCardEntryForm({
   const [isStandardizing, setIsStandardizing] = useState(false);
   const [supplierSuggestions, setSupplierSuggestions] = useState<string[]>([]);
   const [roleSuggestions, setRoleSuggestions] = useState<string[]>([]);
-  const [convertedRates, setConvertedRates] = useState<{ usd: number; chf: number } | null>(null);
+  const [convertedRates, setConvertedRates] = useState<{ usd: number; eur: number; gbp: number; chf: number } | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
+  const [showConversion, setShowConversion] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<any>(null);
+  const { convert, format } = useCurrencyConverter();
 
   const {
     register,
@@ -175,30 +179,42 @@ export function RateCardEntryForm({
   // Currency conversion preview
   useEffect(() => {
     const convertCurrency = async () => {
-      if (!watchedFields.dailyRate || !watchedFields.currency) return;
+      if (!watchedFields.dailyRate || !watchedFields.currency || watchedFields.dailyRate <= 0) {
+        setConvertedRates(null);
+        return;
+      }
 
+      setIsConverting(true);
+      setShowConversion(true);
       try {
-        const response = await fetch('/api/rate-cards/currency/convert', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount: watchedFields.dailyRate,
-            from: watchedFields.currency,
-          }),
-        });
+        const amount = watchedFields.dailyRate;
+        const from = watchedFields.currency;
 
-        if (response.ok) {
-          const data = await response.json();
-          setConvertedRates(data);
-        }
+        // Convert to major currencies for benchmarking
+        const conversions = await Promise.all([
+          from !== 'USD' ? convert(amount, from, 'USD') : Promise.resolve(amount),
+          from !== 'EUR' ? convert(amount, from, 'EUR') : Promise.resolve(amount),
+          from !== 'GBP' ? convert(amount, from, 'GBP') : Promise.resolve(amount),
+          from !== 'CHF' ? convert(amount, from, 'CHF') : Promise.resolve(amount),
+        ]);
+
+        setConvertedRates({
+          usd: conversions[0],
+          eur: conversions[1],
+          gbp: conversions[2],
+          chf: conversions[3],
+        });
       } catch (error) {
         console.error('Error converting currency:', error);
+        setConvertedRates(null);
+      } finally {
+        setIsConverting(false);
       }
     };
 
     const debounce = setTimeout(convertCurrency, 500);
     return () => clearTimeout(debounce);
-  }, [watchedFields.dailyRate, watchedFields.currency]);
+  }, [watchedFields.dailyRate, watchedFields.currency, convert]);
 
   // Check for duplicates
   useEffect(() => {
@@ -480,11 +496,43 @@ export function RateCardEntryForm({
             </select>
           </div>
 
-          {convertedRates && (
-            <div className="col-span-2 p-3 bg-blue-50 rounded-md">
-              <p className="text-sm text-blue-900">
-                <strong>Converted Rates:</strong> {convertedRates.usd.toFixed(2)} USD /{' '}
-                {convertedRates.chf.toFixed(2)} CHF per day
+          {showConversion && convertedRates && (
+            <div className="col-span-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                  <strong className="text-sm text-blue-900">Converted Rates</strong>
+                </div>
+                {isConverting && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {watchedFields.currency !== 'USD' && (
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">USD:</span>
+                    <span className="font-medium">{format(convertedRates.usd, 'USD', 'en-US')}</span>
+                  </div>
+                )}
+                {watchedFields.currency !== 'EUR' && (
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">EUR:</span>
+                    <span className="font-medium">{format(convertedRates.eur, 'EUR', 'en-US')}</span>
+                  </div>
+                )}
+                {watchedFields.currency !== 'GBP' && (
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">GBP:</span>
+                    <span className="font-medium">{format(convertedRates.gbp, 'GBP', 'en-US')}</span>
+                  </div>
+                )}
+                {watchedFields.currency !== 'CHF' && (
+                  <div className="flex justify-between">
+                    <span className="text-blue-700">CHF:</span>
+                    <span className="font-medium">{format(convertedRates.chf, 'CHF', 'en-US')}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                Real-time conversion for global benchmarking
               </p>
             </div>
           )}

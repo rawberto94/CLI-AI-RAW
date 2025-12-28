@@ -3716,8 +3716,8 @@ async function findMasterAgreements(supplierName: string, tenantId: string, year
 // Get contract hierarchy (parent and children)
 async function getContractHierarchy(contractId: string, tenantId: string) {
   try {
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       include: {
         parentContract: {
           select: {
@@ -5995,9 +5995,23 @@ async function getOpenAIResponse(message: string, conversationHistory: Array<{ r
    - Risk identification (expiring contracts, auto-renewals, high-value at risk)
    - Category breakdown and supplier concentration analysis
 
-4. **Natural Language Understanding**
+4. **Contract Taxonomy & Classification**
+   - Contracts are categorized into 10 main categories: Master/Framework, Scope/Work Authorization, Performance/Operations, Purchase/Supply, Data/Security/Privacy, Confidentiality/IP, Software/Cloud, Partnerships/JV, HR/Employment, Compliance/Regulatory
+   - Each contract has a document role: Primary, Supporting, Derivative, Reference, Amendment, Superseded, or Template
+   - Contracts include tags for pricing models (fixed_price, time_materials, unit_pricing, retainer, milestone, subscription, hybrid, performance_based)
+   - Contracts have delivery models (on_demand, scheduled, continuous, milestone_based, agile, waterfall, hybrid, support_maintenance)
+   - Data profiles track data types (personal, financial, health, technical, proprietary)
+   - Risk flags highlight concerns (compliance_risk, financial_risk, data_risk, operational_risk, legal_risk, vendor_risk, currency_risk, termination_risk)
+
+5. **Contract Hierarchy & Relationships**
+   - Contracts can be linked in parent-child relationships (e.g., MSA → SOW, Framework → Work Orders)
+   - 16 relationship types: SOW_UNDER_MSA, WORK_ORDER_UNDER_MSA, PO_UNDER_SUPPLY_AGREEMENT, AMENDMENT, ADDENDUM, RENEWAL, CHANGE_ORDER, etc.
+   - Suggest parent contracts when appropriate based on category and metadata
+   - Navigate contract families and hierarchies
+
+6. **Natural Language Understanding**
    - Understand complex queries like "summarize all Deloitte contracts from 2024 with their durations and values"
-   - Handle multi-criteria filters naturally
+   - Handle multi-criteria filters naturally including taxonomy categories
    - Provide context-aware responses based on what you find
 
 **📊 ANALYSIS DATA PROVIDED:**

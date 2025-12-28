@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { requiresApprovalWorkflow, getContractLifecycle } from '@/lib/contract-helpers';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,10 +140,33 @@ export async function POST(
     // Verify contract exists
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
+      select: {
+        id: true,
+        tenantId: true,
+        status: true,
+        documentRole: true,
+        metadata: true,
+        contractTitle: true,
+        fileName: true,
+      },
     });
 
     if (!contract) {
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+    }
+
+    // Only allow workflow execution for NEW contracts
+    if (!requiresApprovalWorkflow(contract)) {
+      const lifecycle = getContractLifecycle(contract);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `Workflows are only applicable for new contracts or amendments. This appears to be an ${lifecycle.toLowerCase()} contract.`,
+          lifecycle,
+          hint: 'Set status=DRAFT or documentRole=NEW_CONTRACT to enable workflow',
+        },
+        { status: 400 }
+      );
     }
 
     // Check if workflow execution already exists for this contract

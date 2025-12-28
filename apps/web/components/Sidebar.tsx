@@ -22,6 +22,7 @@ import {
   Search,
   Zap,
   Shield,
+  ClipboardList,
   Calendar,
   Users,
   TrendingUp,
@@ -32,6 +33,7 @@ import {
   BookOpen,
   Rocket,
   PlayCircle,
+  GitBranch,
 } from "lucide-react";
 import {
   Tooltip,
@@ -114,6 +116,17 @@ const navigationGroups: NavGroup[] = [
       { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports", tourId: "analytics" },
     ],
   },
+  {
+    id: 'administration',
+    label: 'Administration',
+    icon: Shield,
+    defaultOpen: false,
+    gradient: 'from-slate-600 to-slate-800',
+    items: [
+      { href: "/workflows", label: "Workflows", icon: GitBranch, description: "Approval workflow management", isNew: true, tourId: "workflows" },
+      { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, description: "System activity and compliance tracking", tourId: "audit-logs" },
+    ],
+  },
   // FUTURE UPGRADES - Uncomment when ready:
   // {
   //   id: 'management',
@@ -166,17 +179,17 @@ const NavGroupSection = memo(function NavGroupSection({
         aria-controls={contentId}
         className={cn(
           "flex items-center w-full gap-2.5 px-3 py-2.5 text-sm font-semibold rounded-xl transition-all duration-200",
-          "hover:bg-gradient-to-r hover:from-slate-100/80 hover:to-slate-50/50",
+          "hover:bg-gradient-to-r hover:from-slate-100/80 hover:to-slate-50/50 dark:hover:from-slate-800/80 dark:hover:to-slate-700/50",
           hasActiveItem 
-            ? "text-slate-900 bg-gradient-to-r from-slate-100 to-slate-50" 
-            : "text-slate-600"
+            ? "text-slate-900 dark:text-slate-100 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-700" 
+            : "text-slate-600 dark:text-slate-400"
         )}
       >
         <div className={cn(
           "p-1.5 rounded-lg transition-all",
           hasActiveItem 
-            ? `bg-gradient-to-br ${group.gradient} text-white shadow-sm` 
-            : "bg-slate-100 text-slate-500"
+            ? `bg-gradient-to-br ${group.gradient} text-white shadow-sm dark:shadow-lg` 
+            : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
         )}>
           <Icon className="h-3.5 w-3.5" />
         </div>

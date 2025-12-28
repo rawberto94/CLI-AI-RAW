@@ -15,16 +15,22 @@ import { WelcomeTransition } from "@/components/enhanced/welcome-transition";
 
 // Floating Particles Component
 function FloatingParticles() {
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  
   const particles = useMemo(() => 
-    Array.from({ length: 20 }, (_, i) => ({
+    Array.from({ length: prefersReducedMotion ? 5 : 20 }, (_, i) => ({
       id: i,
       size: Math.random() * 4 + 2,
       x: Math.random() * 100,
       y: Math.random() * 100,
       duration: Math.random() * 20 + 15,
       delay: Math.random() * 5,
-    })), []
+    })), [prefersReducedMotion]
   );
+
+  if (prefersReducedMotion) {
+    return null;
+  }
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -302,8 +308,8 @@ function SignInForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const registered = searchParams.get("registered") === "true";
   
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@demo.com");
+  const [password, setPassword] = useState("Admin123!");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -392,9 +398,9 @@ function SignInForm() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex dark:bg-slate-950">
       {/* Left side - Branding with vibrant colors */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 via-50% to-fuchsia-600 p-16 xl:p-20 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 via-50% to-fuchsia-600 dark:from-violet-800 dark:via-purple-800 dark:via-50% dark:to-fuchsia-800 p-16 xl:p-20 flex-col justify-between relative overflow-hidden">
         {/* Cyber grid overlay for futuristic look */}
         <div className="absolute inset-0 overflow-hidden opacity-20">
           <svg className="absolute inset-0 w-full h-full">

@@ -12,6 +12,7 @@ import { existsSync } from 'fs';
 import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration } from '@/lib/artifact-trigger';
 import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -122,6 +123,16 @@ export async function POST(req: NextRequest) {
     });
 
     console.log(`✅ Contract created: ${contract.id}`);
+
+    await publishRealtimeEvent({
+      event: 'contract:created',
+      data: {
+        tenantId,
+        contractId: contract.id,
+        status: contract.status,
+      },
+      source: 'api:contracts/upload/finalize',
+    });
 
     // Trigger artifact generation with proper parameters
     await triggerArtifactGeneration({

@@ -8,6 +8,7 @@
 import React, { createContext, useContext, useCallback, useState, useEffect } from 'react';
 import { useEventStream, StreamEvent } from '@/hooks/useEventStream';
 import { useToast } from '@/hooks/useToast';
+import { getTenantId } from '@/lib/tenant';
 
 export interface RealTimeContextValue {
   isConnected: boolean;
@@ -32,19 +33,76 @@ export interface RealTimeProviderProps {
 
 export function RealTimeProvider({
   children,
-  tenantId = 'demo',
+  tenantId,
   userId,
   showConnectionToasts = false, // Disabled by default since SSE is optional
   autoReconnect = false, // Disabled by default to reduce noise
 }: RealTimeProviderProps) {
   const toast = useToast();
+  const resolvedTenantId = tenantId ?? getTenantId();
   const [connectionAttempts, setConnectionAttempts] = useState(0);
   const [subscribers, setSubscribers] = useState<Map<string, Set<(data: any) => void>>>(
     new Map()
   );
 
+  // Bridge server-sent events into the app-wide real-time event bus
+  // that React Query cache sync listens to.
+  const dispatchRealTimeEvent = useCallback((type: string, data: any) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('realtime-event', {
+        detail: { type, data },
+      })
+    );
+  }, []);
+
+  const normalizeEventTypes = useCallback((type: string): string[] => {
+    switch (type) {
+      // Align SSE contract completion to the processing events that the cache sync expects.
+      case 'contract:completed':
+        return ['processing:completed', 'contract:updated'];
+
+      // Artifacts/jobs map to processing progress for broad invalidation.
+      case 'artifact:generated':
+      case 'artifact:updated':
+      case 'artifact:created':
+      case 'job:progress':
+      case 'job:status':
+      case 'job:status:changed':
+      case 'job:created':
+      case 'job:completed':
+        return ['processing:progress', 'contract:updated'];
+
+      case 'job:failed':
+      case 'job:error':
+        return ['processing:failed', 'contract:updated'];
+
+      // Cache sync currently keys off ratecard updated/imported/deleted.
+      case 'ratecard:created':
+        return ['ratecard:updated'];
+
+      // Cache sync expects notification:new.
+      case 'notification':
+        return ['notification:new'];
+
+      // Benchmarks affect dashboards/analytics broadly.
+      case 'benchmark:calculated':
+      case 'benchmark:invalidated':
+        return ['data:refresh'];
+
+      default:
+        return [type];
+    }
+  }, []);
+
   // Handle incoming events
   const handleEvent = useCallback((event: StreamEvent) => {
+    // Fan out to the global query-cache sync layer.
+    if (event?.type && event.type !== 'connected') {
+      const eventTypes = normalizeEventTypes(event.type);
+      eventTypes.forEach((t) => dispatchRealTimeEvent(t, event.data));
+    }
+
     // Broadcast to all subscribers of this event type
     const handlers = subscribers.get(event.type);
     if (handlers) {
@@ -68,7 +126,7 @@ export function RealTimeProvider({
         }
       });
     }
-  }, [subscribers]);
+  }, [dispatchRealTimeEvent, normalizeEventTypes, subscribers]);
 
   // Handle connection errors
   const handleError = useCallback((error: Error) => {
@@ -104,7 +162,7 @@ export function RealTimeProvider({
 
   // Use the event stream hook
   const { isConnected, lastEvent, error, reconnect, disconnect } = useEventStream({
-    tenantId,
+    tenantId: resolvedTenantId,
     userId,
     autoReconnect,
     onEvent: handleEvent,

@@ -16,6 +16,9 @@ import { readFile, writeFile } from "fs/promises";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { join } from "path";
 import { getErrorMessage, type JsonRecord } from "@/lib/types/common";
+import { safeDeleteContract } from "@/lib/services/contract-deletion.service";
+import { contractUpdateSchema } from "@/lib/validation/contract.validation";
+import { ZodError } from "zod";
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -464,7 +467,22 @@ export async function PUT(
   try {
     const contractId = params.id;
     const updates = await req.json();
-
+    // Validate update data with Zod schema
+    try {
+      const validated = contractUpdateSchema.parse(body);
+      console.log("✅ Update data validated for contract:", contractId);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return NextResponse.json(
+          {
+            error: "Validation failed",
+            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
     if (!contractId) {
       return NextResponse.json(
         { error: "Contract ID is required" },
@@ -526,7 +544,7 @@ export async function PUT(
   }
 }
 
-// Delete contract
+// Delete contract with cascade safety
 export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -542,41 +560,51 @@ export async function DELETE(
       );
     }
 
-    const contractDataPath = join(
-      process.cwd(),
-      "data",
-      "contracts",
-      `${contractId}.json`
-    );
-
-    if (!existsSync(contractDataPath)) {
+    // Get tenant ID for isolation
+    const tenantId = await getServerTenantId();
+    if (!tenantId) {
       return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
+        { error: "Tenant ID is required" },
+        { status: 401 }
       );
     }
 
-    // Delete contract file
-    await unlink(contractDataPath);
+    // Use safe deletion service with cascade cleanup
+    const result = await safeDeleteContract(contractId, tenantId);
 
-    // Also try to delete the uploaded file
-    try {
-      const contractData = JSON.parse(
-        await readFile(contractDataPath, "utf-8")
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error || "Failed to delete contract" },
+        { status: 400 }
       );
-      if (contractData.filePath && existsSync(contractData.filePath)) {
-        await unlink(contractData.filePath);
+    }
+
+    // Legacy file cleanup (if exists)
+    try {
+      const contractDataPath = join(
+        process.cwd(),
+        "data",
+        "contracts",
+        `${contractId}.json`
+      );
+      if (existsSync(contractDataPath)) {
+        await unlink(contractDataPath);
       }
     } catch (error) {
-      // File might already be deleted, ignore error
+      // Legacy file cleanup is optional
+      console.warn("Legacy file cleanup failed:", error);
     }
 
-    return NextResponse.json({ message: "Contract deleted successfully" });
+    return NextResponse.json({ 
+      message: "Contract deleted successfully",
+      deletedRecords: result.deletedRecords
+    });
   } catch (error) {
     console.error("Error deleting contract:", error);
     return NextResponse.json(
       {
         error: "Failed to delete contract",
+        details: getErrorMessage(error)
       },
       { status: 500 }
     );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 // Mock signature workflows
 const mockSignatureWorkflows = [
@@ -134,7 +135,7 @@ export async function POST(
     try {
       const contract = await prisma.contract.findUnique({
         where: { id: contractId },
-        select: { searchMetadata: true },
+        select: { tenantId: true, searchMetadata: true },
       });
 
       if (contract) {
@@ -150,6 +151,14 @@ export async function POST(
             })),
           },
         });
+
+        if (contract?.tenantId) {
+          void publishRealtimeEvent({
+            event: 'contract:updated',
+            data: { tenantId: contract.tenantId, contractId },
+            source: 'api:contracts/[id]/signatures',
+          });
+        }
 
         return NextResponse.json({ 
           workflow: newWorkflow,

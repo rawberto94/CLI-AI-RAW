@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ContractClassification, ContractTags } from "./contract-taxonomy.types";
 
 // ============================================================================
 // CONTRACT TYPES
@@ -37,6 +38,21 @@ export const ContractSchema = z.object({
 
   // Metadata
   contractType: z.string().optional().nullable(),
+  
+  // New Taxonomy Classification
+  contractCategoryId: z.string().optional().nullable(),
+  contractSubtype: z.string().optional().nullable(),
+  documentRole: z.string().optional().nullable(),
+  classificationConf: z.number().optional().nullable(),
+  classificationMeta: z.any().optional().nullable(),
+  classifiedAt: z.date().optional().nullable(),
+  
+  // Contract Tags
+  pricingModels: z.any().optional().nullable().default([]),
+  deliveryModels: z.any().optional().nullable().default([]),
+  dataProfiles: z.any().optional().nullable().default([]),
+  riskFlags: z.any().optional().nullable().default([]),
+  
   contractTitle: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   category: z.string().optional().nullable(),
@@ -114,7 +130,13 @@ export const ContractQuerySchema = z.object({
   clientName: z.array(z.string()).optional(),
   supplierName: z.array(z.string()).optional(),
   category: z.array(z.string()).optional(),
-  contractType: z.array(z.string()).optional(),
+  contractType: z.array(z.string()).optional(), // Legacy
+  contractCategoryId: z.array(z.string()).optional(), // New taxonomy
+  documentRole: z.array(z.string()).optional(), // New taxonomy
+  pricingModel: z.array(z.string()).optional(), // Tag dimension
+  deliveryModel: z.array(z.string()).optional(), // Tag dimension
+  dataProfile: z.array(z.string()).optional(), // Tag dimension
+  riskFlag: z.array(z.string()).optional(), // Tag dimension
   minValue: z.number().optional(),
   maxValue: z.number().optional(),
   startDateFrom: z.date().optional(),

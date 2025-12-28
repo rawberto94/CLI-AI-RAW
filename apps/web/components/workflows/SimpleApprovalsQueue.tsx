@@ -29,6 +29,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkApprovalActions } from '@/components/approvals/BulkApprovalActions';
 import {
   Dialog,
   DialogContent,
@@ -133,9 +135,11 @@ interface ApprovalCardProps {
   item: ApprovalItem;
   isSelected: boolean;
   onSelect: () => void;
+  isMultiSelected: boolean;
+  onMultiSelect: (checked: boolean) => void;
 }
 
-function ApprovalCard({ item, isSelected, onSelect }: ApprovalCardProps) {
+function ApprovalCard({ item, isSelected, onSelect, isMultiSelected, onMultiSelect }: ApprovalCardProps) {
   const daysUntilDue = Math.ceil(
     (new Date(item.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
@@ -156,18 +160,27 @@ function ApprovalCard({ item, isSelected, onSelect }: ApprovalCardProps) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
-      onClick={onSelect}
       className={cn(
-        "p-4 rounded-xl border-2 cursor-pointer transition-all",
+        "p-4 rounded-xl border-2 transition-all relative",
         isSelected
           ? "border-blue-500 bg-blue-50/50 shadow-lg"
+          : isMultiSelected
+          ? "border-blue-400 bg-blue-50/30 shadow-md"
           : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
       )}
     >
-      <div className="flex items-start gap-4">
+      {/* Multi-select checkbox */}
+      <div className="absolute top-4 left-4 z-10" onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={isMultiSelected}
+          onCheckedChange={onMultiSelect}
+        />
+      </div>
+
+      <div className="flex items-start gap-4 cursor-pointer" onClick={onSelect}>
         {/* Icon */}
         <div className={cn(
-          "w-12 h-12 rounded-xl flex items-center justify-center",
+          "w-12 h-12 rounded-xl flex items-center justify-center ml-8",
           item.type === 'contract' && "bg-blue-100 text-blue-600",
           item.type === 'amendment' && "bg-purple-100 text-purple-600",
           item.type === 'renewal' && "bg-green-100 text-green-600"
@@ -459,6 +472,7 @@ function DetailPanel({ item, onApprove, onReject, onProceedToSign, isProcessing 
 export function SimpleApprovalsQueue() {
   const [items, setItems] = useState<ApprovalItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -721,6 +735,12 @@ export function SimpleApprovalsQueue() {
                 item={item}
                 isSelected={selectedId === item.id}
                 onSelect={() => setSelectedId(item.id)}
+                isMultiSelected={selectedIds.includes(item.id)}
+                onMultiSelect={(checked) => {
+                  setSelectedIds(prev => 
+                    checked ? [...prev, item.id] : prev.filter(id => id !== item.id)
+                  );
+                }}
               />
             ))
           )}
@@ -746,6 +766,24 @@ export function SimpleApprovalsQueue() {
           )}
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      {selectedIds.length > 0 && (
+        <BulkApprovalActions
+          selectedIds={selectedIds}
+          contracts={items.map(item => ({
+            id: item.contractId,
+            title: item.title,
+            supplier: item.supplier,
+          }))}
+          onSuccess={() => {
+            setSelectedIds([]);
+            // Refresh approvals list
+            window.location.reload();
+          }}
+          onClearSelection={() => setSelectedIds([])}
+        />
+      )}
     </div>
   );
 }

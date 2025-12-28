@@ -46,7 +46,13 @@ export interface ContractWithOptimizedRelations extends Contract {
 export interface ContractSearchFilters {
   tenantId: string;
   status?: ContractStatus[];
-  contractType?: string[];
+  contractType?: string[]; // Legacy
+  contractCategoryId?: string[]; // New taxonomy
+  documentRole?: string[]; // New taxonomy
+  pricingModel?: string[]; // Tag dimension
+  deliveryModel?: string[]; // Tag dimension
+  dataProfile?: string[]; // Tag dimension
+  riskFlag?: string[]; // Tag dimension
   dateRange?: {
     from: Date;
     to: Date;
@@ -140,6 +146,44 @@ export class ContractRepository extends AbstractRepository<
 
     if (filters.contractType && filters.contractType.length > 0) {
       where.contractType = { in: filters.contractType };
+    }
+
+    // New taxonomy filters
+    if (filters.contractCategoryId && filters.contractCategoryId.length > 0) {
+      where.contractCategoryId = { in: filters.contractCategoryId };
+    }
+
+    if (filters.documentRole && filters.documentRole.length > 0) {
+      where.documentRole = { in: filters.documentRole };
+    }
+
+    // Tag dimension filters (JSON array contains)
+    if (filters.pricingModel && filters.pricingModel.length > 0) {
+      where.pricingModels = {
+        path: [],
+        array_contains: filters.pricingModel
+      };
+    }
+
+    if (filters.deliveryModel && filters.deliveryModel.length > 0) {
+      where.deliveryModels = {
+        path: [],
+        array_contains: filters.deliveryModel
+      };
+    }
+
+    if (filters.dataProfile && filters.dataProfile.length > 0) {
+      where.dataProfiles = {
+        path: [],
+        array_contains: filters.dataProfile
+      };
+    }
+
+    if (filters.riskFlag && filters.riskFlag.length > 0) {
+      where.riskFlags = {
+        path: [],
+        array_contains: filters.riskFlag
+      };
     }
 
     if (filters.dateRange) {

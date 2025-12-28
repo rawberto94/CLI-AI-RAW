@@ -11,7 +11,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
+import { getTenantIdFromRequest } from "@/lib/tenant-server";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,14 +34,22 @@ interface PartyData {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const body = await request.json().catch(() => ({}));
     
     // Options
     const contractIds = body.contractIds as string[] | undefined;
     const overwrite = body.overwrite === true; // Whether to overwrite existing values
     const dryRun = body.dryRun === true; // Preview without updating
-    
+
     // Find contracts to process
     const whereClause: {
       tenantId: string;
@@ -232,6 +241,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           success: true,
         });
       }
+    }
+
+    if (!dryRun && totalUpdated > 0) {
+      void publishRealtimeEvent({
+        event: 'data:refresh',
+        data: { tenantId },
+        source: 'api:contracts/populate-from-artifacts',
+      });
     }
     
     return NextResponse.json({

@@ -1,17 +1,23 @@
 "use client"
 
 import * as React from "react"
-
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { cn } from "../../lib/utils"
 
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableElement> & {
+    isLoading?: boolean
+  }
+>(({ className, isLoading, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full caption-bottom text-sm",
+        isLoading && "opacity-50 pointer-events-none",
+        className
+      )}
       {...props}
     />
   </div>
@@ -20,9 +26,21 @@ Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  React.HTMLAttributes<HTMLTableSectionElement> & {
+    sticky?: boolean
+    top?: number
+  }
+>(({ className, sticky, top = 0, ...props }, ref) => (
+  <thead 
+    ref={ref} 
+    className={cn(
+      "[&_tr]:border-b dark:[&_tr]:border-slate-700",
+      sticky && "sticky bg-white dark:bg-slate-900 z-10",
+      className
+    )} 
+    style={sticky ? { top } : undefined}
+    {...props} 
+  />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -60,7 +78,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b dark:border-slate-700 transition-colors hover:bg-muted/50 dark:hover:bg-slate-800/50 data-[state=selected]:bg-muted dark:data-[state=selected]:bg-slate-800",
       className
     )}
     {...props}
@@ -70,17 +88,54 @@ TableRow.displayName = "TableRow"
 
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <th
-    ref={ref}
-    className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
-      className
-    )}
-    {...props}
-  />
-))
+  React.ThHTMLAttributes<HTMLTableCellElement> & {
+    sortable?: boolean
+    sortDirection?: 'asc' | 'desc' | null
+    onSort?: () => void
+  }
+>(({ className, sortable, sortDirection, onSort, children, ...props }, ref) => {
+  const content = (
+    <>
+      {children}
+      {sortable && (
+        <span className="ml-2 inline-flex">
+          {sortDirection === 'asc' ? (
+            <ArrowUp className="h-4 w-4" aria-label="Sorted ascending" />
+          ) : sortDirection === 'desc' ? (
+            <ArrowDown className="h-4 w-4" aria-label="Sorted descending" />
+          ) : (
+            <ArrowUpDown className="h-4 w-4 opacity-50" aria-label="Sortable" />
+          )}
+        </span>
+      )}
+    </>
+  )
+
+  return (
+    <th
+      ref={ref}
+      scope="col"
+      className={cn(
+        "h-12 px-4 text-left align-middle font-medium text-muted-foreground dark:text-slate-400 [&:has([role=checkbox])]:pr-0",
+        sortable && "cursor-pointer select-none hover:bg-muted/50 dark:hover:bg-slate-800/50 transition-colors",
+        className
+      )}
+      onClick={sortable ? onSort : undefined}
+      aria-sort={
+        sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : undefined
+      }
+      {...props}
+    >
+      {sortable ? (
+        <div className="flex items-center">
+          {content}
+        </div>
+      ) : (
+        children
+      )}
+    </th>
+  )
+})
 TableHead.displayName = "TableHead"
 
 const TableCell = React.forwardRef<
@@ -89,7 +144,10 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      "p-4 align-middle [&:has([role=checkbox])]:pr-0 dark:text-slate-300",
+      className
+    )}
     {...props}
   />
 ))

@@ -148,12 +148,25 @@ const DEMO_NOTIFICATIONS: Notification[] = [
 
 // Type icons and colors
 const TYPE_CONFIG = {
-  renewal: { icon: Calendar, color: "text-orange-500", bg: "bg-orange-100 dark:bg-orange-900/30" },
-  risk: { icon: AlertTriangle, color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/30" },
-  savings: { icon: DollarSign, color: "text-green-500", bg: "bg-green-100 dark:bg-green-900/30" },
-  deadline: { icon: Clock, color: "text-blue-500", bg: "bg-blue-100 dark:bg-blue-900/30" },
-  system: { icon: Bell, color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30" },
-  contract: { icon: FileText, color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-800" },
+  renewal: { color: "text-orange-500", bg: "bg-orange-100 dark:bg-orange-900/30" },
+  risk: { color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/30" },
+  savings: { color: "text-green-500", bg: "bg-green-100 dark:bg-green-900/30" },
+  deadline: { color: "text-blue-500", bg: "bg-blue-100 dark:bg-blue-900/30" },
+  system: { color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30" },
+  contract: { color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-800" },
+};
+
+// Icon mapping function
+const getTypeIcon = (type: string) => {
+  const icons = {
+    renewal: Calendar,
+    risk: AlertTriangle,
+    savings: DollarSign,
+    deadline: Clock,
+    system: Bell,
+    contract: FileText,
+  };
+  return icons[type as keyof typeof icons] || Bell;
 };
 
 const PRIORITY_CONFIG = {
@@ -384,7 +397,7 @@ export default function NotificationsPage() {
               <ScrollArea className="max-h-[600px]">
                 <AnimatePresence>
                   {filteredNotifications.map((notification) => {
-                    const TypeIcon = TYPE_CONFIG[notification.type].icon;
+                    const TypeIcon = getTypeIcon(notification.type);
                     return (
                       <motion.div
                         key={notification.id}

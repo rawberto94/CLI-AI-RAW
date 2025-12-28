@@ -116,7 +116,22 @@ export async function POST(request: NextRequest) {
 
     teamMembers.set(member.id, member);
 
-    // TODO: Send invitation email
+    // Send invitation email
+    const { sendEmail } = await import('@/lib/email/email-service');
+    const { emailTemplates } = await import('@/lib/email/templates');
+    
+    const template = emailTemplates.teamInvitation({
+      invitedBy: 'Team Admin',
+      tenantName: 'Your Organization',
+      inviteUrl: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3005'}/accept-invitation?email=${encodeURIComponent(member.email)}`,
+      expiresIn: '7 days',
+    });
+    
+    await sendEmail({
+      to: member.email,
+      subject: template.subject,
+      html: template.html,
+    });
 
     return NextResponse.json({ member }, { status: 201 });
   } catch (error) {

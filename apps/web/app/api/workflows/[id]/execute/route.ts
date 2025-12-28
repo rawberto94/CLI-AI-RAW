@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,15 @@ export async function POST(
 ) {
   try {
     const { id: workflowId } = await params;
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     const { contractId, initiatedBy, metadata, dueDate, priority } = body;
@@ -22,13 +31,6 @@ export async function POST(
     if (!contractId) {
       return NextResponse.json(
         { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
         { status: 400 }
       );
     }
@@ -112,6 +114,12 @@ export async function POST(
               },
             },
           });
+
+          void publishRealtimeEvent({
+            event: 'notification:new',
+            data: { tenantId },
+            source: 'api:workflows/execute',
+          });
         }
       }
     }
@@ -124,6 +132,12 @@ export async function POST(
         data: {
           status: 'PENDING',
         },
+      });
+
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId, status: 'PENDING' },
+        source: 'api:workflows/execute',
       });
     } catch (e) {
       // Contract update is optional, don't fail the execution

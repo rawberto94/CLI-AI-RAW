@@ -10,6 +10,7 @@ import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { RealTimeProvider } from "@/contexts/RealTimeContext";
 import { ModuleProvider } from "@/contexts/ModuleContext";
 import { GlobalKeyboardShortcuts } from "@/components/keyboard/GlobalKeyboardShortcuts";
+import { GlobalKeyboardShortcutsProvider } from "@/providers/GlobalKeyboardShortcutsProvider";
 import { FeedbackProvider } from "@/components/feedback/FeedbackSystem";
 import { QueryProvider } from "@/lib/query-client";
 import { WebSocketProvider } from "@/contexts/websocket-context";
@@ -33,12 +34,6 @@ export const metadata = {
   title: "ConTigo - AI Contract Management",
   description: "AI-powered contract management and analysis platform",
   manifest: "/manifest.json",
-  themeColor: "#4f46e5",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -53,6 +48,13 @@ export const metadata = {
       { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
     ],
   },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#4f46e5",
 };
 
 export default function RootLayout({
@@ -79,13 +81,14 @@ export default function RootLayout({
                     <DataModeProvider>
                       <ToastProvider>
                         <UndoToastProvider>
-                          <RealTimeProvider tenantId="demo" showConnectionToasts={false}>
+                          <RealTimeProvider showConnectionToasts={false}>
                             <ModuleProvider>
                               <FeedbackProvider>
                                 <CommandPaletteProvider>
                                   <ConfirmProvider>
                                     <AnnouncerProvider>
                                     <GlobalKeyboardShortcuts>
+                                    <GlobalKeyboardShortcutsProvider>
                                     <Suspense fallback={null}>
                                       <TenantContextBanner />
                                     </Suspense>
@@ -93,6 +96,7 @@ export default function RootLayout({
                                     <ConditionalLayout>
                                       {children}
                                     </ConditionalLayout>
+                                    </GlobalKeyboardShortcutsProvider>
                                     </GlobalKeyboardShortcuts>
                                     </AnnouncerProvider>
                                   </ConfirmProvider>

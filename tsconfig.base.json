@@ -32,6 +32,8 @@
       "clients-storage/*": ["./packages/clients/storage/src/*"],
       "agents": ["./packages/agents/src"],
       "agents/*": ["./packages/agents/src/*"],
+      "data-orchestration": ["./packages/data-orchestration/src"],
+      "data-orchestration/*": ["./packages/data-orchestration/src/*"],
       "@/apps/*": ["./apps/*"],
       "@/core": ["./apps/core"],
       "@/core/*": ["./apps/core/*"],

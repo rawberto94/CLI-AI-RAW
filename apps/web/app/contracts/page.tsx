@@ -22,6 +22,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
+import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
+import { AdvancedFilterPanel, type FilterState } from "@/components/contracts/AdvancedFilterPanel";
+import { ActiveFilterChips } from "@/components/contracts/ActiveFilterChips";
+import { SavedSearchPresets, type SavedSearch } from "@/components/contracts/SavedSearchPresets";
+import { HighlightText } from "@/components/contracts/HighlightText";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -421,18 +426,6 @@ const CompactContractRow = memo(function CompactContractRow({
   formatCurrency,
   formatDate,
 }: CompactContractRowProps) {
-  const getStatusConfig = (status: string) => {
-    const configs: Record<string, { label: string; color: string; bg: string; icon: typeof CheckCircle }> = {
-      completed: { label: "Active", color: "text-emerald-700", bg: "bg-emerald-50", icon: CheckCircle },
-      processing: { label: "Processing", color: "text-blue-700", bg: "bg-blue-50", icon: Loader2 },
-      failed: { label: "Failed", color: "text-red-700", bg: "bg-red-50", icon: AlertTriangle },
-      pending: { label: "Pending", color: "text-amber-700", bg: "bg-amber-50", icon: Clock },
-    };
-    return configs[status] || { label: status, color: "text-slate-700", bg: "bg-slate-100", icon: CircleDot };
-  };
-
-  const statusConfig = getStatusConfig(contract.status);
-  const StatusIcon = statusConfig.icon;
   const isExpiringSoon = contract.expirationDate && 
     new Date(contract.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const isNew = contract.createdAt && 
@@ -489,7 +482,7 @@ const CompactContractRow = memo(function CompactContractRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors text-sm" title={contract.title}>
-              {contract.title || 'Untitled Contract'}
+              <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
             </p>
             {isNew && (
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-600 flex-shrink-0">
@@ -564,17 +557,11 @@ const CompactContractRow = memo(function CompactContractRow({
 
       {/* Status */}
       <div>
-        <span className={cn(
-          "inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium",
-          contract.status === 'completed' && "bg-emerald-50 text-emerald-700",
-          contract.status === 'processing' && "bg-blue-50 text-blue-700",
-          contract.status === 'failed' && "bg-red-50 text-red-700",
-          contract.status === 'pending' && "bg-amber-50 text-amber-700",
-          !['completed', 'processing', 'failed', 'pending'].includes(contract.status) && "bg-slate-100 text-slate-600"
-        )}>
-          <StatusIcon className={cn("h-3 w-3", contract.status === 'processing' && "animate-spin")} />
-          {statusConfig.label}
-        </span>
+        <ContractStatusBadge 
+          status={contract.status} 
+          documentRole={contract.documentRole}
+          size="sm"
+        />
       </div>
 
       {/* Actions */}
@@ -626,7 +613,6 @@ interface ContractCardProps {
   onApproval: () => void;
   formatCurrency: (value?: number) => string;
   formatDate: (date?: string) => string;
-  getStatusBadge: (status: string) => React.ReactNode;
   getRiskBadge: (riskScore?: number) => React.ReactNode;
 }
 
@@ -641,7 +627,6 @@ const ContractCard = memo(function ContractCard({
   onApproval,
   formatCurrency,
   formatDate,
-  getStatusBadge,
   getRiskBadge,
 }: ContractCardProps) {
   const isExpiringSoon = contract.expirationDate && 
@@ -682,7 +667,7 @@ const ContractCard = memo(function ContractCard({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                  {contract.title || 'Untitled Contract'}
+                  <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
                 </h3>
                 {isNew && (
                   <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 text-[10px] px-1.5 py-0 h-4 flex-shrink-0 shadow-sm">
@@ -707,7 +692,11 @@ const ContractCard = memo(function ContractCard({
               </div>
             </div>
           </div>
-          {getStatusBadge(contract.status)}
+          <ContractStatusBadge 
+            status={contract.status} 
+            documentRole={contract.documentRole}
+            size="md"
+          />
         </div>
 
         {/* Key Details */}
@@ -965,6 +954,18 @@ export default function ContractsPage() {
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  
+  // New Advanced Filter State
+  const [filterState, setFilterState] = useState<FilterState>({
+    statuses: [],
+    documentRoles: [],
+    dateRange: {},
+    valueRange: { min: 0, max: 1000000 },
+    categories: [],
+    hasDeadline: null,
+    isExpiring: null,
+  });
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
   // Category filter state
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -1260,6 +1261,41 @@ export default function ContractsPage() {
     setActivePreset(null);
     setAdvancedFilters({});
     setCategoryFilter(null);
+    setFilterState({
+      statuses: [],
+      documentRoles: [],
+      dateRange: {},
+      valueRange: { min: 0, max: 1000000 },
+      categories: [],
+      hasDeadline: null,
+      isExpiring: null,
+    });
+  }, []);
+
+  // Advanced filter handlers
+  const handleClearFilter = useCallback((filterKey: keyof FilterState) => {
+    setFilterState(prev => {
+      switch (filterKey) {
+        case 'statuses':
+        case 'documentRoles':
+        case 'categories':
+          return { ...prev, [filterKey]: [] };
+        case 'dateRange':
+          return { ...prev, dateRange: {} };
+        case 'valueRange':
+          return { ...prev, valueRange: { min: 0, max: 1000000 } };
+        case 'hasDeadline':
+        case 'isExpiring':
+          return { ...prev, [filterKey]: null };
+        default:
+          return prev;
+      }
+    });
+  }, []);
+
+  const handleLoadPreset = useCallback((search: SavedSearch) => {
+    setSearchQuery(search.query);
+    setFilterState(search.filters);
   }, []);
   
   // Apply quick preset
@@ -1431,9 +1467,14 @@ export default function ContractsPage() {
         contract.parties?.supplier?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         contract.type?.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Status filter
+      // Status filter (combines old statusFilter + new filterState.statuses)
       const matchesStatus =
-        statusFilter === "all" || contract.status === statusFilter;
+        (statusFilter === "all" || contract.status === statusFilter) &&
+        (filterState.statuses.length === 0 || filterState.statuses.includes(contract.status || ''));
+
+      // Document role filter (new from filterState)
+      const matchesDocumentRole = filterState.documentRoles.length === 0 || 
+        filterState.documentRoles.includes(contract.documentRole || '');
 
       // Contract type filter
       const matchesType = typeFilters.length === 0 || 
@@ -1452,21 +1493,22 @@ export default function ContractsPage() {
         return contractApprovalStatus === approval;
       });
       
-      // Value range filter
-      const matchesValueRange = !valueRangeFilter || (() => {
+      // Value range filter (combines old valueRangeFilter + new filterState.valueRange)
+      const matchesValueRange = (!valueRangeFilter || (() => {
         const range = VALUE_RANGES.find(r => r.value === valueRangeFilter);
         if (!range || !contract.value) return false;
         return contract.value >= range.min && contract.value < range.max;
-      })();
+      })()) && (!contract.value || (contract.value >= filterState.valueRange.min && contract.value <= filterState.valueRange.max));
       
-      // Date range filter (created date)
-      const matchesDateRange = !dateRangeFilter || (() => {
+      // Date range filter (combines old dateRangeFilter + new filterState.dateRange)
+      const matchesDateRange = (!dateRangeFilter || (() => {
         const preset = DATE_PRESETS.find(p => p.value === dateRangeFilter);
         if (!preset || !contract.createdAt) return false;
         const createdDate = new Date(contract.createdAt);
         const cutoffDate = new Date(now.getTime() - preset.days * 24 * 60 * 60 * 1000);
         return createdDate >= cutoffDate;
-      })();
+      })()) && (!filterState.dateRange.from || !contract.createdAt || new Date(contract.createdAt) >= filterState.dateRange.from) &&
+        (!filterState.dateRange.to || !contract.createdAt || new Date(contract.createdAt) <= filterState.dateRange.to);
       
       // Expiration filter
       const matchesExpiration = expirationFilters.length === 0 || expirationFilters.some(exp => {
@@ -1485,6 +1527,19 @@ export default function ContractsPage() {
         }
       });
 
+      // Has deadline filter (new from filterState)
+      const matchesHasDeadline = filterState.hasDeadline === null || 
+        (filterState.hasDeadline ? !!contract.expirationDate : !contract.expirationDate);
+
+      // Is expiring filter (new from filterState)
+      const matchesIsExpiring = filterState.isExpiring === null || (() => {
+        if (!filterState.isExpiring) return true;
+        if (!contract.expirationDate) return false;
+        const expirationDate = new Date(contract.expirationDate);
+        const daysUntilExpiry = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntilExpiry >= 0 && daysUntilExpiry <= 30; // Expiring within 30 days
+      })();
+
       // Supplier filter
       const matchesSupplier = supplierFilters.length === 0 || 
         (contract.parties?.supplier && supplierFilters.includes(contract.parties.supplier));
@@ -1496,14 +1551,15 @@ export default function ContractsPage() {
         (!advancedFilters.minValue || (contract.value && contract.value >= advancedFilters.minValue)) &&
         (!advancedFilters.maxValue || (contract.value && contract.value <= advancedFilters.maxValue));
 
-      // Category filter
-      const matchesCategory = !categoryFilter || 
-        (categoryFilter === 'uncategorized' ? !contract.category : contract.category?.id === categoryFilter);
+      // Category filter (combines old categoryFilter + new filterState.categories)
+      const matchesCategory = (!categoryFilter || 
+        (categoryFilter === 'uncategorized' ? !contract.category : contract.category?.id === categoryFilter)) &&
+        (filterState.categories.length === 0 || (contract.category && filterState.categories.includes(contract.category.id)));
 
-      return matchesSearch && matchesStatus && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesSupplier && matchesAdvanced && matchesCategory;
+      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesAdvanced && matchesCategory;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, advancedFilters, categoryFilter]);
+  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, advancedFilters, categoryFilter, filterState]);
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
@@ -2252,6 +2308,51 @@ export default function ContractsPage() {
           />
         </AnimatePresence>
 
+        {/* Advanced Filter Controls */}
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            {/* Active Filter Chips */}
+            <ActiveFilterChips
+              filters={filterState}
+              searchQuery={searchQuery}
+              onClearFilter={handleClearFilter}
+              onClearSearch={() => setSearchQuery('')}
+              onClearAll={() => {
+                clearFilters();
+              }}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {/* Saved Search Presets */}
+            <SavedSearchPresets
+              currentFilters={filterState}
+              currentQuery={searchQuery}
+              onLoadPreset={handleLoadPreset}
+            />
+            
+            {/* Advanced Filter Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(true)}
+              className="border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Advanced Filters
+              {(filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || 
+                filterState.categories.length > 0 || filterState.hasDeadline !== null || 
+                filterState.isExpiring !== null) && (
+                <Badge className="ml-2 bg-indigo-600 text-white" variant="secondary">
+                  {filterState.statuses.length + filterState.documentRoles.length + 
+                   filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
+                   (filterState.isExpiring !== null ? 1 : 0)}
+                </Badge>
+              )}
+            </Button>
+          </div>
+        </div>
+
         {/* View Mode Toggle, Sort & Results Count */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
@@ -2967,6 +3068,16 @@ export default function ContractsPage() {
         onApply={() => setShowMobileFilters(false)}
         onReset={clearFilters}
       />
+
+      {/* Advanced Filter Panel */}
+      {showAdvancedFilters && (
+        <AdvancedFilterPanel
+          filters={filterState}
+          onChange={setFilterState}
+          onClose={() => setShowAdvancedFilters(false)}
+          availableCategories={categories.map(cat => ({ id: cat.id, name: cat.name }))}
+        />
+      )}
 
       {/* Scroll to Top Button */}
       <ScrollToTopButton threshold={600} />

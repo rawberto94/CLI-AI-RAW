@@ -214,24 +214,41 @@ model UserSession {
 }
 
 model Contract {
-  id              String                   @id @default(cuid())
-  tenantId        String
-  storagePath     String?
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-  checksum        String?
-  mimeType        String                   @map("contentType")
-  contractType    String?
-  effectiveDate   DateTime?
-  expirationDate  DateTime?
-  fileName        String                   @map("filename")
-  jurisdiction    String?
-  lastAnalyzedAt  DateTime?
-  originalName    String?
-  processedAt     DateTime?
-  searchMetadata  Json?                    @default("{}")
-  metadata        Json?                    @default("{}") // General metadata storage
-  aiMetadata      Json?                    @default("{}") // AI-generated metadata
+  id          String   @id @default(cuid())
+  tenantId    String
+  storagePath String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  checksum    String?
+  mimeType    String   @map("contentType")
+
+  // Legacy contract type (deprecated - use contractCategoryId)
+  contractType String?
+
+  // New Taxonomy Classification
+  contractCategoryId String? // References contract_categories.id from taxonomy
+  contractSubtype    String? // Specific subtype from taxonomy
+  documentRole       String? // Document role from taxonomy
+  classificationConf Float? // Classification confidence 0-1
+  classificationMeta Json?     @default("{}") // Classification metadata, alternatives, reasoning
+  classifiedAt       DateTime?
+
+  effectiveDate  DateTime?
+  expirationDate DateTime?
+  fileName       String    @map("filename")
+  jurisdiction   String?
+  lastAnalyzedAt DateTime?
+  originalName   String?
+  processedAt    DateTime?
+  searchMetadata Json?     @default("{}")
+  metadata       Json?     @default("{}") // General metadata storage
+  aiMetadata     Json?     @default("{}") // AI-generated metadata
+
+  // Contract Tags (from taxonomy dimensions)
+  pricingModels   Json?                    @default("[]") // Array of pricing_model values
+  deliveryModels  Json?                    @default("[]") // Array of delivery_model values
+  dataProfiles    Json?                    @default("[]") // Array of data_profile values
+  riskFlags       Json?                    @default("[]") // Array of risk_flag values
   fileSize        BigInt                   @map("size")
   storageProvider String?                  @default("local")
   uploadedBy      String?
@@ -334,7 +351,9 @@ model Contract {
 
   @@index([tenantId])
   @@index([status])
-  @@index([contractType])
+  @@index([contractType]) // Legacy index
+  @@index([contractCategoryId]) // New taxonomy index
+  @@index([documentRole])
   @@index([createdAt])
   @@index([startDate, endDate])
   @@index([clientId])
@@ -346,7 +365,9 @@ model Contract {
   @@index([categoryL1])
   @@index([categoryL2])
   @@index([tenantId, status])
-  @@index([tenantId, contractType])
+  @@index([tenantId, contractType]) // Legacy
+  @@index([tenantId, contractCategoryId]) // New taxonomy
+  @@index([tenantId, documentRole])
   @@index([tenantId, clientName])
   @@index([tenantId, supplierName])
   @@index([tenantId, categoryL1, categoryL2])
@@ -357,7 +378,8 @@ model Contract {
   @@index([tenantId, expirationDate])
   @@index([tenantId, effectiveDate])
   @@index([tenantId, status, createdAt(sort: Desc)])
-  @@index([tenantId, contractType, createdAt(sort: Desc)])
+  @@index([tenantId, contractType, createdAt(sort: Desc)]) // Legacy
+  @@index([tenantId, contractCategoryId, createdAt(sort: Desc)]) // New taxonomy
   @@index([tenantId, category, createdAt(sort: Desc)])
   @@index([uploadedAt(sort: Desc)])
   @@index([totalValue(sort: Desc)])
@@ -378,13 +400,14 @@ model Contract {
   @@index([tenantId, expirationRisk])
   @@index([tenantId, daysUntilExpiry])
   @@index([autoRenewalEnabled])
-  @@index([renewalInitiatedAt])
-  @@index([importSource])
-  @@index([externalId])
   // Contract Hierarchy indexes
   @@index([parentContractId])
   @@index([tenantId, parentContractId])
   @@index([relationshipType])
+  @@index([tenantId, relationshipType])
+  @@index([renewalInitiatedAt])
+  @@index([importSource])
+  @@index([externalId])
   // === SCALABILITY INDEXES ===
   // Multi-column composite indexes for complex dashboard queries
   @@index([tenantId, status, totalValue(sort: Desc)])
@@ -1715,7 +1738,7 @@ model RateCardEntry {
   lastBenchmarkedAt DateTime?
 
   // Relations
-  contract             Contract?                @relation(fields: [contractId], references: [id])
+  contract             Contract?                @relation(fields: [contractId], references: [id], onDelete: Cascade)
   supplier             RateCardSupplier         @relation(fields: [supplierId], references: [id])
   benchmarkSnapshots   BenchmarkSnapshot[]
   savingsOpportunities RateSavingsOpportunity[]

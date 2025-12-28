@@ -539,7 +539,7 @@ export default function AdvancedSearchClient() {
                     {searchCriteria.tags.map((tag) => (
                       <Badge key={tag} className="flex items-center gap-1">
                         {tag}
-                        <button onClick={() => removeTag(tag)}>
+                        <button onClick={() => removeTag(tag)} aria-label={`Remove tag ${tag}`}>
                           <X className="w-3 h-3" />
                         </button>
                       </Badge>

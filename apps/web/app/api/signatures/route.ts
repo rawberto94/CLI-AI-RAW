@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 // Types
 interface Signer {
@@ -214,6 +215,23 @@ export async function POST(request: NextRequest) {
         where: { id: contractId },
         data: { status: 'PENDING' }
       });
+
+      try {
+        const contract = await prisma.contract.findUnique({
+          where: { id: contractId },
+          select: { tenantId: true },
+        });
+
+        if (contract?.tenantId) {
+          void publishRealtimeEvent({
+            event: 'contract:updated',
+            data: { tenantId: contract.tenantId, contractId, status: 'PENDING' },
+            source: 'api:signatures',
+          });
+        }
+      } catch {
+        // best-effort only
+      }
 
       return NextResponse.json({
         success: true,

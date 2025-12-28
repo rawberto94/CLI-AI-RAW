@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
 
 export const runtime = "nodejs";
 
@@ -104,6 +105,16 @@ export async function PUT(
     });
     
     console.log(`[Hierarchy API] Linked contract ${contractId} to parent ${parentContractId}`);
+
+    await publishRealtimeEvent({
+      event: "contract:updated",
+      data: {
+        tenantId,
+        contractId,
+        parentContractId,
+      },
+      source: "api:contracts/[id]/hierarchy",
+    });
     
     return NextResponse.json({
       success: true,
@@ -182,6 +193,16 @@ export async function DELETE(
     });
     
     console.log(`[Hierarchy API] Unlinked contract ${contractId} from parent`);
+
+    await publishRealtimeEvent({
+      event: "contract:updated",
+      data: {
+        tenantId,
+        contractId,
+        parentContractId: null,
+      },
+      source: "api:contracts/[id]/hierarchy",
+    });
     
     return NextResponse.json({
       success: true,

@@ -184,23 +184,22 @@ export async function POST(request: NextRequest) {
     const emailContent = templateFn(notification);
 
     // In production, integrate with email service (SendGrid, AWS SES, etc.)
-    // For now, log the email content and return success
     console.log('📧 Email notification:', {
       to: notification.recipientEmail,
       subject: emailContent.subject,
-      // In production: would send via email service
     });
 
-    // Check if we have email service configured
-    const emailServiceConfigured = process.env.SENDGRID_API_KEY || process.env.AWS_SES_REGION;
-
-    if (emailServiceConfigured) {
-      // TODO: Implement actual email sending
-      // await sendEmail({
-      //   to: notification.recipientEmail,
-      //   subject: emailContent.subject,
-      //   html: emailContent.html,
-      // });
+    // Send email via SendGrid
+    const { sendEmail } = await import('@/lib/email/email-service');
+    const emailSent = await sendEmail({
+      to: notification.recipientEmail,
+      subject: emailContent.subject,
+      html: emailContent.html,
+      from: 'notifications@contigo.ch',
+    });
+    
+    if (!emailSent) {
+      console.warn('⚠️ Failed to send email notification');
     }
 
     // Also create a notification record in database for in-app notifications

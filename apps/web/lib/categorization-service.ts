@@ -869,6 +869,27 @@ export async function categorizeContract(
       };
     }
 
+    // Validate category belongs to tenant before updating
+    if (result.categoryId) {
+      const category = await prisma.taxonomyCategory.findFirst({
+        where: { id: result.categoryId, tenantId },
+      });
+      if (!category) {
+        console.error(`⚠️ Category ${result.categoryId} does not belong to tenant ${tenantId}`);
+        return {
+          success: false,
+          contractId,
+          category: null,
+          categoryId: null,
+          categoryPath: null,
+          confidence: 0,
+          method: "none",
+          alternativeCategories: [],
+          error: "Invalid category for tenant",
+        };
+      }
+    }
+
     // Update contract with category
     await prisma.contract.update({
       where: { id: contractId },

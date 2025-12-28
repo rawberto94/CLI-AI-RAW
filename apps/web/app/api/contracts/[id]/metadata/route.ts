@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
 
 // Type definition for enterprise metadata schema
 interface EnterpriseMetadata {
@@ -235,6 +236,19 @@ export async function PUT(
       }, { status: 404 });
     }
 
+    // Validate category ownership if categoryId is being updated
+    if (metadata.contractCategoryId) {
+      const category = await prisma.taxonomyCategory.findFirst({
+        where: { id: metadata.contractCategoryId, tenantId },
+      });
+      if (!category) {
+        return NextResponse.json({
+          success: false,
+          error: "Invalid category: belongs to different tenant or does not exist"
+        }, { status: 403 });
+      }
+    }
+
     // Merge with existing aiMetadata
     const existingAiMetadata = (existingContract.aiMetadata as EnterpriseMetadata) || {};
     const updatedAiMetadata: EnterpriseMetadata = {
@@ -302,6 +316,15 @@ export async function PUT(
         ...legacyUpdates,
         updatedAt: new Date(),
       }
+    });
+
+    await publishRealtimeEvent({
+      event: "contract:updated",
+      data: {
+        tenantId,
+        contractId: updatedContract.id,
+      },
+      source: "api:contracts/[id]/metadata",
     });
 
     return NextResponse.json({

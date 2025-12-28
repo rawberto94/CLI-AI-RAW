@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { requiresApprovalWorkflow, getContractLifecycle, suggestWorkflow } from '@/lib/contract-helpers';
+import { autoAssignWorkflowSteps } from '@/lib/workflow-auto-assign';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +46,15 @@ const workflowTemplates = {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     
@@ -65,14 +76,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Get template or use custom approvers
-    const template = workflowTemplates[workflowType as keyof typeof workflowTemplates] || workflowTemplates.standard;
+    const template = workflowTemplates[effectiveWorkflowType as keyof typeof workflowTemplates] || workflowTemplates.standard;
 
     // Try database first
     try {
       // Check if contract exists
       const contract = await prisma.contract.findUnique({
         where: { id: contractId },
-        select: { id: true, contractTitle: true, supplierName: true, totalValue: true },
+        select: { 
+          id: true, 
+          contractTitle: true, 
+          supplierName: true, 
+          totalValue: true,
+          status: true,
+          documentRole: true,
+          metadata: true,
+        },
       });
 
       if (!contract) {
@@ -81,6 +100,27 @@ export async function POST(request: NextRequest) {
           { status: 404 }
         );
       }
+
+      // Only allow approval workflows for NEW contracts (DRAFT status or documentRole=NEW_CONTRACT)
+      // Skip approval for EXISTING contracts being uploaded for reference/storage
+      if (!requiresApprovalWorkflow(contract)) {
+        const lifecycle = getContractLifecycle(contract);
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Approval workflows are only required for new contracts being created or amendments.',
+            lifecycle,
+            hint: 'To submit for approval, set contract status=DRAFT or documentRole=NEW_CONTRACT',
+            currentStatus: contract.status,
+            currentDocumentRole: contract.documentRole,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Suggest appropriate workflow if not specified
+      const suggestedWorkflow = suggestWorkflow(contract);
+      const effectiveWorkflowType = workflowType || suggestedWorkflow || 'standard';
 
       // Check for existing active approval workflow
       const existingWorkflow = await prisma.workflowExecution.findFirst({
@@ -172,6 +212,15 @@ export async function POST(request: NextRequest) {
         data: stepsToCreate,
       });
 
+      // Auto-assign workflow steps to users based on roles
+      const { assigned, errors } = await autoAssignWorkflowSteps(tenantId, execution.id);
+      
+      if (errors.length > 0) {
+        console.warn('Auto-assignment warnings:', errors);
+      }
+
+      console.log(`✅ Auto-assigned ${assigned}/${stepsToCreate.length} workflow steps`);
+
       // Update contract status
       await prisma.contract.update({
         where: { id: contractId },
@@ -179,6 +228,17 @@ export async function POST(request: NextRequest) {
           status: 'PENDING',
           updatedAt: new Date(),
         },
+      });
+
+      void publishRealtimeEvent({
+        event: 'approval:submitted',
+        data: { tenantId, contractId, executionId: execution.id },
+        source: 'api:approvals/submit',
+      });
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId, status: 'PENDING' },
+        source: 'api:approvals/submit',
       });
 
       // Create notification for first approver if assigned

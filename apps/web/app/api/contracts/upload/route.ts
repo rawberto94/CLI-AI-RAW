@@ -15,6 +15,9 @@ import { join } from "path";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { contractUploadSchema } from "@/lib/validation/contract.validation";
+import { ZodError } from "zod";
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -214,6 +217,44 @@ export async function POST(
       type: file.type,
     });
 
+    // Extract and validate metadata using Zod schema
+    try {
+      const metadata = {
+        file,
+        contractType: formData.get("contractType") as string | null,
+        startDate: formData.get("startDate") as string | null,
+        endDate: formData.get("endDate") as string | null,
+        totalValue: formData.get("totalValue") ? parseFloat(formData.get("totalValue") as string) : undefined,
+        currency: formData.get("currency") as string | null,
+        clientName: formData.get("clientName") as string | null,
+        supplierName: formData.get("supplierName") as string | null,
+        contractTitle: formData.get("contractTitle") as string | null,
+        description: formData.get("description") as string | null,
+        category: formData.get("category") as string | null,
+        uploadedBy: formData.get("uploadedBy") as string | null,
+      };
+
+      // Validate with contractUploadSchema
+      const validatedMetadata = contractUploadSchema.parse(metadata);
+      console.log("✅ Metadata validated:", {
+        hasStartDate: !!validatedMetadata.startDate,
+        hasEndDate: !!validatedMetadata.endDate,
+        hasTotalValue: !!validatedMetadata.totalValue,
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Validation failed",
+            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
+          },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
     // Validate file
     const typeValidation = validateFileType(file);
     if (!typeValidation.valid) {
@@ -358,6 +399,7 @@ export async function POST(
       category: formData.get("category") as string | null,
       totalValue: formData.get("totalValue") as string | null,
       currency: formData.get("currency") as string | null,
+      lifecycle: formData.get("lifecycle") as string | null,
     };
 
     // Create contract with all side effects in a transaction
@@ -376,7 +418,10 @@ export async function POST(
             mimeType: file.type || "application/octet-stream",
             storagePath: filePath,
             storageProvider: storageProvider,
-            status: "PROCESSING",
+            status: metadata.lifecycle === 'NEW' || metadata.lifecycle === 'AMENDMENT' ? "DRAFT" : "PROCESSING",
+            documentRole: metadata.lifecycle === 'NEW' ? 'NEW_CONTRACT' : 
+                         metadata.lifecycle === 'AMENDMENT' ? 'AMENDMENT' :
+                         metadata.lifecycle === 'RENEWAL' ? 'RENEWAL' : 'EXISTING',
             uploadedBy: metadata.uploadedBy || "anonymous",
             contractType: metadata.contractType || "UNKNOWN",
             contractTitle: metadata.contractTitle || file.name,
@@ -444,6 +489,18 @@ export async function POST(
       wasExecuted,
     });
 
+    if (wasExecuted) {
+      await publishRealtimeEvent({
+        event: "contract:created",
+        data: {
+          tenantId: contract.tenantId,
+          contractId: contract.id,
+          status: contract.status,
+        },
+        source: "api:contracts/upload",
+      });
+    }
+
     // Initialize contract metadata (non-blocking)
     try {
       const { initializeContractMetadata } = await import(
@@ -461,6 +518,62 @@ export async function POST(
       });
     } catch (error) {
       console.error("❌ Failed to import contract-integration:", error);
+    }
+
+    // Classify contract using taxonomy (non-blocking, async)
+    try {
+      // Read first few pages for classification
+      const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
+      
+      const { quickClassifyContract } = await import("@/lib/ai/contract-classifier-taxonomy");
+      
+      // Run classification in background
+      quickClassifyContract(textContent, file.name)
+        .then(async (classification) => {
+          console.log("✅ Contract classified:", {
+            contractId: contract.id,
+            category: classification.category_id,
+            confidence: classification.confidence
+          });
+          
+          // Validate category ownership before assignment
+          const category = await prisma.taxonomyCategory.findFirst({
+            where: { 
+              id: classification.category_id,
+              tenantId 
+            },
+          });
+          
+          // Only update if category is valid for this tenant
+          if (category || !classification.category_id) {
+            // Update contract with taxonomy classification
+            await prisma.contract.update({
+              where: { id: contract.id },
+              data: {
+                contractCategoryId: classification.category_id,
+                contractSubtype: classification.subtype,
+                documentRole: classification.document_role,
+                classificationConf: classification.confidence,
+                classifiedAt: new Date(),
+                // Store tags as JSON arrays
+                pricingModels: classification.tags.pricing_models,
+                deliveryModels: classification.tags.delivery_models,
+                dataProfiles: classification.tags.data_profiles,
+                riskFlags: classification.tags.risk_flags,
+              },
+            });
+          } else {
+            console.warn(`⚠️ Invalid category ${classification.category_id} for tenant ${tenantId}, skipping classification`);
+          }
+          
+          console.log("✅ Contract updated with taxonomy classification");
+        })
+        .catch((error) => {
+          console.error("❌ Contract classification error:", error);
+          // Don't fail upload if classification fails
+        });
+    } catch (error) {
+      console.error("❌ Failed to import taxonomy classifier:", error);
     }
 
     // Trigger artifact generation via queue (non-blocking)

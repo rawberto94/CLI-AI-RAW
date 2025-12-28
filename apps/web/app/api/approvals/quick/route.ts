@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getApiTenantId } from '@/lib/tenant-server'
+import { getTenantIdFromRequest } from '@/lib/tenant-server'
+import { publishRealtimeEvent } from '@/lib/realtime/publish'
 
 /**
  * LEAN API: Quick approval actions
@@ -33,15 +34,17 @@ const DEFAULT_WORKFLOW = {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = getApiTenantId(request)
-    const userId = request.headers.get('x-user-id') || 'system'
-    
-    if (!tenantId) {
+    let tenantId: string
+    try {
+      tenantId = await getTenantIdFromRequest(request)
+    } catch {
       return NextResponse.json(
         { error: 'Tenant ID is required' },
         { status: 400 }
       )
     }
+    const userId = request.headers.get('x-user-id') || 'system'
+    
     const body: QuickActionBody = await request.json()
 
     const { contractId, action, comment } = body
@@ -196,6 +199,27 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const approvalEvent =
+      newStatus === 'COMPLETED'
+        ? 'approval:completed'
+        : newStatus === 'FAILED'
+          ? 'approval:rejected'
+          : 'approval:submitted'
+
+    void publishRealtimeEvent({
+      event: approvalEvent,
+      data: { tenantId, contractId, executionId: execution.id },
+      source: 'api:approvals/quick',
+    })
+
+    if (contractStatus) {
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId, status: contractStatus },
+        source: 'api:approvals/quick',
+      })
+    }
+
     return NextResponse.json({
       success: true,
       action,
@@ -219,15 +243,16 @@ export async function POST(request: NextRequest) {
 // GET - List pending approvals with simplified response
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = getApiTenantId(request)
-    
-    if (!tenantId) {
+    let tenantId: string
+    try {
+      tenantId = await getTenantIdFromRequest(request)
+    } catch {
       return NextResponse.json(
         { error: 'Tenant ID is required' },
         { status: 400 }
       )
     }
-
+    
     const pendingExecutions = await prisma.workflowExecution.findMany({
       where: {
         tenantId,

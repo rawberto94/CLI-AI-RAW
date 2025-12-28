@@ -3,6 +3,8 @@
  * Displayed when the user is offline and the requested page is not cached
  */
 
+'use client';
+
 import { WifiOff, RefreshCw, Home } from 'lucide-react';
 import Link from 'next/link';
 

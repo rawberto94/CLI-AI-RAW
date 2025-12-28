@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,7 +101,15 @@ const getMockNotifications = (userId: string): Notification[] => [
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const userId = request.headers.get('x-user-id') || 'current-user';
     const { searchParams } = new URL(request.url);
     
@@ -165,7 +174,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const body = await request.json();
     
     const { userId, type, title, message, link, metadata, recipients } = body;
@@ -201,6 +218,12 @@ export async function POST(request: NextRequest) {
         })),
       });
 
+      void publishRealtimeEvent({
+        event: 'notification:new',
+        data: { tenantId },
+        source: 'api:notifications',
+      });
+
       return NextResponse.json({
         success: true,
         message: `${notifications.count} notification(s) created`,
@@ -232,7 +255,15 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const userId = request.headers.get('x-user-id') || 'current-user';
     const body = await request.json();
     
@@ -243,6 +274,12 @@ export async function PATCH(request: NextRequest) {
         const result = await prisma.notification.updateMany({
           where: { tenantId, userId, isRead: false },
           data: { isRead: true },
+        });
+
+        void publishRealtimeEvent({
+          event: 'notification:new',
+          data: { tenantId },
+          source: 'api:notifications',
         });
 
         return NextResponse.json({
@@ -257,6 +294,12 @@ export async function PATCH(request: NextRequest) {
         const result = await prisma.notification.updateMany({
           where: { id: { in: notificationIds }, tenantId, userId },
           data: { isRead: true },
+        });
+
+        void publishRealtimeEvent({
+          event: 'notification:new',
+          data: { tenantId },
+          source: 'api:notifications',
         });
 
         return NextResponse.json({
@@ -294,7 +337,15 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     const userId = request.headers.get('x-user-id') || 'current-user';
     const { searchParams } = new URL(request.url);
     
@@ -307,6 +358,12 @@ export async function DELETE(request: NextRequest) {
           where: { id: notificationId, tenantId, userId },
         });
 
+        void publishRealtimeEvent({
+          event: 'notification:new',
+          data: { tenantId },
+          source: 'api:notifications',
+        });
+
         return NextResponse.json({
           success: true,
           message: 'Notification deleted',
@@ -317,6 +374,12 @@ export async function DELETE(request: NextRequest) {
       if (deleteRead) {
         const result = await prisma.notification.deleteMany({
           where: { tenantId, userId, isRead: true },
+        });
+
+        void publishRealtimeEvent({
+          event: 'notification:new',
+          data: { tenantId },
+          source: 'api:notifications',
         });
 
         return NextResponse.json({

@@ -22,12 +22,22 @@ import {
 } from 'lucide-react';
 
 export default function ProcurementAnalyticsHub() {
+  const getModuleIcon = (id: string) => {
+    const icons: Record<string, any> = {
+      'suppliers': Users,
+      'negotiation': Handshake,
+      'savings': DollarSign,
+      'renewals': Calendar,
+      'rate-intelligence': BarChart3,
+    };
+    return icons[id] || BarChart3;
+  };
+
   const analyticsModules = [
     {
       id: 'suppliers',
       title: 'Supplier Analytics',
       description: 'Comprehensive supplier performance and relationship analytics',
-      icon: Users,
       color: 'from-green-500 to-blue-600',
       route: '/analytics/suppliers',
       features: [
@@ -42,7 +52,6 @@ export default function ProcurementAnalyticsHub() {
       id: 'negotiation',
       title: 'Negotiation Preparation',
       description: 'Strategic insights and leverage points for successful negotiations',
-      icon: Handshake,
       color: 'from-purple-500 to-pink-600',
       route: '/analytics/negotiation',
       features: [
@@ -57,7 +66,6 @@ export default function ProcurementAnalyticsHub() {
       id: 'savings',
       title: 'Savings Pipeline',
       description: 'Track and manage cost savings opportunities',
-      icon: DollarSign,
       color: 'from-emerald-500 to-teal-600',
       route: '/analytics/savings',
       features: [
@@ -72,7 +80,6 @@ export default function ProcurementAnalyticsHub() {
       id: 'renewals',
       title: 'Renewal Radar',
       description: 'Track upcoming contract renewals and manage renewal processes',
-      icon: Calendar,
       color: 'from-orange-500 to-red-600',
       route: '/analytics/renewals',
       features: [
@@ -87,7 +94,6 @@ export default function ProcurementAnalyticsHub() {
       id: 'rate-intelligence',
       title: 'Rate Intelligence',
       description: 'Market rate benchmarking and competitive analysis',
-      icon: BarChart3,
       color: 'from-blue-500 to-indigo-600',
       route: '/rate-cards/benchmarking',
       features: [
@@ -200,7 +206,7 @@ export default function ProcurementAnalyticsHub() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {analyticsModules.map((module, index) => {
-              const Icon = module.icon;
+              const Icon = getModuleIcon(module.id);
               return (
                 <motion.div
                   key={module.id}

@@ -176,11 +176,12 @@ export default function ArtifactsAnalyticsPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total Artifacts', value: metrics.totalArtifacts.toLocaleString(), icon: FileText, color: 'blue' },
-            { label: 'Avg Confidence', value: `${Math.round(metrics.avgConfidence * 100)}%`, icon: CheckCircle2, color: 'green' },
-            { label: 'Avg Completeness', value: `${metrics.avgCompleteness}%`, icon: BarChart3, color: 'purple' },
-            { label: 'Cost Savings', value: `$${(metrics.costSavingsTotal / 1000000).toFixed(1)}M`, icon: DollarSign, color: 'emerald' }
+            { label: 'Total Artifacts', value: metrics.totalArtifacts.toLocaleString(), iconName: 'FileText', color: 'blue' },
+            { label: 'Avg Confidence', value: `${Math.round(metrics.avgConfidence * 100)}%`, iconName: 'CheckCircle2', color: 'green' },
+            { label: 'Avg Completeness', value: `${metrics.avgCompleteness}%`, iconName: 'BarChart3', color: 'purple' },
+            { label: 'Cost Savings', value: `$${(metrics.costSavingsTotal / 1000000).toFixed(1)}M`, iconName: 'DollarSign', color: 'emerald' }
           ].map((item, index) => {
+            const IconComponent = item.iconName === 'FileText' ? FileText : item.iconName === 'CheckCircle2' ? CheckCircle2 : item.iconName === 'BarChart3' ? BarChart3 : DollarSign;
             const gradients: Record<string, string> = {
               blue: 'from-blue-500 to-indigo-600',
               green: 'from-green-500 to-emerald-600',
@@ -205,7 +206,7 @@ export default function ArtifactsAnalyticsPage() {
                         </p>
                       </div>
                       <div className={`p-3 rounded-xl bg-gradient-to-br ${gradients[item.color]} shadow-lg`}>
-                        <item.icon className="h-6 w-6 text-white" />
+                        <IconComponent className="h-6 w-6 text-white" />
                       </div>
                     </div>
                   </CardContent>

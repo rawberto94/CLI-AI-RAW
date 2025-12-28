@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { publishRealtimeEvent } from '@/lib/realtime/publish'
+import { safeDeleteContract } from '@/lib/services/contract-deletion.service'
+import { bulkOperationSchema } from '@/lib/validation/contract.validation'
+import { ZodError } from 'zod'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { operation, contractIds } = body
     const dataMode = request.headers.get('x-data-mode') || 'real'
     const tenantId = request.headers.get('x-tenant-id')
 
@@ -16,12 +19,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!contractIds || !Array.isArray(contractIds) || contractIds.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No contracts specified' },
-        { status: 400 }
-      )
+    // Validate request body with Zod schema
+    try {
+      const validated = bulkOperationSchema.parse(body)
+      const { operation, contractIds } = validated
+    } catch (validationError) {
+      if (validationError instanceof ZodError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Validation failed',
+            details: validationError.errors.map(e => `${e.path.join('.')}: ${e.message}`)
+          },
+          { status: 400 }
+        )
+      }
+      throw validationError
     }
+
+    const { operation, contractIds } = body
 
     if (dataMode !== 'real') {
       // Mock response
@@ -76,6 +92,12 @@ export async function POST(request: NextRequest) {
                 updatedAt: new Date() 
               }
             })
+
+            await publishRealtimeEvent({
+              event: 'contract:updated',
+              data: { tenantId, contractId, status: 'PROCESSING' },
+              source: 'api:contracts/bulk',
+            })
             analyzeResults.push({ contractId, status: 'queued' })
           } catch (e) {
             analyzeResults.push({ contractId, status: 'failed', error: (e as Error).message })
@@ -103,16 +125,24 @@ export async function POST(request: NextRequest) {
         })
 
       case 'delete':
-        // Delete multiple contracts
-        const deleted = await prisma.contract.deleteMany({
-          where: { 
-            id: { in: contractIds },
-            tenantId
-          }
-        })
+        // Delete multiple contracts with cascade safety
+        const deleteResults = await Promise.allSettled(
+          contractIds.map((contractId: string) =>
+            safeDeleteContract(contractId, tenantId)
+          )
+        )
+
+        const successCount = deleteResults.filter(
+          (r) => r.status === 'fulfilled' && r.value.success
+        ).length
+        const failedCount = deleteResults.length - successCount
+
+        // Realtime events already published by safeDeleteContract
         return NextResponse.json({
           success: true,
-          message: `Deleted ${deleted.count} contracts`
+          message: `Deleted ${successCount} contracts${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
+          deleted: successCount,
+          failed: failedCount
         })
 
       case 'archive':
@@ -127,6 +157,16 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date()
           }
         })
+
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            publishRealtimeEvent({
+              event: 'contract:updated',
+              data: { tenantId, contractId, status: 'ARCHIVED' },
+              source: 'api:contracts/bulk',
+            })
+          )
+        )
         return NextResponse.json({
           success: true,
           message: `Archived ${contractIds.length} contracts`

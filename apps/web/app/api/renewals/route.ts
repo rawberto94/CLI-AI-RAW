@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
 
@@ -329,6 +330,17 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      void publishRealtimeEvent({
+        event: 'renewal:initiated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
+      });
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Renewal process initiated',
@@ -348,6 +360,12 @@ export async function POST(request: NextRequest) {
           renewalNotes: `Notice sent on ${new Date().toISOString()}`,
           updatedAt: new Date(),
         },
+      });
+
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
       });
 
       return NextResponse.json({
@@ -370,6 +388,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
+      });
+
       return NextResponse.json({
         success: true,
         message: `Auto-renewal ${contract.autoRenewalEnabled ? 'disabled' : 'enabled'}`,
@@ -389,6 +413,17 @@ export async function POST(request: NextRequest) {
           renewalCompletedAt: new Date(),
           updatedAt: new Date(),
         },
+      });
+
+      void publishRealtimeEvent({
+        event: 'renewal:completed',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
+      });
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
       });
 
       return NextResponse.json({
@@ -414,6 +449,12 @@ export async function POST(request: NextRequest) {
             ...(endDate && { endDate: new Date(endDate), expirationDate: new Date(endDate) }),
             updatedAt: new Date(),
           },
+        });
+
+        void publishRealtimeEvent({
+          event: 'contract:updated',
+          data: { tenantId, contractId: contract.id },
+          source: 'api:renewals',
         });
       }
 
@@ -487,6 +528,12 @@ export async function PATCH(request: NextRequest) {
           updatedAt: new Date(),
         },
       });
+
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
+      });
     }
 
     // Update contract renewal fields if provided
@@ -499,6 +546,12 @@ export async function PATCH(request: NextRequest) {
           ...(updates.renewalStatus && { renewalStatus: updates.renewalStatus }),
           updatedAt: new Date(),
         },
+      });
+
+      void publishRealtimeEvent({
+        event: 'contract:updated',
+        data: { tenantId, contractId: contract.id },
+        source: 'api:renewals',
       });
     }
 

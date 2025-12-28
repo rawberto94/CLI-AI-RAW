@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 import { prisma } from "@/lib/prisma";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
 
 export async function POST(
   _request: NextRequest,
@@ -44,6 +45,12 @@ export async function POST(
     await prisma.contract.update({
       where: { id: contractId },
       data: { status: 'PROCESSING' }
+    });
+
+    void publishRealtimeEvent({
+      event: 'processing:started',
+      data: { tenantId: contract.tenantId, contractId },
+      source: 'api:contracts/retry',
     });
 
     // Reset or create processing job

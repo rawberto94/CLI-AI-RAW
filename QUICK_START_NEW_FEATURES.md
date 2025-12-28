@@ -1,11 +1,82 @@
 # 🚀 New UI/UX Features - Quick Start Guide
 
-## ✨ What's New
+## ✨ What's New (December 2024)
 
-Two powerful new features have been added to enhance your contract management experience:
+Five powerful new features have been added to enhance your contract management experience:
 
-1. **Smart Context Sidebar** - Always-visible contract information
-2. **Command Palette** - Keyboard shortcuts for everything
+1. **Advanced Search System** - Multi-criteria filtering with saved searches (NEW!)
+2. **Smart Context Sidebar** - Always-visible contract information
+3. **Command Palette** - Keyboard shortcuts for everything
+4. **Contract Lifecycle Management** - Auto-assignment and status tracking
+5. **Bulk Actions** - Manage multiple contracts at once
+
+---
+
+## 🔍 Advanced Search System (NEW!)
+
+### Location
+Visible on the **contracts list page** (`/contracts`)
+
+### What It Includes
+
+**Advanced Filter Panel**
+- 7 status filters (Draft, Pending, Processing, Active, Completed, Failed, Expired)
+- 4 document role filters (New Contract, Existing, Amendment, Renewal)
+- Date range picker for created dates
+- Value range slider ($0 - $1M)
+- Category selection
+- Quick toggles (Has Deadline, Expiring Soon)
+
+**Active Filter Chips**
+- Visual display of all active filters
+- Color-coded by filter type
+- Individual chip removal with X button
+- Clear all filters button
+
+**Saved Search Presets**
+- Save current filters with custom name
+- Pin frequently used searches
+- Quick load saved searches
+- Edit and delete searches
+- Up to 20 saved searches per user
+
+**Search Highlighting**
+- Yellow highlight on matching search terms
+- Multi-word search support
+- Case-insensitive matching
+
+### How to Use
+
+**Opening Advanced Filters:**
+1. Click "Advanced Filters" button (top right of search area)
+2. Panel slides in from right
+3. Select your filters
+4. Click "Apply Filters" or click outside to close
+
+**Saving Searches:**
+1. Apply your desired filters
+2. Click the bookmark icon dropdown
+3. Click "Save Current Search"
+4. Enter a custom name
+5. Click "Save"
+
+**Loading Saved Searches:**
+1. Click the bookmark icon dropdown
+2. Click on any saved search name
+3. Filters applied instantly
+
+**Removing Filters:**
+- Click X on individual filter chip to remove that filter
+- Click "Clear All" to remove all filters at once
+
+### Features
+
+✅ **Multi-criteria filtering** - Combine multiple filter types  
+✅ **Saved searches** - Save and load your favorite filter combinations  
+✅ **Search highlighting** - See matching terms instantly  
+✅ **Visual feedback** - Color-coded filter chips  
+✅ **Persistent** - Saved searches stored locally  
+✅ **Fast** - Optimized for 1000+ contracts  
 
 ---
 

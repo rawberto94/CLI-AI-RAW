@@ -515,7 +515,6 @@ function ComparisonRow({
     <TableRow className={highlight ? "bg-yellow-50" : ""}>
       <TableCell className="font-medium">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="w-4 h-4 text-gray-400" />}
           {label}
         </div>
       </TableCell>
@@ -577,15 +576,32 @@ export default function ContractComparisonPage() {
   useEffect(() => {
     async function loadContracts() {
       try {
-        const response = await fetch("/api/contracts?limit=500");
-        if (response.ok) {
-          const data = await response.json();
-          // Handle nested data structure from API
-          const contractsList = data.data?.contracts || data.contracts || [];
-          setContracts(contractsList);
+        setIsLoadingContracts(true);
+        const response = await fetch("/api/contracts?limit=500", {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load contracts: ${response.status} ${response.statusText}`);
         }
+        
+        const data = await response.json();
+        // Handle nested data structure from API
+        const contractsList = data.data?.contracts || data.contracts || data || [];
+        
+        if (!Array.isArray(contractsList)) {
+          console.error("Unexpected data format:", data);
+          throw new Error("Invalid data format received from API");
+        }
+        
+        console.log(`Loaded ${contractsList.length} contracts for comparison`);
+        setContracts(contractsList);
       } catch (error) {
         console.error("Failed to load contracts:", error);
+        // Optionally show error to user
+        setContracts([]);
       } finally {
         setIsLoadingContracts(false);
       }
@@ -750,10 +766,15 @@ export default function ContractComparisonPage() {
 
     // Trigger AI analysis
     setIsAiAnalyzing(true);
+    setAiAnalysis(null); // Clear previous analysis
+    
     try {
       const aiResponse = await fetch("/api/ai/compare-contracts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-tenant-id": "default", // Add tenant ID if needed
+        },
         body: JSON.stringify({
           group1: {
             name: stats1.name,
@@ -790,9 +811,18 @@ export default function ContractComparisonPage() {
         }),
       });
 
-      if (aiResponse.ok) {
-        const aiData = await aiResponse.json();
-        setAiAnalysis(aiData.analysis || aiData.data?.analysis);
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error("AI comparison failed:", aiResponse.status, errorText);
+        throw new Error(`AI analysis failed: ${aiResponse.status}`);
+      }
+
+      const aiData = await aiResponse.json();
+      const analysisText = aiData.analysis || aiData.data?.analysis || aiData.result;
+      
+      if (analysisText) {
+        setAiAnalysis(analysisText);
+        console.log("AI analysis completed successfully");
         
         // Update comparison with metrics from API if available
         if (aiData.data?.metrics) {
@@ -802,7 +832,7 @@ export default function ContractComparisonPage() {
           } : null);
         }
       } else {
-        // Generate fallback analysis
+        console.warn("No analysis text in response:", aiData);
         setAiAnalysis(generateFallbackAnalysis(stats1, stats2, keyInsights));
       }
     } catch (error) {

@@ -62,12 +62,23 @@ export default function ImprovedAnalyticsPage() {
 
   useRealTimeEvents(eventHandlers);
 
+  const getPageIcon = (title: string) => {
+    const icons: Record<string, any> = {
+      'Artifacts': FileBarChart,
+      'Cost Savings': DollarSign,
+      'Renewals': Calendar,
+      'Suppliers': Users,
+      'Negotiation': TrendingUp,
+      'Procurement': Briefcase,
+    };
+    return icons[title] || FileBarChart;
+  };
+
   const analyticsPages = [
     {
       title: 'Artifacts',
       description: 'Artifact extraction analytics',
       href: '/analytics/artifacts',
-      icon: FileBarChart,
       gradient: 'from-blue-500 to-cyan-500',
       shadowColor: 'shadow-blue-500/20'
     },
@@ -75,7 +86,6 @@ export default function ImprovedAnalyticsPage() {
       title: 'Cost Savings',
       description: 'Savings opportunities',
       href: '/analytics/savings',
-      icon: DollarSign,
       gradient: 'from-emerald-500 to-green-500',
       shadowColor: 'shadow-emerald-500/20'
     },
@@ -83,7 +93,6 @@ export default function ImprovedAnalyticsPage() {
       title: 'Renewals',
       description: 'Contract renewals',
       href: '/analytics/renewals',
-      icon: Calendar,
       gradient: 'from-purple-500 to-violet-500',
       shadowColor: 'shadow-purple-500/20'
     },
@@ -91,7 +100,6 @@ export default function ImprovedAnalyticsPage() {
       title: 'Suppliers',
       description: 'Supplier analytics',
       href: '/analytics/suppliers',
-      icon: Users,
       gradient: 'from-orange-500 to-amber-500',
       shadowColor: 'shadow-orange-500/20'
     },
@@ -99,7 +107,6 @@ export default function ImprovedAnalyticsPage() {
       title: 'Negotiation',
       description: 'Negotiation prep',
       href: '/analytics/negotiation',
-      icon: TrendingUp,
       gradient: 'from-rose-500 to-red-500',
       shadowColor: 'shadow-rose-500/20'
     },
@@ -107,7 +114,6 @@ export default function ImprovedAnalyticsPage() {
       title: 'Procurement',
       description: 'Procurement intelligence',
       href: '/analytics/procurement',
-      icon: Briefcase,
       gradient: 'from-indigo-500 to-blue-500',
       shadowColor: 'shadow-indigo-500/20'
     }
@@ -164,7 +170,9 @@ export default function ImprovedAnalyticsPage() {
           initial="hidden"
           animate="visible"
         >
-          {analyticsPages.map((page) => (
+          {analyticsPages.map((page) => {
+            const PageIcon = getPageIcon(page.title);
+            return (
             <motion.div key={page.href} variants={itemVariants}>
               <Link href={page.href}>
                 <motion.div
@@ -181,7 +189,7 @@ export default function ImprovedAnalyticsPage() {
                             whileHover={{ scale: 1.1, rotate: 5 }}
                             transition={{ type: "spring", stiffness: 300 }}
                           >
-                            <page.icon className="h-6 w-6" />
+                            <PageIcon className="h-6 w-6" />
                           </motion.div>
                           <h4 className="font-semibold text-lg group-hover:text-blue-600 transition-colors">{page.title}</h4>
                           <p className="text-sm text-muted-foreground">{page.description}</p>
@@ -193,7 +201,8 @@ export default function ImprovedAnalyticsPage() {
                 </motion.div>
               </Link>
             </motion.div>
-          ))}
+            );
+          })}
         </motion.div>
       </motion.div>
     </div>

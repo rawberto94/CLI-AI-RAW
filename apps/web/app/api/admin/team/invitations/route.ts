@@ -138,10 +138,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Send invitation email
-    // await sendInvitationEmail(email, token, tenant.name);
-
+    // Send invitation email
+    const { sendEmail } = await import('@/lib/email/email-service');
+    const { emailTemplates } = await import('@/lib/email/templates');
+    
     const inviteLink = `${process.env.NEXTAUTH_URL || "http://localhost:3005"}/auth/signup?invite=${token}`;
+    
+    const template = emailTemplates.teamInvitation({
+      invitedBy: 'Admin',
+      tenantName: tenant.name,
+      inviteUrl: inviteLink,
+      expiresIn: '7 days',
+    });
+    
+    await sendEmail({
+      to: email,
+      subject: template.subject,
+      html: template.html,
+    });
 
     return NextResponse.json({
       invitation: {

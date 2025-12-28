@@ -141,8 +141,22 @@ export async function POST(
         },
       });
 
-      // TODO: Resend email
-      // await sendInvitationEmail(invitation.email, invitation.token, tenant.name);
+      // Resend invitation email
+      const { sendEmail } = await import('@/lib/email/email-service');
+      const { emailTemplates } = await import('@/lib/email/templates');
+      
+      const template = emailTemplates.teamInvitation({
+        invitedBy: 'Admin',
+        tenantName: tenant.name,
+        inviteUrl: `${process.env.NEXT_PUBLIC_URL}/accept-invitation?token=${invitation.token}`,
+        expiresIn: '7 days',
+      });
+      
+      await sendEmail({
+        to: invitation.email,
+        subject: template.subject,
+        html: template.html,
+      });
 
       return NextResponse.json({ 
         success: true,

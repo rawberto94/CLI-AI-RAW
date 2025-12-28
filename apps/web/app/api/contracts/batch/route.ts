@@ -12,6 +12,7 @@ import {
   ensureProcessingJob,
   startProcessingJob,
 } from "@/lib/contract-processing";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
 
 function isFile(value: unknown): value is File {
   return typeof File !== "undefined" && value instanceof File;
@@ -75,6 +76,17 @@ export async function POST(request: NextRequest) {
 
       const contract = result.data;
       if (!contract.id) continue;
+
+      await publishRealtimeEvent({
+        event: "contract:created",
+        data: {
+          tenantId,
+          contractId: contract.id,
+          status: contract.status,
+        },
+        source: "api:contracts/batch",
+      });
+
       ensureProcessingJob(contract.id);
       const job = startProcessingJob(contract.id);
       if (!job.id) continue;

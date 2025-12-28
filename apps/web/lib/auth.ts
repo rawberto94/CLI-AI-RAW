@@ -33,27 +33,39 @@ providers.push(
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) {
+        console.log("❌ Missing credentials");
         return null;
       }
 
       try {
+        console.log(`🔍 Looking for user: ${credentials.email}`);
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
           include: { tenant: true },
         });
 
-        if (!user || !user.passwordHash) {
-          console.log("User not found or no password set");
+        if (!user) {
+          console.log(`❌ User not found: ${credentials.email}`);
           return null;
         }
 
+        console.log(`✅ User found: ${user.email}, has password: ${!!user.passwordHash}, status: ${user.status}`);
+
+        if (!user.passwordHash) {
+          console.log("❌ No password set for user");
+          return null;
+        }
+
+        console.log(`🔐 Comparing password for ${user.email}...`);
         const isPasswordValid = await compare(
           credentials.password as string,
           user.passwordHash
         );
 
+        console.log(`🔐 Password valid: ${isPasswordValid}`);
+
         if (!isPasswordValid) {
-          console.log("Invalid password");
+          console.log("❌ Invalid password");
           return null;
         }
 

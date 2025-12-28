@@ -8,8 +8,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { optionalImport } from '@/lib/server/optional-module';
+import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 export async function POST(
   request: NextRequest,
@@ -24,7 +25,12 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
 
     // Verify contract exists
     const contract = await prisma.contract.findFirst({
@@ -106,6 +112,12 @@ export async function POST(
                 updatedAt: new Date(),
               },
             });
+
+            void publishRealtimeEvent({
+              event: 'contract:updated',
+              data: { tenantId, contractId: id },
+              source: 'api:contracts/ai-categorize',
+            });
           }
 
           return NextResponse.json({
@@ -152,6 +164,12 @@ export async function POST(
               } as any,
               updatedAt: new Date(),
             },
+          });
+
+          void publishRealtimeEvent({
+            event: 'contract:updated',
+            data: { tenantId, contractId: id },
+            source: 'api:contracts/ai-categorize',
           });
         }
 

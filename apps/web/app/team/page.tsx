@@ -5,11 +5,10 @@
 
 import { Suspense } from 'react';
 import { TeamCollaboration } from '@/components/team';
-import { Users } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 
 const breadcrumbItems = [
-  { label: 'Team', icon: Users },
+  { label: 'Team' },
 ];
 
 export default function TeamPage() {

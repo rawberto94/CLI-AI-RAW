@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, useEffect, type ReactNode } from 'react';
 import { setGlobalQueryClient } from './propagation';
+import { getTenantId } from '@/lib/tenant';
 
 // =====================
 // Query Client Configuration
@@ -113,7 +114,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
         queryKey: ['dashboard-summary'],
         queryFn: async () => {
           const res = await fetch('/api/contracts/summary', {
-            headers: { 'x-tenant-id': 'demo' },
+            headers: { 'x-tenant-id': getTenantId() },
           });
           return res.json();
         },

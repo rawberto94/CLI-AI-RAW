@@ -25,7 +25,9 @@ import {
   Upload,
   ChevronDown,
   ChevronUp,
-  Loader2
+  Loader2,
+  List,
+  Timeline,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,6 +51,7 @@ import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useAuditLogs, type AuditLogEntry } from '@/hooks/use-monitoring-queries';
 import { DataFreshnessIndicator } from '@/components/shared/DataFreshnessIndicator';
+import { AuditLogTimeline } from './AuditLogTimeline';
 
 interface AuditLogViewerProps {
   className?: string;
@@ -101,6 +104,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [successFilter, setSuccessFilter] = useState<string>('all');
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
 
   const filteredLogs = useMemo(() => logs.filter((log: AuditLogEntry) => {
     if (categoryFilter !== 'all' && log.category !== categoryFilter) return false;
@@ -176,6 +180,33 @@ export const AuditLogViewer = memo(function AuditLogViewer({
             />
           </div>
           <div className="flex items-center gap-2">
+            {/* View Toggle */}
+            <div className="flex items-center border border-slate-200 rounded-md overflow-hidden">
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'h-8 w-8 flex items-center justify-center transition-colors',
+                  viewMode === 'list' 
+                    ? 'bg-slate-900 text-white' 
+                    : 'bg-white text-slate-500 hover:bg-slate-50'
+                )}
+                title="List View"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('timeline')}
+                className={cn(
+                  'h-8 w-8 flex items-center justify-center transition-colors border-l border-slate-200',
+                  viewMode === 'timeline' 
+                    ? 'bg-slate-900 text-white' 
+                    : 'bg-white text-slate-500 hover:bg-slate-50'
+                )}
+                title="Timeline View"
+              >
+                <Timeline className="h-4 w-4" />
+              </button>
+            </div>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn('h-4 w-4 mr-2', isFetching && 'animate-spin')} />
               Refresh
@@ -257,15 +288,17 @@ export const AuditLogViewer = memo(function AuditLogViewer({
             <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
             <span>Loading audit logs...</span>
           </div>
+        ) : filteredLogs.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p>No logs matching your filters</p>
+          </div>
+        ) : viewMode === 'timeline' ? (
+          <AuditLogTimeline logs={filteredLogs} />
         ) : (
           <ScrollArea className="h-[500px]">
             <div className="space-y-2">
-              {filteredLogs.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
-                  No logs matching your filters
-                </div>
-              ) : (
-                filteredLogs.map(log => {
+              {filteredLogs.map(log => {
                   const { resource, operation } = getActionParts(log.action);
                   const catConfig = categoryConfig[log.category] ?? categoryConfig.system;
                   const CatIcon = catConfig!.icon;
@@ -360,7 +393,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                     </Collapsible>
                   );
                 })
-              )}
+              }
             </div>
           </ScrollArea>
         )}

@@ -3,10 +3,12 @@
  * 
  * Handles re-indexing of contracts when artifacts or metadata change.
  * This ensures the AI chatbot always has up-to-date information.
+ * Now includes contract taxonomy integration for enhanced context.
  */
 
 import getClient from 'clients-db';
 import { createLogger } from '../utils/logger';
+import { enrichContractForRAG } from './taxonomy-rag-integration.service';
 
 const logger = createLogger('rag-integration-service');
 
@@ -63,6 +65,21 @@ class RagIntegrationService {
       // Build artifact summary text for embedding
       const artifactSummary = this.buildArtifactSummary(contract.artifacts || []);
       const metadataSummary = this.buildMetadataSummary(contract.metadata as Record<string, unknown> | null);
+      
+      // Build taxonomy-enriched context
+      const taxonomyContext = enrichContractForRAG({
+        id: contract.id,
+        fileName: contract.fileName,
+        rawText: contract.rawText || undefined,
+        contractCategoryId: contract.contractCategoryId || undefined,
+        contractSubtype: contract.contractSubtype || undefined,
+        documentRole: contract.documentRole || undefined,
+        classificationMeta: contract.classificationMeta,
+        pricingModels: contract.pricingModels,
+        deliveryModels: contract.deliveryModels,
+        dataProfiles: contract.dataProfiles,
+        riskFlags: contract.riskFlags
+      });
 
       // Check if we have an existing metadata embedding chunk
       const existingMetadataChunk = await prisma.contractEmbedding.findFirst({
@@ -72,13 +89,14 @@ class RagIntegrationService {
         },
       });
 
-      if (!artifactSummary && !metadataSummary) {
-        logger.info({ contractId }, 'No artifact/metadata to index');
+      if (!artifactSummary && !metadataSummary && !taxonomyContext) {
+        logger.info({ contractId }, 'No artifact/metadata/taxonomy to index');
         return;
       }
 
       const combinedSummary = [
         '=== CONTRACT METADATA & ARTIFACTS ===',
+        taxonomyContext, // Include taxonomy context first for better context
         metadataSummary,
         artifactSummary,
       ].filter(Boolean).join('\n\n');

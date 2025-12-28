@@ -216,7 +216,8 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       const params = new URLSearchParams({ tenantId });
       if (userId) params.append('userId', userId);
 
-      const url = `/api/events?${params.toString()}`;
+      // Prefer the Redis-backed SSE endpoint, which receives worker-published events.
+      const url = `/api/events/redis-sse?${params.toString()}`;
       console.log('[EventStream] Connecting to:', url);
       
       const eventSource = new EventSource(url);

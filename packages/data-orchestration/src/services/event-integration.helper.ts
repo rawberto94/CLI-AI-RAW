@@ -4,8 +4,75 @@
  */
 
 import { eventBus, Events } from '../events/event-bus';
+import Redis from 'ioredis';
 import { cacheInvalidationService } from './cache-invalidation.service';
 import { dataLineageTracker } from '../lineage/data-lineage';
+
+const REDIS_EVENTS_CHANNEL = 'cli-ai:events';
+
+let redisPublisher: InstanceType<typeof Redis> | null = null;
+let redisPublisherReady = false;
+let redisPublisherConnectPromise: Promise<void> | null = null;
+
+function getRedisUrl(): string {
+  return (
+    process.env.REDIS_URL ||
+    `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`
+  );
+}
+
+async function ensureRedisPublisher(): Promise<InstanceType<typeof Redis>> {
+  if (redisPublisher && redisPublisherReady) return redisPublisher;
+  if (redisPublisherConnectPromise) {
+    await redisPublisherConnectPromise;
+    if (redisPublisher && redisPublisherReady) return redisPublisher;
+  }
+
+  redisPublisherConnectPromise = (async () => {
+    try {
+      redisPublisher = new Redis(getRedisUrl(), {
+        maxRetriesPerRequest: 3,
+        retryStrategy: (times: number) => Math.min(times * 100, 3000),
+        lazyConnect: true,
+      });
+
+      redisPublisher.on('error', () => {
+        redisPublisherReady = false;
+      });
+
+      redisPublisher.on('close', () => {
+        redisPublisherReady = false;
+      });
+
+      await redisPublisher.connect();
+      redisPublisherReady = true;
+    } catch {
+      redisPublisherReady = false;
+    }
+  })();
+
+  await redisPublisherConnectPromise;
+  if (!redisPublisher || !redisPublisherReady) {
+    throw new Error('Redis publisher not available');
+  }
+  return redisPublisher;
+}
+
+async function publishRealtimeEventToRedis(event: string, data: Record<string, unknown>): Promise<void> {
+  const payload = {
+    event,
+    data,
+    timestamp: new Date().toISOString(),
+    source: 'data-orchestration',
+  };
+
+  try {
+    const publisher = await ensureRedisPublisher();
+    await publisher.publish(REDIS_EVENTS_CHANNEL, JSON.stringify(payload));
+  } catch {
+    // Best-effort only
+  }
+}
 
 export interface EventEmissionConfig {
   event: Events | string;
@@ -29,6 +96,20 @@ export async function emitWithSideEffects(config: EventEmissionConfig): Promise<
   try {
     // Emit the event
     eventBus.emit(event, data);
+
+    // Publish to Redis for cross-process / cross-client real-time updates.
+    // Only publish when tenantId is present to avoid cross-tenant leakage.
+    const tenantId =
+      data &&
+      typeof data === 'object' &&
+      'tenantId' in (data as Record<string, unknown>) &&
+      typeof (data as Record<string, unknown>).tenantId === 'string'
+        ? ((data as Record<string, unknown>).tenantId as string)
+        : undefined;
+
+    if (tenantId) {
+      await publishRealtimeEventToRedis(event, data as Record<string, unknown>);
+    }
 
     // Invalidate cache if specified
     if (cacheTagsToInvalidate && cacheTagsToInvalidate.length > 0) {

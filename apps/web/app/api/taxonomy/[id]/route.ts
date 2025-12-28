@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
+import { publishRealtimeEvent } from "@/lib/realtime/publish";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -288,6 +289,12 @@ export async function PUT(
       });
     }
 
+    void publishRealtimeEvent({
+      event: 'data:refresh',
+      data: { tenantId },
+      source: 'api:taxonomy/[id]',
+    });
+
     console.log("✅ Taxonomy category updated:", {
       id,
       name: updated.name,
@@ -439,6 +446,12 @@ export async function DELETE(
 
     // Delete the category
     await prisma.taxonomyCategory.delete({ where: { id } });
+
+    void publishRealtimeEvent({
+      event: 'data:refresh',
+      data: { tenantId },
+      source: 'api:taxonomy/[id]',
+    });
 
     console.log("✅ Taxonomy category deleted:", {
       id,

@@ -196,6 +196,48 @@ export default auth((req) => {
 
   // Check admin route access
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
+    // For /api/admin/* endpoints, check for Bearer token first
+    if (pathname.startsWith("/api/admin")) {
+      const authHeader = req.headers.get("authorization");
+      const adminToken = process.env.ADMIN_API_TOKEN;
+
+      // If admin token is configured, require it
+      if (adminToken) {
+        if (!authHeader || authHeader !== `Bearer ${adminToken}`) {
+          const response = NextResponse.json(
+            {
+              error: "Unauthorized",
+              message: "Admin API token required. Provide Authorization: Bearer <token> header.",
+              requestId,
+            },
+            { status: 401 }
+          );
+          return addTracingHeaders(response);
+        }
+        // Token valid, allow access
+        const requestHeaders = new Headers(req.headers);
+        requestHeaders.set("x-request-id", requestId);
+        if (req.auth.user?.tenantId) {
+          requestHeaders.set("x-tenant-id", req.auth.user.tenantId);
+        }
+        if (req.auth.user?.id) {
+          requestHeaders.set("x-user-id", req.auth.user.id);
+        }
+        const response = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
+        return addTracingHeaders(response);
+      } else {
+        // Warn if admin endpoints are unprotected in production
+        if (process.env.NODE_ENV === "production") {
+          console.warn(
+            "⚠️ WARNING: Admin endpoints are not protected. Set ADMIN_API_TOKEN environment variable."
+          );
+        }
+      }
+    }
+
+    // For /admin pages, check user role
     const userRole = (req.auth.user as any)?.role;
     if (!hasAdminAccess(userRole)) {
       // Return 403 for API routes, redirect for pages
