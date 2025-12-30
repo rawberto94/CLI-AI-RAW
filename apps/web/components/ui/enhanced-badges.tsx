@@ -7,6 +7,7 @@
 
 import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { HTMLMotionProps } from 'framer-motion';
 import { 
   Check, 
   X, 
@@ -27,7 +28,8 @@ import { cn } from '@/lib/utils';
 // Enhanced Badge
 // ============================================
 
-interface EnhancedBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface EnhancedBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   variant?: 
     | 'default' 
     | 'secondary' 
@@ -163,7 +165,7 @@ EnhancedBadge.displayName = 'EnhancedBadge';
 
 type StatusType = 'online' | 'offline' | 'away' | 'busy' | 'pending' | 'active' | 'inactive';
 
-interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface StatusBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref' | 'children'> {
   status: StatusType;
   label?: string;
   showDot?: boolean;
@@ -226,7 +228,7 @@ export function StatusBadge({
   const config = statusConfig[status];
 
   return (
-    <span
+    <motion.span
       className={cn(
         'inline-flex items-center gap-1.5 font-medium rounded-full',
         config.bgColor,
@@ -245,7 +247,7 @@ export function StatusBadge({
         </span>
       )}
       {label || config.label}
-    </span>
+    </motion.span>
   );
 }
 
@@ -253,7 +255,7 @@ export function StatusBadge({
 // Count Badge
 // ============================================
 
-interface CountBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface CountBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref'> {
   count: number;
   max?: number;
   variant?: 'default' | 'primary' | 'danger' | 'success';
@@ -308,7 +310,7 @@ export function CountBadge({
 // Trend Badge
 // ============================================
 
-interface TrendBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface TrendBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref'> {
   value: number;
   suffix?: string;
   showIcon?: boolean;
@@ -337,7 +339,7 @@ export function TrendBadge({
   const Icon = trendConfig.icon;
 
   return (
-    <span
+    <motion.span
       className={cn(
         'inline-flex items-center gap-1 font-medium rounded-full',
         trendConfig.bg,
@@ -351,7 +353,7 @@ export function TrendBadge({
       {isPositive && !isNeutral && '+'}
       {value}
       {suffix}
-    </span>
+    </motion.span>
   );
 }
 
@@ -361,7 +363,7 @@ export function TrendBadge({
 
 type PriorityLevel = 'critical' | 'high' | 'medium' | 'low' | 'none';
 
-interface PriorityBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface PriorityBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref'> {
   priority: PriorityLevel;
   showLabel?: boolean;
   size?: 'sm' | 'md' | 'lg';
@@ -411,7 +413,7 @@ export function PriorityBadge({
   const Icon = config.icon;
 
   return (
-    <span
+    <motion.span
       className={cn(
         'inline-flex items-center gap-1 font-medium rounded-full',
         config.bg,
@@ -423,7 +425,7 @@ export function PriorityBadge({
     >
       <Icon className={cn(iconSizes[size], priority === 'critical' && 'animate-pulse')} />
       {showLabel && config.label}
-    </span>
+    </motion.span>
   );
 }
 
@@ -433,7 +435,7 @@ export function PriorityBadge({
 
 type FeatureType = 'new' | 'beta' | 'alpha' | 'deprecated' | 'pro' | 'enterprise';
 
-interface FeatureBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface FeatureBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref'> {
   type: FeatureType;
   size?: 'sm' | 'md';
 }

@@ -736,9 +736,12 @@ export interface ImportWarning {
 }
 
 /**
- * Extraction result from AI processing
+ * Extraction result from AI processing (legacy shape)
+ *
+ * Note: This is intentionally not named `ExtractionResult` because that name
+ * is already used earlier in this file for form-field extraction.
  */
-export interface ExtractionResult {
+export interface AIExtractionResult {
   fieldName: string;
   value: string | number | boolean | string[] | null;
   confidence: number;

@@ -1,42 +1,17 @@
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
-import { useDropzone } from 'react-dropzone'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useDataMode } from '@/contexts/DataModeContext'
-import { usePropagation } from '@/hooks/use-propagation'
-import { PageBreadcrumb } from '@/components/navigation'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
-import { ContractLifecycleSelector } from '@/components/contracts/ContractLifecycleSelector'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Upload,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
-  X,
-  Eye,
-  FileText,
-  Sparkles,
-  Zap,
-  Shield,
-  Clock,
-  Brain,
-  ChevronRight,
-  Settings2,
-  Files,
-  ArrowRight,
-  ExternalLink,
-  CircleDot,
-  Check,
-  HelpCircle
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import Link from 'next/link'
+
+export default function UploadRedirect() {
+  const router = useRouter()
+  
+  useEffect(() => {
+    router.replace('/contracts/upload')
+  }, [router])
+  
+  return null
+}
 
 interface UploadFile {
   id: string
@@ -141,7 +116,7 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function UploadPage() {
+function UploadPage() {
   const router = useRouter()
   const { dataMode } = useDataMode()
   const { propagateContract } = usePropagation()
@@ -383,7 +358,7 @@ export default function UploadPage() {
                           Select OCR Engine
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="p-2">
+                      <CardContent className="p-5">
                         {Object.values(OCR_ENGINES).map((engine) => {
                           const Icon = getEngineIcon(engine.id);
                           const isSelected = ocrMode === engine.id;
@@ -560,9 +535,9 @@ export default function UploadPage() {
               className="mt-6"
             >
               <Card className="border-slate-200/80">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <Files className="h-4 w-4 text-slate-400" />
                         <span className="text-sm font-medium text-slate-900">
@@ -571,35 +546,35 @@ export default function UploadPage() {
                       </div>
                       
                       {stats.pending > 0 && (
-                        <Badge variant="secondary" className="bg-slate-100 text-slate-600">
-                          <CircleDot className="h-3 w-3 mr-1" />
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 px-3 py-1">
+                          <CircleDot className="h-3.5 w-3.5 mr-1" />
                           {stats.pending} pending
                         </Badge>
                       )}
                       
                       {stats.inProgress > 0 && (
-                        <Badge className="bg-blue-100 text-blue-700">
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        <Badge className="bg-blue-100 text-blue-700 px-3 py-1">
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                           {stats.inProgress} processing
                         </Badge>
                       )}
                       
                       {stats.completed > 0 && (
-                        <Badge className="bg-emerald-100 text-emerald-700">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                        <Badge className="bg-emerald-100 text-emerald-700 px-3 py-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                           {stats.completed} complete
                         </Badge>
                       )}
                       
                       {stats.errors > 0 && (
-                        <Badge className="bg-rose-100 text-rose-700">
-                          <AlertCircle className="h-3 w-3 mr-1" />
+                        <Badge className="bg-rose-100 text-rose-700 px-3 py-1">
+                          <AlertCircle className="h-3.5 w-3.5 mr-1" />
                           {stats.errors} errors
                         </Badge>
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       {stats.completed > 0 && (
                         <Button 
                           variant="ghost" 
@@ -740,22 +715,22 @@ function FileCard({ file, index, ocrMode, onRemove, onToggleArtifacts }: FileCar
     switch (file.status) {
       case 'pending':
         return (
-          <Badge variant="secondary" className="bg-slate-100 text-slate-600">
-            <CircleDot className="h-3 w-3 mr-1" />
+          <Badge variant="secondary" className="bg-slate-100 text-slate-600 px-3 py-1">
+            <CircleDot className="h-3.5 w-3.5 mr-1" />
             Pending
           </Badge>
         );
       case 'uploading':
         return (
-          <Badge className="bg-blue-100 text-blue-700">
-            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          <Badge className="bg-blue-100 text-blue-700 px-3 py-1">
+            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
             Uploading
           </Badge>
         );
       case 'processing':
         return (
-          <Badge className="bg-indigo-100 text-indigo-700 gap-1.5">
-            <Loader2 className="h-3 w-3 animate-spin" />
+          <Badge className="bg-indigo-100 text-indigo-700 px-3 py-1 gap-1.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
             <span className="font-medium">{file.progress}%</span>
             <span className="text-indigo-500">·</span>
             <span className="capitalize">
@@ -767,15 +742,15 @@ function FileCard({ file, index, ocrMode, onRemove, onToggleArtifacts }: FileCar
         );
       case 'completed':
         return (
-          <Badge className="bg-emerald-100 text-emerald-700">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
+          <Badge className="bg-emerald-100 text-emerald-700 px-3 py-1">
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
             Completed
           </Badge>
         );
       case 'error':
         return (
-          <Badge className="bg-rose-100 text-rose-700">
-            <AlertCircle className="h-3 w-3 mr-1" />
+          <Badge className="bg-rose-100 text-rose-700 px-3 py-1">
+            <AlertCircle className="h-3.5 w-3.5 mr-1" />
             Failed
           </Badge>
         );

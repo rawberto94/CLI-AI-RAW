@@ -20,6 +20,7 @@ import {
   Settings,
   Zap,
   AlertTriangle,
+  Save,
 } from 'lucide-react';
 
 interface WorkflowNode {
@@ -49,6 +50,7 @@ interface WorkflowCanvasProps {
   initialNodes?: WorkflowNode[];
   initialConnections?: Connection[];
   onSave?: (nodes: WorkflowNode[], connections: Connection[]) => void;
+  onNodeSelect?: (nodeId: string) => void;
   readOnly?: boolean;
   className?: string;
 }
@@ -57,6 +59,7 @@ export function WorkflowCanvas({
   initialNodes = [],
   initialConnections = [],
   onSave,
+  onNodeSelect,
   readOnly = false,
   className,
 }: WorkflowCanvasProps) {

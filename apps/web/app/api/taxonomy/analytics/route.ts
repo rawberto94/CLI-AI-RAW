@@ -60,7 +60,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
 
     // Get taxonomy categories for color/icon info
-    const taxonomyCategories = await prisma.taxonomyCategory.findMany({
+    const taxonomyCategories: Array<{
+      id: string;
+      name: string;
+      color: string | null;
+      icon: string | null;
+      path: string;
+    }> = await prisma.taxonomyCategory.findMany({
       where: { tenantId, isActive: true },
       select: {
         id: true,
@@ -71,7 +77,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    const categoryMap = new Map(taxonomyCategories.map((c) => [c.name, c]));
+    const categoryMap = new Map<string, (typeof taxonomyCategories)[number]>(
+      taxonomyCategories.map((c) => [c.name, c])
+    );
 
     // Calculate distribution
     const categoryDistribution: Record<

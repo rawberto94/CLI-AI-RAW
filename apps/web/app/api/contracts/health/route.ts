@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     const type = searchParams.get('type') || 'contract';
     
     if (!tenantId) {

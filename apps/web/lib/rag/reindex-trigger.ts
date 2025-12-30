@@ -18,6 +18,7 @@ export interface ReindexResult {
   success: boolean;
   contractId: string;
   chunksCreated?: number;
+  embeddingsGenerated?: number;
   error?: string;
 }
 
@@ -53,14 +54,14 @@ export async function triggerContractReindex(
     const result = await processContractWithSemanticChunking(
       contractId,
       contract.rawText,
-      { tenantId }
+      undefined
     );
 
     return {
-      success: result.success,
+      success: result.embeddingsGenerated > 0,
       contractId,
       chunksCreated: result.chunksCreated,
-      error: result.error,
+      embeddingsGenerated: result.embeddingsGenerated,
     };
   } catch (error) {
     console.error(`Error reindexing contract ${contractId}:`, error);

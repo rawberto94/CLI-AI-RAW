@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { ZodSchema, ZodError } from 'zod';
-import { ValidationError, formatZodErrors, getFieldError } from '@/lib/validation';
+import { ValidationError, formatZodErrors, getFieldError } from '@/lib/validation/index';
 
 // ============================================================================
 // TYPES

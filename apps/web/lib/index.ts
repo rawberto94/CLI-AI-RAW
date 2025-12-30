@@ -140,9 +140,9 @@ export type {
 // API Response Utilities
 // ============================================================================
 
+export type { ApiResponse, ApiErrorResponse } from './api-response';
+
 export {
-  ApiResponse,
-  ApiErrorResponse,
   successResponse,
   errorResponse,
   validationError,

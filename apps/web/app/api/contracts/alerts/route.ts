@@ -148,19 +148,31 @@ export async function GET(request: NextRequest) {
 
     // Get contract details
     const contractIds = [...new Set(alerts.map(a => a.contract_id))];
-    const contracts = contractIds.length > 0 ? await prisma.contract.findMany({
-      where: { id: { in: contractIds } },
-      select: {
-        id: true,
-        contractTitle: true,
-        originalName: true,
-        supplierName: true,
-        expirationDate: true,
-        endDate: true,
-      },
-    }) : [];
+    type ContractInfo = {
+      id: string;
+      contractTitle: string | null;
+      originalName: string | null;
+      supplierName: string | null;
+      expirationDate: Date | null;
+      endDate: Date | null;
+    };
 
-    const contractMap = new Map(contracts.map(c => [c.id, c]));
+    const contracts: ContractInfo[] =
+      contractIds.length > 0
+        ? ((await prisma.contract.findMany({
+            where: { id: { in: contractIds } },
+            select: {
+              id: true,
+              contractTitle: true,
+              originalName: true,
+              supplierName: true,
+              expirationDate: true,
+              endDate: true,
+            },
+          })) as ContractInfo[])
+        : [];
+
+    const contractMap = new Map<string, ContractInfo>(contracts.map(c => [c.id, c]));
 
     // Transform response
     const data = alerts.map(alert => {

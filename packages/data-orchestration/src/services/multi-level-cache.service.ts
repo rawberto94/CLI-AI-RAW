@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import Redis from 'ioredis';
 
 // In-memory cache (L1)

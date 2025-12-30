@@ -144,10 +144,15 @@ export async function POST(
       // Resend invitation email
       const { sendEmail } = await import('@/lib/email/email-service');
       const { emailTemplates } = await import('@/lib/email/templates');
+
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: session.user.tenantId },
+        select: { name: true },
+      });
       
       const template = emailTemplates.teamInvitation({
         invitedBy: 'Admin',
-        tenantName: tenant.name,
+        tenantName: tenant?.name || 'Contigo',
         inviteUrl: `${process.env.NEXT_PUBLIC_URL}/accept-invitation?token=${invitation.token}`,
         expiresIn: '7 days',
       });

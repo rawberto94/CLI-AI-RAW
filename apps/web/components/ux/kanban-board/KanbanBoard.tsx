@@ -37,6 +37,7 @@ import {
   MessageSquare,
   Paperclip,
   Flag,
+  Circle,
 } from 'lucide-react';
 
 // ============================================================================
@@ -357,7 +358,7 @@ function KanbanCard<T extends KanbanItem>({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
         draggable
-        onDragStart={handleDragStart}
+        onDragStartCapture={handleDragStart}
       >
         {renderCard(item)}
       </motion.div>
@@ -374,7 +375,7 @@ function KanbanCard<T extends KanbanItem>({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
       draggable
-      onDragStart={handleDragStart}
+      onDragStartCapture={handleDragStart}
       onClick={onClick}
       className="group relative bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all"
     >
@@ -830,7 +831,7 @@ export const defaultWorkflowColumns: KanbanColumn[] = [
   {
     id: 'todo',
     title: 'To Do',
-    icon: CircleDot,
+    icon: Circle,
     color: 'text-blue-500',
   },
   {
@@ -848,5 +849,4 @@ export const defaultWorkflowColumns: KanbanColumn[] = [
   },
 ];
 
-// Missing import
-const CircleDot_icon = CircleDot;
+// (icon placeholder removed)

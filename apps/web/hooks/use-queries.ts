@@ -13,6 +13,7 @@ export interface Contract {
   filename?: string;
   originalName?: string;
   status: string;
+  documentRole?: string;
   parties?: {
     client?: string;
     supplier?: string;

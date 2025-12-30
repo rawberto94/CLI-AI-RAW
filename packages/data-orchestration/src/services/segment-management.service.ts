@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { PrismaClient } from '@prisma/client';
 
 interface AdvancedFilter {

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,8 +116,8 @@ interface ContractWithMetadata {
   contractTitle?: string | null;
   supplierName?: string | null;
   status: string;
-  totalValue?: number | null;
-  annualValue?: number | null;
+  totalValue?: number | Prisma.Decimal | null;
+  annualValue?: number | Prisma.Decimal | null;
   effectiveDate?: Date | null;
   expirationDate?: Date | null;
   categoryL1?: string | null;
@@ -129,7 +130,7 @@ interface ContractWithMetadata {
   contractType?: string | null;
   name?: string | null;
   fileName?: string | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: Prisma.JsonValue | null;
   type?: string | null;
   value?: number | null;
   startDate?: Date | null;
@@ -177,9 +178,9 @@ async function compareContractsEnhanced(contract1: ContractWithMetadata, contrac
     return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30));
   };
 
-  const getDaysUntil = (dateStr: string | null) => {
-    if (!dateStr) return null;
-    const date = new Date(dateStr);
+  const getDaysUntil = (dateValue: string | Date | null) => {
+    if (!dateValue) return null;
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
     return Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   };
 

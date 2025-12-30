@@ -24,7 +24,7 @@
     "jsonschema": "^1.4.1",
     "langchain": "^0.2.19",
     "schemas": "workspace:*",
-    "utils": "workspace:*",
+    "@repo/utils": "workspace:*",
     "zod": "3.23.8"
   }
 }

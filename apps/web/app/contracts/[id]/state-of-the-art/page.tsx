@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 
 import { ArtifactViewer } from '@/components/contracts/ArtifactViewer';
+import { OrchestratorProgress } from '@/components/contracts/OrchestratorProgressEnhanced';
+import { OrchestratorAwareChatbot } from '@/components/contracts/OrchestratorAwareChatbot';
 
 interface ContractData {
   id: string;
@@ -43,6 +45,7 @@ export default function StateOfTheArtContractPage() {
   const [editingArtifactId, setEditingArtifactId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+  const [chatbotOpen, setChatbotOpen] = useState(false);
 
   useEffect(() => {
     loadContractData();
@@ -131,6 +134,8 @@ export default function StateOfTheArtContractPage() {
     ? contract.artifacts.reduce((sum, a) => sum + (a.completeness || 0), 0) / contract.artifacts.length
     : 0;
 
+  const artifacts = contract.artifacts ?? [];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="container mx-auto p-6 space-y-6">
@@ -200,6 +205,12 @@ export default function StateOfTheArtContractPage() {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl"></div>
         </motion.div>
 
+        {/* Orchestrator Progress - Real-time updates */}
+        <OrchestratorProgress 
+          contractId={contractId} 
+          tenantId={tenantId}
+        />
+
         {/* Stats Cards with Glassmorphism */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
@@ -253,6 +264,8 @@ export default function StateOfTheArtContractPage() {
                         <Progress value={stat.progress} className="h-2 mt-2" />
                       )}
                     </div>
+
+                    const artifacts = contract.artifacts ?? [];
                     <div className={`p-3 rounded-xl ${stat.bgColor}`}>
                       <stat.icon className={`h-6 w-6 bg-gradient-to-br ${stat.color} bg-clip-text text-transparent`} />
                     </div>
@@ -666,6 +679,31 @@ export default function StateOfTheArtContractPage() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* AI Assistant Button */}
+      {!chatbotOpen && (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="fixed bottom-6 right-6 z-40"
+        >
+          <Button
+            onClick={() => setChatbotOpen(true)}
+            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 relative group"
+          >
+            <MessageSquare className="h-6 w-6 text-white" />
+            <span className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Orchestrator-Aware Chatbot */}
+      <OrchestratorAwareChatbot
+        contractId={contractId}
+        tenantId={tenantId}
+        isOpen={chatbotOpen}
+        onClose={() => setChatbotOpen(false)}
+      />
     </div>
   );
 }

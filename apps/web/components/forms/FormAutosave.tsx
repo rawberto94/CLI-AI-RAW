@@ -112,7 +112,7 @@ export function useFormAutosave<T extends object>(config: AutosaveConfig<T>) {
     hasLocalBackup: false,
   }));
 
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string>(JSON.stringify(initialData));
   const isMountedRef = useRef(true);
 

@@ -466,10 +466,11 @@ export async function PUT(
   const params = await context.params;
   try {
     const contractId = params.id;
-    const updates = await req.json();
+    const body = await req.json();
+    let updates: any;
     // Validate update data with Zod schema
     try {
-      const validated = contractUpdateSchema.parse(body);
+      updates = contractUpdateSchema.parse(body);
       console.log("✅ Update data validated for contract:", contractId);
     } catch (error) {
       if (error instanceof ZodError) {

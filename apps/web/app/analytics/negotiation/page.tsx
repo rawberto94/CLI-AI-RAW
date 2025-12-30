@@ -231,7 +231,10 @@ export default function NegotiationPrepPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              <span>Error loading negotiation prep data: {error}</span>
+              <span>
+                Error loading negotiation prep data:{' '}
+                {error instanceof Error ? error.message : String(error)}
+              </span>
             </div>
           </CardContent>
         </Card>

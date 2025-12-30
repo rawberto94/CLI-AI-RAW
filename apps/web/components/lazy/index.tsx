@@ -186,6 +186,53 @@ export const LazyApprovalWorkflow = dynamic(
   }
 );
 
+// Lazy load contract components (for performance)
+export const LazyContractPreviewPanel = dynamic(
+  () => import('@/components/contracts/ContractPreviewPanel').then(mod => mod.ContractPreviewPanel),
+  {
+    loading: () => (
+      <div className="w-full h-[600px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
+        <div className="text-muted-foreground">Loading preview...</div>
+      </div>
+    ),
+  }
+);
+
+export const LazyContractTimeline = dynamic(
+  () => import('@/components/contracts/ContractTimeline').then(mod => mod.ContractTimeline),
+  {
+    loading: () => (
+      <div className="w-full h-[400px] bg-muted animate-pulse rounded-lg" />
+    ),
+  }
+);
+
+export const LazyContractKanban = dynamic(
+  () => import('@/components/contracts/ContractKanban').then(mod => mod.ContractKanban),
+  {
+    loading: () => (
+      <div className="w-full h-[600px] bg-muted animate-pulse rounded-lg" />
+    ),
+  }
+);
+
+// Lazy load workflow components
+export const LazyWorkflowBuilder = dynamic(
+  () => import('@/components/workflows/WorkflowBuilder').then(mod => mod.WorkflowBuilder),
+  {
+    loading: () => (
+      <div className="w-full h-[500px] bg-muted animate-pulse rounded-lg flex items-center justify-center">
+        <div className="text-muted-foreground">Loading workflow builder...</div>
+      </div>
+    ),
+  }
+);
+
+// Approvals Queue - lazy load for performance
+export const LazySimpleApprovalsQueue = dynamic(() => import('@/components/workflows/SimpleApprovalsQueue').then(mod => ({ default: mod.SimpleApprovalsQueue })), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>,
+});
+
 // Export all lazy components
 const LazyComponents = {
   LazyInteractiveBoxPlot,
@@ -207,5 +254,10 @@ const LazyComponents = {
   LazyVersionCompare,
   LazyFloatingAIBubble,
   LazyApprovalWorkflow,
+  LazyContractPreviewPanel,
+  LazyContractTimeline,
+  LazyContractKanban,
+  LazyWorkflowBuilder,
+  LazySimpleApprovalsQueue,
 };
 export default LazyComponents;

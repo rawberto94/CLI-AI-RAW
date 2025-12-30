@@ -12,6 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { ContractStatus, type Prisma } from '@prisma/client';
 import { withCache, CacheKeys } from "@/lib/cache";
 import { getTenantIdFromRequest } from "@/lib/tenant-server";
 import {
@@ -203,13 +204,16 @@ async function handler(request: NextRequest) {
   }
 
   // Valid ContractStatus values from Prisma schema
-  const VALID_STATUSES = ['UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED', 'ARCHIVED'];
+  const VALID_STATUSES: ContractStatus[] = [
+    ContractStatus.UPLOADED,
+    ContractStatus.PROCESSING,
+    ContractStatus.COMPLETED,
+    ContractStatus.FAILED,
+    ContractStatus.ARCHIVED,
+  ];
 
   // Build where clause
-  const where: Record<string, unknown> = { 
-    tenantId,
-    status: { not: 'DELETED' },
-  };
+  const where: Prisma.ContractWhereInput = { tenantId };
 
   if (search) {
     where.OR = [
@@ -225,7 +229,10 @@ async function handler(request: NextRequest) {
   }
 
   // Filter to only valid status values
-  const validStatuses = statuses.filter(s => s && s !== 'undefined' && VALID_STATUSES.includes(s));
+  const validStatuses = statuses.filter(
+    (s): s is ContractStatus =>
+      !!s && s !== 'undefined' && VALID_STATUSES.includes(s as ContractStatus)
+  );
   if (validStatuses.length > 0) {
     where.status = { in: validStatuses };
   }

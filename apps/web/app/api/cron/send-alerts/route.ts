@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,11 +58,16 @@ export async function POST(request: NextRequest) {
 
     // Get contracts for the alerts
     const contractIds = [...new Set(pendingAlerts.map(a => a.contractId))];
-    const contracts = await prisma.contract.findMany({
+    type ContractWithMetadata = Prisma.ContractGetPayload<{
+      include: { contractMetadata: true };
+    }>;
+
+    const contracts = (await prisma.contract.findMany({
       where: { id: { in: contractIds } },
       include: { contractMetadata: true },
-    });
-    const contractMap = new Map(contracts.map(c => [c.id, c]));
+    })) as ContractWithMetadata[];
+
+    const contractMap = new Map<string, ContractWithMetadata>(contracts.map(c => [c.id, c]));
 
     for (const alert of pendingAlerts) {
       results.processed++;

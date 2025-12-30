@@ -98,7 +98,9 @@ export function AnimatedTabs({
       {tabs.map((tab, index) => (
         <button
           key={tab.id}
-          ref={el => tabRefs.current[index] = el}
+          ref={(el) => {
+            tabRefs.current[index] = el;
+          }}
           onClick={() => !tab.disabled && onChange(tab.id)}
           disabled={tab.disabled}
           className={cn(getTabStyle(tab.id === activeTab, !!tab.disabled), fullWidth && 'flex-1 justify-center')}

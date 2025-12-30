@@ -275,7 +275,7 @@ interface SearchInputProps extends Omit<EnhancedInputProps, 'leftIcon' | 'type'>
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   ({ onSearch, debounce = 300, ...props }, ref) => {
     const [localValue, setLocalValue] = useState(props.value || '');
-    const timeoutRef = useRef<NodeJS.Timeout>();
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
       if (onSearch && debounce > 0) {

@@ -348,11 +348,22 @@ function broadcastMessage(body: Record<string, unknown>) {
     );
   }
 
+  const payload =
+    typeof message === 'string'
+      ? message
+      : (() => {
+          try {
+            return JSON.stringify(message);
+          } catch {
+            return String(message);
+          }
+        })();
+
   let successCount = 0;
 
   switch (target) {
     case 'all':
-      successCount = sseConnectionManager.broadcast(message);
+      successCount = sseConnectionManager.broadcast(payload);
       break;
     
     case 'tenant':
@@ -367,7 +378,7 @@ function broadcastMessage(body: Record<string, unknown>) {
           { status: 400 }
         );
       }
-      successCount = sseConnectionManager.broadcastToTenant(tenantId as string, message);
+      successCount = sseConnectionManager.broadcastToTenant(tenantId as string, payload);
       break;
     
     case 'user':
@@ -382,7 +393,7 @@ function broadcastMessage(body: Record<string, unknown>) {
           { status: 400 }
         );
       }
-      successCount = sseConnectionManager.broadcastToUser(userId as string, message);
+      successCount = sseConnectionManager.broadcastToUser(userId as string, payload);
       break;
     
     default:

@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { roleStandardizationService } from 'data-orchestration/services';
+import { rateCardEvents, roleStandardizationService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,18 +36,38 @@ export async function POST(request: NextRequest) {
     const results = {
       imported: 0,
       failed: 0,
-      errors: [] as { rowIndex: number; error: string }[],
+      errors: [] as { rowIndex: number; rowNumber?: number; role?: string; error: string }[],
       rateCardIds: [] as string[],
     };
 
     interface ImportRow {
-      index: number;
+      index?: number;
+      rowNumber?: number;
       data: {
         roleStandardized?: string;
         roleOriginal: string;
         lineOfService?: string;
         seniority?: string;
         supplierName: string;
+
+        supplierTier?: string;
+        supplierCountry?: string;
+
+        roleCategory?: string;
+
+        dailyRate: number;
+        currency: string;
+        country?: string;
+        region?: string;
+        city?: string;
+
+        effectiveDate: string;
+        expiryDate?: string | null;
+
+        skills?: string[];
+        certifications?: string[];
+        isNegotiated?: boolean;
+        negotiationNotes?: string;
       };
     }
 
@@ -177,11 +197,12 @@ export async function POST(request: NextRequest) {
           } catch (error) {
             results.failed++;
             results.errors.push({
-              row: row.rowNumber,
+              rowIndex: typeof row.index === 'number' ? row.index : 0,
+              rowNumber: row.rowNumber ?? row.index,
               role: row.data.roleOriginal,
               error: error instanceof Error ? error.message : 'Unknown error',
             });
-            console.error(`❌ Failed to import row ${row.rowNumber}:`, error);
+            console.error(`❌ Failed to import row ${row.rowNumber ?? row.index ?? 'unknown'}:`, error);
           }
         })
       );
@@ -191,7 +212,6 @@ export async function POST(request: NextRequest) {
 
     // Emit event for bulk import
     if (results.imported > 0) {
-      const { rateCardEvents } = await import('@/../../packages/data-orchestration/src/services/event-integration.helper');
       await rateCardEvents.imported(results.imported, tenantId, 'CSV_IMPORT');
     }
 

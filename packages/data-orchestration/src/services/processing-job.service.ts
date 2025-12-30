@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Processing Job Service
  * 
@@ -512,11 +511,20 @@ export class ProcessingJobService {
     data: any
   ): Promise<void> {
     try {
-      await dbAdaptor.getClient().processingJob.update({
+      const client = dbAdaptor.getClient();
+
+      const existing = await client.processingJob.findUnique({
+        where: { id: jobId },
+        select: { checkpointData: true },
+      });
+
+      const merged = mergeCheckpointData(existing?.checkpointData, data);
+
+      await client.processingJob.update({
         where: { id: jobId },
         data: {
           lastCheckpoint: checkpoint,
-          checkpointData: data,
+          checkpointData: merged,
         },
       });
 
@@ -626,6 +634,28 @@ export class ProcessingJobService {
       return false;
     }
   }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function mergeCheckpointData(existing: unknown, patch: unknown): unknown {
+  if (patch === undefined) return existing;
+  if (existing === undefined) return patch;
+
+  if (isPlainObject(existing) && isPlainObject(patch)) {
+    const out: Record<string, unknown> = { ...existing };
+    for (const [key, value] of Object.entries(patch)) {
+      out[key] = mergeCheckpointData((existing as Record<string, unknown>)[key], value);
+    }
+    return out;
+  }
+
+  // For arrays and primitives, last write wins.
+  return patch;
 }
 
 export const processingJobService = ProcessingJobService.getInstance();

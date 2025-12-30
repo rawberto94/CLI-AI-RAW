@@ -71,9 +71,9 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   });
 
   const lastActivityRef = useRef<number>(Date.now());
-  const warningTimeoutRef = useRef<NodeJS.Timeout>();
-  const expireTimeoutRef = useRef<NodeJS.Timeout>();
-  const countdownRef = useRef<NodeJS.Timeout>();
+  const warningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const expireTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset activity timestamp
   const resetActivity = useCallback(() => {

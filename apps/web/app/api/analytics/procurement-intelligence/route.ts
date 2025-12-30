@@ -239,3 +239,35 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+function generateSupplierAnalyticsMock(params: Record<string, string>) {
+  return {
+    suppliers: [],
+    params,
+    note: 'Mock fallback (real mode not implemented)',
+  };
+}
+
+function generateNegotiationPrepMock(params: Record<string, string>) {
+  return {
+    recommendations: [],
+    params,
+    note: 'Mock fallback (real mode not implemented)',
+  };
+}
+
+function generateSavingsPipelineMock(params: Record<string, string>) {
+  return {
+    opportunities: [],
+    params,
+    note: 'Mock fallback (real mode not implemented)',
+  };
+}
+
+function generateRenewalRadarMock(params: Record<string, string>) {
+  return {
+    upcomingRenewals: [],
+    params,
+    note: 'Mock fallback (real mode not implemented)',
+  };
+}

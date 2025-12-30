@@ -2,7 +2,7 @@
 // because other modules read DATABASE_URL at module load time
 import './env';
 
-import { getQueueService } from 'utils/queue/queue-service';
+import { getQueueService } from '@repo/utils/queue/queue-service';
 import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
 import { registerWebhookWorker } from './webhook-worker';
@@ -11,10 +11,17 @@ import { registerMetadataExtractionWorker } from './metadata-extraction-worker';
 import { registerCategorizationWorker } from './categorization-worker';
 import { registerRenewalAlertWorker } from './renewal-alert-worker';
 import { registerObligationTrackerWorker } from './obligation-tracker-worker';
+import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
 import pino from 'pino';
+
+// Re-export contract type profiles for use in web app
+export * from './contract-type-profiles';
+
+// Re-export agentic AI agents for use in API routes
+export * from './agents';
 
 const logger = pino({
   name: 'workers',
@@ -70,6 +77,7 @@ async function startWorkers() {
     const categorizationWorker = registerCategorizationWorker();
     const renewalAlertWorker = registerRenewalAlertWorker();
     const obligationTrackerWorker = registerObligationTrackerWorker();
+    const agentOrchestratorWorker = registerAgentOrchestratorWorker();
 
     // Register workers with metrics collector
     metricsCollector.registerWorker('ocr-artifact', ocrArtifactWorker);
@@ -80,6 +88,7 @@ async function startWorkers() {
     metricsCollector.registerWorker('categorization', categorizationWorker);
     metricsCollector.registerWorker('renewal-alert', renewalAlertWorker);
     metricsCollector.registerWorker('obligation-tracker', obligationTrackerWorker);
+    metricsCollector.registerWorker('agent-orchestrator', agentOrchestratorWorker);
 
     logger.info('✅ All workers registered successfully');
     logger.info('📊 Metrics collection enabled');
@@ -93,6 +102,7 @@ async function startWorkers() {
         'categorization (AI classification)',
         'renewal-alerts (deadline monitoring)',
         'obligation-tracker (SLA & milestone monitoring)',
+        'agent-orchestrator (manager agent loop)',
       ],
     }, 'Active workers');
 
@@ -113,6 +123,7 @@ async function startWorkers() {
         categorizationWorker.close(),
         renewalAlertWorker.close(),
         obligationTrackerWorker.close(),
+        agentOrchestratorWorker.close(),
       ]);
 
       // Close DLQ

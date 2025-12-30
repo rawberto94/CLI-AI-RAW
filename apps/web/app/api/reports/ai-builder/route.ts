@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
-import type { Contract, Prisma } from '@prisma/client';
+import type { Contract, ContractStatus, Prisma } from '@prisma/client';
 import { getErrorMessage } from '@/lib/types/common';
 
 const openai = new OpenAI({
@@ -138,6 +138,8 @@ async function performDeepAnalysis(
   filters: ReportFilters
 ): Promise<DeepAnalysisResult> {
   try {
+    const queryMode: Prisma.QueryMode = 'insensitive';
+
     // Build dynamic query (always exclude DELETED)
     const where: Prisma.ContractWhereInput = { 
       tenantId,
@@ -147,7 +149,7 @@ async function performDeepAnalysis(
     // Supplier filter
     if (filters.suppliers && filters.suppliers.length > 0) {
       where.OR = filters.suppliers.map(s => ({
-        supplierName: { contains: s, mode: 'insensitive' }
+        supplierName: { contains: s, mode: queryMode }
       }));
     }
     
@@ -155,17 +157,23 @@ async function performDeepAnalysis(
     if (filters.categories && filters.categories.length > 0) {
       const categoryConditions = filters.categories.map(c => ({
         OR: [
-          { categoryL1: { contains: c, mode: 'insensitive' } },
-          { categoryL2: { contains: c, mode: 'insensitive' } },
+          { categoryL1: { contains: c, mode: queryMode } },
+          { categoryL2: { contains: c, mode: queryMode } },
         ]
       }));
-      where.AND = where.AND || [];
-      where.AND.push({ OR: categoryConditions.flatMap(cc => cc.OR) });
+      const andConditions: Prisma.ContractWhereInput[] = Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : [];
+      andConditions.push({ OR: categoryConditions.flatMap(cc => cc.OR) });
+      where.AND = andConditions;
     }
     
     // Status filter (exclude DELETED even if not in filter)
     if (filters.statuses && filters.statuses.length > 0) {
-      const validStatuses = filters.statuses.filter(s => s !== 'DELETED');
+      const validStatuses = filters.statuses
+        .filter((s): s is ContractStatus => s !== 'DELETED');
       if (validStatuses.length > 0) {
         where.status = { in: validStatuses };
       }
@@ -192,8 +200,13 @@ async function performDeepAnalysis(
           ]
         };
       });
-      where.AND = where.AND || [];
-      where.AND.push({ OR: yearConditions.flatMap(yc => yc.OR) });
+      const andConditions: Prisma.ContractWhereInput[] = Array.isArray(where.AND)
+        ? where.AND
+        : where.AND
+          ? [where.AND]
+          : [];
+      andConditions.push({ OR: yearConditions.flatMap(yc => yc.OR) });
+      where.AND = andConditions;
     }
     
     console.log('[AI Report Builder] Query filters:', filters);

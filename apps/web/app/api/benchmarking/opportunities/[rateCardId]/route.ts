@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { getErrorMessage } from '@/lib/types/common';
-import type { Prisma } from '@prisma/client';
+import { OpportunityStatus, type Prisma } from '@prisma/client';
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -56,7 +56,9 @@ export async function GET(request: NextRequest) {
     }
 
     const where: Prisma.RateSavingsOpportunityWhereInput = { tenantId };
-    if (status) where.status = status;
+    if (status && Object.values(OpportunityStatus).includes(status as OpportunityStatus)) {
+      where.status = status as OpportunityStatus;
+    }
     if (minSavings) where.annualSavingsPotential = { gte: parseFloat(minSavings) };
 
     const opportunities = await prisma.rateSavingsOpportunity.findMany({

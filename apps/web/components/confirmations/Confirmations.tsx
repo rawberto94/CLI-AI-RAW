@@ -409,7 +409,7 @@ export function QuickConfirmButton({
 }: QuickConfirmButtonProps) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = React.useRef<NodeJS.Timeout>();
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const handleClick = () => {
     if (!isConfirming) {

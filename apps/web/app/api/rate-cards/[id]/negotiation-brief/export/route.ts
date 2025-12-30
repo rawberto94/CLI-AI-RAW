@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { NegotiationAssistantService } from 'data-orchestration/services';
 
-/**
- * Type definitions for negotiation brief export
- */
+type NegotiationBrief = Awaited<ReturnType<NegotiationAssistantService['generateNegotiationBrief']>>;
+
 interface LeveragePoint {
   point: string;
   category: string;
@@ -32,23 +31,6 @@ interface NegotiationRisk {
   risk: string;
   severity: 'low' | 'medium' | 'high';
   mitigation: string;
-}
-
-interface NegotiationBrief {
-  currentSituation: {
-    supplierName: string;
-    volumeCommitted?: number;
-    [key: string]: unknown;
-  };
-  targetRates: {
-    justification: string;
-    [key: string]: unknown;
-  };
-  leverage: LeveragePoint[];
-  talkingPoints: TalkingPoint[];
-  alternatives: AlternativeSupplier[];
-  recommendedStrategy: string;
-  risks: NegotiationRisk[];
 }
 
 const negotiationService = new NegotiationAssistantService(prisma);
@@ -499,8 +481,8 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     </div>
     <div class="rate-amount">$${brief.targetRates.aggressive.toLocaleString()}/day</div>
     <div class="savings-text">
-      Savings: $${(brief.currentSituation.currentRate - brief.targetRates.aggressive).toLocaleString()}/day
-      (${(((brief.currentSituation.currentRate - brief.targetRates.aggressive) / brief.currentSituation.currentRate) * 100).toFixed(1)}%)
+      Savings: $${(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.aggressive)).toLocaleString()}/day
+      (${(((Number(brief.currentSituation.currentRate) - Number(brief.targetRates.aggressive)) / Math.max(1, Number(brief.currentSituation.currentRate))) * 100).toFixed(1)}%)
     </div>
   </div>
 
@@ -511,8 +493,8 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     </div>
     <div class="rate-amount">$${brief.targetRates.realistic.toLocaleString()}/day</div>
     <div class="savings-text">
-      Savings: $${(brief.currentSituation.currentRate - brief.targetRates.realistic).toLocaleString()}/day
-      (${(((brief.currentSituation.currentRate - brief.targetRates.realistic) / brief.currentSituation.currentRate) * 100).toFixed(1)}%)
+      Savings: $${(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.realistic)).toLocaleString()}/day
+      (${(((Number(brief.currentSituation.currentRate) - Number(brief.targetRates.realistic)) / Math.max(1, Number(brief.currentSituation.currentRate))) * 100).toFixed(1)}%)
     </div>
   </div>
 
@@ -523,8 +505,8 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     </div>
     <div class="rate-amount">$${brief.targetRates.fallback.toLocaleString()}/day</div>
     <div class="savings-text">
-      Savings: $${(brief.currentSituation.currentRate - brief.targetRates.fallback).toLocaleString()}/day
-      (${(((brief.currentSituation.currentRate - brief.targetRates.fallback) / brief.currentSituation.currentRate) * 100).toFixed(1)}%)
+      Savings: $${(Number(brief.currentSituation.currentRate) - Number(brief.targetRates.fallback)).toLocaleString()}/day
+      (${(((Number(brief.currentSituation.currentRate) - Number(brief.targetRates.fallback)) / Math.max(1, Number(brief.currentSituation.currentRate))) * 100).toFixed(1)}%)
     </div>
   </div>
 

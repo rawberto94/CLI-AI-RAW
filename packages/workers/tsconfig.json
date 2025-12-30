@@ -15,6 +15,8 @@
       "clients-db/*": ["../clients/db/*"],
       "clients-openai": ["../clients/openai/src"],
       "clients-openai/*": ["../clients/openai/src/*"],
+      "@repo/db": ["../clients/db"],
+      "@repo/db/*": ["../clients/db/*"],
       "@/*": ["../../apps/web/*"],
       "@/lib/*": ["../../apps/web/lib/*"]
     }

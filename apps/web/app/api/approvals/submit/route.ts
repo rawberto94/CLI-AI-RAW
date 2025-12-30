@@ -75,8 +75,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const effectiveWorkflowType = (
+      typeof workflowType === 'string' && workflowType in workflowTemplates ? workflowType : 'standard'
+    ) as keyof typeof workflowTemplates;
+
     // Get template or use custom approvers
-    const template = workflowTemplates[effectiveWorkflowType as keyof typeof workflowTemplates] || workflowTemplates.standard;
+    const template = workflowTemplates[effectiveWorkflowType] || workflowTemplates.standard;
 
     // Try database first
     try {
@@ -119,7 +123,11 @@ export async function POST(request: NextRequest) {
       }
 
       // Suggest appropriate workflow if not specified
-      const suggestedWorkflow = suggestWorkflow(contract);
+      const suggestedWorkflow = suggestWorkflow({
+        totalValue: contract.totalValue != null ? Number(contract.totalValue) : null,
+        documentRole: contract.documentRole,
+        metadata: contract.metadata,
+      });
       const effectiveWorkflowType = workflowType || suggestedWorkflow || 'standard';
 
       // Check for existing active approval workflow
@@ -334,7 +342,15 @@ export async function POST(request: NextRequest) {
 
 // Get available workflow templates
 export async function GET(request: NextRequest) {
-  const tenantId = await getApiTenantId(request);
+  let tenantId: string;
+  try {
+    tenantId = await getTenantIdFromRequest(request);
+  } catch {
+    return NextResponse.json(
+      { success: false, error: 'Tenant ID is required' },
+      { status: 400 }
+    );
+  }
 
   try {
     // Try to get custom workflows from database

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Parallel Artifact Generator Service
  * 

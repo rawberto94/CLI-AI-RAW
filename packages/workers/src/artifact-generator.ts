@@ -7,12 +7,42 @@ import { Job } from 'bullmq';
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { ArtifactType } from 'clients-db';
-import { getQueueService, JobType } from 'utils/queue/queue-service';
-import { QUEUE_NAMES, GenerateArtifactsJobData } from 'utils/queue/contract-queue';
+import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
+import { QUEUE_NAMES, GenerateArtifactsJobData } from '@repo/utils/queue/contract-queue';
 import pino from 'pino';
+
+import { getTraceContextFromJobData } from './observability/trace';
+import { CircuitBreaker } from './utils/circuit-breaker';
+import { hashJson } from './utils/hash';
+import { ensureProcessingJob, updateStep } from './workflow/processing-job';
+import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
+import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
+import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
 
 const logger = pino({ name: 'artifact-generator-worker' });
 const prisma = getClient();
+
+const openaiBreaker = new CircuitBreaker({
+  failureThreshold: Number.parseInt(process.env.OPENAI_BREAKER_FAILURE_THRESHOLD || '5', 10),
+  cooldownMs: Number.parseInt(process.env.OPENAI_BREAKER_COOLDOWN_MS || '30000', 10),
+});
+
+// Quality validation and adaptive retry
+const qualityValidator = new ArtifactQualityValidator({
+  overall: 0.7,
+  completeness: 0.6,
+  accuracy: 0.7,
+  consistency: 0.65,
+  confidence: 0.6,
+});
+
+const adaptiveRetry = new AdaptiveRetryStrategy({
+  maxAttempts: 3,
+  initialDelayMs: 1000,
+  maxDelayMs: 30000,
+  backoffMultiplier: 2,
+  jitterFactor: 0.3,
+});
 
 // Enhanced configuration for error recovery
 const ARTIFACT_CONFIG = {
@@ -117,6 +147,7 @@ export async function generateArtifactsJob(
   job: JobType<GenerateArtifactsJobData>
 ): Promise<ArtifactResult> {
   const { contractId, tenantId, contractText } = job.data;
+  const trace = getTraceContextFromJobData(job.data);
 
   logger.info(
     { contractId, tenantId, jobId: job.id },
@@ -126,6 +157,22 @@ export async function generateArtifactsJob(
   const artifactIds: string[] = [];
 
   try {
+    await ensureProcessingJob({
+      tenantId,
+      contractId,
+      queueId: job.id ? String(job.id) : undefined,
+      traceId: trace.traceId,
+    });
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'artifacts.generate',
+      status: 'running',
+      progress: 5,
+      currentStep: 'artifacts.generate',
+    });
+
     await job.updateProgress(5);
 
     // Validate contract exists
@@ -157,30 +204,118 @@ export async function generateArtifactsJob(
     // Generate each artifact with retry logic
     for (const { type, weight } of artifactTypes) {
       try {
-        logger.info({ contractId, type }, `Generating ${type} artifact`);
+        await updateStep({
+          tenantId,
+          contractId,
+          step: `artifact.${type}`,
+          status: 'running',
+          progress: progressBase,
+          currentStep: `artifact.${type}`,
+        });
 
-        // Use retry with backoff for better reliability
-        const artifactData = await retryWithBackoff(
-          () => generateArtifactData(type, contractText, contractId),
-          {
-            maxRetries: ARTIFACT_CONFIG.maxRetries,
-            initialDelay: ARTIFACT_CONFIG.retryDelayMs,
-            backoffMultiplier: ARTIFACT_CONFIG.retryBackoffMultiplier,
-            operationName: `Generate ${type}`,
-          }
-        );
+        logger.info({ contractId, type, traceId: trace.traceId }, `Generating ${type} artifact with quality validation`);
 
-        // Save artifact to database with retry
-        const artifact = await retryWithBackoff(
-          () => prisma.artifact.create({
-            data: {
-              contractId,
-              tenantId,
+        // Generate artifact with adaptive retry and quality validation
+        let artifactData: Record<string, any> | null = null;
+        let qualityScore: any = null;
+        let modelUsed = 'unknown';
+        let regenerationAttempts = 0;
+        const maxRegenerations = 2;
+
+        while (regenerationAttempts <= maxRegenerations) {
+          try {
+            // Use adaptive retry strategy with model fallback
+            const result = await adaptiveRetry.executeWithRetry(
+              async (model) => {
+                modelUsed = model.name;
+                const data = await generateArtifactData(type, contractText, contractId, model.name);
+                return { data, model: model.name };
+              },
+              `Generate ${type} artifact`
+            );
+
+            artifactData = result.data;
+
+            // Validate quality
+            qualityScore = await qualityValidator.validateArtifact(
               type,
-              data: artifactData,
-              validationStatus: 'valid',
-              createdAt: new Date(),
-              updatedAt: new Date(),
+              artifactData,
+              contractText
+            );
+
+            logger.info({
+              contractId,
+              type,
+              qualityScore: qualityScore.overall.toFixed(2),
+              passesThreshold: qualityScore.passesThreshold,
+              model: modelUsed,
+              regenerationAttempt: regenerationAttempts,
+            }, '✓ Quality validation complete');
+
+            // If quality is good, proceed
+            if (qualityScore.passesThreshold) {
+              break;
+            }
+
+            // Self-critique for low quality
+            const critique = await selfCritiqueArtifact(type, artifactData, contractText);
+            
+            logger.warn({
+              contractId,
+              type,
+              qualityScore: qualityScore.overall.toFixed(2),
+              critiqueIssues: critique.issues.length,
+              shouldRegenerate: critique.shouldRegenerate,
+            }, '⚠️ Low quality detected');
+
+            // Decide if should regenerate
+            if (critique.shouldRegenerate && regenerationAttempts < maxRegenerations) {
+              regenerationAttempts++;
+              logger.info({ contractId, type, attempt: regenerationAttempts }, '🔄 Regenerating artifact due to quality issues');
+              continue;
+            } else {
+              // Accept despite low quality
+              logger.warn({ contractId, type }, '⚠️ Accepting low-quality artifact (max regenerations reached)');
+              break;
+            }
+          } catch (error) {
+            if (regenerationAttempts < maxRegenerations) {
+              regenerationAttempts++;
+              logger.warn({
+                contractId,
+                type,
+                error: error instanceof Error ? error.message : String(error),
+                attempt: regenerationAttempts,
+              }, '⚠️ Generation failed, retrying...');
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        if (!artifactData) {
+          throw new Error(`Failed to generate ${type} artifact after ${regenerationAttempts} attempts`);
+        }
+
+        // Store artifact with quality metadata
+        const artifact = await retryWithBackoff(
+          () => createOrUpdateArtifact({
+            contractId,
+            tenantId,
+            type,
+            artifactData,
+            validationStatus: qualityScore?.passesThreshold ? 'valid' : 'needs_review',
+            modelUsed,
+            promptVersion: 'artifact-generator-v2-quality',
+            metadata: {
+              qualityScore: qualityScore?.overall || 0,
+              completeness: qualityScore?.completeness || 0,
+              accuracy: qualityScore?.accuracy || 0,
+              consistency: qualityScore?.consistency || 0,
+              confidence: qualityScore?.confidence || 0,
+              regenerationAttempts,
+              qualityIssues: qualityScore?.issues || [],
+              qualityRecommendations: qualityScore?.recommendations || [],
             },
           }),
           {
@@ -192,31 +327,64 @@ export async function generateArtifactsJob(
         );
 
         artifactIds.push(artifact.id);
-        logger.info({ contractId, artifactId: artifact.id, type }, 'Artifact created');
+        logger.info({ contractId, artifactId: artifact.id, type, traceId: trace.traceId }, 'Artifact stored');
 
         progressBase += weight;
         await job.updateProgress(progressBase);
+
+        await updateStep({
+          tenantId,
+          contractId,
+          step: `artifact.${type}`,
+          status: 'completed',
+          progress: progressBase,
+          currentStep: `artifact.${type}`,
+        });
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        logger.error({ error: errorMsg, contractId, type }, `Failed to generate ${type} artifact after retries`);
+        logger.error({ error: errorMsg, contractId, type, traceId: trace.traceId }, `Failed to generate ${type} artifact after retries`);
         failedArtifacts.push(type);
+
+        await updateStep({
+          tenantId,
+          contractId,
+          step: `artifact.${type}`,
+          status: 'failed',
+          progress: progressBase,
+          currentStep: `artifact.${type}`,
+          error: errorMsg,
+        });
         
         // If fallback is enabled, try to create a minimal artifact
         if (ARTIFACT_CONFIG.enableFallbackOnError) {
           try {
             const fallbackData = getFallbackArtifactData(type, contractId);
-            await prisma.artifact.create({
-              data: {
+
+            // Never overwrite an existing artifact with fallback content.
+            const existing = await prisma.artifact.findUnique({
+              where: {
+                contractId_type: {
+                  contractId,
+                  type: type as any,
+                },
+              },
+              select: { id: true },
+            });
+
+            if (!existing) {
+              await createOrUpdateArtifact({
                 contractId,
                 tenantId,
                 type,
-                data: { ...fallbackData, _fallback: true, _error: errorMsg },
+                artifactData: { ...fallbackData, _fallback: true, _error: errorMsg },
                 validationStatus: 'needs_review',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-            });
-            logger.info({ contractId, type }, 'Fallback artifact created');
+                modelUsed: null,
+                promptVersion: 'artifact-generator-v1',
+              });
+              logger.info({ contractId, type, traceId: trace.traceId }, 'Fallback artifact stored');
+            } else {
+              logger.info({ contractId, type, existingArtifactId: existing.id, traceId: trace.traceId }, 'Skipping fallback: artifact already exists');
+            }
           } catch (fallbackError) {
             logger.warn({ contractId, type, fallbackError }, 'Failed to create fallback artifact');
           }
@@ -245,6 +413,15 @@ export async function generateArtifactsJob(
 
     await job.updateProgress(100);
 
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'artifacts.generate',
+      status: 'completed',
+      progress: 100,
+      currentStep: 'artifacts.generate',
+    });
+
     logger.info(
       { 
         contractId, 
@@ -264,6 +441,17 @@ export async function generateArtifactsJob(
   } catch (error) {
     logger.error({ error, contractId, jobId: job.id }, 'Artifact generation failed');
 
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'artifacts.generate',
+      status: 'failed',
+      progress: 100,
+      currentStep: 'artifacts.generate',
+      error: errorMsg,
+    });
+
     // Update contract status
     await prisma.contract.update({
       where: { id: contractId },
@@ -277,13 +465,98 @@ export async function generateArtifactsJob(
   }
 }
 
+async function createOrUpdateArtifact(args: {
+  contractId: string;
+  tenantId: string;
+  type: ArtifactType;
+  artifactData: Record<string, any>;
+  validationStatus: string;
+  modelUsed: string | null;
+  promptVersion: string;
+  metadata?: Record<string, any>;
+}): Promise<{ id: string }> {
+  const now = new Date();
+  const { contractId, tenantId, type, artifactData, validationStatus, modelUsed, promptVersion, metadata } = args;
+
+  // Hash only the stable content (exclude volatile meta like timestamps).
+  const stableForHash = { ...artifactData } as any;
+  delete stableForHash._meta;
+  const nextHash = hashJson(stableForHash);
+  const size = JSON.stringify(artifactData).length;
+
+  try {
+    const created = await prisma.artifact.create({
+      data: {
+        contractId,
+        tenantId,
+        type,
+        data: artifactData,
+        validationStatus,
+        hash: nextHash,
+        size,
+        modelUsed: modelUsed ?? undefined,
+        promptVersion,
+        metadata: metadata || {},
+        updatedAt: now,
+      },
+      select: { id: true, hash: true },
+    });
+    return created;
+  } catch (error: any) {
+    // Unique constraint hit means it already exists; fetch and update only if content changed.
+    const existing = await prisma.artifact.findUnique({
+      where: {
+        contractId_type: {
+          contractId,
+          type,
+        },
+      },
+      select: { id: true, hash: true },
+    });
+
+    if (!existing) {
+      throw error;
+    }
+
+    if (existing.hash === nextHash) {
+      return { id: existing.id };
+    }
+
+    const updated = await prisma.artifact.update({
+      where: {
+        contractId_type: {
+          contractId,
+          type,
+        },
+      },
+      data: {
+        data: artifactData,
+        validationStatus,
+        hash: nextHash,
+        size,
+        modelUsed: modelUsed ?? undefined,
+        promptVersion,
+        metadata: metadata || {},
+        generationVersion: { increment: 1 },
+        regeneratedAt: now,
+        regenerationReason: 'artifact_content_changed',
+        updatedAt: now,
+      },
+      select: { id: true },
+    });
+
+    return updated;
+  }
+}
+
 /**
  * Generate artifact data using OpenAI API - REAL AI ANALYSIS
  */
 async function generateArtifactData(
   type: string,
   contractText: string,
-  contractId: string
+  contractId: string,
+  modelName?: string
 ): Promise<Record<string, any>> {
   const apiKey = process.env.OPENAI_API_KEY;
   
@@ -647,25 +920,32 @@ ${truncatedText}`
 
     logger.info({ type, contractId, textLength: truncatedText.length }, 'Calling OpenAI for artifact');
 
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 4000,
-      temperature: 0.1, // Lower temperature for more consistent, factual extraction
-      response_format: { type: 'json_object' }
-    });
+    const model = modelName || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const response = await openaiBreaker.execute(() =>
+      openai.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 4000,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      })
+    );
 
     const content = response.choices[0]?.message?.content;
     if (!content) throw new Error('Empty response');
 
-    const artifactData = JSON.parse(content);
+    const parsed = safeParseJSON(content, type);
+    if (!parsed) {
+      throw new Error('Failed to parse JSON response');
+    }
+    const artifactData = parsed;
     artifactData._meta = { 
       generatedAt: new Date().toISOString(), 
       aiGenerated: true,
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      model,
       antiHallucinationEnabled: true
     };
     
@@ -673,8 +953,8 @@ ${truncatedText}`
     return artifactData;
 
   } catch (error) {
-    logger.error({ error, type, contractId }, 'OpenAI failed, using fallback');
-    return getFallbackArtifactData(type, contractId);
+    logger.error({ error, type, contractId }, 'OpenAI failed');
+    throw error;
   }
 }
 
@@ -700,15 +980,19 @@ function getFallbackArtifactData(type: string, contractId: string): Record<strin
 export function registerArtifactGeneratorWorker() {
   const queueService = getQueueService();
 
+  const concurrency = getWorkerConcurrency('ARTIFACT_WORKER_CONCURRENCY', 5);
+  const limiter = getWorkerLimiter(
+    'ARTIFACT_WORKER_LIMIT_MAX',
+    'ARTIFACT_WORKER_LIMIT_DURATION_MS',
+    { max: 20, duration: 60000 }
+  );
+
   const worker = queueService.registerWorker<GenerateArtifactsJobData, ArtifactResult>(
     QUEUE_NAMES.ARTIFACT_GENERATION,
     generateArtifactsJob,
     {
-      concurrency: 5, // Process 5 artifact jobs simultaneously
-      limiter: {
-        max: 20,
-        duration: 60000, // Max 20 jobs per minute (OpenAI rate limiting)
-      },
+      concurrency,
+      limiter,
     }
   );
 

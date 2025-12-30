@@ -28,17 +28,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import toast from 'react-hot-toast';
-import { AlertRuleForm } from './AlertRuleForm';
+import { AlertRuleForm, type AlertRuleFormValues } from './AlertRuleForm';
+
+type AlertRuleType = AlertRuleFormValues['ruleType'];
+type AlertTargetEntity = AlertRuleFormValues['targetEntity'];
+type AlertComparisonOperator = AlertRuleFormValues['comparisonOperator'];
 
 interface AlertRule {
   id: string;
   name: string;
   description?: string;
-  ruleType: string;
-  targetEntity: string;
+  ruleType: AlertRuleType;
+  targetEntity: AlertTargetEntity;
   targetId?: string;
   thresholdValue: number;
-  comparisonOperator: string;
+  comparisonOperator: AlertComparisonOperator;
   timeWindow?: number;
   isActive: boolean;
   notificationChannels: string[];
@@ -55,7 +59,6 @@ export function AlertManagementDashboard() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
   const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const fetchAlertRules = useCallback(async () => {
     try {
@@ -163,14 +166,14 @@ export function AlertManagementDashboard() {
     [fetchAlertRules]
   );
 
-  const getRuleTypeLabel = (ruleType: string) => {
-    const labels: Record<string, string> = {
+  const getRuleTypeLabel = (ruleType: AlertRuleType) => {
+    const labels: Record<AlertRuleType, string> = {
       price_threshold: 'Price Threshold',
       percentage_change: 'Percentage Change',
       rate_expiry: 'Rate Expiry',
       market_deviation: 'Market Deviation',
     };
-    return labels[ruleType] || ruleType;
+    return labels[ruleType];
   };
 
   const getOperatorLabel = (operator: string) => {

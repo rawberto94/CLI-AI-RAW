@@ -14,9 +14,15 @@
 import { Job } from 'bullmq';
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from 'utils/queue/queue-service';
-import { QUEUE_NAMES, IndexContractJobData } from 'utils/queue/contract-queue';
+import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
+import { QUEUE_NAMES, IndexContractJobData } from '@repo/utils/queue/contract-queue';
 import pino from 'pino';
+
+import { getTraceContextFromJobData } from './observability/trace';
+import { isRetryableError, RetryableError } from './utils/errors';
+import { sha256 } from './utils/hash';
+import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
+import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
 
 const logger = pino({ name: 'rag-indexing-worker' });
 const prisma = getClient();
@@ -162,11 +168,28 @@ export async function processRAGIndexingJob(
 ): Promise<RAGIndexingResult> {
   const startTime = Date.now();
   const { contractId, tenantId } = job.data;
+  const trace = getTraceContextFromJobData(job.data);
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
   
   jobLogger.info('Starting RAG indexing');
   
   try {
+    await ensureProcessingJob({
+      tenantId,
+      contractId,
+      queueId: job.id ? String(job.id) : undefined,
+      traceId: trace.traceId,
+    });
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'rag.indexing',
+      status: 'running',
+      progress: 5,
+      currentStep: 'rag.indexing',
+    });
+
     await job.updateProgress(5);
     
     // Get contract with text and status
@@ -186,30 +209,13 @@ export async function processRAGIndexingJob(
     }
     
     // Check if contract is ready for indexing (completed or partial processing)
-    const validStatuses = ['COMPLETED', 'PARTIAL', 'PROCESSED'];
-    if (!validStatuses.includes(contract.status || '')) {
-      jobLogger.warn({ status: contract.status }, 'Contract not ready for RAG indexing, will retry');
-      // Return success=false but don't throw - let BullMQ retry
-      return {
-        success: false,
-        contractId,
-        chunksCreated: 0,
-        embeddingsGenerated: 0,
-        processingTime: Date.now() - startTime,
-        error: `Contract status is ${contract.status}, waiting for processing to complete`,
-      };
-    }
+    assertRetryableReady({
+      status: contract.status,
+      message: `Contract status is ${contract.status}, waiting for processing to complete`,
+    });
     
     if (!contract.rawText) {
-      jobLogger.warn('Contract has no text, skipping RAG indexing');
-      return {
-        success: false,
-        contractId,
-        chunksCreated: 0,
-        embeddingsGenerated: 0,
-        processingTime: Date.now() - startTime,
-        error: 'No text content available',
-      };
+      throw new RetryableError('No text content available yet');
     }
     
     await job.updateProgress(10);
@@ -241,6 +247,35 @@ export async function processRAGIndexingJob(
     const OpenAI = openaiModule?.default || (await import('openai')).default;
     const openai = new OpenAI({ apiKey });
     const model = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
+
+    // Idempotency: skip if we've already indexed the same rawText with the same embedding model.
+    const rawTextHash = sha256(contract.rawText);
+    const existingMetadata = await prisma.contractMetadata.findUnique({
+      where: { contractId },
+      select: { systemFields: true, embeddingVersion: true, embeddingCount: true },
+    });
+
+    const systemFields = (existingMetadata?.systemFields ?? {}) as any;
+    const prevHash = systemFields?.ragIndexing?.rawTextHash as string | undefined;
+    if (existingMetadata?.embeddingVersion === model && prevHash === rawTextHash && (existingMetadata.embeddingCount ?? 0) > 0) {
+      jobLogger.info({ model, embeddingCount: existingMetadata.embeddingCount }, 'RAG indexing skipped (no text changes)');
+      await job.updateProgress(100);
+      await updateStep({
+        tenantId,
+        contractId,
+        step: 'rag.indexing',
+        status: 'skipped',
+        progress: 100,
+        currentStep: 'rag.indexing',
+      });
+      return {
+        success: true,
+        contractId,
+        chunksCreated: 0,
+        embeddingsGenerated: 0,
+        processingTime: Date.now() - startTime,
+      };
+    }
     
     const BATCH_SIZE = 32;
     const MAX_RETRIES = 3;
@@ -335,12 +370,33 @@ export async function processRAGIndexingJob(
       where: { contractId },
       update: { 
         ragSyncedAt: new Date(),
+        embeddingVersion: model,
+        embeddingCount: embeddings.length,
+        lastEmbeddingAt: new Date(),
+        systemFields: {
+          ...(existingMetadata?.systemFields as any),
+          ragIndexing: {
+            rawTextHash,
+            model,
+            indexedAt: new Date().toISOString(),
+          },
+        },
       },
       create: {
         contractId,
         tenantId,
         ragSyncedAt: new Date(),
         updatedBy: 'system',
+        embeddingVersion: model,
+        embeddingCount: embeddings.length,
+        lastEmbeddingAt: new Date(),
+        systemFields: {
+          ragIndexing: {
+            rawTextHash,
+            model,
+            indexedAt: new Date().toISOString(),
+          },
+        },
       },
     });
     
@@ -353,6 +409,15 @@ export async function processRAGIndexingJob(
       embeddingsGenerated: embeddings.length,
       processingTime,
     }, 'RAG indexing completed');
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'rag.indexing',
+      status: 'completed',
+      progress: 100,
+      currentStep: 'rag.indexing',
+    });
     
     return {
       success: true,
@@ -364,16 +429,23 @@ export async function processRAGIndexingJob(
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    jobLogger.error({ error: errorMessage }, 'RAG indexing failed');
-    
-    return {
-      success: false,
+    jobLogger.error({ error: errorMessage, traceId: trace.traceId }, 'RAG indexing failed');
+
+    await updateStep({
+      tenantId,
       contractId,
-      chunksCreated: 0,
-      embeddingsGenerated: 0,
-      processingTime: Date.now() - startTime,
+      step: 'rag.indexing',
+      status: 'failed',
+      progress: 100,
+      currentStep: 'rag.indexing',
       error: errorMessage,
-    };
+    });
+
+    // Let BullMQ handle retries/backoff; only swallow if you truly want "best-effort".
+    if (isRetryableError(error)) {
+      throw error;
+    }
+    throw error;
   }
 }
 
@@ -382,8 +454,9 @@ export async function processRAGIndexingJob(
  */
 export function registerRAGIndexingWorker() {
   const queueService = getQueueService();
-  
-  const concurrency = parseInt(process.env.RAG_WORKER_CONCURRENCY || '3', 10);
+
+  const concurrency = getWorkerConcurrency('RAG_WORKER_CONCURRENCY', 3);
+  const limiter = getWorkerLimiter('RAG_WORKER_LIMIT_MAX', 'RAG_WORKER_LIMIT_DURATION_MS', { max: 20, duration: 60000 });
   
   logger.info({ concurrency }, 'Registering RAG indexing worker');
   
@@ -392,10 +465,7 @@ export function registerRAGIndexingWorker() {
     processRAGIndexingJob,
     {
       concurrency,
-      limiter: {
-        max: 20,
-        duration: 60000, // 20 jobs per minute max
-      },
+      limiter,
       // Note: BullMQ settings like maxStalledCount and stalledInterval are configured
       // at the BullMQ Worker level, not through our queue-service wrapper
     }

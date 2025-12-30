@@ -382,7 +382,7 @@ function ContractGroupSelector({
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
+            <FileText className="h-4 w-4" />
             {label}
           </span>
           {selectedContracts.length > 0 && (
@@ -425,7 +425,7 @@ function ContractGroupSelector({
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -435,13 +435,13 @@ function ContractGroupSelector({
         </div>
 
         {/* Quick actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2.5">
           <Button variant="outline" size="sm" onClick={selectAll} className="flex-1">
-            <Plus className="w-3 h-3 mr-1" />
+            <Plus className="h-3.5 w-3.5 mr-1" />
             Select All ({filteredContracts.length})
           </Button>
           <Button variant="outline" size="sm" onClick={clearAll} className="flex-1">
-            <X className="w-3 h-3 mr-1" />
+            <X className="h-3.5 w-3.5 mr-1" />
             Clear
           </Button>
         </div>
@@ -450,7 +450,7 @@ function ContractGroupSelector({
         <ScrollArea className="h-[280px] border rounded-lg">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             </div>
           ) : filteredContracts.length === 0 ? (
             <div className="flex items-center justify-center h-full text-sm text-gray-500">
@@ -918,17 +918,17 @@ export default function ContractComparisonPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               {canCompare && (
                 <Button onClick={performComparison} disabled={isComparing}>
                   {isComparing ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Analyzing...
                     </>
                   ) : (
                     <>
-                      <Scale className="w-4 h-4 mr-2" />
+                      <Scale className="h-4 w-4 mr-2" />
                       Compare Groups
                     </>
                   )}
@@ -936,7 +936,7 @@ export default function ContractComparisonPage() {
               )}
               {comparison && (
                 <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2" />
                   Export PDF
                 </Button>
               )}
@@ -1059,10 +1059,10 @@ export default function ContractComparisonPage() {
             {/* Quick Stats Header */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-blue-100 rounded-lg">
-                      <DollarSign className="w-5 h-5 text-blue-600" />
+                      <DollarSign className="h-4 w-4 text-blue-600" />
                     </div>
                     <div>
                       <p className="text-xs text-blue-600 font-medium">{comparison.group1.name}</p>
@@ -1073,10 +1073,10 @@ export default function ContractComparisonPage() {
               </Card>
               
               <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-purple-100 rounded-lg">
-                      <DollarSign className="w-5 h-5 text-purple-600" />
+                      <DollarSign className="h-4 w-4 text-purple-600" />
                     </div>
                     <div>
                       <p className="text-xs text-purple-600 font-medium">{comparison.group2.name}</p>
@@ -1087,10 +1087,10 @@ export default function ContractComparisonPage() {
               </Card>
               
               <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-emerald-100 rounded-lg">
-                      <FileText className="w-5 h-5 text-emerald-600" />
+                      <FileText className="h-4 w-4 text-emerald-600" />
                     </div>
                     <div>
                       <p className="text-xs text-emerald-600 font-medium">Total Contracts</p>
@@ -1101,10 +1101,10 @@ export default function ContractComparisonPage() {
               </Card>
               
               <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-white">
-                <CardContent className="p-4">
+                <CardContent className="p-5">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-amber-100 rounded-lg">
-                      <Percent className="w-5 h-5 text-amber-600" />
+                      <Percent className="h-4 w-4 text-amber-600" />
                     </div>
                     <div>
                       <p className="text-xs text-amber-600 font-medium">Value Difference</p>
@@ -1407,7 +1407,7 @@ export default function ContractComparisonPage() {
                                 </div>
                                 <div className="text-right ml-2">
                                   <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue)}</p>
-                                  <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="text-[10px]">
+                                  <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="px-3 py-1">
                                     {c.status}
                                   </Badge>
                                 </div>
@@ -1434,7 +1434,7 @@ export default function ContractComparisonPage() {
                                 </div>
                                 <div className="text-right ml-2">
                                   <p className="text-sm font-semibold text-gray-900">{formatCurrency(c.totalValue)}</p>
-                                  <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="text-[10px]">
+                                  <Badge variant={c.status === "ACTIVE" ? "default" : "secondary"} className="px-3 py-1">
                                     {c.status}
                                   </Badge>
                                 </div>

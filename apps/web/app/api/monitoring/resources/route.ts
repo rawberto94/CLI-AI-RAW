@@ -157,6 +157,22 @@ interface MetricsData {
     loadAverage: number[];
     cores: number;
     model: string;
+    speed: number;
+  };
+  connections: {
+    total: number;
+    active: number;
+    queued: number;
+    byState: Record<string, number>;
+    byTenant: Record<string, number>;
+  };
+  system: {
+    platform: string;
+    uptime: number;
+    freeMemory: number;
+    totalMemory: number;
+    memoryUtilization: number;
+    hostname: string;
   };
 }
 

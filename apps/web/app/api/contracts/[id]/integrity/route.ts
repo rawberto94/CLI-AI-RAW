@@ -46,6 +46,18 @@ export async function GET(
     // Run integrity validation
     const result = await validateContractIntegrity(contractId, tenantId)
 
+    const errors = result.issues.filter(i => i.severity === 'error')
+    const warnings = result.issues.filter(i => i.severity === 'warning')
+    const info = result.issues.filter(i => i.severity === 'info')
+    const suggestedFixes = result.issues
+      .filter(i => typeof i.suggestedFix === 'string' && i.suggestedFix.length > 0)
+      .map(i => ({
+        category: i.category,
+        message: i.message,
+        field: i.field,
+        suggestedFix: i.suggestedFix,
+      }))
+
     if (format === 'text') {
       // Return human-readable text report
       const report = formatIntegrityReport(result)
@@ -64,30 +76,30 @@ export async function GET(
       valid: result.valid,
       score: result.score,
       summary: {
-        errors: result.errors.length,
-        warnings: result.warnings.length,
-        info: result.info.length,
+        errors: errors.length,
+        warnings: warnings.length,
+        info: info.length,
       },
       checks: {
-        dates: result.errors.filter(e => e.category === 'dates').length + 
-               result.warnings.filter(w => w.category === 'dates').length === 0,
-        values: result.errors.filter(e => e.category === 'values').length + 
-                result.warnings.filter(w => w.category === 'values').length === 0,
-        taxonomy: result.errors.filter(e => e.category === 'taxonomy').length + 
-                  result.warnings.filter(w => w.category === 'taxonomy').length === 0,
-        hierarchy: result.errors.filter(e => e.category === 'hierarchy').length + 
-                   result.warnings.filter(w => w.category === 'hierarchy').length === 0,
-        processing: result.errors.filter(e => e.category === 'processing').length + 
-                    result.warnings.filter(w => w.category === 'processing').length === 0,
-        artifacts: result.errors.filter(e => e.category === 'artifacts').length + 
-                   result.warnings.filter(w => w.category === 'artifacts').length === 0,
-        metadata: result.errors.filter(e => e.category === 'metadata').length + 
-                  result.warnings.filter(w => w.category === 'metadata').length === 0,
+        dates: errors.filter(e => e.category === 'dates').length +
+          warnings.filter(w => w.category === 'dates').length === 0,
+        values: errors.filter(e => e.category === 'values').length +
+          warnings.filter(w => w.category === 'values').length === 0,
+        taxonomy: errors.filter(e => e.category === 'taxonomy').length +
+          warnings.filter(w => w.category === 'taxonomy').length === 0,
+        hierarchy: errors.filter(e => e.category === 'hierarchy').length +
+          warnings.filter(w => w.category === 'hierarchy').length === 0,
+        processing: errors.filter(e => e.category === 'processing').length +
+          warnings.filter(w => w.category === 'processing').length === 0,
+        artifacts: errors.filter(e => e.category === 'artifacts').length +
+          warnings.filter(w => w.category === 'artifacts').length === 0,
+        metadata: errors.filter(e => e.category === 'metadata').length +
+          warnings.filter(w => w.category === 'metadata').length === 0,
       },
-      errors: result.errors,
-      warnings: result.warnings,
-      info: result.info,
-      suggestedFixes: result.suggestedFixes,
+      errors,
+      warnings,
+      info,
+      suggestedFixes,
     })
   } catch (error) {
     console.error('Contract integrity check error:', error)

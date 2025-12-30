@@ -15,6 +15,12 @@ import type { Job } from "bullmq";
 import { Worker } from "bullmq";
 import pino from "pino";
 
+import { getTraceContextFromJobData } from './observability/trace';
+import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
+import { RetryableError } from './utils/errors';
+import { sha256 } from './utils/hash';
+import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -32,6 +38,10 @@ export interface CategorizationJobData {
   priority?: "high" | "normal" | "low";
   /** Source that triggered categorization */
   source?: "upload" | "manual" | "bulk" | "scheduled";
+  /** Correlation ID propagated across worker pipeline */
+  traceId?: string;
+  /** Optional request correlation from API layer */
+  requestId?: string;
 }
 
 export interface CategorizationResult {
@@ -98,11 +108,28 @@ export async function processCategorizationJob(
 
   const startTime = Date.now();
   const errors: string[] = [];
+  const trace = getTraceContextFromJobData(job.data);
 
-  console.log(`🏷️ Starting categorization for contract ${contractId}`);
+  console.log(`🏷️ Starting categorization for contract ${contractId} (traceId=${trace.traceId})`);
 
   try {
     await job.updateProgress(5);
+
+    await ensureProcessingJob({
+      tenantId,
+      contractId,
+      queueId: job.id ? String(job.id) : undefined,
+      traceId: trace.traceId,
+    });
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'categorization.run',
+      status: 'running',
+      progress: 5,
+      currentStep: 'categorization.run',
+    });
 
     // Dynamic imports
     const { AIContractCategorizer } = await import("@/lib/ai/contract-categorizer");
@@ -117,6 +144,7 @@ export async function processCategorizationJob(
         status: true,
         contractType: true,
         category: true,
+        metadata: true,
       },
     });
 
@@ -124,11 +152,55 @@ export async function processCategorizationJob(
       throw new Error(`Contract ${contractId} not found`);
     }
 
+    assertRetryableReady({
+      status: contract.status,
+      message: `Contract status is ${contract.status}, waiting for processing to complete`,
+    });
+
     await job.updateProgress(10);
+
+    const rawTextHash = contract.rawText ? sha256(contract.rawText) : undefined;
+
+    // Idempotency: if we already categorized the same rawText, skip.
+    if (!forceRecategorize && rawTextHash) {
+      const existingMeta = (contract.metadata as any) ?? {};
+      const prevHash = existingMeta?._categorization?.rawTextHash as string | undefined;
+      if (prevHash && prevHash === rawTextHash) {
+        console.log(`⏭️ Contract ${contractId} categorization unchanged, skipping`);
+
+        await updateStep({
+          tenantId,
+          contractId,
+          step: 'categorization.run',
+          status: 'skipped',
+          progress: 100,
+          currentStep: 'categorization.run',
+        });
+
+        return {
+          success: true,
+          contractId,
+          contractType: contract.contractType ?? undefined,
+          overallConfidence: 100,
+          autoApplied: false,
+          processingTimeMs: Date.now() - startTime,
+        };
+      }
+    }
 
     // Skip if already categorized and not forcing
     if (contract.contractType && contract.category && !forceRecategorize) {
       console.log(`⏭️ Contract ${contractId} already categorized, skipping`);
+
+      await updateStep({
+        tenantId,
+        contractId,
+        step: 'categorization.run',
+        status: 'skipped',
+        progress: 100,
+        currentStep: 'categorization.run',
+      });
+
       return {
         success: true,
         contractId,
@@ -141,7 +213,7 @@ export async function processCategorizationJob(
 
     // Check for text
     if (!contract.rawText || contract.rawText.length < 100) {
-      throw new Error("Contract has insufficient text for categorization");
+      throw new RetryableError('Contract has insufficient text for categorization');
     }
 
     await job.updateProgress(20);
@@ -172,11 +244,7 @@ export async function processCategorizationJob(
       };
 
       // Update contract
-      const existingContract = await prisma.contract.findUnique({
-        where: { id: contractId },
-        select: { metadata: true },
-      });
-      const existingMetadata = (existingContract?.metadata as Record<string, unknown>) || {};
+      const existingMetadata = ((contract.metadata as Record<string, unknown>) || {}) as any;
       
       await prisma.contract.update({
         where: { id: contractId },
@@ -196,6 +264,7 @@ export async function processCategorizationJob(
               scope: result.scope,
               flags: result.flags,
               overallConfidence: result.overallConfidence,
+              rawTextHash,
               categorizedAt: new Date().toISOString(),
               source,
             },
@@ -207,11 +276,7 @@ export async function processCategorizationJob(
       console.log(`✅ Auto-applied categorization for contract ${contractId}`);
     } else {
       // Store results but don't apply
-      const existingContract = await prisma.contract.findUnique({
-        where: { id: contractId },
-        select: { metadata: true },
-      });
-      const existingMetadata = (existingContract?.metadata as Record<string, unknown>) || {};
+      const existingMetadata = ((contract.metadata as Record<string, unknown>) || {}) as any;
       
       await prisma.contract.update({
         where: { id: contractId },
@@ -225,6 +290,7 @@ export async function processCategorizationJob(
               complexity: result.complexity,
               regulatoryDomains: result.regulatoryDomains,
               overallConfidence: result.overallConfidence,
+              rawTextHash,
               categorizedAt: new Date().toISOString(),
               needsReview: true,
             },
@@ -236,6 +302,15 @@ export async function processCategorizationJob(
     }
 
     await job.updateProgress(100);
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'categorization.run',
+      status: 'completed',
+      progress: 100,
+      currentStep: 'categorization.run',
+    });
 
     return {
       success: true,
@@ -252,6 +327,20 @@ export async function processCategorizationJob(
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`❌ Categorization failed for ${contractId}:`, errorMessage);
     errors.push(errorMessage);
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'categorization.run',
+      status: 'failed',
+      progress: 100,
+      currentStep: 'categorization.run',
+      error: errorMessage,
+    });
+
+    if (error instanceof Error && error.name === 'RetryableError') {
+      throw error;
+    }
 
     return {
       success: false,
@@ -279,7 +368,7 @@ export async function queueCategorizationJob(
     jobId?: string;
   }
 ): Promise<string> {
-  const { getQueueService } = await import("utils/queue/queue-service");
+  const { getQueueService } = await import("@repo/utils/queue/queue-service");
   
   const queueService = getQueueService();
   const jobId = options?.jobId || `categorize-${data.contractId}-${Date.now()}`;
@@ -381,8 +470,12 @@ export function registerCategorizationWorker(): Worker {
     },
     {
       connection: redisConfig,
-      concurrency: CATEGORIZATION_CONFIG.concurrency,
-      limiter: CATEGORIZATION_CONFIG.limiter,
+      concurrency: getWorkerConcurrency('CATEGORIZATION_WORKER_CONCURRENCY', CATEGORIZATION_CONFIG.concurrency),
+      limiter: getWorkerLimiter(
+        'CATEGORIZATION_WORKER_LIMIT_MAX',
+        'CATEGORIZATION_WORKER_LIMIT_DURATION_MS',
+        CATEGORIZATION_CONFIG.limiter
+      ),
     }
   );
 

@@ -14,6 +14,12 @@
 
 import type { Job } from "bullmq";
 
+import { getTraceContextFromJobData } from './observability/trace';
+import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';
+import { RetryableError } from './utils/errors';
+import { sha256 } from './utils/hash';
+import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -31,6 +37,10 @@ export interface MetadataExtractionJobData {
   priority?: "high" | "normal" | "low";
   /** Source that triggered extraction */
   source?: "upload" | "manual" | "bulk" | "scheduled";
+  /** Correlation ID propagated across worker pipeline */
+  traceId?: string;
+  /** Optional request correlation from API layer */
+  requestId?: string;
 }
 
 export interface MetadataExtractionResult {
@@ -66,12 +76,29 @@ export async function processMetadataExtractionJob(
 
   const startTime = Date.now();
   const errors: string[] = [];
+  const trace = getTraceContextFromJobData(job.data);
 
-  console.log(`📊 Starting metadata extraction for contract ${contractId}`);
+  console.log(`📊 Starting metadata extraction for contract ${contractId} (traceId=${trace.traceId})`);
 
   try {
     // Update job progress
     await job.updateProgress(5);
+
+    await ensureProcessingJob({
+      tenantId,
+      contractId,
+      queueId: job.id ? String(job.id) : undefined,
+      traceId: trace.traceId,
+    });
+
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'metadata.extract',
+      status: 'running',
+      progress: 5,
+      currentStep: 'metadata.extract',
+    });
 
     // Dynamic imports to avoid circular dependencies
     const { SchemaAwareMetadataExtractor } = await import("@/lib/ai/metadata-extractor");
@@ -102,29 +129,38 @@ export async function processMetadataExtractionJob(
       throw new Error(`Contract ${contractId} not found`);
     }
 
+    // If OCR/processing hasn’t completed yet, retry instead of returning a permanent failure.
+    assertRetryableReady({
+      status: contract.status,
+      message: `Contract status is ${contract.status}, waiting for processing to complete`,
+    });
+
     if (!contract.rawText || contract.rawText.length < 100) {
       console.log(`⚠️ Contract ${contractId} has insufficient text for extraction`);
-      return {
-        success: false,
-        contractId,
-        fieldsExtracted: 0,
-        fieldsAutoApplied: 0,
-        fieldsNeedingReview: 0,
-        fieldsFailed: 0,
-        averageConfidence: 0,
-        processingTimeMs: Date.now() - startTime,
-        errors: ["Insufficient text content for metadata extraction"],
-      };
+      throw new RetryableError('Insufficient text content for metadata extraction');
     }
 
     await job.updateProgress(20);
+
+    const rawTextHash = sha256(contract.rawText);
 
     // Check if extraction results already exist and we're not forcing re-extraction
     const existingCustomFields = (contract.contractMetadata as any)?.customFields as any;
     if (existingCustomFields && !forceReExtract) {
       const hasPriorExtraction = typeof existingCustomFields === 'object' && !!existingCustomFields?._aiExtraction;
-      if (hasPriorExtraction) {
+      const priorHash = existingCustomFields?._aiExtraction?.lastExtraction?.rawTextHash as string | undefined;
+      if (hasPriorExtraction && (!priorHash || priorHash === rawTextHash)) {
         console.log(`📋 Contract ${contractId} already has extraction results, skipping`);
+
+        await updateStep({
+          tenantId,
+          contractId,
+          step: 'metadata.extract',
+          status: 'skipped',
+          progress: 100,
+          currentStep: 'metadata.extract',
+        });
+
         return {
           success: true,
           contractId,
@@ -218,6 +254,7 @@ export async function processMetadataExtractionJob(
         extractedAt: extractionResult.extractedAt,
         schemaId: extractionResult.schemaId,
         schemaVersion: extractionResult.schemaVersion,
+        rawTextHash,
         summary: extractionResult.summary,
         warnings: extractionResult.warnings,
         source,
@@ -330,6 +367,15 @@ export async function processMetadataExtractionJob(
 
     await job.updateProgress(100);
 
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'metadata.extract',
+      status: 'completed',
+      progress: 100,
+      currentStep: 'metadata.extract',
+    });
+
     console.log(
       `📊 Metadata extraction complete for ${contractId}: ` +
         `${fieldsAutoApplied} auto-applied, ${fieldsNeedingReview} need review, ` +
@@ -351,6 +397,16 @@ export async function processMetadataExtractionJob(
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`❌ Metadata extraction failed for ${contractId}:`, errorMessage);
 
+    await updateStep({
+      tenantId,
+      contractId,
+      step: 'metadata.extract',
+      status: 'failed',
+      progress: 100,
+      currentStep: 'metadata.extract',
+      error: errorMessage,
+    });
+
     // Record failure in analytics
     try {
       const { getExtractionAnalytics } = await import("@/lib/ai/extraction-analytics");
@@ -362,6 +418,11 @@ export async function processMetadataExtractionJob(
       );
     } catch {
       // Ignore analytics errors
+    }
+
+    // Let BullMQ retry/backoff on retryable conditions.
+    if (error instanceof Error && error.name === 'RetryableError') {
+      throw error;
     }
 
     return {
@@ -424,8 +485,8 @@ export async function queueMetadataExtractionJob(
   }
 ): Promise<string> {
   // Dynamic import to avoid circular dependencies
-  const { getQueueService } = await import("utils/queue/queue-service");
-  const { QUEUE_NAMES } = await import("utils/queue/contract-queue");
+  const { getQueueService } = await import("@repo/utils/queue/queue-service");
+  const { QUEUE_NAMES } = await import("@repo/utils/queue/contract-queue");
   
   const queueService = getQueueService();
   
@@ -531,8 +592,12 @@ export function registerMetadataExtractionWorker(): Worker {
     },
     {
       connection: redisConfig,
-      concurrency: METADATA_EXTRACTION_CONFIG.concurrency,
-      limiter: METADATA_EXTRACTION_CONFIG.limiter,
+      concurrency: getWorkerConcurrency('METADATA_WORKER_CONCURRENCY', METADATA_EXTRACTION_CONFIG.concurrency),
+      limiter: getWorkerLimiter(
+        'METADATA_WORKER_LIMIT_MAX',
+        'METADATA_WORKER_LIMIT_DURATION_MS',
+        METADATA_EXTRACTION_CONFIG.limiter
+      ),
     }
   );
 

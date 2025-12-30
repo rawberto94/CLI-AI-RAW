@@ -26,6 +26,8 @@ export default function AppLayout({
       {/* Top Bar */}
       {(title || actions) && (
         <motion.header 
+          role="banner"
+          aria-label="Page header"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="sticky top-16 lg:top-0 z-20 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70"
@@ -95,7 +97,12 @@ export default function AppLayout({
       )}
 
       {/* Page Content */}
-      <main className={cn('flex-1 w-full max-w-full overflow-x-hidden', className)}>
+      <main 
+        role="main" 
+        id="main-content" 
+        aria-label={title || 'Main content'}
+        className={cn('flex-1 w-full max-w-full overflow-x-hidden', className)}
+      >
         <div className="w-full px-4 lg:px-6 py-4 md:py-6">
           {children}
         </div>

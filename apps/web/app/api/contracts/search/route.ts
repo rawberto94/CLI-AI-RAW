@@ -140,8 +140,15 @@ async function performRealSearch(
     };
   }
 
-  const contracts = Array.isArray(result.data) ? result.data : (result.data as Record<string, unknown>).contracts || [];
-  const totalCount = (result as { pagination?: { total: number } }).pagination?.total || contracts.length;
+  const data = result.data as Record<string, unknown> | unknown[];
+  const contracts = Array.isArray(data)
+    ? data
+    : Array.isArray((data as Record<string, unknown>)?.contracts)
+      ? ((data as Record<string, unknown>).contracts as unknown[])
+      : [];
+
+  const totalCount =
+    (result as { pagination?: { total: number } }).pagination?.total ?? contracts.length;
   const normalizedQuery = query.toLowerCase();
 
   interface ContractResult {
@@ -151,6 +158,9 @@ async function performRealSearch(
     clientName?: string;
     supplierName?: string;
     contractType?: string;
+    status?: string;
+    uploadedAt?: string | Date;
+    createdAt?: string | Date;
     parentContractId?: string;
     childContracts?: unknown[];
     _count?: { childContracts?: number };
@@ -168,6 +178,13 @@ async function performRealSearch(
       .map((value) => value!.toLowerCase())
       .filter((value) => value.includes(normalizedQuery))
       .map((value) => value.replace(normalizedQuery, `<mark>${normalizedQuery}</mark>`));
+
+    const uploadedAtValue = contract.uploadedAt ?? contract.createdAt;
+    const uploadedAt = uploadedAtValue
+      ? uploadedAtValue instanceof Date
+        ? uploadedAtValue
+        : new Date(uploadedAtValue)
+      : new Date(0);
 
     // Extract hierarchy info from contract
     const childCount = contract._count?.childContracts ?? contract.childContracts?.length ?? 0;
@@ -191,8 +208,8 @@ async function performRealSearch(
       matchType: mode === "semantic" ? "both" : "keyword",
       highlights,
       metadata: {
-        uploadedAt: contract.uploadedAt || contract.createdAt,
-        status: contract.status.toLowerCase(),
+        uploadedAt,
+        status: (contract.status ?? 'unknown').toLowerCase(),
       },
       // Include hierarchy information
       hierarchy: hasHierarchy ? {

@@ -2,8 +2,7 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { WorkflowBuilder } from '@/components/workflows/WorkflowBuilder'
-import { SimpleApprovalsQueue } from '@/components/workflows/SimpleApprovalsQueue'
+import { LazyWorkflowBuilder as WorkflowBuilder, LazySimpleApprovalsQueue as SimpleApprovalsQueue } from '@/components/lazy'
 import { BulkApprovalActions } from '@/components/approvals/BulkApprovalActions'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -238,36 +237,36 @@ function WorkflowsPageContent() {
                 </h1>
                 <p className="text-sm text-slate-500 flex items-center gap-2">
                   Manage approvals and automation in one place
-                  <Badge variant="secondary" className="bg-indigo-100/80 text-indigo-700 text-xs">
-                    <Sparkles className="h-3 w-3 mr-1" />
+                  <Badge variant="secondary" className="bg-indigo-100/80 text-indigo-700 text-xs px-3 py-1">
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                     Unified
                   </Badge>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="hidden lg:flex items-center gap-2 mr-2">
-                <Badge variant="outline" className="gap-1 px-2.5 py-1 bg-amber-50 border-amber-200 text-amber-700">
-                  <Clock className="h-3 w-3" />
+            <div className="flex items-center gap-2.5">
+              <div className="hidden lg:flex items-center gap-2.5 mr-2">
+                <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-amber-50 border-amber-200 text-amber-700">
+                  <Clock className="h-3.5 w-3.5" />
                   <span className="font-semibold">4</span> Pending
                 </Badge>
-                <Badge variant="outline" className="gap-1 px-2.5 py-1 bg-green-50 border-green-200 text-green-700">
-                  <CheckCircle className="h-3 w-3" />
+                <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-green-50 border-green-200 text-green-700">
+                  <CheckCircle className="h-3.5 w-3.5" />
                   <span className="font-semibold">{stats.active}</span> Active
                 </Badge>
               </div>
 
-              <Button variant="outline" onClick={() => refetch()} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
+              <Button variant="outline" onClick={() => refetch()} className="gap-2 h-8">
+                <RefreshCw className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
               
               <Button
                 onClick={createNew}
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg gap-2"
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 shadow-lg gap-2 h-8"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
                 New Workflow
               </Button>
             </div>
@@ -339,7 +338,7 @@ function WorkflowsPageContent() {
                     { label: 'Executions', value: stats.totalExecutions, icon: Activity, color: 'from-blue-100 to-cyan-100', iconColor: 'text-blue-600', valueColor: 'text-blue-600' },
                   ].map((stat) => (
                     <Card key={stat.label} className="bg-white/70 backdrop-blur border-0 shadow-md hover:shadow-lg transition-all">
-                      <CardContent className="p-4">
+                      <CardContent className="p-5">
                         <div className="flex items-center gap-3">
                           <div className={`p-2.5 bg-gradient-to-br ${stat.color} rounded-xl`}>
                             <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
@@ -357,14 +356,14 @@ function WorkflowsPageContent() {
                 {/* Workflows List */}
                 {loading ? (
                   <Card className="shadow-xl border-0 bg-white/80">
-                    <CardContent className="p-12 text-center">
+                    <CardContent className="p-5 text-center">
                       <RefreshCw className="h-12 w-12 mx-auto animate-spin text-indigo-600 mb-4" />
                       <p className="text-gray-600">Loading workflows...</p>
                     </CardContent>
                   </Card>
                 ) : workflows.length === 0 ? (
                   <Card className="shadow-xl border-0 bg-white/80 backdrop-blur">
-                    <CardContent className="p-12 text-center">
+                    <CardContent className="p-5 text-center">
                       <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                         <GitBranch className="h-10 w-10 text-indigo-600" />
                       </div>
@@ -372,13 +371,13 @@ function WorkflowsPageContent() {
                       <p className="text-gray-600 mb-6 max-w-md mx-auto">
                         Create your first automated workflow to streamline contract approvals.
                       </p>
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <Button onClick={createNew} className="bg-gradient-to-r from-indigo-600 to-purple-600 gap-2">
-                          <Plus className="h-4 w-4" />
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
+                        <Button onClick={createNew} className="bg-gradient-to-r from-indigo-600 to-purple-600 gap-2 h-8">
+                          <Plus className="h-3.5 w-3.5" />
                           Create Workflow
                         </Button>
-                        <Button variant="outline" onClick={() => setActiveTab('templates')} className="gap-2">
-                          <FileText className="h-4 w-4" />
+                        <Button variant="outline" onClick={() => setActiveTab('templates')} className="gap-2 h-8">
+                          <FileText className="h-3.5 w-3.5" />
                           Use Template
                         </Button>
                       </div>
@@ -394,24 +393,24 @@ function WorkflowsPageContent() {
                         transition={{ delay: index * 0.05 }}
                       >
                         <Card className="shadow-lg border-0 bg-white/90 backdrop-blur hover:shadow-xl transition-all group">
-                          <CardContent className="p-6">
+                          <CardContent className="p-5">
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                   <h3 className="text-xl font-bold text-gray-900">{workflow.name}</h3>
-                                  <Badge className={workflow.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                                  <Badge className={workflow.isActive ? 'bg-green-100 text-green-700 px-3 py-1' : 'bg-gray-100 text-gray-700 px-3 py-1'}>
                                     {workflow.isActive ? 'Active' : 'Inactive'}
                                   </Badge>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-3">{workflow.description || 'No description'}</p>
                                 <div className="flex items-center gap-4 text-sm text-gray-500">
                                   <span className="flex items-center gap-1">
-                                    <ArrowRight className="h-3 w-3" />
+                                    <ArrowRight className="h-3.5 w-3.5" />
                                     {workflow.steps?.length || 0} steps
                                   </span>
                                   <span>•</span>
                                   <span className="flex items-center gap-1">
-                                    <Activity className="h-3 w-3" />
+                                    <Activity className="h-3.5 w-3.5" />
                                     {workflow.executions || 0} runs
                                   </span>
                                 </div>
@@ -420,18 +419,18 @@ function WorkflowsPageContent() {
                                 <Settings className="h-6 w-6 text-white" />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 pt-4 border-t">
-                              <Button variant="outline" size="sm" onClick={() => editWorkflow(workflow)} className="gap-1">
-                                <Edit className="h-4 w-4" /> Edit
+                            <div className="flex items-center gap-2.5 pt-4 border-t">
+                              <Button variant="outline" size="sm" onClick={() => editWorkflow(workflow)} className="gap-1 h-8">
+                                <Edit className="h-3.5 w-3.5" /> Edit
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => duplicateWorkflow(workflow)} className="gap-1">
-                                <Copy className="h-4 w-4" /> Copy
+                              <Button variant="outline" size="sm" onClick={() => duplicateWorkflow(workflow)} className="gap-1 h-8">
+                                <Copy className="h-3.5 w-3.5" /> Copy
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => toggleWorkflow(workflow.id, !workflow.isActive)} className="gap-1">
-                                {workflow.isActive ? <><Pause className="h-4 w-4" /> Pause</> : <><Play className="h-4 w-4" /> Activate</>}
+                              <Button variant="outline" size="sm" onClick={() => toggleWorkflow(workflow.id, !workflow.isActive)} className="gap-1 h-8">
+                                {workflow.isActive ? <><Pause className="h-3.5 w-3.5" /> Pause</> : <><Play className="h-3.5 w-3.5" /> Activate</>}
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => openDeleteModal(workflow)} className="hover:bg-red-50 hover:border-red-300 ml-auto">
-                                <Trash2 className="h-4 w-4 text-red-600" />
+                              <Button variant="outline" size="sm" onClick={() => openDeleteModal(workflow)} className="hover:bg-red-50 hover:border-red-300 ml-auto h-8">
+                                <Trash2 className="h-3.5 w-3.5 text-red-600" />
                               </Button>
                             </div>
                           </CardContent>
@@ -466,7 +465,7 @@ function WorkflowsPageContent() {
                           className="shadow-lg border-0 bg-white/90 backdrop-blur hover:shadow-xl transition-all cursor-pointer group"
                           onClick={() => createFromTemplate(template.id)}
                         >
-                          <CardContent className="p-6">
+                          <CardContent className="p-5">
                             <div className="flex items-start gap-4">
                               <div className={`p-3 ${template.color} rounded-xl shadow-lg group-hover:scale-105 transition-transform`}>
                                 <Icon className="h-6 w-6 text-white" />
@@ -474,12 +473,12 @@ function WorkflowsPageContent() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <h3 className="text-lg font-bold text-gray-900">{template.name}</h3>
-                                  {template.popular && <Badge className="bg-amber-100 text-amber-700">Popular</Badge>}
+                                  {template.popular && <Badge className="bg-amber-100 text-amber-700 px-3 py-1">Popular</Badge>}
                                 </div>
                                 <p className="text-sm text-gray-600 mb-3">{template.description}</p>
                                 <div className="text-sm text-gray-500">
                                   <span className="flex items-center gap-1">
-                                    <ArrowRight className="h-3 w-3" />
+                                    <ArrowRight className="h-3.5 w-3.5" />
                                     {template.steps} step{template.steps > 1 ? 's' : ''}
                                   </span>
                                 </div>
@@ -495,8 +494,8 @@ function WorkflowsPageContent() {
                 
                 <div className="mt-8 text-center">
                   <p className="text-gray-500 mb-4">Need something custom?</p>
-                  <Button onClick={createNew} variant="outline" size="lg" className="gap-2">
-                    <Plus className="h-4 w-4" />
+                  <Button onClick={createNew} variant="outline" size="lg" className="gap-2 h-8">
+                    <Plus className="h-3.5 w-3.5" />
                     Create from Scratch
                   </Button>
                 </div>
@@ -529,7 +528,7 @@ function WorkflowsPageContent() {
                 <p className="font-medium text-slate-900">{workflowToDelete.name}</p>
                 {workflowToDelete.isActive && (
                   <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
+                    <AlertTriangle className="h-3.5 w-3.5" />
                     This workflow is currently active
                   </p>
                 )}
@@ -552,16 +551,16 @@ function WorkflowsPageContent() {
               variant="destructive"
               onClick={() => workflowToDelete && handleDeleteWorkflow(workflowToDelete.id)}
               disabled={isDeleting}
-              className="gap-2"
+              className="gap-2 h-8"
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   Deleting...
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                   Delete Workflow
                 </>
               )}

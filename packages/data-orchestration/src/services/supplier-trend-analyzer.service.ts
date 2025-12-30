@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Supplier Trend Analyzer Service
  * 

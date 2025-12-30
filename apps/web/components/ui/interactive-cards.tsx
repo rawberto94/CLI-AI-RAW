@@ -7,6 +7,7 @@
 
 import React, { forwardRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import type { HTMLMotionProps } from 'framer-motion';
 import { Check, ChevronRight, MoreHorizontal, Star, Bookmark, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,7 +15,8 @@ import { cn } from '@/lib/utils';
 // Hover Card
 // ============================================
 
-interface HoverCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface HoverCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   variant?: 'default' | 'elevated' | 'bordered' | 'ghost';
   hoverable?: boolean;
   pressable?: boolean;
@@ -77,7 +79,8 @@ HoverCard.displayName = 'HoverCard';
 // Selectable Card
 // ============================================
 
-interface SelectableCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface SelectableCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   selected?: boolean;
   onSelect?: () => void;
   variant?: 'checkbox' | 'radio' | 'highlight';
@@ -172,7 +175,8 @@ export function SelectableCard({
 // Action Card
 // ============================================
 
-interface ActionCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ActionCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   title: string;
   description?: string;
   icon?: React.ReactNode;
@@ -251,7 +255,8 @@ export function ActionCard({
 // Expandable Card
 // ============================================
 
-interface ExpandableCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ExpandableCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   title: string;
   preview?: string;
   expanded?: boolean;
@@ -332,7 +337,8 @@ export function ExpandableCard({
 // Stats Card
 // ============================================
 
-interface StatsCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface StatsCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   title: string;
   value: string | number;
   subtitle?: string;
@@ -411,7 +417,8 @@ export function StatsCard({
 // Feature Card
 // ============================================
 
-interface FeatureCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface FeatureCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   title: string;
   description: string;
   icon: React.ReactNode;
@@ -490,7 +497,8 @@ export function FeatureCard({
 // Pricing Card
 // ============================================
 
-interface PricingCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface PricingCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   name: string;
   price: string | number;
   period?: string;
@@ -582,7 +590,8 @@ export function PricingCard({
 // Card with Actions Menu
 // ============================================
 
-interface CardWithActionsProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardWithActionsProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   actions?: Array<{ label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }>;
   favorited?: boolean;
   onFavorite?: () => void;
@@ -603,7 +612,7 @@ export function CardWithActions({
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div
+    <motion.div
       className={cn(
         'relative rounded-2xl border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 overflow-hidden',
         className
@@ -702,7 +711,7 @@ export function CardWithActions({
       </div>
 
       {children}
-    </div>
+    </motion.div>
   );
 }
 

@@ -62,7 +62,7 @@ export function EnhancedTooltip({
   variant = 'dark',
 }: EnhancedTooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => setIsVisible(true), delay);
@@ -177,7 +177,7 @@ export function RichTooltip({
 // ============================================
 
 interface PopoverProps {
-  trigger: React.ReactElement;
+  trigger: React.ReactElement<any>;
   children: React.ReactNode;
   position?: TooltipPosition;
   align?: TooltipAlign;
@@ -267,7 +267,7 @@ export function Popover({
 // ============================================
 
 interface DropdownMenuProps {
-  trigger: React.ReactElement;
+  trigger: React.ReactElement<any>;
   items: Array<{
     label: string;
     icon?: React.ReactNode;

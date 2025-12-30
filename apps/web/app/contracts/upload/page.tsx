@@ -52,7 +52,12 @@ import {
   BarChart3,
   FileUp,
   CloudUpload,
-  History
+  History,
+  FileImage,
+  File,
+  ImageIcon,
+  Award,
+  Activity
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -92,6 +97,17 @@ function formatFileSize(bytes: number): string {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+function getFileIcon(fileName: string) {
+  const ext = fileName.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'pdf': return { icon: FileText, color: 'text-red-500', bg: 'bg-red-100' }
+    case 'doc':
+    case 'docx': return { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-100' }
+    case 'html': return { icon: FileImage, color: 'text-orange-500', bg: 'bg-orange-100' }
+    default: return { icon: File, color: 'text-gray-500', bg: 'bg-gray-100' }
+  }
 }
 
 function formatDuration(ms: number): string {
@@ -221,9 +237,15 @@ export default function UploadPage() {
       // The RealtimeArtifactViewer component will show live artifact generation
 
     } catch (error) {
+      console.error('Upload error:', error)
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' }
+          ? { 
+              ...f, 
+              status: 'error', 
+              error: error instanceof Error ? error.message : 'Upload failed. Please try again.',
+              endTime: Date.now()
+            }
           : f
       ))
     }
@@ -263,6 +285,19 @@ export default function UploadPage() {
   const clearCompleted = useCallback(() => {
     setFiles(prev => prev.filter(f => f.status !== 'completed'))
   }, [])
+  
+  const retryAllErrors = useCallback(async () => {
+    const errorFiles = files.filter(f => f.status === 'error')
+    if (errorFiles.length === 0) return
+    
+    // Reset all error files to pending
+    setFiles(prev => prev.map(f =>
+      f.status === 'error' ? { ...f, status: 'pending', progress: 0, error: undefined } : f
+    ))
+    
+    // Start upload process
+    await handleUploadAll()
+  }, [files, handleUploadAll])
 
   const viewContract = useCallback((contractId: string) => {
     router.push(`/contracts/${contractId}`)
@@ -421,23 +456,25 @@ export default function UploadPage() {
             <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
               <CardContent className="p-8">
                 <motion.div
-                  {...getRootProps()}
-                  className={cn(
-                    'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden',
-                    isDragActive
-                      ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 scale-[1.02]'
-                      : 'border-gray-300 hover:border-blue-400 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30',
-                    isUploading && 'opacity-50 cursor-not-allowed'
-                  )}
                   whileHover={!isUploading ? { scale: 1.01 } : undefined}
                   whileTap={!isUploading ? { scale: 0.99 } : undefined}
                 >
-                  <input {...getInputProps()} disabled={isUploading} aria-label="Upload contract documents" />
+                  <div
+                    {...getRootProps()}
+                    className={cn(
+                      'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden',
+                      isDragActive
+                        ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 scale-[1.02]'
+                        : 'border-gray-300 hover:border-blue-400 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30',
+                      isUploading && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    <input {...getInputProps()} disabled={isUploading} aria-label="Upload contract documents" />
                   
-                  {/* Animated background pattern */}
-                  <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))] opacity-50" />
-                  
-                  <div className="relative z-10">
+                    {/* Animated background pattern */}
+                    <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))] opacity-50" />
+                    
+                    <div className="relative z-10">
                     <motion.div
                       className={cn(
                         'mx-auto mb-6 p-6 rounded-full w-fit',
@@ -488,6 +525,7 @@ export default function UploadPage() {
                         </p>
                       </>
                     )}
+                    </div>
                   </div>
                 </motion.div>
               </CardContent>
@@ -496,62 +534,62 @@ export default function UploadPage() {
             {/* Quick Stats when files exist */}
             {hasFiles && (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <Card className="bg-slate-50 border-slate-200">
+                <Card className="bg-gradient-to-br from-slate-50 to-gray-100 border-slate-200 hover:shadow-lg transition-all">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-slate-200 rounded-lg">
                       <Layers className="h-5 w-5 text-slate-600" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-slate-900">{files.length}</p>
-                      <p className="text-xs text-slate-500">Total Files</p>
+                      <p className="text-xs text-slate-600 font-medium">Total Files</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-blue-50 border-blue-200">
+                <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200 hover:shadow-lg transition-all">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-blue-200 rounded-lg">
-                      <Loader2 className={cn("h-5 w-5 text-blue-600", processingCount > 0 && "animate-spin")} />
+                      <Activity className={cn("h-5 w-5 text-blue-600", processingCount > 0 && "animate-pulse")} />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-blue-600">{processingCount}</p>
-                      <p className="text-xs text-blue-600">Processing</p>
+                      <p className="text-xs text-blue-600 font-medium">Processing</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-amber-50 border-amber-200">
+                <Card className="bg-gradient-to-br from-amber-50 to-yellow-100 border-amber-200 hover:shadow-lg transition-all">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-amber-200 rounded-lg">
                       <Clock className="h-5 w-5 text-amber-600" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-                      <p className="text-xs text-amber-600">In Queue</p>
+                      <p className="text-xs text-amber-600 font-medium">In Queue</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-green-50 border-green-200">
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 hover:shadow-lg transition-shadow">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-green-200 rounded-lg">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <Award className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-green-600">{completedCount}</p>
-                      <p className="text-xs text-green-600">Completed</p>
+                      <p className="text-xs text-green-600 font-medium">Completed</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-red-50 border-red-200">
+                <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200 hover:shadow-lg transition-shadow">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-red-200 rounded-lg">
-                      <AlertCircle className="h-5 w-5 text-red-600" />
+                      <AlertTriangle className="h-5 w-5 text-red-600" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-red-600">{errorCount}</p>
-                      <p className="text-xs text-red-600">Errors</p>
+                      <p className="text-xs text-red-600 font-medium">Errors</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -696,23 +734,27 @@ export default function UploadPage() {
                   
                   {/* Retry all errors */}
                   {errorCount > 0 && (
-                    <div className="mt-4 p-3 bg-red-50 rounded-lg flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-red-700">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span className="text-sm font-medium">
-                          {errorCount} file{errorCount !== 1 ? 's' : ''} failed to process
-                        </span>
+                    <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200 flex items-center justify-between shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-red-700">
+                            {errorCount} file{errorCount !== 1 ? 's' : ''} failed to process
+                          </p>
+                          <p className="text-xs text-red-600 mt-0.5">
+                            Review errors and retry to continue
+                          </p>
+                        </div>
                       </div>
                       <Button
                         size="sm"
-                        variant="outline"
-                        className="border-red-200 text-red-700 hover:bg-red-100"
-                        onClick={() => {
-                          files.filter(f => f.status === 'error').forEach(f => retryFile(f.id))
-                        }}
+                        className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                        onClick={retryAllErrors}
                       >
-                        <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                        Retry All
+                        <RefreshCw className="h-4 w-4" />
+                        Retry All Errors
                       </Button>
                     </div>
                   )}

@@ -17,7 +17,7 @@ dotenv.config();
 
 import type { Job } from 'bullmq';
 import pino from 'pino';
-import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
 
 const logger = pino({ name: 'obligation-tracker-worker' });
 
@@ -405,7 +405,7 @@ export async function checkObligationsJob(
  * Schedule daily obligation checks
  */
 export async function scheduleObligationCheck(tenantId?: string, options?: Partial<ObligationCheckJobData>) {
-  const { getQueueService } = await import('utils/queue/queue-service');
+  const { getQueueService } = await import('@repo/utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(OBLIGATION_TRACKER_QUEUE);
 
@@ -433,7 +433,7 @@ export async function scheduleObligationCheck(tenantId?: string, options?: Parti
  * Trigger immediate obligation check
  */
 export async function triggerObligationCheck(data: ObligationCheckJobData) {
-  const { getQueueService } = await import('utils/queue/queue-service');
+  const { getQueueService } = await import('@repo/utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(OBLIGATION_TRACKER_QUEUE);
 

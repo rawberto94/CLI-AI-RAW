@@ -259,7 +259,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = await getApiTenantId(request);
+    let tenantId: string;
+    try {
+      tenantId = await getTenantIdFromRequest(request);
+    } catch {
+      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    }
 
     const contract = await prisma.contract.findFirst({
       where: { id: id, tenantId },

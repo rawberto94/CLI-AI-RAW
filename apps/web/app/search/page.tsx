@@ -65,7 +65,7 @@ function SearchPage() {
         <motion.div variants={itemVariants}>
           <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardContent className="pt-6 relative">
+            <CardContent className="p-5 relative">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
                   <Sparkles className="h-5 w-5" />
@@ -84,7 +84,7 @@ function SearchPage() {
         <motion.div variants={itemVariants}>
           <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardContent className="pt-6 relative">
+            <CardContent className="p-5 relative">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
                   <Zap className="h-5 w-5" />
@@ -103,7 +103,7 @@ function SearchPage() {
         <motion.div variants={itemVariants}>
           <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <CardContent className="pt-6 relative">
+            <CardContent className="p-5 relative">
               <div className="flex items-start gap-3">
                 <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
                   <Target className="h-5 w-5" />

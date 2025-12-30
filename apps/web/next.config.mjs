@@ -39,19 +39,30 @@ const nextConfig = {
   output: "standalone",
   
   // Optimized static generation
-  staticPageGenerationTimeout: 180,
+  staticPageGenerationTimeout: 300,
   generateBuildId: async () => {
     return process.env.GIT_COMMIT_SHA || `build-${Date.now()}`;
   },
 
   // Transpile workspace packages
-  transpilePackages: ["data-orchestration"],
+  transpilePackages: ["@repo/data-orchestration", "@repo/utils", "@repo/workers"],
 
   // Performance optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? {
       exclude: ['error', 'warn'],
     } : false,
+  },
+  
+  // Optimized static generation - disable for pages that load workers
+  experimental: {
+    // Reduce memory during build by disabling some static optimizations
+    isrMemoryCacheSize: 0,
+    // Skip collecting traces for heavy pages during build
+    outputFileTracingIgnores: ['**/node_modules/@swc/**', '**/node_modules/webpack/**'],
+    // Disable static page optimization to reduce memory usage during build
+    workerThreads: false,
+    cpus: 1,
   },
   
   // Image optimization
@@ -88,6 +99,10 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
     externalDir: true,
+    // Reduce memory during build by disabling some static optimizations
+    isrMemoryCacheSize: 0,
+    // Skip collecting traces for heavy pages during build
+    outputFileTracingIgnores: ['**/node_modules/@swc/**', '**/node_modules/webpack/**'],
     // Optimized package imports - reduces bundle size significantly
     optimizePackageImports: [
       'lucide-react',

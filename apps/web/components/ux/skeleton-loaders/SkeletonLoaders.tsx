@@ -7,8 +7,7 @@ import { motion } from 'framer-motion';
 // Base Skeleton Component
 // ============================================================================
 
-interface SkeletonProps {
-  className?: string;
+interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
   animate?: boolean;
   variant?: 'default' | 'shimmer' | 'pulse';
 }
@@ -17,20 +16,21 @@ export const Skeleton = memo(function Skeleton({
   className = '',
   animate = true,
   variant = 'shimmer',
+  ...props
 }: SkeletonProps) {
   const baseClasses = 'rounded bg-zinc-200 dark:bg-zinc-700';
 
   if (!animate) {
-    return <div className={`${baseClasses} ${className}`} />;
+    return <div className={`${baseClasses} ${className}`} {...props} />;
   }
 
   if (variant === 'pulse') {
-    return <div className={`${baseClasses} animate-pulse ${className}`} />;
+    return <div className={`${baseClasses} animate-pulse ${className}`} {...props} />;
   }
 
   // Shimmer variant
   return (
-    <div className={`relative overflow-hidden ${baseClasses} ${className}`}>
+    <div className={`relative overflow-hidden ${baseClasses} ${className}`} {...props}>
       <motion.div
         className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent"
         animate={{ translateX: ['0%', '200%'] }}

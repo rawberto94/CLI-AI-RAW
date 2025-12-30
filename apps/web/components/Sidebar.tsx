@@ -77,7 +77,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: true,
     gradient: 'from-violet-500 to-purple-500',
     items: [
-      { href: "/tour", label: "App Tour", icon: PlayCircle, description: "Interactive walkthrough of all features", isNew: true, tourId: "app-tour" },
+      { href: "/tour", label: "App Tour", icon: PlayCircle, description: "Interactive walkthrough of all features", tourId: "app-tour" },
       { href: "/tour#learn", label: "Learning Center", icon: GraduationCap, description: "Tutorials and best practices", tourId: "learning-center" },
       { href: "/tour#guides", label: "Feature Guides", icon: BookOpen, description: "Step-by-step feature guides", tourId: "feature-guides" },
     ],
@@ -101,7 +101,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: true,
     gradient: 'from-purple-500 to-pink-500',
     items: [
-      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", isNew: true, tourId: "ai-assistant" },
+      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", tourId: "ai-assistant" },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
       { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side", tourId: "compare" },
     ],
@@ -123,7 +123,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: false,
     gradient: 'from-slate-600 to-slate-800',
     items: [
-      { href: "/workflows", label: "Workflows", icon: GitBranch, description: "Approval workflow management", isNew: true, tourId: "workflows" },
+      { href: "/workflows", label: "Workflows", icon: GitBranch, description: "Approval workflow management", tourId: "workflows" },
       { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, description: "System activity and compliance tracking", tourId: "audit-logs" },
     ],
   },

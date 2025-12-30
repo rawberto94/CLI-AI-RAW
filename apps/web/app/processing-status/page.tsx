@@ -10,19 +10,19 @@ export default function ProcessingStatusPage() {
       title="Processing Status"
       description="Monitor contract processing jobs and worker status in real-time"
       actions={
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Settings className="h-4 w-4 mr-2" />
+        <div className="flex gap-2.5">
+          <Button variant="outline" size="sm" className="h-8">
+            <Settings className="h-3.5 w-3.5 mr-2" />
             Configure
           </Button>
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" className="h-8">
+            <RefreshCw className="h-3.5 w-3.5 mr-2" />
             Refresh
           </Button>
-          <Button size="sm" className="bg-green-600 hover:bg-green-700">
-            <Activity className="h-4 w-4 mr-2" />
+          <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8">
+            <Activity className="h-3.5 w-3.5 mr-2" />
             System Online
-            <Badge variant="secondary" className="ml-2">Live</Badge>
+            <Badge variant="secondary" className="ml-2 px-2 py-0.5">Live</Badge>
           </Button>
         </div>
       }

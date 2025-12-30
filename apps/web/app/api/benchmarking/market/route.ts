@@ -8,12 +8,9 @@ import { prisma } from '@/lib/prisma';
 import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
 import { getErrorMessage } from '@/lib/types/common';
 
-interface MarketCriteria {
-  role?: string;
-  seniority?: string;
-  country?: string;
-  lineOfService?: string;
-}
+type BenchmarkCohortCriteria = Parameters<
+  (typeof benchmarkingEngine)['calculateMarketIntelligence']
+>[0];
 
 const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 
@@ -25,20 +22,23 @@ const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
+
+    const roleStandardized = searchParams.get('role');
+    if (!roleStandardized) {
+      return NextResponse.json(
+        { success: false, error: 'Query param "role" is required' },
+        { status: 400 }
+      );
+    }
     
-    const criteria = {
-      role: searchParams.get('role') || undefined,
+    const criteria: BenchmarkCohortCriteria = {
+      roleStandardized,
       seniority: searchParams.get('seniority') || undefined,
       country: searchParams.get('country') || undefined,
       lineOfService: searchParams.get('lineOfService') || undefined,
     };
 
-    // Remove undefined values
-    const cleanCriteria = Object.fromEntries(
-      Object.entries(criteria).filter(([_, v]) => v !== undefined)
-    );
-
-    const intelligence = await benchmarkingEngine.calculateMarketIntelligence(cleanCriteria as MarketCriteria);
+    const intelligence = await benchmarkingEngine.calculateMarketIntelligence(criteria);
 
     return NextResponse.json({
       success: true,

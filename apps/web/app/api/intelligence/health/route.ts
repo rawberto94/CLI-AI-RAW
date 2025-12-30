@@ -129,20 +129,33 @@ export async function GET(request: NextRequest) {
 
     // Get contract details
     const contractIds = storedScores.map(s => s.contract_id);
-    const contracts = contractIds.length > 0 ? await prisma.contract.findMany({
-      where: { id: { in: contractIds } },
-      select: {
-        id: true,
-        contractTitle: true,
-        originalName: true,
-        fileName: true,
-        supplierName: true,
-        expirationDate: true,
-        endDate: true,
-      },
-    }) : [];
+    type ContractInfo = {
+      id: string;
+      contractTitle: string | null;
+      originalName: string | null;
+      fileName: string | null;
+      supplierName: string | null;
+      expirationDate: Date | null;
+      endDate: Date | null;
+    };
 
-    const contractMap = new Map(contracts.map(c => [c.id, c]));
+    const contracts: ContractInfo[] =
+      contractIds.length > 0
+        ? ((await prisma.contract.findMany({
+            where: { id: { in: contractIds } },
+            select: {
+              id: true,
+              contractTitle: true,
+              originalName: true,
+              fileName: true,
+              supplierName: true,
+              expirationDate: true,
+              endDate: true,
+            },
+          })) as ContractInfo[])
+        : [];
+
+    const contractMap = new Map<string, ContractInfo>(contracts.map(c => [c.id, c]));
 
     // Transform to HealthScore format
     let healthScores: HealthScore[] = storedScores.map(score => {

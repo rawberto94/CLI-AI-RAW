@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
         notificationId: `notif_${Date.now()}`,
         type: notification.type,
         recipient: notification.recipientEmail,
-        emailSent: emailServiceConfigured,
+        emailSent,
         inAppCreated: true,
       },
     });

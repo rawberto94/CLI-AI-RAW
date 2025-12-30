@@ -5,7 +5,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { isValidClassification } from 'data-orchestration/src/utils/contract-taxonomy.utils';
+import { isValidClassification } from 'data-orchestration';
 
 export interface IntegrityIssue {
   severity: 'error' | 'warning' | 'info';
@@ -173,8 +173,12 @@ export async function validateContractIntegrity(
     // VALUE VALIDATION
     // ========================================================================
 
+    const totalValueNum = contract.totalValue != null ? Number(contract.totalValue) : null;
+    const annualValueNum = contract.annualValue != null ? Number(contract.annualValue) : null;
+    const monthlyValueNum = contract.monthlyValue != null ? Number(contract.monthlyValue) : null;
+
     // Negative values
-    if (contract.totalValue && contract.totalValue < 0) {
+    if (totalValueNum != null && totalValueNum < 0) {
       issues.push({
         severity: 'error',
         category: 'values',
@@ -186,10 +190,10 @@ export async function validateContractIntegrity(
     }
 
     // Annual/Monthly value consistency
-    if (contract.annualValue && contract.monthlyValue) {
-      const expectedMonthly = contract.annualValue / 12;
-      const diff = Math.abs(Number(contract.monthlyValue) - Number(expectedMonthly));
-      const tolerance = Number(expectedMonthly) * 0.1; // 10% tolerance
+    if (annualValueNum != null && monthlyValueNum != null) {
+      const expectedMonthly = annualValueNum / 12;
+      const diff = Math.abs(monthlyValueNum - expectedMonthly);
+      const tolerance = expectedMonthly * 0.1; // 10% tolerance
 
       if (diff > tolerance) {
         issues.push({
@@ -197,7 +201,7 @@ export async function validateContractIntegrity(
           category: 'values',
           message: 'Monthly value does not match annual value / 12',
           field: 'monthlyValue',
-          suggestedFix: `Expected ~${expectedMonthly.toFixed(2)}, got ${contract.monthlyValue}`,
+          suggestedFix: `Expected ~${expectedMonthly.toFixed(2)}, got ${monthlyValueNum}`,
         });
       }
     }
@@ -222,7 +226,6 @@ export async function validateContractIntegrity(
         const valid = isValidClassification({
           category_id: contract.contractCategoryId as any,
           subtype: contract.contractSubtype || undefined,
-          document_role: (contract.documentRole as any) || undefined,
           confidence: Number(contract.classificationConf) || 0,
           tags: {
             pricing_models: (contract.pricingModels as any) || [],
@@ -230,7 +233,7 @@ export async function validateContractIntegrity(
             data_profiles: (contract.dataProfiles as any) || [],
             risk_flags: (contract.riskFlags as any) || [],
           },
-        });
+        } as any);
 
         if (!valid) {
           issues.push({

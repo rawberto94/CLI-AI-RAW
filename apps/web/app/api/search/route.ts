@@ -45,7 +45,11 @@ export async function POST(request: NextRequest) {
       where.totalValue = { gte: filters.minValue }
     }
     if (filters?.maxValue) {
-      where.totalValue = { ...where.totalValue, lte: filters.maxValue }
+      const existingTotalValue =
+        typeof where.totalValue === 'object' && where.totalValue !== null
+          ? (where.totalValue as Record<string, unknown>)
+          : {};
+      where.totalValue = { ...existingTotalValue, lte: filters.maxValue }
     }
     if (filters?.dateRange) {
       const now = new Date()

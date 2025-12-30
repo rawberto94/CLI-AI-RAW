@@ -6,9 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -22,9 +22,22 @@ interface PushSubscription {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readNotificationsObject(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function readPushSubscriptionsMap(notifications: Record<string, unknown>): Record<string, unknown> {
+  const pushSubscriptions = notifications.pushSubscriptions;
+  return isRecord(pushSubscriptions) ? pushSubscriptions : {};
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -43,28 +56,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Store subscription in database
-    await prisma.pushSubscription.upsert({
-      where: {
-        userId_endpoint: {
-          userId: session.user.id,
-          endpoint: subscription.endpoint,
-        },
-      },
+    const existing = await prisma.userPreferences.findUnique({
+      where: { userId: session.user.id },
+      select: { notifications: true },
+    });
+
+    const notifications = readNotificationsObject(existing?.notifications);
+    const pushSubscriptions = readPushSubscriptionsMap(notifications);
+
+    const nextPushSubscriptions: Record<string, unknown> = {
+      ...pushSubscriptions,
+      [subscription.endpoint]: subscription,
+    };
+
+    const nextNotifications: Record<string, unknown> = {
+      ...notifications,
+      pushSubscriptions: nextPushSubscriptions,
+    };
+
+    await prisma.userPreferences.upsert({
+      where: { userId: session.user.id },
       update: {
-        keys: subscription.keys,
-        expirationTime: subscription.expirationTime 
-          ? new Date(subscription.expirationTime) 
-          : null,
-        updatedAt: new Date(),
+        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
       },
       create: {
         userId: session.user.id,
-        endpoint: subscription.endpoint,
-        keys: subscription.keys,
-        expirationTime: subscription.expirationTime 
-          ? new Date(subscription.expirationTime) 
-          : null,
+        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -78,28 +95,6 @@ export async function POST(request: NextRequest) {
       message: 'Push subscription saved',
     });
   } catch (error) {
-    // Handle case where PushSubscription model doesn't exist yet
-    if (error instanceof Error && error.message.includes('PushSubscription')) {
-      logger.warn('PushSubscription model not found, storing in user preferences');
-      
-      // Fallback: store in user preferences
-      const session = await getServerSession(authOptions);
-      if (session?.user?.id) {
-        const subscription = await request.json() as PushSubscription;
-        await prisma.user.update({
-          where: { id: session.user.id },
-          data: {
-            pushSubscription: subscription as unknown as object,
-          },
-        });
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Push subscription saved (fallback)',
-        });
-      }
-    }
-
     logger.error('Failed to save push subscription:', error);
     return NextResponse.json(
       { error: 'Failed to save push subscription' },
@@ -110,7 +105,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -119,24 +114,36 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const { endpoint } = await request.json();
+    const body = (await request.json().catch(() => ({}))) as unknown;
+    const endpoint = isRecord(body) && typeof body.endpoint === 'string' ? body.endpoint : undefined;
 
-    if (endpoint) {
-      // Delete specific subscription
-      await prisma.pushSubscription.deleteMany({
-        where: {
-          userId: session.user.id,
-          endpoint,
-        },
-      });
-    } else {
-      // Delete all subscriptions for user
-      await prisma.pushSubscription.deleteMany({
-        where: {
-          userId: session.user.id,
-        },
-      });
-    }
+    const existing = await prisma.userPreferences.findUnique({
+      where: { userId: session.user.id },
+      select: { notifications: true },
+    });
+
+    const notifications = readNotificationsObject(existing?.notifications);
+    const pushSubscriptions = readPushSubscriptionsMap(notifications);
+
+    const nextPushSubscriptions: Record<string, unknown> = endpoint
+      ? Object.fromEntries(Object.entries(pushSubscriptions).filter(([key]) => key !== endpoint))
+      : {};
+
+    const nextNotifications: Record<string, unknown> = {
+      ...notifications,
+      pushSubscriptions: nextPushSubscriptions,
+    };
+
+    await prisma.userPreferences.upsert({
+      where: { userId: session.user.id },
+      update: {
+        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+      },
+      create: {
+        userId: session.user.id,
+        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+      },
+    });
 
     logger.info('Push subscription removed', {
       userId: session.user.id,
@@ -148,24 +155,6 @@ export async function DELETE(request: NextRequest) {
       message: 'Push subscription removed',
     });
   } catch (error) {
-    // Handle case where PushSubscription model doesn't exist
-    if (error instanceof Error && error.message.includes('PushSubscription')) {
-      const session = await getServerSession(authOptions);
-      if (session?.user?.id) {
-        await prisma.user.update({
-          where: { id: session.user.id },
-          data: {
-            pushSubscription: null,
-          },
-        });
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Push subscription removed (fallback)',
-        });
-      }
-    }
-
     logger.error('Failed to remove push subscription:', error);
     return NextResponse.json(
       { error: 'Failed to remove push subscription' },

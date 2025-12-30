@@ -41,7 +41,7 @@ export class CacheAdaptor {
     }
   }
 
-  async set(key: string, value: any, ttl?: number): Promise<void> {
+  async set(key: string, value: unknown, ttl?: number): Promise<void> {
     try {
       if (!this.connected) await this.connect();
       const serialized = JSON.stringify(value);

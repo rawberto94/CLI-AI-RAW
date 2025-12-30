@@ -111,13 +111,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Generating AI report for ${contracts.length} contracts`);
 
-    // Check if OpenAI is configured
-    if (!process.env.OPENAI_API_KEY) {
-      // Return mock report for demo purposes
-      return NextResponse.json(generateMockReport(contracts));
-    }
-
-    // Prepare contract summaries for AI
+    // Prepare contract summaries (used for both AI + mock flows)
     const contractSummaries: ContractSummary[] = contracts.map(c => ({
       id: c.id,
       fileName: c.contractTitle || c.fileName,
@@ -128,8 +122,14 @@ export async function POST(request: NextRequest) {
       textExcerpt: c.rawText?.slice(0, 1500) || 'No text available',
     }));
 
+    // Check if OpenAI is configured
+    if (!process.env.OPENAI_API_KEY) {
+      // Return mock report for demo purposes
+      return NextResponse.json(generateMockReport(contractSummaries));
+    }
+
     // Calculate portfolio stats
-    const portfolioStats = calculatePortfolioStats(contracts);
+    const portfolioStats = calculatePortfolioStats(contractSummaries);
 
     // Generate AI report
     const aiReport = await generateAIReport(contractSummaries, portfolioStats, reportType);
@@ -171,16 +171,7 @@ export async function POST(request: NextRequest) {
 /**
  * Contract input for report generation
  */
-interface ContractInput {
-  id: string;
-  fileName?: string | null;
-  contractTitle?: string | null;
-  title?: string;
-  status?: string | null;
-  totalValue?: number | null;
-  riskLevel?: string | null;
-  expirationDate?: Date | null;
-}
+type ContractInput = ContractSummary;
 
 /**
  * Portfolio statistics
@@ -337,27 +328,27 @@ Immediate action is recommended for contracts approaching expiration and those f
           title: 'Contracts Approaching Expiration',
           description: `${expiringContracts.length} contracts will expire within the next 90 days. Review and initiate renewal discussions.`,
           severity: 'high' as const,
-          affectedContracts: expiringContracts.map(c => c.title || c.fileName),
+          affectedContracts: expiringContracts.map(c => c.fileName),
         }] : []),
         ...(highRiskContracts.length > 0 ? [{
           type: 'risk' as const,
           title: 'High Risk Contracts Identified',
           description: `${highRiskContracts.length} contracts have been flagged as high risk. Review terms and conditions.`,
           severity: 'critical' as const,
-          affectedContracts: highRiskContracts.map(c => c.title || c.fileName),
+          affectedContracts: highRiskContracts.map(c => c.fileName),
         }] : []),
         {
           type: 'opportunity' as const,
           title: 'Portfolio Consolidation Opportunity',
           description: 'Consider consolidating similar contracts to improve terms and reduce administrative overhead.',
           severity: 'medium' as const,
-          affectedContracts: contracts.slice(0, 3).map(c => c.title || c.fileName),
+          affectedContracts: contracts.slice(0, 3).map(c => c.fileName),
         },
       ],
       contractHighlights: contracts.slice(0, 5).map(c => ({
         contractId: c.id,
-        contractName: c.title || c.fileName,
-        summary: `${c.status} contract with ${c.vendor || 'vendor'} valued at $${(c.totalValue || 0).toLocaleString()}.`,
+        contractName: c.fileName,
+        summary: `${c.status} contract valued at $${(c.totalValue || 0).toLocaleString()}.`,
         keyRisks: c.riskLevel === 'high' ? ['High risk classification', 'Requires detailed review'] : ['Standard risk level'],
         recommendations: c.expirationDate && new Date(c.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
           ? ['Initiate renewal discussions', 'Review pricing terms']
@@ -368,18 +359,18 @@ Immediate action is recommended for contracts approaching expiration and those f
           priority: 'urgent' as const,
           action: 'Review and renew expiring contracts',
           deadline: '30 days',
-          relatedContracts: expiringContracts.slice(0, 3).map(c => c.title || c.fileName),
+          relatedContracts: expiringContracts.slice(0, 3).map(c => c.fileName),
         }] : []),
         {
           priority: 'high' as const,
           action: 'Conduct risk assessment for flagged contracts',
           deadline: '2 weeks',
-          relatedContracts: highRiskContracts.slice(0, 3).map(c => c.title || c.fileName),
+          relatedContracts: highRiskContracts.slice(0, 3).map(c => c.fileName),
         },
         {
           priority: 'medium' as const,
           action: 'Update contract metadata and categorization',
-          relatedContracts: contracts.filter(c => !c.contractType).slice(0, 2).map(c => c.title || c.fileName),
+          relatedContracts: contracts.slice(0, 2).map(c => c.fileName),
         },
       ],
       recommendations: [

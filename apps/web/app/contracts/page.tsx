@@ -110,8 +110,6 @@ import {
   Pause,
   Play,
 } from "lucide-react";
-import { ContractTimeline, type TimelineContract } from "@/components/contracts/ContractTimeline";
-import { ContractKanban, type KanbanContract } from "@/components/contracts/ContractKanban";
 import { ObligationWidget, type Obligation } from "@/components/contracts/ObligationTracker";
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
 import Link from "next/link";
@@ -120,10 +118,19 @@ import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
 
+// Lazy load heavy components for better performance
+import { 
+  LazyContractTimeline, 
+  LazyContractKanban,
+  LazyContractPreviewPanel 
+} from "@/components/lazy";
+import { type TimelineContract } from "@/components/contracts/ContractTimeline";
+import { type KanbanContract } from "@/components/contracts/ContractKanban";
+
 // Enhanced UI Components
 import { ContractsHeroDashboard, type ContractStats } from "@/components/contracts/ContractsHeroDashboard";
 import { EnhancedContractCard, EnhancedContractRow, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
-import { ContractPreviewPanel, type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
+import { type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
 import { EnhancedBulkActionsBar, type BulkAction } from "@/components/contracts/EnhancedBulkActionsBar";
 import { SmartFilters, type ContractFilters } from "@/components/contracts/SmartFilters";
 import { MobileContractCard, MobileFiltersSheet, MobileSearchBar } from "@/components/contracts/MobileContractViews";
@@ -135,7 +142,6 @@ import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
 import { QuickStatsBar, generateContractStats } from "@/components/contracts/QuickStatsBar";
 import { ContractHoverPreview } from "@/components/contracts/ContractHoverPreview";
-import { KeyboardShortcutsHint } from "@/components/contracts/KeyboardShortcutsHelp";
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
 import { CommandPaletteSearch } from "@/components/contracts/CommandPaletteSearch";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
@@ -300,9 +306,10 @@ const ContractRowSkeleton = memo(function ContractRowSkeleton({ index }: { index
 const ContractCardSkeleton = memo(function ContractCardSkeleton({ index }: { index: number }) {
   return (
     <div 
-      className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse"
+      className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse relative overflow-hidden"
       style={{ animationDelay: `${index * 50}ms` }}
     >
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-slate-200 rounded-lg" />
@@ -348,16 +355,20 @@ const ProcessingContractTracker = memo(function ProcessingContractTracker({
       exit={{ opacity: 0, y: -10 }}
       className="mb-4"
     >
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="relative">
+      <Card className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+        <CardContent className="py-4 px-5">
+          <div className="flex items-center gap-3 mb-4">
+            <motion.div 
+              className="relative"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
               <Activity className="h-5 w-5 text-blue-600" />
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 shadow-lg"></span>
               </span>
-            </div>
+            </motion.div>
             <span className="font-medium text-blue-800 text-sm">
               Processing {processingContracts.length} contract{processingContracts.length > 1 ? 's' : ''}
             </span>
@@ -372,13 +383,15 @@ const ProcessingContractTracker = memo(function ProcessingContractTracker({
                   </p>
                 </div>
                 <div className="w-24">
-                  <div className="h-1.5 bg-blue-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-blue-100 rounded-full overflow-hidden shadow-inner">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                      className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 relative"
                       initial={{ width: 0 }}
                       animate={{ width: `${contract.processing?.progress || 0}%` }}
-                      transition={{ duration: 0.5 }}
-                    />
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1.5s_infinite]" />
+                    </motion.div>
                   </div>
                   <p className="text-[10px] text-blue-600 text-right mt-0.5">
                     {contract.processing?.progress || 0}%
@@ -403,6 +416,7 @@ interface CompactContractRowProps {
   contract: Contract;
   index: number;
   isSelected: boolean;
+  searchQuery?: string;
   onSelect: () => void;
   onView: () => void;
   onShare: () => void;
@@ -417,6 +431,7 @@ const CompactContractRow = memo(function CompactContractRow({
   contract,
   index,
   isSelected,
+  searchQuery = "",
   onSelect,
   onView,
   onShare,
@@ -448,11 +463,12 @@ const CompactContractRow = memo(function CompactContractRow({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, delay: index * 0.015 }}
+      whileHover={{ scale: 1.002, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
       className={cn(
-        "grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 items-center cursor-pointer transition-colors duration-150 group border-b border-slate-100",
+        "grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 items-center cursor-pointer transition-all duration-200 group border-b border-slate-100 rounded-lg mx-1",
         isSelected 
-          ? "bg-blue-50/70 hover:bg-blue-50" 
-          : "hover:bg-slate-50/80"
+          ? "bg-gradient-to-r from-blue-50/80 to-indigo-50/60 hover:from-blue-50 hover:to-indigo-50 shadow-sm" 
+          : "hover:bg-gradient-to-r hover:from-slate-50/90 hover:to-slate-50/50"
       )}
       onClick={onView}
       role="link"
@@ -476,9 +492,13 @@ const CompactContractRow = memo(function CompactContractRow({
 
       {/* Contract Title */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-blue-50 transition-colors">
+        <motion.div 
+          className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-blue-50 group-hover:to-indigo-50 transition-all duration-200 shadow-sm group-hover:shadow"
+          whileHover={{ rotate: 5, scale: 1.1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
           <FileText className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
-        </div>
+        </motion.div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors text-sm" title={contract.title}>
@@ -605,6 +625,7 @@ const CompactContractRow = memo(function CompactContractRow({
 interface ContractCardProps {
   contract: Contract;
   isSelected: boolean;
+  searchQuery?: string;
   onSelect: () => void;
   onView: () => void;
   onShare: () => void;
@@ -619,6 +640,7 @@ interface ContractCardProps {
 const ContractCard = memo(function ContractCard({
   contract,
   isSelected,
+  searchQuery = "",
   onSelect,
   onView,
   onShare,
@@ -1922,8 +1944,8 @@ export default function ContractsPage() {
     const Icon = config.icon;
 
     return (
-      <Badge className={`${config.color} border-0 gap-1.5 px-2.5 py-0.5 rounded-full shadow-sm font-medium`}>
-        <Icon className={cn("h-3 w-3", status === 'processing' && "animate-spin")} />
+      <Badge className={`${config.color} border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium`}>
+        <Icon className={cn("h-3.5 w-3.5", status === 'processing' && "animate-spin")} />
         {config.label}
       </Badge>
     );
@@ -1934,22 +1956,22 @@ export default function ContractsPage() {
 
     if (riskScore < 30) {
       return (
-        <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-0 gap-1.5 px-2.5 py-0.5 rounded-full shadow-sm font-medium">
-          <Shield className="h-3 w-3" />
+        <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+          <Shield className="h-3.5 w-3.5" />
           Low Risk
         </Badge>
       );
     } else if (riskScore < 70) {
       return (
-        <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border-0 gap-1.5 px-2.5 py-0.5 rounded-full shadow-sm font-medium">
-          <Shield className="h-3 w-3" />
+        <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+          <Shield className="h-3.5 w-3.5" />
           Medium Risk
         </Badge>
       );
     } else {
       return (
-        <Badge className="bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-0 gap-1.5 px-2.5 py-0.5 rounded-full shadow-sm font-medium">
-          <AlertTriangle className="h-3 w-3" />
+        <Badge className="bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+          <AlertTriangle className="h-3.5 w-3.5" />
           High Risk
         </Badge>
       );
@@ -1988,7 +2010,7 @@ export default function ContractsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
                 <Card key={i} className="bg-white border-slate-200">
-                  <CardContent className="p-4">
+                  <CardContent className="p-5">
                     <div className="animate-pulse space-y-3">
                       <div className="h-3 w-20 bg-slate-200 rounded" />
                       <div className="h-8 w-24 bg-slate-200 rounded" />
@@ -2001,7 +2023,7 @@ export default function ContractsPage() {
             
             {/* Skeleton Search Bar */}
             <Card className="bg-white border-slate-200">
-              <CardContent className="p-4">
+              <CardContent className="p-5">
                 <div className="animate-pulse flex gap-4">
                   <div className="h-10 flex-1 bg-slate-200 rounded" />
                   <div className="h-10 w-24 bg-slate-200 rounded" />
@@ -2355,14 +2377,14 @@ export default function ContractsPage() {
 
         {/* View Mode Toggle, Sort & Results Count */}
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <span className="text-sm text-slate-600">
               <span className="font-semibold text-slate-900 tabular-nums">
                 <AnimatedCounter value={contractsData?.total ?? 0} />
               </span>
               {' '}contracts
               {hasActiveFilters && (
-                <span className="text-slate-400 ml-1">(filtered)</span>
+                <span className="text-slate-400 ml-1.5">(filtered)</span>
               )}
             </span>
             
@@ -2376,13 +2398,22 @@ export default function ContractsPage() {
           </div>
 
           {/* Right side controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {/* Sort */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors">
-                  {sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 text-slate-500" /> : <ArrowDown className="h-3.5 w-3.5 text-slate-500" />}
-                  <span className="text-slate-600">
+                <motion.button 
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <motion.div
+                    animate={{ rotate: sortDirection === 'asc' ? 0 : 180 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <ArrowUp className="h-3.5 w-3.5 text-slate-500" />
+                  </motion.div>
+                  <span className="text-slate-600 font-medium">
                     {{
                       createdAt: 'Date',
                       title: 'Name',
@@ -2390,7 +2421,7 @@ export default function ContractsPage() {
                       expirationDate: 'Expires',
                     }[sortField as string] || 'Sort'}
                   </span>
-                </button>
+                </motion.button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 {[
@@ -2421,25 +2452,34 @@ export default function ContractsPage() {
             </DropdownMenu>
 
             {/* View Mode */}
-            <div className="flex items-center border border-slate-200 rounded-md overflow-hidden">
+            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
               {[
                 { mode: 'compact' as const, icon: LayoutList, label: 'List' },
                 { mode: 'cards' as const, icon: LayoutGrid, label: 'Cards' },
               ].map((view, idx) => (
                 <Tooltip key={view.mode}>
                   <TooltipTrigger asChild>
-                    <button
+                    <motion.button
                       onClick={() => setViewMode(view.mode)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       className={cn(
-                        "h-8 w-8 flex items-center justify-center transition-colors",
+                        "h-8 w-10 flex items-center justify-center transition-all duration-200 relative",
                         idx > 0 && "border-l border-slate-200",
                         viewMode === view.mode 
-                          ? "bg-slate-900 text-white" 
+                          ? "bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-lg" 
                           : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                       )}
                     >
-                      <view.icon className="h-4 w-4" />
-                    </button>
+                      {viewMode === view.mode && (
+                        <motion.div
+                          layoutId="activeView"
+                          className="absolute inset-0 bg-gradient-to-r from-slate-900 to-slate-800"
+                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        />
+                      )}
+                      <view.icon className="h-4 w-4 relative z-10" />
+                    </motion.button>
                   </TooltipTrigger>
                   <TooltipContent>{view.label} view</TooltipContent>
                 </Tooltip>
@@ -2449,10 +2489,14 @@ export default function ContractsPage() {
             {/* Export */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs border border-slate-200 rounded-md hover:bg-slate-50 transition-colors text-slate-600">
+                <motion.button 
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-slate-600 shadow-sm hover:shadow font-medium"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   <Download className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Export</span>
-                </button>
+                </motion.button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem onClick={() => handleExportFiltered('csv')} className="text-sm">
@@ -2467,15 +2511,17 @@ export default function ContractsPage() {
             {/* Keyboard Shortcuts Hint */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <motion.button
                   onClick={() => {
                     // Dispatch keyboard shortcut help event
                     window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
                   }}
-                  className="h-8 w-8 flex items-center justify-center border border-slate-200 rounded-md hover:bg-slate-50 transition-colors text-slate-400 hover:text-slate-600"
+                  whileHover={{ scale: 1.05, rotate: 5 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="h-8 w-8 flex items-center justify-center border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-slate-400 hover:text-slate-600 shadow-sm hover:shadow"
                 >
-                  <kbd className="text-[10px] font-mono">?</kbd>
-                </button>
+                  <kbd className="text-[10px] font-mono font-bold">?</kbd>
+                </motion.button>
               </TooltipTrigger>
               <TooltipContent>Keyboard shortcuts</TooltipContent>
             </Tooltip>
@@ -2485,14 +2531,23 @@ export default function ContractsPage() {
         {/* Uncategorized Contracts Banner */}
         {uncategorizedCount > 0 && uncategorizedCount <= 20 && !categoryFilter && (
           <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-4 px-4 py-2.5 bg-amber-50/80 border border-amber-200/60 rounded-lg"
+            initial={{ opacity: 0, y: -5, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="flex items-center justify-between gap-4 px-4 py-2.5 bg-gradient-to-r from-amber-50/90 via-amber-50/80 to-yellow-50/70 border border-amber-200/60 rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
           >
-            <div className="flex items-center gap-2.5">
-              <Tag className="h-4 w-4 text-amber-500" />
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(251,191,36,0.1),transparent)] pointer-events-none" />
+            
+            <div className="flex items-center gap-2.5 relative z-10">
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -10, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <Tag className="h-4 w-4 text-amber-500" />
+              </motion.div>
               <span className="text-sm text-amber-800">
-                <span className="font-medium">{uncategorizedCount}</span> contract{uncategorizedCount !== 1 ? 's' : ''} need categorization
+                <span className="font-semibold">{uncategorizedCount}</span> contract{uncategorizedCount !== 1 ? 's' : ''} need categorization
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2610,7 +2665,7 @@ export default function ContractsPage() {
             >
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl">
                 {/* Table Header */}
-                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wide sticky top-16 lg:top-0 z-10">
+                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3.5 bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wide sticky top-16 lg:top-0 z-10">
                   <div className="flex items-center justify-center">
                     <Checkbox
                       checked={allVisibleSelected && paginatedContracts.length > 0}
@@ -2643,6 +2698,7 @@ export default function ContractsPage() {
                       contract={contract}
                       index={index}
                       isSelected={selectedContracts.has(contract.id)}
+                      searchQuery={searchQuery}
                       onSelect={() => toggleSelect(contract.id)}
                       onView={() => pushToContract(contract.id)}
                       onShare={() => handleShare(contract.id, contract.title || 'Contract')}
@@ -2720,7 +2776,7 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <ContractTimeline
+              <LazyContractTimeline
                 contracts={paginatedContracts.map(contract => ({
                   id: contract.id,
                   title: contract.title || 'Untitled Contract',
@@ -2752,7 +2808,7 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <ContractKanban
+              <LazyContractKanban
                 contracts={paginatedContracts.map(contract => ({
                   id: contract.id,
                   title: contract.title || 'Untitled Contract',
@@ -2957,7 +3013,7 @@ export default function ContractsPage() {
       />
 
       {/* Contract Preview Panel */}
-      <ContractPreviewPanel
+      <LazyContractPreviewPanel
         contract={previewContract}
         isOpen={previewOpen}
         onClose={() => {
@@ -3075,7 +3131,7 @@ export default function ContractsPage() {
           filters={filterState}
           onChange={setFilterState}
           onClose={() => setShowAdvancedFilters(false)}
-          availableCategories={categories.map(cat => ({ id: cat.id, name: cat.name }))}
+          availableCategories={categories.map(cat => cat.name)}
         />
       )}
 

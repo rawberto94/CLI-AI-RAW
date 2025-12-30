@@ -81,7 +81,7 @@ const CSRF_COOKIE = 'csrf-token';
 /**
  * Validate CSRF token from request
  */
-function validateCsrfToken(request: NextRequest): boolean {
+export function validateCsrfToken(request: NextRequest): boolean {
   const headerToken = request.headers.get(CSRF_HEADER);
   const cookieToken = request.cookies.get(CSRF_COOKIE)?.value;
   

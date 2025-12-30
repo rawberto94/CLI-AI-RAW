@@ -662,7 +662,10 @@ export async function hybridSearch(
       },
     });
     
-    const contractMap = new Map(contracts.map(c => [c.id, c]));
+    type ContractMeta = (typeof contracts)[number];
+    const contractMap = new Map<string, ContractMeta>(
+      contracts.map((c): [string, ContractMeta] => [c.id, c])
+    );
     
     // Apply importance boosting based on contract metadata
     const boostedResults = finalResults.map(r => {

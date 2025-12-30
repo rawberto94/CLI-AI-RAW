@@ -207,7 +207,6 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const responseStartTimeRef = useRef<number>(0);
 
   const contextualSuggestions: Record<string, string[]> = {
@@ -1386,7 +1385,7 @@ Would you like me to notify the first approver or do anything else?`,
 
       {/* Messages */}
       <div className="relative flex-1">
-        <ScrollArea className="h-full p-4" ref={scrollAreaRef}>
+        <ScrollArea className="h-full p-4">
           <div ref={scrollRef} className="space-y-4" role="log" aria-live="polite" aria-label="Chat messages">
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (

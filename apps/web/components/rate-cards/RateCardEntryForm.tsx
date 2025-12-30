@@ -190,12 +190,18 @@ export function RateCardEntryForm({
         const amount = watchedFields.dailyRate;
         const from = watchedFields.currency;
 
+        const convertTo = async (to: string): Promise<number> => {
+          if (from === to) return amount;
+          const result = await convert(amount, from, to);
+          return result.convertedAmount;
+        };
+
         // Convert to major currencies for benchmarking
         const conversions = await Promise.all([
-          from !== 'USD' ? convert(amount, from, 'USD') : Promise.resolve(amount),
-          from !== 'EUR' ? convert(amount, from, 'EUR') : Promise.resolve(amount),
-          from !== 'GBP' ? convert(amount, from, 'GBP') : Promise.resolve(amount),
-          from !== 'CHF' ? convert(amount, from, 'CHF') : Promise.resolve(amount),
+          convertTo('USD'),
+          convertTo('EUR'),
+          convertTo('GBP'),
+          convertTo('CHF'),
         ]);
 
         setConvertedRates({

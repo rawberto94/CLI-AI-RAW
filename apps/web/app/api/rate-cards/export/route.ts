@@ -39,17 +39,27 @@ interface RateCardExportEntry {
   lineOfService: string | null;
   country: string | null;
   region: string | null;
-  dailyRate: number | null;
+  dailyRate: Prisma.Decimal | number | null;
   currency: string | null;
-  dailyRateUSD: number | null;
-  dailyRateCHF: number | null;
+  dailyRateUSD: Prisma.Decimal | number | null;
+  dailyRateCHF: Prisma.Decimal | number | null;
   effectiveDate: Date | null;
   expiryDate: Date | null;
-  volumeCommitted: number | null;
-  marketRateMedian: number | null;
-  percentileRank: number | null;
-  savingsAmount: number | null;
+  volumeCommitted: Prisma.Decimal | number | null;
+  marketRateMedian: Prisma.Decimal | number | null;
+  percentileRank: Prisma.Decimal | number | null;
+  savingsAmount: Prisma.Decimal | number | null;
   isBaseline: boolean | null;
+
+  baselineType?: string | null;
+  isNegotiated?: boolean | null;
+  negotiationDate?: Date | string | null;
+  negotiatedBy?: string | null;
+  msaReference?: string | null;
+  isEditable?: boolean | null;
+  editedBy?: string | null;
+  editedAt?: Date | string | null;
+  createdAt: Date | string;
 }
 
 /**

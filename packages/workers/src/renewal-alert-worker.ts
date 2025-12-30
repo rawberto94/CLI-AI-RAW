@@ -17,7 +17,7 @@ dotenv.config();
 
 import type { Job } from 'bullmq';
 import pino from 'pino';
-import { getQueueService, JobType } from 'utils/queue/queue-service';
+import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
 
 const logger = pino({ name: 'renewal-alert-worker' });
 
@@ -300,7 +300,7 @@ export async function checkRenewalsJob(
  * Schedule daily renewal checks
  */
 export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<RenewalCheckJobData>) {
-  const { getQueueService } = await import('utils/queue/queue-service');
+  const { getQueueService } = await import('@repo/utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 
@@ -329,7 +329,7 @@ export async function scheduleRenewalCheck(tenantId?: string, options?: Partial<
  * Trigger immediate renewal check
  */
 export async function triggerRenewalCheck(data: RenewalCheckJobData) {
-  const { getQueueService } = await import('utils/queue/queue-service');
+  const { getQueueService } = await import('@repo/utils/queue/queue-service');
   const queueService = getQueueService();
   const queue = queueService.getQueue(RENEWAL_ALERT_QUEUE);
 

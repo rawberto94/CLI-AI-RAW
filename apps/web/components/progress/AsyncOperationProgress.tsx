@@ -15,7 +15,8 @@ import {
   Sparkles,
   RefreshCw,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  type LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -55,7 +56,16 @@ export interface AsyncOperationProgressProps {
 // Status Configuration
 // ============================================================================
 
-const statusConfig = {
+type StatusConfigEntry = {
+  icon: LucideIcon;
+  color: string;
+  bg: string;
+  border: string;
+  label: string;
+  animate?: boolean;
+};
+
+const statusConfig: Record<OperationStatus, StatusConfigEntry> = {
   pending: {
     icon: Clock,
     color: 'text-slate-400',

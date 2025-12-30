@@ -221,23 +221,23 @@ export default function TemplatesPage() {
   const getStatusBadge = (status: string, approvalStatus?: string) => {
     if (approvalStatus === 'pending') {
       return (
-        <Badge className="bg-amber-500 text-white flex items-center gap-1">
-          <Clock className="h-3 w-3" />
+        <Badge className="bg-amber-500 text-white flex items-center gap-1 px-3 py-1">
+          <Clock className="h-3.5 w-3.5" />
           Pending Approval
         </Badge>
       )
     }
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500 text-white">Active</Badge>
+        return <Badge className="bg-green-500 text-white px-3 py-1">Active</Badge>
       case 'draft':
-        return <Badge className="bg-yellow-500 text-white">Draft</Badge>
+        return <Badge className="bg-yellow-500 text-white px-3 py-1">Draft</Badge>
       case 'archived':
-        return <Badge className="bg-gray-500 text-white">Archived</Badge>
+        return <Badge className="bg-gray-500 text-white px-3 py-1">Archived</Badge>
       case 'pending_approval':
         return (
-          <Badge className="bg-amber-500 text-white flex items-center gap-1">
-            <Clock className="h-3 w-3" />
+          <Badge className="bg-amber-500 text-white flex items-center gap-1 px-3 py-1">
+            <Clock className="h-3.5 w-3.5" />
             Pending Approval
           </Badge>
         )
@@ -286,7 +286,7 @@ export default function TemplatesPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 uppercase">Total Templates</p>
@@ -300,7 +300,7 @@ export default function TemplatesPage() {
           </Card>
 
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 uppercase">Active</p>
@@ -316,7 +316,7 @@ export default function TemplatesPage() {
           </Card>
 
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 uppercase">Draft</p>
@@ -332,7 +332,7 @@ export default function TemplatesPage() {
           </Card>
 
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600 uppercase">Total Usage</p>
@@ -350,7 +350,7 @@ export default function TemplatesPage() {
 
         {/* Search and Filters */}
         <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex gap-4 flex-wrap">
               <div className="flex-1 min-w-[250px]">
                 <div className="relative">
@@ -392,7 +392,7 @@ export default function TemplatesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Card key={i} className="shadow-xl border-0 animate-pulse">
-                <CardContent className="p-6">
+                <CardContent className="p-5">
                   <div className="h-32 bg-gray-200 rounded"></div>
                 </CardContent>
               </Card>
@@ -447,15 +447,15 @@ export default function TemplatesPage() {
 
                   <div className="space-y-2 text-xs text-gray-500">
                     <div className="flex items-center gap-2">
-                      <User className="h-3 w-3" />
+                      <User className="h-3.5 w-3.5" />
                       <span>Created by {template.createdBy || 'System'}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Clock className="h-3 w-3" />
+                      <Clock className="h-3.5 w-3.5" />
                       <span>Modified {new Date(template.lastModified || template.updatedAt || template.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-3 w-3" />
+                      <Sparkles className="h-3.5 w-3.5" />
                       <span>Used {template.usageCount || 0} times</span>
                     </div>
                   </div>

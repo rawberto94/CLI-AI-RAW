@@ -27,7 +27,7 @@ import {
   ChevronUp,
   Loader2,
   List,
-  Timeline,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -192,7 +192,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                 )}
                 title="List View"
               >
-                <List className="h-4 w-4" />
+                <List className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setViewMode('timeline')}
@@ -204,25 +204,26 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                 )}
                 title="Timeline View"
               >
-                <Timeline className="h-4 w-4" />
+                <History className="h-3.5 w-3.5" />
               </button>
             </div>
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCw className={cn('h-4 w-4 mr-2', isFetching && 'animate-spin')} />
+              <RefreshCw className={cn('h-3.5 w-3.5 mr-2', isFetching && 'animate-spin')} />
               Refresh
             </Button>
             <Button variant="outline" size="sm" onClick={exportLogs}>
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-3.5 w-3.5 mr-2" />
               Export
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="p-5">
+        <div className="space-y-4">
         {/* Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
               placeholder="Search actions, users, resources..."
               value={searchQuery}
@@ -232,7 +233,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[150px]">
-              <Filter className="h-4 w-4 mr-2" />
+              <Filter className="h-3.5 w-3.5 mr-2" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -258,23 +259,23 @@ export const AuditLogViewer = memo(function AuditLogViewer({
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="p-3 rounded-lg bg-slate-50 text-center">
+          <div className="px-3 py-2.5 rounded-lg bg-slate-50 text-center">
             <p className="text-2xl font-bold">{logs.length}</p>
             <p className="text-xs text-slate-500">Total Events</p>
           </div>
-          <div className="p-3 rounded-lg bg-green-50 text-center">
+          <div className="px-3 py-2.5 rounded-lg bg-green-50 text-center">
             <p className="text-2xl font-bold text-green-600">
               {logs.filter(l => l.success).length}
             </p>
             <p className="text-xs text-slate-500">Successful</p>
           </div>
-          <div className="p-3 rounded-lg bg-red-50 text-center">
+          <div className="px-3 py-2.5 rounded-lg bg-red-50 text-center">
             <p className="text-2xl font-bold text-red-600">
               {logs.filter(l => !l.success).length}
             </p>
             <p className="text-xs text-slate-500">Failed</p>
           </div>
-          <div className="p-3 rounded-lg bg-blue-50 text-center">
+          <div className="px-3 py-2.5 rounded-lg bg-blue-50 text-center">
             <p className="text-2xl font-bold text-blue-600">
               {new Set(logs.map(l => l.actor.id)).size}
             </p>
@@ -285,7 +286,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
         {/* Log Entries */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
             <span>Loading audit logs...</span>
           </div>
         ) : filteredLogs.length === 0 ? (
@@ -310,16 +311,19 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                         'border rounded-lg transition-colors',
                         isExpanded ? 'border-blue-200' : 'hover:bg-slate-50'
                       )}>
-                        <CollapsibleTrigger className="w-full p-3 flex items-center gap-3 text-left">
+                        <CollapsibleTrigger className="w-full px-3 py-3.5 flex items-center gap-3 text-left">
                           <div className={cn('p-2 rounded-lg', catConfig!.color)}>
-                            <CatIcon className="h-4 w-4" />
+                            <CatIcon className="h-3.5 w-3.5" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{log.action}</span>
                               <Badge 
                                 variant="outline" 
-                                className={log.success ? 'text-green-600' : 'text-red-600'}
+                                className={cn(
+                                  'px-3 py-1',
+                                  log.success ? 'text-green-600' : 'text-red-600'
+                                )}
                               >
                                 {log.success ? 'Success' : 'Failed'}
                               </Badge>
@@ -339,9 +343,9 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                             <p>{format(log.timestamp, 'HH:mm:ss')}</p>
                           </div>
                           {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 text-slate-400" />
+                            <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
                           ) : (
-                            <ChevronDown className="h-4 w-4 text-slate-400" />
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                           )}
                         </CollapsibleTrigger>
                         <CollapsibleContent>
@@ -351,7 +355,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                                 <p className="text-xs text-slate-500 mb-1">Actor</p>
                                 <p className="font-medium">{log.actor.name}</p>
                                 <p className="text-xs text-slate-500">{log.actor.email}</p>
-                                <Badge variant="outline" className="mt-1 text-xs">
+                                <Badge variant="outline" className="px-3 py-1 mt-1 text-xs">
                                   {log.actor.type}
                                 </Badge>
                               </div>
@@ -397,6 +401,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
             </div>
           </ScrollArea>
         )}
+        </div>
       </CardContent>
     </Card>
   );

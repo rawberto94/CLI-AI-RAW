@@ -54,6 +54,16 @@ export interface ContractQueueManager {
     options?: { priority?: number; delay?: number }
   ): Promise<string | null>;
   
+  queueArtifactGeneration(
+    data: any,
+    options?: { priority?: number; delay?: number }
+  ): Promise<string | null>;
+  
+  queueAgentOrchestration(
+    data: any,
+    options?: { priority?: number; delay?: number }
+  ): Promise<string | null>;
+  
   getJobStatus(queueName: string, jobId: string): Promise<{
     state?: string;
     progress?: number;
@@ -91,6 +101,14 @@ export function getContractQueue(): ContractQueueManager {
         },
         async queueCategorization(data, options) {
           console.log('[Queue Stub] Would queue categorization:', { data, options });
+          return `stub-job-${Date.now()}`;
+        },
+        async queueArtifactGeneration(data, options) {
+          console.log('[Queue Stub] Would queue artifact generation:', { data, options });
+          return `stub-job-${Date.now()}`;
+        },
+        async queueAgentOrchestration(data, options) {
+          console.log('[Queue Stub] Would queue agent orchestration:', { data, options });
           return `stub-job-${Date.now()}`;
         },
         async getJobStatus(queueName, jobId) {

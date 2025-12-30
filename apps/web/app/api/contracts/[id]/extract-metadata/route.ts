@@ -10,10 +10,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import cors from '@/lib/security/cors';
+import type { Prisma } from '@prisma/client';
 import { 
   SchemaAwareMetadataExtractor,
   ExtractionOptions,
-  MetadataExtractionResult
+  MetadataExtractionResult,
+  type ExtractionResult
 } from '@/lib/ai/metadata-extractor';
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import { getApiTenantId } from '@/lib/tenant-server';
@@ -435,7 +437,7 @@ async function applyMetadataToContract(
         await tx.contractMetadata.update({
           where: { contractId },
           data: {
-            customFields,
+            customFields: customFields as Prisma.InputJsonValue,
             lastUpdated: now,
             updatedBy: 'ai-extractor',
           }
@@ -445,8 +447,8 @@ async function applyMetadataToContract(
           data: {
             contractId,
             tenantId,
-            customFields,
-            systemFields: {},
+            customFields: customFields as Prisma.InputJsonValue,
+            systemFields: {} as Prisma.InputJsonValue,
             tags: [],
             lastUpdated: now,
             updatedBy: 'ai-extractor',
@@ -486,29 +488,11 @@ interface MetadataSchema {
   fields: SchemaField[];
 }
 
-interface MockExtractionResult {
-  fieldId: string;
-  fieldName: string;
-  fieldLabel: string;
-  fieldType: string;
-  category?: string;
-  value: unknown;
-  rawValue: string;
-  confidence: number;
-  confidenceExplanation: string;
-  source: { text: string };
-  alternatives: unknown[];
-  validationStatus: string;
-  validationMessages: string[];
-  suggestions: string[];
-  requiresHumanReview: boolean;
-}
-
 function generateMockExtraction(
   schema: MetadataSchema,
   documentText: string
 ): MetadataExtractionResult {
-  const results: MockExtractionResult[] = schema.fields
+  const results: ExtractionResult[] = schema.fields
     .filter((f: SchemaField) => f.aiExtractionEnabled && !f.hidden)
     .map((field: SchemaField) => {
       // Generate mock value based on field type
@@ -519,9 +503,9 @@ function generateMockExtraction(
         fieldId: field.id,
         fieldName: field.name,
         fieldLabel: field.label,
-        fieldType: field.type,
-        category: field.category,
-        value: mockValue,
+        fieldType: field.type as ExtractionResult['fieldType'],
+        category: field.category ?? 'general',
+        value: mockValue as ExtractionResult['value'],
         rawValue: String(mockValue || ''),
         confidence,
         confidenceExplanation: 'Mock extraction (OpenAI not configured)',
@@ -534,7 +518,7 @@ function generateMockExtraction(
       };
     });
 
-  const extracted = results.filter((r: MockExtractionResult) => r.value !== null);
+  const extracted = results.filter((r: ExtractionResult) => r.value !== null);
 
   return {
     schemaId: schema.id,
@@ -544,16 +528,16 @@ function generateMockExtraction(
     summary: {
       totalFields: results.length,
       extractedFields: extracted.length,
-      highConfidenceFields: results.filter((r: MockExtractionResult) => r.confidence >= 0.8).length,
-      lowConfidenceFields: results.filter((r: MockExtractionResult) => r.confidence < 0.6).length,
-      failedFields: results.filter((r: MockExtractionResult) => r.value === null).length,
+      highConfidenceFields: results.filter((r: ExtractionResult) => r.confidence >= 0.8).length,
+      lowConfidenceFields: results.filter((r: ExtractionResult) => r.confidence < 0.6).length,
+      failedFields: results.filter((r: ExtractionResult) => r.value === null).length,
       averageConfidence: extracted.length > 0
-        ? extracted.reduce((sum: number, r: MockExtractionResult) => sum + r.confidence, 0) / extracted.length
+        ? extracted.reduce((sum: number, r: ExtractionResult) => sum + r.confidence, 0) / extracted.length
         : 0,
       extractionTime: 100,
       passesCompleted: 1,
     },
-    rawExtractions: results.reduce((acc: Record<string, unknown>, r: MockExtractionResult) => ({
+    rawExtractions: results.reduce((acc: Record<string, unknown>, r: ExtractionResult) => ({
       ...acc,
       [r.fieldName]: r.value
     }), {}),

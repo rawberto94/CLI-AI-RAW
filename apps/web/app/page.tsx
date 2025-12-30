@@ -111,6 +111,16 @@ const quickActions = [
     isNew: true
   },
   {
+    icon: Bot,
+    label: "AI Insights",
+    description: "Autonomous agent recommendations",
+    href: "/ai-insights",
+    gradient: "from-indigo-500 to-purple-500",
+    shadow: "shadow-indigo-500/25",
+    hoverBg: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30",
+    isNew: true
+  },
+  {
     icon: Search,
     label: "Smart Search",
     description: "Find contracts instantly",
@@ -136,8 +146,9 @@ export default function DashboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboardData,
-    staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
+    refetchOnWindowFocus: false,
   });
 
   const dashboardData = data?.stats || null;
@@ -327,7 +338,7 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants}>
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
                     <FileText className="h-5 w-5" />
@@ -342,7 +353,7 @@ export default function DashboardPage() {
                     {dashboardData.overview.totalContracts.toLocaleString()}
                   </p>
                   <div className="flex items-center gap-2 pt-2">
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800">
+                    <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
                       {dashboardData.overview.activeContracts} active
                     </Badge>
@@ -356,13 +367,13 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants}>
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
                     <TrendingUp className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-                    <TrendingUp className="h-3 w-3 mr-1" /> +12%
+                  <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                    <TrendingUp className="h-3.5 w-3.5 mr-1" /> +12%
                   </Badge>
                 </div>
                 <div className="space-y-1">
@@ -382,7 +393,7 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants}>
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
                     <Plus className="h-5 w-5" />
@@ -408,12 +419,12 @@ export default function DashboardPage() {
           <motion.div variants={itemVariants}>
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
               <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
                     <CheckCircle className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                  <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
                     Low Risk
                   </Badge>
                 </div>
@@ -450,7 +461,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {quickActions.map((action, index) => {
                   const Icon = action.icon;
@@ -494,8 +505,8 @@ export default function DashboardPage() {
         {/* Two Column Layout - Contracts & AI Assistant */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Contracts */}
-          <motion.div variants={itemVariants}>
-            <Card className="h-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 shadow-lg">
+          <motion.div variants={itemVariants} className="flex">
+            <Card className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 shadow-lg">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -512,7 +523,7 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 <div className="space-y-3">
                   {[1, 2, 3, 4].map((_, idx) => (
                     <motion.div
@@ -534,7 +545,7 @@ export default function DashboardPage() {
                           Added recently
                         </p>
                       </div>
-                      <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                      <Badge variant="outline" className="px-3 py-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
                         Active
                       </Badge>
                     </motion.div>
@@ -555,8 +566,8 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* AI Assistant Preview */}
-          <motion.div variants={itemVariants}>
-            <Card className="h-full bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/30 dark:via-indigo-950/30 dark:to-blue-950/30 border-purple-200/60 dark:border-purple-700/40 shadow-lg">
+          <motion.div variants={itemVariants} className="flex">
+            <Card className="flex-1 bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/30 dark:via-indigo-950/30 dark:to-blue-950/30 border-purple-200/60 dark:border-purple-700/40 shadow-lg">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -578,7 +589,7 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 <div className="space-y-4">
                   <div className="p-4 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-purple-200/50 dark:border-purple-800/30">
                     <p className="text-sm text-muted-foreground mb-3">Try asking:</p>
@@ -637,7 +648,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {dashboardData.breakdown.byStatus.slice(0, 4).map((item, idx) => {
                   const colors = [

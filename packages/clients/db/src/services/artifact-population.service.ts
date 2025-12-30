@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { PrismaClient, ArtifactType } from '@prisma/client';
 import { ContractIndexationService } from './contract-indexation.service';
 

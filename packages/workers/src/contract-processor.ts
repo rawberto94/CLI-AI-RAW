@@ -1,8 +1,8 @@
 import { Job } from 'bullmq';
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from 'utils/queue/queue-service';
-import { QUEUE_NAMES, ProcessContractJobData } from 'utils/queue/contract-queue';
+import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
+import { QUEUE_NAMES, ProcessContractJobData } from '@repo/utils/queue/contract-queue';
 import pino from 'pino';
 import fs from 'fs/promises';
 import path from 'path';

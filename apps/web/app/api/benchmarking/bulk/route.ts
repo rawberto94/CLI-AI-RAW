@@ -26,14 +26,17 @@ export async function POST(request: NextRequest) {
     // Run in background (don't await)
     const startTime = Date.now();
     
-    const result = await benchmarkingEngine.calculateAllBenchmarks(tenantId);
+    const result: unknown = await benchmarkingEngine.calculateAllBenchmarks(tenantId);
     
     const duration = Date.now() - startTime;
+
+    const resultRecord: JsonRecord =
+      result !== null && typeof result === 'object' ? (result as JsonRecord) : {};
 
     return NextResponse.json({
       success: true,
       data: {
-        ...(result as JsonRecord),
+        ...resultRecord,
         duration: `${(duration / 1000).toFixed(2)}s`,
       },
     });

@@ -17,13 +17,13 @@ import {
   DataProfile,
   RiskFlag,
   ExtendedContractMetadata
-} from "data-orchestration/src/types/contract-taxonomy.types";
+} from "data-orchestration/types";
 import {
   getCategoryById,
   findCategoryByAlias,
   createClassification,
   isValidClassification
-} from "data-orchestration/src/utils/contract-taxonomy.utils";
+} from "data-orchestration";
 
 // ============================================================================
 // TYPES
@@ -189,10 +189,14 @@ export async function classifyContract(
   input: ClassificationInput
 ): Promise<ExtendedContractMetadata> {
   try {
+    if (!openai) {
+      throw new Error('OpenAI client not configured');
+    }
+
     // Step 1: Classify the contract
     const classificationPrompt = buildClassificationPrompt(input);
     
-    const classificationResponse = await openai.chat.completions.create({
+    const classificationResponse = await openai.chat({
       model: "gpt-4-turbo-preview",
       messages: [
         {
@@ -235,7 +239,7 @@ export async function classifyContract(
     // Step 2: Extract tags
     const tagsPrompt = buildTagsPrompt(input, classification);
     
-    const tagsResponse = await openai.chat.completions.create({
+    const tagsResponse = await openai.chat({
       model: "gpt-4-turbo-preview",
       messages: [
         {
@@ -340,6 +344,10 @@ async function extractKeyFields(
   if (fields.length === 0) return {};
 
   try {
+    if (!openai) {
+      throw new Error('OpenAI client not configured');
+    }
+
     const prompt = `Extract the following fields from this contract text:
 
 Fields to extract: ${fields.join(", ")}
@@ -349,7 +357,7 @@ ${text.substring(0, 3000)}
 
 Respond in JSON format with the extracted values. Use null if a field cannot be found.`;
 
-    const response = await openai.chat.completions.create({
+    const response = await openai.chat({
       model: "gpt-4-turbo-preview",
       messages: [
         {

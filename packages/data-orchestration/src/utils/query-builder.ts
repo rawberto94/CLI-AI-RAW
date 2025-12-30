@@ -43,8 +43,8 @@ export class QueryBuilder {
   /**
    * Build Prisma query from query options
    */
-  static buildQuery(options: QueryOptions): any {
-    const query: any = {};
+  static buildQuery(options: QueryOptions): Record<string, unknown> {
+    const query: Record<string, unknown> = {};
 
     // Add where clause for filters
     if (options.filters) {
@@ -93,8 +93,8 @@ export class QueryBuilder {
   /**
    * Build WHERE clause from filters
    */
-  private static buildWhereClause(filters: Record<string, any>): any {
-    const where: any = {};
+  private static buildWhereClause(filters: Record<string, unknown>): Record<string, unknown> {
+    const where: Record<string, unknown> = {};
 
     Object.entries(filters).forEach(([key, value]) => {
       if (value === null || value === undefined) {
@@ -146,7 +146,7 @@ export class QueryBuilder {
   /**
    * Build search clause for full-text search
    */
-  private static buildSearchClause(search: string, searchFields: string[]): any {
+  private static buildSearchClause(search: string, searchFields: string[]): Record<string, unknown> {
     return {
       OR: searchFields.map((field) => ({
         [field]: {
@@ -160,8 +160,8 @@ export class QueryBuilder {
   /**
    * Build SELECT clause for field selection
    */
-  private static buildSelectClause(fields: string[]): any {
-    const select: any = {};
+  private static buildSelectClause(fields: string[]): Record<string, boolean> {
+    const select: Record<string, boolean> = {};
     fields.forEach((field) => {
       // Handle nested fields: "user.name" -> { user: { select: { name: true } } }
       if (field.includes('.')) {
@@ -184,8 +184,11 @@ export class QueryBuilder {
   /**
    * Execute paginated query
    */
-  static async executePaginatedQuery<T>(
-    model: any,
+  static async executePaginatedQuery<T extends { id: string }>(
+    model: {
+      findMany: (args: Record<string, unknown>) => Promise<T[]>;
+      count: (args: { where?: Record<string, unknown> }) => Promise<number>;
+    },
     options: QueryOptions
   ): Promise<PaginationResult<T>> {
     const query = this.buildQuery(options);
@@ -324,8 +327,11 @@ export class QueryBuilder {
 /**
  * Helper function to apply query options to API route
  */
-export async function applyQueryOptions<T>(
-  model: any,
+export async function applyQueryOptions<T extends { id: string }>(
+  model: {
+    findMany: (args: Record<string, unknown>) => Promise<T[]>;
+    count: (args: { where?: Record<string, unknown> }) => Promise<number>;
+  },
   searchParams: URLSearchParams
 ): Promise<PaginationResult<T>> {
   const options = QueryBuilder.parseQueryOptions(searchParams);

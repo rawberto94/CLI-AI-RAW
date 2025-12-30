@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 import { getContractQueue } from '@/lib/queue/contract-queue';
 import { getApiTenantId } from '@/lib/tenant-server';
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
         }));
     } else if (filter) {
       // Filter-based selection
-      const where: Record<string, unknown> = { tenantId };
+      const where: Prisma.ContractWhereInput = { tenantId };
 
       if (filter.status) {
         where.status = filter.status;
@@ -73,7 +74,8 @@ export async function POST(request: NextRequest) {
         where.createdAt = { gte: new Date(filter.createdAfter) };
       }
       if (filter.createdBefore) {
-        where.createdAt = { ...where.createdAt, lte: new Date(filter.createdBefore) };
+        const current = (where.createdAt ?? {}) as Prisma.DateTimeFilter<'Contract'>;
+        where.createdAt = { ...current, lte: new Date(filter.createdBefore) };
       }
 
       const contracts = await prisma.contract.findMany({

@@ -18,6 +18,8 @@ interface ContractDeadline {
   supplierName: string | null;
   autoRenewalEnabled: boolean;
   noticePeriodDays: number | null;
+  tenantId: string;
+  uploadedBy: string | null;
   riskLevel: 'high' | 'medium' | 'low';
 }
 
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
           lte: nineDaysFromNow,
         },
         status: {
-          in: ['ACTIVE', 'READY', 'COMPLETED'],
+          in: ['ACTIVE', 'COMPLETED'],
         },
         isDeleted: false,
       },
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest) {
         autoRenewalEnabled: true,
         noticePeriodDays: true,
         tenantId: true,
+        uploadedBy: true,
       },
       orderBy: {
         expirationDate: 'asc',
@@ -101,6 +104,8 @@ export async function POST(request: NextRequest) {
         supplierName: contract.supplierName,
         autoRenewalEnabled: contract.autoRenewalEnabled || false,
         noticePeriodDays: contract.noticePeriodDays,
+        tenantId: contract.tenantId,
+        uploadedBy: contract.uploadedBy,
         riskLevel,
       });
 
@@ -131,7 +136,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Cron] Created ${notifications.length} notifications`);
 
     // Send email notifications for high-priority items
-    const criticalDeadlines = deadlines.filter(d => d.severity === 'CRITICAL' || d.daysUntil <= 7);
+    const criticalDeadlines = deadlines.filter(d => d.riskLevel === 'high' || d.daysUntilExpiry <= 7);
     if (criticalDeadlines.length > 0) {
       const { sendEmail } = await import('@/lib/email/email-service');
       const { emailTemplates } = await import('@/lib/email/templates');
@@ -139,17 +144,17 @@ export async function POST(request: NextRequest) {
       for (const deadline of criticalDeadlines) {
         const template = emailTemplates.contractExpiring({
           contractTitle: deadline.contractTitle,
-          expirationDate: deadline.date.toLocaleDateString(),
-          daysUntilExpiration: deadline.daysUntil,
+          expirationDate: deadline.expirationDate.toLocaleDateString(),
+          daysUntilExpiration: deadline.daysUntilExpiry,
           contractId: deadline.contractId,
           contractUrl: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3005'}/contracts/${deadline.contractId}`,
         });
         
         // Get owner email from contract uploadedBy or fallback to admin
         let ownerEmail = process.env.ADMIN_EMAIL || 'admin@contigo.ch';
-        if (deadline.contract.uploadedBy) {
+        if (deadline.uploadedBy) {
           const owner = await prisma.user.findUnique({
-            where: { id: deadline.contract.uploadedBy },
+            where: { id: deadline.uploadedBy },
             select: { email: true },
           });
           if (owner?.email) {
@@ -171,29 +176,21 @@ export async function POST(request: NextRequest) {
       const notificationsData = await Promise.all(
         deadlines.map(async deadline => {
           // Get the actual user ID (owner or uploader)
-          let userId = 'admin';
-          if (deadline.contract.uploadedBy) {
-            const user = await prisma.user.findUnique({
-              where: { id: deadline.contract.uploadedBy },
-              select: { id: true },
-            });
-            if (user) userId = user.id;
-          }
+          const userId = deadline.uploadedBy || 'admin';
           
           return {
-            tenantId,
+            tenantId: deadline.tenantId,
             userId,
-            type: deadline.urgency === 'CRITICAL' ? 'CONTRACT_DEADLINE' : 'SYSTEM',
-            title: deadline.urgency === 'CRITICAL' 
-              ? 'Critical: Contract Expiring Soon!' 
-              : `Contract Deadline: ${deadline.urgency}`,
-            message: `${deadline.contractTitle} ${deadline.milestone} in ${deadline.daysAway} days`,
+            type: deadline.riskLevel === 'high' ? 'CONTRACT_DEADLINE' : 'SYSTEM',
+            title: deadline.riskLevel === 'high'
+              ? 'Contract Expiring Soon'
+              : 'Contract Deadline Approaching',
+            message: `${deadline.contractTitle} expires in ${deadline.daysUntilExpiry} days`,
             link: `/contracts/${deadline.contractId}`,
             metadata: {
               contractId: deadline.contractId,
-              urgency: deadline.urgency,
-              daysAway: deadline.daysAway,
-              milestone: deadline.milestone,
+              riskLevel: deadline.riskLevel,
+              daysUntilExpiry: deadline.daysUntilExpiry,
             },
           };
         })

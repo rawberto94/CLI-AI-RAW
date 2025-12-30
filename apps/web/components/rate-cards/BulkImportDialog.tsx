@@ -172,7 +172,8 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
           let rateInUSD = dailyRate;
           if (currency !== 'USD') {
             try {
-              rateInUSD = await convert(dailyRate, currency, 'USD');
+              const conversion = await convert(dailyRate, currency, 'USD');
+              rateInUSD = conversion.convertedAmount;
             } catch (error) {
               console.error('Currency conversion failed:', error);
             }

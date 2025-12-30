@@ -5,8 +5,10 @@
  * Supports multiple algorithms: sliding window, token bucket, fixed window.
  */
 
-import { Redis } from 'ioredis';
+import IORedis from 'ioredis';
 import { NextRequest, NextResponse } from 'next/server';
+
+type RedisClient = InstanceType<typeof IORedis>;
 
 // ============================================================================
 // Types
@@ -54,7 +56,7 @@ export interface RateLimitHeaders {
 // ============================================================================
 
 export class RateLimiter {
-  private redis: Redis | null = null;
+  private redis: RedisClient | null = null;
   private config: Required<Omit<RateLimitConfig, 'skip' | 'keyGenerator'>> & Pick<RateLimitConfig, 'skip' | 'keyGenerator'>;
 
   constructor(config: RateLimitConfig) {
@@ -72,10 +74,10 @@ export class RateLimiter {
   /**
    * Initialize Redis connection
    */
-  private async getRedis(): Promise<Redis> {
+  private async getRedis(): Promise<RedisClient> {
     if (!this.redis) {
       const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      this.redis = new Redis(redisUrl, {
+      this.redis = new IORedis(redisUrl, {
         maxRetriesPerRequest: 3,
         enableReadyCheck: true,
         lazyConnect: true,

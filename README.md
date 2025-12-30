@@ -25,6 +25,19 @@ chmod +x setup-complete.sh && ./setup-complete.sh
 ## ⚡ Quick Start (Alternative)
 This repository uses pnpm as its package manager. If you don't have pnpm installed, see https://pnpm.io/installation. Use `pnpm install` at the repo root to install dependencies.
 
+### Programmatic API Access (CLI/Integrations)
+
+By default, most `/api/*` routes require a NextAuth session. For non-browser clients, you can enable a service token:
+
+- Set `SERVICE_API_TOKEN` (see `.env.example`)
+- Call:
+  - `POST /api/contracts/upload`
+  - `GET /api/contracts/:id` (and read-only subroutes)
+
+Required headers:
+- `Authorization: Bearer <SERVICE_API_TOKEN>`
+- `x-tenant-id: <tenantId>`
+
 ### Automated Setup (Recommended)
 
 ```bash

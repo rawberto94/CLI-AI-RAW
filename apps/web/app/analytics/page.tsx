@@ -181,7 +181,7 @@ export default function ImprovedAnalyticsPage() {
                 >
                   <Card className={`group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl ${page.shadowColor} transition-all duration-300 cursor-pointer h-full`}>
                     <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-slate-100/50 dark:to-slate-800/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <CardContent className="pt-6 relative">
+                    <CardContent className="p-5 relative">
                       <div className="flex items-start justify-between">
                         <div className="space-y-3 flex-1">
                           <motion.div 
@@ -189,7 +189,7 @@ export default function ImprovedAnalyticsPage() {
                             whileHover={{ scale: 1.1, rotate: 5 }}
                             transition={{ type: "spring", stiffness: 300 }}
                           >
-                            <PageIcon className="h-6 w-6" />
+                            <PageIcon className="h-5 w-5" />
                           </motion.div>
                           <h4 className="font-semibold text-lg group-hover:text-blue-600 transition-colors">{page.title}</h4>
                           <p className="text-sm text-muted-foreground">{page.description}</p>

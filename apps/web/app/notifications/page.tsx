@@ -170,10 +170,10 @@ const getTypeIcon = (type: string) => {
 };
 
 const PRIORITY_CONFIG = {
-  low: { label: "Low", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" },
-  medium: { label: "Medium", color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400" },
-  high: { label: "High", color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" },
-  urgent: { label: "Urgent", color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400" },
+  low: { label: "Low", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-3 py-1" },
+  medium: { label: "Medium", color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1" },
+  high: { label: "High", color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1" },
+  urgent: { label: "Urgent", color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-3 py-1" },
 };
 
 export default function NotificationsPage() {
@@ -290,14 +290,14 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={unreadCount === 0}>
-                <CheckCheck className="h-4 w-4 mr-2" />
+                <CheckCheck className="h-3.5 w-3.5 mr-2" />
                 Mark all read
               </Button>
               <Link href="/settings/notifications">
                 <Button variant="ghost" size="sm">
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-3.5 w-3.5" />
                 </Button>
               </Link>
             </div>
@@ -309,7 +309,7 @@ export default function NotificationsPage() {
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search notifications..."
               value={searchQuery}
@@ -322,7 +322,7 @@ export default function NotificationsPage() {
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="unread">
-                Unread {unreadCount > 0 && <Badge variant="secondary" className="ml-1">{unreadCount}</Badge>}
+                Unread {unreadCount > 0 && <Badge variant="secondary" className="ml-1.5 px-2 py-0.5">{unreadCount}</Badge>}
               </TabsTrigger>
               <TabsTrigger value="starred">Starred</TabsTrigger>
             </TabsList>
@@ -334,14 +334,14 @@ export default function NotificationsPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+            className="flex items-center gap-2.5 p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
           >
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
             <Button size="sm" variant="secondary" onClick={() => markAsRead(Array.from(selectedIds))}>
-              <Check className="h-4 w-4 mr-1" /> Mark read
+              <Check className="h-3.5 w-3.5 mr-2" /> Mark read
             </Button>
             <Button size="sm" variant="destructive" onClick={() => deleteNotifications(Array.from(selectedIds))}>
-              <Trash2 className="h-4 w-4 mr-1" /> Delete
+              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>
               Cancel
@@ -365,7 +365,7 @@ export default function NotificationsPage() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
+                    <Filter className="h-3.5 w-3.5 mr-2" />
                     {typeFilter === "all" ? "All Types" : typeFilter}
                   </Button>
                 </DropdownMenuTrigger>
@@ -382,9 +382,9 @@ export default function NotificationsPage() {
               </DropdownMenu>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="p-5">
             {filteredNotifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
                 <BellOff className="h-12 w-12 text-muted-foreground/50 mb-4" />
                 <h3 className="font-medium text-lg mb-2">No notifications</h3>
                 <p className="text-muted-foreground text-sm max-w-sm">
@@ -415,11 +415,11 @@ export default function NotificationsPage() {
                         />
                         
                         <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0", TYPE_CONFIG[notification.type].bg)}>
-                          <TypeIcon className={cn("h-5 w-5", TYPE_CONFIG[notification.type].color)} />
+                          <TypeIcon className={cn("h-4 w-4", TYPE_CONFIG[notification.type].color)} />
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between gap-3">
                             <div>
                               <h4 className={cn("font-medium text-sm", !notification.read && "font-semibold")}>
                                 {notification.title}
@@ -428,7 +428,7 @@ export default function NotificationsPage() {
                                 {notification.description}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-2.5 flex-shrink-0">
                               <Badge className={PRIORITY_CONFIG[notification.priority].color}>
                                 {PRIORITY_CONFIG[notification.priority].label}
                               </Badge>
@@ -438,10 +438,10 @@ export default function NotificationsPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 mt-3">
+                          <div className="flex items-center gap-2.5 mt-3">
                             {notification.actionUrl && (
                               <Link href={notification.actionUrl}>
-                                <Button size="sm" variant="secondary">
+                                <Button size="sm" variant="secondary" className="h-8">
                                   {notification.actionLabel || "View"}
                                 </Button>
                               </Link>
@@ -451,14 +451,15 @@ export default function NotificationsPage() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => markAsRead([notification.id])}
+                                className="h-8"
                               >
-                                <Check className="h-3 w-3 mr-1" /> Mark read
+                                <Check className="h-3.5 w-3.5 mr-2" /> Mark read
                               </Button>
                             )}
                           </div>
                         </div>
 
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1.5">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -466,33 +467,33 @@ export default function NotificationsPage() {
                             onClick={() => toggleStar(notification.id)}
                           >
                             {notification.starred ? (
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                             ) : (
-                              <StarOff className="h-4 w-4 text-muted-foreground" />
+                              <StarOff className="h-3.5 w-3.5 text-muted-foreground" />
                             )}
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
+                                <MoreHorizontal className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => markAsRead([notification.id])}>
-                                <Check className="h-4 w-4 mr-2" /> Mark as read
+                                <Check className="h-4 w-4 mr-2.5" /> Mark as read
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => toggleStar(notification.id)}>
-                                <Star className="h-4 w-4 mr-2" /> {notification.starred ? "Unstar" : "Star"}
+                                <Star className="h-4 w-4 mr-2.5" /> {notification.starred ? "Unstar" : "Star"}
                               </DropdownMenuItem>
                               <DropdownMenuItem>
-                                <Archive className="h-4 w-4 mr-2" /> Archive
+                                <Archive className="h-4 w-4 mr-2.5" /> Archive
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 className="text-red-600"
                                 onClick={() => deleteNotifications([notification.id])}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                <Trash2 className="h-4 w-4 mr-2.5" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

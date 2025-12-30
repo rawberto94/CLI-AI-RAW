@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { hybridSearch } from '@/lib/rag/advanced-rag.service'
 import { prisma } from '@/lib/prisma'
+import { conversationMemoryService } from '@repo/data-orchestration'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -1197,16 +1198,16 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
         category: contract.categoryL1,
       },
       insights: {
-        summary: overview.summary || overview.keyTerms?.join(', ') || 'No summary available',
-        keyTerms: overview.keyTerms || [],
-        paymentTerms: financial.paymentTerms || financial.paymentSchedule || 'Not specified',
-        totalCommitment: financial.totalContractValue || financial.totalCommitment,
-        criticalClauses: clauses.clauses?.filter((c: { risk?: string; importance?: string }) => c.risk === 'high' || c.importance === 'critical')?.slice(0, 5) || [],
-        terminationNotice: renewal.noticePeriodDays || clauses.terminationNoticeDays || 'Not specified',
-        autoRenewalTerms: renewal.autoRenewalTerms || (contract.autoRenewalEnabled ? 'Enabled' : 'Disabled'),
+        summary: (overview as any)?.summary || (overview as any)?.keyTerms?.join(', ') || 'No summary available',
+        keyTerms: (overview as any)?.keyTerms || [],
+        paymentTerms: (financial as any)?.paymentTerms || (financial as any)?.paymentSchedule || 'Not specified',
+        totalCommitment: (financial as any)?.totalContractValue || (financial as any)?.totalCommitment,
+        criticalClauses: (clauses as any)?.clauses?.filter((c: { risk?: string; importance?: string }) => c.risk === 'high' || c.importance === 'critical')?.slice(0, 5) || [],
+        terminationNotice: (renewal as any)?.noticePeriodDays || (clauses as any)?.terminationNoticeDays || 'Not specified',
+        autoRenewalTerms: (renewal as any)?.autoRenewalTerms || (contract.autoRenewalEnabled ? 'Enabled' : 'Disabled'),
       },
       risks: {
-        level: risk.overallRisk || risk.riskLevel || (daysUntilExpiry && daysUntilExpiry < 30 ? 'HIGH' : 'MEDIUM'),
+        level: (risk as any)?.overallRisk || (risk as any)?.riskLevel || (daysUntilExpiry && daysUntilExpiry < 30 ? 'HIGH' : 'MEDIUM'),
         factors: risk.riskFactors || risk.risks || [],
         mitigations: risk.mitigations || [],
       },
@@ -6208,11 +6209,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
     }
 
-    const { message, contractId, context: initialContext, conversationHistory } = await request.json()
+    const { message, contractId, context: initialContext, conversationHistory, conversationId: providedConversationId } = await request.json()
     let context = initialContext || {};
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    }
+
+    // ============================================
+    // CONVERSATION MEMORY INTEGRATION
+    // ============================================
+    let conversationId = providedConversationId;
+    let resolvedMessage = message;
+    let referenceResolutions = [];
+
+    // Get or create conversation
+    if (!conversationId) {
+      conversationId = await conversationMemoryService.createConversation(tenantId, tenantId);
+    }
+
+    // Resolve references in the message ("it", "that contract", "the supplier")
+    const resolutionResult = await conversationMemoryService.resolveReferences(
+      conversationId,
+      message,
+      tenantId
+    );
+    resolvedMessage = resolutionResult.resolvedMessage;
+    referenceResolutions = resolutionResult.resolutions;
+
+    // Save user message to conversation memory
+    await conversationMemoryService.addMessage(conversationId, 'user', message);
+
+    // Log reference resolutions for debugging
+    if (referenceResolutions.length > 0) {
+      console.log('[Chat] Reference resolutions:', referenceResolutions);
     }
 
     // Always use real OpenAI with real database data
@@ -6223,8 +6253,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Detect intent from the message
-    const intent = detectIntent(message);
+    // Detect intent from the resolved message (with references resolved)
+    const intent = detectIntent(resolvedMessage);
 
     // Build database context based on detected intent
     let additionalContext = '';
@@ -7151,12 +7181,59 @@ export async function POST(request: NextRequest) {
     }
 
     // Call OpenAI with the enriched context
-    const response = await getOpenAIResponse(message, conversationHistory || [], { 
+    const response = await getOpenAIResponse(resolvedMessage, conversationHistory || [], { 
       contractId, 
       context,
       intent,
       additionalContext,
     }) as any;
+
+    // ============================================
+    // CONVERSATION MEMORY UPDATE
+    // ============================================
+    // Save assistant response to conversation memory
+    await conversationMemoryService.addMessage(
+      conversationId, 
+      'assistant', 
+      response.response,
+      {
+        intent: intent.type,
+        action: intent.action,
+        entities: intent.entities,
+        executedAction: true,
+      }
+    );
+
+    // Update reference context for future messages
+    if (intent.entities.contractName) {
+      await conversationMemoryService.updateReferenceContext(conversationId, {
+        lastContractName: intent.entities.contractName,
+      });
+    }
+    if (intent.entities.supplierName) {
+      await conversationMemoryService.updateReferenceContext(conversationId, {
+        lastSupplierName: intent.entities.supplierName,
+      });
+    }
+    if (intent.entities.category) {
+      await conversationMemoryService.updateReferenceContext(conversationId, {
+        lastCategory: intent.entities.category,
+      });
+    }
+
+    // Add conversation ID to response
+    response.conversationId = conversationId;
+
+    // Add reference resolutions if any
+    if (referenceResolutions.length > 0) {
+      response.referenceResolutions = referenceResolutions;
+    }
+
+    // Generate proactive suggestions based on conversation context
+    const suggestions = await conversationMemoryService.generateSuggestions(conversationId, tenantId);
+    if (suggestions.length > 0) {
+      response.suggestions = suggestions;
+    }
 
     // Add contract previews to response if we have them
     if (contractPreviews.length > 0) {

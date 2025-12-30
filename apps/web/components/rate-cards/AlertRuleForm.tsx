@@ -29,7 +29,7 @@ const alertRuleSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-type AlertRuleFormValues = z.infer<typeof alertRuleSchema>;
+export type AlertRuleFormValues = z.infer<typeof alertRuleSchema>;
 
 interface AlertRuleFormProps {
   initialValues?: Partial<AlertRuleFormValues & { notificationChannels?: string[]; recipients?: string[] }>;

@@ -23,8 +23,8 @@ export function optimizeSelect<T extends Record<string, any>>(
 /**
  * Build efficient where clause with proper indexing
  */
-export function buildWhereClause(filters: Record<string, any>): any {
-  const where: any = {};
+export function buildWhereClause(filters: Record<string, unknown>): Record<string, unknown> {
+  const where: Record<string, unknown> = {};
 
   Object.entries(filters).forEach(([key, value]) => {
     if (value === undefined || value === null) {
@@ -82,12 +82,12 @@ export interface PaginatedResult<T> {
   };
 }
 
-export function buildPaginationQuery(options: PaginationOptions) {
+export function buildPaginationQuery(options: PaginationOptions): Record<string, unknown> {
   const page = options.page || 1;
-  const pageSize = Math.min(options.pageSize || 20, 100); // Max 100 items per page
+  const pageSize = Math.min(options.pageSize || 100, 100); // Max 100 items per page
   const skip = (page - 1) * pageSize;
 
-  const query: any = {
+  const query: Record<string, unknown> = {
     take: pageSize,
     skip,
   };
@@ -153,18 +153,18 @@ export interface AggregationOptions {
     field: string;
     operation: 'count' | 'sum' | 'avg' | 'min' | 'max';
   }[];
-  where?: any;
+  where?: Record<string, unknown>;
   orderBy?: Record<string, 'asc' | 'desc'>;
   limit?: number;
 }
 
-export function buildAggregationQuery(options: AggregationOptions) {
-  const query: any = {
+export function buildAggregationQuery(options: AggregationOptions): Record<string, unknown> {
+  const query: Record<string, unknown> = {
     by: options.groupBy,
   };
 
   // Add aggregations
-  const aggregations: any = {};
+  const aggregations: Record<string, Record<string, boolean>> = {};
   options.aggregations.forEach((agg) => {
     if (!aggregations[agg.field]) {
       aggregations[agg.field] = {};
@@ -197,7 +197,7 @@ export function buildAggregationQuery(options: AggregationOptions) {
 export function buildFullTextSearch(
   searchTerm: string,
   fields: string[]
-): any {
+): Record<string, unknown> {
   const searchWords = searchTerm.trim().split(/\s+/);
   
   // Build OR conditions for each field
@@ -249,8 +249,8 @@ export async function monitorQuery<T>(
 export function buildJsonQuery(
   field: string,
   path: string[],
-  value: any
-): any {
+  value: unknown
+): Record<string, unknown> {
   return {
     [field]: {
       path,
@@ -266,8 +266,8 @@ export function buildDateRangeQuery(
   field: string,
   startDate?: Date,
   endDate?: Date
-): any {
-  const query: any = {};
+): Record<string, unknown> {
+  const query: Record<string, unknown> = {};
 
   if (startDate) {
     query.gte = startDate;
@@ -311,8 +311,8 @@ export function optimizeRelationLoading(
  * Build efficient count query
  */
 export async function efficientCount(
-  model: any,
-  where: any
+  model: { count: (args: { where: Record<string, unknown> }) => Promise<number> },
+  where: Record<string, unknown>
 ): Promise<number> {
   const startTime = Date.now();
   
@@ -334,7 +334,7 @@ export async function efficientCount(
  * Optimize bulk operations
  */
 export async function bulkCreate<T>(
-  model: any,
+  model: { createMany: (args: { data: T[]; skipDuplicates?: boolean }) => Promise<unknown> },
   data: T[],
   batchSize: number = 100
 ): Promise<void> {
@@ -372,15 +372,15 @@ export async function bulkCreate<T>(
  * Optimize bulk updates
  */
 export async function bulkUpdate<T>(
-  model: any,
-  updates: Array<{ where: any; data: any }>,
+  model: { update: (args: { where: Record<string, unknown>; data: T }) => Promise<unknown> },
+  updates: Array<{ where: Record<string, unknown>; data: T }>,
   batchSize: number = 50
 ): Promise<void> {
   const startTime = Date.now();
   
   try {
     // Split into batches
-    const batches: Array<{ where: any; data: any }>[] = [];
+    const batches: Array<Array<{ where: Record<string, unknown>; data: T }>> = [];
     for (let i = 0; i < updates.length; i += batchSize) {
       batches.push(updates.slice(i, i + batchSize));
     }

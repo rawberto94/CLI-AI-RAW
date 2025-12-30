@@ -489,26 +489,50 @@ export class ConfidenceCalibrationService {
   async loadHistoricalFeedback(tenantId: string): Promise<void> {
     try {
       const { prisma } = await import('@/lib/prisma');
+
+      type ExtractionFeedbackRow = {
+        contract_id: string;
+        tenant_id: string;
+        field_name: string;
+        field_type: string | null;
+        extracted_value: string | null;
+        corrected_value: string | null;
+        ai_confidence: number | null;
+        was_correct: boolean | null;
+        correction_type: string | null;
+        created_at: Date | string;
+      };
       
-      const results = await prisma.$queryRaw<any[]>`
+      const results = await prisma.$queryRaw<ExtractionFeedbackRow[]>`
         SELECT * FROM extraction_feedback 
         WHERE tenant_id = ${tenantId}
         ORDER BY created_at DESC
         LIMIT 1000
-      `.catch(() => []);
+      `.catch(() => [] as ExtractionFeedbackRow[]);
 
       for (const row of results) {
+        const correctionType: ExtractionFeedback['correctionType'] =
+          row.correction_type === 'accepted' ||
+          row.correction_type === 'modified' ||
+          row.correction_type === 'rejected'
+            ? row.correction_type
+            : row.was_correct
+              ? 'accepted'
+              : row.corrected_value != null
+                ? 'modified'
+                : 'rejected';
+
         const feedback: ExtractionFeedback = {
           contractId: row.contract_id,
           tenantId: row.tenant_id,
           fieldName: row.field_name,
-          fieldType: row.field_type,
+          fieldType: row.field_type ?? 'text',
           extractedValue: row.extracted_value,
           correctedValue: row.corrected_value,
-          aiConfidence: row.ai_confidence,
-          wasCorrect: row.was_correct,
-          correctionType: row.correction_type,
-          timestamp: row.created_at,
+          aiConfidence: row.ai_confidence ?? 0,
+          wasCorrect: row.was_correct ?? false,
+          correctionType,
+          timestamp: row.created_at instanceof Date ? row.created_at : new Date(row.created_at),
         };
 
         const key = this.getFieldKey(tenantId, feedback.fieldName);
@@ -519,9 +543,10 @@ export class ConfidenceCalibrationService {
       }
 
       // Recalculate all stats
-      const fieldNames = new Set(results.map(r => r.field_name));
+      const fieldNames = new Set(results.map((r) => r.field_name));
       for (const fieldName of fieldNames) {
-        const fieldType = results.find(r => r.field_name === fieldName)?.field_type || 'text';
+        const fieldTypeRaw = results.find((r) => r.field_name === fieldName)?.field_type;
+        const fieldType = typeof fieldTypeRaw === 'string' ? fieldTypeRaw : 'text';
         await this.updateFieldStats(tenantId, fieldName, fieldType);
       }
 

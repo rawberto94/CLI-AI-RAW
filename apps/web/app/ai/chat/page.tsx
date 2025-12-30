@@ -585,7 +585,7 @@ function AIChatPageContent() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0"
+                                className="h-8 p-0"
                                 onClick={() => handleCopy(message.content, message.id)}
                               >
                                 {copiedId === message.id ? (
@@ -606,7 +606,7 @@ function AIChatPageContent() {
                                 variant="ghost"
                                 size="sm"
                                 className={cn(
-                                  "h-7 w-7 p-0",
+                                  "h-8 p-0",
                                   message.feedback === "positive" && "text-green-500"
                                 )}
                                 onClick={() => handleFeedback(message.id, "positive")}
@@ -625,7 +625,7 @@ function AIChatPageContent() {
                                 variant="ghost"
                                 size="sm"
                                 className={cn(
-                                  "h-7 w-7 p-0",
+                                  "h-8 p-0",
                                   message.feedback === "negative" && "text-red-500"
                                 )}
                                 onClick={() => handleFeedback(message.id, "negative")}

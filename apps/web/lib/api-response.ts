@@ -42,6 +42,38 @@ export interface PaginatedData<T> {
 
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
+// --------------------------------------------------------------------------
+// Back-compat aliases (used by '@/lib' barrel exports)
+// --------------------------------------------------------------------------
+
+export const successResponse = success;
+export const errorResponse = error;
+
+export function validationError(message = 'Validation failed', details?: Record<string, unknown>) {
+  return error(ERROR_CODES.VALIDATION_ERROR, message, 422, details);
+}
+
+export function notFoundError(resource = 'Resource') {
+  return errors.notFound(resource);
+}
+
+export function unauthorizedError(message = 'Authentication required') {
+  return errors.unauthorized(message);
+}
+
+export function forbiddenError(message = 'Access denied') {
+  return errors.forbidden(message);
+}
+
+export function serverError(message = 'An unexpected error occurred', details?: Record<string, unknown>) {
+  return error(ERROR_CODES.INTERNAL_ERROR, message, 500, details);
+}
+
+export function handleApiError(err: unknown, message = 'An unexpected error occurred') {
+  const resolved = err ? getErrorMessage(err) : message;
+  return errors.internal(resolved);
+}
+
 // ============================================================================
 // Success Responses
 // ============================================================================

@@ -1,4 +1,5 @@
 import "./globals.css";
+import "../styles/orchestrator.css";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
 

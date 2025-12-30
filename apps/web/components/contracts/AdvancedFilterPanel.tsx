@@ -271,7 +271,7 @@ export function AdvancedFilterPanel({
                     onSelect={(date) =>
                       updateFilter('dateRange', {
                         ...localFilters.dateRange,
-                        from: date,
+                        from: date instanceof Date ? date : undefined,
                       })
                     }
                   />
@@ -304,7 +304,7 @@ export function AdvancedFilterPanel({
                     onSelect={(date) =>
                       updateFilter('dateRange', {
                         ...localFilters.dateRange,
-                        to: date,
+                        to: date instanceof Date ? date : undefined,
                       })
                     }
                   />

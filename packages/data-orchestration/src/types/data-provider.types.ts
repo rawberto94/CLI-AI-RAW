@@ -21,7 +21,7 @@ export interface DataSourceMetadata {
 export interface IDataProvider<T> {
   mode: 'real' | 'mock';
   isAvailable(): Promise<boolean>;
-  getData(params: any): Promise<T>;
+  getData(params: Record<string, unknown>): Promise<T>;
   getMetadata(): DataSourceMetadata;
 }
 

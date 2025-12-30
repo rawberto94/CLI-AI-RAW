@@ -28,6 +28,9 @@
     "services:test": "bash scripts/start-test-services.sh",
     "setup": "bash .devcontainer/setup.sh",
     "verify": "bash scripts/verify-production-readiness.sh",
+    "typecheck": "pnpm typecheck:web && pnpm typecheck:workers",
+    "typecheck:web": "pnpm -C apps/web exec tsc --noEmit --pretty false",
+    "typecheck:workers": "pnpm -C packages/workers run typecheck",
     "db:migrate": "npx prisma migrate deploy --schema packages/clients/db/schema.prisma",
     "db:generate": "npx prisma generate --schema packages/clients/db/schema.prisma",
     "db:studio": "npx prisma studio --schema packages/clients/db/schema.prisma",
@@ -51,7 +54,8 @@
   },
   "devDependencies": {
     "dotenv-cli": "^10.0.0",
-    "nodemon": "^3.0.0"
+    "nodemon": "^3.0.0",
+    "turbo": "^2.7.2"
   },
   "pnpm": {
     "overrides": {

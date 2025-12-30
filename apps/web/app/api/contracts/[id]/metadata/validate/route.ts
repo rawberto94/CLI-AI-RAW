@@ -323,15 +323,22 @@ Respond in JSON format:
     // Transform AI response to our format
     const validatedFields: MetadataField[] = fields.map(([key, value]) => {
       const aiValidation = result.validations?.find((v: AIValidationItem) => v.key === key);
+
+      const suggestedValue = aiValidation?.suggestedValue;
+      const suggestions =
+        typeof suggestedValue === 'string' &&
+        suggestedValue.length > 0 &&
+        suggestedValue !== String(value ?? '')
+          ? [suggestedValue]
+          : undefined;
+
       return {
         key,
         value,
         status: aiValidation?.isValid ? 'validated' : 'pending',
         aiConfidence: aiValidation?.confidence || 50,
         humanValidated: false,
-        suggestions: aiValidation?.suggestedValue && aiValidation.suggestedValue !== value
-          ? [aiValidation.suggestedValue]
-          : undefined,
+        suggestions,
         validationErrors: aiValidation?.notes ? [aiValidation.notes] : undefined
       };
     });

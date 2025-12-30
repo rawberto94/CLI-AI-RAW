@@ -3413,3 +3413,117 @@ model RenewalHistory {
   @@index([valueChange(sort: Desc)])
   @@map("renewal_history")
 }
+
+// ==================== AGENTIC AI MODELS ====================
+
+model AgentEvent {
+  id          String   @id @default(cuid())
+  contractId  String   @map("contract_id")
+  tenantId    String   @map("tenant_id")
+  agentName   String   @map("agent_name")
+  eventType   String   @map("event_type")
+  timestamp   DateTime @default(now())
+  outcome     String // success, failure, partial, pending
+  metadata    Json?    @default("{}")
+  reasoning   String?  @db.Text
+  confidence  Decimal? @db.Decimal(3, 2)
+  duration    Int? // milliseconds
+  triggeredBy String?  @map("triggered_by")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([agentName])
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([outcome])
+  @@index([tenantId, agentName])
+  @@index([contractId, agentName])
+  @@map("agent_events")
+}
+
+model AgentRecommendation {
+  id              String    @id @default(cuid())
+  contractId      String    @map("contract_id")
+  tenantId        String    @map("tenant_id")
+  agentName       String    @map("agent_name")
+  action          String
+  description     String    @db.Text
+  priority        String // low, medium, high, urgent
+  automated       Boolean   @default(false)
+  estimatedImpact Json?     @default("{}") @map("estimated_impact")
+  potentialValue  Decimal?  @map("potential_value") @db.Decimal(15, 2)
+  confidence      Decimal   @db.Decimal(3, 2)
+  status          String    @default("pending") // pending, in_progress, completed, dismissed
+  reason          String?   @db.Text
+  executedAt      DateTime? @map("executed_at")
+  executedBy      String?   @map("executed_by")
+  result          Json?     @default("{}")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([contractId])
+  @@index([tenantId])
+  @@index([agentName])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([tenantId, status])
+  @@index([contractId, status])
+  @@map("agent_recommendations")
+}
+
+model LearningRecord {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  artifactType   String   @map("artifact_type")
+  contractType   String?  @map("contract_type")
+  field          String
+  aiExtracted    String?  @map("ai_extracted") @db.Text
+  userCorrected  String?  @map("user_corrected") @db.Text
+  confidence     Decimal? @db.Decimal(3, 2)
+  contractLength Int?     @map("contract_length")
+  ocrQuality     Decimal? @map("ocr_quality") @db.Decimal(3, 2)
+  modelUsed      String?  @map("model_used")
+  promptVersion  String?  @map("prompt_version")
+  correctionType String?  @map("correction_type") // typo, format, value, missing
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([artifactType])
+  @@index([contractType])
+  @@index([field])
+  @@index([createdAt])
+  @@index([tenantId, artifactType, field])
+  @@map("learning_records")
+}
+
+model OpportunityDiscovery {
+  id               String    @id @default(cuid())
+  tenantId         String    @map("tenant_id")
+  contractId       String?   @map("contract_id")
+  opportunityType  String    @map("opportunity_type") // consolidation, renegotiation, optimization, duplicate, autorenewal
+  title            String
+  description      String    @db.Text
+  potentialValue   Decimal   @map("potential_value") @db.Decimal(15, 2)
+  confidence       Decimal   @db.Decimal(3, 2)
+  effort           String // low, medium, high
+  timeframe        String
+  relatedContracts Json?     @default("[]") @map("related_contracts")
+  actionPlan       Json?     @default("[]") @map("action_plan")
+  status           String    @default("new") // new, reviewing, in_progress, completed, dismissed
+  reviewedBy       String?   @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at")
+  completedAt      DateTime? @map("completed_at")
+  actualValue      Decimal?  @map("actual_value") @db.Decimal(15, 2)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([opportunityType])
+  @@index([status])
+  @@index([createdAt])
+  @@index([potentialValue(sort: Desc)])
+  @@index([tenantId, status])
+  @@map("opportunity_discoveries")
+}

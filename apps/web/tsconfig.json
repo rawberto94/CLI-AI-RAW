@@ -1,13 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "strict": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
     "noEmit": true,
     "incremental": true,
     "tsBuildInfoFile": "./.next/cache/.tsbuildinfo",
@@ -26,76 +24,33 @@
     "disableReferencedProjectLoad": true,
     "maxNodeModuleJsDepth": 0,
     "types": ["react", "react-dom"],
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }],
     "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/apps/*": [
-        "../../apps/*"
-      ],
-      "@/core": [
-        "../../apps/core"
-      ],
-      "@/core/*": [
-        "../../apps/core/*"
-      ],
-      "@/packages/*": [
-        "../../packages/*"
-      ],
-      "@/packages/clients/*": [
-        "../../packages/clients/*"
-      ],
-      "@/packages/clients/db": [
-        "../../packages/clients/db"
-      ],
-      "@/packages/clients/db/*": [
-        "../../packages/clients/db/*"
-      ],
-      "@repo/utils": [
-        "../../packages/utils/src"
-      ],
-      "@repo/utils/*": [
-        "../../packages/utils/src/*"
-      ],
-      "@repo/db": [
-        "../../packages/clients/db"
-      ],
-      "@repo/db/*": [
-        "../../packages/clients/db/*"
-      ],
-      "data-orchestration": [
-        "../../packages/data-orchestration/src"
-      ],
-      "data-orchestration/*": [
-        "../../packages/data-orchestration/src/*"
-      ],
-      "clients-rag": [
-        "../../packages/clients/rag"
-      ],
-      "clients-rag/*": [
-        "../../packages/clients/rag/*"
-      ],
-      "clients-openai": [
-        "../../packages/clients/openai"
-      ],
-      "clients-openai/*": [
-        "../../packages/clients/openai/*"
-      ]
+      "@/*": ["./*"],
+      "@/apps/*": ["../../apps/*"],
+      "@/core": ["../../apps/core"],
+      "@/core/*": ["../../apps/core/*"],
+      "@/packages/*": ["../../packages/*"],
+      "@/packages/clients/*": ["../../packages/clients/*"],
+      "@/packages/clients/db": ["../../packages/clients/db"],
+      "@/packages/clients/db/*": ["../../packages/clients/db/*"],
+      "@repo/utils": ["../../packages/utils/src"],
+      "@repo/utils/*": ["../../packages/utils/src/*"],
+      "@repo/db": ["../../packages/clients/db"],
+      "@repo/db/*": ["../../packages/clients/db/*"],
+      "@repo/workers": ["../../packages/workers/src"],
+      "@repo/workers/*": ["../../packages/workers/src/*"],
+      "data-orchestration": ["../../packages/data-orchestration/src"],
+      "data-orchestration/*": ["../../packages/data-orchestration/src/*"],
+      "clients-rag": ["../../packages/clients/rag"],
+      "clients-rag/*": ["../../packages/clients/rag/*"],
+      "clients-openai": ["../../packages/clients/openai"],
+      "clients-openai/*": ["../../packages/clients/openai/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
     "../sharepoint-app_disabled",
@@ -122,6 +77,7 @@
     "**/tmp/**",
     "**/temp/**",
     "lib/transaction-service.ts",
+    "lib/test-utils.ts",
     "lib/sievo-integration.ts",
     "lib/mistral-client.ts",
     "lib/negotiation-prep/**",

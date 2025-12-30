@@ -29,7 +29,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import { ContractCategoryBadge } from './ContractCategoryBadge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface SuggestedParent {
   id: string;

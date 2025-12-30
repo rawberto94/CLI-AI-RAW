@@ -6,9 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,9 +39,24 @@ const defaultSettings = {
   },
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readSettingsFromNotificationsJson(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+
+  // Preferred shape: notifications = { settings: { ... } }
+  const maybeSettings = value.settings;
+  if (isRecord(maybeSettings)) return maybeSettings;
+
+  // Back-compat: notifications itself is the settings object.
+  return value;
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -51,16 +66,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Try to get existing settings from database
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        notificationSettings: true,
-      },
+    const prefs = await prisma.userPreferences.findUnique({
+      where: { userId: session.user.id },
+      select: { notifications: true },
     });
 
+    const storedSettings = readSettingsFromNotificationsJson(prefs?.notifications);
+
     // Return stored settings or defaults
-    const settings = user?.notificationSettings 
-      ? { ...defaultSettings, ...(user.notificationSettings as object) }
+    const settings = storedSettings
+      ? { ...defaultSettings, ...storedSettings }
       : defaultSettings;
 
     return NextResponse.json(settings);
@@ -75,7 +90,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -123,11 +138,29 @@ export async function PUT(request: NextRequest) {
       },
     };
 
-    // Update user settings
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        notificationSettings: settings,
+    const existing = await prisma.userPreferences.findUnique({
+      where: { userId: session.user.id },
+      select: { notifications: true },
+    });
+
+    const existingNotifications = isRecord(existing?.notifications)
+      ? (existing!.notifications as Record<string, unknown>)
+      : {};
+
+    const nextNotifications: Record<string, unknown> = {
+      ...existingNotifications,
+      settings,
+    };
+
+    // Update user settings (schema-aligned)
+    await prisma.userPreferences.upsert({
+      where: { userId: session.user.id },
+      update: {
+        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+      },
+      create: {
+        userId: session.user.id,
+        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
       },
     });
 

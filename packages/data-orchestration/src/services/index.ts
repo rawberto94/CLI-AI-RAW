@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Export all service instances
 // Note: Some duplicate type exports may exist - consumers should import types directly from specific services
 
@@ -39,7 +38,6 @@ export * from './rate-card-entry.service';
 export * from './role-standardization.service';
 export * from './rate-card-clustering.service';
 
-export * from './analytical-database.service';
 export * from './smart-cache.service';
 export * from './database-optimization.service';
 export * from './multi-level-cache.service';
@@ -49,12 +47,10 @@ export * from './contract-indexing.service';
 export * from './taxonomy.service';
 
 export * from './workflow.service';
-export * from './unified-orchestration.service';
 export * from './event-orchestrator.service';
 export * from './event-integration.helper';
 
 export * from './analytics.service';
-export * from './intelligence.service';
 export * from './analytical-intelligence.service';
 export * from './analytical-sync.service';
 

@@ -9,6 +9,9 @@ export * from "./dal";
 export * from "./lineage";
 export * from "./providers/data-provider-factory";
 
+// Export commonly-used utilities
+export * from "./utils/contract-taxonomy.utils";
+
 // Export service classes
 export * from "./services";
 

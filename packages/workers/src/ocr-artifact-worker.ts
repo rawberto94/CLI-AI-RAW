@@ -5,8 +5,8 @@ dotenv.config();
 import { Job } from 'bullmq';
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-import { getQueueService, JobType } from 'utils/queue/queue-service';
-import { QUEUE_NAMES, ProcessContractJobData, IndexContractJobData } from 'utils/queue/contract-queue';
+import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
+import { QUEUE_NAMES, ProcessContractJobData, IndexContractJobData } from '@repo/utils/queue/contract-queue';
 import pino from 'pino';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -17,13 +17,14 @@ import {
   CircuitBreaker, 
   CircuitState, 
   CircuitBreakerError 
-} from 'utils/patterns/circuit-breaker';
-import { retry, retryOpenAI, retryStorage } from 'utils/patterns/retry';
-import { redisEventBus, RedisEvents, publishJobProgress } from 'utils/events/redis-event-bus';
+} from '@repo/utils/patterns/circuit-breaker';
+import { retry, retryOpenAI, retryStorage } from '@repo/utils/patterns/retry';
+import { redisEventBus, RedisEvents, publishJobProgress } from '@repo/utils/events/redis-event-bus';
 import {
   ContractType,
   ArtifactType,
   detectContractType,
+  detectContractTypeWithAI,
   getContractProfile,
   getRelevantArtifacts,
   isArtifactApplicable,
@@ -33,6 +34,10 @@ import {
   getMissingMandatoryFields,
   getTabPriorityOrder,
 } from './contract-type-profiles';
+
+import { getTraceContextFromJobData } from './observability/trace';
+import { buildProcessingPlan } from './workflow/planner';
+import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
 
 const logger = pino({ name: 'ocr-artifact-worker' });
 
@@ -375,7 +380,7 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 const prisma = getClient();
 
 // Use distributed Redis cache instead of in-memory cache
-import { ocrCache, artifactCache } from 'utils/cache/distributed-cache';
+import { ocrCache, artifactCache } from '@repo/utils/cache/distributed-cache';
 
 // TTL values for reference (applied via the distributed cache)
 const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
@@ -776,7 +781,10 @@ export async function processOCRArtifactJob(
   job: JobType<ProcessContractJobData>
 ): Promise<OCRArtifactResult> {
   const { contractId, tenantId, filePath } = job.data;
+  const trace = getTraceContextFromJobData(job.data);
   const jobLogger = logger.child({ jobId: job.id, contractId, tenantId });
+
+  let qualityMetrics: ExtractionQualityMetrics | undefined;
 
   jobLogger.info({ jobData: job.data }, '🔍 RAW JOB DATA RECEIVED');
 
@@ -806,6 +814,13 @@ export async function processOCRArtifactJob(
       jobLogger.error({ found: !!contract }, 'Contract not found or tenant mismatch');
       throw new Error(`Contract ${contractId} not found`);
     }
+
+    await ensureProcessingJob({
+      tenantId,
+      contractId,
+      queueId: job.id ? String(job.id) : undefined,
+      traceId: trace.traceId,
+    });
 
     jobLogger.info({ status: contract.status }, 'Contract found');
     await job.updateProgress(10);
@@ -868,7 +883,7 @@ export async function processOCRArtifactJob(
     const rawExtractedText = await performOCR(localFilePath, ocrMode);
     
     // Initialize quality metrics
-    const qualityMetrics: ExtractionQualityMetrics = {
+    qualityMetrics = {
       contractId,
       startTime: Date.now(),
       textLength: rawExtractedText.length,
@@ -922,19 +937,20 @@ export async function processOCRArtifactJob(
     }
 
     await job.updateProgress(60);
-    await publishJobProgress(job.id || '', contractId, tenantId, 60, 'artifacts', 'Generating AI artifacts');
+    await publishJobProgress(job.id || '', contractId, tenantId, 60, 'artifacts', 'Detecting contract type with AI');
 
-    // 3.5 Detect contract type for adaptive extraction
-    const contractTypeDetection = detectContractType(extractedText);
+    // 3.5 Detect contract type using AI analysis for better accuracy
+    jobLogger.info('Analyzing contract type using AI...');
+    const contractTypeDetection = await detectContractTypeWithAI(extractedText);
     const detectedContractType = contractTypeDetection.type;
     const profile = getContractProfile(detectedContractType);
     
     jobLogger.info({ 
       detectedType: detectedContractType,
       confidence: contractTypeDetection.confidence,
-      matchedKeywords: contractTypeDetection.matchedKeywords.slice(0, 5),
+      reasoning: contractTypeDetection.reasoning,
       displayName: profile.displayName,
-    }, 'Contract type detected for adaptive extraction');
+    }, 'Contract type detected using AI analysis');
 
     // 4. Generate artifacts using AI with partial success tracking
     // Use contract type to determine which artifacts to generate
@@ -1374,6 +1390,89 @@ export async function processOCRArtifactJob(
       finalStatus,
     }, 'Artifact generation completed');
 
+    // ============ AGENTIC AI INTEGRATION ============
+    // Run autonomous agents after artifact generation
+    try {
+      const { 
+        proactiveValidationAgent,
+        smartGapFillingAgent,
+        contractHealthMonitor,
+      } = await import('./agents');
+
+      // 1. Run proactive validation on all artifacts
+      jobLogger.info('Running proactive validation agent');
+      const validationResult = await proactiveValidationAgent.executeWithTracking({
+        contractId,
+        tenantId,
+        context: { 
+          artifacts: artifactDataArray,
+          contractType: detectedContractType,
+        },
+        triggeredBy: 'ocr_pipeline',
+      });
+
+      // 2. Run smart gap filling if validation found issues or data is incomplete
+      const hasGaps = validationResult.output?.issues?.some((i: any) => 
+        i.type === 'missing_critical_data' || i.type === 'placeholder_detected'
+      ) || false;
+      
+      if (hasGaps || hasPartialSuccess) {
+        jobLogger.info('Running smart gap filling agent');
+        const gapFillingResult = await smartGapFillingAgent.executeWithTracking({
+          contractId,
+          tenantId,
+          context: { 
+            artifacts: artifactDataArray,
+            validationIssues: validationResult.output?.issues,
+            contractType: detectedContractType,
+          },
+          triggeredBy: 'ocr_pipeline',
+        });
+        
+        // If gap filling succeeded, update artifacts with filled data
+        if (gapFillingResult.success && gapFillingResult.output?.filledFields?.length > 0) {
+          jobLogger.info({ 
+            filledCount: gapFillingResult.output.filledFields.length 
+          }, 'Gap filling completed, updating artifacts');
+          
+          // Update artifact data with filled values
+          for (const filled of gapFillingResult.output.filledFields) {
+            const artifact = artifactDataArray.find((a: any) => a.type === filled.artifactType);
+            if (artifact && artifact.id) {
+              await prisma.artifactData.update({
+                where: { id: artifact.id },
+                data: {
+                  data: {
+                    ...artifact.data,
+                    [filled.field]: filled.value,
+                  },
+                  updatedAt: new Date(),
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // 3. Run health monitor to assess contract health
+      jobLogger.info('Running contract health monitor');
+      await contractHealthMonitor.executeWithTracking({
+        contractId,
+        tenantId,
+        context: { 
+          artifacts: artifactDataArray,
+          validationResult: validationResult.output,
+          contractType: detectedContractType,
+        },
+        triggeredBy: 'ocr_pipeline',
+      });
+
+      jobLogger.info('Agentic AI integration completed successfully');
+    } catch (error) {
+      // Don't fail the job if agents fail - just log the error
+      jobLogger.error({ error }, 'Agentic AI integration failed (non-fatal)');
+    }
+
     await job.updateProgress(90);
 
     // 5. Batch update contract and processing job in parallel
@@ -1518,26 +1617,27 @@ export async function processOCRArtifactJob(
       await fs.unlink(localFilePath).catch(() => {});
     }
 
+    // 5.5 Deterministic downstream plan (persisted for debugging/ops)
+    const { plan, inputs } = buildProcessingPlan({ extractedText });
+    await setProcessingPlan({ tenantId, contractId, plan, inputs });
+
     // 6. Auto-queue RAG indexing for semantic search
     // Uses minimal delay since we're inside a transaction - data is committed
-    if (!hasCompleteFailure && extractedText.length > 500) {
+    if (!hasCompleteFailure && plan.ragIndexing) {
       try {
-        const autoRAG = process.env.AUTO_RAG_INDEXING !== 'false'; // Default to true
-        if (autoRAG) {
-          jobLogger.info('Queueing automatic RAG indexing');
-          const queueService = getQueueService();
-          await queueService.addJob(
-            QUEUE_NAMES.RAG_INDEXING,
-            'index-contract',
-            { contractId, tenantId, artifactIds: [] } as IndexContractJobData,
-            {
-              priority: 15,
-              delay: 500, // Minimal delay - transaction is committed
-              jobId: `rag-${contractId}`,
-            }
-          );
-          jobLogger.info('RAG indexing job queued successfully');
-        }
+        jobLogger.info({ plan }, 'Queueing automatic RAG indexing');
+        const queueService = getQueueService();
+        await queueService.addJob(
+          QUEUE_NAMES.RAG_INDEXING,
+          'index-contract',
+          { contractId, tenantId, artifactIds: [], traceId: trace.traceId } as any,
+          {
+            priority: 15,
+            delay: 500, // Minimal delay - transaction is committed
+            jobId: `rag-${contractId}`,
+          }
+        );
+        jobLogger.info('RAG indexing job queued successfully');
       } catch (ragError) {
         // Don't fail the job if RAG queueing fails
         jobLogger.warn({ error: ragError }, 'Failed to queue RAG indexing, contract still processed successfully');
@@ -1546,31 +1646,29 @@ export async function processOCRArtifactJob(
 
     // 7. Auto-queue metadata extraction for AI-powered field extraction
     // Runs after RAG indexing via priority ordering (higher priority = later)
-    if (!hasCompleteFailure && extractedText.length > 200) {
+    if (!hasCompleteFailure && plan.metadataExtraction) {
       try {
-        const autoMetadata = process.env.AUTO_METADATA_EXTRACTION !== 'false'; // Default to true
-        if (autoMetadata) {
-          jobLogger.info('Queueing automatic metadata extraction');
-          const queueService = getQueueService();
-          await queueService.addJob(
-            QUEUE_NAMES.METADATA_EXTRACTION,
-            'extract-metadata',
-            { 
-              contractId, 
-              tenantId, 
-              autoApply: true,
-              autoApplyThreshold: 0.85,
-              source: 'upload',
-              priority: 'normal',
-            },
-            {
-              priority: 20, // Higher priority number = processed later
-              delay: 1000, // Minimal delay
-              jobId: `metadata-${contractId}`,
-            }
-          );
-          jobLogger.info('Metadata extraction job queued successfully');
-        }
+        jobLogger.info({ plan }, 'Queueing automatic metadata extraction');
+        const queueService = getQueueService();
+        await queueService.addJob(
+          QUEUE_NAMES.METADATA_EXTRACTION,
+          'extract-metadata',
+          { 
+            contractId, 
+            tenantId, 
+            autoApply: true,
+            autoApplyThreshold: 0.85,
+            source: 'upload',
+            priority: 'normal',
+            traceId: trace.traceId,
+          },
+          {
+            priority: 20, // Higher priority number = processed later
+            delay: 1000, // Minimal delay
+            jobId: `metadata-${contractId}`,
+          }
+        );
+        jobLogger.info('Metadata extraction job queued successfully');
       } catch (metadataError) {
         // Don't fail the job if metadata queueing fails
         jobLogger.warn({ error: metadataError }, 'Failed to queue metadata extraction, contract still processed successfully');
@@ -1578,31 +1676,29 @@ export async function processOCRArtifactJob(
     }
 
     // 8. Auto-queue AI categorization for contract type, risk, industry classification
-    if (!hasCompleteFailure && extractedText.length > 200) {
+    if (!hasCompleteFailure && plan.categorization) {
       try {
-        const autoCategorize = process.env.AUTO_CATEGORIZATION !== 'false'; // Default to true
-        if (autoCategorize) {
-          jobLogger.info('Queueing automatic AI categorization');
-          const queueService = getQueueService();
-          await queueService.addJob(
-            QUEUE_NAMES.CATEGORIZATION,
-            'categorize-contract',
-            { 
-              contractId, 
-              tenantId, 
-              autoApply: true,
-              autoApplyThreshold: 0.75,
-              source: 'upload',
-              priority: 'normal',
-            },
-            {
-              priority: 25, // Higher priority number = processed later
-              delay: 1500, // Minimal delay
-              jobId: `categorize-${contractId}`,
-            }
-          );
-          jobLogger.info('AI categorization job queued successfully');
-        }
+        jobLogger.info({ plan }, 'Queueing automatic AI categorization');
+        const queueService = getQueueService();
+        await queueService.addJob(
+          QUEUE_NAMES.CATEGORIZATION,
+          'categorize-contract',
+          { 
+            contractId, 
+            tenantId, 
+            autoApply: true,
+            autoApplyThreshold: 0.75,
+            source: 'upload',
+            priority: 'normal',
+            traceId: trace.traceId,
+          },
+          {
+            priority: 25, // Higher priority number = processed later
+            delay: 1500, // Minimal delay
+            jobId: `categorize-${contractId}`,
+          }
+        );
+        jobLogger.info('AI categorization job queued successfully');
       } catch (categorizationError) {
         // Don't fail the job if categorization queueing fails
         jobLogger.warn({ error: categorizationError }, 'Failed to queue AI categorization, contract still processed successfully');
@@ -1639,6 +1735,31 @@ export async function processOCRArtifactJob(
       failedArtifacts: failedArtifacts.length > 0 ? failedArtifacts : undefined,
     }, 'ocr-artifact-worker');
 
+    // Kick off the manager agent loop (non-blocking)
+    // The agent orchestrator can validate/repair downstream processing and fill gaps.
+    try {
+      const queueService = getQueueService();
+      await queueService.addJob(
+        QUEUE_NAMES.AGENT_ORCHESTRATION,
+        'run-agent',
+        {
+          contractId,
+          tenantId,
+          traceId: trace.traceId,
+          requestId: (job.data as any)?.requestId,
+          iteration: 0,
+        } as any,
+        {
+          priority: 40,
+          delay: 2000,
+          jobId: `agent-${contractId}-0`,
+        }
+      );
+      jobLogger.info('Agent orchestrator tick queued');
+    } catch (agentError) {
+      jobLogger.warn({ error: agentError }, 'Failed to queue agent orchestrator tick');
+    }
+
     jobLogger.info({ 
       artifactsCreated: artifacts.count,
       textLength: extractedText.length,
@@ -1668,7 +1789,7 @@ export async function processOCRArtifactJob(
     }, 'OCR + artifact processing failed');
 
     // Log quality metrics on failure too
-    if (typeof qualityMetrics !== 'undefined') {
+    if (qualityMetrics) {
       qualityMetrics.endTime = Date.now();
       qualityMetrics.errors.push(errorMessage);
       logQualityMetrics(qualityMetrics);

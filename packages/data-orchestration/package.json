@@ -1,5 +1,5 @@
 {
-  "name": "data-orchestration",
+  "name": "@repo/data-orchestration",
   "version": "1.0.0",
   "description": "Unified data orchestration layer for Contract Intelligence Platform",
   "main": "dist/index.js",
@@ -49,6 +49,10 @@
     "./services": {
       "types": "./dist/services/index.d.ts",
       "default": "./dist/services/index.js"
+    },
+    "./services/knowledge-graph.service": {
+      "types": "./dist/services/knowledge-graph.service.d.ts",
+      "default": "./dist/services/knowledge-graph.service.js"
     },
     "./events": {
       "types": "./dist/events/index.d.ts",

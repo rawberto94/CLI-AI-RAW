@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Confidence Scoring Service
  * 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { dbAdaptor } from "../dal/database.adaptor";
 import { enhancedDbAdaptor } from "../dal/enhanced-database.adaptor";
 import { smartCacheService } from "./smart-cache.service";
@@ -189,14 +188,14 @@ export class ContractService {
       const result = await enhancedDbAdaptor.withTransaction(async (tx) => {
         // Create contract with integrity data
         // Remove filePath from data as it's not in the schema
-        const { filePath, ...contractDataWithoutPath } = data;
+        const { filePath: _filePath, ...contractDataWithoutPath } = data;
 
-        const contractData: any = {
+        const contractData = {
           ...contractDataWithoutPath,
           checksum,
           fileSize: BigInt(data.fileSize || fileMetadata.size || 0),
           mimeType: data.mimeType || fileMetadata.mimeType,
-          status: "PROCESSING", // Use valid status from enum
+          status: "PROCESSING" as const, // Use valid status from enum
         };
 
         const contract = await tx.contract.create({
@@ -209,8 +208,7 @@ export class ContractService {
         );
 
         // Create processing job
-        // Note: Using 'as any' temporarily until Prisma client is regenerated with new schema
-        const job = await (tx.processingJob as any).create({
+        const job = await tx.processingJob.create({
           data: {
             contractId: contract.id,
             tenantId: contract.tenantId,
@@ -528,10 +526,10 @@ export class ContractService {
     // Create deterministic cache key from query parameters
     const sortedQuery = Object.keys(query)
       .sort()
-      .reduce((acc, key) => {
+      .reduce<Record<string, unknown>>((acc, key) => {
         acc[key] = query[key as keyof ContractQuery];
         return acc;
-      }, {} as any);
+      }, {});
 
     return `contracts:${query.tenantId}:${JSON.stringify(sortedQuery)}`;
   }

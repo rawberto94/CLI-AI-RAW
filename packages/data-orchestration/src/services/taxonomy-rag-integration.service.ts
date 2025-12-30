@@ -231,11 +231,11 @@ export function enrichContractForRAG(
     contractCategoryId?: string;
     contractSubtype?: string;
     documentRole?: string;
-    classificationMeta?: any;
-    pricingModels?: any;
-    deliveryModels?: any;
-    dataProfiles?: any;
-    riskFlags?: any;
+    classificationMeta?: Record<string, unknown>;
+    pricingModels?: string[];
+    deliveryModels?: string[];
+    dataProfiles?: string[];
+    riskFlags?: string[];
   }
 ): string {
   let enrichedText = `# Contract: ${contract.fileName}\n\n`;

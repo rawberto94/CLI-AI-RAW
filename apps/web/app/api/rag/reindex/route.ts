@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
+import { Prisma } from '@prisma/client';
 
 /**
  * POST /api/rag/reindex
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     console.log(`🔄 RAG Reindex triggered for tenant: ${tenantId}`);
 
     const results: Array<{ contractId: string; status: 'success' | 'skipped' | 'error'; message?: string }> = [];
-    const whereClause: Record<string, unknown> = { tenantId, isDeleted: false };
+    const whereClause: Prisma.ContractWhereInput = { tenantId, isDeleted: false };
 
     // Build query based on options
     if (contractIds && contractIds.length > 0) {
@@ -50,9 +51,8 @@ export async function POST(request: NextRequest) {
         id: true,
         fileName: true,
         rawText: true,
-        rawTextHash: true, // If we track text hash
         updatedAt: true,
-        embeddings: {
+        contractEmbeddings: {
           select: {
             id: true,
             createdAt: true,
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       }
 
       // If onlyMissing, skip if has embeddings
-      if (onlyMissing && contract.embeddings.length > 0) {
+      if (onlyMissing && contract.contractEmbeddings.length > 0) {
         return false;
       }
 
@@ -86,24 +86,24 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if embeddings are stale
-      if (staleThreshold && contract.embeddings.length > 0) {
-        const embeddingAge = now.getTime() - new Date(contract.embeddings[0].createdAt).getTime();
+      if (staleThreshold && contract.contractEmbeddings.length > 0) {
+        const embeddingAge = now.getTime() - new Date(contract.contractEmbeddings[0].createdAt).getTime();
         if (embeddingAge > staleThreshold) {
           return true;
         }
       }
 
       // Check if contract updated after embeddings
-      if (contract.embeddings.length > 0) {
+      if (contract.contractEmbeddings.length > 0) {
         const contractUpdated = new Date(contract.updatedAt);
-        const embeddingCreated = new Date(contract.embeddings[0].createdAt);
+        const embeddingCreated = new Date(contract.contractEmbeddings[0].createdAt);
         if (contractUpdated > embeddingCreated) {
           return true;
         }
       }
 
       // No embeddings - needs processing
-      if (contract.embeddings.length === 0) {
+      if (contract.contractEmbeddings.length === 0) {
         return true;
       }
 
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
     for (const contract of contractsToProcess) {
       try {
         // Delete existing embeddings
-        await prisma.embedding.deleteMany({
+        await prisma.contractEmbedding.deleteMany({
           where: { contractId: contract.id },
         });
 
@@ -134,14 +134,18 @@ export async function POST(request: NextRequest) {
         const result = await processContractWithSemanticChunking(
           contract.id,
           contract.rawText || '',
-          { tenantId }
+          undefined
         );
 
-        if (result.success) {
+        if (result.embeddingsGenerated > 0) {
           results.push({ contractId: contract.id, status: 'success' });
           processed++;
         } else {
-          results.push({ contractId: contract.id, status: 'error', message: result.error || 'Processing failed' });
+          results.push({
+            contractId: contract.id,
+            status: 'error',
+            message: 'No embeddings generated',
+          });
           failed++;
         }
       } catch (error) {

@@ -71,6 +71,7 @@ interface UploadResponse {
   fileSize?: number;
   mimeType?: string;
   status?: string;
+  processingJobId?: string;
   message?: string;
   error?: string;
   details?: string;
@@ -178,7 +179,7 @@ function sanitizeFileName(fileName: string): string {
  */
 export async function POST(
   request: NextRequest
-): Promise<NextResponse<UploadResponse>> {
+): Promise<NextResponse> {
   console.log("📤 Contract upload request received");
 
   try {
@@ -552,14 +553,9 @@ export async function POST(
               data: {
                 contractCategoryId: classification.category_id,
                 contractSubtype: classification.subtype,
-                documentRole: classification.document_role,
+                documentRole: classification.role,
                 classificationConf: classification.confidence,
                 classifiedAt: new Date(),
-                // Store tags as JSON arrays
-                pricingModels: classification.tags.pricing_models,
-                deliveryModels: classification.tags.delivery_models,
-                dataProfiles: classification.tags.data_profiles,
-                riskFlags: classification.tags.risk_flags,
               },
             });
           } else {
@@ -624,7 +620,7 @@ export async function POST(
       // Continue anyway - job will still process via fallback
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json<UploadResponse>(
       {
         success: true,
         contractId: contract.id,

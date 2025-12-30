@@ -7,6 +7,7 @@
 
 import React, { useState, useCallback, forwardRef } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import type { HTMLMotionProps } from 'framer-motion';
 import { Loader2, Check, X, ArrowRight, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,7 +15,7 @@ import { cn } from '@/lib/utils';
 // Ripple Effect Hook
 // ============================================
 
-function useRipple() {
+export function useRipple() {
   const [ripples, setRipples] = useState<Array<{ x: number; y: number; id: number }>>([]);
 
   const createRipple = useCallback((event: React.MouseEvent<HTMLElement>) => {
@@ -105,7 +106,8 @@ function PulseRing({ color = 'currentColor' }: { color?: string }) {
 // Gradient Button
 // ============================================
 
-interface GradientButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface GradientButtonProps extends Omit<HTMLMotionProps<'button'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   variant?: 'primary' | 'success' | 'danger' | 'purple' | 'orange' | 'cyan';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   loading?: boolean;
@@ -240,7 +242,8 @@ GradientButton.displayName = 'GradientButton';
 // Icon Button with Tooltip
 // ============================================
 
-interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface IconButtonProps extends Omit<HTMLMotionProps<'button'>, 'ref' | 'children'> {
+  children?: React.ReactNode;
   icon: React.ReactNode;
   label: string;
   variant?: 'default' | 'ghost' | 'outline' | 'danger';
@@ -384,7 +387,8 @@ IconButton.displayName = 'IconButton';
 
 type AsyncButtonState = 'idle' | 'loading' | 'success' | 'error';
 
-interface AsyncActionButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
+interface AsyncActionButtonProps extends Omit<HTMLMotionProps<'button'>, 'ref' | 'onClick' | 'children'> {
+  children?: React.ReactNode;
   onClick: () => Promise<void>;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
@@ -523,7 +527,7 @@ AsyncActionButton.displayName = 'AsyncActionButton';
 // Floating Action Button
 // ============================================
 
-interface FABProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface FABProps extends Omit<HTMLMotionProps<'button'>, 'ref'> {
   icon: React.ReactNode;
   label: string;
   variant?: 'primary' | 'secondary' | 'success' | 'danger';

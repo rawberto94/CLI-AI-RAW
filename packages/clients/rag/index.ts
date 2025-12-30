@@ -1,8 +1,7 @@
-// @ts-nocheck
 // Minimal RAG utilities: chunking, embedding via OpenAI, and retrieval via Prisma with pgvector.
 
-let db: any = null;
-function getDB() {
+let db: unknown = null;
+function getDB(): unknown {
   if (db) return db;
   try {
     const mod = require('clients-db');
@@ -11,14 +10,15 @@ function getDB() {
     try {
       const mod = require('../db');
       db = mod.default || mod;
-    } catch (e: any) {
-      console.error('Failed to load DB client:', e.message);
+    } catch (e: unknown) {
+      const error = e as Error;
+      console.error('Failed to load DB client:', error.message);
     }
   }
   return db;
 }
 
-let OpenAIClientCtor: any;
+let OpenAIClientCtor: unknown;
 try {
   OpenAIClientCtor = require('clients-openai').OpenAIClient;
 } catch {
@@ -56,13 +56,15 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
   }
   
   // The OpenAI client in this repo exposes chat only; call embeddings via openai SDK directly if available
-  let openai: any = null;
+  let openai: unknown = null;
   try {
     console.log('  🔌 Initializing OpenAI client...');
-    openai = new (require('openai').OpenAI)({ apiKey });
+    const OpenAISDK = require('openai').OpenAI;
+    openai = new OpenAISDK({ apiKey });
     console.log('  ✅ OpenAI client initialized');
-  } catch (e: any) {
-    console.log('  ❌ Failed to initialize OpenAI:', e.message);
+  } catch (e: unknown) {
+    const error = e as Error;
+    console.log('  ❌ Failed to initialize OpenAI:', error.message);
   }
   
   if (!openai) {

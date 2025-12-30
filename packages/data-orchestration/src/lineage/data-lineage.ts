@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Data Lineage Tracker
  * Tracks data transformations and dependencies with enhanced propagation support
@@ -12,7 +11,7 @@ export interface LineageNode {
   entityId: string;
   name: string;
   timestamp: Date;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface LineageEdge {
@@ -20,7 +19,7 @@ export interface LineageEdge {
   to: string;
   transformationType: 'extract' | 'generate' | 'calculate' | 'derive' | 'aggregate';
   timestamp: Date;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface DependencyGraph {
@@ -102,7 +101,7 @@ class DataLineageTracker {
     targetType: string;
     targetId: string;
     operation: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }): void {
     const { sourceType, sourceId, targetType, targetId, operation, metadata } = params;
     const timestamp = new Date();

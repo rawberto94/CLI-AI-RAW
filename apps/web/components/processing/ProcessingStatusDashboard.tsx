@@ -228,26 +228,26 @@ export default function ProcessingStatusDashboard() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'failed': return <XCircle className="h-4 w-4 text-red-500" />
-      case 'processing': return <Activity className="h-4 w-4 text-blue-500 animate-pulse" />
-      case 'queued': return <Clock className="h-4 w-4 text-yellow-500" />
-      case 'paused': return <Pause className="h-4 w-4 text-gray-500" />
-      default: return <AlertTriangle className="h-4 w-4 text-orange-500" />
+      case 'completed': return <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+      case 'failed': return <XCircle className="h-3.5 w-3.5 text-red-500" />
+      case 'processing': return <Activity className="h-3.5 w-3.5 text-blue-500 animate-pulse" />
+      case 'queued': return <Clock className="h-3.5 w-3.5 text-yellow-500" />
+      case 'paused': return <Pause className="h-3.5 w-3.5 text-gray-500" />
+      default: return <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
     }
   }
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      completed: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
-      processing: 'bg-blue-100 text-blue-800',
-      queued: 'bg-yellow-100 text-yellow-800',
-      paused: 'bg-gray-100 text-gray-800'
+      completed: 'bg-green-100 text-green-800 px-3 py-1',
+      failed: 'bg-red-100 text-red-800 px-3 py-1',
+      processing: 'bg-blue-100 text-blue-800 px-3 py-1',
+      queued: 'bg-yellow-100 text-yellow-800 px-3 py-1',
+      paused: 'bg-gray-100 text-gray-800 px-3 py-1'
     }
     
     return (
-      <Badge className={variants[status as keyof typeof variants] || 'bg-gray-100 text-gray-800'}>
+      <Badge className={variants[status as keyof typeof variants] || 'bg-gray-100 text-gray-800 px-3 py-1'}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
     )
@@ -278,17 +278,18 @@ export default function ProcessingStatusDashboard() {
           <h1 className="text-3xl font-bold">Processing Status Dashboard</h1>
           <p className="text-muted-foreground">Monitor contract processing jobs and worker status</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant={autoRefresh ? 'default' : 'outline'}
             size="sm"
+            className="h-8"
             onClick={() => setAutoRefresh(!autoRefresh)}
           >
-            {autoRefresh ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+            {autoRefresh ? <Pause className="h-3.5 w-3.5 mr-2" /> : <Play className="h-3.5 w-3.5 mr-2" />}
             Auto Refresh
           </Button>
-          <Button variant="outline" size="sm">
-            <RotateCcw className="h-4 w-4 mr-2" />
+          <Button variant="outline" size="sm" className="h-8">
+            <RotateCcw className="h-3.5 w-3.5 mr-2" />
             Refresh Now
           </Button>
         </div>
@@ -298,8 +299,8 @@ export default function ProcessingStatusDashboard() {
       {metrics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Jobs</p>
                   <p className="text-2xl font-bold">{metrics.totalJobs}</p>
@@ -310,8 +311,8 @@ export default function ProcessingStatusDashboard() {
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Jobs</p>
                   <p className="text-2xl font-bold text-blue-600">{metrics.activeJobs}</p>
@@ -322,8 +323,8 @@ export default function ProcessingStatusDashboard() {
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Queue Depth</p>
                   <p className="text-2xl font-bold text-yellow-600">{metrics.queueDepth}</p>
@@ -334,8 +335,8 @@ export default function ProcessingStatusDashboard() {
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">System Load</p>
                   <p className="text-2xl font-bold">{metrics.systemLoad}%</p>
@@ -355,12 +356,13 @@ export default function ProcessingStatusDashboard() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Processing Jobs</CardTitle>
-                <div className="flex gap-2">
+                <div className="flex gap-2.5">
                   {(['all', 'active', 'completed', 'failed'] as const).map((filterOption) => (
                     <Button
                       key={filterOption}
                       variant={filter === filterOption ? 'default' : 'outline'}
                       size="sm"
+                      className="h-8"
                       onClick={() => setFilter(filterOption)}
                     >
                       {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
@@ -369,7 +371,7 @@ export default function ProcessingStatusDashboard() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-5">
               {filteredJobs.map((job) => (
                 <div
                   key={job.id}
@@ -377,14 +379,14 @@ export default function ProcessingStatusDashboard() {
                   onClick={() => setSelectedJob(job)}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       {getStatusIcon(job.status)}
                       <span className="font-medium">{job.filename}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       {getStatusBadge(job.status)}
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-8">
+                        <Eye className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -414,17 +416,17 @@ export default function ProcessingStatusDashboard() {
             <CardHeader>
               <CardTitle>Worker Status</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-5">
               {workers.map((worker) => (
                 <div key={worker.id} className="border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-sm">{worker.name}</span>
                     <Badge 
                       className={
-                        worker.status === 'active' ? 'bg-green-100 text-green-800' :
-                        worker.status === 'idle' ? 'bg-gray-100 text-gray-800' :
-                        worker.status === 'error' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                        worker.status === 'active' ? 'bg-green-100 text-green-800 px-3 py-1' :
+                        worker.status === 'idle' ? 'bg-gray-100 text-gray-800 px-3 py-1' :
+                        worker.status === 'error' ? 'bg-red-100 text-red-800 px-3 py-1' :
+                        'bg-gray-100 text-gray-800 px-3 py-1'
                       }
                     >
                       {worker.status}
@@ -469,7 +471,7 @@ export default function ProcessingStatusDashboard() {
               <CardHeader>
                 <CardTitle>Job Details</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-medium mb-2">{selectedJob.filename}</h4>

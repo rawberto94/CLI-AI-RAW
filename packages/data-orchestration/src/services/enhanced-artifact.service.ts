@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Enhanced Artifact Service
  * 

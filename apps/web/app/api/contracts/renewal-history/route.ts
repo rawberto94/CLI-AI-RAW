@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';
@@ -89,17 +90,27 @@ export async function GET(request: NextRequest) {
 
     // Get contract details
     const contractIds = [...new Set(renewals.map(r => r.contract_id))];
-    const contracts = contractIds.length > 0 ? await prisma.contract.findMany({
-      where: { id: { in: contractIds } },
-      select: {
-        id: true,
-        contractTitle: true,
-        originalName: true,
-        supplierName: true,
-      },
-    }) : [];
+    type ContractInfo = {
+      id: string;
+      contractTitle: string | null;
+      originalName: string | null;
+      supplierName: string | null;
+    };
 
-    const contractMap = new Map(contracts.map(c => [c.id, c]));
+    const contracts: ContractInfo[] =
+      contractIds.length > 0
+        ? ((await prisma.contract.findMany({
+            where: { id: { in: contractIds } },
+            select: {
+              id: true,
+              contractTitle: true,
+              originalName: true,
+              supplierName: true,
+            },
+          })) as ContractInfo[])
+        : [];
+
+    const contractMap = new Map<string, ContractInfo>(contracts.map(c => [c.id, c]));
 
     // Get summary stats
     const stats = await prisma.$queryRaw<Array<{

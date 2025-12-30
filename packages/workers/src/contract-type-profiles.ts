@@ -2212,7 +2212,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
 
 export const CONTRACT_TYPE_KEYWORDS: Record<ContractType, string[]> = {
   NDA: ['non-disclosure', 'nda', 'confidentiality agreement', 'confidential information', 'disclosing party', 'receiving party'],
-  MSA: ['master services agreement', 'msa', 'master agreement', 'framework agreement', 'statement of work'],
+  MSA: ['master services agreement', 'msa', 'master agreement', 'framework agreement'],
   SOW: ['statement of work', 'sow', 'work order', 'project scope', 'deliverables', 'milestones'],
   SLA: ['service level agreement', 'sla', 'uptime', 'availability', 'service credits', 'response time'],
   EMPLOYMENT: ['employment agreement', 'employment contract', 'offer letter', 'at-will employment', 'employee', 'employer', 'salary', 'benefits'],
@@ -2256,9 +2256,100 @@ export const CONTRACT_TYPE_KEYWORDS: Record<ContractType, string[]> = {
 // ============ HELPER FUNCTIONS ============
 
 /**
- * Detect contract type from extracted text
+ * Detect contract type using AI analysis (primary method)
+ * Falls back to keyword matching if AI fails
  */
-export function detectContractType(text: string): { type: ContractType; confidence: number; matchedKeywords: string[] } {
+export async function detectContractTypeWithAI(text: string): Promise<{ type: ContractType; confidence: number; reasoning: string; matchedKeywords: string[] }> {
+  try {
+    const OpenAI = (await import('openai')).default;
+    const apiKey = process.env.OPENAI_API_KEY;
+    
+    if (!apiKey) {
+      console.warn('OPENAI_API_KEY not configured, falling back to keyword matching');
+      return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
+    }
+    
+    const openai = new OpenAI({ apiKey });
+    
+    // Get list of available contract types for the AI
+    const contractTypes = Object.keys(CONTRACT_TYPE_KEYWORDS).filter(t => t !== 'OTHER');
+    
+    // Prepare a sample of the text (first 3000 chars to stay within token limits)
+    const textSample = text.slice(0, 3000);
+    
+    const prompt = `Analyze this contract excerpt and determine its type. Consider the overall context, structure, purpose, and language patterns - not just keyword matching.
+
+Contract Text:
+"""
+${textSample}
+"""
+
+Available Contract Types:
+${contractTypes.map(type => `- ${type}: ${CONTRACT_TYPE_PROFILES[type as ContractType]?.displayName || type}`).join('\n')}
+
+Respond with a JSON object in this exact format:
+{
+  "type": "CONTRACT_TYPE",
+  "confidence": 0.95,
+  "reasoning": "Brief explanation of why this is the detected type"
+}
+
+Rules:
+1. Use the exact contract type key (e.g., "SOW" not "Statement of Work")
+2. Confidence should be 0.0 to 1.0
+3. Consider the full context and intent of the document
+4. If truly uncertain, use "OTHER" with lower confidence
+5. Look for structural patterns, not just keywords`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert legal contract analyst specializing in contract classification. You understand the nuances and context of different contract types.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 200,
+      response_format: { type: 'json_object' }
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from AI');
+    }
+
+    const result = JSON.parse(content);
+    
+    // Validate the result
+    if (!result.type || !contractTypes.includes(result.type)) {
+      console.warn(`AI returned invalid type: ${result.type}, falling back to keyword matching`);
+      return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
+    }
+
+    const keywordHints = detectContractTypeKeywords(text);
+    
+    return {
+      type: result.type as ContractType,
+      confidence: Math.min(1.0, Math.max(0.0, result.confidence || 0.7)),
+      reasoning: result.reasoning || 'AI analysis based on contract structure and content',
+      matchedKeywords: keywordHints.matchedKeywords,
+    };
+    
+  } catch (error) {
+    console.warn('AI contract type detection failed, falling back to keyword matching:', error);
+    return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
+  }
+}
+
+/**
+ * Detect contract type from extracted text using keyword matching (fallback method)
+ */
+export function detectContractTypeKeywords(text: string): { type: ContractType; confidence: number; matchedKeywords: string[] } {
   const lowercaseText = text.toLowerCase();
   const scores: { type: ContractType; score: number; matchedKeywords: string[] }[] = [];
 
@@ -2285,6 +2376,28 @@ export function detectContractType(text: string): { type: ContractType; confiden
     type: topScore.type,
     confidence: Math.min(0.95, topScore.score + 0.3), // Boost confidence but cap at 95%
     matchedKeywords: topScore.matchedKeywords,
+  };
+}
+
+/**
+ * Legacy function for backward compatibility - now uses keyword matching
+ * Use detectContractTypeWithAI for AI-based detection
+ */
+export function detectContractType(text: string): { type: ContractType; confidence: number; matchedKeywords: string[] } {
+  return detectContractTypeKeywords(text);
+}
+
+/**
+ * Helper to convert keyword result format to AI result format
+ */
+function convertKeywordResultToAIFormat(
+  keywordResult: { type: ContractType; confidence: number; matchedKeywords: string[] }
+): { type: ContractType; confidence: number; reasoning: string; matchedKeywords: string[] } {
+  return {
+    type: keywordResult.type,
+    confidence: keywordResult.confidence,
+    reasoning: `Keyword-based detection. Matched: ${keywordResult.matchedKeywords.slice(0, 3).join(', ')}`,
+    matchedKeywords: keywordResult.matchedKeywords,
   };
 }
 

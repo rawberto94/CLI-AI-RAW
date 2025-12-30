@@ -26,6 +26,7 @@ export const QUEUE_NAMES = {
   RAG_INDEXING: 'rag-indexing',
   METADATA_EXTRACTION: 'metadata-extraction',
   CATEGORIZATION: 'contract-categorization',
+  AGENT_ORCHESTRATION: 'agent-orchestration',
   WEBHOOK_DELIVERY: 'webhook-delivery',
   RATE_CARD_IMPORT: 'rate-card-import',
   BENCHMARK_CALCULATION: 'benchmark-calculation',
@@ -37,6 +38,7 @@ export const JOB_NAMES = {
   INDEX_CONTRACT: 'index-contract',
   EXTRACT_METADATA: 'extract-metadata',
   CATEGORIZE_CONTRACT: 'categorize-contract',
+  RUN_AGENT: 'run-agent',
   SEND_WEBHOOK: 'send-webhook',
   IMPORT_RATE_CARDS: 'import-rate-cards',
   CALCULATE_BENCHMARKS: 'calculate-benchmarks',
@@ -50,6 +52,10 @@ export interface ProcessContractJobData {
   originalName: string;
   userId?: string;
   ocrMode?: string; // User-selected AI model: 'gpt4', 'mistral', 'auto'
+  /** Correlation ID propagated across worker pipeline */
+  traceId?: string;
+  /** Optional request correlation from API layer */
+  requestId?: string;
 }
 
 export interface GenerateArtifactsJobData {
@@ -57,12 +63,16 @@ export interface GenerateArtifactsJobData {
   tenantId: string;
   contractText: string;
   priority?: 'high' | 'medium' | 'low';
+  traceId?: string;
+  requestId?: string;
 }
 
 export interface IndexContractJobData {
   contractId: string;
   tenantId: string;
   artifactIds: string[];
+  traceId?: string;
+  requestId?: string;
 }
 
 export interface SendWebhookJobData {
@@ -94,6 +104,8 @@ export interface MetadataExtractionJobData {
   source?: 'upload' | 'manual' | 'reprocess';
   priority?: 'high' | 'normal' | 'low';
   customSchemaId?: string;
+  traceId?: string;
+  requestId?: string;
 }
 
 export interface CategorizationJobData {
@@ -104,6 +116,19 @@ export interface CategorizationJobData {
   autoApplyThreshold?: number;
   priority?: 'high' | 'normal' | 'low';
   source?: 'upload' | 'manual' | 'bulk' | 'scheduled';
+  traceId?: string;
+  requestId?: string;
+}
+
+export interface AgentOrchestrationJobData {
+  contractId: string;
+  tenantId: string;
+  /** Correlation ID propagated across worker pipeline */
+  traceId?: string;
+  /** Optional request correlation from API layer */
+  requestId?: string;
+  /** Loop counter for iterative orchestration */
+  iteration?: number;
 }
 
 /**
@@ -326,6 +351,32 @@ export class ContractQueueManager {
     );
 
     logger.info({ jobId: job?.id, contractId: data.contractId }, '🏷️ Categorization job queued');
+
+    return job?.id || null;
+  }
+
+  /**
+   * Queue agent orchestration
+   */
+  public async queueAgentOrchestration(
+    data: AgentOrchestrationJobData,
+    options?: {
+      priority?: number;
+      delay?: number;
+    }
+  ): Promise<string | null> {
+    const job = await this.queueService.addJob(
+      QUEUE_NAMES.AGENT_ORCHESTRATION,
+      JOB_NAMES.RUN_AGENT,
+      data,
+      {
+        priority: options?.priority || 5,
+        delay: options?.delay,
+        jobId: `agent-${data.contractId}-${data.iteration || 0}`,
+      }
+    );
+
+    logger.info({ jobId: job?.id, contractId: data.contractId, iteration: data.iteration }, '🤖 Agent orchestration job queued');
 
     return job?.id || null;
   }

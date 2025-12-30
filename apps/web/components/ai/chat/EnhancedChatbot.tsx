@@ -544,13 +544,14 @@ const ChatbotInner = memo(({
     setIsLoading(true);
 
     try {
-      // Call AI API
+      // Call AI API with conversation memory support
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           contractId: contractContext?.id,
+          conversationId: currentConversationId, // Pass conversation ID for memory
           attachments: attachments?.map(a => ({
             name: a.name,
             type: a.type,
@@ -586,10 +587,26 @@ const ChatbotInner = memo(({
       } else {
         // Non-streaming response
         const data = await response.json();
+        
+        // Build message content with reference resolutions
+        let messageContent = data.response || data.message || 'Sorry, I could not generate a response.';
+        
+        // Add reference resolutions if present
+        if (data.referenceResolutions && data.referenceResolutions.length > 0) {
+          const resolutions = data.referenceResolutions
+            .map((r: any) => `"${r.originalText}" → "${r.resolvedValue}"`)
+            .join(', ');
+          messageContent += `\n\n_Resolved references: ${resolutions}_`;
+        }
+        
         addMessage({
           role: 'assistant',
-          content: data.response || data.message || 'Sorry, I could not generate a response.',
+          content: messageContent,
           sources: data.sources,
+          metadata: {
+            referenceResolutions: data.referenceResolutions,
+            suggestions: data.suggestions,
+          },
         });
       }
     } catch (error) {

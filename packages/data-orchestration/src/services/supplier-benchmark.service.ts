@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { PrismaClient, SeniorityLevel } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 

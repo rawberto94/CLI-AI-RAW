@@ -28,7 +28,7 @@ function AuditLogsPageLoading() {
         <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-8">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/10 rounded-lg backdrop-blur-sm">
-              <Shield className="h-6 w-6 text-white" />
+              <Shield className="h-5 w-5 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">Audit Logs</h1>
@@ -42,7 +42,7 @@ function AuditLogsPageLoading() {
 
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="space-y-4">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
@@ -64,7 +64,7 @@ export default function AuditLogsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-white/10 rounded-lg backdrop-blur-sm">
-                <Shield className="h-6 w-6 text-white" />
+                <Shield className="h-5 w-5 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Audit Logs</h1>
