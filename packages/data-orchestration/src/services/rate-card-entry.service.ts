@@ -74,7 +74,7 @@ export interface SupplierSuggestion {
   activeRates: number;
 }
 
-export interface ValidationResult {
+export interface RateCardEntryValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];

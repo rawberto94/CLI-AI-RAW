@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const contractId = searchParams.get('contractId');
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
 
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });

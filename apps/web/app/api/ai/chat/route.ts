@@ -982,6 +982,106 @@ function detectIntent(query: string): DetectedIntent {
     };
   }
 
+  // ============================================
+  // BI-DIRECTIONAL UPDATE PATTERNS (write-back to database)
+  // ============================================
+
+  // Pattern: "set/change/update expiration date to [date]"
+  const updateExpirationPattern = /(?:set|change|update|modify)\s+(?:the\s+)?(expiration|expiry|end)\s*(?:date)?\s+(?:to|as|=)\s+(.+?)(?:\?|$)/i;
+  match = query.match(updateExpirationPattern);
+  if (match) {
+    console.log('[AI Chat] Detected update expiration intent:', { newValue: match[2] });
+    return {
+      type: 'action',
+      action: 'update_expiration',
+      entities: { 
+        fieldToUpdate: 'expiration',
+        newValue: match[2].trim(),
+      },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "extend the contract to [date]"
+  const extendContractPattern = /extend\s+(?:the\s+)?(?:contract\s+)?(?:expiration\s+)?(?:to|until|by)\s+(.+?)(?:\?|$)/i;
+  match = query.match(extendContractPattern);
+  if (match) {
+    console.log('[AI Chat] Detected extend contract intent:', { newValue: match[1] });
+    return {
+      type: 'action',
+      action: 'update_expiration',
+      entities: { 
+        fieldToUpdate: 'expiration',
+        newValue: match[1].trim(),
+      },
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "set effective/start date to [date]"
+  const updateEffectivePattern = /(?:set|change|update)\s+(?:the\s+)?(effective|start)\s*(?:date)?\s+(?:to|as|=)\s+(.+?)(?:\?|$)/i;
+  match = query.match(updateEffectivePattern);
+  if (match) {
+    console.log('[AI Chat] Detected update effective date intent:', { newValue: match[2] });
+    return {
+      type: 'action',
+      action: 'update_effective_date',
+      entities: { 
+        fieldToUpdate: 'effective',
+        newValue: match[2].trim(),
+      },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "set/update contract value to [amount]"
+  const updateValuePattern = /(?:set|change|update)\s+(?:the\s+)?(?:contract\s+)?(?:value|amount|total)\s+(?:to|as|=)\s+(.+?)(?:\?|$)/i;
+  match = query.match(updateValuePattern);
+  if (match) {
+    console.log('[AI Chat] Detected update value intent:', { newValue: match[1] });
+    return {
+      type: 'action',
+      action: 'update_value',
+      entities: { 
+        fieldToUpdate: 'value',
+        newValue: match[1].trim(),
+      },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "change/set status to [status]"
+  const updateStatusPattern = /(?:set|change|update|mark)\s+(?:the\s+)?status\s+(?:to|as)\s+(\w+)/i;
+  match = query.match(updateStatusPattern);
+  if (match) {
+    console.log('[AI Chat] Detected update status intent:', { newValue: match[1] });
+    return {
+      type: 'action',
+      action: 'update_status',
+      entities: { 
+        fieldToUpdate: 'status',
+        newValue: match[1].trim().toUpperCase(),
+      },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "rename/change title to [name]"
+  const updateTitlePattern = /(?:rename|change\s+the\s+title|update\s+the\s+name)\s+(?:to|as)\s+(.+?)(?:\?|$)/i;
+  match = query.match(updateTitlePattern);
+  if (match) {
+    console.log('[AI Chat] Detected update title intent:', { newValue: match[1] });
+    return {
+      type: 'action',
+      action: 'update_title',
+      entities: { 
+        fieldToUpdate: 'title',
+        newValue: match[1].trim(),
+      },
+      confidence: 0.9,
+    };
+  }
+
   // Default intent
   return {
     type: lowerQuery.includes('?') ? 'question' : 'search',
@@ -1162,10 +1262,10 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
     if (!contract) return null;
 
     // Parse artifact data for insights
-    const getArtifactData = (type: string) => {
+    const getArtifactData = (type: string): Record<string, any> => {
       const contractWithArtifacts = contract as { artifacts?: Array<{ type: string; data?: unknown }> };
       const artifact = contractWithArtifacts.artifacts?.find((a) => a.type === type);
-      return artifact?.data || {};
+      return (artifact?.data as Record<string, any>) || {};
     };
 
     const overview = getArtifactData('OVERVIEW');
@@ -1423,10 +1523,17 @@ async function getProactiveInsights(tenantId: string): Promise<{
       }
     }
     
+    const allUrgent = [...criticalExpiring, ...highValueExpiring.filter(c => !criticalExpiring.find(ce => ce.id === c.id))];
+    
     return {
       criticalAlerts,
       insights,
-      urgentContracts: [...criticalExpiring, ...highValueExpiring.filter(c => !criticalExpiring.find(ce => ce.id === c.id))],
+      urgentContracts: allUrgent.map(c => ({
+        id: c.id,
+        contractTitle: c.contractTitle,
+        expirationDate: c.expirationDate,
+        totalValue: c.totalValue ? Number(c.totalValue) : null,
+      })),
     };
   } catch (e) {
     console.error('[AI Chat] Error fetching proactive insights:', e);
@@ -1568,9 +1675,9 @@ async function compareContracts(
     });
 
     // Get artifact data for deeper comparison
-    const getArtifactData = (artifacts: Array<{ type?: string; data?: unknown }>, type: string) => {
+    const getArtifactData = (artifacts: Array<{ type?: string; data?: unknown }>, type: string): Record<string, any> => {
       const artifact = artifacts.find((a) => a.type === type);
-      return artifact?.data || {};
+      return (artifact?.data as Record<string, any>) || {};
     };
 
     const termA = getArtifactData(contractA.artifacts, 'RENEWAL');
@@ -2008,12 +2115,12 @@ async function getPaymentTermsAnalysis(tenantId: string) {
     // Group by payment terms
     const byTerms = contracts.reduce((acc, c) => {
       const terms = c.paymentTerms || 'Not Specified';
-      if (!acc[terms]) acc[terms] = { count: 0, value: 0, contracts: [] };
+      if (!acc[terms]) acc[terms] = { count: 0, value: 0, contracts: [] as typeof contracts };
       acc[terms].count++;
       acc[terms].value += Number(c.totalValue) || 0;
       acc[terms].contracts.push(c);
       return acc;
-    }, {} as Record<string, { count: number; value: number; contracts: Array<{ paymentTerms?: string | null; totalValue?: number | null }> }>);
+    }, {} as Record<string, { count: number; value: number; contracts: typeof contracts }>);
 
     return {
       byTerms: Object.entries(byTerms)
@@ -2661,9 +2768,9 @@ async function findContractsForComparison(
         currency: contract.currency,
         artifacts: artifacts.map(a => ({
           id: a.id,
-          type: a.type,
+          type: a.type as string,
           title: a.title || 'Untitled',
-          content: a.data,
+          content: (a.data as Record<string, unknown>) || {},
         })),
         metadata,
         keyTerms,
@@ -4243,13 +4350,15 @@ async function getContractContext(contractId: string): Promise<string> {
 }
 
 // Mock AI responses based on context
-const mockAIResponses: Record<string, (query: string, context: Record<string, unknown>) => Record<string, unknown>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockAIResponses: Record<string, (query: string, context: any) => Record<string, unknown>> = {
   // ============================================
   // PROCUREMENT AGENT RESPONSES
   // ============================================
   
   'list-by-supplier': (query, context) => {
-    const { contracts, supplierName } = context;
+    const contracts = context.contracts as Array<Record<string, any>> | undefined;
+    const { supplierName } = context;
     
     if (!contracts || contracts.length === 0) {
       return {
@@ -5629,7 +5738,8 @@ Could you provide more details about what you'd like to know?`,
   }),
 };
 
-function selectResponse(query: string, context: Record<string, unknown>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function selectResponse(query: string, context: Record<string, any>) {
   const lowerQuery = query.toLowerCase();
 
   // ============================================
@@ -5918,7 +6028,8 @@ function selectResponse(query: string, context: Record<string, unknown>) {
   return mockAIResponses['default']?.(query, context);
 }
 
-async function getOpenAIResponse(message: string, conversationHistory: Array<{ role?: string; content?: string }>, context: Record<string, unknown>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getOpenAIResponse(message: string, conversationHistory: Array<{ role?: string; content?: string }>, context: Record<string, any>) {
   try {
     // Check if the query needs RAG search
     const needsRAG = shouldUseRAG(message);
@@ -6069,8 +6180,8 @@ ${contractContext || 'No specific contract selected.'}
           contractId: r.contractId,
           contractName: r.contractName || 'Unknown Contract',
           score: r.score || 0.85,
-          text: r.text?.slice(0, 200) + '...' || '',
-          chunkType: r.metadata?.chunkType || 'content',
+          text: (r as any).text?.slice(0, 200) + '...' || r.content?.slice(0, 200) + '...' || '',
+          chunkType: (r as any).metadata?.chunkType || 'content',
         }))
       : [];
 
@@ -6096,7 +6207,8 @@ ${contractContext || 'No specific contract selected.'}
 }
 
 // Generate smart, context-aware suggested actions
-function generateSmartSuggestedActions(intent: { type?: string; action?: string; entities?: Record<string, unknown> }, ragResults: Array<{ contractId?: string; contractName?: string }>, context: Record<string, unknown>): Array<{ label: string; action: string }> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function generateSmartSuggestedActions(intent: { type?: string; action?: string; entities?: Record<string, any> }, ragResults: Array<{ contractId?: string; contractName?: string }>, context: Record<string, any>): Array<{ label: string; action: string }> {
   const actions: Array<{ label: string; action: string }> = [];
   
   // Intent-based actions
@@ -6313,7 +6425,7 @@ export async function POST(request: NextRequest) {
           supplier: intel.contract.supplier,
           status: intel.contract.status,
           value: intel.contract.value,
-          expirationDate: intel.contract.expirationDate,
+          expirationDate: intel.contract.expirationDate ? new Date(intel.contract.expirationDate).toISOString() : null,
           daysUntilExpiry: intel.contract.daysUntilExpiry,
           riskLevel: intel.risks.level?.toLowerCase() || 'medium',
           type: intel.contract.type,
@@ -6414,7 +6526,8 @@ export async function POST(request: NextRequest) {
     
     // For list intents - query database and add to context
     if (intent.type === 'list') {
-      let contracts: Array<{ id?: string; contractTitle?: string; status?: string; totalValue?: number | string; expirationDate?: string | Date; supplierName?: string }> = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let contracts: any[] = [];
       if (intent.action === 'list_by_supplier' && intent.entities.supplierName) {
         contracts = await listContractsBySupplier(intent.entities.supplierName, tenantId);
         contractPreviews = contracts.map(formatContractForPreview);
@@ -6946,6 +7059,46 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    // ============================================
+    // BI-DIRECTIONAL UPDATE ACTIONS (write-back to database)
+    // ============================================
+    const updateActions = ['update_expiration', 'update_effective_date', 'update_value', 'update_status', 'update_title', 'update_supplier', 'update_client', 'update_category'];
+    if (intent.type === 'action' && intent.action && updateActions.includes(intent.action)) {
+      const contractId = context?.contractId || intent.entities.contractId;
+      
+      if (!contractId) {
+        additionalContext += `\n\n⚠️ **Which contract would you like to update?**\n\nPlease specify the contract name or navigate to the contract page first.`;
+      } else {
+        // Import and call the update action handler
+        try {
+          const { handleUpdateActions } = await import('@/lib/chatbot/action-handlers/update-actions');
+          const updateResult = await handleUpdateActions(intent as any, {
+            tenantId,
+            userId: undefined,
+            currentContractId: contractId,
+          });
+          
+          if (updateResult.success) {
+            additionalContext += `\n\n${updateResult.message}`;
+            
+            // Add confirmation buttons if pending
+            if (updateResult.data && (updateResult.data as any).requiresConfirmation) {
+              const pendingId = (updateResult.data as any).pendingActionId;
+              suggestedActions.push(
+                { label: '✅ Yes, update', action: `confirm-action:${pendingId}` },
+                { label: '❌ Cancel', action: `reject-action:${pendingId}` }
+              );
+            }
+          } else {
+            additionalContext += `\n\n❌ ${updateResult.message}`;
+          }
+        } catch (updateError) {
+          console.error('[AI Chat] Update action error:', updateError);
+          additionalContext += `\n\n❌ Failed to process update request. Please try again.`;
+        }
+      }
+    }
     
     // For procurement analytics intents
     if (intent.type === 'procurement') {
@@ -6971,7 +7124,7 @@ export async function POST(request: NextRequest) {
         additionalContext += `\n- Total Opportunities: ${savingsData.count}`;
         additionalContext += `\n- Potential Savings: $${savingsData.totalPotentialSavings.toLocaleString()}`;
         if (savingsData.opportunities.length > 0) {
-          additionalContext += `\n\nTop Opportunities:\n${savingsData.opportunities.slice(0, 5).map((opp: { title?: string; potentialSavingsAmount?: number; category?: string; confidence?: string; contract?: { contractTitle?: string } }, i: number) => 
+          additionalContext += `\n\nTop Opportunities:\n${savingsData.opportunities.slice(0, 5).map((opp: any, i: number) => 
             `${i + 1}. ${opp.title}: $${Number(opp.potentialSavingsAmount).toLocaleString()} potential savings\n   - Category: ${opp.category} | Confidence: ${opp.confidence}\n   - Contract: ${opp.contract?.contractTitle || 'N/A'}`
           ).join('\n')}`;
         }
@@ -7093,7 +7246,8 @@ export async function POST(request: NextRequest) {
           }),
         ]);
         
-        const calcStats = (contracts: Array<{ totalValue?: number | string; status?: string }>) => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const calcStats = (contracts: any[]) => ({
           count: contracts.length,
           totalValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
           avgValue: contracts.length > 0 ? contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0) / contracts.length : 0,
@@ -7171,7 +7325,7 @@ export async function POST(request: NextRequest) {
           additionalContext += `\n- Total Contracts: ${categoryContracts.totalContracts}`;
           additionalContext += `\n- Total Value: $${categoryContracts.totalValue.toLocaleString()}`;
           if (categoryContracts.contracts.length > 0) {
-            additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: { contractTitle?: string; id?: string; supplierName?: string; totalValue?: number | string }, i: number) => 
+            additionalContext += `\n\nContracts:\n${categoryContracts.contracts.slice(0, 10).map((c: any, i: number) => 
               `${i + 1}. [📄 ${c.contractTitle}](/contracts/${c.id}) - ${c.supplierName} - $${Number(c.totalValue || 0).toLocaleString()}`
             ).join('\n')}`;
           }

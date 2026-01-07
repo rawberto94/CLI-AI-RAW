@@ -8,7 +8,7 @@ import { getApiTenantId } from '@/lib/tenant-server';
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = getApiTenantId(request);
+  const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
     return NextResponse.json(
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
  */
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = getApiTenantId(request);
+  const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
     return NextResponse.json(
@@ -102,7 +102,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = getApiTenantId(request);
+  const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
     return NextResponse.json(

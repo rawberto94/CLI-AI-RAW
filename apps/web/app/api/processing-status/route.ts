@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
     const contractId = searchParams.get("contractId");
     const jobId = searchParams.get("jobId");
     const type = searchParams.get("type") || "status";
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -389,7 +389,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, jobId, data } = body;
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(

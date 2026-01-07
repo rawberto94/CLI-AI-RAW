@@ -13,7 +13,7 @@ const logger = createLogger('input-validation-service');
 // TYPES AND INTERFACES
 // =========================================================================
 
-export interface ValidationResult<T = any> {
+export interface InputValidationResult<T = any> {
   success: boolean;
   data?: T;
   errors?: ValidationError[];

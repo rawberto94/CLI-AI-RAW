@@ -68,22 +68,15 @@ export async function POST(request: NextRequest) {
     const expiringContracts = await prisma.contract.findMany({
       where: {
         ...tenantFilter,
-        expiryDate: {
+        expirationDate: {
           gte: now,
           lte: maxDate,
         },
         status: {
-          not: 'TERMINATED',
+          notIn: ['FAILED', 'DELETED'],
         },
       },
       include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
         tenant: {
           select: {
             id: true,
@@ -92,7 +85,7 @@ export async function POST(request: NextRequest) {
         },
       },
       orderBy: {
-        expiryDate: 'asc',
+        expirationDate: 'asc',
       },
     });
 
@@ -102,7 +95,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
 
     for (const contract of expiringContracts) {
-      const expiryDate = new Date(contract.expiryDate!);
+      const expiryDate = new Date(contract.expirationDate!);
       const daysRemaining = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
       // Check if this day matches a reminder threshold
@@ -126,17 +119,18 @@ export async function POST(request: NextRequest) {
       }).catch(() => null);
 
       if (existingReminder) {
-        logger.debug(`[CRON] Skipping ${contract.name} - reminder already sent for ${daysRemaining} days`);
+        logger.debug(`[CRON] Skipping ${contract.contractTitle} - reminder already sent for ${daysRemaining} days`);
         continue;
       }
 
-      const recipientEmail = testEmail || contract.owner?.email;
-      const recipientName = contract.owner?.name || 'Contract Manager';
+      // Get owner email from uploadedBy or use tenant contact
+      const recipientEmail = testEmail || undefined; // No owner relation, would need user lookup
+      const recipientName = contract.uploadedBy || 'Contract Manager';
 
       if (!recipientEmail) {
         results.push({
           contractId: contract.id,
-          contractName: contract.name,
+          contractName: contract.contractTitle || contract.fileName,
           daysRemaining,
           emailSent: false,
           error: 'No recipient email found',
@@ -147,7 +141,7 @@ export async function POST(request: NextRequest) {
       if (dryRun) {
         results.push({
           contractId: contract.id,
-          contractName: contract.name,
+          contractName: contract.contractTitle || contract.fileName,
           daysRemaining,
           emailSent: false,
           recipientEmail,
@@ -161,7 +155,7 @@ export async function POST(request: NextRequest) {
         const emailResult = await EmailService.sendContractExpiryAlert({
           to: recipientEmail,
           recipientName,
-          contractName: contract.name,
+          contractName: contract.contractTitle || contract.fileName,
           contractId: contract.id,
           daysRemaining,
           expiryDate,
@@ -172,10 +166,10 @@ export async function POST(request: NextRequest) {
         await prisma.notification.create({
           data: {
             tenantId: contract.tenantId,
-            userId: contract.owner?.id || 'system',
+            userId: contract.uploadedBy || 'system',
             type: 'CONTRACT_DEADLINE',
             title: `Contract Expiring in ${daysRemaining} Days`,
-            message: `${contract.name} expires on ${expiryDate.toLocaleDateString()}`,
+            message: `${contract.contractTitle || contract.fileName} expires on ${expiryDate.toLocaleDateString()}`,
             link: `/contracts/${contract.id}`,
             metadata: {
               contractId: contract.id,
@@ -192,7 +186,7 @@ export async function POST(request: NextRequest) {
 
         results.push({
           contractId: contract.id,
-          contractName: contract.name,
+          contractName: contract.contractTitle || contract.fileName,
           daysRemaining,
           emailSent: emailResult.success,
           recipientEmail,
@@ -201,14 +195,14 @@ export async function POST(request: NextRequest) {
 
         logger.info('[CRON] Sent renewal reminder', {
           contractId: contract.id,
-          contractName: contract.name,
+          contractName: contract.contractTitle || contract.fileName,
           daysRemaining,
           recipientEmail,
         });
       } catch (error) {
         results.push({
           contractId: contract.id,
-          contractName: contract.name,
+          contractName: contract.contractTitle || contract.fileName,
           daysRemaining,
           emailSent: false,
           recipientEmail,

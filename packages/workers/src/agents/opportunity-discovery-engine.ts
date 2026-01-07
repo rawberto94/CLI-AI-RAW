@@ -288,6 +288,8 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
 
       if (alternatives.length > 0) {
         const bestAlternative = alternatives[0];
+        if (!bestAlternative) continue;
+        
         const savings = contract.value - bestAlternative.estimatedCost;
 
         if (savings > contract.value * 0.1) { // 10%+ savings

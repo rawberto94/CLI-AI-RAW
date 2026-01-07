@@ -40,14 +40,14 @@ export async function GET(request: NextRequest) {
     const activeJobs = await prisma.processingJob.count({
       where: {
         status: {
-          in: ['PENDING', 'PROCESSING'] as const,
+          in: ['PENDING', 'RUNNING'],
         },
       },
     });
 
     const stuckJobs = await prisma.processingJob.count({
       where: {
-        status: 'PROCESSING' as const,
+        status: 'RUNNING',
         startedAt: {
           lt: new Date(Date.now() - 24 * 60 * 60 * 1000), // > 24 hours
         },

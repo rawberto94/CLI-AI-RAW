@@ -38,7 +38,7 @@ export class SmartGapFillingAgent extends BaseAgent {
           automated: false,
           targetEntity: {
             type: 'artifact',
-            id: gapInput.artifact.id,
+            id: String(gapInput.artifact.id ?? ''),
           },
           payload: {
             field: gap.field,
@@ -58,7 +58,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         automated: true,
         targetEntity: {
           type: 'artifact',
-          id: gapInput.artifact.id,
+          id: String(gapInput.artifact.id ?? ''),
         },
         payload: {
           filledGaps: result.filledGaps,
@@ -137,7 +137,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         const extracted = await this.targetedExtraction(
           gap.field,
           contractText,
-          artifact.type
+          String(artifact.type ?? '')
         );
 
         if (extracted && extracted.confidence > 0.7) {
@@ -381,7 +381,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         response_format: { type: 'json_object' },
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const result = JSON.parse(response.choices[0]?.message?.content || '{}');
 
       if (result.value && !this.isFieldEmpty(result.value)) {
         return {
@@ -491,19 +491,23 @@ export class SmartGapFillingAgent extends BaseAgent {
   /**
    * Set nested value in object
    */
-  private setNestedValue(obj: any, path: string, value: any): void {
+  private setNestedValue(obj: Record<string, unknown>, path: string, value: unknown): void {
     const parts = path.split('.');
-    let current = obj;
+    let current: Record<string, unknown> = obj;
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
+      if (!part) continue;
       if (!current[part] || typeof current[part] !== 'object') {
         current[part] = {};
       }
-      current = current[part];
+      current = current[part] as Record<string, unknown>;
     }
 
-    current[parts[parts.length - 1]] = value;
+    const lastPart = parts[parts.length - 1];
+    if (lastPart) {
+      current[lastPart] = value;
+    }
   }
 
   /**

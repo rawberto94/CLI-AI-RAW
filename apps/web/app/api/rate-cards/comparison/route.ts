@@ -18,28 +18,26 @@ export async function GET(request: NextRequest) {
     const supplierFilter = suppliersParam ? suppliersParam.split(',') : [];
     const roleFilter = rolesParam ? rolesParam.split(',') : [];
 
-    // Fetch rate cards based on filters
-    const rateCards = await db.rateCard.findMany({
+    // Fetch rate card entries based on filters
+    const rateCardEntries = await db.rateCardEntry.findMany({
       where: {
         ...(supplierFilter.length > 0
           ? {
-              supplier: {
-                name: { in: supplierFilter },
-              },
+              supplierName: { in: supplierFilter },
             }
           : {}),
         ...(roleFilter.length > 0
           ? {
               OR: roleFilter.map((role) => ({
                 OR: [
-                  { roleName: { contains: role, mode: 'insensitive' } },
-                  { roleStandardized: { contains: role, mode: 'insensitive' } },
+                  { roleOriginal: { contains: role, mode: 'insensitive' as const } },
+                  { roleStandardized: { contains: role, mode: 'insensitive' as const } },
                 ],
               })),
             }
           : {}),
         ...(seniorityParam && seniorityParam !== 'all'
-          ? { seniority: seniorityParam }
+          ? { seniority: seniorityParam as any }
           : {}),
       },
       include: {
@@ -54,19 +52,19 @@ export async function GET(request: NextRequest) {
     // Group by supplier and role
     const groupedRates = new Map<string, { rates: number[]; supplier: string; role: string; seniority: string }>();
 
-    rateCards.forEach((rc) => {
-      const key = `${rc.supplier.name}|${rc.roleStandardized || rc.roleName}|${rc.seniority}`;
+    rateCardEntries.forEach((rc) => {
+      const key = `${rc.supplierName}|${rc.roleStandardized || rc.roleOriginal}|${rc.seniority}`;
       
       if (!groupedRates.has(key)) {
         groupedRates.set(key, {
           rates: [],
-          supplier: rc.supplier.name,
-          role: rc.roleStandardized || rc.roleName,
+          supplier: rc.supplierName,
+          role: rc.roleStandardized || rc.roleOriginal,
           seniority: rc.seniority,
         });
       }
       
-      groupedRates.get(key)!.rates.push(rc.dailyRate);
+      groupedRates.get(key)!.rates.push(Number(rc.dailyRate));
     });
 
     // Calculate comparisons
@@ -74,12 +72,12 @@ export async function GET(request: NextRequest) {
       const currentRate = Math.round(data.rates.reduce((a, b) => a + b, 0) / data.rates.length);
 
       // Calculate market average for this role/seniority
-      const marketRates = rateCards
+      const marketRates = rateCardEntries
         .filter((rc) => 
-          (rc.roleStandardized === data.role || rc.roleName === data.role) &&
+          (rc.roleStandardized === data.role || rc.roleOriginal === data.role) &&
           rc.seniority === data.seniority
         )
-        .map((rc) => rc.dailyRate);
+        .map((rc) => Number(rc.dailyRate));
 
       const avgMarketRate = marketRates.length > 0
         ? Math.round(marketRates.reduce((a, b) => a + b, 0) / marketRates.length)

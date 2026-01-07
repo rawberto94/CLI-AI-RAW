@@ -2,12 +2,27 @@
  * Contract Metadata API v2.0
  * Manages contract metadata, tags, and custom fields
  * Supports the new 24-field enterprise metadata schema
+ * 
+ * Now includes automatic RAG re-indexing when critical fields are updated
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { getContractQueue } from "@repo/utils/queue/contract-queue";
+
+// Fields that should trigger RAG re-indexing when updated
+const RAG_TRIGGER_FIELDS = [
+  'document_title',
+  'contract_short_description',
+  'external_parties',
+  'tcv_amount',
+  'start_date',
+  'end_date',
+  'tags',
+  'jurisdiction',
+] as const;
 
 // Type definition for enterprise metadata schema
 interface EnterpriseMetadata {
@@ -174,9 +189,32 @@ export async function GET(
       field_confidence: aiMetadata.field_confidence || {},
       last_ai_extraction: aiMetadata.last_ai_extraction || '',
     };
+    
+    // Build confidence map (convert to structured format if needed)
+    const confidenceMap: Record<string, { value: number; source?: string; needsVerification: boolean; message?: string }> = {};
+    
+    // If we have field_confidence data, structure it properly
+    if (aiMetadata.field_confidence && typeof aiMetadata.field_confidence === 'object') {
+      Object.entries(aiMetadata.field_confidence).forEach(([key, value]) => {
+        if (typeof value === 'number') {
+          confidenceMap[key] = {
+            value: value,
+            source: 'AI Extraction',
+            needsVerification: value < 0.8,
+            message: value < 0.8 ? 'Low confidence - please verify' : undefined
+          };
+        } else if (typeof value === 'object' && value !== null) {
+          confidenceMap[key] = value as any;
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
+      metadata: {
+        ...enterpriseMetadata,
+        _field_confidence: confidenceMap
+      },
       data: {
         ...contract,
         enterpriseMetadata,
@@ -327,13 +365,45 @@ export async function PUT(
       source: "api:contracts/[id]/metadata",
     });
 
+    // Check if any RAG-triggering fields were updated and queue re-indexing
+    const updatedFields = Object.keys(metadata);
+    const shouldReindexRAG = updatedFields.some(field => 
+      RAG_TRIGGER_FIELDS.includes(field as typeof RAG_TRIGGER_FIELDS[number])
+    );
+
+    let ragReindexQueued = false;
+    if (shouldReindexRAG) {
+      try {
+        const contractQueue = getContractQueue();
+        await contractQueue.queueRAGIndexing(
+          {
+            contractId,
+            tenantId,
+            artifactIds: [], // Will re-index based on current contract state
+          },
+          {
+            priority: 15, // Normal priority for metadata updates
+            delay: 2000,  // 2 second delay to allow any other updates to complete
+          }
+        );
+        ragReindexQueued = true;
+        console.log(`📚 RAG re-indexing queued for contract ${contractId} due to metadata update`);
+      } catch (ragError) {
+        // Log but don't fail the request if RAG queuing fails
+        console.error('Failed to queue RAG re-indexing:', ragError);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         id: updatedContract.id,
         enterpriseMetadata: updatedAiMetadata,
+        ragReindexQueued,
       },
-      message: "Contract metadata updated successfully"
+      message: ragReindexQueued 
+        ? "Contract metadata updated successfully. AI search index will be updated shortly."
+        : "Contract metadata updated successfully"
     });
 
   } catch (error) {

@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { optionalImport } from '@/lib/server/optional-module';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 
 export async function POST(
   request: NextRequest,
@@ -113,6 +114,13 @@ export async function POST(
               },
             });
 
+            // Queue RAG re-indexing for categorization changes
+            await queueRAGReindex({
+              contractId: id,
+              tenantId,
+              reason: 'AI categorization applied',
+            });
+
             void publishRealtimeEvent({
               event: 'contract:updated',
               data: { tenantId, contractId: id },
@@ -164,6 +172,13 @@ export async function POST(
               } as any,
               updatedAt: new Date(),
             },
+          });
+
+          // Queue RAG re-indexing for full categorization
+          await queueRAGReindex({
+            contractId: id,
+            tenantId,
+            reason: 'full AI categorization applied',
           });
 
           void publishRealtimeEvent({

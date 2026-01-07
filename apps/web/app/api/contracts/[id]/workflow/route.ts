@@ -23,7 +23,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -125,7 +125,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -279,7 +279,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -411,7 +411,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(

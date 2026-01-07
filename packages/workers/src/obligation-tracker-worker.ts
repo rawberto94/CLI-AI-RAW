@@ -15,7 +15,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import type { Job } from 'bullmq';
+import { Job } from 'bullmq';
 import pino from 'pino';
 import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
 

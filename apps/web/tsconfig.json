@@ -55,6 +55,7 @@
     "node_modules",
     "../sharepoint-app_disabled",
     "../../packages/utils/src/queue/**",
+    "../../packages/workers/**",
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/*.spec.ts",

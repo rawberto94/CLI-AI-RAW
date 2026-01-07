@@ -335,10 +335,10 @@ export default function DashboardPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Total Contracts */}
-          <motion.div variants={itemVariants}>
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-5">
+              <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
                     <FileText className="h-5 w-5" />
@@ -364,10 +364,10 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Portfolio Value */}
-          <motion.div variants={itemVariants}>
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-5">
+              <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
                     <TrendingUp className="h-5 w-5" />
@@ -390,10 +390,10 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Recently Added */}
-          <motion.div variants={itemVariants}>
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-5">
+              <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
                     <Plus className="h-5 w-5" />
@@ -416,10 +416,10 @@ export default function DashboardPage() {
           </motion.div>
 
           {/* Compliance Score */}
-          <motion.div variants={itemVariants}>
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300">
+          <motion.div variants={itemVariants} className="h-full">
+            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
               <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-5">
+              <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
                     <CheckCircle className="h-5 w-5" />

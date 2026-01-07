@@ -11,19 +11,19 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Get unique suppliers
-    const suppliers = await db.supplier.findMany({
+    const suppliers = await db.rateCardSupplier.findMany({
       select: { name: true },
       distinct: ['name'],
       orderBy: { name: 'asc' },
     });
 
-    // Get unique roles
-    const rateCards = await db.rateCard.findMany({
-      select: { roleStandardized: true, roleName: true },
+    // Get unique roles from rate card entries
+    const rateCardEntries = await db.rateCardEntry.findMany({
+      select: { roleStandardized: true, roleOriginal: true },
       distinct: ['roleStandardized'],
     });
 
-    const roles = [...new Set(rateCards.map((rc) => rc.roleStandardized || rc.roleName))].sort();
+    const roles = [...new Set(rateCardEntries.map((rc) => rc.roleStandardized || rc.roleOriginal))].sort();
 
     return NextResponse.json({
       success: true,

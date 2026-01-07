@@ -52,11 +52,7 @@ export async function GET(request: NextRequest) {
     const contract = await prisma.contract.findUnique({
       where: { id: contractId },
       include: {
-        artifacts: {
-          include: {
-            data: true,
-          },
-        },
+        artifacts: true,
       },
     });
 
@@ -72,18 +68,22 @@ export async function GET(request: NextRequest) {
       contractId,
       tenantId,
       context: { contract },
-      triggeredBy: 'api',
+      metadata: {
+        triggeredBy: 'system',
+        priority: 'medium',
+        timestamp: new Date(),
+      },
     });
 
     if (!result.success) {
       return NextResponse.json(
-        { error: result.error || 'Health assessment failed' },
+        { error: result.reasoning || 'Health assessment failed' },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
-      health: result.output,
+      health: result.data,
       cached: false,
       timestamp: new Date(),
     });

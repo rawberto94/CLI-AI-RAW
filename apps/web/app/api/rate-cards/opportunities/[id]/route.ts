@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { SavingsOpportunityService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = getApiTenantId(request);
+  const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
     return NextResponse.json(
@@ -21,8 +20,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const opportunity = await prisma.rateSavingsOpportunity.findFirst({
       where: { id: params.id, tenantId },
       include: {
-        rateCard: true,
-        targetRole: true,
+        rateCardEntry: true,
       },
     });
 
@@ -48,7 +46,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = getApiTenantId(request);
+  const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
     return NextResponse.json(
@@ -74,15 +72,20 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     const body = await request.json();
     const { status, notes, assignedTo, actualSavings } = body;
 
-    const service = new SavingsOpportunityService(prisma);
-
+    // Build update data
+    const updateData: any = {};
+    if (status) updateData.status = status;
+    if (notes) updateData.recommendedAction = notes;
+    if (assignedTo) updateData.assignedTo = assignedTo;
     if (actualSavings !== undefined) {
-      await service.trackRealizedSavings(existing.id, actualSavings);
-    } else {
-      await service.updateOpportunityStatus(existing.id, status, notes, assignedTo);
+      updateData.actualSavingsRealized = actualSavings;
+      updateData.implementedAt = new Date();
     }
 
-    const updated = await service.getOpportunityDetails(existing.id);
+    const updated = await prisma.rateSavingsOpportunity.update({
+      where: { id: existing.id },
+      data: updateData,
+    });
 
     return NextResponse.json({
       success: true,
@@ -99,7 +102,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
 
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = getApiTenantId(request);
+  const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
     return NextResponse.json(

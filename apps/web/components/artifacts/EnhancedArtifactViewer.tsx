@@ -744,9 +744,23 @@ export function EnhancedArtifactViewer({
 
   const handleAIEnhance = async (fieldId: string, currentValue: any): Promise<string> => {
     console.log('Enhancing field:', fieldId);
-    // Mock AI enhancement - in production call OpenAI
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    return currentValue + ' (AI Enhanced)';
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/artifacts/enhance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fieldId, currentValue })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Enhancement failed');
+      }
+      
+      const data = await response.json();
+      return data.enhancedValue || currentValue;
+    } catch (error) {
+      console.error('AI enhancement failed:', error);
+      return currentValue;
+    }
   };
 
   const handleRegenerate = async () => {

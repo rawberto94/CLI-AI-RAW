@@ -1,4 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getContractQueue } from '@repo/utils/queue/contract-queue';
+
+// Artifact types that should trigger RAG re-indexing when updated
+const RAG_TRIGGER_ARTIFACT_TYPES = [
+  'OVERVIEW',
+  'CLAUSES', 
+  'RATES',
+  'FINANCIAL',
+  'RISK',
+] as const;
 
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]
@@ -82,9 +92,37 @@ export async function PUT(
       reason
     );
 
+    // Queue RAG re-indexing if this is a critical artifact type
+    let ragReindexQueued = false;
+    const tenantId = request.headers.get('x-tenant-id');
+    
+    if (tenantId && RAG_TRIGGER_ARTIFACT_TYPES.includes(updatedArtifact.artifactType as typeof RAG_TRIGGER_ARTIFACT_TYPES[number])) {
+      try {
+        const contractQueue = getContractQueue();
+        await contractQueue.queueRAGIndexing(
+          {
+            contractId: params.id,
+            tenantId,
+            artifactIds: [params.artifactId],
+          },
+          {
+            priority: 15,
+            delay: 2000, // 2 second delay
+          }
+        );
+        ragReindexQueued = true;
+        console.log(`📚 RAG re-indexing queued for contract ${params.id} due to artifact update`);
+      } catch (ragError) {
+        console.error('Failed to queue RAG re-indexing:', ragError);
+      }
+    }
+
     return NextResponse.json({
       artifact: updatedArtifact,
-      message: 'Artifact updated successfully',
+      message: ragReindexQueued 
+        ? 'Artifact updated successfully. AI search index will be updated shortly.'
+        : 'Artifact updated successfully',
+      ragReindexQueued,
     });
   } catch (error) {
     console.error('Error updating artifact:', error);

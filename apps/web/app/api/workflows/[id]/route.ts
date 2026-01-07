@@ -44,7 +44,7 @@ export async function GET(
 ) {
   try {
     const { id: workflowId } = await params;
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -118,7 +118,7 @@ export async function PUT(
     const { id: workflowId } = await params;
     const body = await request.json();
     const { name, description, type, steps, isActive, triggerType, config, metadata } = body;
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -230,7 +230,7 @@ export async function PATCH(
   try {
     const { id: workflowId } = await params;
     const body = await request.json();
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -310,7 +310,7 @@ export async function DELETE(
 ) {
   try {
     const { id: workflowId } = await params;
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { requiresApprovalWorkflow, getContractLifecycle } from '@/lib/contract-helpers';
+import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,13 @@ export async function POST(
     // Determine new lifecycle and workflow requirement
     const lifecycle = getContractLifecycle(updatedContract);
     const needsApproval = requiresApprovalWorkflow(updatedContract);
+
+    // Queue RAG re-indexing when lifecycle/status changes
+    await queueRAGReindex({
+      contractId,
+      tenantId: tenantId || undefined,
+      reason: 'lifecycle/status updated',
+    });
 
     return NextResponse.json({
       success: true,

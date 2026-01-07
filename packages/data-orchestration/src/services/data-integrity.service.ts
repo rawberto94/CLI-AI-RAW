@@ -11,7 +11,7 @@ import { PrismaClient } from 'clients-db';
 import { z } from 'zod';
 import { monitoringService } from './monitoring.service';
 
-export interface ValidationResult {
+export interface IntegrityValidationResult {
   valid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];

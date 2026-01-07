@@ -46,8 +46,8 @@ export function ActiveFilterChips({
   if (!hasActiveFilters) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
-      <span className="text-xs font-semibold text-slate-700">Active Filters:</span>
+    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
+      <span className="text-xs font-semibold text-slate-700 mr-1">Active Filters:</span>
 
       {/* Search Query Chip */}
       {searchQuery && (

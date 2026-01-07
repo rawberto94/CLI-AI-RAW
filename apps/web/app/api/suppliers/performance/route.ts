@@ -10,18 +10,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch all suppliers with their contracts and rate cards
-    const suppliers = await db.supplier.findMany({
+    // Fetch all suppliers from rate card suppliers with their rate cards
+    const suppliers = await db.rateCardSupplier.findMany({
       include: {
-        contracts: {
-          select: {
-            id: true,
-            status: true,
-            value: true,
-            startDate: true,
-            endDate: true,
-          },
-        },
         rateCards: {
           select: {
             id: true,
@@ -34,17 +25,13 @@ export async function GET(request: NextRequest) {
 
     // Calculate performance metrics for each supplier
     const supplierMetrics = suppliers.map((supplier) => {
-      const activeContracts = supplier.contracts.filter(
-        (c) => c.status === 'ACTIVE' || c.status === 'SIGNED'
-      );
-
-      const totalSpend = activeContracts.reduce((sum, c) => sum + (c.value || 0), 0);
+      const totalRateCards = supplier.rateCards.length;
 
       const avgRate =
-        supplier.rateCards.length > 0
+        totalRateCards > 0
           ? Math.round(
-              supplier.rateCards.reduce((sum, rc) => sum + rc.dailyRate, 0) /
-                supplier.rateCards.length
+              supplier.rateCards.reduce((sum, rc) => sum + Number(rc.dailyRate), 0) /
+                totalRateCards
             )
           : 0;
 
@@ -79,8 +66,8 @@ export async function GET(request: NextRequest) {
         costEfficiency,
         responsiveness,
         riskLevel,
-        activeContracts: activeContracts.length,
-        totalSpend,
+        activeContracts: supplier.totalContracts,
+        totalSpend: supplier.rateCards.reduce((sum, rc) => sum + Number(rc.dailyRate), 0),
         avgRate,
         trend,
       };

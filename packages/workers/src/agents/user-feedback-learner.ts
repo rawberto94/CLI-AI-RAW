@@ -304,7 +304,7 @@ export class UserFeedbackLearner {
         ORDER BY timestamp DESC
       `;
 
-      return results.map(r => ({
+      return results.map((r: Record<string, unknown>) => ({
         feedbackType: r.feedback_type,
         artifactType: r.artifact_type,
         originalData: r.original_data,

@@ -185,7 +185,7 @@ export class IntelligentSearchAgent extends BaseAgent {
         response_format: { type: 'json_object' },
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{}');
+      const result = JSON.parse(response.choices[0]?.message?.content || '{}');
 
       return {
         type: result.type || 'general_search',
@@ -383,7 +383,7 @@ export class IntelligentSearchAgent extends BaseAgent {
    */
   private extractPersonName(query: string): string {
     const match = query.match(/(?:by|approved by|signed by|from)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
-    return match ? match[1] : '';
+    return match?.[1] ?? '';
   }
 
   /**
@@ -391,7 +391,7 @@ export class IntelligentSearchAgent extends BaseAgent {
    */
   private extractAmount(query: string): number | null {
     const match = query.match(/\$?([\d,]+(?:\.\d{2})?)\s*(?:k|thousand|m|million|b|billion)?/i);
-    if (!match) return null;
+    if (!match?.[1]) return null;
 
     let amount = parseFloat(match[1].replace(/,/g, ''));
     const unit = query.match(/\b(k|thousand|m|million|b|billion)\b/i)?.[1]?.toLowerCase();

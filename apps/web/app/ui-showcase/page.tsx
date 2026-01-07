@@ -151,14 +151,12 @@ import {
 // ============================================
 
 function ButtonsSection() {
-  const [asyncState, setAsyncState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   const handleAsyncAction = async () => {
-    setAsyncState('loading');
     await new Promise(r => setTimeout(r, 2000));
-    setAsyncState(Math.random() > 0.3 ? 'success' : 'error');
-    await new Promise(r => setTimeout(r, 1500));
-    setAsyncState('idle');
+    if (Math.random() <= 0.3) {
+      throw new Error('Random failure');
+    }
   };
 
   return (
@@ -168,49 +166,47 @@ function ButtonsSection() {
       </h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <GradientButton gradient="primary" shimmer>
+        <GradientButton variant="primary" shimmer>
           <Sparkles className="w-4 h-4" />
           Primary
         </GradientButton>
         
-        <GradientButton gradient="success" glow>
+        <GradientButton variant="success" glow>
           <CheckCircle className="w-4 h-4" />
           Success
         </GradientButton>
         
-        <GradientButton gradient="warning">
+        <GradientButton variant="orange">
           <AlertCircle className="w-4 h-4" />
           Warning
         </GradientButton>
         
-        <GradientButton gradient="danger">
+        <GradientButton variant="danger">
           <Trash2 className="w-4 h-4" />
           Danger
         </GradientButton>
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <IconButton icon={<Heart />} tooltip="Like" />
-        <IconButton icon={<Share />} tooltip="Share" badge={3} />
-        <IconButton icon={<Bell />} tooltip="Notifications" badge="!" variant="ghost" />
-        <IconButton icon={<Settings />} tooltip="Settings" variant="outline" />
+        <IconButton icon={<Heart />} label="Like" />
+        <IconButton icon={<Share />} label="Share" badge={3} />
+        <IconButton icon={<Bell />} label="Notifications" badge="!" variant="ghost" />
+        <IconButton icon={<Settings />} label="Settings" variant="outline" />
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
         <AsyncActionButton
-          state={asyncState}
           onClick={handleAsyncAction}
-          labels={{
-            idle: 'Save Changes',
-            loading: 'Saving...',
-            success: 'Saved!',
-            error: 'Failed',
-          }}
-        />
+          successMessage="Saved!"
+          errorMessage="Failed"
+        >
+          Save Changes
+        </AsyncActionButton>
 
         <SplitButton
-          label="Download"
-          icon={<Download className="w-4 h-4" />}
+          mainLabel="Download"
+          mainIcon={<Download className="w-4 h-4" />}
+          onMainClick={() => {}}
           options={[
             { label: 'PDF', onClick: () => {} },
             { label: 'Word', onClick: () => {} },
@@ -243,14 +239,14 @@ function BadgesSection() {
         <StatusBadge status="offline" />
         <StatusBadge status="away" />
         <StatusBadge status="busy" />
-        <StatusBadge status="pending" showLabel />
+        <StatusBadge status="pending" showDot />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <CountBadge count={5} label="Messages" />
-        <CountBadge count={99} max={50} label="Notifications" variant="danger" />
-        <TrendBadge value={12.5} label="Growth" />
-        <TrendBadge value={-5.2} label="Decline" />
+        <CountBadge count={5} />
+        <CountBadge count={99} max={50} variant="danger" />
+        <TrendBadge value={12.5} />
+        <TrendBadge value={-5.2} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -304,8 +300,9 @@ function CardsSection() {
         </SelectableCard>
 
         <ExpandableCard
-          header={<h3 className="font-medium">Expandable Card</h3>}
-          defaultExpanded={false}
+          title="Expandable Card"
+          preview="This content is hidden by default..."
+          expanded={false}
         >
           <p className="text-sm text-slate-500">
             This content is hidden by default and reveals on expansion.
@@ -317,29 +314,25 @@ function CardsSection() {
         <StatsCard
           title="Total Users"
           value="12,543"
-          trend={12}
-          trendLabel="vs last month"
+          trend={{ value: 12, label: 'vs last month' }}
           icon={<User className="w-5 h-5" />}
         />
         <StatsCard
           title="Revenue"
           value="$45,231"
-          trend={-3.2}
-          trendLabel="vs last month"
+          trend={{ value: -3.2, label: 'vs last month' }}
           icon={<CreditCard className="w-5 h-5" />}
         />
         <StatsCard
           title="Documents"
           value="1,234"
-          trend={8}
-          trendLabel="vs last week"
+          trend={{ value: 8, label: 'vs last week' }}
           icon={<FileText className="w-5 h-5" />}
         />
         <StatsCard
           title="Contracts"
           value="89"
-          trend={0}
-          trendLabel="no change"
+          trend={{ value: 0, label: 'no change' }}
           icon={<CheckCircle className="w-5 h-5" />}
         />
       </div>
@@ -392,7 +385,7 @@ function MicroInteractionsSection() {
             checked={toggle2}
             onChange={setToggle2}
             size="lg"
-            icons={{ on: <Moon className="w-3 h-3" />, off: <Sun className="w-3 h-3" /> }}
+            label="Dark Mode"
           />
         </div>
       </div>
@@ -400,7 +393,7 @@ function MicroInteractionsSection() {
       <div className="flex flex-wrap items-center gap-6">
         <LikeButton
           liked={liked}
-          onClick={() => setLiked(!liked)}
+          onLike={() => setLiked(!liked)}
           count={42}
         />
         
@@ -410,7 +403,7 @@ function MicroInteractionsSection() {
       </div>
 
       <div className="flex items-center gap-6">
-        <ProgressRing progress={progress} size={80} />
+        <ProgressRing progress={progress} size="xl" />
         <div className="space-y-2">
           <p className="text-sm text-slate-600">Adjust progress:</p>
           <input
@@ -442,7 +435,7 @@ function InputsSection() {
           label="Email Address"
           placeholder="you@example.com"
           leftIcon={<Mail className="w-4 h-4" />}
-          helperText="We'll never share your email"
+          description="We'll never share your email"
         />
 
         <EnhancedInput
@@ -454,12 +447,12 @@ function InputsSection() {
 
         <SearchInput
           value={searchValue}
-          onChange={setSearchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           placeholder="Search contracts..."
           onSearch={v => console.log('Search:', v)}
         />
 
-        <FloatingLabelInput label="Full Name" placeholder="" />
+        <FloatingLabelInput label="Full Name" />
       </div>
 
       <div className="space-y-4">
@@ -517,10 +510,10 @@ function LoadingSection() {
       </div>
 
       <div className="space-y-4">
-        <AnimatedProgressBar progress={45} color="blue" showLabel />
-        <AnimatedProgressBar progress={75} color="green" showLabel />
-        <AnimatedProgressBar progress={90} color="gradient" showLabel />
-        <AnimatedProgressBar indeterminate color="purple" />
+        <AnimatedProgressBar progress={45} color="default" showValue label="Blue Progress" />
+        <AnimatedProgressBar progress={75} color="success" showValue label="Green Progress" />
+        <AnimatedProgressBar progress={90} color="gradient" showValue label="Gradient Progress" />
+        <AnimatedProgressBar indeterminate color="default" />
       </div>
     </section>
   );
@@ -733,17 +726,11 @@ function FeedbackSection() {
       </h2>
 
       <div className="space-y-4">
-        <AlertBanner type="info" title="Information" dismissible>
-          This is an informational message with helpful context.
-        </AlertBanner>
+        <AlertBanner type="info" title="Information" message="This is an informational message with helpful context." dismissible />
         
-        <AlertBanner type="success" title="Success">
-          Your changes have been saved successfully.
-        </AlertBanner>
+        <AlertBanner type="success" title="Success" message="Your changes have been saved successfully." />
         
-        <AlertBanner type="warning" title="Warning">
-          Your subscription will expire in 7 days.
-        </AlertBanner>
+        <AlertBanner type="warning" title="Warning" message="Your subscription will expire in 7 days." />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

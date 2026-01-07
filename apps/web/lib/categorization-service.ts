@@ -14,6 +14,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { openai } from "@/lib/openai-client";
+import { queueRAGReindex } from "@/lib/rag/reindex-helper";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -899,6 +900,13 @@ export async function categorizeContract(
         categoryL2: result.categoryPath?.split("/")[2] || null,
         updatedAt: new Date(),
       },
+    });
+
+    // Queue RAG re-indexing when category is updated
+    await queueRAGReindex({
+      contractId,
+      tenantId,
+      reason: 'category updated via categorization service',
     });
 
     console.log("✅ Contract categorized:", {

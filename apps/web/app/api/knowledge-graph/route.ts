@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { knowledgeGraphService } from '@repo/data-orchestration/services/knowledge-graph.service';
 import { PrismaClient } from '@prisma/client';
@@ -17,7 +17,7 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
             contractTitle: true,
             fileName: true,
             supplierName: true,
-            contractValue: true,
+            totalValue: true,
             status: true,
           },
         });
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -151,9 +151,9 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
         }
 
-        // Get text from artifacts or use provided text
-        const contractText =
-          text || contract.artifacts.find((a) => a.artifactType === 'full_text')?.artifactData || '';
+        // Get text from contract rawText or artifacts
+        const overviewArtifact = contract.artifacts.find((a) => a.type === 'OVERVIEW');
+        const contractText = text || contract.rawText || (overviewArtifact?.data as any)?.fullText || '';
 
         if (!contractText) {
           return NextResponse.json({ error: 'No contract text available' }, { status: 400 });
@@ -186,8 +186,8 @@ export async function POST(req: NextRequest) {
             });
 
             if (contract) {
-              const contractText =
-                contract.artifacts.find((a) => a.artifactType === 'full_text')?.artifactData || '';
+              const overviewArtifact = contract.artifacts.find((a) => a.type === 'OVERVIEW');
+              const contractText = contract.rawText || (overviewArtifact?.data as any)?.fullText || '';
               if (contractText) {
                 const entities = await knowledgeGraphService.extractEntities(contractText, cid);
                 results.push({ contractId: cid, entities, count: entities.length });

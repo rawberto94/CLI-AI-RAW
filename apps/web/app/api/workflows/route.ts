@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -78,7 +78,7 @@ interface WorkflowStepInput {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
@@ -243,7 +243,7 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(

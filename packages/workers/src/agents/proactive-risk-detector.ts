@@ -341,12 +341,12 @@ export class ProactiveRiskDetector {
 
       if (similarContracts.length >= 3) {
         const values = similarContracts
-          .map(c => c.artifacts[0]?.data as any)
-          .filter(d => d?.totalValue?.value)
-          .map(d => parseFloat(d.totalValue.value));
+          .map((c: { artifacts: Array<{ data: unknown }> }) => c.artifacts[0]?.data as Record<string, unknown>)
+          .filter((d: Record<string, unknown> | undefined) => d?.totalValue && (d.totalValue as Record<string, unknown>)?.value)
+          .map((d: Record<string, unknown>) => parseFloat(String((d.totalValue as Record<string, unknown>)?.value)));
 
         if (values.length >= 3) {
-          const avgValue = values.reduce((a, b) => a + b, 0) / values.length;
+          const avgValue = values.reduce((a: number, b: number) => a + b, 0) / values.length;
           const currentValue = parseFloat(financialData.totalValue?.value || 0);
 
           // Flag if current is 50% above average

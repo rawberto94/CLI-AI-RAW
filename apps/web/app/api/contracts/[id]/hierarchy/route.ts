@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { queueRAGReindex } from "@/lib/rag/reindex-helper";
 
 export const runtime = "nodejs";
 
@@ -115,6 +116,13 @@ export async function PUT(
       },
       source: "api:contracts/[id]/hierarchy",
     });
+
+    // Queue RAG re-indexing when hierarchy changes
+    await queueRAGReindex({
+      contractId,
+      tenantId: tenantId || undefined,
+      reason: 'hierarchy relationship linked',
+    });
     
     return NextResponse.json({
       success: true,
@@ -202,6 +210,13 @@ export async function DELETE(
         parentContractId: null,
       },
       source: "api:contracts/[id]/hierarchy",
+    });
+
+    // Queue RAG re-indexing when hierarchy changes
+    await queueRAGReindex({
+      contractId,
+      tenantId: tenantId || undefined,
+      reason: 'hierarchy relationship unlinked',
     });
     
     return NextResponse.json({

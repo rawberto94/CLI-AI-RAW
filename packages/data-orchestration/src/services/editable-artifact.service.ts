@@ -25,16 +25,16 @@ export interface FieldChange {
   fieldPath: string;
   oldValue: any;
   newValue: any;
-  validationResult: ValidationResult;
+  validationResult: EditableValidationResult;
 }
 
-export interface ValidationResult {
+export interface EditableValidationResult {
   isValid: boolean;
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
+  errors: EditableValidationError[];
+  warnings: EditableValidationWarning[];
 }
 
-export interface ValidationError {
+export interface EditableValidationError {
   code: string;
   field: string;
   message: string;
@@ -43,14 +43,14 @@ export interface ValidationError {
   autoFixable: boolean;
 }
 
-export interface ValidationWarning {
+export interface EditableValidationWarning {
   code: string;
   field: string;
   message: string;
   suggestion?: string;
 }
 
-export interface PropagationResult {
+export interface EditablePropagationResult {
   engine: string;
   status: 'success' | 'failed' | 'pending';
   timestamp: Date;

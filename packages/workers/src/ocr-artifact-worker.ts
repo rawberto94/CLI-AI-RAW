@@ -1436,14 +1436,21 @@ export async function processOCRArtifactJob(
           }, 'Gap filling completed, updating artifacts');
           
           // Update artifact data with filled values
+          // Query for actual artifact IDs from database since artifactDataArray doesn't have IDs
           for (const filled of gapFillingResult.output.filledFields) {
-            const artifact = artifactDataArray.find((a: any) => a.type === filled.artifactType);
-            if (artifact && artifact.id) {
-              await prisma.artifactData.update({
-                where: { id: artifact.id },
+            const dbArtifact = await prisma.artifact.findFirst({
+              where: { 
+                contractId, 
+                type: filled.artifactType 
+              },
+            });
+            if (dbArtifact) {
+              const existingData = (dbArtifact.data as Record<string, unknown>) || {};
+              await prisma.artifact.update({
+                where: { id: dbArtifact.id },
                 data: {
                   data: {
-                    ...artifact.data,
+                    ...existingData,
                     [filled.field]: filled.value,
                   },
                   updatedAt: new Date(),

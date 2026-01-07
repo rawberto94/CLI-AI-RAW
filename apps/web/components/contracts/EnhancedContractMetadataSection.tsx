@@ -103,7 +103,7 @@ const SECTION_LABELS = {
 
 // ============ ATTENTION BADGE ============
 
-function AttentionBadge({ attention, message }: { attention: UIAttention; message?: string }) {
+function AttentionBadge({ attention, message, onMarkVerified }: { attention: UIAttention; message?: string; onMarkVerified?: () => void }) {
   if (attention === 'none') return null;
   
   const config = {
@@ -135,8 +135,24 @@ function AttentionBadge({ attention, message }: { attention: UIAttention; messag
             <Icon className={cn("h-3 w-3", cfg.iconClass)} />
           </Badge>
         </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-xs">{message || 'Requires verification'}</p>
+        <TooltipContent className="bg-slate-900 text-white border-slate-700">
+          <div className="space-y-2">
+            <p className="text-xs text-white">{message || 'Requires verification'}</p>
+            {onMarkVerified && (
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkVerified();
+                }}
+                className="h-6 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
+              >
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Mark as Verified
+              </Button>
+            )}
+          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -168,9 +184,9 @@ function ConfidenceIndicator({ confidence, source }: { confidence?: number; sour
             {percent}%
           </Badge>
         </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-xs">AI Confidence: {percent}%</p>
-          {source && <p className="text-xs text-gray-400">Source: {source}</p>}
+        <TooltipContent className="bg-slate-900 text-white border-slate-700">
+          <p className="text-xs text-white">AI Confidence: {percent}%</p>
+          {source && <p className="text-xs text-slate-300">Source: {source}</p>}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -302,7 +318,7 @@ function MetadataSection({
   
   // Get fields needing attention in this section
   const attentionFields = fields.filter(f => {
-    const confidence = metadata._field_confidence?.[f.key];
+    const confidence = metadata._field_confidence?.[f.key] || metadata.field_confidence?.[f.key];
     return f.ui_attention !== 'none' || confidence?.needsVerification;
   });
   
@@ -372,7 +388,7 @@ function MetadataSection({
                 key={field.key}
                 field={field}
                 value={metadata[field.key]}
-                confidence={metadata._field_confidence?.[field.key]}
+                confidence={metadata._field_confidence?.[field.key] || metadata.field_confidence?.[field.key]}
                 isEditing={isEditing && field.editable}
                 onChange={(value) => onChange(field.key, value)}
                 metadata={metadata}
@@ -397,7 +413,30 @@ interface MetadataFieldProps {
 }
 
 function MetadataField({ field, value, confidence, isEditing, onChange, metadata }: MetadataFieldProps) {
-  const needsAttention = field.ui_attention !== 'none' || confidence?.needsVerification;
+  const [isFieldEditing, setIsFieldEditing] = useState(false);
+  const [fieldValue, setFieldValue] = useState(value);
+  const [isVerified, setIsVerified] = useState(false);
+  const needsAttention = (field.ui_attention !== 'none' || confidence?.needsVerification) && !isVerified;
+  
+  // Sync with external value changes
+  useEffect(() => {
+    setFieldValue(value);
+  }, [value]);
+  
+  const handleSaveField = () => {
+    onChange(fieldValue);
+    setIsFieldEditing(false);
+  };
+  
+  const handleCancelField = () => {
+    setFieldValue(value);
+    setIsFieldEditing(false);
+  };
+  
+  const handleMarkVerified = () => {
+    setIsVerified(true);
+    toast.success('Field marked as verified');
+  };
   
   const renderValue = () => {
     // Special handling for certain fields
@@ -440,8 +479,8 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
       if (field.key === 'contract_short_description' || field.key === 'tcv_text') {
         return (
           <Textarea
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            value={fieldValue || ''}
+            onChange={(e) => setFieldValue(e.target.value)}
             placeholder={`Enter ${field.label.toLowerCase()}...`}
             className="min-h-[80px] text-sm bg-white"
           />
@@ -449,8 +488,8 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
       }
       return (
         <Input
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          value={fieldValue || ''}
+          onChange={(e) => setFieldValue(e.target.value)}
           placeholder={`Enter ${field.label.toLowerCase()}...`}
           className="h-9 text-sm bg-white"
         />
@@ -461,8 +500,8 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
       return (
         <Input
           type="number"
-          value={value || ''}
-          onChange={(e) => onChange(field.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value))}
+          value={fieldValue || ''}
+          onChange={(e) => setFieldValue(field.type === 'integer' ? parseInt(e.target.value) : parseFloat(e.target.value))}
           placeholder="0"
           className="h-9 text-sm bg-white"
         />
@@ -473,8 +512,8 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
       return (
         <Input
           type="date"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          value={fieldValue || ''}
+          onChange={(e) => setFieldValue(e.target.value)}
           className="h-9 text-sm bg-white"
         />
       );
@@ -483,15 +522,15 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
     if (field.type === 'boolean') {
       return (
         <Switch
-          checked={!!value}
-          onCheckedChange={onChange}
+          checked={!!fieldValue}
+          onCheckedChange={setFieldValue}
         />
       );
     }
     
     if (field.type === 'enum' && field.enum) {
       return (
-        <Select value={value || ''} onValueChange={onChange}>
+        <Select value={fieldValue || ''} onValueChange={setFieldValue}>
           <SelectTrigger className="h-9 text-sm bg-white">
             <SelectValue placeholder={`Select ${field.label.toLowerCase()}...`} />
           </SelectTrigger>
@@ -509,12 +548,16 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
       );
     }
     
-    return <Input value={value || ''} onChange={(e) => onChange(e.target.value)} className="h-9 text-sm bg-white" />;
+    return <Input value={fieldValue || ''} onChange={(e) => setFieldValue(e.target.value)} className="h-9 text-sm bg-white" />;
   };
   
   const colSpan = field.key === 'contract_short_description' || field.key === 'tcv_text' || field.key === 'notice_period' 
     ? 'md:col-span-2' 
     : '';
+  
+  // Determine if this field should be editable
+  const canEdit = field.editable && !field.system_generated;
+  const showEditMode = isEditing || isFieldEditing;
   
   return (
     <div className={cn(
@@ -533,16 +576,62 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
           </Badge>
         )}
         {confidence && <ConfidenceIndicator confidence={confidence.value} source={confidence.source} />}
-        {needsAttention && <AttentionBadge attention={field.ui_attention} message={confidence?.message} />}
+        {needsAttention && (
+          <AttentionBadge 
+            attention={field.ui_attention || 'warning'} 
+            message={confidence?.message || 'Requires verification'} 
+            onMarkVerified={handleMarkVerified}
+          />
+        )}
+        
+        {/* Inline edit button - only show if not in global edit mode */}
+        {!isEditing && canEdit && !isFieldEditing && (
+          <button
+            onClick={() => setIsFieldEditing(true)}
+            className="ml-auto p-1 hover:bg-slate-200 rounded transition-colors"
+            title="Edit this field"
+          >
+            <Pencil className="h-3 w-3 text-slate-400 hover:text-slate-600" />
+          </button>
+        )}
+        
+        {/* Inline save/cancel buttons */}
+        {isFieldEditing && (
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={handleSaveField}
+              className="p-1 hover:bg-emerald-100 rounded transition-colors"
+              title="Save"
+            >
+              <Check className="h-3.5 w-3.5 text-emerald-600" />
+            </button>
+            <button
+              onClick={handleCancelField}
+              className="p-1 hover:bg-red-100 rounded transition-colors"
+              title="Cancel"
+            >
+              <X className="h-3.5 w-3.5 text-red-500" />
+            </button>
+          </div>
+        )}
       </div>
       
-      {isEditing && field.editable ? (
+      {showEditMode && canEdit ? (
         renderInput()
       ) : (
-        <div className={cn(
-          "text-sm mt-0.5",
-          value ? 'text-slate-900' : 'text-slate-400 italic'
-        )}>
+        <div 
+          className={cn(
+            "text-sm mt-0.5",
+            value ? 'text-slate-900' : 'text-slate-400 italic',
+            canEdit && !isEditing && "cursor-pointer hover:bg-slate-100 p-1.5 rounded -m-1.5 transition-colors"
+          )}
+          onClick={() => {
+            if (canEdit && !isEditing) {
+              setIsFieldEditing(true);
+            }
+          }}
+          title={canEdit && !isEditing ? "Click to edit" : undefined}
+        >
           {renderValue()}
         </div>
       )}
@@ -573,31 +662,61 @@ export function EnhancedContractMetadataSection({
   onSave,
   onRefresh
 }: EnhancedContractMetadataSectionProps) {
+  const [metadataFromAPI, setMetadataFromAPI] = useState<Partial<ContractMetadataSchema> | null>(null);
+  const [isExtractingAI, setIsExtractingAI] = useState(false);
+  
+  // Fetch metadata from API
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch(`/api/contracts/${contractId}/metadata`, {
+          headers: { 'x-tenant-id': tenantId }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.metadata) {
+            setMetadataFromAPI(data.metadata);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch metadata:', error);
+      }
+    };
+    
+    fetchMetadata();
+  }, [contractId, tenantId]);
+  
   // Merge legacy data with new schema
   const mergedInitial = useMemo(() => {
     const base = getDefaultContractMetadata();
     
-    // Map legacy fields
-    if (contract) {
-      base.document_number = contract.id || contractId;
-      base.document_title = contract.contractTitle || contract.filename || '';
-      base.currency = contract.currency || 'USD';
-      base.start_date = contract.effectiveDate || contract.startDate || '';
-      base.end_date = contract.expirationDate || contract.endDate || null;
+    // First, use metadata from API if available
+    if (metadataFromAPI) {
+      Object.assign(base, metadataFromAPI);
     }
     
-    // Map overview data from AI extraction
+    // Map legacy fields
+    if (contract) {
+      if (!base.document_number) base.document_number = contract.id || contractId;
+      if (!base.document_title) base.document_title = contract.contractTitle || contract.filename || '';
+      if (!base.currency) base.currency = contract.currency || 'USD';
+      if (!base.start_date) base.start_date = contract.effectiveDate || contract.startDate || '';
+      if (!base.end_date) base.end_date = contract.expirationDate || contract.endDate || null;
+    }
+    
+    // Map overview data from AI extraction (lowest priority)
     if (overviewData) {
-      base.document_title = base.document_title || overviewData.contractTitle || '';
-      base.contract_short_description = overviewData.summary || overviewData.description || '';
-      base.jurisdiction = overviewData.jurisdiction || '';
-      base.contract_language = overviewData.language || 'en';
-      base.tcv_amount = overviewData.totalValue || 0;
-      base.start_date = base.start_date || overviewData.effectiveDate || '';
-      base.end_date = base.end_date || overviewData.expirationDate || null;
+      if (!base.document_title) base.document_title = overviewData.contractTitle || '';
+      if (!base.contract_short_description) base.contract_short_description = overviewData.summary || overviewData.description || '';
+      if (!base.jurisdiction) base.jurisdiction = overviewData.jurisdiction || '';
+      if (!base.contract_language) base.contract_language = overviewData.language || 'en';
+      if (!base.tcv_amount) base.tcv_amount = overviewData.totalValue || 0;
+      if (!base.start_date) base.start_date = overviewData.effectiveDate || '';
+      if (!base.end_date) base.end_date = overviewData.expirationDate || null;
       
       // Map parties
-      if (overviewData.parties && Array.isArray(overviewData.parties)) {
+      if (!base.external_parties?.length && overviewData.parties && Array.isArray(overviewData.parties)) {
         base.external_parties = overviewData.parties.map((p: any) => ({
           legalName: p.name || '',
           role: p.role || '',
@@ -653,7 +772,7 @@ export function EnhancedContractMetadataSection({
     
     // Override with explicit initial metadata
     return { ...base, ...initialMetadata };
-  }, [contractId, contract, overviewData, financialData, initialMetadata]);
+  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI]);
   
   const [metadata, setMetadata] = useState<Partial<ContractMetadataSchema>>(mergedInitial);
   const [isEditing, setIsEditing] = useState(false);
@@ -729,7 +848,7 @@ export function EnhancedContractMetadataSection({
         // Default save to API
         const response = await fetch(`/api/contracts/${contractId}/metadata`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-tenant-id': tenantId },
           body: JSON.stringify({
             tenantId,
             metadata,
@@ -739,6 +858,19 @@ export function EnhancedContractMetadataSection({
         
         if (!response.ok) {
           throw new Error('Failed to save metadata');
+        }
+        
+        // Fetch fresh metadata after save
+        const getResponse = await fetch(`/api/contracts/${contractId}/metadata`, {
+          headers: { 'x-tenant-id': tenantId }
+        });
+        
+        if (getResponse.ok) {
+          const data = await getResponse.json();
+          if (data.success && data.metadata) {
+            setMetadataFromAPI(data.metadata);
+            setMetadata(data.metadata);
+          }
         }
       }
       
@@ -764,6 +896,55 @@ export function EnhancedContractMetadataSection({
     setIsEditing(false);
   };
   
+  const handleAIExtraction = async () => {
+    setIsExtractingAI(true);
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/extract`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': tenantId
+        },
+        body: JSON.stringify({
+          force: true,
+          includeConfidence: true
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('AI extraction failed');
+      }
+      
+      toast.success('AI extraction started. Refreshing metadata...');
+      
+      // Refresh metadata after a delay
+      setTimeout(async () => {
+        const getResponse = await fetch(`/api/contracts/${contractId}/metadata`, {
+          headers: { 'x-tenant-id': tenantId }
+        });
+        
+        if (getResponse.ok) {
+          const data = await getResponse.json();
+          if (data.success && data.metadata) {
+            setMetadataFromAPI(data.metadata);
+            setMetadata(data.metadata);
+          }
+        }
+        
+        if (onRefresh) {
+          onRefresh();
+        }
+        
+        toast.success('AI extraction completed! Metadata updated with confidence scores.');
+      }, 3000);
+    } catch (error) {
+      console.error('Failed to trigger AI extraction:', error);
+      toast.error('Failed to start AI extraction. Please try again.');
+    } finally {
+      setIsExtractingAI(false);
+    }
+  };
+  
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-4 bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b">
@@ -774,9 +955,7 @@ export function EnhancedContractMetadataSection({
               Contract Metadata
             </CardTitle>
             <CardDescription className="mt-1">
-              {isEditing 
-                ? 'Edit the contract metadata. Changes will be saved to the database.' 
-                : 'Review and edit contract details. Click Edit to make changes.'}
+              {isEditing ? 'Editing metadata - changes will be saved' : 'Core contract information and details'}
             </CardDescription>
           </div>
           
@@ -789,14 +968,35 @@ export function EnhancedContractMetadataSection({
             )}
             
             {!isEditing ? (
-              <Button 
-                size="sm" 
-                onClick={() => setIsEditing(true)}
-                className="bg-indigo-600 hover:bg-indigo-700"
-              >
-                <Pencil className="h-4 w-4 mr-1.5" />
-                Edit Metadata
-              </Button>
+              <>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAIExtraction}
+                  disabled={isExtractingAI}
+                  className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                >
+                  {isExtractingAI ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                      Extracting...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-1.5" />
+                      AI Extract
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => setIsEditing(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  <Pencil className="h-4 w-4 mr-1.5" />
+                  Edit Metadata
+                </Button>
+              </>
             ) : (
               <div className="flex gap-2">
                 <Button 
@@ -819,7 +1019,7 @@ export function EnhancedContractMetadataSection({
                   ) : (
                     <Save className="h-4 w-4 mr-1.5" />
                   )}
-                  Approve & Save
+                  Save Changes
                 </Button>
               </div>
             )}
@@ -838,9 +1038,7 @@ export function EnhancedContractMetadataSection({
               className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3"
             >
               <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-              <p className="text-sm font-medium text-emerald-700">
-                Contract metadata saved successfully and stored in the database.
-              </p>
+              <p className="text-sm font-medium text-emerald-700">Metadata saved successfully</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -878,41 +1076,7 @@ export function EnhancedContractMetadataSection({
             onChange={handleChange}
             defaultOpen={true}
           />
-          
-          <MetadataSection 
-            section="reminders" 
-            metadata={metadata} 
-            isEditing={isEditing}
-            onChange={handleChange}
-            defaultOpen={false}
-          />
-          
-          <MetadataSection 
-            section="ownership" 
-            metadata={metadata} 
-            isEditing={isEditing}
-            onChange={handleChange}
-            defaultOpen={false}
-          />
         </div>
-        
-        {/* Extraction Metadata */}
-        {metadata._extraction_confidence !== undefined && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="flex items-center justify-between text-xs text-slate-500">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-purple-500" />
-                <span>AI Extraction Confidence: {Math.round((metadata._extraction_confidence || 0) * 100)}%</span>
-              </div>
-              {metadata._extracted_at && (
-                <span>Extracted: {formatDate(metadata._extracted_at)}</span>
-              )}
-              {metadata._extraction_model && (
-                <span>Model: {metadata._extraction_model}</span>
-              )}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

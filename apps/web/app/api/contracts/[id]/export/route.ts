@@ -7,7 +7,8 @@ import { prisma } from '@/lib/prisma'
 interface ExportArtifact {
   id: string;
   type: string;
-  data: string | Record<string, unknown> | unknown[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any; // Json from Prisma can be any
   contractId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -15,8 +16,10 @@ interface ExportArtifact {
 
 interface ExportClause {
   id: string;
-  content: string;
+  content?: string; // Made optional - will use 'text' field from Prisma
+  text?: string;
   type?: string | null;
+  category?: string | null;
   contractId: string;
 }
 
@@ -28,7 +31,8 @@ interface ContractExportData {
   contractType?: string | null;
   clientName?: string | null;
   supplierName?: string | null;
-  totalValue?: number | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  totalValue?: any; // Support both number and Prisma Decimal
   currency?: string | null;
   startDate?: Date | null;
   endDate?: Date | null;

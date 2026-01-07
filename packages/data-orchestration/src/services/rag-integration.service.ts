@@ -74,11 +74,11 @@ class RagIntegrationService {
         contractCategoryId: contract.contractCategoryId || undefined,
         contractSubtype: contract.contractSubtype || undefined,
         documentRole: contract.documentRole || undefined,
-        classificationMeta: contract.classificationMeta,
-        pricingModels: contract.pricingModels,
-        deliveryModels: contract.deliveryModels,
-        dataProfiles: contract.dataProfiles,
-        riskFlags: contract.riskFlags
+        classificationMeta: contract.classificationMeta as Record<string, unknown> | undefined,
+        pricingModels: contract.pricingModels as string[] | undefined,
+        deliveryModels: contract.deliveryModels as string[] | undefined,
+        dataProfiles: contract.dataProfiles as string[] | undefined,
+        riskFlags: contract.riskFlags as string[] | undefined
       });
 
       // Check if we have an existing metadata embedding chunk

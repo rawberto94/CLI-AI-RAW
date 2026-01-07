@@ -534,13 +534,13 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Premium Hero Section with gradient background */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-8"
+        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-4"
       >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
@@ -555,21 +555,21 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         </div>
 
         {/* Header with Quick Actions */}
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10">
-                <Activity className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-2 mb-1">
+              <div className="p-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/10">
+                <Activity className="h-3.5 w-3.5 text-white" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">
+              <h1 className="text-lg md:text-xl font-bold text-white">
                 Contract Portfolio
               </h1>
             </div>
-            <p className="text-slate-300 text-sm md:text-base">
+            <p className="text-slate-300 text-xs md:text-sm">,
               Real-time overview of your {stats.totalContracts?.toLocaleString() || 0} contracts worth {formatCurrency(stats.totalValue ?? 0)}
             </p>
           </motion.div>
@@ -609,13 +609,13 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         </div>
 
         {/* Stats Cards - Inside Hero */}
-        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2">
           {/* Total Contracts */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+            className="group relative overflow-hidden rounded-lg bg-white/10 backdrop-blur-md border border-white/10 p-2.5 md:p-3 hover:bg-white/15 transition-all cursor-pointer"
           >
             <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
               <FileText className="w-full h-full text-white" />

@@ -221,18 +221,19 @@ export async function POST(
     // Extract and validate metadata using Zod schema
     try {
       const metadata = {
-        file,
-        contractType: formData.get("contractType") as string | null,
-        startDate: formData.get("startDate") as string | null,
-        endDate: formData.get("endDate") as string | null,
+        contractType: formData.get("contractType") ? (formData.get("contractType") as string) : undefined,
+        startDate: formData.get("startDate") ? (formData.get("startDate") as string) : undefined,
+        endDate: formData.get("endDate") ? (formData.get("endDate") as string) : undefined,
         totalValue: formData.get("totalValue") ? parseFloat(formData.get("totalValue") as string) : undefined,
-        currency: formData.get("currency") as string | null,
-        clientName: formData.get("clientName") as string | null,
-        supplierName: formData.get("supplierName") as string | null,
-        contractTitle: formData.get("contractTitle") as string | null,
-        description: formData.get("description") as string | null,
-        category: formData.get("category") as string | null,
-        uploadedBy: formData.get("uploadedBy") as string | null,
+        currency: formData.get("currency") ? (formData.get("currency") as string) : undefined,
+        clientName: formData.get("clientName") ? (formData.get("clientName") as string) : undefined,
+        supplierName: formData.get("supplierName") ? (formData.get("supplierName") as string) : undefined,
+        contractTitle: formData.get("contractTitle") ? (formData.get("contractTitle") as string) : undefined,
+        description: formData.get("description") ? (formData.get("description") as string) : undefined,
+        category: formData.get("category") ? (formData.get("category") as string) : undefined,
+        uploadedBy: formData.get("uploadedBy") ? (formData.get("uploadedBy") as string) : undefined,
+        priority: formData.get("priority") ? (formData.get("priority") as string) : undefined,
+        ocrMode: formData.get("ocrMode") ? (formData.get("ocrMode") as string) : undefined,
       };
 
       // Validate with contractUploadSchema

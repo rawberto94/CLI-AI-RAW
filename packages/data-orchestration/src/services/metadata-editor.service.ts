@@ -42,7 +42,7 @@ export interface TagSuggestion {
   reason: string;
 }
 
-export interface ValidationResult {
+export interface MetadataValidationResult {
   isValid: boolean;
   errors: Array<{ field: string; message: string }>;
   warnings: Array<{ field: string; message: string }>;

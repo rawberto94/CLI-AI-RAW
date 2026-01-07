@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { chunkText, embedChunks } from "clients-rag";
 import { AIArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
+import { queueRAGReindex } from "@/lib/rag/reindex-helper";
 
 const aiArtifactGenerator = AIArtifactGeneratorService.getInstance();
 
@@ -138,6 +139,13 @@ async function regenerateArtifactAsync(
         lastEditedAt: new Date(),
         updatedAt: new Date()
       }
+    });
+
+    // Queue RAG re-indexing when artifact content is regenerated
+    await queueRAGReindex({
+      contractId,
+      tenantId,
+      reason: `artifact ${artifactType} regenerated`,
     });
 
     console.log(`✅ Artifact ${artifactType} regenerated in ${processingTime}ms`);

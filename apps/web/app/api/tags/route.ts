@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Also check TenantSettings for predefined tags
-    const tenantSettings = await prisma.tenantSettings.findUnique({
+    const tenantSettings = await prisma.tenantSettings.findFirst({
       where: { tenantId },
       select: { customFields: true },
     });
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create tenant settings
-    let tenantSettings = await prisma.tenantSettings.findUnique({
+    let tenantSettings = await prisma.tenantSettings.findFirst({
       where: { tenantId },
     });
 
@@ -208,9 +208,9 @@ export async function POST(request: NextRequest) {
 
     // Update tenant settings
     await prisma.tenantSettings.update({
-      where: { tenantId },
+      where: { id: tenantSettings.id },
       data: {
-        customFields: { ...customFields, predefinedTags },
+        customFields: { ...customFields, predefinedTags } as any,
       },
     });
 
@@ -247,7 +247,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Get tenant settings
-    const tenantSettings = await prisma.tenantSettings.findUnique({
+    const tenantSettings = await prisma.tenantSettings.findFirst({
       where: { tenantId },
     });
 
@@ -269,9 +269,9 @@ export async function DELETE(request: NextRequest) {
 
     // Update tenant settings
     await prisma.tenantSettings.update({
-      where: { tenantId },
+      where: { id: tenantSettings.id },
       data: {
-        customFields: { ...customFields, predefinedTags: filteredTags },
+        customFields: { ...customFields, predefinedTags: filteredTags } as any,
       },
     });
 

@@ -71,7 +71,7 @@ async function listBySupplier(
         select: {
           id: true,
           status: true,
-          generatedAt: true,
+          createdAt: true,
         },
       },
     },
@@ -146,7 +146,7 @@ async function listByStatus(
   const contracts = await prisma.contract.findMany({
     where: {
       tenantId,
-      status,
+      status: status as any,
     },
     include: {
       artifacts: {
@@ -175,7 +175,7 @@ async function listByValue(
   const contracts = await prisma.contract.findMany({
     where: {
       tenantId,
-      value: {
+      totalValue: {
         gte: valueThreshold,
       },
     },
@@ -188,7 +188,7 @@ async function listByValue(
         },
       },
     },
-    orderBy: { value: 'desc' },
+    orderBy: { totalValue: 'desc' },
     take: 20,
   });
 
@@ -217,7 +217,7 @@ async function findMasterAgreement(
         contains: supplierName,
         mode: 'insensitive',
       },
-      type: 'MSA',
+      contractType: 'MSA',
     },
     include: {
       artifacts: {
@@ -227,11 +227,11 @@ async function findMasterAgreement(
           status: true,
         },
       },
-      children: {
+      childContracts: {
         select: {
           id: true,
-          title: true,
-          type: true,
+          contractTitle: true,
+          contractType: true,
           status: true,
         },
       },

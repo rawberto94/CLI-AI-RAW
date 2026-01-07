@@ -38,7 +38,7 @@ export class AutonomousDeadlineManager extends BaseAgent {
         allActions.push({
           id: `escalate-${assessment.contractId}-${Date.now()}`,
           type: 'escalate',
-          description: assessment.recommendedActions.find(a => a.type === 'escalate')?.description || 
+          description: assessment.recommendedActions.find((a: DeadlineAction) => a.type === 'escalate')?.description || 
                       `Contract at risk of missing deadline: ${assessment.deadline.toLocaleDateString()}`,
           priority: assessment.riskLevel === 'critical' ? 'urgent' : 'high',
           automated: true,

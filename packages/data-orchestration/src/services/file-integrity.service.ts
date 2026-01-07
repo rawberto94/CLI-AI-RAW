@@ -25,7 +25,7 @@ export interface FileMetadata {
   modifiedAt: Date;
 }
 
-export interface ValidationResult {
+export interface FileIntegrityValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];

@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
 import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
 import { AdvancedFilterPanel, type FilterState } from "@/components/contracts/AdvancedFilterPanel";
+import { DragDropFilterBuilder } from "@/components/contracts/DragDropFilterBuilder";
 import { ActiveFilterChips } from "@/components/contracts/ActiveFilterChips";
 import { SavedSearchPresets, type SavedSearch } from "@/components/contracts/SavedSearchPresets";
 import { HighlightText } from "@/components/contracts/HighlightText";
@@ -109,6 +110,7 @@ import {
   Activity,
   Pause,
   Play,
+  Wand2,
 } from "lucide-react";
 import { ObligationWidget, type Obligation } from "@/components/contracts/ObligationTracker";
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
@@ -988,6 +990,7 @@ export default function ContractsPage() {
     isExpiring: null,
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showVisualBuilder, setShowVisualBuilder] = useState(false);
   
   // Category filter state
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -1318,6 +1321,125 @@ export default function ContractsPage() {
   const handleLoadPreset = useCallback((search: SavedSearch) => {
     setSearchQuery(search.query);
     setFilterState(search.filters);
+  }, []);
+  
+  // Handle visual builder apply
+  const handleVisualBuilderApply = useCallback((groups: Array<{
+    id: string;
+    logic: 'AND' | 'OR';
+    filters: Array<{
+      type: 'status' | 'date' | 'value' | 'risk' | 'category' | 'role' | 'expiration' | 'supplier' | 'client' | 'jurisdiction' | 'payment' | 'contractType' | 'currency';
+      operator: string;
+      value: any;
+    }>;
+  }>) => {
+    // Convert visual builder format to FilterState
+    const newFilterState: FilterState = {
+      statuses: [],
+      documentRoles: [],
+      dateRange: {},
+      valueRange: { min: 0, max: 1000000 },
+      categories: [],
+      hasDeadline: null,
+      isExpiring: null,
+    };
+    
+    // Track additional filters (these would need to be added to FilterState interface)
+    let supplierFilter: string | null = null;
+    let clientFilter: string | null = null;
+    let jurisdictionFilter: string | null = null;
+    let paymentTermsFilter: string | null = null;
+    let contractTypeFilter: string | null = null;
+    let currencyFilter: string | null = null;
+    
+    // Process all filter groups (currently just merging all filters)
+    // In a more sophisticated implementation, you'd preserve AND/OR logic
+    groups.forEach(group => {
+      group.filters.forEach(filter => {
+        switch (filter.type) {
+          case 'status':
+            if (filter.value && !newFilterState.statuses.includes(filter.value)) {
+              newFilterState.statuses.push(filter.value);
+            }
+            break;
+          case 'role':
+            if (filter.value && !newFilterState.documentRoles.includes(filter.value)) {
+              newFilterState.documentRoles.push(filter.value);
+            }
+            break;
+          case 'category':
+            if (filter.value && !newFilterState.categories.includes(filter.value)) {
+              newFilterState.categories.push(filter.value);
+            }
+            break;
+          case 'date':
+            if (filter.operator === 'between' && Array.isArray(filter.value) && filter.value.length === 2) {
+              newFilterState.dateRange = {
+                start: filter.value[0],
+                end: filter.value[1],
+              };
+            }
+            break;
+          case 'value':
+            if (filter.operator === 'between' && Array.isArray(filter.value) && filter.value.length === 2) {
+              newFilterState.valueRange = {
+                min: filter.value[0],
+                max: filter.value[1],
+              };
+            } else if (filter.operator === 'greater' && typeof filter.value === 'number') {
+              newFilterState.valueRange.min = filter.value;
+            } else if (filter.operator === 'less' && typeof filter.value === 'number') {
+              newFilterState.valueRange.max = filter.value;
+            }
+            break;
+          case 'expiration':
+            newFilterState.isExpiring = true;
+            break;
+          case 'supplier':
+            supplierFilter = filter.value;
+            break;
+          case 'client':
+            clientFilter = filter.value;
+            break;
+          case 'jurisdiction':
+            jurisdictionFilter = filter.value;
+            break;
+          case 'payment':
+            paymentTermsFilter = filter.value;
+            break;
+          case 'contractType':
+            contractTypeFilter = filter.value;
+            break;
+          case 'currency':
+            currencyFilter = filter.value;
+            break;
+          case 'risk':
+            // Risk would need additional state handling
+            break;
+        }
+      });
+    });
+    
+    setFilterState(newFilterState);
+    setShowVisualBuilder(false);
+    
+    const filterCount = groups.reduce((acc, g) => acc + g.filters.length, 0);
+    let message = `Applied ${filterCount} filter${filterCount === 1 ? '' : 's'}`;
+    
+    // Show info about additional filters that aren't in FilterState
+    const additionalFilters = [];
+    if (supplierFilter) additionalFilters.push(`Supplier: ${supplierFilter}`);
+    if (clientFilter) additionalFilters.push(`Client: ${clientFilter}`);
+    if (jurisdictionFilter) additionalFilters.push(`Jurisdiction: ${jurisdictionFilter}`);
+    if (paymentTermsFilter) additionalFilters.push(`Payment: ${paymentTermsFilter}`);
+    if (contractTypeFilter) additionalFilters.push(`Type: ${contractTypeFilter}`);
+    if (currencyFilter) additionalFilters.push(`Currency: ${currencyFilter}`);
+    
+    if (additionalFilters.length > 0) {
+      toast.info(`${message}. Note: ${additionalFilters.join(', ')} would require backend support.`);
+    } else {
+      toast.success(message);
+    }
   }, []);
   
   // Apply quick preset
@@ -2115,7 +2237,7 @@ export default function ContractsPage() {
         }
       />
       
-      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-5">
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-3 space-y-2.5">
 
         {/* Bulk Actions Bar */}
         <AnimatePresence>
@@ -2267,7 +2389,6 @@ export default function ContractsPage() {
           )}
         </AnimatePresence>
 
-
         {/* Compact Hero Dashboard */}
         <ContractsHeroDashboard
           stats={heroStats}
@@ -2284,7 +2405,6 @@ export default function ContractsPage() {
           onAskAIClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
             detail: { autoMessage: 'Help me find and analyze my contracts' }
           }))}
-          className="mb-4"
         />
 
         {/* State of the Art Search & Filters */}
@@ -2330,61 +2450,112 @@ export default function ContractsPage() {
           />
         </AnimatePresence>
 
-        {/* Advanced Filter Controls */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            {/* Active Filter Chips */}
-            <ActiveFilterChips
-              filters={filterState}
-              searchQuery={searchQuery}
-              onClearFilter={handleClearFilter}
-              onClearSearch={() => setSearchQuery('')}
-              onClearAll={() => {
-                clearFilters();
-              }}
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Saved Search Presets */}
-            <SavedSearchPresets
-              currentFilters={filterState}
-              currentQuery={searchQuery}
-              onLoadPreset={handleLoadPreset}
-            />
-            
-            {/* Advanced Filter Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAdvancedFilters(true)}
-              className="border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
+        {/* Advanced Filter Panel - Inline & Collapsible */}
+        <AnimatePresence>
+          {showAdvancedFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+              exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              style={{ overflow: 'hidden' }}
             >
-              <Filter className="h-4 w-4 mr-2" />
-              Advanced Filters
+              <AdvancedFilterPanel
+                filters={filterState}
+                onChange={setFilterState}
+                onClose={() => setShowAdvancedFilters(false)}
+                availableCategories={categories.map(cat => cat.name)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Visual Filter Builder Modal */}
+        {showVisualBuilder && (
+          <DragDropFilterBuilder
+            onApply={handleVisualBuilderApply}
+            onClose={() => setShowVisualBuilder(false)}
+            initialGroups={[]}
+          />
+        )}
+
+        {/* Advanced Filter Controls */}
+        <div className="flex items-center justify-end gap-2">
+          {/* Active Filter Chips - only shows when filters are active */}
+          <ActiveFilterChips
+            filters={filterState}
+            searchQuery={searchQuery}
+            onClearFilter={handleClearFilter}
+            onClearSearch={() => setSearchQuery('')}
+            onClearAll={() => {
+              clearFilters();
+            }}
+          />
+          
+          {/* Saved Search Presets */}
+          <SavedSearchPresets
+            currentFilters={filterState}
+            currentQuery={searchQuery}
+            onLoadPreset={handleLoadPreset}
+          />
+          
+          {/* Visual Filter Builder Button */}
+          <Button
+              variant={showVisualBuilder ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowVisualBuilder(true)}
+              className={cn(
+                "transition-all duration-200 h-8 text-xs font-medium",
+                showVisualBuilder 
+                  ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
+                  : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+              )}
+            >
+              <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+              <span className="hidden sm:inline">Visual Builder</span>
+              <span className="sm:hidden">Builder</span>
+            </Button>
+          
+          {/* Advanced Filter Button */}
+          <Button
+              variant={showAdvancedFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={cn(
+                "transition-all duration-200 h-8 text-xs font-medium",
+                showAdvancedFilters 
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600" 
+                  : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+              )}
+            >
+              {showAdvancedFilters ? <X className="h-3.5 w-3.5 mr-1.5" /> : <Filter className="h-3.5 w-3.5 mr-1.5" />}
+              <span className="hidden sm:inline">Advanced Filters</span>
+              <span className="sm:hidden">Filters</span>
               {(filterState.statuses.length > 0 || filterState.documentRoles.length > 0 || 
                 filterState.categories.length > 0 || filterState.hasDeadline !== null || 
                 filterState.isExpiring !== null) && (
-                <Badge className="ml-2 bg-indigo-600 text-white" variant="secondary">
+                <Badge className={cn(
+                  "ml-1.5",
+                  showAdvancedFilters ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
+                )} variant="secondary">
                   {filterState.statuses.length + filterState.documentRoles.length + 
                    filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
                    (filterState.isExpiring !== null ? 1 : 0)}
                 </Badge>
               )}
             </Button>
-          </div>
         </div>
 
         {/* View Mode Toggle, Sort & Results Count */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-600">
-              <span className="font-semibold text-slate-900 tabular-nums">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600 font-medium">
+              <span className="font-bold text-slate-900 tabular-nums text-base">
                 <AnimatedCounter value={contractsData?.total ?? 0} />
               </span>
-              {' '}contracts
+              {' '}<span className="text-slate-500">contracts</span>
               {hasActiveFilters && (
-                <span className="text-slate-400 ml-1.5">(filtered)</span>
+                <span className="text-slate-400 ml-1">(filtered)</span>
               )}
             </span>
             
@@ -2534,7 +2705,7 @@ export default function ContractsPage() {
             initial={{ opacity: 0, y: -5, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="flex items-center justify-between gap-4 px-4 py-2.5 bg-gradient-to-r from-amber-50/90 via-amber-50/80 to-yellow-50/70 border border-amber-200/60 rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+            className="flex items-center justify-between gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/90 via-amber-50/80 to-yellow-50/70 border border-amber-200/60 rounded-lg shadow-sm hover:shadow transition-shadow relative overflow-hidden"
           >
             {/* Animated background pattern */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(251,191,36,0.1),transparent)] pointer-events-none" />
@@ -2663,9 +2834,9 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl">
+              <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-lg">
                 {/* Table Header */}
-                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3.5 bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wide sticky top-16 lg:top-0 z-10">
+                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
                   <div className="flex items-center justify-center">
                     <Checkbox
                       checked={allVisibleSelected && paginatedContracts.length > 0}
@@ -3124,16 +3295,6 @@ export default function ContractsPage() {
         onApply={() => setShowMobileFilters(false)}
         onReset={clearFilters}
       />
-
-      {/* Advanced Filter Panel */}
-      {showAdvancedFilters && (
-        <AdvancedFilterPanel
-          filters={filterState}
-          onChange={setFilterState}
-          onClose={() => setShowAdvancedFilters(false)}
-          availableCategories={categories.map(cat => cat.name)}
-        />
-      )}
 
       {/* Scroll to Top Button */}
       <ScrollToTopButton threshold={600} />

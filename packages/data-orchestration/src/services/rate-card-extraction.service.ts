@@ -68,7 +68,7 @@ export interface StandardizedRole {
   category: string;
 }
 
-export interface ValidationResult {
+export interface ExtractionValidationResult {
   isValid: boolean;
   errors: ValidationError[];
   warnings: ValidationWarning[];

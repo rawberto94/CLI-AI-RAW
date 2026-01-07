@@ -54,17 +54,6 @@ const nextConfig = {
     } : false,
   },
   
-  // Optimized static generation - disable for pages that load workers
-  experimental: {
-    // Reduce memory during build by disabling some static optimizations
-    isrMemoryCacheSize: 0,
-    // Skip collecting traces for heavy pages during build
-    outputFileTracingIgnores: ['**/node_modules/@swc/**', '**/node_modules/webpack/**'],
-    // Disable static page optimization to reduce memory usage during build
-    workerThreads: false,
-    cpus: 1,
-  },
-  
   // Image optimization
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -99,10 +88,6 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
     externalDir: true,
-    // Reduce memory during build by disabling some static optimizations
-    isrMemoryCacheSize: 0,
-    // Skip collecting traces for heavy pages during build
-    outputFileTracingIgnores: ['**/node_modules/@swc/**', '**/node_modules/webpack/**'],
     // Optimized package imports - reduces bundle size significantly
     optimizePackageImports: [
       'lucide-react',

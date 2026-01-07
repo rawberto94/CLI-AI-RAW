@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
           },
           {
             status: {
-              in: ['COMPLETED', 'READY', 'ACTIVE'],
+              in: ['COMPLETED', 'ACTIVE', 'PENDING'],
             },
           },
           {
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
               },
             })
 
-            if (!classification.category) {
+            if (!classification.classification?.category_id) {
               stats.skipped++
               console.log(`⏭️  Skipped ${contract.id}: No classification`)
               return
@@ -136,22 +136,22 @@ export async function POST(request: NextRequest) {
             await prisma.contract.update({
               where: { id: contract.id },
               data: {
-                contractCategoryId: classification.category.id,
-                contractSubtype: classification.subtype,
-                documentRole: classification.documentRole?.id,
-                classificationConf: classification.confidence,
-                classificationMeta: classification.metadata,
+                contractCategoryId: classification.classification.category_id,
+                contractSubtype: classification.classification.subtype,
+                documentRole: classification.classification.role,
+                classificationConf: classification.classification.confidence,
+                classificationMeta: classification.extracted_fields,
                 classifiedAt: new Date(),
                 // Apply taxonomy tags if available
-                pricingModels: classification.tags?.pricingModels || [],
-                deliveryModels: classification.tags?.deliveryModels || [],
-                dataProfiles: classification.tags?.dataProfiles || [],
-                riskFlags: classification.tags?.riskFlags || [],
+                pricingModels: classification.tags?.pricing_models || [],
+                deliveryModels: classification.tags?.delivery_models || [],
+                dataProfiles: classification.tags?.data_profiles || [],
+                riskFlags: classification.tags?.risk_flags || [],
               },
             })
 
             stats.migrated++
-            console.log(`✅ Migrated ${contract.id}: ${classification.category.id}`)
+            console.log(`✅ Migrated ${contract.id}: ${classification.classification.category_id}`)
           } catch (error) {
             stats.failed++
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'

@@ -49,31 +49,31 @@ export async function POST(request: NextRequest) {
 }
 
 async function generateSupplierData(fields: string[], filters: any) {
-  const suppliers = await db.supplier.findMany({
+  const suppliers = await db.rateCardSupplier.findMany({
     include: {
-      contracts: true,
       rateCards: true,
     },
   });
 
   return suppliers.map((s) => ({
     supplierName: s.name,
-    activeContracts: s.contracts.filter((c: any) => c.status === "active").length,
-    totalSpend: s.contracts.reduce((sum: number, c: any) => sum + (c.value?.toNumber() || 0), 0),
-    avgPerformance: Math.floor(Math.random() * 30) + 70,
+    activeRateCards: s.rateCards.length,
+    totalRateCards: s.totalRateCards,
+    avgRate: s.averageRate?.toNumber() || 0,
+    tier: s.tier,
   }));
 }
 
 async function generateRateCardData(fields: string[], filters: any) {
-  const rateCards = await db.rateCard.findMany({
+  const rateCards = await db.rateCardEntry.findMany({
     include: { supplier: true },
   });
 
   return rateCards.map((rc) => ({
-    roleName: rc.roleName,
+    roleName: rc.roleOriginal,
     seniority: rc.seniority,
-    dailyRate: rc.dailyRate.toNumber(),
-    supplierName: rc.supplier.name,
+    dailyRate: Number(rc.dailyRate),
+    supplierName: rc.supplierName,
   }));
 }
 
@@ -83,9 +83,9 @@ async function generateContractData(fields: string[], filters: any) {
   });
 
   return contracts.map((c) => ({
-    contractName: c.name,
-    supplierName: c.supplier?.name || "N/A",
-    contractValue: c.value?.toNumber() || 0,
+    contractName: c.contractTitle || c.fileName,
+    supplierName: c.supplier?.name || c.supplierName || "N/A",
+    contractValue: c.totalValue?.toNumber() || 0,
     startDate: c.startDate?.toISOString().split("T")[0],
     endDate: c.endDate?.toISOString().split("T")[0],
     status: c.status,
@@ -93,7 +93,7 @@ async function generateContractData(fields: string[], filters: any) {
 }
 
 async function generatePerformanceData(fields: string[], filters: any) {
-  const suppliers = await db.supplier.findMany();
+  const suppliers = await db.rateCardSupplier.findMany();
 
   return suppliers.map((s) => ({
     supplierName: s.name,
@@ -111,7 +111,7 @@ async function generateFinancialData(fields: string[], filters: any) {
   contracts.forEach((c) => {
     if (!c.startDate) return;
     const month = c.startDate.toISOString().substring(0, 7);
-    const value = c.value?.toNumber() || 0;
+    const value = c.totalValue?.toNumber() || 0;
 
     if (!monthlyData.has(month)) {
       monthlyData.set(month, { month, spend: 0 });

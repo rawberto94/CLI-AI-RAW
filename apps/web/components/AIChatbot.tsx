@@ -1005,6 +1005,55 @@ Would you like me to notify the first approver or do anything else?`,
         handleNewConversation();
         break;
       default:
+        // Handle confirm/reject actions for bi-directional updates
+        if (action.startsWith('confirm-action:') || action.startsWith('reject-action:')) {
+          const [actionType, pendingActionId] = action.split(':');
+          const isConfirm = actionType === 'confirm-action';
+          
+          try {
+            const response = await fetch('/api/ai/chat/actions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                pendingActionId,
+                confirm: isConfirm,
+              }),
+            });
+            
+            const result = await response.json();
+            
+            const confirmMessage: Message = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: result.message || (isConfirm ? '✅ Update applied successfully!' : '❌ Action cancelled.'),
+              timestamp: new Date(),
+              suggestedActions: isConfirm && result.data?.ragReindexQueued ? [
+                { label: '🔄 Ask about changes', action: 'search-contracts' },
+                { label: '📋 View Contract', action: `navigate:/contracts/${result.data?.contractId}` },
+              ] : undefined,
+            };
+            setMessages((prev) => [...prev, confirmMessage]);
+            
+            if (isConfirm && result.success) {
+              toast.success('Contract updated!', {
+                description: 'The AI knowledge base will be refreshed automatically.',
+              });
+            }
+          } catch (error) {
+            console.error('Action confirmation error:', error);
+            toast.error('Failed to process action');
+            
+            const errorMessage: Message = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: '❌ Failed to process the action. Please try again.',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+          }
+          return;
+        }
+        
         console.log('Unknown action:', action);
     }
   };

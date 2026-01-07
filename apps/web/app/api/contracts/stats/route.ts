@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(

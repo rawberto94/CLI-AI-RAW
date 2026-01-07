@@ -335,8 +335,10 @@ export function ProcessingConfig({ options, onChange, disabled }: ProcessingConf
                         {artifact.required && (
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-3 w-3 text-slate-400" />
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex">
+                                  <Info className="h-3 w-3 text-slate-400" />
+                                </span>
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p>Required artifact</p>

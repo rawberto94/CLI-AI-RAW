@@ -13,7 +13,7 @@
  * - Field visibility and permissions
  */
 
-import { dbAdaptor } from 'data-orchestration';
+import { dbAdaptor } from '@repo/data-orchestration';
 
 // ============================================================================
 // Types

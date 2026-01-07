@@ -165,22 +165,21 @@ export function SavedSearchPresets({
   const unpinnedSearches = savedSearches.filter(s => !s.isPinned);
 
   return (
-    <div className="space-y-3">
+    <>
       {/* Quick Actions */}
-      <div className="flex items-center gap-2">
-        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+      <div className="flex items-center gap-2">,        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
           <DialogTrigger asChild>
             <Button
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-1.5 h-8 text-xs font-medium px-2.5"
               onClick={() => {
                 setEditingId(null);
                 setSearchName('');
               }}
             >
-              <Save className="h-4 w-4" />
-              Save Current Search
+              <Save className="h-3 w-3" />
+              <span className="hidden md:inline">Save Search</span>
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -294,17 +293,7 @@ export function SavedSearchPresets({
           )}
         </div>
       )}
-
-      {savedSearches.length === 0 && (
-        <div className="text-center py-6 border-2 border-dashed rounded-lg">
-          <Search className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm text-slate-500">No saved searches yet</p>
-          <p className="text-xs text-slate-400 mt-1">
-            Save your current filters to quickly access them later
-          </p>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 

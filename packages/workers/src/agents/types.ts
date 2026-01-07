@@ -3,7 +3,11 @@
  * Supports autonomous decision-making, learning, and self-healing
  */
 
-import type { Contract, ArtifactData, ContractType } from '@prisma/client';
+import type { Contract, Artifact } from '@prisma/client';
+
+// Local type aliases for contract types (not in Prisma schema)
+export type ContractType = 'SOW' | 'MSA' | 'NDA' | 'AMENDMENT' | 'ADDENDUM' | 'PO' | 'LICENSE' | 'OTHER';
+export type ArtifactData = Record<string, unknown>;
 
 // ============================================================================
 // Base Agent Types
@@ -32,11 +36,14 @@ export interface AgentInput {
   tenantId: string;
   context: Record<string, any>;
   metadata?: AgentMetadata;
+  // Shorthand - will be moved to metadata.triggeredBy
+  triggeredBy?: 'user' | 'system' | 'agent' | 'ocr_pipeline';
 }
 
 export interface AgentOutput {
   success: boolean;
   data?: any;
+  output?: any; // Alias for data for backwards compatibility
   actions?: AgentAction[];
   recommendations?: AgentRecommendation[];
   confidence: number;
@@ -45,7 +52,7 @@ export interface AgentOutput {
 }
 
 export interface AgentMetadata {
-  triggeredBy: 'user' | 'system' | 'agent';
+  triggeredBy: 'user' | 'system' | 'agent' | 'ocr_pipeline';
   priority: 'low' | 'medium' | 'high' | 'critical';
   timestamp: Date;
   parentJobId?: string;

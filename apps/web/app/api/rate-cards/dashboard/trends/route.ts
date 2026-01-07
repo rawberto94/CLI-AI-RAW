@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       }
       categoryTrends[category].rates.push({
         date: rate.effectiveDate,
-        rate: rate.dailyRateUSD,
+        rate: Number(rate.dailyRateUSD),
       });
       categoryTrends[category].count++;
     });

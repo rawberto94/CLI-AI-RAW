@@ -1,7 +1,21 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
-import { generateText } from 'ai';
-import { openai } from '@ai-sdk/openai';
+
+// Optional AI SDK imports - these may not be installed in all environments
+let generateText: any;
+let openai: any;
+
+try {
+  generateText = require('ai').generateText;
+} catch {
+  // ai SDK not available
+}
+
+try {
+  openai = require('@ai-sdk/openai').openai;
+} catch {
+  // @ai-sdk/openai not available
+}
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();
@@ -156,7 +170,7 @@ export class ABTestingEngine {
     if (shouldExplore || performances.length === 0) {
       // Random selection
       const randomIndex = Math.floor(Math.random() * testConfig.variants.length);
-      return testConfig.variants[randomIndex];
+      return testConfig.variants[randomIndex] ?? null;
     } else {
       // Select best performer
       const bestPerformer = performances.reduce((best, current) => {
@@ -166,7 +180,7 @@ export class ABTestingEngine {
       });
 
       const variant = testConfig.variants.find(v => v.id === bestPerformer.variantId);
-      return variant || testConfig.variants[0];
+      return variant ?? testConfig.variants[0] ?? null;
     }
   }
 
@@ -207,6 +221,9 @@ export class ABTestingEngine {
     const sorted = [...performances].sort((a, b) => b.avgQualityScore - a.avgQualityScore);
     const winner = sorted[0];
     const runnerUp = sorted[1];
+
+    // Ensure we have valid winner and runnerUp
+    if (!winner || !runnerUp) return;
 
     // Calculate statistical significance using t-test approximation
     const tStatistic = this.calculateTStatistic(winner, runnerUp);
@@ -293,9 +310,9 @@ export class ABTestingEngine {
         GROUP BY variant_id, variant_name
       `;
 
-      return results.map(r => ({
-        variantId: r.variant_id,
-        variantName: r.variant_name,
+      return results.map((r: Record<string, unknown>) => ({
+        variantId: String(r.variant_id),
+        variantName: String(r.variant_name),
         totalTests: Number(r.total_tests),
         avgQualityScore: Number(r.avg_quality_score),
         avgCompleteness: Number(r.avg_completeness),

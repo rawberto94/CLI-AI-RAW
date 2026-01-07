@@ -19,6 +19,7 @@ import {
 } from '@/lib/ai/metadata-extractor';
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 
 interface ExtractRequest {
   documentText?: string;
@@ -217,12 +218,20 @@ export async function PUT(
       markAsValidated
     );
 
+    // Queue RAG re-indexing when metadata fields are applied
+    await queueRAGReindex({
+      contractId,
+      tenantId,
+      reason: 'metadata extraction applied',
+    });
+
     return NextResponse.json({
       success: true,
       message: `Applied ${Object.keys(fieldsToApply).length} fields to contract`,
       data: {
         appliedFields: Object.keys(fieldsToApply),
-        skippedFields: Object.keys(fields).filter(k => !fieldsToApply[k])
+        skippedFields: Object.keys(fields).filter(k => !fieldsToApply[k]),
+        ragReindexQueued: true
       }
     });
 

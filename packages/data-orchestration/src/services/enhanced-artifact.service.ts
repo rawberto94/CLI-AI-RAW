@@ -38,7 +38,7 @@ export interface ArtifactGenerationResult {
   errors: string[];
 }
 
-export interface ArtifactVersion {
+export interface EnhancedArtifactVersion {
   id: string;
   artifactId: string;
   version: number;
@@ -48,7 +48,7 @@ export interface ArtifactVersion {
   createdBy: string;
 }
 
-export interface ConfidenceScore {
+export interface EnhancedConfidenceScore {
   overall: number;
   dataCompleteness: number;
   aiCertainty: number;

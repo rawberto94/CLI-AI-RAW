@@ -20,8 +20,20 @@ import pino from 'pino';
 // Re-export contract type profiles for use in web app
 export * from './contract-type-profiles';
 
-// Re-export agentic AI agents for use in API routes
-export * from './agents';
+// Re-export agentic AI agents for use in API routes (excluding ContractType to avoid duplicate export)
+export { 
+  agentRegistry,
+  proactiveValidationAgent,
+  smartGapFillingAgent,
+  adaptiveRetryAgent,
+  workflowSuggestionEngine,
+  autonomousDeadlineManager,
+  contractHealthMonitor,
+  continuousLearningAgent,
+  opportunityDiscoveryEngine,
+  intelligentSearchAgent,
+} from './agents';
+export type { BaseAgent } from './agents';
 
 const logger = pino({
   name: 'workers',

@@ -170,7 +170,7 @@ export async function GET() {
     // ============================================
     try {
       const artifactCounts = await prisma.contractArtifact.groupBy({
-        by: ['artifactType'],
+        by: ['type'],
         _count: { id: true },
       }).catch(() => []);
 
@@ -179,8 +179,8 @@ export async function GET() {
           'artifacts_by_type',
           'Artifacts grouped by type',
           'gauge',
-          artifactCounts.map((a: { artifactType: string; _count: { id: number } }) => 
-            formatMetric('artifacts_by_type', a._count.id, { type: a.artifactType.toLowerCase() })
+          artifactCounts.map((a: { type: string; _count: { id: number } }) => 
+            formatMetric('artifacts_by_type', a._count.id, { type: a.type.toLowerCase() })
           )
         ));
       }

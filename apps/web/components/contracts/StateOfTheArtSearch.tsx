@@ -283,13 +283,13 @@ const SmartSearchInput = memo(function SmartSearchInput({
             : "bg-transparent"
         )} />
         <div className={cn(
-          "relative flex items-center gap-2 px-4 h-12 rounded-xl border-2 transition-all duration-200 bg-white dark:bg-slate-900",
+          "relative flex items-center gap-2 px-3 h-10 rounded-lg border-2 transition-all duration-200 bg-white dark:bg-slate-900",
           isFocused 
             ? "border-violet-400 dark:border-violet-500 shadow-lg shadow-violet-500/10" 
             : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
         )}>
           <Search className={cn(
-            "h-5 w-5 transition-colors",
+            "h-4 w-4 transition-colors",
             isFocused ? "text-violet-500" : "text-slate-400"
           )} />
           <input
@@ -879,9 +879,9 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
   );
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-2", className)}>
       {/* Main Search Row */}
-      <div className="flex flex-col lg:flex-row gap-3">
+      <div className="flex flex-col lg:flex-row gap-2">
         {/* Search Input */}
         <SmartSearchInput
           value={searchQuery}
@@ -893,10 +893,10 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
         {/* AI Button */}
         <Button
           onClick={() => handleAISearch(searchQuery || 'Help me find contracts')}
-          className="h-12 gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-medium rounded-xl px-5 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all duration-200"
+          className="h-10 gap-1.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-medium rounded-lg px-3 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all duration-200"
         >
-          <Sparkles className="h-4 w-4" />
-          <span className="hidden sm:inline">Ask AI</span>
+          <Sparkles className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline text-sm">Ask AI</span>
         </Button>
 
         {/* Advanced Filters Toggle */}
@@ -904,17 +904,17 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
           variant="outline"
           onClick={() => setShowAdvanced(!showAdvanced)}
           className={cn(
-            "h-12 gap-2 rounded-xl px-5 font-medium transition-all duration-200",
+            "h-10 gap-1.5 rounded-lg px-3 font-medium transition-all duration-200",
             showAdvanced
               ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100"
               : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
           )}
         >
-          <Sliders className="h-4 w-4" />
-          <span className="hidden sm:inline">Filters</span>
+          <Sliders className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline text-sm">Filters</span>
           {activeFilterCount > 0 && (
             <span className={cn(
-              "min-w-[22px] h-[22px] rounded-full text-xs flex items-center justify-center font-semibold",
+              "min-w-[20px] h-[20px] rounded-full text-xs flex items-center justify-center font-semibold",
               showAdvanced 
                 ? "bg-white text-slate-900 dark:bg-slate-900 dark:text-white" 
                 : "bg-violet-500 text-white"

@@ -37,35 +37,47 @@ export async function POST(request: NextRequest) {
 
       try {
         // Find or create supplier (tenant-scoped)
-        let supplier = await db.supplier.findFirst({
+        let supplier = await db.rateCardSupplier.findFirst({
           where: { name: record.supplierName, tenantId },
         });
 
         if (!supplier) {
-          supplier = await db.supplier.create({
+          supplier = await db.rateCardSupplier.create({
             data: {
+              tenantId,
               name: record.supplierName,
+              tier: 'TIER_2',
               country: record.location || 'US',
-              contactEmail: '',
+              region: 'North America',
             },
           });
         }
 
-        // Create rate card
-        await db.rateCard.create({
+        // Create rate card entry
+        await db.rateCardEntry.create({
           data: {
+            tenantId,
             supplierId: supplier.id,
-            roleName: record.roleName,
+            supplierName: record.supplierName,
+            supplierTier: 'TIER_2',
+            supplierCountry: record.location || 'US',
+            supplierRegion: 'North America',
+            roleOriginal: record.roleName,
             roleStandardized: record.roleName,
-            seniority: record.seniority,
+            roleCategory: 'Professional Services',
+            seniority: 'MID',
+            lineOfService: 'Professional Services',
             dailyRate: record.dailyRate, // Already converted to USD
             currency: 'USD', // Store in USD
-            skills: record.skills || [],
-            location: record.location || '',
-            startDate: record.startDate ? new Date(record.startDate) : new Date(),
-            endDate: record.endDate ? new Date(record.endDate) : null,
-            notes: record.notes || '',
-            source: 'BULK_IMPORT',
+            dailyRateUSD: record.dailyRate,
+            dailyRateCHF: record.dailyRate,
+            country: record.location || 'US',
+            region: 'North America',
+            effectiveDate: record.startDate ? new Date(record.startDate) : new Date(),
+            expiryDate: record.endDate ? new Date(record.endDate) : null,
+            source: 'CSV_UPLOAD',
+            confidence: 1.0,
+            dataQuality: 'HIGH',
           },
         });
 

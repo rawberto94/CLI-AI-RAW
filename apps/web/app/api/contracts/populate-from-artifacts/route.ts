@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getTenantIdFromRequest } from "@/lib/tenant-server";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { queueBatchRAGReindex } from "@/lib/rag/reindex-helper";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -51,12 +52,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const dryRun = body.dryRun === true; // Preview without updating
 
     // Find contracts to process
-    const whereClause: {
-      tenantId: string;
-      status: string;
-      id?: { in: string[] };
-      OR?: Array<{ [key: string]: unknown }>;
-    } = {
+    // Use Prisma.ContractWhereInput type for proper typing
+    const whereClause: any = {
       tenantId,
       status: 'COMPLETED', // Only process completed contracts
     };
@@ -249,6 +246,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         data: { tenantId },
         source: 'api:contracts/populate-from-artifacts',
       });
+
+      // Queue RAG re-indexing for all updated contracts
+      const updatedContracts = results
+        .filter(r => r.success && r.fieldsPopulated.length > 0)
+        .map(r => ({ contractId: r.contractId, tenantId }));
+      
+      if (updatedContracts.length > 0) {
+        await queueBatchRAGReindex(updatedContracts, 'populated from artifacts');
+      }
     }
     
     return NextResponse.json({

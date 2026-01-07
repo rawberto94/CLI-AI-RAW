@@ -288,24 +288,8 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Build where clause from filters
-    const where: {
-      tenantId: string;
-      contractId?: string;
-      supplierId?: string;
-      supplierName?: { contains: string; mode: 'insensitive' };
-      roleStandardized?: { contains: string; mode: 'insensitive' };
-      seniority?: string;
-      lineOfService?: string;
-      country?: string;
-      region?: string;
-      source?: string;
-      clientName?: { contains: string; mode: 'insensitive' };
-      dailyRate?: { gte?: number; lte?: number };
-      effectiveDate?: { gte?: Date; lte?: Date };
-      isBaseline?: boolean;
-      isNegotiated?: boolean;
-    } = { tenantId };
+    // Build where clause from filters - using any to avoid complex Prisma typing
+    const where: any = { tenantId };
     
     if (searchParams.get('contractId')) where.contractId = searchParams.get('contractId');
     if (searchParams.get('supplierId')) where.supplierId = searchParams.get('supplierId');

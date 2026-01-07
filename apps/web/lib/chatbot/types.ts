@@ -4,7 +4,7 @@
  */
 
 export interface DetectedIntent {
-  type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison';
+  type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison' | 'update';
   action?: 
     // Contract actions
     | 'renew' | 'generate' | 'approve' | 'create' | 'start_workflow' | 'list_by_supplier' | 'list_expiring' | 'list_by_status' | 'list_by_value' | 'count' | 'summarize' | 'create_linked' | 'link_contracts' | 'show_hierarchy' | 'find_master' 
@@ -15,7 +15,11 @@ export interface DetectedIntent {
     // Advanced AI agent actions
     | 'deep_analysis' | 'semantic_search' | 'clause_search' | 'executive_briefing' | 'status_update' | 'attention_needed' | 'find_signatories' | 'find_expiration'
     // Contract comparison actions
-    | 'compare_contracts' | 'compare_clauses' | 'compare_groups' | 'compare_suppliers' | 'side_by_side';
+    | 'compare_contracts' | 'compare_clauses' | 'compare_groups' | 'compare_suppliers' | 'side_by_side'
+    // BI-DIRECTIONAL UPDATE ACTIONS (write-back to database)
+    | 'update_expiration' | 'update_effective_date' | 'update_value' | 'update_status' 
+    | 'update_title' | 'update_supplier' | 'update_client' | 'update_category'
+    | 'confirm_action' | 'reject_action';
   entities: {
     contractName?: string;
     supplierName?: string;
@@ -74,6 +78,11 @@ export interface DetectedIntent {
       year?: string;
       category?: string;
     }>;
+    // Bi-directional update entities
+    contractId?: string;
+    fieldToUpdate?: string;
+    newValue?: string | number | Date;
+    pendingActionId?: string;
   };
   confidence: number;
 }
@@ -82,6 +91,7 @@ export interface ChatContext {
   tenantId: string;
   userId?: string;
   conversationId?: string;
+  currentContractId?: string; // For context-aware updates
   previousMessages?: Array<{
     role: 'user' | 'assistant';
     content: string;

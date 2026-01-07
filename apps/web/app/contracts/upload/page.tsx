@@ -203,7 +203,11 @@ export default function UploadPage() {
       const responseData = await uploadResponse.json()
       
       if (!uploadResponse.ok) {
-        throw new Error(responseData.error || 'Upload failed')
+        console.error('Upload validation failed:', responseData);
+        const errorMessage = responseData.details 
+          ? `${responseData.error}: ${responseData.details}` 
+          : (responseData.error || 'Upload failed');
+        throw new Error(errorMessage);
       }
 
       // Check for duplicate

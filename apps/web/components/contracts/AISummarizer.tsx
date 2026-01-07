@@ -229,129 +229,35 @@ export function AISummarizer({ contractId, contractTitle, isOpen, onClose }: AIS
         setProgress(prev => Math.min(prev + 15, 90));
       }, 400);
 
-      // Call API (mock for now)
+      // Call API
       const response = await fetch(`/api/contracts/${contractId}/summarize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          includeRisks: true,
+          includeFinancials: true,
+          includeRecommendations: true,
+        }),
       });
 
       clearInterval(progressInterval);
       setProgress(100);
 
       if (!response.ok) {
-        // Generate mock summary for demo
-        const mockSummary: ContractSummary = {
-          overview: `This is a Master Services Agreement between the client and supplier, establishing the framework for professional services to be provided over a 3-year term. The agreement covers service delivery standards, payment terms, intellectual property rights, and termination conditions.`,
-          keyPoints: [
-            'Contract value of $2.5M over 36 months',
-            'Monthly service delivery with quarterly reviews',
-            'Net-30 payment terms with early payment discounts',
-            'Automatic renewal unless 90-day notice given',
-            'Service level agreements with penalty clauses',
-            'Comprehensive IP assignment to client',
-          ],
-          parties: [
-            {
-              name: 'Client Corp',
-              role: 'Client',
-              obligations: [
-                'Timely payment of invoices',
-                'Provide necessary access and resources',
-                'Designate project manager',
-                'Review and approve deliverables within 5 business days',
-              ],
-            },
-            {
-              name: 'Supplier Inc',
-              role: 'Supplier',
-              obligations: [
-                'Deliver services per agreed specifications',
-                'Maintain insurance coverage',
-                'Provide qualified personnel',
-                'Meet SLA requirements',
-              ],
-            },
-          ],
-          financials: {
-            totalValue: 2500000,
-            currency: 'USD',
-            paymentTerms: 'Net-30 with 2% early payment discount',
-            penalties: 'Late payment interest of 1.5% per month',
-          },
-          dates: {
-            effectiveDate: '2024-01-15',
-            expirationDate: '2027-01-14',
-            renewalTerms: 'Auto-renewal for 1-year terms',
-            noticePeriod: '90 days before expiration',
-          },
-          risks: {
-            level: 'medium',
-            factors: [
-              {
-                title: 'Unlimited Liability Clause',
-                description: 'Contract does not cap liability for certain breach types',
-                severity: 'high',
-              },
-              {
-                title: 'Auto-Renewal Terms',
-                description: 'Contract automatically renews unless notice is given',
-                severity: 'medium',
-              },
-              {
-                title: 'Change Control Process',
-                description: 'Change management process may cause delays',
-                severity: 'low',
-              },
-            ],
-          },
-          obligations: [
-            {
-              party: 'Client',
-              items: [
-                'Payment within 30 days of invoice',
-                'Quarterly business reviews',
-                'Annual compliance audit',
-              ],
-            },
-            {
-              party: 'Supplier',
-              items: [
-                'Monthly status reports',
-                'Maintain 99.9% uptime SLA',
-                'Security incident response within 4 hours',
-              ],
-            },
-          ],
-          recommendations: [
-            {
-              type: 'warning',
-              title: 'Review Liability Cap',
-              description: 'Consider negotiating a cap on liability to reduce exposure',
-              priority: 'high',
-            },
-            {
-              type: 'action',
-              title: 'Set Renewal Reminder',
-              description: 'Set reminder 120 days before expiration to evaluate renewal',
-              priority: 'medium',
-            },
-            {
-              type: 'opportunity',
-              title: 'Early Payment Discount',
-              description: 'Utilize 2% early payment discount for cost savings',
-              priority: 'low',
-            },
-          ],
-        };
+        throw new Error(`Failed to generate summary: ${response.status}`);
+      }
 
-        setSummary(mockSummary);
-      } else {
-        const data = await response.json();
+      const data = await response.json();
+      
+      if (data.success && data.summary) {
         setSummary(data.summary);
+        toast.success('Summary generated successfully');
+      } else {
+        throw new Error(data.error || 'Failed to parse summary');
       }
     } catch (error) {
       console.error('Error generating summary:', error);
-      toast.error('Failed to generate summary');
+      toast.error(error instanceof Error ? error.message : 'Failed to generate summary');
     } finally {
       setLoading(false);
     }

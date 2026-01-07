@@ -24,6 +24,7 @@ import {
   ChevronUp,
   Eye,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -222,125 +223,93 @@ export function ContractComparison({
   const [showUnchanged, setShowUnchanged] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'critical' | 'financial'>('all');
+  const [diffSections, setDiffSections] = useState<DiffSection[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock diff data - in production this would come from an API
-  const diffSections: DiffSection[] = useMemo(() => [
-    {
-      id: '1',
-      title: 'Contract Terms',
-      category: 'terms',
-      changes: [
-        {
-          id: 't1',
-          field: 'Payment Terms',
-          oldValue: 'Net 30',
-          newValue: 'Net 45',
-          changeType: 'modified',
-          significance: 'major',
-        },
-        {
-          id: 't2',
-          field: 'Liability Cap',
-          oldValue: '$500,000',
-          newValue: '$1,000,000',
-          changeType: 'modified',
-          significance: 'critical',
-        },
-        {
-          id: 't3',
-          field: 'Indemnification Clause',
-          oldValue: null,
-          newValue: 'Mutual indemnification with standard exclusions',
-          changeType: 'added',
-          significance: 'major',
-        },
-      ],
-    },
-    {
-      id: '2',
-      title: 'Financial Terms',
-      category: 'financial',
-      changes: [
-        {
-          id: 'f1',
-          field: 'Total Contract Value',
-          oldValue: '$150,000',
-          newValue: '$175,000',
-          changeType: 'modified',
-          significance: 'critical',
-        },
-        {
-          id: 'f2',
-          field: 'Annual Increase',
-          oldValue: '3%',
-          newValue: '5%',
-          changeType: 'modified',
-          significance: 'major',
-        },
-        {
-          id: 'f3',
-          field: 'Early Payment Discount',
-          oldValue: '2%',
-          newValue: '2%',
-          changeType: 'unchanged',
-          significance: 'info',
-        },
-      ],
-    },
-    {
-      id: '3',
-      title: 'Key Dates',
-      category: 'dates',
-      changes: [
-        {
-          id: 'd1',
-          field: 'Contract Start Date',
-          oldValue: 'Jan 1, 2025',
-          newValue: 'Feb 1, 2025',
-          changeType: 'modified',
-          significance: 'minor',
-        },
-        {
-          id: 'd2',
-          field: 'Renewal Notice Period',
-          oldValue: '60 days',
-          newValue: '90 days',
-          changeType: 'modified',
-          significance: 'major',
-        },
-      ],
-    },
-    {
-      id: '4',
-      title: 'Parties',
-      category: 'parties',
-      changes: [
-        {
-          id: 'p1',
-          field: 'Primary Contact',
-          oldValue: 'John Smith',
-          newValue: 'Jane Doe',
-          changeType: 'modified',
-          significance: 'minor',
-        },
-      ],
-    },
-    {
-      id: '5',
-      title: 'Compliance',
-      category: 'compliance',
-      changes: [
-        {
-          id: 'c1',
-          field: 'GDPR Compliance',
-          oldValue: null,
-          newValue: 'Full GDPR compliance with DPA addendum',
-          changeType: 'added',
-          significance: 'critical',
-        },
-      ],
-    },
-  ], []);
+  // Fetch comparison data from API
+  React.useEffect(() => {
+    if (!isOpen || !leftVersion || !rightVersion || leftVersion === rightVersion) {
+      return;
+    }
+
+    const fetchComparison = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/contracts/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractId1: leftVersion,
+            contractId2: rightVersion,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to compare: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Transform API response to DiffSection format
+        const sections: DiffSection[] = [];
+        
+        if (data.differences) {
+          // Map API differences to our section format
+          const categoryMap: Record<string, DiffSection['category']> = {
+            'terms': 'terms',
+            'financial': 'financial',
+            'dates': 'dates',
+            'parties': 'parties',
+            'compliance': 'compliance',
+          };
+
+          Object.entries(data.differences).forEach(([category, diffs]: [string, any]) => {
+            if (Array.isArray(diffs) && diffs.length > 0) {
+              sections.push({
+                id: category,
+                title: category.charAt(0).toUpperCase() + category.slice(1),
+                category: categoryMap[category] || 'general',
+                changes: diffs.map((diff: any, idx: number) => ({
+                  id: `${category}-${idx}`,
+                  field: diff.field || diff.key || 'Unknown',
+                  oldValue: diff.oldValue ?? diff.value1 ?? null,
+                  newValue: diff.newValue ?? diff.value2 ?? null,
+                  changeType: determineChangeType(diff.oldValue ?? diff.value1, diff.newValue ?? diff.value2),
+                  significance: determineSignificance(category, diff),
+                })),
+              });
+            }
+          });
+        }
+
+        setDiffSections(sections);
+      } catch (err) {
+        console.error('Error fetching comparison:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load comparison');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchComparison();
+  }, [isOpen, leftVersion, rightVersion]);
+
+  // Helper to determine change type
+  const determineChangeType = (oldVal: any, newVal: any): DiffChange['changeType'] => {
+    if (oldVal === null || oldVal === undefined) return 'added';
+    if (newVal === null || newVal === undefined) return 'removed';
+    if (oldVal === newVal) return 'unchanged';
+    return 'modified';
+  };
+
+  // Helper to determine significance
+  const determineSignificance = (category: string, diff: any): DiffChange['significance'] => {
+    if (category === 'financial' || diff.field?.toLowerCase().includes('liability')) return 'critical';
+    if (category === 'terms' || category === 'compliance') return 'major';
+    if (category === 'dates') return 'minor';
+    return 'info';
+  };
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -510,51 +479,80 @@ export function ContractComparison({
             </div>
 
             <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-6">
-                <AnimatePresence mode="popLayout">
-                  {filteredSections.map((section) => (
-                    <motion.div
-                      key={section.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                    >
-                      <Card className="shadow-sm border-slate-200">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base flex items-center gap-2">
-                            <div className={cn("p-1.5 rounded-lg", categoryColors[section.category])}>
-                              {categoryIcons[section.category]}
-                            </div>
-                            {section.title}
-                            <Badge variant="outline" className="ml-auto">
-                              {section.changes.filter(c => c.changeType !== 'unchanged' || showUnchanged).length} changes
-                            </Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {section.changes
-                            .filter(c => c.changeType !== 'unchanged' || showUnchanged)
-                            .map((change) => (
-                              <DiffLine
-                                key={change.id}
-                                change={change}
-                                showDetails={true}
-                              />
-                            ))}
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+              {/* Loading State */}
+              {isLoading && (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mb-4" />
+                  <p className="text-sm text-slate-600">Analyzing differences...</p>
+                </div>
+              )}
 
-                {filteredSections.length === 0 && (
-                  <div className="text-center py-12 text-slate-500">
-                    <GitCompare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No changes found in this view</p>
-                  </div>
-                )}
-              </div>
+              {/* Error State */}
+              {error && !isLoading && (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <AlertTriangle className="w-12 h-12 text-amber-600 mb-4" />
+                  <p className="text-sm text-slate-600 mb-4">{error}</p>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setError(null);
+                    // Trigger refetch by toggling versions
+                    const temp = leftVersion;
+                    setLeftVersion(rightVersion);
+                    setRightVersion(temp);
+                  }}>
+                    <RefreshCw className="w-4 h-4 mr-1.5" />
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {/* Content */}
+              {!isLoading && !error && (
+                <div className="space-y-6">
+                  <AnimatePresence mode="popLayout">
+                    {filteredSections.map((section) => (
+                      <motion.div
+                        key={section.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                      >
+                        <Card className="shadow-sm border-slate-200">
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <div className={cn("p-1.5 rounded-lg", categoryColors[section.category])}>
+                                {categoryIcons[section.category]}
+                              </div>
+                              {section.title}
+                              <Badge variant="outline" className="ml-auto">
+                                {section.changes.filter(c => c.changeType !== 'unchanged' || showUnchanged).length} changes
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {section.changes
+                              .filter(c => c.changeType !== 'unchanged' || showUnchanged)
+                              .map((change) => (
+                                <DiffLine
+                                  key={change.id}
+                                  change={change}
+                                  showDetails={true}
+                                />
+                              ))}
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+
+                  {filteredSections.length === 0 && (
+                    <div className="text-center py-12 text-slate-500">
+                      <GitCompare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No changes found in this view</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </ScrollArea>
           </Tabs>
         </div>

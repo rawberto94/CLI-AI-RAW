@@ -129,6 +129,10 @@ export interface AgentOrchestrationJobData {
   requestId?: string;
   /** Loop counter for iterative orchestration */
   iteration?: number;
+  /** Optional user query for goal-oriented reasoning */
+  userQuery?: string;
+  /** Optional user role for context-aware processing */
+  userRole?: string;
 }
 
 /**

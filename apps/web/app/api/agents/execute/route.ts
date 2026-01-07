@@ -32,7 +32,11 @@ export async function POST(request: NextRequest) {
       contractId,
       tenantId,
       context: context || {},
-      triggeredBy: 'manual_api',
+      metadata: {
+        triggeredBy: 'user',
+        priority: 'medium',
+        timestamp: new Date(),
+      },
     });
 
     return NextResponse.json({

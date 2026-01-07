@@ -17,7 +17,7 @@ const logger = createLogger('data-validation-service');
 // TYPES AND INTERFACES
 // =========================================================================
 
-export interface ValidationResult<T = any> {
+export interface DataValidationResult<T = any> {
   success: boolean;
   data?: T;
   errors?: ValidationError[];

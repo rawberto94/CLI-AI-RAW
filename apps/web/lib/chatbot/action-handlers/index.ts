@@ -18,6 +18,7 @@ import { handleAnalyticsActions } from './analytics-actions';
 import { handleTaxonomyActions } from './taxonomy-actions';
 import { handleComparisonActions } from './comparison-actions';
 import { handleWorkflowActions } from './workflow-actions';
+import { handleUpdateActions, detectUpdateIntent, type UpdateIntent } from './update-actions';
 
 const actionHandlers: Record<string, ActionHandler> = {
   // List actions
@@ -35,6 +36,18 @@ const actionHandlers: Record<string, ActionHandler> = {
   create_linked: handleContractActions,
   link_contracts: handleContractActions,
   show_hierarchy: handleContractActions,
+
+  // Update actions (bi-directional write-back)
+  update_expiration: handleUpdateActions as ActionHandler,
+  update_effective_date: handleUpdateActions as ActionHandler,
+  update_value: handleUpdateActions as ActionHandler,
+  update_status: handleUpdateActions as ActionHandler,
+  update_title: handleUpdateActions as ActionHandler,
+  update_supplier: handleUpdateActions as ActionHandler,
+  update_client: handleUpdateActions as ActionHandler,
+  update_category: handleUpdateActions as ActionHandler,
+  confirm_action: handleUpdateActions as ActionHandler,
+  reject_action: handleUpdateActions as ActionHandler,
 
   // Analytics actions
   count: handleAnalyticsActions,
@@ -85,3 +98,6 @@ export async function executeAction(
     };
   }
 }
+
+// Export update intent detection for use in chat route
+export { detectUpdateIntent, type UpdateIntent };

@@ -94,6 +94,25 @@ export async function POST(request: NextRequest) {
 
         for (const rate of rates) {
           try {
+            // Map seniority to valid enum value
+            const seniorityMap: Record<string, 'JUNIOR' | 'MID' | 'SENIOR' | 'PRINCIPAL' | 'PARTNER'> = {
+              'JUNIOR': 'JUNIOR',
+              'MID': 'MID',
+              'SENIOR': 'SENIOR',
+              'PRINCIPAL': 'PRINCIPAL',
+              'PARTNER': 'PARTNER',
+            };
+            const seniority = seniorityMap[rate.seniority?.toUpperCase()] || 'MID';
+            
+            // Map supplier tier to valid enum value
+            const tierMap: Record<string, 'BIG_4' | 'TIER_2' | 'BOUTIQUE' | 'OFFSHORE'> = {
+              'BIG_4': 'BIG_4',
+              'TIER_2': 'TIER_2',
+              'BOUTIQUE': 'BOUTIQUE',
+              'OFFSHORE': 'OFFSHORE',
+            };
+            const supplierTier = tierMap[rate.supplierTier?.toUpperCase()] || 'TIER_2';
+            
             // Create rate card entry
             const rateCardEntry = await prisma.rateCardEntry.create({
               data: {
@@ -102,7 +121,7 @@ export async function POST(request: NextRequest) {
                 roleOriginal: rate.roleOriginal || rate.role || rate.position,
                 roleStandardized: rate.roleStandardized || rate.role || rate.position,
                 roleCategory: rate.roleCategory || rate.category || 'Professional Services',
-                seniority: rate.seniority || 'MID',
+                seniority,
                 dailyRate: rate.dailyRate || rate.rate || 0,
                 dailyRateUSD: rate.dailyRateUSD || rate.dailyRate || rate.rate || 0,
                 dailyRateCHF: rate.dailyRateCHF || rate.dailyRateUSD || rate.dailyRate || rate.rate || 0,
@@ -112,7 +131,7 @@ export async function POST(request: NextRequest) {
                 lineOfService: rate.lineOfService || rate.category || 'Professional Services',
                 supplierId: contract.supplierId || 'unknown',
                 supplierName: contract.supplierName || 'Unknown Supplier',
-                supplierTier: rate.supplierTier || 'TIER_2',
+                supplierTier,
                 supplierCountry: rate.supplierCountry || 'United States',
                 supplierRegion: rate.supplierRegion || 'North America',
                 effectiveDate: rate.effectiveDate 

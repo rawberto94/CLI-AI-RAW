@@ -59,9 +59,8 @@ async function generateSupplierReport(
   fields: string[],
   filters: Record<string, any>
 ): Promise<any[]> {
-  const suppliers = await db.supplier.findMany({
+  const suppliers = await db.rateCardSupplier.findMany({
     include: {
-      contracts: true,
       rateCards: true,
     },
   });
@@ -72,12 +71,10 @@ async function generateSupplierReport(
     if (fields.includes("supplier_name")) result.supplierName = supplier.name;
     if (fields.includes("supplier_count")) result.supplierCount = 1;
     if (fields.includes("active_contracts"))
-      result.activeContracts = supplier.contracts.filter(
-        (c: any) => c.status === "active"
-      ).length;
+      result.activeContracts = supplier.totalContracts;
     if (fields.includes("total_spend"))
-      result.totalSpend = supplier.contracts.reduce(
-        (sum: number, c: any) => sum + (c.value || 0),
+      result.totalSpend = supplier.rateCards.reduce(
+        (sum: number, rc: any) => sum + Number(rc.dailyRate || 0),
         0
       );
     if (fields.includes("avg_performance"))
@@ -91,7 +88,7 @@ async function generateRateCardReport(
   fields: string[],
   filters: Record<string, any>
 ): Promise<any[]> {
-  const rateCards = await db.rateCard.findMany({
+  const rateCards = await db.rateCardEntry.findMany({
     include: {
       supplier: true,
     },
@@ -100,12 +97,12 @@ async function generateRateCardReport(
   return rateCards.map((card) => {
     const result: any = {};
 
-    if (fields.includes("role_name")) result.roleName = card.roleName;
+    if (fields.includes("role_name")) result.roleName = card.roleOriginal;
     if (fields.includes("seniority")) result.seniority = card.seniority;
     if (fields.includes("daily_rate"))
-      result.dailyRate = card.dailyRate.toNumber();
+      result.dailyRate = Number(card.dailyRate);
     if (fields.includes("avg_rate"))
-      result.avgRate = card.dailyRate.toNumber();
+      result.avgRate = Number(card.dailyRate);
     if (fields.includes("rate_count")) result.rateCount = 1;
 
     return result;
@@ -125,9 +122,9 @@ async function generateContractReport(
   return contracts.map((contract) => {
     const result: any = {};
 
-    if (fields.includes("contract_name")) result.contractName = contract.name;
+    if (fields.includes("contract_name")) result.contractName = contract.contractTitle || contract.fileName;
     if (fields.includes("contract_value"))
-      result.contractValue = contract.value?.toNumber() || 0;
+      result.contractValue = contract.totalValue?.toNumber() || 0;
     if (fields.includes("start_date"))
       result.startDate = contract.startDate?.toISOString();
     if (fields.includes("end_date"))
@@ -149,11 +146,7 @@ async function generatePerformanceReport(
   fields: string[],
   filters: Record<string, any>
 ): Promise<any[]> {
-  const suppliers = await db.supplier.findMany({
-    include: {
-      contracts: true,
-    },
-  });
+  const suppliers = await db.rateCardSupplier.findMany();
 
   return suppliers.map((supplier) => {
     const result: any = {};
@@ -191,7 +184,7 @@ async function generateFinancialReport(
     if (!contract.startDate) return;
 
     const month = contract.startDate.toISOString().substring(0, 7);
-    const value = contract.value?.toNumber() || 0;
+    const value = contract.totalValue?.toNumber() || 0;
 
     if (!monthlyData.has(month)) {
       monthlyData.set(month, {

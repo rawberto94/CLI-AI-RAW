@@ -25,22 +25,36 @@ export class ContractHealthMonitor extends BaseAgent {
 
     const healthReport = await this.assessHealth(contract);
 
+    // Map priority from health recommendation to agent recommendation format
+    const mapPriorityToRecommendation = (p: string): 'low' | 'medium' | 'high' | 'critical' => {
+      if (p === 'urgent') return 'critical';
+      if (p === 'high' || p === 'medium' || p === 'low' || p === 'critical') return p;
+      return 'medium';
+    };
+
+    // Map priority from health recommendation to agent action format
+    const mapPriorityToAction = (p: string): 'low' | 'medium' | 'high' | 'urgent' => {
+      if (p === 'critical') return 'urgent';
+      if (p === 'high' || p === 'medium' || p === 'low' || p === 'urgent') return p;
+      return 'medium';
+    };
+
     // Convert to recommendations
     const recommendations: AgentRecommendation[] = healthReport.recommendations.map((rec, idx) => ({
       id: `health-rec-${idx}-${Date.now()}`,
       title: rec.action,
       description: rec.description,
       category: this.mapHealthToCategory(healthReport),
-      priority: rec.priority,
+      priority: mapPriorityToRecommendation(rec.priority),
       confidence: 0.80,
       potentialValue: this.estimateImpactValue(rec),
       effort: this.mapAutomatableToEffort(rec.automatable),
       timeframe: rec.estimatedImpact || 'Immediate',
       actions: rec.automatable ? [{
         id: `auto-action-${idx}`,
-        type: 'validate',
+        type: 'validate' as const,
         description: rec.action,
-        priority: rec.priority,
+        priority: mapPriorityToAction(rec.priority),
         automated: true,
         targetEntity: {
           type: 'contract',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
 import { editableArtifactService } from 'data-orchestration/services';
 import { dbAdaptor } from 'data-orchestration';
+import { queueRAGReindex } from '@/lib/rag/reindex-helper';
 
 // Improve an artifact using a user-supplied refinement prompt
 export async function POST(
@@ -65,6 +66,13 @@ export async function POST(
       userId,
       `Improved via user prompt: ${userPrompt}`
     );
+
+    // Queue RAG re-indexing when artifact is improved
+    await queueRAGReindex({
+      contractId: params.id,
+      tenantId,
+      reason: `artifact ${artifact.type} improved`,
+    });
 
     return NextResponse.json({ success: true, artifactId: artifact.id, validation });
   } catch (error) {

@@ -8,7 +8,7 @@
  * - Validates data completeness and structure
  */
 
-export interface ValidationResult {
+export interface ArtifactValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];

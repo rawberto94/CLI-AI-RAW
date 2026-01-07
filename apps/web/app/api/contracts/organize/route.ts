@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
 
   try {
-    const tenantId = getApiTenantId(request);
+    const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
       return NextResponse.json(
