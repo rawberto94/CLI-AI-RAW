@@ -2,8 +2,8 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST, before any other imports that need them
 dotenv.config();
 
-// Import Job type but use 'any' for actual job params due to compatibility
-import { Job } from 'bullmq';
+// Use any for Job type due to cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { ArtifactType } from 'clients-db';

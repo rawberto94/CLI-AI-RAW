@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { BaselineManagementService } from 'data-orchestration';
+import { baselineManagementService } from 'data-orchestration';
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       categoryL2,
     } = body;
 
-    const service = new BaselineManagementService(prisma);
+    const service = new baselineManagementService(prisma);
     const result = await service.bulkCompareAgainstBaselines(tenantId, {
       minVariancePercentage,
       baselineTypes,

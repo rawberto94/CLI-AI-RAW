@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { SupplierBenchmarkService } from 'data-orchestration/services';
+import { supplierBenchmarkService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const { searchParams } = new URL(request.url);
     const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
 
-    const benchmarkService = new SupplierBenchmarkService(prisma);
+    const benchmarkService = new supplierBenchmarkService(prisma);
 
     // Try to get latest benchmark first
     let scorecard = await benchmarkService.getLatestBenchmark(
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     const body = await request.json();
     const periodMonths = body.periodMonths || 12;
 
-    const benchmarkService = new SupplierBenchmarkService(prisma);
+    const benchmarkService = new supplierBenchmarkService(prisma);
 
     // Force recalculation
     const scorecard = await benchmarkService.calculateSupplierBenchmark({

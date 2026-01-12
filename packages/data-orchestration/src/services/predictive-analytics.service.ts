@@ -228,7 +228,7 @@ export class PredictiveAnalyticsService {
       select: {
         id: true,
         roleStandardized: true,
-        rateAmount: true,
+        dailyRateUSD: true,
         updatedAt: true,
       },
     });
@@ -308,7 +308,7 @@ export class PredictiveAnalyticsService {
     const rateCard = await this.prisma.rateCardEntry.findUnique({
       where: { id: rateCardEntryId },
       select: {
-        rateAmount: true,
+        dailyRateUSD: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -321,7 +321,7 @@ export class PredictiveAnalyticsService {
     // TODO: Replace with actual historical data query when available
     // For now, generate synthetic historical data based on current rate
     const historicalData: Array<{ date: Date; rate: number }> = [];
-    const currentRate = parseFloat(rateCard.rateAmount.toString());
+    const currentRate = parseFloat(rateCard.dailyRateUSD?.toString() || '0');
     
     for (let i = months; i >= 0; i--) {
       const date = subMonths(new Date(), i);
@@ -448,7 +448,8 @@ export class PredictiveAnalyticsService {
     data: Array<{ date: Date; rate: number }>
   ): 'low' | 'medium' | 'high' {
     const currentRate = data[data.length - 1].rate;
-    const projectedRate = trend.intercept + (trend.slope * (data.length + 6));
+    const trendIntercept = data[0]?.rate || currentRate; // Calculate intercept from first data point
+    const projectedRate = trendIntercept + (trend.slope * (data.length + 6));
     const sixMonthChange = ((projectedRate - currentRate) / currentRate) * 100;
 
     if (sixMonthChange > 15) return 'high';

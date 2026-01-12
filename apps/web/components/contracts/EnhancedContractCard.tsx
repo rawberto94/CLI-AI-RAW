@@ -685,6 +685,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -4, scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
+      data-testid="contract-card"
       className={cn(
         "group relative bg-white rounded-xl border shadow-sm transition-all duration-300 overflow-hidden",
         isSelected && "ring-2 ring-primary border-primary shadow-lg shadow-primary/10",

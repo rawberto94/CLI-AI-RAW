@@ -298,7 +298,7 @@ class ConversationMemoryService {
   async needsClarification(
     conversationId: string,
     userMessage: string,
-    detectedEntities: unknown[]
+    detectedEntities: Array<{ type: string; confidence: number; value: string }>
   ): Promise<{ needs: boolean; question?: string; options?: unknown[] }> {
     // Check if entities are ambiguous
     const ambiguousSupplier = detectedEntities.find(

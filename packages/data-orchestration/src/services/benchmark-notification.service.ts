@@ -210,7 +210,7 @@ export class BenchmarkNotificationService {
     const rateCard = await this.prisma.rateCardEntry.findFirst({
       where: {
         roleStandardized: marketShift.roleStandardized,
-        seniority: marketShift.seniority,
+        seniority: marketShift.seniority as any,
         country: marketShift.country,
       },
       select: { tenantId: true },

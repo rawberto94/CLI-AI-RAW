@@ -107,6 +107,9 @@ export async function GET(
         fileName: true,
         contractTitle: true,
         contractType: true,
+        contractCategoryId: true,
+        categoryL1: true,
+        categoryL2: true,
         status: true,
         effectiveDate: true,
         expirationDate: true,
@@ -143,6 +146,26 @@ export async function GET(
     // Parse aiMetadata as enterprise schema
     const aiMetadata = (contract.aiMetadata as EnterpriseMetadata) || {};
     
+    // Normalize external_parties to handle both legacy (company_name) and new (legalName) formats
+    let normalizedParties: Array<{ legalName: string; role: string; registeredAddress?: string }> = [];
+    if (aiMetadata.external_parties && Array.isArray(aiMetadata.external_parties)) {
+      normalizedParties = aiMetadata.external_parties.map((party: any) => ({
+        legalName: party.legalName || party.company_name || '',
+        role: party.role || 'Party',
+        registeredAddress: party.registeredAddress || party.contact_info || '',
+      })).filter((p: any) => p.legalName);
+    }
+    
+    // If no parties from aiMetadata, try legacy fields
+    if (normalizedParties.length === 0) {
+      if (contract.clientName) {
+        normalizedParties.push({ legalName: contract.clientName, role: 'Client' });
+      }
+      if (contract.supplierName) {
+        normalizedParties.push({ legalName: contract.supplierName, role: 'Service Provider' });
+      }
+    }
+    
     // Build enterprise metadata response
     const enterpriseMetadata: EnterpriseMetadata = {
       // Identification
@@ -150,11 +173,8 @@ export async function GET(
       document_title: aiMetadata.document_title || contract.contractTitle || contract.fileName || '',
       contract_short_description: aiMetadata.contract_short_description || contract.description || '',
       
-      // Parties - from aiMetadata or legacy fields
-      external_parties: aiMetadata.external_parties || [
-        ...(contract.clientName ? [{ legalName: contract.clientName, role: 'Client' }] : []),
-        ...(contract.supplierName ? [{ legalName: contract.supplierName, role: 'Supplier' }] : []),
-      ],
+      // Parties - use normalized parties
+      external_parties: normalizedParties,
       
       // Commercials
       tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0),
@@ -209,11 +229,80 @@ export async function GET(
       });
     }
 
+    // Get taxonomy category details if assigned
+    let taxonomyClassification: {
+      categoryL1: { id: string; name: string; path: string; color?: string } | null;
+      categoryL2: { id: string; name: string; path: string; color?: string } | null;
+      contractType: string | null;
+      classifiedAt: string | null;
+      confidence: number | null;
+    } | null = null;
+
+    const contractMeta = (contract.metadata as any) || {};
+    const categorization = contractMeta._categorization || contractMeta._pendingCategorization;
+
+    if (contract.contractCategoryId) {
+      // Fetch the assigned category with parent
+      const assignedCategory = await prisma.taxonomyCategory.findUnique({
+        where: { id: contract.contractCategoryId },
+        select: {
+          id: true,
+          name: true,
+          path: true,
+          color: true,
+          level: true,
+          parentId: true,
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              path: true,
+              color: true,
+            }
+          }
+        }
+      });
+
+      if (assignedCategory) {
+        const isL2 = assignedCategory.level === 1;
+        taxonomyClassification = {
+          categoryL1: isL2 && assignedCategory.parent 
+            ? { id: assignedCategory.parent.id, name: assignedCategory.parent.name, path: assignedCategory.parent.path, color: assignedCategory.parent.color }
+            : !isL2 
+              ? { id: assignedCategory.id, name: assignedCategory.name, path: assignedCategory.path, color: assignedCategory.color }
+              : null,
+          categoryL2: isL2 
+            ? { id: assignedCategory.id, name: assignedCategory.name, path: assignedCategory.path, color: assignedCategory.color }
+            : null,
+          contractType: contract.contractType,
+          classifiedAt: categorization?.categorizedAt || null,
+          confidence: categorization?.overallConfidence || null,
+        };
+      }
+    } else if (categorization?.taxonomy || categorization?.suggestedTaxonomy) {
+      // Use data from metadata if not yet applied
+      const taxData = categorization.taxonomy || categorization.suggestedTaxonomy;
+      taxonomyClassification = {
+        categoryL1: taxData.categoryL1 || null,
+        categoryL2: taxData.categoryL2 || null,
+        contractType: categorization.contractType?.value || contract.contractType,
+        classifiedAt: categorization.categorizedAt || null,
+        confidence: categorization.overallConfidence || null,
+      };
+    }
+
     return NextResponse.json({
       success: true,
       metadata: {
         ...enterpriseMetadata,
         _field_confidence: confidenceMap
+      },
+      classification: {
+        contractType: contract.contractType,
+        categoryL1: contract.categoryL1,
+        categoryL2: contract.categoryL2,
+        contractCategoryId: contract.contractCategoryId,
+        taxonomy: taxonomyClassification,
       },
       data: {
         ...contract,

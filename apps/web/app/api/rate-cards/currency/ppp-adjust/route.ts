@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PPPAdjustmentService } from 'data-orchestration/services';
-
-const pppAdjustmentService = new PPPAdjustmentService();
+import { pppAdjustmentService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {

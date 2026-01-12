@@ -23,6 +23,9 @@ export interface DataValidationResult<T = any> {
   errors?: ValidationError[];
 }
 
+// Type alias for backwards compatibility
+type ValidationResult<T = any> = DataValidationResult<T>;
+
 export interface ValidationError {
   field: string;
   message: string;

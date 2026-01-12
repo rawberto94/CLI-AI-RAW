@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { CompetitiveIntelligenceService } from 'data-orchestration/services';
+import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 
 const competitiveIntelligenceService = new CompetitiveIntelligenceService(prisma);

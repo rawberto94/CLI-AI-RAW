@@ -178,6 +178,7 @@ export const SearchFiltersBar = memo(function SearchFiltersBar({
           <Input
             placeholder="Search contracts..."
             value={searchQuery}
+            data-testid="contract-search"
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9 h-10"
             data-testid="contract-search"

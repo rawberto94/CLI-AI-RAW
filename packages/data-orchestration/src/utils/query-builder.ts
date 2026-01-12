@@ -93,8 +93,8 @@ export class QueryBuilder {
   /**
    * Build WHERE clause from filters
    */
-  private static buildWhereClause(filters: Record<string, unknown>): Record<string, unknown> {
-    const where: Record<string, unknown> = {};
+  private static buildWhereClause(filters: Record<string, unknown>): Record<string, any> {
+    const where: Record<string, any> = {};
 
     Object.entries(filters).forEach(([key, value]) => {
       if (value === null || value === undefined) {
@@ -103,31 +103,32 @@ export class QueryBuilder {
 
       // Handle special operators
       if (typeof value === 'object' && !Array.isArray(value)) {
+        const objValue = value as Record<string, unknown>;
         // Range queries: { min: 100, max: 200 }
-        if ('min' in value || 'max' in value) {
+        if ('min' in objValue || 'max' in objValue) {
           where[key] = {};
-          if ('min' in value) where[key].gte = value.min;
-          if ('max' in value) where[key].lte = value.max;
+          if ('min' in objValue) where[key].gte = objValue.min;
+          if ('max' in objValue) where[key].lte = objValue.max;
         }
         // Contains query: { contains: 'text' }
-        else if ('contains' in value) {
-          where[key] = { contains: value.contains, mode: 'insensitive' };
+        else if ('contains' in objValue) {
+          where[key] = { contains: objValue.contains, mode: 'insensitive' };
         }
         // In query: { in: ['value1', 'value2'] }
-        else if ('in' in value) {
-          where[key] = { in: value.in };
+        else if ('in' in objValue) {
+          where[key] = { in: objValue.in };
         }
         // Not query: { not: 'value' }
-        else if ('not' in value) {
-          where[key] = { not: value.not };
+        else if ('not' in objValue) {
+          where[key] = { not: objValue.not };
         }
         // Greater than: { gt: 100 }
-        else if ('gt' in value) {
-          where[key] = { gt: value.gt };
+        else if ('gt' in objValue) {
+          where[key] = { gt: objValue.gt };
         }
         // Less than: { lt: 100 }
-        else if ('lt' in value) {
-          where[key] = { lt: value.lt };
+        else if ('lt' in objValue) {
+          where[key] = { lt: objValue.lt };
         }
       }
       // Handle array (IN query)
@@ -160,13 +161,13 @@ export class QueryBuilder {
   /**
    * Build SELECT clause for field selection
    */
-  private static buildSelectClause(fields: string[]): Record<string, boolean> {
-    const select: Record<string, boolean> = {};
+  private static buildSelectClause(fields: string[]): Record<string, any> {
+    const select: Record<string, any> = {};
     fields.forEach((field) => {
       // Handle nested fields: "user.name" -> { user: { select: { name: true } } }
       if (field.includes('.')) {
         const parts = field.split('.');
-        let current = select;
+        let current: any = select;
         for (let i = 0; i < parts.length - 1; i++) {
           if (!current[parts[i]]) {
             current[parts[i]] = { select: {} };
@@ -196,7 +197,7 @@ export class QueryBuilder {
     // Execute query
     const [data, total] = await Promise.all([
       model.findMany(query),
-      model.count({ where: query.where }),
+      model.count({ where: query.where as Record<string, unknown> }),
     ]);
 
     // Calculate pagination metadata

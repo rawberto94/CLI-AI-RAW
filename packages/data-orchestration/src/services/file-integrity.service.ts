@@ -10,6 +10,7 @@ import { createReadStream, statSync, existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { createLogger } from '../utils/logger';
 import { dbAdaptor } from '../dal/database.adaptor';
+// ValidationResult defined locally as FileIntegrityValidationResult alias
 
 const logger = createLogger('file-integrity-service');
 
@@ -30,6 +31,9 @@ export interface FileIntegrityValidationResult {
   errors: string[];
   warnings: string[];
 }
+
+// Type alias for backwards compatibility
+type ValidationResult = FileIntegrityValidationResult;
 
 export interface ChecksumResult {
   checksum: string;

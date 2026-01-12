@@ -44,7 +44,8 @@ export interface MetricsSnapshot {
  * Metrics Collector for Workers
  */
 class MetricsCollector {
-  private queues: Map<string, Queue> = new Map();
+  // Using any to avoid BullMQ type issues with different versions
+  private queues: Map<string, any> = new Map();
   private workers: Map<string, any> = new Map();
   private metricsHistory: MetricsSnapshot[] = [];
   private maxHistorySize = 100;
@@ -52,7 +53,7 @@ class MetricsCollector {
   /**
    * Register a queue for metrics collection
    */
-  registerQueue(name: string, queue: Queue): void {
+  registerQueue(name: string, queue: any): void {
     this.queues.set(name, queue);
     logger.info({ queueName: name }, 'Queue registered for metrics');
   }

@@ -20,7 +20,7 @@ export interface QueryOptimizationResult {
 }
 
 export class PerformanceOptimizationService {
-  private redis: Redis | null = null;
+  private redis: InstanceType<typeof Redis> | null = null;
   private cacheHits = 0;
   private cacheMisses = 0;
 
@@ -114,7 +114,7 @@ export class PerformanceOptimizationService {
       where: {
         tenantId: criteria.tenantId,
         roleStandardized: criteria.roleStandardized,
-        seniority: criteria.seniority,
+        seniority: criteria.seniority as any,
         country: criteria.country,
       },
       select: {
@@ -145,7 +145,7 @@ export class PerformanceOptimizationService {
       include: {
         supplier: true,
         benchmarkSnapshots: {
-          orderBy: { calculatedAt: 'desc' },
+          orderBy: { snapshotDate: 'desc' },
           take: 1,
         },
       },
@@ -262,7 +262,7 @@ export class PerformanceOptimizationService {
    */
   async optimizeConnectionPool() {
     // Check current connection pool status
-    const metrics = await this.prisma.$metrics.json();
+    const metrics = await (this.prisma as any).$metrics?.json() || { counters: [] };
     
     return {
       poolSize: metrics.counters.find(c => c.key === 'prisma_pool_connections_open')?.value || 0,

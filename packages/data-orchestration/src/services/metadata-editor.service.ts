@@ -48,6 +48,9 @@ export interface MetadataValidationResult {
   warnings: Array<{ field: string; message: string }>;
 }
 
+// Type alias for backwards compatibility
+type ValidationResult = MetadataValidationResult;
+
 // =========================================================================
 // METADATA EDITOR SERVICE
 // =========================================================================
@@ -354,17 +357,15 @@ export class MetadataEditorService {
   ): Promise<string[]> {
     try {
       // Get all tags for tenant
-      const tagsResult = await taxonomyService.getTags(tenantId);
-      if (!tagsResult.success || !tagsResult.data) {
+      const tags = await taxonomyService.getTags(tenantId);
+      if (!Array.isArray(tags) || tags.length === 0) {
         return [];
       }
 
-      // Filter by query
-      const filtered = tagsResult.data
-        .filter(tag => tag.name.toLowerCase().includes(query.toLowerCase()))
-        .sort((a, b) => b.usage.contractCount - a.usage.contractCount)
-        .slice(0, limit)
-        .map(tag => tag.name);
+      // Filter by query - tags is a string array
+      const filtered = tags
+        .filter(tag => tag.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, limit);
 
       return filtered;
     } catch (error) {
@@ -487,10 +488,10 @@ export class MetadataEditorService {
 
       // Validate custom fields against schema
       if (request.customFields) {
-        const fieldsResult = await taxonomyService.getMetadataFields(request.tenantId);
-        if (fieldsResult.success && fieldsResult.data) {
+        const fieldsResult = await taxonomyService.getMetadataFields();
+        if (Array.isArray(fieldsResult)) {
           for (const [fieldName, value] of Object.entries(request.customFields)) {
-            const fieldDef = fieldsResult.data.find(f => f.name === fieldName);
+            const fieldDef = fieldsResult.find((f: any) => f.name === fieldName);
             if (fieldDef) {
               const fieldValidation = this.validateFieldValue(fieldDef, value);
               errors.push(...fieldValidation.errors);

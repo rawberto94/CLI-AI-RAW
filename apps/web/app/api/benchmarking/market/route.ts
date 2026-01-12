@@ -5,14 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getErrorMessage } from '@/lib/types/common';
 
 type BenchmarkCohortCriteria = Parameters<
   (typeof benchmarkingEngine)['calculateMarketIntelligence']
 >[0];
 
-const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
+const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
 /**
  * GET /api/benchmarking/market

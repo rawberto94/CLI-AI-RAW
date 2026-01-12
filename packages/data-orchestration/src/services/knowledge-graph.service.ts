@@ -130,9 +130,9 @@ Return JSON array with format:
         where: { id: contractId },
         data: {
           metadata: {
-            entities: entities,
+            entities: entities as any,
             extractedAt: new Date().toISOString(),
-          },
+          } as any,
         },
       });
     } catch (error) {

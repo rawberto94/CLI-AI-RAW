@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { BaselineManagementService } from 'data-orchestration/services';
+import { baselineManagementService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {
     // Mock user for now - in production, get from session
     const mockTenantId = 'tenant-1';
 
-    const baselineService = new BaselineManagementService(prisma);
+    const baselineService = new baselineManagementService(prisma);
 
     // Get baseline statistics
     const stats = await baselineService.getBaselineStatistics(mockTenantId);

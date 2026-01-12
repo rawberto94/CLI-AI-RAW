@@ -15,6 +15,8 @@ import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
+import { getBackpressureHandler, getAllCircuitStats } from './resilience';
+import { getRecentSpans } from './observability/opentelemetry';
 import pino from 'pino';
 
 // Re-export contract type profiles for use in web app
@@ -71,6 +73,14 @@ async function startWorkers() {
     const dlqManager = getDeadLetterQueueManager(redisConfig);
     logger.info('📮 Dead Letter Queue initialized');
 
+    // Initialize backpressure handler for queue management
+    const backpressure = getBackpressureHandler({
+      highWaterMark: 1000,
+      lowWaterMark: 100,
+      checkInterval: 5000,
+    });
+    logger.info('🔄 Backpressure handler initialized');
+
     // Initialize metrics collector
     const metricsCollector = getMetricsCollector();
 
@@ -102,8 +112,13 @@ async function startWorkers() {
     metricsCollector.registerWorker('obligation-tracker', obligationTrackerWorker);
     metricsCollector.registerWorker('agent-orchestrator', agentOrchestratorWorker);
 
+    // Start backpressure monitoring
+    backpressure.start();
+    logger.info('📊 Backpressure monitoring started');
+
     logger.info('✅ All workers registered successfully');
     logger.info('📊 Metrics collection enabled');
+    logger.info('🛡️ Resilience patterns active: circuit breaker, retry, backpressure');
     logger.info({
       workers: [
         'ocr-artifact-processing (contract-processing queue)',
@@ -116,6 +131,12 @@ async function startWorkers() {
         'obligation-tracker (SLA & milestone monitoring)',
         'agent-orchestrator (manager agent loop)',
       ],
+      resilience: {
+        circuitBreaker: 'enabled',
+        retryWithBackoff: 'enabled',
+        backpressure: 'enabled',
+        distributedTracing: 'enabled',
+      },
     }, 'Active workers');
 
     // Graceful shutdown
@@ -127,15 +148,15 @@ async function startWorkers() {
       logger.info('Health server closed');
 
       await Promise.all([
-        ocrArtifactWorker.close(),
-        artifactWorker.close(),
-        webhookWorker.close(),
-        ragWorker.close(),
-        metadataWorker.close(),
-        categorizationWorker.close(),
-        renewalAlertWorker.close(),
-        obligationTrackerWorker.close(),
-        agentOrchestratorWorker.close(),
+        (ocrArtifactWorker as any).close(),
+        (artifactWorker as any).close(),
+        (webhookWorker as any).close(),
+        (ragWorker as any).close(),
+        (metadataWorker as any).close(),
+        (categorizationWorker as any).close(),
+        (renewalAlertWorker as any).close(),
+        (obligationTrackerWorker as any).close(),
+        (agentOrchestratorWorker as any).close(),
       ]);
 
       // Close DLQ

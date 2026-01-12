@@ -320,3 +320,63 @@ export function useUndoDelete() {
 
   return { deleteWithUndo };
 }
+
+// Convenience functions for simple undo toasts
+import { toast } from 'sonner';
+
+export function showSuccessUndo(
+  message: string,
+  onUndo?: () => Promise<void>,
+  undoLabel = 'Undo'
+) {
+  toast.success(message, {
+    action: onUndo ? {
+      label: undoLabel,
+      onClick: () => onUndo(),
+    } : undefined,
+    duration: 5000,
+  });
+}
+
+export function showErrorUndo(
+  message: string,
+  onRetry?: () => Promise<void>,
+  retryLabel = 'Retry'
+) {
+  toast.error(message, {
+    action: onRetry ? {
+      label: retryLabel,
+      onClick: () => onRetry(),
+    } : undefined,
+    duration: 5000,
+  });
+}
+
+// Hook for undoable actions
+export function useUndoable() {
+  const executeWithUndo = useCallback(async (options: {
+    action: () => Promise<void>;
+    undo: () => Promise<void>;
+    message: string;
+    timeout?: number;
+  }) => {
+    const { action, undo, message, timeout = 5000 } = options;
+    
+    // Execute the action
+    await action();
+    
+    // Show toast with undo option
+    toast.success(message, {
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          await undo();
+          toast.success('Action undone');
+        },
+      },
+      duration: timeout,
+    });
+  }, []);
+
+  return { executeWithUndo };
+}

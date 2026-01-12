@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { NegotiationAssistantService } from 'data-orchestration/services';
+import { negotiationAssistantService } from 'data-orchestration/services';
 
-const negotiationService = new NegotiationAssistantService(prisma);
+const negotiationService = new negotiationAssistantService(prisma);
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;

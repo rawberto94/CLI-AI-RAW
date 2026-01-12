@@ -79,6 +79,15 @@ export type { ContractsPageHeaderProps, ContractsPageHeaderProps as ContractsHea
 // Contract Hierarchy (Parent-Child Relationships)
 export { ContractHierarchy } from './ContractHierarchy';
 
+// Contract Family Health Assessment
+export { ContractFamilyHealth } from './ContractFamilyHealth';
+
+// Orphan Contracts Detection
+export { OrphanContractsBanner } from './OrphanContractsBanner';
+
+// Extraction Accuracy & Learning
+export { ExtractionAccuracyCard, ExtractionFieldWithFeedback } from './ExtractionAccuracyCard';
+
 // Notification Banners
 export {
   UncategorizedBanner,
@@ -187,6 +196,7 @@ export { DeadlineTracker } from './DeadlineTracker';
 
 // Version History
 export { VersionHistory } from './VersionHistory';
+export { VersionManager } from './VersionManager';
 
 // PDF Viewer
 export { PDFViewer, SplitViewContainer } from './PDFViewer';
@@ -205,3 +215,9 @@ export { ComplianceChecklist } from './ComplianceChecklist';
 
 // Negotiation Tracker
 export { NegotiationTracker } from './NegotiationTracker';
+
+// Quick Upload Modal
+export { QuickUploadModal } from './QuickUploadModal';
+
+// AI Draft Assistant
+export { AIDraftAssistant } from './AIDraftAssistant';

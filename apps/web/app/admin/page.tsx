@@ -100,6 +100,227 @@ interface TenantInfo {
   };
 }
 
+// ============ AI ACCURACY DASHBOARD ============
+
+interface AccuracyData {
+  overview: {
+    totalFeedback: number;
+    correctExtractions: number;
+    corrections: number;
+    overallAccuracy: number | null;
+  };
+  fieldAccuracy: Array<{
+    field: string;
+    accuracy: number;
+    sampleSize: number;
+  }>;
+  typeAccuracy: Array<{
+    contractType: string;
+    accuracy: number;
+    sampleSize: number;
+  }>;
+  recommendations: string[];
+}
+
+function AIAccuracyDashboard() {
+  const [data, setData] = useState<AccuracyData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAccuracy() {
+      try {
+        const response = await fetch('/api/extraction/accuracy?view=summary');
+        if (response.ok) {
+          const result = await response.json();
+          setData(result.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch accuracy:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchAccuracy();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <RefreshCw className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+        <CardContent className="p-12 text-center">
+          <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-500">No extraction data yet. Accuracy tracking begins when users provide feedback on extracted fields.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-100 rounded-xl">
+                <BarChart3 className="h-6 w-6 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Overall Accuracy</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {data.overview.overallAccuracy ?? '--'}%
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-emerald-100 rounded-xl">
+                <Check className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Correct Extractions</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {data.overview.correctExtractions}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-100 rounded-xl">
+                <Edit2 className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Corrections Made</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {data.overview.corrections}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <FileText className="h-6 w-6 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Feedback</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {data.overview.totalFeedback}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Field Accuracy Table */}
+      <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-indigo-500" />
+            Field Accuracy
+          </CardTitle>
+          <CardDescription>
+            Accuracy by extracted field - lowest accuracy fields shown first
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {data.fieldAccuracy.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Field</TableHead>
+                  <TableHead>Accuracy</TableHead>
+                  <TableHead>Sample Size</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.fieldAccuracy.map((field) => (
+                  <TableRow key={field.field}>
+                    <TableCell className="font-medium capitalize">
+                      {field.field.replace(/([A-Z])/g, ' $1').trim()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${
+                              field.accuracy >= 90 ? 'bg-emerald-500' :
+                              field.accuracy >= 70 ? 'bg-blue-500' :
+                              field.accuracy >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${field.accuracy}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium">{field.accuracy}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{field.sampleSize} samples</TableCell>
+                    <TableCell>
+                      {field.accuracy >= 90 ? (
+                        <Badge className="bg-emerald-100 text-emerald-700">Excellent</Badge>
+                      ) : field.accuracy >= 70 ? (
+                        <Badge className="bg-blue-100 text-blue-700">Good</Badge>
+                      ) : field.accuracy >= 50 ? (
+                        <Badge className="bg-amber-100 text-amber-700">Needs Improvement</Badge>
+                      ) : (
+                        <Badge className="bg-red-100 text-red-700">Poor</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No field-level data yet</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recommendations */}
+      {data.recommendations.length > 0 && (
+        <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-indigo-600" />
+              AI Recommendations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {data.recommendations.map((rec, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-indigo-500 mt-1">•</span>
+                  <span className="text-gray-700">{rec}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 export default function TenantAdminPage() {
   const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState("team");
@@ -401,6 +622,10 @@ export default function TenantAdminPage() {
               <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Building2 className="h-4 w-4" />
                 Organization
+              </TabsTrigger>
+              <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+                <Zap className="h-4 w-4" />
+                AI Accuracy
               </TabsTrigger>
             </TabsList>
 
@@ -716,6 +941,11 @@ export default function TenantAdminPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* AI Accuracy Tab */}
+        <TabsContent value="ai-accuracy">
+          <AIAccuracyDashboard />
         </TabsContent>
       </Tabs>
     </motion.div>

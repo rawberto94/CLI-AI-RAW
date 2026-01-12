@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { MarketIntelligenceService } from 'data-orchestration/services';
+import { marketIntelligenceService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const roleCategory = searchParams.get('roleCategory') || undefined;
     const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
 
-    const marketIntelService = new MarketIntelligenceService(prisma);
+    const marketIntelService = new marketIntelligenceService(prisma);
 
     const rankings = await marketIntelService.getSupplierRanking(
       session.user.tenantId || 'default',

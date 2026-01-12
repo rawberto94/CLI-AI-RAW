@@ -5,11 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { getErrorMessage, JsonRecord } from '@/lib/types/common';
 
-const benchmarkingEngine = new RateCardBenchmarkingEngine(prisma);
+const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
 /**
  * POST /api/benchmarking/bulk

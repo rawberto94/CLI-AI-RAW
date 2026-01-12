@@ -16,7 +16,7 @@ import {
   transactionManager,
   dataConsistencyAuditService,
   OptimisticLockError
-} from 'data-orchestration';
+} from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 
 // Define validation schema

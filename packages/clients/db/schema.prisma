@@ -349,6 +349,9 @@ model Contract {
   rateCardEntries     RateCardEntry[]
   workflowExecutions  WorkflowExecution[]
 
+  // Extraction corrections relation
+  extractionCorrections ExtractionCorrection[]
+
   @@index([tenantId])
   @@index([status])
   @@index([contractType]) // Legacy index
@@ -427,6 +430,42 @@ model Contract {
   @@index([tenantId, contractTitle])
   @@index([tenantId, description])
   @@index([tenantId, fileName])
+}
+
+// Extraction Corrections for AI Learning Loop
+model ExtractionCorrection {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  contractId     String   @map("contract_id")
+  fieldName      String   @map("field_name")
+  originalValue  String?  @map("original_value") @db.Text
+  correctedValue String?  @map("corrected_value") @db.Text
+  confidence     Decimal? @db.Decimal(3, 2)
+  wasCorrect     Boolean  @default(false) @map("was_correct")
+  source         String   @default("ai") // ai, ocr, user
+  feedbackType   String   @map("feedback_type") // confirmation, correction, rejection
+  contractType   String?  @map("contract_type")
+  documentLength Int?     @map("document_length")
+  modelUsed      String?  @map("model_used")
+  promptVersion  String?  @map("prompt_version")
+  metadata       Json?    @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([fieldName])
+  @@index([feedbackType])
+  @@index([wasCorrect])
+  @@index([contractType])
+  @@index([createdAt])
+  @@index([tenantId, fieldName])
+  @@index([tenantId, contractType, fieldName])
+  @@index([tenantId, wasCorrect])
+  @@map("extraction_corrections")
 }
 
 model ContractMetadata {

@@ -146,6 +146,7 @@ export const ChatBubbleTrigger = memo(({
               onClick={handleOpen}
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
+              data-testid="chatbot-trigger"
               className="relative p-4 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
             >
               {/* Pulse animation */}

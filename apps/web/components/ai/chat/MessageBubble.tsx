@@ -40,6 +40,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { QuickActions, QuickAction } from './QuickActions';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -74,15 +75,18 @@ export interface ChatMessage {
   timestamp: Date;
   status?: 'sending' | 'sent' | 'error' | 'streaming';
   suggestions?: string[];
+  quickActions?: QuickAction[];
   attachments?: MessageAttachment[];
   sources?: MessageSource[];
   feedback?: 'positive' | 'negative' | null;
   bookmarked?: boolean;
+  isTyping?: boolean;
   metadata?: {
     confidence?: number;
     processingTime?: number;
     model?: string;
     tokens?: number;
+    referenceResolutions?: Record<string, unknown>;
   };
 }
 
@@ -92,6 +96,7 @@ interface MessageBubbleProps {
   onFeedback?: (messageId: string, feedback: 'positive' | 'negative') => void;
   onRetry?: (messageId: string) => void;
   onSuggestionClick?: (suggestion: string) => void;
+  onQuickAction?: (action: QuickAction) => void;
   onSourceClick?: (source: MessageSource) => void;
   onBookmark?: (messageId: string) => void;
   onShare?: (messageId: string) => void;
@@ -387,6 +392,7 @@ export const MessageBubble = memo(({
   onFeedback,
   onRetry,
   onSuggestionClick,
+  onQuickAction,
   onSourceClick,
   onBookmark,
   onShare,
@@ -528,6 +534,17 @@ export const MessageBubble = memo(({
               </button>
             ))}
           </div>
+        )}
+
+        {/* Quick Actions */}
+        {!isUser && message.quickActions && message.quickActions.length > 0 && (
+          <QuickActions
+            actions={message.quickActions}
+            onAction={onQuickAction}
+            onSendMessage={onSuggestionClick}
+            size="sm"
+            variant="inline"
+          />
         )}
 
         {/* Sources */}

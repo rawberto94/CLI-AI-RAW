@@ -22,6 +22,9 @@ export interface ArtifactValidationResult {
   reviewReasons?: string[];
 }
 
+// Alias for backward compatibility
+export type ValidationResult = ArtifactValidationResult;
+
 export interface ValidationIssue {
   field: string;
   message: string;

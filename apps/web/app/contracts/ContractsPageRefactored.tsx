@@ -918,8 +918,32 @@ export default function ContractsPageRefactored() {
             contracts={paginatedItems as any}
             onContractClick={(contractId) => router.push(`/contracts/${contractId}`)}
             onStatusChange={async (id, status) => {
-              // Handle status change
-              toast.info('Status update not implemented');
+              try {
+                const response = await fetch('/api/contracts/bulk', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-tenant-id': 'demo',
+                  },
+                  body: JSON.stringify({
+                    operation: 'status',
+                    contractIds: [id],
+                    newStatus: status.toUpperCase(),
+                  }),
+                });
+                
+                if (!response.ok) {
+                  throw new Error('Failed to update status');
+                }
+                
+                toast.success(`Contract moved to ${status.replace(/_/g, ' ')}`);
+                
+                // Refresh data
+                refetch();
+              } catch (error) {
+                console.error('Failed to update contract status:', error);
+                toast.error('Failed to update contract status');
+              }
             }}
           />
         )}

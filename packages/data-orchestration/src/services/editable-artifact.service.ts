@@ -14,6 +14,7 @@ import { dbAdaptor } from '../dal/database.adaptor';
 import { enhancedDbAdaptor } from '../dal/enhanced-database.adaptor';
 import { eventBus, Events } from '../events/event-bus';
 import { createLogger } from '../utils/logger';
+import type { ValidationResult } from './validation.service';
 
 const logger = createLogger('editable-artifact-service');
 
@@ -115,11 +116,13 @@ export class EditableArtifactService {
     try {
       logger.info({ artifactId, userId }, 'Updating artifact');
 
-      return await enhancedDbAdaptor.withTransaction(async (tx) => {
+      return await enhancedDbAdaptor.withTransaction(async () => {
+        const tx = enhancedDbAdaptor as any; // For transaction operations
+        
         // Get current artifact with lock
-        const currentArtifact = await tx.artifact.findUnique({
-          where: { id: artifactId },
-        });
+        const currentArtifact = await dbAdaptor.prisma.artifact.findUnique({
+          where: { id: artifactId }
+        }) as { id: string; data: any; type: string; [key: string]: any } | null;
 
         if (!currentArtifact) {
           throw new Error(`Artifact ${artifactId} not found`);
@@ -392,9 +395,9 @@ export class EditableArtifactService {
   async validateArtifactUpdate(
     currentArtifact: any,
     updates: any
-  ): Promise<ValidationResult> {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
+  ): Promise<EditableValidationResult> {
+    const errors: EditableValidationError[] = [];
+    const warnings: EditableValidationWarning[] = [];
 
     try {
       // Type-specific validation
@@ -438,9 +441,9 @@ export class EditableArtifactService {
   /**
    * Validate rate card structure
    */
-  async validateRateCardStructure(rateCard: any): Promise<ValidationResult> {
-    const errors: ValidationError[] = [];
-    const warnings: ValidationWarning[] = [];
+  async validateRateCardStructure(rateCard: any): Promise<EditableValidationResult> {
+    const errors: EditableValidationError[] = [];
+    const warnings: EditableValidationWarning[] = [];
 
     if (rateCard.rates) {
       for (const rate of rateCard.rates) {

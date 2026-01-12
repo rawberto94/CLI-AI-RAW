@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/best-rates/changes
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const benchmarkEngine = new RateCardBenchmarkingEngine(prisma);
+    const benchmarkEngine = new rateCardBenchmarkingService(prisma);
     const changes = await benchmarkEngine.trackBestRateChanges(session.user.tenantId);
 
     // Sort by absolute change percentage (most significant first)

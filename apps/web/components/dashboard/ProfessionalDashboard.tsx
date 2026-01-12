@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,44 @@ import {
   useContractHealthScores,
   useCrossModuleInvalidation 
 } from '@/hooks/use-queries';
+
+// New Dashboard Widgets
+import { 
+  RecentActivityWidget, 
+  generateDemoActivities 
+} from './RecentActivityWidget';
+import { 
+  FavoriteContractsWidget, 
+  generateDemoFavorites 
+} from './FavoriteContractsWidget';
+import { 
+  UpcomingRenewalsWidget, 
+  generateDemoRenewals 
+} from './UpcomingRenewalsWidget';
+import { 
+  AIInsightsSummaryWidget, 
+  generateDemoInsights, 
+  generateDemoMetrics as generateDemoAIMetrics 
+} from './AIInsightsSummaryWidget';
+import {
+  ContractNotificationsWidget,
+  generateDemoNotifications,
+} from './ContractNotificationsWidget';
+import {
+  KeyboardShortcutsPanel,
+} from './KeyboardShortcutsPanel';
+import {
+  SavingsTrackerWidget,
+  generateDemoSavingsData,
+} from './SavingsTrackerWidget';
+import {
+  TeamActivityWidget,
+  generateDemoTeamData,
+} from './TeamActivityWidget';
+import {
+  IntegrationStatusWidget,
+  generateDemoIntegrations,
+} from './IntegrationStatusWidget';
 import {
   LineChart,
   Line,
@@ -755,8 +794,23 @@ function PortfolioHealthWidget() {
 // ============ MAIN COMPONENT ============
 
 export function ProfessionalDashboard() {
+  const router = useRouter();
   const { metrics, chartData, recentContracts, expirations, loading } = useDashboardData();
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
+  
+  // Demo data for new widgets (replace with API calls in production)
+  const [favoriteContracts] = useState(() => generateDemoFavorites(5));
+  const [recentActivity] = useState(() => generateDemoActivities(10));
+  const [upcomingRenewals] = useState(() => generateDemoRenewals(6));
+  const [aiInsights] = useState(() => generateDemoInsights(6));
+  const [aiMetrics] = useState(() => generateDemoAIMetrics());
+  const [notifications] = useState(() => generateDemoNotifications(12));
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  
+  // New widget data
+  const [savingsData] = useState(() => generateDemoSavingsData());
+  const [teamData] = useState(() => generateDemoTeamData());
+  const [integrations] = useState(() => generateDemoIntegrations());
 
   const handleExport = () => {
     try {
@@ -1141,6 +1195,73 @@ export function ProfessionalDashboard() {
         <PendingApprovalsWidget />
       </div>
 
+      {/* Notifications & AI Insights Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <ContractNotificationsWidget
+          notifications={notifications}
+          maxHeight={320}
+          onMarkRead={(id) => console.log('Mark read:', id)}
+          onMarkAllRead={() => console.log('Mark all read')}
+          onDelete={(id) => console.log('Delete:', id)}
+          onAction={(n) => router.push(n.actionUrl || `/contracts/${n.contractId}`)}
+        />
+        <div className="lg:col-span-2">
+          <AIInsightsSummaryWidget
+            insights={aiInsights}
+            metrics={aiMetrics}
+            maxInsights={4}
+            showMetrics={true}
+          />
+        </div>
+      </div>
+
+      {/* Favorites & Renewals Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <FavoriteContractsWidget
+          contracts={favoriteContracts}
+          maxDisplay={5}
+          showSearch={false}
+          showQuickActions={true}
+        />
+        <UpcomingRenewalsWidget
+          renewals={upcomingRenewals}
+          maxItems={4}
+          showFilters={true}
+        />
+      </div>
+
+      {/* Activity Row */}
+      <div className="grid grid-cols-1 gap-6">
+        <RecentActivityWidget
+          activities={recentActivity}
+          maxItems={6}
+          showFilters={false}
+          variant="card"
+        />
+      </div>
+
+      {/* Savings, Team & Integrations Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <SavingsTrackerWidget
+          data={savingsData}
+          period="quarter"
+          onViewDetails={() => router.push('/analytics/savings')}
+          onOpportunityClick={(opp) => opp.contractId && router.push(`/contracts/${opp.contractId}`)}
+        />
+        <TeamActivityWidget
+          activities={teamData.activities}
+          teamMembers={teamData.members}
+          onActivityClick={(activity) => activity.targetId && router.push(`/contracts/${activity.targetId}`)}
+          onViewAll={() => router.push('/activity')}
+        />
+        <IntegrationStatusWidget
+          integrations={integrations}
+          onRefresh={(id) => console.log('Refresh integration:', id)}
+          onSettings={(id) => router.push(`/settings/integrations/${id}`)}
+          onViewAll={() => router.push('/settings/integrations')}
+        />
+      </div>
+
       {/* Contract Types Bar Chart */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -1179,6 +1300,12 @@ export function ProfessionalDashboard() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Keyboard Shortcuts Panel */}
+      <KeyboardShortcutsPanel
+        open={showKeyboardShortcuts}
+        onOpenChange={setShowKeyboardShortcuts}
+      />
     </div>
   );
 }

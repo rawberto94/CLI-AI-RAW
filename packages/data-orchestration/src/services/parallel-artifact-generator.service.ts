@@ -218,13 +218,14 @@ export class ParallelArtifactGeneratorService {
     }
 
     const consistencyResult = await artifactValidationService.validateConsistency(artifactDataMap);
+    const isConsistent = consistencyResult.valid && !consistencyResult.errors?.length;
     
-    if (!consistencyResult.consistent) {
+    if (!isConsistent) {
       logger.warn(
         { 
           contractId, 
-          issues: consistencyResult.issues.length,
-          criticalIssues: consistencyResult.issues.filter(i => i.severity === 'critical').length
+          issues: consistencyResult.issues?.length || 0,
+          criticalIssues: consistencyResult.issues?.filter((i: any) => i.severity === 'error')?.length || 0
         },
         'Consistency issues detected across artifacts'
       );
@@ -236,8 +237,8 @@ export class ParallelArtifactGeneratorService {
       failed,
       totalProcessingTime,
       averageProcessingTime,
-      consistencyIssues: consistencyResult.issues.length,
-      consistent: consistencyResult.consistent
+      consistencyIssues: consistencyResult.issues?.length || 0,
+      consistent: isConsistent
     };
 
     logger.info(
@@ -249,7 +250,7 @@ export class ParallelArtifactGeneratorService {
     );
 
     return {
-      success: failed === 0 && consistencyResult.consistent,
+      success: failed === 0 && isConsistent,
       results,
       summary,
       progress,

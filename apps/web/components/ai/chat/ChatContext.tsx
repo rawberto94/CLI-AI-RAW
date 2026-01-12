@@ -40,6 +40,12 @@ interface ChatContextValue {
   deleteConversation: (id: string) => void;
   listConversations: () => ConversationContext[];
   
+  // Aliases for compatibility
+  conversations: ConversationContext[];
+  currentConversationId: string | null;
+  createConversation: (title?: string) => ConversationContext;
+  clearCurrentConversation: () => void;
+  
   // Context and memory
   setContext: (key: string, value: any) => void;
   getContext: (key: string) => any;
@@ -48,6 +54,7 @@ interface ChatContextValue {
   // Contract context
   currentContractId: string | null;
   setCurrentContractId: (id: string | null) => void;
+  setContractContext: (ctx: { id: string; name: string } | null) => void;
   mentionedContracts: string[];
   addMentionedContract: (id: string) => void;
   
@@ -58,6 +65,8 @@ interface ChatContextValue {
   // Streaming
   streamingMessageId: string | null;
   setStreamingMessageId: (id: string | null) => void;
+  streamingMessage: string | null;
+  setStreamingMessage: (message: string | null) => void;
   appendToStreamingMessage: (content: string) => void;
 }
 
@@ -380,6 +389,14 @@ export function ChatContextProvider({ children, initialContractId = null }: Chat
     }));
   }, [currentConversationId, streamingMessageId]);
 
+  // Streaming message content state
+  const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
+  
+  // Contract context setter (compatibility)
+  const setContractContext = useCallback((ctx: { id: string; name: string } | null) => {
+    setCurrentContractId(ctx?.id || null);
+  }, [setCurrentContractId]);
+
   const value: ChatContextValue = {
     currentConversation,
     messages,
@@ -391,17 +408,25 @@ export function ChatContextProvider({ children, initialContractId = null }: Chat
     loadConversation,
     deleteConversation,
     listConversations,
+    // Compatibility aliases
+    conversations: listConversations(),
+    currentConversationId: currentConversation?.id || null,
+    createConversation: createNewConversation,
+    clearCurrentConversation: clearMessages,
     setContext,
     getContext,
     clearContext,
     currentContractId,
     setCurrentContractId,
+    setContractContext,
     mentionedContracts,
     addMentionedContract,
     isLoading,
     setIsLoading,
     streamingMessageId,
     setStreamingMessageId,
+    streamingMessage,
+    setStreamingMessage,
     appendToStreamingMessage,
   };
 

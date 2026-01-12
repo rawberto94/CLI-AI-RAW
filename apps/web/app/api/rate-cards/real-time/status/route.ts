@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { RealTimeBenchmarkService } from 'data-orchestration/services';
+import { realTimeBenchmarkService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Initialize service
-    const realTimeService = new RealTimeBenchmarkService(prisma);
+    const realTimeService = new realTimeBenchmarkService(prisma);
 
     // Get calculation status
     const status = realTimeService.getCalculationStatus(rateCardEntryId);

@@ -17,6 +17,9 @@ export interface IntegrityValidationResult {
   warnings: ValidationWarning[];
 }
 
+// Type alias for backwards compatibility
+type ValidationResult = IntegrityValidationResult;
+
 export interface ValidationError {
   field: string;
   message: string;

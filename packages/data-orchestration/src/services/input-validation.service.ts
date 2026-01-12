@@ -19,6 +19,9 @@ export interface InputValidationResult<T = any> {
   errors?: ValidationError[];
 }
 
+// Type alias for backwards compatibility
+type ValidationResult<T = any> = InputValidationResult<T>;
+
 export interface ValidationError {
   field: string;
   message: string;

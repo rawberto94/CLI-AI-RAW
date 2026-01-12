@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { BaselineManagementService } from 'data-orchestration';
+import { baselineManagementService } from 'data-orchestration';
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const service = new BaselineManagementService(prisma);
+    const service = new baselineManagementService(prisma);
     const result = await service.importBaselines(tenantId, baselines, {
       updateExisting,
       autoApprove,
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
   try {
     const tenantId = await getServerTenantId();
 
-    const service = new BaselineManagementService(prisma);
+    const service = new baselineManagementService(prisma);
     const statistics = await service.getBaselineStatistics(tenantId);
 
     return NextResponse.json({

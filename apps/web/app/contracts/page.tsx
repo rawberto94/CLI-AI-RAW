@@ -143,10 +143,12 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
 import { QuickStatsBar, generateContractStats } from "@/components/contracts/QuickStatsBar";
+import { OrphanContractsBanner } from "@/components/contracts";
 import { ContractHoverPreview } from "@/components/contracts/ContractHoverPreview";
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
 import { CommandPaletteSearch } from "@/components/contracts/CommandPaletteSearch";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { ContractCompareWidget, generateDemoContracts as generateCompareContracts } from "@/components/contracts/ContractCompareWidget";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
 
@@ -492,29 +494,39 @@ const CompactContractRow = memo(function CompactContractRow({
         />
       </div>
 
-      {/* Contract Title */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <motion.div 
-          className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-blue-50 group-hover:to-indigo-50 transition-all duration-200 shadow-sm group-hover:shadow"
-          whileHover={{ rotate: 5, scale: 1.1 }}
-          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-        >
-          <FileText className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
-        </motion.div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors text-sm" title={contract.title}>
-              <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
-            </p>
-            {isNew && (
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-600 flex-shrink-0">
-                New
-              </span>
-            )}
+      {/* Contract Title with Hover Preview */}
+      <ContractHoverPreview
+        contract={contract}
+        onView={onView}
+        onAnalyze={() => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+          detail: { autoMessage: `Analyze contract: ${contract.title}`, contractId: contract.id }
+        }))}
+        side="right"
+        delay={500}
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <motion.div 
+            className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-blue-50 group-hover:to-indigo-50 transition-all duration-200 shadow-sm group-hover:shadow"
+            whileHover={{ rotate: 5, scale: 1.1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          >
+            <FileText className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+          </motion.div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors text-sm" title={contract.title}>
+                <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
+              </p>
+              {isNew && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-600 flex-shrink-0">
+                  New
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">{formatDate(contract.createdAt)}</p>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">{formatDate(contract.createdAt)}</p>
         </div>
-      </div>
+      </ContractHoverPreview>
 
       {/* Category */}
       <div className="hidden lg:block min-w-0">
@@ -1034,6 +1046,12 @@ export default function ContractsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  
+  // Bulk action confirmation dialogs
+  const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
+  const [bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen] = useState(false);
+  const [bulkShareDialogOpen, setBulkShareDialogOpen] = useState(false);
+  const [pendingBulkAction, setPendingBulkAction] = useState<'export' | 'analyze' | 'share' | null>(null);
 
   // Enhanced UI state
   const [previewContract, setPreviewContract] = useState<ExtendedContract | null>(null);
@@ -1200,7 +1218,14 @@ export default function ContractsPage() {
       // N - new contract (go to upload)
       if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        router.push('/upload');
+        router.push('/contracts/new');
+      }
+      
+      // U - quick upload
+      if (e.key === 'u' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        // Trigger header quick upload via custom event
+        window.dispatchEvent(new CustomEvent('openQuickUpload'));
       }
     };
 
@@ -1375,8 +1400,8 @@ export default function ContractsPage() {
           case 'date':
             if (filter.operator === 'between' && Array.isArray(filter.value) && filter.value.length === 2) {
               newFilterState.dateRange = {
-                start: filter.value[0],
-                end: filter.value[1],
+                from: filter.value[0],
+                to: filter.value[1],
               };
             }
             break;
@@ -1575,6 +1600,32 @@ export default function ContractsPage() {
       setIsProcessingBulk(false);
     }
   }, [selectedContracts, crossModule, refetch]);
+
+  // Bulk action with confirmation handlers
+  const handleBulkActionWithConfirmation = useCallback((action: 'export' | 'analyze' | 'share') => {
+    if (selectedContracts.size === 0) return;
+    setPendingBulkAction(action);
+    switch (action) {
+      case 'export':
+        setBulkExportDialogOpen(true);
+        break;
+      case 'analyze':
+        setBulkAnalyzeDialogOpen(true);
+        break;
+      case 'share':
+        setBulkShareDialogOpen(true);
+        break;
+    }
+  }, [selectedContracts.size]);
+
+  const handleConfirmBulkAction = useCallback(async () => {
+    if (!pendingBulkAction) return;
+    await performBulkAction(pendingBulkAction);
+    setBulkExportDialogOpen(false);
+    setBulkAnalyzeDialogOpen(false);
+    setBulkShareDialogOpen(false);
+    setPendingBulkAction(null);
+  }, [pendingBulkAction]);
 
   // Check if any filters are active
   const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
@@ -2222,6 +2273,10 @@ export default function ContractsPage() {
         onRefresh={() => refetch()}
         onAdvancedSearch={() => setShowAdvancedSearch(true)}
         isRefreshing={isRefetching && !loading}
+        onQuickUploadComplete={(contractIds) => {
+          refetch();
+          toast.success(`${contractIds.length} contract${contractIds.length > 1 ? 's' : ''} uploaded`);
+        }}
         extraActions={
           <Tooltip>
             <TooltipTrigger asChild>
@@ -2408,34 +2463,37 @@ export default function ContractsPage() {
         />
 
         {/* State of the Art Search & Filters */}
-        <StateOfTheArtSearch
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          riskFilters={riskFilters}
-          onRiskFiltersChange={setRiskFilters}
-          typeFilters={typeFilters}
-          onTypeFiltersChange={setTypeFilters}
-          expirationFilters={expirationFilters}
-          onExpirationFiltersChange={setExpirationFilters}
-          supplierFilters={supplierFilters}
-          onSupplierFiltersChange={setSupplierFilters}
-          categoryFilter={null}
-          onCategoryFilterChange={() => {}}
-          valueRangeFilter={null}
-          onValueRangeFilterChange={() => {}}
-          dateRangeFilter={dateRangeFilter}
-          onDateRangeFilterChange={setDateRangeFilter}
-          suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
-          categories={[]}
-          onClearFilters={clearFilters}
-          onAISearchClick={(query) => window.dispatchEvent(new CustomEvent('openAIChatbot', {
-            detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
-          }))}
-          activeFilterCount={activeFilterCount}
-          totalResults={contractsData?.total ?? 0}
-        />
+        <div data-tour="smart-search">
+          <StateOfTheArtSearch
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            riskFilters={riskFilters}
+            onRiskFiltersChange={setRiskFilters}
+            typeFilters={typeFilters}
+            onTypeFiltersChange={setTypeFilters}
+            expirationFilters={expirationFilters}
+            onExpirationFiltersChange={setExpirationFilters}
+            supplierFilters={supplierFilters}
+            onSupplierFiltersChange={setSupplierFilters}
+            categoryFilter={null}
+            onCategoryFilterChange={() => {}}
+            valueRangeFilter={null}
+            onValueRangeFilterChange={() => {}}
+            dateRangeFilter={dateRangeFilter}
+            onDateRangeFilterChange={setDateRangeFilter}
+            suppliers={Array.from(new Set(contracts?.map(c => c.parties?.supplier).filter(Boolean) || [])).sort() as string[]}
+            categories={[]}
+            onClearFilters={clearFilters}
+            onAISearchClick={(query) => window.dispatchEvent(new CustomEvent('openAIChatbot', {
+              detail: { autoMessage: query ? `Search for contracts matching: ${query}` : 'Help me find contracts' }
+            }))}
+            activeFilterCount={activeFilterCount}
+            totalResults={contractsData?.total ?? 0}
+            isLoading={isRefetching}
+          />
+        </div>
 
         {/* Processing Contracts Live Tracker */}
         <AnimatePresence>
@@ -2623,7 +2681,7 @@ export default function ContractsPage() {
             </DropdownMenu>
 
             {/* View Mode */}
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
+            <div data-tour="view-modes" className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
               {[
                 { mode: 'compact' as const, icon: LayoutList, label: 'List' },
                 { mode: 'cards' as const, icon: LayoutGrid, label: 'Cards' },
@@ -2779,6 +2837,13 @@ export default function ContractsPage() {
           </motion.div>
         )}
 
+        {/* Orphan Contracts Banner - AI-powered parent suggestions */}
+        <OrphanContractsBanner 
+          maxItems={3}
+          onRefresh={refetch}
+          className="mb-4"
+        />
+
         {/* Processing Contracts Live Tracker */}
         <AnimatePresence>
           <ProcessingContractTracker 
@@ -2792,7 +2857,72 @@ export default function ContractsPage() {
           />
         </AnimatePresence>
 
+        {/* Selection Count & Quick Pagination Bar */}
+        {(selectedContracts.size > 0 || totalPages > 1) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg px-4 py-2 shadow-sm"
+          >
+            {/* Selection info */}
+            <div className="flex items-center gap-3">
+              {selectedContracts.size > 0 ? (
+                <div className="flex items-center gap-2">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-md"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    <span className="text-xs font-semibold">{selectedContracts.size} selected</span>
+                  </motion.div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedContracts(new Set())}
+                    className="h-7 text-xs text-slate-500 hover:text-slate-700"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              ) : (
+                <span className="text-xs text-slate-500">
+                  Page {currentPage} of {totalPages}
+                </span>
+              )}
+            </div>
+            
+            {/* Quick pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-slate-600 min-w-[60px] text-center">
+                  {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* Contracts List */}
+        <div data-tour="contracts">
         <AnimatePresence mode="wait">
           {sortedContracts.length === 0 ? (
             <motion.div
@@ -2992,13 +3122,39 @@ export default function ContractsPage() {
                   tags: [contract.parties?.supplier || 'Contract'].slice(0, 2),
                 }))}
                 onContractClick={(contractId) => pushToContract(contractId)}
-                onStatusChange={(contractId, newStatus) => {
-                  toast.success(`Contract moved to ${newStatus.replace('_', ' ')}`);
+                onStatusChange={async (contractId, newStatus) => {
+                  try {
+                    const response = await fetch('/api/contracts/bulk', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'x-tenant-id': 'demo',
+                      },
+                      body: JSON.stringify({
+                        operation: 'status',
+                        contractIds: [contractId],
+                        newStatus: newStatus.toUpperCase(),
+                      }),
+                    });
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to update status');
+                    }
+                    
+                    toast.success(`Contract moved to ${newStatus.replace(/_/g, ' ')}`);
+                    
+                    // Refresh contracts list
+                    refetch();
+                  } catch (error) {
+                    console.error('Failed to update contract status:', error);
+                    toast.error('Failed to update contract status');
+                  }
                 }}
               />
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
         
         {/* Pagination Controls */}
         {sortedContracts.length > 0 && (
@@ -3182,6 +3338,42 @@ export default function ContractsPage() {
         onConfirm={handleConfirmBulkDelete}
         isLoading={isProcessingBulk}
       />
+      
+      {/* Bulk Export Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkExportDialogOpen}
+        onOpenChange={setBulkExportDialogOpen}
+        title="Export Multiple Contracts"
+        description={`You are about to export ${selectedContracts.size} contracts. This will generate a downloadable file containing the selected contracts.`}
+        variant="default"
+        confirmLabel="Export"
+        onConfirm={handleConfirmBulkAction}
+        isLoading={isProcessingBulk}
+      />
+      
+      {/* Bulk Analyze Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkAnalyzeDialogOpen}
+        onOpenChange={setBulkAnalyzeDialogOpen}
+        title="Analyze Multiple Contracts with AI"
+        description={`You are about to send ${selectedContracts.size} contracts for AI analysis. This may take a few minutes depending on the contract complexity. Continue?`}
+        variant="default"
+        confirmLabel="Start Analysis"
+        onConfirm={handleConfirmBulkAction}
+        isLoading={isProcessingBulk}
+      />
+      
+      {/* Bulk Share Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkShareDialogOpen}
+        onOpenChange={setBulkShareDialogOpen}
+        title="Share Multiple Contracts"
+        description={`You are about to share ${selectedContracts.size} contracts. This will generate shareable links for all selected contracts.`}
+        variant="default"
+        confirmLabel="Generate Links"
+        onConfirm={handleConfirmBulkAction}
+        isLoading={isProcessingBulk}
+      />
 
       {/* Contract Preview Panel */}
       <LazyContractPreviewPanel
@@ -3228,12 +3420,12 @@ export default function ContractsPage() {
             case 'export-pdf':
             case 'export-csv':
             case 'export-json':
-              await performBulkAction('export');
+              handleBulkActionWithConfirmation('export');
               break;
             case 'analyze':
             case 'ai-analyze':
             case 'ai-summarize':
-              await performBulkAction('analyze');
+              handleBulkActionWithConfirmation('analyze');
               break;
             case 'ai_report':
             case 'ai-report':
@@ -3243,13 +3435,13 @@ export default function ContractsPage() {
               await handleBulkCategorize();
               break;
             case 'share':
-              await performBulkAction('share');
+              handleBulkActionWithConfirmation('share');
               break;
             case 'delete':
               handleBulkDeleteClick();
               break;
             case 'archive':
-              await performBulkAction('delete'); // Using delete for now, could add archive
+              handleBulkActionWithConfirmation('export'); // Treat as export confirmation first
               toast.success('Contracts archived');
               break;
             case 'tag':
@@ -3298,6 +3490,22 @@ export default function ContractsPage() {
 
       {/* Scroll to Top Button */}
       <ScrollToTopButton threshold={600} />
+      
+      {/* Contract Compare Widget - Floating */}
+      <ContractCompareWidget
+        contracts={contracts.map(c => ({
+          id: c.id,
+          name: c.title || c.filename || 'Untitled',
+          supplier: c.parties?.supplier,
+          type: c.type,
+          status: c.status,
+          value: c.value,
+        }))}
+        onCompare={(a, b) => {
+          router.push(`/contracts/compare?a=${a}&b=${b}`);
+        }}
+        showKeyboardHint={true}
+      />
     </div>
     </TooltipProvider>
   );

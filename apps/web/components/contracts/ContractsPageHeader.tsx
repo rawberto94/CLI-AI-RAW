@@ -2,20 +2,29 @@
  * Contract Page Header
  * 
  * Hero header section for the contracts list page
- * v2.1 - Enhanced refresh with animation feedback
+ * v2.2 - Enhanced with creation dropdown menu and quick upload modal
  */
 
 "use client";
 
-import { memo, useState, useCallback } from "react";
+import React, { memo, useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PageBreadcrumb } from '@/components/navigation';
 import {
   FileText,
@@ -24,7 +33,15 @@ import {
   Tag,
   Upload,
   CheckCircle,
+  Plus,
+  ChevronDown,
+  FilePlus,
+  FileUp,
+  Sparkles,
+  LayoutTemplate,
+  PenLine,
 } from "lucide-react";
+import { QuickUploadModal } from "./QuickUploadModal";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -37,6 +54,7 @@ export interface ContractsPageHeaderProps {
   showTaxonomyLink?: boolean;
   extraActions?: React.ReactNode;
   isRefreshing?: boolean;
+  onQuickUploadComplete?: (contractIds: string[]) => void;
 }
 
 // ============================================================================
@@ -49,8 +67,18 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
   showTaxonomyLink = true,
   extraActions,
   isRefreshing = false,
+  onQuickUploadComplete,
 }: ContractsPageHeaderProps) {
+  const router = useRouter();
   const [showRefreshSuccess, setShowRefreshSuccess] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
+  
+  // Listen for keyboard shortcut event
+  useEffect(() => {
+    const handleOpenQuickUpload = () => setShowQuickUpload(true);
+    window.addEventListener('openQuickUpload', handleOpenQuickUpload);
+    return () => window.removeEventListener('openQuickUpload', handleOpenQuickUpload);
+  }, []);
   
   const handleRefresh = useCallback(() => {
     onRefresh();
@@ -60,6 +88,11 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
       setTimeout(() => setShowRefreshSuccess(false), 1500);
     }, 500);
   }, [onRefresh]);
+
+  const handleQuickUploadComplete = useCallback((contractIds: string[]) => {
+    onQuickUploadComplete?.(contractIds);
+    onRefresh();
+  }, [onQuickUploadComplete, onRefresh]);
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900">
@@ -155,29 +188,85 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
               </Button>
             )}
             
-            <Tooltip>
-              <TooltipTrigger asChild>
+            {/* New Contract Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button 
-                  asChild 
                   size="sm" 
                   className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25"
                 >
-                  <Link href="/upload">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Contract
-                  </Link>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Contract
+                  <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="flex items-center gap-2">
-                  Upload new contract
-                  <kbd className="px-1.5 py-0.5 text-xs bg-slate-100 rounded">N</kbd>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Create Contract</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => setShowQuickUpload(true)}>
+                  <FileUp className="h-4 w-4 mr-2 text-blue-500" />
+                  <div>
+                    <p className="font-medium">Quick Upload</p>
+                    <p className="text-xs text-slate-500">Upload files without leaving</p>
+                  </div>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem asChild>
+                  <Link href="/upload">
+                    <Upload className="h-4 w-4 mr-2 text-indigo-500" />
+                    <div>
+                      <p className="font-medium">Advanced Upload</p>
+                      <p className="text-xs text-slate-500">Full upload with AI analysis</p>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem asChild>
+                  <Link href="/contracts/new">
+                    <FilePlus className="h-4 w-4 mr-2 text-emerald-500" />
+                    <div>
+                      <p className="font-medium">Create Manually</p>
+                      <p className="text-xs text-slate-500">Enter contract details by hand</p>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem asChild>
+                  <Link href="/contracts/generate">
+                    <LayoutTemplate className="h-4 w-4 mr-2 text-purple-500" />
+                    <div>
+                      <p className="font-medium">Generate from Template</p>
+                      <p className="text-xs text-slate-500">Use a contract template</p>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem asChild>
+                  <Link href="/contracts/ai-draft">
+                    <Sparkles className="h-4 w-4 mr-2 text-amber-500" />
+                    <div>
+                      <p className="font-medium">AI Draft Assistant</p>
+                      <p className="text-xs text-slate-500">Let AI help you draft</p>
+                    </div>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
+      
+      {/* Quick Upload Modal */}
+      <QuickUploadModal
+        isOpen={showQuickUpload}
+        onClose={() => setShowQuickUpload(false)}
+        onUploadComplete={handleQuickUploadComplete}
+      />
     </div>
   );
 });

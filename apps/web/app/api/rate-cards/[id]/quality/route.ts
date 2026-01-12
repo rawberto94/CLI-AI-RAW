@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { DataQualityScorerService } from 'data-orchestration/services';
+import { dataQualityScorerService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   try {
     const { id } = params;
 
-    const qualityService = new DataQualityScorerService(prisma);
+    const qualityService = new dataQualityScorerService(prisma);
     const qualityScore = await qualityService.calculateQualityScore(id);
 
     return NextResponse.json({

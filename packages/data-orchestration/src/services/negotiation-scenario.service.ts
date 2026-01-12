@@ -172,7 +172,7 @@ export class NegotiationScenarioService {
         tenantId,
         roleStandardized: role,
         country,
-        seniority,
+        seniority: seniority as any,
       },
       select: {
         dailyRateUSD: true,

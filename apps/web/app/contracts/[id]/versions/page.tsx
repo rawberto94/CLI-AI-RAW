@@ -1,13 +1,16 @@
 'use client';
 
-import React, { use } from 'react';
+import React, { use, useState } from 'react';
 import { motion } from 'framer-motion';
 import { VersionCompare, DocumentVersion } from '@/components/contracts/VersionCompare';
+import { VersionTimeline } from '@/components/contracts/VersionTimeline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, FileText, History, GitBranch, Clock, Sparkles } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, FileText, History, GitBranch, Clock, Sparkles, GitCompare } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 // Mock versions data
 const mockVersions: DocumentVersion[] = [
@@ -110,6 +113,20 @@ This Agreement shall be governed by and construed in accordance with the laws of
 
 export default function VersionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
+  const [viewMode, setViewMode] = useState<'compare' | 'timeline'>('timeline');
+  
+  // Transform versions for timeline (matching ContractVersion interface)
+  const timelineVersions = mockVersions.map((v, idx) => ({
+    id: v.id,
+    versionNumber: idx + 1,
+    uploadedBy: v.author.name,
+    uploadedAt: v.timestamp.toISOString(),
+    isActive: idx === mockVersions.length - 1,
+    summary: v.label || `${v.changes} changes made`,
+    changes: {},
+    fileUrl: null,
+  }));
   
   const handleAcceptVersion = (versionId: string) => {
     const version = mockVersions.find((v) => v.id === versionId);
@@ -122,6 +139,10 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
     toast.info('Merge initiated', {
       description: 'Opening merge editor to combine versions...',
     });
+  };
+  
+  const handleTimelineCompare = (versionA: number, versionB: number) => {
+    router.push(`/contracts/${id}/versions/compare?a=${versionA}&b=${versionB}`);
   };
 
   return (
@@ -165,6 +186,27 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
             </div>
             
             <div className="hidden md:flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-white/10 rounded-lg p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('timeline')}
+                  className={`text-white/80 hover:text-white hover:bg-white/20 gap-1 ${viewMode === 'timeline' ? 'bg-white/20' : ''}`}
+                >
+                  <History className="w-4 h-4" />
+                  Timeline
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('compare')}
+                  className={`text-white/80 hover:text-white hover:bg-white/20 gap-1 ${viewMode === 'compare' ? 'bg-white/20' : ''}`}
+                >
+                  <GitCompare className="w-4 h-4" />
+                  Compare
+                </Button>
+              </div>
               <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2">
                 <Clock className="w-4 h-4 mr-2" />
                 Last updated {mockVersions[mockVersions.length - 1]?.timestamp.toLocaleDateString() ?? 'N/A'}
@@ -178,20 +220,40 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
         </div>
       </div>
 
-      {/* Version Compare */}
+      {/* Content */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
         className="max-w-7xl mx-auto px-6 py-6"
       >
-        <VersionCompare
-          documentId={id}
-          versions={mockVersions}
-          onAcceptVersion={handleAcceptVersion}
-          onMergeVersions={handleMergeVersions}
-          className="h-[calc(100vh-180px)]"
-        />
+        {viewMode === 'timeline' ? (
+          <div className="space-y-6">
+            {/* Visual Timeline */}
+            <VersionTimeline
+              versions={timelineVersions}
+              contractId={id}
+              onCompare={handleTimelineCompare}
+              onRevert={(versionId) => {
+                toast.info('Reverting...', { description: `Reverting to version ${versionId}` });
+              }}
+              onView={(versionId) => {
+                setViewMode('compare');
+              }}
+              onCreateSnapshot={() => {
+                toast.success('Snapshot created');
+              }}
+            />
+          </div>
+        ) : (
+          <VersionCompare
+            documentId={id}
+            versions={mockVersions}
+            onAcceptVersion={handleAcceptVersion}
+            onMergeVersions={handleMergeVersions}
+            className="h-[calc(100vh-180px)]"
+          />
+        )}
       </motion.div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { DataQualityScorerService } from 'data-orchestration/services';
+import { dataQualityScorerService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 
 // Using singleton prisma instance from @/lib/prisma
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
     }
 
-    const qualityService = new DataQualityScorerService(prisma);
+    const qualityService = new dataQualityScorerService(prisma);
     const report = await qualityService.generateQualityReport(tenantId);
 
     // Filter by score if provided

@@ -94,7 +94,7 @@ const SECTION_ICONS = {
 
 const SECTION_LABELS = {
   identification: 'Identification',
-  parties: 'External Parties',
+  parties: 'Parties',
   commercials: 'Commercials & Financials',
   dates: 'Key Dates',
   reminders: 'Reminders & Notices',
@@ -318,7 +318,7 @@ function MetadataSection({
   
   // Get fields needing attention in this section
   const attentionFields = fields.filter(f => {
-    const confidence = metadata._field_confidence?.[f.key] || metadata.field_confidence?.[f.key];
+    const confidence = metadata._field_confidence?.[f.key];
     return f.ui_attention !== 'none' || confidence?.needsVerification;
   });
   
@@ -379,7 +379,7 @@ function MetadataSection({
                 </Button>
               )}
               {!isEditing && (metadata.external_parties || []).length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-4">No external parties defined</p>
+                <p className="text-sm text-slate-500 text-center py-4">No parties defined</p>
               )}
             </div>
           ) : (
@@ -388,7 +388,7 @@ function MetadataSection({
                 key={field.key}
                 field={field}
                 value={metadata[field.key]}
-                confidence={metadata._field_confidence?.[field.key] || metadata.field_confidence?.[field.key]}
+                confidence={metadata._field_confidence?.[field.key]}
                 isEditing={isEditing && field.editable}
                 onChange={(value) => onChange(field.key, value)}
                 metadata={metadata}

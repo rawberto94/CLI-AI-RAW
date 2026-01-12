@@ -31,12 +31,14 @@ import {
   Share2,
   GitCompare,
   ChevronDown,
+  GitBranch,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
   contractId: string
   filename: string
   status: string
+  currentVersion?: number
   showPdfViewer: boolean
   isEditing: boolean
   isExtractingAI: boolean
@@ -53,6 +55,7 @@ export const ContractHeader = memo(function ContractHeader({
   contractId,
   filename,
   status,
+  currentVersion,
   showPdfViewer,
   isEditing,
   isExtractingAI,
@@ -96,6 +99,22 @@ export const ContractHeader = memo(function ContractHeader({
                   <CopyableId id={contractId} />
                   <span className="text-slate-300 hidden sm:inline">•</span>
                   <StatusBadge status={status || 'unknown'} />
+                  {currentVersion !== undefined && currentVersion > 0 && (
+                    <>
+                      <span className="text-slate-300 hidden sm:inline">•</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                              <GitBranch className="h-3 w-3" />
+                              v{currentVersion}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Current Version</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

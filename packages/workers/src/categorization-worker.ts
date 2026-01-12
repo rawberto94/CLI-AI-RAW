@@ -11,7 +11,8 @@
  * - Queue low-confidence for review
  */
 
-import type { Job } from "bullmq";
+// Use any for Job type due to cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any; updateProgress: (progress: number | object) => Promise<void> };
 import { Worker } from "bullmq";
 import pino from "pino";
 
@@ -234,6 +235,306 @@ export async function processCategorizationJob(
     const shouldAutoApply = autoApply && 
       (result.overallConfidence / 100) >= autoApplyThreshold;
 
+    // =========================================================================
+    // ENHANCED TAXONOMY MATCHING
+    // Uses multi-signal scoring with keyword matching and AI classification
+    // =========================================================================
+    
+    let matchedCategoryL1: { id: string; name: string; path: string; score?: number } | null = null;
+    let matchedCategoryL2: { id: string; name: string; path: string; parentId: string | null; score?: number } | null = null;
+    
+    // Fetch all active taxonomy categories with keywords for scoring
+    const allCategories = await prisma.taxonomyCategory.findMany({
+      where: { tenantId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        path: true,
+        level: true,
+        parentId: true,
+        keywords: true,
+        description: true,
+        aiClassificationPrompt: true,
+      },
+      orderBy: { level: 'asc' },
+    });
+
+    // Build scoring for each category based on multiple signals
+    interface CategoryScore {
+      category: typeof allCategories[0];
+      score: number;
+      signals: string[];
+    }
+
+    const categoryScores: CategoryScore[] = [];
+    
+    // Extract signals from AI result
+    const contractTypeValue = result.contractType.value;
+    const industryValue = result.industry.value;
+    const extractedTags = result.subjectTags || [];
+    const regulatoryDomains = result.regulatoryDomains || [];
+    const allSignals = [
+      contractTypeValue.toLowerCase(),
+      industryValue.toLowerCase(),
+      ...extractedTags.map(t => t.toLowerCase()),
+      ...regulatoryDomains.map(r => r.toLowerCase()),
+    ];
+
+    // Industry to taxonomy category mapping (L1 first, then L2)
+    const industryToCategoryMap: Record<string, string[]> = {
+      'TECHNOLOGY': ['Information Technology', 'Software & Applications', 'Cloud & Infrastructure'],
+      'HEALTHCARE': ['Research & Development', 'Clinical Trials'],
+      'FINANCE': ['Finance & Accounting', 'Banking & Treasury'],
+      'MANUFACTURING': ['Operations', 'Manufacturing'],
+      'RETAIL': ['Sales & Revenue', 'Procurement'],
+      'ENERGY': ['Operations', 'Utilities'],
+      'GOVERNMENT': ['Legal & Compliance', 'Compliance Services'],
+      'EDUCATION': ['Human Resources', 'Training & Development'],
+      'REAL_ESTATE': ['Real Estate & Facilities', 'Office Leases'],
+      'LEGAL': ['Legal & Compliance', 'Outside Counsel'],
+      'MEDIA': ['Marketing & Communications', 'Creative Services'],
+      'TRANSPORTATION': ['Operations', 'Logistics & Shipping'],
+      'HOSPITALITY': ['Operations', 'Facility Services'],
+      'AGRICULTURE': ['Operations', 'Manufacturing'],
+      'CONSTRUCTION': ['Real Estate & Facilities', 'Construction'],
+    };
+
+    // Contract type to category hints (L1 first, then L2)
+    const contractTypeCategoryHints: Record<string, string[]> = {
+      'MSA': ['Procurement', 'Strategic Vendors'],
+      'SOW': ['Professional Services', 'Consulting'],
+      'NDA': ['Legal & Compliance'],
+      'LICENSE': ['Information Technology', 'Software & Applications'],
+      'EMPLOYMENT': ['Human Resources', 'Recruitment & Staffing'],
+      'CONSULTING': ['Professional Services', 'Consulting'],
+      'VENDOR': ['Procurement', 'Strategic Vendors'],
+      'PURCHASE': ['Procurement', 'Commodity Vendors'],
+      'LEASE': ['Real Estate & Facilities', 'Office Leases'],
+      'SUBSCRIPTION': ['Information Technology', 'Software & Applications'],
+      'DPA': ['Legal & Compliance', 'Compliance Services'],
+      'SLA': ['Information Technology', 'Cloud & Infrastructure'],
+      'PARTNERSHIP': ['Corporate Development', 'Joint Ventures'],
+      'SUBCONTRACT': ['Procurement', 'Strategic Vendors'],
+    };
+
+    // Calculate score for each category
+    for (const cat of allCategories) {
+      let score = 0;
+      const signals: string[] = [];
+      const catNameLower = cat.name.toLowerCase();
+      const catDescLower = (cat.description || '').toLowerCase();
+      const catKeywords = (cat.keywords || []).map(k => k.toLowerCase());
+
+      // Signal 1: Direct name match from mapping (highest weight: 40 points)
+      const industryHints = industryToCategoryMap[industryValue] || [];
+      const typeHints = contractTypeCategoryHints[contractTypeValue] || [];
+      if (industryHints.includes(cat.name) || typeHints.includes(cat.name)) {
+        score += 40;
+        signals.push('mapping_match');
+      }
+
+      // Signal 2: Keyword matching (up to 30 points)
+      let keywordMatches = 0;
+      for (const signal of allSignals) {
+        if (catKeywords.some(kw => kw.includes(signal) || signal.includes(kw))) {
+          keywordMatches++;
+        }
+        // Also check if signal appears in category name or description
+        if (catNameLower.includes(signal) || catDescLower.includes(signal)) {
+          keywordMatches++;
+        }
+      }
+      const keywordScore = Math.min(keywordMatches * 6, 30);
+      if (keywordScore > 0) {
+        score += keywordScore;
+        signals.push(`keywords:${keywordMatches}`);
+      }
+
+      // Signal 3: Subject tag overlap with category keywords (up to 20 points)
+      let tagOverlap = 0;
+      for (const tag of extractedTags) {
+        const tagLower = tag.toLowerCase();
+        if (catKeywords.includes(tagLower) || catNameLower.includes(tagLower)) {
+          tagOverlap++;
+        }
+      }
+      const tagScore = Math.min(tagOverlap * 5, 20);
+      if (tagScore > 0) {
+        score += tagScore;
+        signals.push(`tags:${tagOverlap}`);
+      }
+
+      // Signal 4: Contract type name in category (10 points)
+      if (catNameLower.includes(contractTypeValue.toLowerCase()) || 
+          catKeywords.includes(contractTypeValue.toLowerCase())) {
+        score += 10;
+        signals.push('type_in_name');
+      }
+
+      if (score > 0) {
+        categoryScores.push({ category: cat, score, signals });
+      }
+    }
+
+    // Sort by score descending
+    categoryScores.sort((a, b) => b.score - a.score);
+
+    // Find best L1 and L2 matches
+    const l1Candidates = categoryScores.filter(cs => cs.category.level === 0);
+    const l2Candidates = categoryScores.filter(cs => cs.category.level === 1);
+
+    if (l1Candidates.length > 0) {
+      const best = l1Candidates[0];
+      if (best) {
+        matchedCategoryL1 = { 
+          id: best.category.id, 
+          name: best.category.name, 
+          path: best.category.path,
+          score: best.score,
+        };
+        console.log(`📊 L1 match: ${best.category.name} (score: ${best.score}, signals: ${best.signals.join(', ')})`);
+      }
+    }
+
+    if (l2Candidates.length > 0) {
+      // Prefer L2 that belongs to matched L1
+      let bestL2 = matchedCategoryL1 
+        ? l2Candidates.find(cs => cs.category.parentId === matchedCategoryL1?.id)
+        : undefined;
+      
+      // If no L2 under the matched L1, take the highest scoring L2
+      if (!bestL2 && l2Candidates[0]) {
+        bestL2 = l2Candidates[0];
+      }
+
+      if (bestL2) {
+        matchedCategoryL2 = { 
+          id: bestL2.category.id, 
+          name: bestL2.category.name, 
+          path: bestL2.category.path, 
+          parentId: bestL2.category.parentId,
+          score: bestL2.score,
+        };
+        console.log(`📊 L2 match: ${bestL2.category.name} (score: ${bestL2.score}, signals: ${bestL2.signals.join(', ')})`);
+
+        // If we found L2 but not L1, get the L1 from L2's parent
+        if (!matchedCategoryL1 && bestL2.category.parentId) {
+          const parentCat = await prisma.taxonomyCategory.findUnique({
+            where: { id: bestL2.category.parentId },
+            select: { id: true, name: true, path: true },
+          });
+          if (parentCat) {
+            matchedCategoryL1 = { ...parentCat, score: 0 };
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // AI-DRIVEN CATEGORY SELECTION (Fallback for low-scoring matches)
+    // If signal scoring didn't find a confident match, ask AI to pick directly
+    // =========================================================================
+    const minConfidentScore = 30; // Minimum score to consider a confident match
+    const bestL1Score = matchedCategoryL1?.score || 0;
+    const bestL2Score = matchedCategoryL2?.score || 0;
+
+    if (bestL1Score < minConfidentScore && bestL2Score < minConfidentScore && allCategories.length > 0) {
+      console.log(`🤖 Low scoring match (L1: ${bestL1Score}, L2: ${bestL2Score}), using AI to select category...`);
+      
+      try {
+        const { openai } = await import("@/lib/openai-client");
+        
+        if (!openai) {
+          throw new Error('OpenAI client not available');
+        }
+        
+        // Build category options for AI
+        const l1Options = allCategories
+          .filter(c => c.level === 0)
+          .map(c => `- ${c.name}: ${c.description || 'No description'} [keywords: ${(c.keywords || []).slice(0, 5).join(', ')}]`)
+          .join('\n');
+
+        const contractSummary = contract.rawText?.substring(0, 3000) || '';
+        
+        const aiResponse = await openai.chat({
+          messages: [
+            {
+              role: 'system',
+              content: `You are a contract categorization expert. Given a contract excerpt and a list of business function categories, select the BEST matching L1 category. Respond with JSON only: {"categoryName": "exact category name", "confidence": 0-100, "reasoning": "brief explanation"}`
+            },
+            {
+              role: 'user',
+              content: `Contract Type: ${result.contractType.value}\nIndustry: ${result.industry.value}\n\nContract Excerpt:\n${contractSummary}\n\nAvailable Categories:\n${l1Options}\n\nSelect the best matching category.`
+            }
+          ],
+          model: 'gpt-4o-mini',
+          temperature: 0.1,
+          max_tokens: 200,
+          response_format: { type: 'json_object' },
+        });
+
+        const aiPick = JSON.parse(aiResponse.choices[0]?.message?.content || '{}');
+        
+        if (aiPick.categoryName) {
+          const aiMatchedCat = allCategories.find(c => 
+            c.level === 0 && c.name.toLowerCase() === aiPick.categoryName.toLowerCase()
+          );
+          
+          if (aiMatchedCat && aiPick.confidence > 50) {
+            matchedCategoryL1 = {
+              id: aiMatchedCat.id,
+              name: aiMatchedCat.name,
+              path: aiMatchedCat.path,
+              score: aiPick.confidence,
+            };
+            console.log(`🤖 AI selected L1: ${aiMatchedCat.name} (confidence: ${aiPick.confidence}%)`);
+            
+            // Also try to find best L2 under this L1
+            const l2UnderL1 = allCategories.filter(c => c.level === 1 && c.parentId === aiMatchedCat.id);
+            if (l2UnderL1.length > 0) {
+              // Use keyword matching to pick best L2
+              let bestL2Match = l2UnderL1[0];
+              let bestL2MatchScore = 0;
+              
+              for (const l2 of l2UnderL1) {
+                let l2Score = 0;
+                const l2Keywords = (l2.keywords || []).map(k => k.toLowerCase());
+                for (const signal of allSignals) {
+                  if (l2Keywords.some(kw => kw.includes(signal) || signal.includes(kw))) {
+                    l2Score += 10;
+                  }
+                }
+                if (l2Score > bestL2MatchScore) {
+                  bestL2MatchScore = l2Score;
+                  bestL2Match = l2;
+                }
+              }
+              
+              if (bestL2Match) {
+                matchedCategoryL2 = {
+                  id: bestL2Match.id,
+                  name: bestL2Match.name,
+                  path: bestL2Match.path,
+                  parentId: bestL2Match.parentId,
+                  score: bestL2MatchScore || 20, // Minimum score for AI-derived L2
+                };
+                console.log(`🤖 AI-derived L2: ${bestL2Match.name} (score: ${bestL2MatchScore})`);
+              }
+            }
+          }
+        }
+      } catch (aiError) {
+        console.warn(`⚠️ AI category selection failed, using signal-based match:`, aiError);
+      }
+    }
+
+    // Log final matching result
+    if (matchedCategoryL1 || matchedCategoryL2) {
+      console.log(`📂 Final taxonomy: L1=${matchedCategoryL1?.name || 'none'} (${matchedCategoryL1?.score || 0}), L2=${matchedCategoryL2?.name || 'none'} (${matchedCategoryL2?.score || 0})`);
+    } else {
+      console.log(`⚠️ No taxonomy match found for contract ${contractId}`);
+    }
+
     if (shouldAutoApply) {
       // Map risk level to score
       const riskScoreMap: Record<string, number> = {
@@ -243,14 +544,20 @@ export async function processCategorizationJob(
         CRITICAL: 95,
       };
 
-      // Update contract
+      // Update contract with L1/L2 category assignments
       const existingMetadata = ((contract.metadata as Record<string, unknown>) || {}) as any;
       
       await prisma.contract.update({
         where: { id: contractId },
         data: {
           contractType: result.contractType.value,
+          // Primary category is L2 if available, otherwise L1
+          contractCategoryId: matchedCategoryL2?.id || matchedCategoryL1?.id || null,
+          // Store L1/L2 names for quick access
+          categoryL1: matchedCategoryL1?.name || null,
+          categoryL2: matchedCategoryL2?.name || null,
           keywords: result.subjectTags,
+          classifiedAt: new Date(),
           // Store full categorization in metadata JSON field
           metadata: JSON.parse(JSON.stringify({
             ...existingMetadata,
@@ -264,6 +571,29 @@ export async function processCategorizationJob(
               scope: result.scope,
               flags: result.flags,
               overallConfidence: result.overallConfidence,
+              // Full taxonomy classification with scoring
+              taxonomy: {
+                categoryL1: matchedCategoryL1 ? {
+                  id: matchedCategoryL1.id,
+                  name: matchedCategoryL1.name,
+                  path: matchedCategoryL1.path,
+                  matchScore: matchedCategoryL1.score || 0,
+                } : null,
+                categoryL2: matchedCategoryL2 ? {
+                  id: matchedCategoryL2.id,
+                  name: matchedCategoryL2.name,
+                  path: matchedCategoryL2.path,
+                  matchScore: matchedCategoryL2.score || 0,
+                } : null,
+                // Top alternative matches for review
+                alternatives: categoryScores.slice(0, 5).map(cs => ({
+                  id: cs.category.id,
+                  name: cs.category.name,
+                  level: cs.category.level,
+                  score: cs.score,
+                  signals: cs.signals,
+                })),
+              },
               rawTextHash,
               categorizedAt: new Date().toISOString(),
               source,
@@ -275,7 +605,7 @@ export async function processCategorizationJob(
 
       console.log(`✅ Auto-applied categorization for contract ${contractId}`);
     } else {
-      // Store results but don't apply
+      // Store results but don't apply - still suggest categories
       const existingMetadata = ((contract.metadata as Record<string, unknown>) || {}) as any;
       
       await prisma.contract.update({
@@ -290,9 +620,35 @@ export async function processCategorizationJob(
               complexity: result.complexity,
               regulatoryDomains: result.regulatoryDomains,
               overallConfidence: result.overallConfidence,
+              // Suggested taxonomy classification with scoring
+              suggestedTaxonomy: {
+                categoryL1: matchedCategoryL1 ? {
+                  id: matchedCategoryL1.id,
+                  name: matchedCategoryL1.name,
+                  path: matchedCategoryL1.path,
+                  matchScore: matchedCategoryL1.score || 0,
+                } : null,
+                categoryL2: matchedCategoryL2 ? {
+                  id: matchedCategoryL2.id,
+                  name: matchedCategoryL2.name,
+                  path: matchedCategoryL2.path,
+                  matchScore: matchedCategoryL2.score || 0,
+                } : null,
+                // Top alternatives for human review
+                alternatives: categoryScores.slice(0, 5).map(cs => ({
+                  id: cs.category.id,
+                  name: cs.category.name,
+                  level: cs.category.level,
+                  score: cs.score,
+                  signals: cs.signals,
+                })),
+              },
               rawTextHash,
               categorizedAt: new Date().toISOString(),
               needsReview: true,
+              reviewReason: result.overallConfidence < 60 
+                ? 'Low AI confidence' 
+                : 'Below auto-apply threshold',
             },
           })),
         },

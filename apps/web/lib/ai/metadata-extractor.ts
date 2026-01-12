@@ -9,6 +9,7 @@
  * - Multi-pass extraction for better accuracy
  * - Confidence scoring with explanation
  * - Handles complex field types (currency, dates, select options)
+ * - Continuous learning from user corrections (adaptive extraction)
  */
 
 import OpenAI from 'openai';
@@ -17,6 +18,7 @@ import {
   MetadataSchema,
   MetadataFieldType 
 } from '@/lib/services/metadata-schema.service';
+import { adaptiveExtractionEngine, type PromptEnhancement } from './adaptive-extraction-engine';
 
 // ============================================================================
 // Types
@@ -80,6 +82,10 @@ export interface ExtractionOptions {
   includeAlternatives?: boolean;
   maxTokens?: number;
   temperature?: number;
+  // Learning options
+  tenantId?: string;
+  contractType?: string;
+  enableAdaptiveLearning?: boolean;
 }
 
 // ============================================================================
@@ -88,6 +94,7 @@ export interface ExtractionOptions {
 
 export class SchemaAwareMetadataExtractor {
   private openai: OpenAI;
+  private adaptiveEnhancements: PromptEnhancement | null = null;
   private defaultOptions: Required<ExtractionOptions> = {
     maxPasses: 2,
     confidenceThreshold: 0.7,
@@ -97,6 +104,9 @@ export class SchemaAwareMetadataExtractor {
     includeAlternatives: true,
     maxTokens: 4000,
     temperature: 0.1,
+    tenantId: 'demo',
+    contractType: '',
+    enableAdaptiveLearning: true,
   };
 
   constructor(apiKey?: string) {
@@ -116,6 +126,22 @@ export class SchemaAwareMetadataExtractor {
   ): Promise<MetadataExtractionResult> {
     const startTime = Date.now();
     const opts = { ...this.defaultOptions, ...options };
+    
+    // Load adaptive learning enhancements if enabled
+    if (opts.enableAdaptiveLearning && opts.tenantId) {
+      try {
+        const fieldNames = schema.fields.map(f => f.name);
+        this.adaptiveEnhancements = await adaptiveExtractionEngine.buildAdaptivePrompt(
+          opts.tenantId,
+          opts.contractType || '',
+          fieldNames
+        );
+        console.log(`🧠 Loaded adaptive enhancements: ${this.adaptiveEnhancements.fewShotExamples.length} few-shot examples, ${this.adaptiveEnhancements.warningPatterns.length} warning patterns`);
+      } catch (error) {
+        console.warn('Failed to load adaptive enhancements:', error);
+        this.adaptiveEnhancements = null;
+      }
+    }
     
     // Filter fields to extract
     const fieldsToExtract = schema.fields.filter(field => {
@@ -321,7 +347,7 @@ export class SchemaAwareMetadataExtractor {
   // --------------------------------------------------------------------------
 
   private getSystemPrompt(): string {
-    return `You are an expert contract metadata extractor. Your task is to extract specific metadata fields from contract documents.
+    let basePrompt = `You are an expert contract metadata extractor. Your task is to extract specific metadata fields from contract documents.
 
 Guidelines:
 1. Extract values EXACTLY as they appear in the document when possible
@@ -338,6 +364,35 @@ Confidence Scoring Guidelines:
 - 60-79: Value is implied or requires significant interpretation
 - 40-59: Value is a reasonable guess based on context
 - 0-39: Value could not be reliably determined`;
+
+    // Add adaptive learning enhancements
+    if (this.adaptiveEnhancements) {
+      // Add warning patterns from past errors
+      if (this.adaptiveEnhancements.warningPatterns.length > 0) {
+        basePrompt += `\n\n⚠️ IMPORTANT - Learn from past corrections:\n`;
+        for (const warning of this.adaptiveEnhancements.warningPatterns.slice(0, 5)) {
+          basePrompt += `- ${warning}\n`;
+        }
+      }
+
+      // Add contract type hints
+      if (this.adaptiveEnhancements.contractTypeHints.length > 0) {
+        basePrompt += `\n\n📋 Contract type guidance:\n`;
+        for (const hint of this.adaptiveEnhancements.contractTypeHints) {
+          basePrompt += `- ${hint}\n`;
+        }
+      }
+
+      // Add few-shot examples
+      if (this.adaptiveEnhancements.fewShotExamples.length > 0) {
+        basePrompt += `\n\n✅ Successful extraction examples:\n`;
+        for (const example of this.adaptiveEnhancements.fewShotExamples.slice(0, 3)) {
+          basePrompt += `Field: ${example.field}\nInput: "${example.input.slice(0, 200)}..."\nOutput: "${example.output}"\n\n`;
+        }
+      }
+    }
+
+    return basePrompt;
   }
 
   private buildExtractionPrompt(
@@ -483,8 +538,16 @@ Respond with a JSON object:
       return this.createEmptyResult(field, 'No extraction returned by AI');
     }
 
-    const confidence = Math.min((extraction.confidence || 0) / 100, 1);
+    let confidence = Math.min((extraction.confidence || 0) / 100, 1);
     const value = this.parseValue(extraction.value, field.type);
+
+    // Apply confidence calibration from adaptive learning
+    if (this.adaptiveEnhancements?.confidenceModifiers?.[field.name] !== undefined) {
+      const modifier = this.adaptiveEnhancements.confidenceModifiers[field.name]!;
+      // Calibrate: blend raw confidence with historical accuracy
+      confidence = confidence * 0.6 + (confidence * modifier * 0.4);
+      confidence = Math.round(confidence * 100) / 100;
+    }
 
     const confidenceThreshold = field.aiConfidenceThreshold ?? opts.confidenceThreshold;
 

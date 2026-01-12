@@ -137,6 +137,7 @@ export function ContractCard({
       whileHover="hover"
       onHoverStart={() => setShowActions(true)}
       onHoverEnd={() => setShowActions(false)}
+      data-testid="contract-card"
       className={cn(
         "relative bg-white rounded-lg border border-gray-200 overflow-hidden transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-1",

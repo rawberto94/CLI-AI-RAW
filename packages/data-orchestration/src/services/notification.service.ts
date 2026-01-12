@@ -2,6 +2,98 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Dynamic import for email service (apps/web)
+// For use in workers package, we create a simple HTTP-based sender
+async function sendEmailViaAPI(to: string[], subject: string, body: string): Promise<boolean> {
+  const apiUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  
+  try {
+    const response = await fetch(`${apiUrl}/api/internal/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET || 'internal-secret'}`,
+      },
+      body: JSON.stringify({
+        to,
+        subject,
+        html: `<div style="font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">${subject}</h1>
+          </div>
+          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+            ${body.split('\n').map(line => `<p>${line}</p>`).join('')}
+          </div>
+          <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+            <p>© ${new Date().getFullYear()} ConTigo - Contract Intelligence Platform</p>
+          </div>
+        </div>`,
+        text: body,
+      }),
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Failed to send email via API:', error);
+    return false;
+  }
+}
+
+// Direct SendGrid integration as fallback
+async function sendEmailDirect(to: string[], subject: string, body: string): Promise<boolean> {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.EMAIL_FROM || 'notifications@contigo.ch';
+  
+  if (!apiKey) {
+    console.log('📧 [DEV MODE] Email would be sent:', { to, subject, body: body.substring(0, 100) });
+    return true;
+  }
+  
+  try {
+    const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: to.map(email => ({ email })) }],
+        from: { email: fromEmail },
+        subject,
+        content: [
+          { type: 'text/plain', value: body },
+          {
+            type: 'text/html',
+            value: `<div style="font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 20px;">${subject}</h1>
+              </div>
+              <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                ${body.split('\n').map(line => `<p>${line}</p>`).join('')}
+              </div>
+              <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+                <p>© ${new Date().getFullYear()} ConTigo - Contract Intelligence Platform</p>
+              </div>
+            </div>`,
+          },
+        ],
+      }),
+    });
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('SendGrid error:', error);
+      return false;
+    }
+    
+    console.log('✅ Email sent via SendGrid:', { to, subject });
+    return true;
+  } catch (error) {
+    console.error('Failed to send email via SendGrid:', error);
+    return false;
+  }
+}
+
 export interface NotificationOptions {
   userId?: string;
   tenantId: string;
@@ -80,29 +172,31 @@ export class NotificationService {
     const recipients = userId
       ? await prisma.user.findMany({
           where: { id: userId },
-          select: { email: true },
+          select: { email: true, name: true },
         })
       : await prisma.user.findMany({
           where: { tenantId },
-          select: { email: true },
+          select: { email: true, name: true },
         });
 
     const emails = recipients.map((r) => r.email).filter(Boolean) as string[];
 
     if (emails.length === 0) {
-      console.warn('No email recipients found');
+      console.warn('No email recipients found for notification');
       return;
     }
 
-    // In production, integrate with email service (SendGrid, AWS SES, etc.)
-    console.log('Sending email notification:', {
-      to: emails,
-      subject,
-      body,
-    });
-
-    // TODO: Implement actual email sending
-    // await emailProvider.send({ to: emails, subject, body });
+    // Try internal API first, fallback to direct SendGrid
+    let success = await sendEmailViaAPI(emails, subject, body);
+    
+    if (!success) {
+      console.log('Internal API failed, trying direct SendGrid...');
+      success = await sendEmailDirect(emails, subject, body);
+    }
+    
+    if (!success) {
+      console.error('Failed to send email notification:', { to: emails, subject });
+    }
   }
 
   /**

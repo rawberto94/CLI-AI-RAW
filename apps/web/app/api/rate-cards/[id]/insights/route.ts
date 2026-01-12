@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
-import { AIInsightsGeneratorService } from 'data-orchestration/services';
+import { aiInsightsGeneratorService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     // Generate AI insights
-    const insightsService = new AIInsightsGeneratorService(prisma);
+    const insightsService = new aiInsightsGeneratorService(prisma);
     const insights = await insightsService.generateBenchmarkInsights(id);
 
     return NextResponse.json({

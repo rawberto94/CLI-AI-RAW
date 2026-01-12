@@ -7,8 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { PerformanceOptimizationService } from 'data-orchestration/services';
-import { QueryOptimizerService } from 'data-orchestration/services';
+import { performanceOptimizationService } from 'data-orchestration/services';
+import { queryOptimizerService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const perfService = new PerformanceOptimizationService(prisma);
-    const queryOptimizer = new QueryOptimizerService(prisma);
+    const perfService = new performanceOptimizationService(prisma);
+    const queryOptimizer = new queryOptimizerService(prisma);
 
     // Get cache statistics
     const cacheStats = perfService.getCacheStats();
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    const perfService = new PerformanceOptimizationService(prisma);
+    const perfService = new performanceOptimizationService(prisma);
 
     switch (action) {
       case 'invalidate_cache':

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
-import { AnomalyExplainerService } from 'data-orchestration/services';
+import { anomalyExplainerService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     // Detect anomalies
-    const anomalyService = new AnomalyExplainerService(prisma);
+    const anomalyService = new anomalyExplainerService(prisma);
     const anomalies = await anomalyService.detectAnomalies(id);
 
     // Generate explanations for each anomaly

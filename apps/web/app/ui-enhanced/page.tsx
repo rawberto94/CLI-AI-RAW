@@ -260,7 +260,7 @@ export default function EnhancedUIShowcase() {
               <SearchInput
                 placeholder="Search contracts, clients, or documents..."
                 value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
+                onChange={(value) => setSearchValue(value)}
                 onClear={() => setSearchValue("")}
               />
               {searchValue && (

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { chunkText, embedChunks } from "clients-rag";
-import { AIArtifactGeneratorService } from "data-orchestration/services";
+import { aiArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";
 
-const aiArtifactGenerator = AIArtifactGeneratorService.getInstance();
+// aiArtifactGeneratorService is already an instance via getInstance()
+const aiArtifactGenerator = aiArtifactGeneratorService;
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/regenerate

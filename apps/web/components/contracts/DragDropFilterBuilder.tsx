@@ -184,11 +184,11 @@ export function DragDropFilterBuilder({
       ? initialGroups
       : [{ id: 'group-1', logic: 'AND', filters: [] }]
   );
-  const [draggedTemplate, setDraggedTemplate] = useState<typeof FILTER_TEMPLATES[0] | null>(null);
+  const [draggedTemplate, setDraggedTemplate] = useState<(typeof FILTER_TEMPLATES)[number] | null>(null);
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const addFilterToGroup = useCallback((groupId: string, template: typeof FILTER_TEMPLATES[0]) => {
+  const addFilterToGroup = useCallback((groupId: string, template: (typeof FILTER_TEMPLATES)[number]) => {
     const newFilter: FilterBlock = {
       id: `filter-${Date.now()}`,
       type: template.type,
@@ -278,7 +278,7 @@ export function DragDropFilterBuilder({
     );
   }, []);
 
-  const handleDragStart = (template: typeof FILTER_TEMPLATES[0]) => {
+  const handleDragStart = (template: (typeof FILTER_TEMPLATES)[number]) => {
     setDraggedTemplate(template);
   };
 

@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { BenchmarkNotificationService } from 'data-orchestration/services';
+import { benchmarkNotificationService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 
 export async function GET(request: NextRequest) {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Initialize service
-    const notificationService = new BenchmarkNotificationService(prisma);
+    const notificationService = new benchmarkNotificationService(prisma);
 
     // Get notifications
     const notifications = notificationService.getNotifications(tenantId, {
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { notificationId, action, tenantId } = body;
 
-    const notificationService = new BenchmarkNotificationService(prisma);
+    const notificationService = new benchmarkNotificationService(prisma);
 
     if (action === 'markAsRead' && notificationId) {
       const success = notificationService.markAsRead(notificationId);

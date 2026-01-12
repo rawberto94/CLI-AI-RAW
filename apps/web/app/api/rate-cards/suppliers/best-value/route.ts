@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { SupplierBenchmarkService } from 'data-orchestration/services';
+import { supplierBenchmarkService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const country = searchParams.get('country') || undefined;
     const lineOfService = searchParams.get('lineOfService') || undefined;
 
-    const benchmarkService = new SupplierBenchmarkService(prisma);
+    const benchmarkService = new supplierBenchmarkService(prisma);
 
     const bestValue = await benchmarkService.findBestValueSuppliers(
       session.user.tenantId,

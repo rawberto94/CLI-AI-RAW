@@ -6,6 +6,7 @@ interface ContractMetadata {
   document_number: string
   document_title: string
   contract_short_description: string
+  contract_type: string
   jurisdiction: string
   contract_language: string
   external_parties: Array<{ legalName: string; role?: string; legalForm?: string }>
@@ -109,6 +110,7 @@ export function useContractMetadata(contract: ContractData | null) {
         document_number: '',
         document_title: '',
         contract_short_description: '',
+        contract_type: '',
         jurisdiction: '',
         contract_language: '',
         external_parties: [],
@@ -133,6 +135,7 @@ export function useContractMetadata(contract: ContractData | null) {
       document_number: contract.document_number || contract.id || '',
       document_title: contract.document_title || contract.filename || '',
       contract_short_description: contract.contract_short_description || contract.description || overviewData?.summary || '',
+      contract_type: overviewData?.contractType || overviewData?.type || '',
       jurisdiction: contract.jurisdiction || overviewData?.jurisdiction || '',
       contract_language: contract.contract_language || overviewData?.language || 'en',
       

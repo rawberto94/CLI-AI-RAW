@@ -87,18 +87,11 @@ export async function safeDeleteContract(
         });
         deletedRecords.contractEmbeddings = contractEmbeddingsResult.count;
 
-        // 3. Delete rate card entries linked to artifacts
-        const artifacts = await tx.artifact.findMany({
+        // 3. Delete rate card entries linked to the contract
+        const rateCardResult = await tx.rateCardEntry.deleteMany({
           where: { contractId },
-          select: { id: true },
         });
-
-        for (const artifact of artifacts) {
-          const rateCardResult = await tx.rateCardEntry.deleteMany({
-            where: { artifactId: artifact.id },
-          });
-          deletedRecords.rateCardEntries += rateCardResult.count;
-        }
+        deletedRecords.rateCardEntries = rateCardResult.count;
 
         // 4. Delete artifacts
         const artifactsResult = await tx.artifact.deleteMany({
@@ -186,20 +179,21 @@ export async function safeDeleteContract(
 
         // 18. Log activity
         try {
-          await tx.activityLog.create({
+          await tx.auditLog.create({
             data: {
               tenantId,
               userId: userId || 'system',
               action: 'contract_deleted',
-              entityType: 'contract',
-              entityId: contractId,
-              metadata: {
+              resource: 'contract',
+              metadata: JSON.stringify({
                 fileName: contract.fileName,
                 cascade: true,
                 deletedRecords,
                 unlinkedChildren: unlinkedChildren.count,
                 reason: reason || 'User initiated deletion',
-              },
+              }),
+              ipAddress: null,
+              userAgent: null,
             },
           });
         } catch (logError) {
@@ -299,14 +293,15 @@ export async function softDeleteContract(
     });
 
     // Log activity
-    await prisma.activityLog.create({
+    await prisma.auditLog.create({
       data: {
         tenantId,
         userId: userId || 'system',
         action: 'contract_soft_deleted',
-        entityType: 'contract',
-        entityId: contractId,
-        metadata: { softDelete: true },
+        resource: 'contract',
+        metadata: JSON.stringify({ softDelete: true, contractId }),
+        ipAddress: null,
+        userAgent: null,
       },
     });
 
@@ -347,13 +342,15 @@ export async function restoreContract(
     });
 
     // Log activity
-    await prisma.activityLog.create({
+    await prisma.auditLog.create({
       data: {
         tenantId,
         userId: userId || 'system',
         action: 'contract_restored',
-        entityType: 'contract',
-        entityId: contractId,
+        resource: 'contract',
+        metadata: JSON.stringify({ contractId }),
+        ipAddress: null,
+        userAgent: null,
       },
     });
 

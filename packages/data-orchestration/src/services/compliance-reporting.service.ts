@@ -68,20 +68,19 @@ export class ComplianceReportingService {
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         tenantId,
-        timestamp: {
+        createdAt: {
           gte: startDate,
           lte: endDate,
         },
         ...(userId && { userId }),
       },
       orderBy: {
-        timestamp: 'desc',
+        createdAt: 'desc',
       },
       include: {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
           },
         },
@@ -101,12 +100,12 @@ export class ComplianceReportingService {
     const activities: ActivityLog[] = includeDetails
       ? auditLogs.map((log) => ({
           id: log.id,
-          timestamp: log.timestamp,
-          userId: log.userId,
-          userName: log.user?.name || 'Unknown',
+          timestamp: log.createdAt,
+          userId: log.userId || '',
+          userName: log.user?.email || 'Unknown',
           action: log.action,
-          entityType: log.entityType,
-          entityId: log.entityId,
+          entityType: log.entityType || log.resourceType || '',
+          entityId: log.entityId || '',
           changes: log.changes as any,
           metadata: log.metadata as any,
         }))
@@ -125,7 +124,7 @@ export class ComplianceReportingService {
     const exportsByUser = auditLogs
       .filter((log) => log.action === 'export')
       .reduce((acc, log) => {
-        const userName = log.user?.name || 'Unknown';
+        const userName = log.user?.email || 'Unknown';
         acc[userName] = (acc[userName] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
@@ -252,14 +251,13 @@ export class ComplianceReportingService {
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({
         where,
-        orderBy: { timestamp: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: limit,
         skip: offset,
         include: {
           user: {
             select: {
               id: true,
-              name: true,
               email: true,
             },
           },
@@ -284,7 +282,7 @@ export class ComplianceReportingService {
     const logs = await prisma.auditLog.findMany({
       where: {
         tenantId,
-        timestamp: {
+        createdAt: {
           gte: startDate,
           lte: endDate,
         },
@@ -298,7 +296,7 @@ export class ComplianceReportingService {
     }, {} as Record<string, number>);
 
     const dailyActivity = logs.reduce((acc, log) => {
-      const date = log.timestamp.toISOString().split('T')[0];
+      const date = log.createdAt.toISOString().split('T')[0];
       acc[date] = (acc[date] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);

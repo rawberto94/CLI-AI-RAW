@@ -206,6 +206,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
       {
         type: 'line',
         title: 'Spend Trend (12 Months)',
+        data: spend.spendTrend.map((t) => ({ label: t.period, value: t.value })),
         datasets: [
           {
             label: 'Monthly Spend',
@@ -331,6 +332,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
       {
         type: 'line',
         title: 'Spend Trend',
+        data: spend.spendTrend.map((t) => ({ label: t.period, value: t.value })),
         datasets: [
           {
             label: 'Total Spend',
@@ -459,6 +461,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
       {
         type: 'line',
         title: 'Expiration Timeline',
+        data: risks.expiringContracts.slice(0, 15).map((c) => ({ label: c.title.substring(0, 20), value: c.daysUntil })),
         datasets: [
           {
             label: 'Days Until Expiration',

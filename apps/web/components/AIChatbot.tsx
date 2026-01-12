@@ -1435,7 +1435,7 @@ Would you like me to notify the first approver or do anything else?`,
       {/* Messages */}
       <div className="relative flex-1">
         <ScrollArea className="h-full p-4">
-          <div ref={scrollRef} className="space-y-4" role="log" aria-live="polite" aria-label="Chat messages">
+          <div ref={scrollRef} className="space-y-4" role="log" aria-live="polite" aria-label="Chat messages" data-testid="chatbot-messages">
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
                 <motion.div
@@ -1825,6 +1825,7 @@ Would you like me to notify the first approver or do anything else?`,
                 }
               }}
               disabled={isLoading}
+              data-testid="chatbot-input"
               className={cn(
                 "flex-1 min-h-[40px] max-h-[120px] resize-none pr-16",
                 !isOnline && "bg-gray-50"
@@ -1875,6 +1876,7 @@ Would you like me to notify the first approver or do anything else?`,
                 <Button
                   onClick={() => handleSend()}
                   disabled={!input.trim() || isLoading || !isOnline}
+                  data-testid="chatbot-send"
                   className={cn(
                     "h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all",
                     !isOnline && "opacity-50 cursor-not-allowed"

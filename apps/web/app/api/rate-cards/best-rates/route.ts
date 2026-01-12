@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { RateCardBenchmarkingEngine } from 'data-orchestration/services';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/best-rates
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const seniority = searchParams.get('seniority');
     const lineOfService = searchParams.get('lineOfService');
 
-    const benchmarkEngine = new RateCardBenchmarkingEngine(prisma);
+    const benchmarkEngine = new rateCardBenchmarkingService(prisma);
 
     // If specific criteria provided, get single best rate
     if (role && country && seniority) {

@@ -368,12 +368,12 @@ export class AIArtifactGeneratorService {
       const aiCertainty = this.extractCertainty(result) || 0.85;
 
       // Validate the result
-      const validation = artifactValidationService.validateArtifact(artifactType, result);
+      const validation = await artifactValidationService.validateArtifact(artifactType, result);
       
       // Auto-fix if needed
       let finalData = result;
       if (!validation.valid && validation.canAutoFix) {
-        const fixResult = artifactValidationService.autoFix(result, validation.issues);
+        const fixResult = await artifactValidationService.autoFix(result, validation.issues);
         if (fixResult.fixed) {
           finalData = fixResult.artifact;
           logger.info(
@@ -419,7 +419,7 @@ export class AIArtifactGeneratorService {
         aiCertainty,
         processingTime: 0, // Will be set by caller
         validation,
-        completeness: validation.completeness
+        completeness: (validation as { completeness?: number }).completeness
       };
     } catch (error) {
       const circuitState = this.circuitBreaker.getState();

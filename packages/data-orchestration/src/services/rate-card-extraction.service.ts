@@ -468,7 +468,7 @@ Return JSON format:
   /**
    * Validate and enrich extracted data
    */
-  async validateExtraction(extraction: ExtractionResult): Promise<ValidationResult> {
+  async validateExtraction(extraction: ExtractionResult): Promise<ExtractionValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
     const suggestions: ValidationSuggestion[] = [];

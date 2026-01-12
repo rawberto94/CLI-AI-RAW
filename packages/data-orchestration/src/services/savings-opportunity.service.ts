@@ -330,7 +330,7 @@ export class SavingsOpportunityService {
       ...opportunity,
       currentAnnualCost: parseFloat(opportunity.currentAnnualCost.toString()),
       projectedAnnualCost: parseFloat(opportunity.projectedAnnualCost.toString()),
-      annualSavings: parseFloat(opportunity.annualSavings.toString()),
+      annualSavings: parseFloat(opportunity.annualSavingsPotential.toString()),
       savingsPercentage: parseFloat(opportunity.savingsPercentage.toString()),
       confidence: parseFloat(opportunity.confidence.toString()),
       benchmarkData: opportunity.rateCardEntry.benchmarkSnapshots[0] || null,
@@ -368,7 +368,7 @@ export class SavingsOpportunityService {
     await this.prisma.rateSavingsOpportunity.update({
       where: { id: opportunityId },
       data: {
-        actualSavings,
+        actualSavingsRealized: actualSavings,
         status: 'IMPLEMENTED',
         implementedAt: new Date(),
       },
@@ -454,3 +454,9 @@ export class SavingsOpportunityService {
     ];
   }
 }
+
+// Export singleton placeholder
+export const savingsOpportunityService = {
+  detectOpportunities: async (...args: any[]) => { throw new Error('Service needs Prisma injection'); },
+  getOpportunityDetails: async (...args: any[]) => { throw new Error('Service needs Prisma injection'); },
+};

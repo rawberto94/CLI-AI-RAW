@@ -11,7 +11,8 @@
  * - Integration with contract processing pipeline
  */
 
-import { Job } from 'bullmq';
+// Use local type definition for cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { getQueueService, JobType } from '@repo/utils/queue/queue-service';

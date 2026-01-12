@@ -317,7 +317,7 @@ export class SupplierBenchmarkService {
     const suppliers = await this.prisma.rateCardSupplier.findMany({
       where: {
         tenantId,
-        rateCardEntries: {
+        rateCards: {
           some: {
             effectiveDate: {
               gte: periodStart,
@@ -607,3 +607,5 @@ export class SupplierBenchmarkService {
     }
   }
 }
+
+export const supplierBenchmarkService = SupplierBenchmarkService;

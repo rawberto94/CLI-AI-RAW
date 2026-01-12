@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PPPAdjustmentService } from 'data-orchestration/services';
+import { pppAdjustmentService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
-
-const pppAdjustmentService = new PPPAdjustmentService();
 
 export async function GET(request: NextRequest) {
   try {

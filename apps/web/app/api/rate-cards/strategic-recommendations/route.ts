@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
-import { StrategicRecommendationsService } from 'data-orchestration/services';
+import { strategicRecommendationsService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate strategic recommendations
-    const recommendationsService = new StrategicRecommendationsService(prisma);
+    const recommendationsService = new strategicRecommendationsService(prisma);
     const recommendations = await recommendationsService.generateRecommendations(tenantId);
 
     // Also get portfolio analysis

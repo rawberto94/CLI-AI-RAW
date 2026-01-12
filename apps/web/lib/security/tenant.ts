@@ -254,11 +254,9 @@ export async function logTenantOperation(
         userId,
         action: operation,
         resource: 'tenant',
-        resourceId: tenantId,
         metadata: details ? JSON.stringify(details) : undefined,
         ipAddress: null,
         userAgent: null,
-        timestamp: new Date(),
       },
     });
   } catch (error) {

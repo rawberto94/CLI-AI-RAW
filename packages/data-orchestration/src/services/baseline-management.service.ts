@@ -531,7 +531,7 @@ export class BaselineManagementService {
         volumeImpacted,
         assignedTo,
         notes,
-        status: comparison.status === 'ABOVE_BASELINE' ? ('IDENTIFIED' as const) : ('REVIEWED' as const),
+        status: comparison.status === 'ABOVE_BASELINE' ? ('IDENTIFIED' as const) : ('UNDER_REVIEW' as const),
         actionRequired: comparison.status === 'ABOVE_BASELINE',
         priority: comparison.potentialSavings > 100 ? 1 : comparison.potentialSavings > 50 ? 2 : 3,
       },

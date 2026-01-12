@@ -53,7 +53,7 @@ class DataLineageTracker {
    */
   private setupEventListeners(): void {
     // Track artifact generation from contracts
-    eventBus.on(Events.ARTIFACT_GENERATED, (data) => {
+    eventBus.on(Events.ARTIFACT_GENERATED, (data: { contractId: string; artifactId: string; type: string }) => {
       this.recordLineage({
         sourceType: 'contract',
         sourceId: data.contractId,
@@ -65,7 +65,7 @@ class DataLineageTracker {
     });
 
     // Track rate card extraction from artifacts
-    eventBus.on('artifact:extract-rates', (data) => {
+    eventBus.on('artifact:extract-rates', (data: { artifactId: string; rateCardId: string; contractId: string }) => {
       this.recordLineage({
         sourceType: 'artifact',
         sourceId: data.artifactId,
@@ -77,7 +77,7 @@ class DataLineageTracker {
     });
 
     // Track benchmark calculation from rate cards
-    eventBus.on(Events.BENCHMARK_CALCULATED, (data) => {
+    eventBus.on(Events.BENCHMARK_CALCULATED, (data: { sourceRateCards?: string[]; benchmarkId: string }) => {
       if (data.sourceRateCards) {
         data.sourceRateCards.forEach((rateCardId: string) => {
           this.recordLineage({

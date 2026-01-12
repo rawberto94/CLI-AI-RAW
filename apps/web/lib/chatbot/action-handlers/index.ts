@@ -19,6 +19,10 @@ import { handleTaxonomyActions } from './taxonomy-actions';
 import { handleComparisonActions } from './comparison-actions';
 import { handleWorkflowActions } from './workflow-actions';
 import { handleUpdateActions, detectUpdateIntent, type UpdateIntent } from './update-actions';
+import { handleVersionAction, versionActionPatterns } from './version-actions';
+import { handleCreationAction, creationActionPatterns } from './creation-actions';
+import { handleRepositoryAction, repositoryActionPatterns } from './repository-actions';
+import { handleHelpAction, helpActionPatterns, detectHelpIntent } from './help-actions';
 
 const actionHandlers: Record<string, ActionHandler> = {
   // List actions
@@ -71,6 +75,46 @@ const actionHandlers: Record<string, ActionHandler> = {
 
   // Workflow actions
   start_workflow: handleWorkflowActions,
+  list_workflows: handleWorkflowActions,
+  workflow_status: handleWorkflowActions,
+  pending_approvals: handleWorkflowActions,
+  approve_step: handleWorkflowActions,
+  reject_step: handleWorkflowActions,
+  create_workflow: handleWorkflowActions,
+  assign_approver: handleWorkflowActions,
+  escalate: handleWorkflowActions,
+  cancel_workflow: handleWorkflowActions,
+
+  // Version actions
+  show_version_history: handleVersionAction as ActionHandler,
+  compare_versions: handleVersionAction as ActionHandler,
+  create_version: handleVersionAction as ActionHandler,
+  revert_to_version: handleVersionAction as ActionHandler,
+  upload_new_version: handleVersionAction as ActionHandler,
+  export_version_history: handleVersionAction as ActionHandler,
+
+  // Creation actions
+  create_manual: handleCreationAction as ActionHandler,
+  quick_upload: handleCreationAction as ActionHandler,
+  ai_draft: handleCreationAction as ActionHandler,
+  generate_from_template: handleCreationAction as ActionHandler,
+
+  // Repository actions
+  filter_contracts: handleRepositoryAction as ActionHandler,
+  search_contracts: handleRepositoryAction as ActionHandler,
+  show_expired: handleRepositoryAction as ActionHandler,
+  show_expiring: handleRepositoryAction as ActionHandler,
+  show_high_risk: handleRepositoryAction as ActionHandler,
+  show_uncategorized: handleRepositoryAction as ActionHandler,
+  show_by_status: handleRepositoryAction as ActionHandler,
+  contract_stats: handleRepositoryAction as ActionHandler,
+  bulk_operations: handleRepositoryAction as ActionHandler,
+  change_view: handleRepositoryAction as ActionHandler,
+
+  // Help actions
+  show_help: handleHelpAction as ActionHandler,
+  show_category_help: handleHelpAction as ActionHandler,
+  list_commands: handleHelpAction as ActionHandler,
 };
 
 export async function executeAction(
@@ -101,3 +145,6 @@ export async function executeAction(
 
 // Export update intent detection for use in chat route
 export { detectUpdateIntent, type UpdateIntent };
+
+// Export pattern matchers for intent detection
+export { versionActionPatterns, creationActionPatterns, repositoryActionPatterns, helpActionPatterns, detectHelpIntent };

@@ -29,6 +29,10 @@ export interface TrendAnalysis {
   projectedNextPeriodRate: number;
   riskLevel: 'low' | 'medium' | 'high';
   insights: string[];
+  // Additional fields for supplier-alert compatibility
+  patterns: Array<{ type: string; description: string; impact: number; confidence: number }>;
+  rateChangeVelocity: number;
+  competitivenessChange: number;
 }
 
 export interface RateIncreaseAlert {
@@ -50,6 +54,12 @@ export interface AboveMarketAnalysis {
   totalImpact: number;
   affectedRoles: number;
   summary: string;
+  // Additional fields for supplier-alert compatibility
+  hasAboveMarketIncreases: boolean;
+  difference: number;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  supplierAvgIncrease: number;
+  marketAvgIncrease: number;
 }
 
 export class SupplierTrendAnalyzerService {
@@ -68,7 +78,7 @@ export class SupplierTrendAnalyzerService {
     monthsBack: number = 12
   ): Promise<TrendAnalysis> {
     // Get supplier info
-    const supplier = await this.prisma.party.findFirst({
+    const supplier = await this.prisma.rateCardSupplier.findFirst({
       where: { id: supplierId, tenantId },
     });
 
@@ -83,13 +93,11 @@ export class SupplierTrendAnalyzerService {
     const entries = await this.prisma.rateCardEntry.findMany({
       where: {
         tenantId,
-        rateCard: {
-          supplierId,
-        },
+        supplierId,
         createdAt: { gte: startDate },
       },
       include: {
-        rateCard: true,
+        supplier: true,
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -136,7 +144,36 @@ export class SupplierTrendAnalyzerService {
       projectedNextPeriodRate,
       riskLevel,
       insights,
+      patterns: this.detectPatterns(historicalTrends),
+      rateChangeVelocity: this.calculateRateChangeVelocity(historicalTrends),
+      competitivenessChange: this.calculateCompetitivenessChange(historicalTrends),
     };
+  }
+
+  private detectPatterns(trends: SupplierTrend[]): Array<{ type: string; description: string; impact: number; confidence: number }> {
+    const patterns: Array<{ type: string; description: string; impact: number; confidence: number }> = [];
+    if (trends.length >= 3) {
+      const recentTrends = trends.slice(-3);
+      const allIncreasing = recentTrends.every(t => t.rateChangePercent > 0);
+      if (allIncreasing) {
+        const impact = recentTrends.reduce((sum, t) => sum + t.rateChangePercent, 0);
+        patterns.push({ type: 'accelerating_increases', description: 'Rates increasing consistently', impact, confidence: 85 });
+      }
+    }
+    return patterns;
+  }
+
+  private calculateRateChangeVelocity(trends: SupplierTrend[]): number {
+    if (trends.length < 2) return 0;
+    const changes = trends.map(t => t.rateChangePercent);
+    return changes.reduce((sum, c) => sum + c, 0) / changes.length;
+  }
+
+  private calculateCompetitivenessChange(trends: SupplierTrend[]): number {
+    if (trends.length < 2) return 0;
+    const first = trends[0]?.deviationFromMarket || 0;
+    const last = trends[trends.length - 1]?.deviationFromMarket || 0;
+    return last - first;
   }
 
   /**
@@ -147,7 +184,7 @@ export class SupplierTrendAnalyzerService {
     tenantId: string,
     thresholdPercent: number = 10
   ): Promise<AboveMarketAnalysis> {
-    const supplier = await this.prisma.party.findFirst({
+    const supplier = await this.prisma.rateCardSupplier.findFirst({
       where: { id: supplierId, tenantId },
     });
 
@@ -162,19 +199,19 @@ export class SupplierTrendAnalyzerService {
     const currentEntries = await this.prisma.rateCardEntry.findMany({
       where: {
         tenantId,
-        rateCard: { supplierId },
+        supplierId,
         createdAt: { gte: sixMonthsAgo },
       },
-      include: { rateCard: true },
+      include: { supplier: true },
     });
 
     const previousEntries = await this.prisma.rateCardEntry.findMany({
       where: {
         tenantId,
-        rateCard: { supplierId },
+        supplierId,
         createdAt: { lt: sixMonthsAgo },
       },
-      include: { rateCard: true },
+      include: { supplier: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -224,12 +261,31 @@ export class SupplierTrendAnalyzerService {
       return b.increasePercent - a.increasePercent;
     });
 
+    // Calculate aggregates for new fields
+    const supplierAvgIncrease = alerts.length > 0 
+      ? alerts.reduce((sum, a) => sum + a.increasePercent, 0) / alerts.length 
+      : 0;
+    const marketAvgIncrease = 3; // Placeholder - would need market trend data
+    const difference = supplierAvgIncrease - marketAvgIncrease;
+    const severity = alerts.some(a => a.alertLevel === 'critical') 
+      ? 'critical' as const 
+      : alerts.length > 3 
+        ? 'high' as const 
+        : alerts.length > 0 
+          ? 'medium' as const 
+          : 'low' as const;
+
     return {
       supplierId,
       alerts,
       totalImpact: Math.round(totalImpact),
       affectedRoles: alerts.length,
       summary: this.generateAboveMarketSummary(alerts, totalImpact),
+      hasAboveMarketIncreases: alerts.length > 0,
+      difference,
+      severity,
+      supplierAvgIncrease,
+      marketAvgIncrease,
     };
   }
 
@@ -320,8 +376,8 @@ export class SupplierTrendAnalyzerService {
     const entries = await this.prisma.rateCardEntry.findMany({
       where: { tenantId },
       select: {
-        standardizedRole: true,
-        role: true,
+        roleStandardized: true,
+        roleOriginal: true,
         dailyRate: true,
       },
     });
@@ -329,7 +385,7 @@ export class SupplierTrendAnalyzerService {
     const byRole: Record<string, number[]> = {};
     
     entries.forEach(entry => {
-      const role = entry.standardizedRole || entry.role || 'Unknown';
+      const role = entry.roleStandardized || entry.roleOriginal || 'Unknown';
       if (!byRole[role]) byRole[role] = [];
       if (entry.dailyRate) {
         byRole[role].push(Number(entry.dailyRate));

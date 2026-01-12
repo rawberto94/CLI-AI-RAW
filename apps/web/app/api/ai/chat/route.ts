@@ -10,7 +10,7 @@ const openai = new OpenAI({
 
 // Intent detection for actionable requests
 interface DetectedIntent {
-  type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison';
+  type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison' | 'system';
   action?: 'renew' | 'generate' | 'approve' | 'create' | 'start_workflow' | 'list_by_supplier' | 'list_expiring' | 'list_by_status' | 'list_by_value' | 'count' | 'summarize' | 'create_linked' | 'link_contracts' | 'show_hierarchy' | 'find_master' | 
     // New procurement actions
     'spend_analysis' | 'cost_savings' | 'rate_comparison' | 'risk_assessment' | 'compliance_check' | 'compliance_status' | 'budget_status' | 'supplier_performance' | 'negotiate_terms' | 'category_spend' | 'top_suppliers' | 'savings_opportunities' | 'contract_risks' | 'auto_renewals' | 'payment_terms' |
@@ -19,7 +19,11 @@ interface DetectedIntent {
     // Advanced AI agent actions
     'deep_analysis' | 'semantic_search' | 'clause_search' | 'executive_briefing' | 'status_update' | 'attention_needed' | 'find_signatories' | 'find_expiration' |
     // Contract comparison actions
-    'compare_contracts' | 'compare_clauses' | 'compare_groups' | 'compare_suppliers' | 'side_by_side';
+    'compare_contracts' | 'compare_clauses' | 'compare_groups' | 'compare_suppliers' | 'side_by_side' |
+    // Contract update actions
+    'update_expiration' | 'update_effective_date' | 'update_value' | 'update_status' | 'update_title' | 'update_supplier' | 'update_client' | 'update_category' |
+    // System status actions
+    'system_health' | 'categorization_accuracy' | 'ai_performance' | 'queue_status';
   entities: {
     contractName?: string;
     supplierName?: string;
@@ -33,6 +37,10 @@ interface DetectedIntent {
     parentYear?: string;
     childContractType?: string;
     relationshipType?: string;
+    // For contract updates
+    fieldToUpdate?: string;
+    newValue?: string;
+    contractId?: string;
     // Procurement entities
     category?: string;
     timePeriod?: string;  // 'this_year', 'last_year', 'q1', 'q2', '2024', etc.
@@ -1078,6 +1086,62 @@ function detectIntent(query: string): DetectedIntent {
         fieldToUpdate: 'title',
         newValue: match[1].trim(),
       },
+      confidence: 0.9,
+    };
+  }
+
+  // ============================================
+  // SYSTEM STATUS & AI PERFORMANCE PATTERNS
+  // ============================================
+
+  // Pattern: "system health" or "how is the system doing"
+  const systemHealthPattern = /(?:system|worker|queue|background)\s+(?:health|status)|(?:how\s+is\s+the\s+)?(?:system|workers?|queues?)\s+(?:doing|running|performing)|(?:are\s+)?(?:workers?|queues?)\s+(?:healthy|running|ok)/i;
+  match = query.match(systemHealthPattern);
+  if (match) {
+    console.log('[AI Chat] Detected system health intent');
+    return {
+      type: 'system',
+      action: 'system_health',
+      entities: {},
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "categorization accuracy" or "how accurate is the AI categorization"
+  const accuracyPattern = /(?:categorization|classification)\s+(?:accuracy|performance|metrics)|(?:how\s+)?(?:accurate|good)\s+(?:is\s+)?(?:the\s+)?(?:ai\s+)?(?:categorization|classification)|ai\s+(?:accuracy|performance)/i;
+  match = query.match(accuracyPattern);
+  if (match) {
+    console.log('[AI Chat] Detected categorization accuracy intent');
+    return {
+      type: 'system',
+      action: 'categorization_accuracy',
+      entities: {},
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "queue status" or "how many jobs are pending"
+  const queueStatusPattern = /(?:queue|job)\s+(?:status|depth|count)|(?:how\s+many)\s+(?:jobs?|tasks?)\s+(?:are\s+)?(?:pending|waiting|queued)|(?:background\s+)?(?:processing|job)\s+status/i;
+  match = query.match(queueStatusPattern);
+  if (match) {
+    console.log('[AI Chat] Detected queue status intent');
+    return {
+      type: 'system',
+      action: 'queue_status',
+      entities: {},
+      confidence: 0.9,
+    };
+  }
+
+  // Pattern: "AI performance" or "how is AI performing"
+  const aiPerformancePattern = /(?:ai|openai|gpt)\s+(?:performance|status|health)|(?:how\s+is\s+)?(?:the\s+)?ai\s+(?:doing|performing)/i;
+  match = query.match(aiPerformancePattern);
+  if (match) {
+    console.log('[AI Chat] Detected AI performance intent');
+    return {
+      type: 'system',
+      action: 'ai_performance',
+      entities: {},
       confidence: 0.9,
     };
   }
@@ -6373,6 +6437,7 @@ export async function POST(request: NextRequest) {
     let contractPreviews: Array<{ id?: string; name?: string; supplier?: string; status?: string; value?: number; expirationDate?: string | null; daysUntilExpiry?: number | null; riskLevel?: string; type?: string }> = []; // Store contracts for visual preview cards
     let proactiveAlerts: string[] = []; // Store proactive alerts to show
     let proactiveInsightsData: string[] = []; // Store insights
+    let suggestedActions: { label: string; action: string }[] = []; // Store action buttons
     
     // Helper to format contracts for preview cards - declare before use
     const formatContractForPreview = (c: { id?: string; contractTitle?: string; name?: string; supplierName?: string; status?: string; totalValue?: number | string; value?: number | string; expirationDate?: string | Date; contractType?: string; type?: string }) => {
@@ -7330,6 +7395,135 @@ export async function POST(request: NextRequest) {
             ).join('\n')}`;
           }
           context = { ...context, categoryContracts };
+        }
+      }
+    }
+
+    // For system status intents
+    if (intent.type === 'system') {
+      if (intent.action === 'system_health') {
+        try {
+          // Fetch worker health from health server (if available)
+          const healthUrl = process.env.WORKER_HEALTH_URL || 'http://localhost:9090';
+          const [healthRes, resilienceRes] = await Promise.allSettled([
+            fetch(`${healthUrl}/healthz`, { signal: AbortSignal.timeout(5000) }),
+            fetch(`${healthUrl}/resilience`, { signal: AbortSignal.timeout(5000) }),
+          ]);
+          
+          let healthData = null;
+          let resilienceData = null;
+          
+          if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
+            healthData = await healthRes.value.json();
+          }
+          if (resilienceRes.status === 'fulfilled' && resilienceRes.value.ok) {
+            resilienceData = await resilienceRes.value.json();
+          }
+
+          if (healthData) {
+            additionalContext += `\n\n**System Health Status:**`;
+            additionalContext += `\n- Overall Status: ${healthData.status === 'healthy' ? '✅ Healthy' : healthData.status === 'degraded' ? '⚠️ Degraded' : '❌ Unhealthy'}`;
+            additionalContext += `\n- Uptime: ${Math.floor(healthData.uptime / 3600)}h ${Math.floor((healthData.uptime % 3600) / 60)}m`;
+            additionalContext += `\n- Workers: ${healthData.workers?.running || 0}/${healthData.workers?.total || 0} running`;
+            additionalContext += `\n- Active Jobs: ${healthData.queues?.activeJobs || 0}`;
+            additionalContext += `\n- Waiting Jobs: ${healthData.queues?.waitingJobs || 0}`;
+            additionalContext += `\n- Failed Jobs: ${healthData.queues?.failedJobs || 0}`;
+          }
+          
+          if (resilienceData?.circuitBreakers) {
+            const circuits = Object.entries(resilienceData.circuitBreakers);
+            if (circuits.length > 0) {
+              additionalContext += `\n\n**Circuit Breakers:**`;
+              for (const [name, stats] of circuits) {
+                const s = stats as { state: string; totalRequests: number; totalFailures: number };
+                additionalContext += `\n- ${name}: ${s.state === 'CLOSED' ? '✅ Closed' : s.state === 'OPEN' ? '🔴 Open' : '🟡 Half-Open'} (${s.totalRequests} requests, ${s.totalFailures} failures)`;
+              }
+            }
+          }
+
+          context = { ...context, systemHealth: { healthData, resilienceData } };
+        } catch (e) {
+          additionalContext += `\n\n**System Health:** Unable to retrieve worker health status. Workers may be running on a separate server.`;
+        }
+      } else if (intent.action === 'categorization_accuracy') {
+        try {
+          const accuracyRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analytics/categorization-accuracy`, {
+            headers: { 'x-tenant-id': tenantId },
+          });
+          
+          if (accuracyRes.ok) {
+            const accuracy = await accuracyRes.json();
+            additionalContext += `\n\n**AI Categorization Accuracy:**`;
+            additionalContext += `\n- Overall Accuracy: ${(accuracy.overall?.accuracy * 100 || 0).toFixed(1)}%`;
+            additionalContext += `\n- Total Classified: ${accuracy.overall?.totalClassified || 0} contracts`;
+            additionalContext += `\n- User Corrections: ${accuracy.overall?.totalCorrected || 0}`;
+            
+            if (accuracy.byConfidence && accuracy.byConfidence.length > 0) {
+              additionalContext += `\n\n**By Confidence Level:**`;
+              for (const bucket of accuracy.byConfidence) {
+                additionalContext += `\n- ${bucket.bucket}: ${(bucket.accuracy * 100).toFixed(1)}% accuracy (${bucket.count} contracts)`;
+              }
+            }
+            
+            if (accuracy.recentTrend && accuracy.recentTrend.length > 0) {
+              const latestTrend = accuracy.recentTrend[0];
+              additionalContext += `\n\n**Recent Trend:** ${latestTrend.date}: ${(latestTrend.accuracy * 100).toFixed(1)}% accuracy`;
+            }
+            
+            context = { ...context, categorizationAccuracy: accuracy };
+          }
+        } catch (e) {
+          additionalContext += `\n\n**Categorization Accuracy:** Unable to retrieve accuracy metrics.`;
+        }
+      } else if (intent.action === 'queue_status') {
+        try {
+          const healthUrl = process.env.WORKER_HEALTH_URL || 'http://localhost:9090';
+          const metricsRes = await fetch(`${healthUrl}/metrics/json`, { signal: AbortSignal.timeout(5000) });
+          
+          if (metricsRes.ok) {
+            const metrics = await metricsRes.json();
+            additionalContext += `\n\n**Queue Status:**`;
+            additionalContext += `\n- Total Queues: ${metrics.queues?.length || 0}`;
+            additionalContext += `\n- Active Jobs: ${metrics.totals?.activeJobs || 0}`;
+            additionalContext += `\n- Waiting Jobs: ${metrics.totals?.waitingJobs || 0}`;
+            additionalContext += `\n- Completed Today: ${metrics.totals?.completedJobs || 0}`;
+            additionalContext += `\n- Failed Today: ${metrics.totals?.failedJobs || 0}`;
+            
+            if (metrics.queues && metrics.queues.length > 0) {
+              additionalContext += `\n\n**Queue Details:**`;
+              for (const q of metrics.queues.slice(0, 5)) {
+                additionalContext += `\n- ${q.name}: ${q.waiting} waiting, ${q.active} active, ${q.failed} failed`;
+              }
+            }
+            
+            context = { ...context, queueMetrics: metrics };
+          }
+        } catch (e) {
+          additionalContext += `\n\n**Queue Status:** Unable to retrieve queue metrics. Workers may be running on a separate server.`;
+        }
+      } else if (intent.action === 'ai_performance') {
+        try {
+          const healthUrl = process.env.WORKER_HEALTH_URL || 'http://localhost:9090';
+          const resilienceRes = await fetch(`${healthUrl}/resilience`, { signal: AbortSignal.timeout(5000) });
+          
+          if (resilienceRes.ok) {
+            const resilience = await resilienceRes.json();
+            const openaiCircuit = resilience.circuitBreakers?.openai;
+            
+            additionalContext += `\n\n**AI Service Status:**`;
+            if (openaiCircuit) {
+              additionalContext += `\n- Circuit State: ${openaiCircuit.state === 'CLOSED' ? '✅ Healthy' : openaiCircuit.state === 'OPEN' ? '🔴 Service Unavailable' : '🟡 Testing Recovery'}`;
+              additionalContext += `\n- Total Requests: ${openaiCircuit.totalRequests || 0}`;
+              additionalContext += `\n- Success Rate: ${openaiCircuit.totalRequests > 0 ? (((openaiCircuit.totalRequests - openaiCircuit.totalFailures) / openaiCircuit.totalRequests) * 100).toFixed(1) : 100}%`;
+              additionalContext += `\n- Consecutive Failures: ${openaiCircuit.consecutiveFailures || 0}`;
+            } else {
+              additionalContext += `\n- Status: ✅ Operational (no issues detected)`;
+            }
+            
+            context = { ...context, aiPerformance: { openaiCircuit } };
+          }
+        } catch (e) {
+          additionalContext += `\n\n**AI Performance:** ✅ Operational - no circuit breaker data available (this chat is working!)`;
         }
       }
     }

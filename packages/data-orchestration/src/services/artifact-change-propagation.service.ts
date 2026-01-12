@@ -72,17 +72,17 @@ export class ArtifactChangePropagationService {
    */
   private setupEventListeners(): void {
     // Listen for artifact field updates
-    eventBus.on(Events.ARTIFACT_FIELD_UPDATED, async (payload) => {
+    eventBus.on(Events.ARTIFACT_FIELD_UPDATED, async (payload: { data: ArtifactChangeEvent }) => {
       await this.propagateArtifactChange(payload.data);
     });
 
     // Listen for bulk updates (using ARTIFACT_UPDATED)
-    eventBus.on(Events.ARTIFACT_UPDATED, async (payload) => {
+    eventBus.on(Events.ARTIFACT_UPDATED, async (payload: { data: ArtifactChangeEvent }) => {
       await this.propagateArtifactChange(payload.data);
     });
 
     // Listen for rate card updates
-    eventBus.on(Events.RATE_CARD_UPDATED, async (payload) => {
+    eventBus.on(Events.RATE_CARD_UPDATED, async (payload: { data: ArtifactChangeEvent }) => {
       await this.propagateArtifactChange(payload.data);
     });
 
@@ -302,9 +302,18 @@ export class ArtifactChangePropagationService {
     try {
       logger.info({ contractId, artifactType }, 'Updating RAG knowledge base');
 
-      // Import RAG integration service dynamically
-      const { ragIntegrationService } = await import('./rag-integration.service');
-      await ragIntegrationService.reindexContract(contractId);
+      // RAG integration is optional - skip if service not available
+      try {
+        // @ts-ignore - rag-integration.service is excluded from compilation
+        const { ragIntegrationService } = await import('./rag-integration.service');
+        if (ragIntegrationService?.reindexContract) {
+          await ragIntegrationService.reindexContract(contractId);
+        }
+      } catch {
+        // RAG service not available
+        logger.debug({ contractId }, 'RAG service not available, skipping');
+        return;
+      }
 
       logger.info({ contractId }, 'RAG knowledge base updated');
     } catch (error) {

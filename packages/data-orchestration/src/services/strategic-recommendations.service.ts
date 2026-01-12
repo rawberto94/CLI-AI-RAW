@@ -554,3 +554,5 @@ export class StrategicRecommendationsService {
     };
   }
 }
+
+export const strategicRecommendationsService = StrategicRecommendationsService;

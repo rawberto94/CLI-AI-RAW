@@ -38,7 +38,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 
-interface Attachment {
+export interface Attachment {
   id: string;
   file: File;
   preview?: string;
@@ -404,6 +404,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
             disabled={disabled || isLoading}
             maxLength={maxLength}
             rows={1}
+            data-testid="chatbot-input"
             className={cn(
               "w-full resize-none bg-transparent outline-none text-slate-900 dark:text-white placeholder:text-slate-400",
               "text-sm leading-relaxed",
@@ -454,6 +455,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
         {/* Send button */}
         <Button
           size="sm"
+          data-testid="chatbot-send"
           className={cn(
             "h-8 gap-1.5 flex-shrink-0 transition-all",
             (value.trim() || attachments.length > 0) && !isLoading

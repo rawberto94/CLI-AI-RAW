@@ -191,6 +191,42 @@ export async function GET(
       },
     });
 
+    // Fetch taxonomy category details if contract has a category assigned
+    let categoryInfo = null;
+    if (contract?.contractCategoryId) {
+      const category = await prisma.taxonomyCategory.findUnique({
+        where: { id: contract.contractCategoryId },
+        include: {
+          parent: {
+            select: {
+              id: true,
+              name: true,
+              color: true,
+              icon: true,
+            },
+          },
+        },
+      });
+      if (category) {
+        categoryInfo = {
+          id: category.id,
+          name: category.name,
+          color: category.color,
+          icon: category.icon,
+          level: category.level,
+          path: category.path,
+          parent: category.parent ? {
+            id: category.parent.id,
+            name: category.parent.name,
+            color: category.parent.color,
+            icon: category.parent.icon,
+          } : null,
+          l1: contract.categoryL1,
+          l2: contract.categoryL2,
+        };
+      }
+    }
+
     console.log("[API] Contract result:", {
       found: !!contract,
       id: contract?.id,
@@ -419,6 +455,16 @@ export async function GET(
       relationshipType: contract.relationshipType,
       relationshipNote: contract.relationshipNote,
       linkedAt: contract.linkedAt?.toISOString(),
+      
+      // Taxonomy Category Classification
+      category: categoryInfo,
+      categoryL1: contract.categoryL1,
+      categoryL2: contract.categoryL2,
+      contractCategoryId: contract.contractCategoryId,
+      classifiedAt: contract.classifiedAt?.toISOString(),
+      
+      // Raw text for intelligent analysis
+      rawText: contract.rawText || null,
     };
 
     const responseTime = Date.now() - startTime;
@@ -515,6 +561,14 @@ export async function PUT(
       "notes",
       "tags",
       "priority",
+      "status",
+      "effectiveDate",
+      "expirationDate",
+      "totalValue",
+      "currency",
+      "category",
+      "description",
+      "contractTitle",
     ];
     const filteredUpdates = Object.keys(updates)
       .filter((key) => allowedUpdates.includes(key))

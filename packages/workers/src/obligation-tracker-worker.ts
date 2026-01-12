@@ -15,7 +15,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { Job } from 'bullmq';
+// Use local type definition for cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import pino from 'pino';
 import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
 

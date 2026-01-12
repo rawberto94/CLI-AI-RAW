@@ -185,7 +185,7 @@ export class ContractService {
       }
 
       // Step 4: Create contract and processing job in a transaction
-      const result = await enhancedDbAdaptor.withTransaction(async (tx) => {
+      const result = await enhancedDbAdaptor.withTransaction(async () => {
         // Create contract with integrity data
         // Remove filePath from data as it's not in the schema
         const { filePath: _filePath, ...contractDataWithoutPath } = data;
@@ -198,27 +198,22 @@ export class ContractService {
           status: "PROCESSING" as const, // Use valid status from enum
         };
 
-        const contract = await tx.contract.create({
-          data: contractData,
-        });
+        const contract = await dbAdaptor.createContract(contractData);
 
         logger.info(
           { contractId: contract.id },
           "Contract created in transaction"
         );
 
-        // Create processing job
-        const job = await tx.processingJob.create({
+        // Create processing job using prisma directly
+        const job = await dbAdaptor.prisma.processingJob.create({
           data: {
             contractId: contract.id,
             tenantId: contract.tenantId,
             status: "PENDING",
             progress: 0,
             currentStep: "Queued",
-            totalStages: 5, // text extraction, AI analysis, artifact generation, standardization, completion
             priority: 0,
-            maxRetries: 3,
-            retryCount: 0,
             metadata: {
               fileName: contract.fileName,
               fileSize: Number(contract.fileSize),
@@ -235,30 +230,38 @@ export class ContractService {
         return { contract, job };
       });
 
+      // Check for transaction success
+      if (!result.success || !result.data) {
+        throw new Error(result.error?.message || 'Transaction failed');
+      }
+
+      const transactionData = result.data as { contract: any; job: any };
+      const { contract: createdContract, job: createdJob } = transactionData;
+
       // Step 5: Cache the contract using smart cache
       await smartCacheService.set(
-        this.getCacheKey(result.contract.tenantId, result.contract.id),
-        result.contract,
+        this.getCacheKey(createdContract.tenantId, createdContract.id),
+        createdContract,
         this.cacheTTL
       );
 
       // Step 6: Emit events (non-blocking)
       try {
         await eventBus.publish(Events.CONTRACT_CREATED, {
-          contractId: result.contract.id,
-          tenantId: result.contract.tenantId,
-          contract: result.contract,
-          jobId: result.job.id,
+          contractId: createdContract.id,
+          tenantId: createdContract.tenantId,
+          contract: createdContract,
+          jobId: createdJob.id,
         });
 
         await eventBus.publish(Events.JOB_CREATED, {
-          jobId: result.job.id,
-          contractId: result.contract.id,
-          tenantId: result.contract.tenantId,
+          jobId: createdJob.id,
+          contractId: createdContract.id,
+          tenantId: createdContract.tenantId,
         });
       } catch (eventError) {
         logger.warn(
-          { error: eventError, contractId: result.contract.id },
+          { error: eventError, contractId: createdContract.id },
           "Failed to publish events, continuing anyway"
         );
       }
@@ -266,8 +269,8 @@ export class ContractService {
       const duration = Date.now() - startTime;
       logger.info(
         {
-          contractId: result.contract.id,
-          jobId: result.job.id,
+          contractId: createdContract.id,
+          jobId: createdJob.id,
           duration,
           checksum,
         },
@@ -278,12 +281,12 @@ export class ContractService {
         success: true,
         data: {
           contract: {
-            ...result.contract,
-            totalValue: result.contract.totalValue
-              ? Number(result.contract.totalValue)
+            ...createdContract,
+            totalValue: createdContract.totalValue
+              ? Number(createdContract.totalValue)
               : null,
           } as Contract,
-          jobId: result.job.id,
+          jobId: createdJob.id,
         },
       };
     } catch (error) {
@@ -399,7 +402,7 @@ export class ContractService {
       const contract = await dbAdaptor.updateContract(id, tenantId, data);
 
       // Selective cache invalidation based on what changed
-      await smartCacheService.invalidateContract(tenantId, id, data);
+      await smartCacheService.invalidateContract(id);
 
       // Emit contract updated event for intelligence processing
       await eventBus.publish(Events.CONTRACT_UPDATED, {
@@ -437,9 +440,7 @@ export class ContractService {
       await dbAdaptor.deleteContract(id, tenantId);
 
       // Selective cache invalidation
-      await smartCacheService.invalidateContract(tenantId, id, {
-        status: "DELETED",
-      });
+      await smartCacheService.invalidateContract(id);
 
       logger.info({ contractId: id }, "Contract deleted successfully");
 
@@ -484,10 +485,9 @@ export class ContractService {
       // Query database
       const result = await dbAdaptor.queryContracts(query);
 
-      // Cache result with dependencies
+      // Cache result with dependencies (reuse cacheKey from above)
       await smartCacheService.cacheQueryResult(
-        query.tenantId,
-        query,
+        cacheKey,
         result,
         300 // 5 minutes
       );

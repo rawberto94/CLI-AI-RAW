@@ -177,7 +177,7 @@ export function AdvancedFilterPanel({
 
       <CardContent className="space-y-6 max-h-[70vh] overflow-y-auto">
         {/* Status Filter */}
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="status-filters">
           <Label className="text-sm font-semibold flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-indigo-600" />
             Contract Status
@@ -190,6 +190,7 @@ export function AdvancedFilterPanel({
                 <button
                   key={option.value}
                   onClick={() => toggleStatus(option.value)}
+                  data-testid={`filter-${option.value.toLowerCase()}`}
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
                     isSelected

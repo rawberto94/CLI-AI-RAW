@@ -12,7 +12,8 @@
  * - Queue low-confidence for review
  */
 
-import type { Job } from "bullmq";
+// Use any for Job type due to cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any; updateProgress: (progress: number | object) => Promise<void> };
 
 import { getTraceContextFromJobData } from './observability/trace';
 import { ensureProcessingJob, updateStep, assertRetryableReady } from './workflow/processing-job';

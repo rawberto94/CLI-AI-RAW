@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST, before any other imports that need them
 dotenv.config();
 
-import { Job } from 'bullmq';
+// Use local type definition for cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any };
 import clientsDb from 'clients-db';
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 import { getQueueService, JobType } from '@repo/utils/queue/queue-service';
@@ -1246,14 +1247,14 @@ export async function processOCRArtifactJob(
     const complianceData: any = complianceArtifact?.data || {};
 
     // Build external parties array from overview
-    const externalParties: Array<{company_name: string; role: string; contact_info?: string}> = [];
+    const externalParties: Array<{legalName: string; role: string; registeredAddress?: string}> = [];
     if (overviewArtifactData.parties && Array.isArray(overviewArtifactData.parties)) {
       for (const party of overviewArtifactData.parties) {
         if (party.name) {
           externalParties.push({
-            company_name: party.name,
+            legalName: party.name,
             role: party.role || 'Party',
-            contact_info: party.address || party.contact || '',
+            registeredAddress: party.address || party.contact || '',
           });
         }
       }

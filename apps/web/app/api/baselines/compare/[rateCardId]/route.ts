@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { BaselineManagementService } from 'data-orchestration';
+import { baselineManagementService } from 'data-orchestration';
 import { prisma } from "@/lib/prisma";
 
 // Using singleton prisma instance from @/lib/prisma
@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ rateCardI
 
     const { rateCardId } = params;
 
-    const service = new BaselineManagementService(prisma);
+    const service = new baselineManagementService(prisma);
     const comparisons = await service.compareAgainstBaselines(rateCardId);
 
     return NextResponse.json({

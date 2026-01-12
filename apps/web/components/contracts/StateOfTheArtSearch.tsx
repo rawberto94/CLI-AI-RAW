@@ -98,6 +98,7 @@ interface StateOfTheArtSearchProps {
   onAISearchClick: (query: string) => void;
   activeFilterCount: number;
   totalResults: number;
+  isLoading?: boolean;
   className?: string;
 }
 
@@ -688,6 +689,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
   onAISearchClick,
   activeFilterCount,
   totalResults,
+  isLoading = false,
   className = '',
 }: StateOfTheArtSearchProps) {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -879,7 +881,26 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
   );
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-2 relative", className)}>
+      {/* Loading shimmer overlay */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-10 pointer-events-none"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent dark:via-slate-800/60 animate-shimmer" 
+              style={{
+                backgroundSize: '200% 100%',
+                animation: 'shimmer 1.5s ease-in-out infinite',
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Main Search Row */}
       <div className="flex flex-col lg:flex-row gap-2">
         {/* Search Input */}
@@ -888,6 +909,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
           onChange={onSearchChange}
           onAIClick={handleAISearch}
           suggestions={suggestions}
+          isSearching={isLoading}
         />
 
         {/* AI Button */}

@@ -126,7 +126,7 @@ export class CurrencyAdvancedService {
         },
       });
 
-      return lastRate?.rate || null;
+      return lastRate?.rate ? Number(lastRate.rate) : null;
     } catch (error) {
       console.error('Error fetching last known rate:', error);
       return null;
@@ -186,14 +186,15 @@ export class CurrencyAdvancedService {
         });
 
         if (historicalRate) {
-          const changePercent = ((currentRate - historicalRate.rate) / historicalRate.rate) * 100;
+          const prevRate = Number(historicalRate.rate);
+          const changePercent = ((currentRate - prevRate) / prevRate) * 100;
 
           if (Math.abs(changePercent) >= this.VOLATILITY_THRESHOLD) {
             alerts.push({
               currency,
               baseCurrency,
               changePercent,
-              previousRate: historicalRate.rate,
+              previousRate: prevRate,
               currentRate,
               timestamp: new Date(),
             });
@@ -228,7 +229,7 @@ export class CurrencyAdvancedService {
     });
 
     if (historicalRate) {
-      return historicalRate.rate;
+      return Number(historicalRate.rate);
     }
 
     // If no historical rate found, use current rate

@@ -7,6 +7,8 @@
 
 import http from 'http';
 import { getMetricsCollector, MetricsSnapshot } from './metrics';
+import { getAllCircuitStats, getBackpressureHandler } from './resilience';
+import { getRecentSpans } from './observability/opentelemetry';
 import pino from 'pino';
 
 const logger = pino({ name: 'health-server' });
@@ -58,6 +60,12 @@ function createHealthHandler(): (req: http.IncomingMessage, res: http.ServerResp
           break;
         case '/metrics/json':
           await handleMetricsJson(res);
+          break;
+        case '/resilience':
+          await handleResilienceStatus(res);
+          break;
+        case '/traces':
+          handleRecentTraces(res);
           break;
         default:
           res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -159,6 +167,56 @@ async function handleMetricsJson(res: http.ServerResponse): Promise<void> {
 }
 
 /**
+ * Resilience status endpoint - circuit breakers and backpressure
+ */
+async function handleResilienceStatus(res: http.ServerResponse): Promise<void> {
+  const circuitStats = getAllCircuitStats();
+  const backpressure = getBackpressureHandler();
+  const queueHealth = await backpressure.getAllHealth();
+
+  const response = {
+    timestamp: new Date().toISOString(),
+    circuitBreakers: circuitStats,
+    backpressure: {
+      queues: queueHealth,
+      summary: {
+        total: queueHealth.length,
+        healthy: queueHealth.filter(q => q.healthStatus === 'healthy').length,
+        degraded: queueHealth.filter(q => q.healthStatus === 'degraded').length,
+        critical: queueHealth.filter(q => q.healthStatus === 'critical').length,
+        paused: queueHealth.filter(q => q.paused).length,
+      },
+    },
+  };
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(response, null, 2));
+}
+
+/**
+ * Recent traces endpoint for debugging
+ */
+function handleRecentTraces(res: http.ServerResponse): void {
+  const spans = getRecentSpans(50);
+
+  const response = {
+    timestamp: new Date().toISOString(),
+    count: spans.length,
+    spans: spans.map(s => ({
+      traceId: s.traceId,
+      spanId: s.spanId,
+      name: s.name,
+      duration: s.endTime ? s.endTime - s.startTime : null,
+      status: s.status,
+      attributes: s.attributes,
+    })),
+  };
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(response, null, 2));
+}
+
+/**
  * Start the health check server
  */
 export function startHealthServer(port: number = 9090): http.Server {
@@ -182,6 +240,8 @@ export function startHealthServer(port: number = 9090): http.Server {
         `http://localhost:${port}/livez - Liveness probe`,
         `http://localhost:${port}/metrics - Prometheus metrics`,
         `http://localhost:${port}/metrics/json - JSON metrics`,
+        `http://localhost:${port}/resilience - Circuit breakers & backpressure`,
+        `http://localhost:${port}/traces - Recent distributed traces`,
       ]
     }, 'Available endpoints');
   });

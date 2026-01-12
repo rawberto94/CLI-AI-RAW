@@ -9,7 +9,7 @@ import { ZodSchema } from 'zod';
 import { 
   inputValidationService, 
   ValidationException,
-  ValidationResult 
+  InputValidationResult as ValidationResult 
 } from '../../../../packages/data-orchestration/src/services/input-validation.service';
 
 // =========================================================================

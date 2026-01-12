@@ -44,6 +44,7 @@ import {
   ExternalLink,
   Archive,
   ArchiveRestore,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -53,12 +54,14 @@ interface ContractFloatingActionsProps {
   isFavorite?: boolean
   hasReminder?: boolean
   isArchived?: boolean
+  isExpired?: boolean
   onToggleFavorite: () => Promise<void>
   onToggleReminder: () => Promise<void>
   onDelete: () => Promise<void>
   onArchive: () => Promise<void>
   onExport: (format: 'pdf' | 'docx' | 'xlsx' | 'json') => Promise<void>
   onPrint: () => void
+  onCreateRenewal?: () => void
 }
 
 export const ContractFloatingActions = memo(function ContractFloatingActions({
@@ -67,12 +70,14 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
   isFavorite = false,
   hasReminder = false,
   isArchived = false,
+  isExpired = false,
   onToggleFavorite,
   onToggleReminder,
   onDelete,
   onArchive,
   onExport,
   onPrint,
+  onCreateRenewal,
 }: ContractFloatingActionsProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showArchiveDialog, setShowArchiveDialog] = useState(false)
@@ -261,6 +266,26 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
               </TooltipTrigger>
               <TooltipContent>Print</TooltipContent>
             </Tooltip>
+
+            {/* Create Renewal - show for expired or expiring contracts */}
+            {(isExpired || onCreateRenewal) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onCreateRenewal}
+                    className={cn(
+                      "h-9 w-9 rounded-full transition-colors",
+                      isExpired && "text-amber-500 hover:text-amber-600"
+                    )}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Create Renewal</TooltipContent>
+              </Tooltip>
+            )}
 
             <div className="w-px h-6 bg-slate-200" />
 

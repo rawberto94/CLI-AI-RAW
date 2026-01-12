@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { BaselineManagementService } from 'data-orchestration/services';
+import { baselineManagementService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     // Compare against baselines
-    const baselineService = new BaselineManagementService(prisma);
+    const baselineService = new baselineManagementService(prisma);
     const comparisons = await baselineService.compareAgainstBaselines(id);
 
     return NextResponse.json({ comparisons });

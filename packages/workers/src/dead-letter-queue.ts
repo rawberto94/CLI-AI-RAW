@@ -5,8 +5,10 @@
  * Provides monitoring and manual retry capabilities
  */
 
-import { Queue, Job } from 'bullmq';
-import type { ConnectionOptions } from 'bullmq';
+import { Queue } from 'bullmq';
+// Use local type definitions for cross-package compatibility
+type Job<T = any> = { id?: string; name: string; data: T; attemptsMade: number; opts: any; stacktrace?: string[] };
+type ConnectionOptions = { host?: string; port?: number; password?: string; maxRetriesPerRequest?: number | null };
 import pino from 'pino';
 
 const logger = pino({ name: 'dead-letter-queue' });
@@ -26,7 +28,8 @@ export interface DeadLetterJob {
  * Dead Letter Queue Manager
  */
 export class DeadLetterQueueManager {
-  private dlq: Queue;
+  // Using any to avoid BullMQ type issues with different versions
+  private dlq: any;
   private connection: ConnectionOptions;
 
   constructor(connection: ConnectionOptions) {
@@ -58,7 +61,7 @@ export class DeadLetterQueueManager {
       attemptsMade: job.attemptsMade || 0,
       timestamp: Date.now(),
       originalQueue,
-      stacktrace: job.stacktrace,
+      stacktrace: (job as any).stacktrace,
     };
 
     await this.dlq.add('dead-letter', deadLetterJob, {
@@ -84,7 +87,7 @@ export class DeadLetterQueueManager {
     const total = await this.dlq.getWaitingCount();
 
     return {
-      jobs: jobs.map((job) => job.data as DeadLetterJob),
+      jobs: jobs.map((job: any) => job.data as DeadLetterJob),
       total,
     };
   }
@@ -94,7 +97,7 @@ export class DeadLetterQueueManager {
    */
   async retryJob(
     dlqJobId: string,
-    targetQueue: Queue
+    targetQueue: any
   ): Promise<Job | null> {
     const dlqJob = await this.dlq.getJob(dlqJobId);
     if (!dlqJob) {

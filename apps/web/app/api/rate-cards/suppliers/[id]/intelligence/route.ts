@@ -17,13 +17,13 @@ import { getServerSession } from '@/lib/auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { 
-  SupplierIntelligenceService,
-  SupplierRecommenderService,
-  SupplierTrendAnalyzerService
+  supplierIntelligenceService,
+  supplierRecommenderService,
+  supplierTrendAnalyzerService
 } from 'data-orchestration/services';
 
-const supplierIntelligenceService = new SupplierIntelligenceService();
-const supplierRecommenderService = new SupplierRecommenderService();
+// Get trend analyzer instance (lazy-initialized with prisma)
+const getTrendAnalyzer = () => supplierTrendAnalyzerService.getInstance(prisma);
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -39,9 +39,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const includeRecommendations = searchParams.get('includeRecommendations') !== 'false';
     const includeAlerts = searchParams.get('includeAlerts') !== 'false';
 
-    // Initialize trend analyzer with prisma
-    const supplierTrendAnalyzerService = new SupplierTrendAnalyzerService(prisma);
-
     // Calculate competitiveness score
     const competitivenessScore = await supplierIntelligenceService.calculateCompetitivenessScore(
       supplierId,
@@ -51,7 +48,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     // Analyze historical trends
     let trends = null;
     try {
-      trends = await supplierTrendAnalyzerService.analyzeSupplierTrends(
+      trends = await getTrendAnalyzer().analyzeSupplierTrends(
         supplierId,
         session.user.tenantId,
         monthsBack
@@ -81,7 +78,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     let rateIncreaseAnalysis = null;
     if (includeAlerts) {
       try {
-        rateIncreaseAnalysis = await supplierTrendAnalyzerService.detectAboveMarketIncreases(
+        rateIncreaseAnalysis = await getTrendAnalyzer().detectAboveMarketIncreases(
           supplierId,
           session.user.tenantId,
           10 // 10% threshold

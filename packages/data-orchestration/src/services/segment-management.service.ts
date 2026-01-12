@@ -66,7 +66,6 @@ export class SegmentManagementService {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
           },
         },
@@ -112,7 +111,6 @@ export class SegmentManagementService {
           user: {
             select: {
               id: true,
-              name: true,
               email: true,
             },
           },
@@ -318,7 +316,7 @@ export class SegmentManagementService {
         user: {
           select: {
             id: true,
-            name: true,
+            email: true,
           },
         },
       },

@@ -26,6 +26,7 @@ export interface AuditContext {
   ipAddress: string;
   userAgent: string;
   correlationId?: string;
+  reason?: string;
 }
 
 export interface AuditLog {

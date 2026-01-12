@@ -93,6 +93,9 @@ export interface ValidationWarning {
   suggestion?: string;
 }
 
+// Type alias for backwards compatibility
+type ValidationResult = RateCardEntryValidationResult;
+
 // ============================================================================
 // Rate Card Entry Service
 // ============================================================================
@@ -716,3 +719,10 @@ export class RateCardEntryService {
 }
 
 export default RateCardEntryService;
+
+
+// Export singleton placeholder for legacy usage
+export const rateCardEntryService = {
+  createEntry: async (...args: any[]) => { throw new Error('Service needs Prisma injection'); },
+  updateEntry: async (...args: any[]) => { throw new Error('Service needs Prisma injection'); },
+};

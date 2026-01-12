@@ -81,7 +81,7 @@ export const PaginationSchema = z.object({
 // TYPES
 // =========================================================================
 
-export interface ValidationResult<T> {
+export interface ValidationResult<T = unknown> {
   success: boolean;
   data?: T;
   errors?: Array<{

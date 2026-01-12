@@ -149,7 +149,7 @@ export class CacheInvalidationService {
    */
   private setupEventListeners(): void {
     // Contract events
-    eventBus.on(Events.CONTRACT_UPDATED, async (data) => {
+    eventBus.on(Events.CONTRACT_UPDATED, async (data: { contractId: string }) => {
       await this.invalidateTags([
         'contracts',
         `contract:${data.contractId}`,
@@ -158,7 +158,7 @@ export class CacheInvalidationService {
       ]);
     });
 
-    eventBus.on(Events.CONTRACT_METADATA_UPDATED, async (data) => {
+    eventBus.on(Events.CONTRACT_METADATA_UPDATED, async (data: { contractId: string }) => {
       await this.invalidateTags([
         `contract:${data.contractId}`,
         'contracts',
@@ -167,7 +167,7 @@ export class CacheInvalidationService {
     });
 
     // Artifact events
-    eventBus.on(Events.ARTIFACT_GENERATED, async (data) => {
+    eventBus.on(Events.ARTIFACT_GENERATED, async (data: { contractId: string; artifactId: string }) => {
       await this.invalidateTags([
         `contract:${data.contractId}`,
         `artifact:${data.artifactId}`,
@@ -176,7 +176,7 @@ export class CacheInvalidationService {
       ]);
     });
 
-    eventBus.on(Events.ARTIFACT_UPDATED, async (data) => {
+    eventBus.on(Events.ARTIFACT_UPDATED, async (data: { contractId: string; artifactId: string }) => {
       await this.invalidateTags([
         `artifact:${data.artifactId}`,
         `contract:${data.contractId}`,
@@ -186,7 +186,7 @@ export class CacheInvalidationService {
     });
 
     // Rate card events
-    eventBus.on(Events.RATE_CARD_CREATED, async (data) => {
+    eventBus.on(Events.RATE_CARD_CREATED, async (data: { supplierName: string; roleStandardized: string }) => {
       await this.invalidateTags([
         'rate-cards',
         'benchmarks',
@@ -197,7 +197,7 @@ export class CacheInvalidationService {
       ]);
     });
 
-    eventBus.on(Events.RATE_CARD_UPDATED, async (data) => {
+    eventBus.on(Events.RATE_CARD_UPDATED, async (data: { id: string; supplierName: string; roleStandardized: string }) => {
       await this.invalidateTags([
         'rate-cards',
         `rate-card:${data.id}`,
@@ -209,7 +209,7 @@ export class CacheInvalidationService {
       ]);
     });
 
-    eventBus.on(Events.RATE_CARD_IMPORTED, async (data) => {
+    eventBus.on(Events.RATE_CARD_IMPORTED, async (_data: unknown) => {
       await this.invalidateTags([
         'rate-cards',
         'benchmarks',
@@ -219,7 +219,7 @@ export class CacheInvalidationService {
     });
 
     // Benchmark events
-    eventBus.on(Events.BENCHMARK_CALCULATED, async (data) => {
+    eventBus.on(Events.BENCHMARK_CALCULATED, async (data: { type: string }) => {
       await this.invalidateTags([
         'benchmarks',
         `benchmark:${data.type}`,
@@ -228,7 +228,7 @@ export class CacheInvalidationService {
       ]);
     });
 
-    eventBus.on(Events.BENCHMARK_INVALIDATED, async (data) => {
+    eventBus.on(Events.BENCHMARK_INVALIDATED, async (_data: unknown) => {
       await this.invalidateTags([
         'benchmarks',
         'analytics',
@@ -237,7 +237,7 @@ export class CacheInvalidationService {
     });
 
     // Processing events
-    eventBus.on(Events.PROCESSING_COMPLETED, async (data) => {
+    eventBus.on(Events.PROCESSING_COMPLETED, async (data: { contractId: string }) => {
       await this.invalidateTags([
         `contract:${data.contractId}`,
         'contracts',

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
-import { SavingsOpportunityService } from 'data-orchestration/services';
+import { SavingsOpportunityService, savingsOpportunityService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from '@/lib/cache';
 
 // Using singleton prisma instance from @/lib/prisma

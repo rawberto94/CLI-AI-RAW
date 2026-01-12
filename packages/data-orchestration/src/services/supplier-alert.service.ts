@@ -10,10 +10,11 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { supplierTrendAnalyzerService } from './supplier-trend-analyzer.service';
+import { supplierTrendAnalyzerService, getSupplierTrendAnalyzerService } from './supplier-trend-analyzer.service';
 import { supplierIntelligenceService } from './supplier-intelligence.service';
 
 const prisma = new PrismaClient();
+const trendAnalyzer = getSupplierTrendAnalyzerService(prisma);
 
 export interface SupplierAlert {
   id: string;
@@ -150,7 +151,7 @@ export class SupplierAlertService {
     tenantId: string
   ): Promise<SupplierAlert | null> {
     // Use trend analyzer to detect above-market increases
-    const analysis = await supplierTrendAnalyzerService.detectAboveMarketIncreases(
+    const analysis = await trendAnalyzer.detectAboveMarketIncreases(
       supplierId,
       tenantId,
       6 // Last 6 months
@@ -315,7 +316,7 @@ export class SupplierAlertService {
   ): Promise<SupplierAlert | null> {
     try {
       // Get supplier trends
-      const trends = await supplierTrendAnalyzerService.analyzeSupplierTrends(
+      const trends = await trendAnalyzer.analyzeSupplierTrends(
         supplierId,
         tenantId,
         12
@@ -387,7 +388,7 @@ export class SupplierAlertService {
     tenantId: string
   ): Promise<SupplierAlert | null> {
     try {
-      const trends = await supplierTrendAnalyzerService.analyzeSupplierTrends(
+      const trends = await trendAnalyzer.analyzeSupplierTrends(
         supplierId,
         tenantId,
         12

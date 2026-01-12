@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RateCardEntryService } from 'data-orchestration/services';
+import { rateCardEntryService } from 'data-orchestration/services';
 import { getServerSession } from '@/lib/auth';
 
-const rateCardService = new RateCardEntryService(prisma);
+const rateCardService = new rateCardEntryService(prisma);
 
 /**
  * GET /api/rate-cards/suggestions/suppliers

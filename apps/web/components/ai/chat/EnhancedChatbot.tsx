@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 
 // Import chat components
 import { MessageBubble, ChatMessage, MessageAttachment } from './MessageBubble';
-import { EnhancedChatInput } from './EnhancedChatInput';
+import { EnhancedChatInput, Attachment } from './EnhancedChatInput';
 import { TypingIndicator, ThinkingStatus } from './TypingIndicator';
 import { SmartSuggestions } from './SmartSuggestions';
 import { ConversationSidebar } from './ConversationSidebar';
@@ -276,7 +276,7 @@ WelcomeScreen.displayName = 'WelcomeScreen';
 // Main chat content
 interface ChatContentProps {
   settings: ChatSettings;
-  onSendMessage: (message: string, attachments?: MessageAttachment[]) => void;
+  onSendMessage: (message: string, attachments?: Attachment[]) => void;
   contractContext?: { id: string; name: string } | null;
 }
 
@@ -288,15 +288,23 @@ const ChatContent = memo(({
   const { messages, isLoading, streamingMessage, updateMessage } = useChatContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [inputValue, setInputValue] = useState('');
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingMessage]);
 
+  // Handle send and clear input
+  const handleSend = useCallback((text: string, attachments?: Attachment[]) => {
+    onSendMessage(text, attachments);
+    setInputValue('');
+  }, [onSendMessage]);
+
   // Handle suggestion click
   const handleSuggestionClick = useCallback((text: string) => {
     onSendMessage(text);
+    setInputValue('');
   }, [onSendMessage]);
 
   // Handle message feedback
@@ -335,10 +343,13 @@ const ChatContent = memo(({
   return (
     <>
       {/* Messages */}
-      <div className={cn(
-        "flex-1 overflow-y-auto p-4 space-y-4",
-        settings.compactMode && "space-y-2"
-      )}>
+      <div 
+        data-testid="chatbot-messages"
+        className={cn(
+          "flex-1 overflow-y-auto p-4 space-y-4",
+          settings.compactMode && "space-y-2"
+        )}
+      >
         <AnimatePresence mode="popLayout">
           {chatMessages.map((message) => (
             <motion.div
@@ -350,9 +361,8 @@ const ChatContent = memo(({
             >
               <MessageBubble
                 message={message}
-                showFeedback={message.role === 'assistant'}
-                onFeedback={(feedback) => handleFeedback(message.id, feedback)}
-                onCopy={() => handleCopy(message.content)}
+                onFeedback={(messageId, feedback) => handleFeedback(messageId, feedback)}
+                onCopy={(content) => handleCopy(content)}
               />
             </motion.div>
           ))}
@@ -372,7 +382,6 @@ const ChatContent = memo(({
                 timestamp: new Date(),
                 isTyping: true,
               }}
-              showFeedback={false}
             />
           </motion.div>
         )}
@@ -409,7 +418,9 @@ const ChatContent = memo(({
       <div className="p-4 border-t border-slate-200 dark:border-slate-700">
         <EnhancedChatInput
           ref={inputRef}
-          onSend={(text, attachments) => onSendMessage(text, attachments)}
+          value={inputValue}
+          onChange={setInputValue}
+          onSend={handleSend}
           isLoading={isLoading}
           placeholder="Ask me anything about your contracts..."
           contractContext={contractContext}
@@ -533,12 +544,21 @@ const ChatbotInner = memo(({
   }, [contractContext, setContractContext]);
 
   // Send message handler
-  const handleSendMessage = useCallback(async (text: string, attachments?: MessageAttachment[]) => {
+  const handleSendMessage = useCallback(async (text: string, attachments?: Attachment[]) => {
+    // Convert Attachment to MessageAttachment
+    const messageAttachments: MessageAttachment[] | undefined = attachments?.map(a => ({
+      id: a.id,
+      type: 'file' as const,
+      name: a.file.name,
+      preview: a.preview,
+      size: a.file.size,
+    }));
+    
     // Add user message
     addMessage({
       role: 'user',
       content: text,
-      attachments,
+      attachments: messageAttachments,
     });
 
     setIsLoading(true);
@@ -553,8 +573,8 @@ const ChatbotInner = memo(({
           contractId: contractContext?.id,
           conversationId: currentConversationId, // Pass conversation ID for memory
           attachments: attachments?.map(a => ({
-            name: a.name,
-            type: a.type,
+            name: a.file.name,
+            type: a.file.type,
           })),
         }),
       });
@@ -603,9 +623,9 @@ const ChatbotInner = memo(({
           role: 'assistant',
           content: messageContent,
           sources: data.sources,
+          suggestions: data.suggestions,
           metadata: {
             referenceResolutions: data.referenceResolutions,
-            suggestions: data.suggestions,
           },
         });
       }
@@ -629,7 +649,7 @@ const ChatbotInner = memo(({
       messageCount: c.messages.length,
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
-      contractContext: c.contractContext,
+      contractContext: (c.metadata as Record<string, unknown>)?.contractContext as { id: string; name: string } | undefined,
     })),
     [conversations]
   );

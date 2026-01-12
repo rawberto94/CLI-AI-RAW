@@ -47,7 +47,7 @@ export class AutomatedReportingService {
     });
 
     // Get opportunities
-    const opportunities = await savingsOpportunityService.findOpportunities(
+    const opportunities = await savingsOpportunityService.detectOpportunities(
       tenantId,
       {}
     );
@@ -104,25 +104,22 @@ export class AutomatedReportingService {
 
     const reportData = await Promise.all(
       rateCards.map(async (rc) => {
-        const benchmark = await rateCardBenchmarkingService.getBenchmark(
-          rc.id,
-          tenantId
-        );
+        // Use pre-computed benchmark fields from the rate card entry
+        const benchmark = rc.lastBenchmarkedAt ? {
+          percentile: rc.percentileRank,
+          median: rc.marketRateMedian ? Number(rc.marketRateMedian) : null,
+          variance: rc.marketRateMedian && rc.dailyRateUSD ? 
+            Number(rc.dailyRateUSD) - Number(rc.marketRateMedian) : null,
+        } : null;
 
         return {
           id: rc.id,
-          role: rc.role,
-          geography: rc.geography,
+          role: rc.roleStandardized,
+          geography: rc.supplierRegion,
           seniority: rc.seniority,
-          rate: rc.rate,
+          rate: rc.dailyRateUSD ? Number(rc.dailyRateUSD) : null,
           supplier: rc.supplier?.name,
-          benchmark: benchmark
-            ? {
-                percentile: benchmark.percentile,
-                median: benchmark.median,
-                variance: benchmark.variance,
-              }
-            : null,
+          benchmark,
         };
       })
     );
@@ -139,25 +136,25 @@ export class AutomatedReportingService {
    * Generate opportunities report
    */
   async generateOpportunitiesReport(tenantId: string): Promise<any> {
-    const opportunities = await savingsOpportunityService.findOpportunities(
+    const opportunities = (await savingsOpportunityService.detectOpportunities(
       tenantId,
       {}
-    );
+    )) as any[];
 
-    const groupedByType = opportunities.reduce((acc, opp) => {
+    const groupedByType = opportunities.reduce((acc: Record<string, any[]>, opp: any) => {
       if (!acc[opp.type]) {
         acc[opp.type] = [];
       }
       acc[opp.type].push(opp);
       return acc;
-    }, {} as Record<string, typeof opportunities>);
+    }, {} as Record<string, any[]>);
 
-    const summary = Object.entries(groupedByType).map(([type, opps]) => ({
+    const summary = Object.entries(groupedByType).map(([type, opps]: [string, any[]]) => ({
       type,
       count: opps.length,
-      totalSavings: opps.reduce((sum, o) => sum + (o.potentialSavings || 0), 0),
+      totalSavings: opps.reduce((sum: number, o: any) => sum + (o.potentialSavings || 0), 0),
       avgSavings:
-        opps.reduce((sum, o) => sum + (o.potentialSavings || 0), 0) /
+        opps.reduce((sum: number, o: any) => sum + (o.potentialSavings || 0), 0) /
         opps.length,
     }));
 
@@ -165,12 +162,12 @@ export class AutomatedReportingService {
       generatedAt: new Date(),
       totalOpportunities: opportunities.length,
       totalPotentialSavings: opportunities.reduce(
-        (sum, o) => sum + (o.potentialSavings || 0),
+        (sum: number, o: any) => sum + (o.potentialSavings || 0),
         0
       ),
       byType: summary,
       topOpportunities: opportunities
-        .sort((a, b) => (b.potentialSavings || 0) - (a.potentialSavings || 0))
+        .sort((a: any, b: any) => (b.potentialSavings || 0) - (a.potentialSavings || 0))
         .slice(0, 10),
     };
   }
@@ -183,22 +180,27 @@ export class AutomatedReportingService {
       where: { tenantId },
       include: {
         _count: {
-          select: { rateCardEntries: true },
+          select: { rateCards: true },
         },
       },
     });
 
     const supplierData = await Promise.all(
       suppliers.map(async (supplier) => {
-        const scorecard = await supplierBenchmarkService.getSupplierScorecard(
-          supplier.id,
-          tenantId
-        );
+        let scorecard = null;
+        try {
+          scorecard = await supplierBenchmarkService.calculateSupplierBenchmark({
+            supplierId: supplier.id,
+            tenantId
+          });
+        } catch {
+          // Supplier may not have rate data
+        }
 
         return {
           id: supplier.id,
           name: supplier.name,
-          rateCardCount: supplier._count.rateCardEntries,
+          rateCardCount: (supplier as any)._count?.rateCards ?? 0,
           scorecard,
         };
       })
@@ -377,13 +379,13 @@ export class AutomatedReportingService {
 
     // Top opportunity type
     if (opportunities.length > 0) {
-      const typeCount = opportunities.reduce((acc, opp) => {
+      const typeCount = (opportunities as any[]).reduce((acc: Record<string, number>, opp: any) => {
         acc[opp.type] = (acc[opp.type] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
       const topType = Object.entries(typeCount).sort(
-        ([, a], [, b]) => b - a
+        ([, a], [, b]) => (b as number) - (a as number)
       )[0];
       insights.push(
         `${topType[1]} ${topType[0]} opportunities identified`
@@ -393,7 +395,7 @@ export class AutomatedReportingService {
     // Average savings per opportunity
     if (opportunities.length > 0) {
       const avgSavings =
-        opportunities.reduce((sum, o) => sum + (o.potentialSavings || 0), 0) /
+        (opportunities as any[]).reduce((sum: number, o: any) => sum + (o.potentialSavings || 0), 0) /
         opportunities.length;
       insights.push(
         `Average savings per opportunity: $${avgSavings.toLocaleString()}`
@@ -418,25 +420,26 @@ export class AutomatedReportingService {
         updatedAt: { gte: startDate, lte: endDate },
       },
       select: {
-        role: true,
-        geography: true,
-        rate: true,
+        roleStandardized: true,
+        supplierRegion: true,
+        dailyRateUSD: true,
         updatedAt: true,
       },
     });
 
     // Group by role and calculate trends
-    const roleGroups = rateCards.reduce((acc, rc) => {
-      if (!acc[rc.role]) {
-        acc[rc.role] = [];
+    const roleGroups = rateCards.reduce((acc: Record<string, any[]>, rc) => {
+      const role = rc.roleStandardized || 'Unknown';
+      if (!acc[role]) {
+        acc[role] = [];
       }
-      acc[rc.role].push(rc);
+      acc[role].push(rc);
       return acc;
-    }, {} as Record<string, typeof rateCards>);
+    }, {});
 
     const trends = Object.entries(roleGroups).map(([role, cards]) => {
       const avgRate =
-        cards.reduce((sum, c) => sum + Number(c.rate), 0) / cards.length;
+        cards.reduce((sum: number, c: any) => sum + Number(c.dailyRateUSD || 0), 0) / cards.length;
 
       return {
         role,

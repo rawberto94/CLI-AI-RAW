@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { SegmentManagementService } from 'data-orchestration/services';
+import { segmentManagementService } from 'data-orchestration/services';
 import { getServerSession } from '@/lib/auth';
 
-const segmentService = new SegmentManagementService(prisma);
+const segmentService = new segmentManagementService(prisma);
 
 /**
  * GET /api/rate-cards/segments/[id]

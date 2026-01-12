@@ -10,6 +10,7 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { dbAdaptor } from '../dal/database.adaptor';
 
 const logger = createLogger('confidence-scoring-service');
 
@@ -616,7 +617,7 @@ export class ConfidenceScoringService {
    */
   async getArtifactConfidence(artifactId: string, tenantId: string): Promise<number> {
     try {
-      const artifact = await (dbAdaptor.getClient() as any).artifact?.findFirst({
+      const artifact = await (dbAdaptor.prisma as any).artifact?.findFirst({
         where: { id: artifactId, tenantId },
       });
 

@@ -214,6 +214,7 @@ interface StatCardProps {
   sparklineData?: number[];
   delay?: number;
   onClick?: () => void;
+  testId?: string;
 }
 
 const StatCard = memo(function StatCard({
@@ -227,6 +228,7 @@ const StatCard = memo(function StatCard({
   sparklineData,
   delay = 0,
   onClick,
+  testId,
 }: StatCardProps) {
   const colorStyles = {
     blue: {
@@ -276,6 +278,7 @@ const StatCard = memo(function StatCard({
       transition={{ duration: 0.4, delay }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       onClick={onClick}
+      data-testid={testId}
       className={cn(
         "relative overflow-hidden rounded-2xl bg-white p-5 shadow-lg shadow-slate-200/50",
         "border border-slate-100 hover:border-slate-200 transition-all duration-300",
@@ -609,12 +612,13 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         </div>
 
         {/* Stats Cards - Inside Hero */}
-        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div data-testid="contracts-stats" className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2">
           {/* Total Contracts */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
+            data-testid="stat-total"
             className="group relative overflow-hidden rounded-lg bg-white/10 backdrop-blur-md border border-white/10 p-2.5 md:p-3 hover:bg-white/15 transition-all cursor-pointer"
           >
             <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
@@ -651,6 +655,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
+            data-testid="stat-value"
             className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
           >
             <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
@@ -690,6 +695,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.4 }}
+            data-testid="stat-risk"
             className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
           >
             <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
@@ -723,6 +729,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.5 }}
+            data-testid="stat-active"
             className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
           >
             <div className="absolute top-0 right-0 w-24 h-24 opacity-5">

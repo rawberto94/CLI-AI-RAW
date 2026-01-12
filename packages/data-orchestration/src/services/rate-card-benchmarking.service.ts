@@ -594,6 +594,8 @@ export class RateCardBenchmarkingEngine {
         periodEnd: new Date(),
         cohortDefinition: result.cohortDefinition as any,
         cohortSize: result.statistics.sampleSize,
+        rateValue: result.statistics.mean, // Required field
+        marketMedian: result.statistics.median, // Required field
         average: result.statistics.mean,
         median: result.statistics.median,
         mode: result.statistics.mode,
@@ -845,7 +847,7 @@ export class RateCardBenchmarkingEngine {
     const opportunities: SavingsOpportunity[] = [];
 
     // Get benchmark if it exists
-    const benchmark = rateCard.benchmarkSnapshot[0];
+    const benchmark = rateCard.benchmarkSnapshots[0];
     if (!benchmark) {
       // No benchmark yet, trigger calculation
       await this.calculateBenchmark(rateCardEntryId);
@@ -1009,7 +1011,7 @@ export class RateCardBenchmarkingEngine {
       await this.prisma.rateSavingsOpportunity.update({
         where: { id: existing.id },
         data: {
-          annualSavings: opportunity.annualSavings,
+          annualSavingsPotential: opportunity.annualSavings,
           savingsPercentage: opportunity.savingsPercentage,
           confidence: opportunity.confidence,
           updatedAt: new Date(),
@@ -1026,7 +1028,7 @@ export class RateCardBenchmarkingEngine {
           category: opportunity.category,
           currentAnnualCost: opportunity.currentAnnualCost,
           projectedAnnualCost: opportunity.projectedAnnualCost,
-          annualSavings: opportunity.annualSavings,
+          annualSavingsPotential: opportunity.annualSavings,
           savingsPercentage: opportunity.savingsPercentage,
           effort: opportunity.effort,
           risk: opportunity.risk,

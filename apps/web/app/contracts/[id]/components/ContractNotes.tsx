@@ -25,6 +25,7 @@ import {
   Reply,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { EmptyState } from './EmptyState'
 
 interface Note {
   id: string
@@ -322,11 +323,14 @@ export const ContractNotes = memo(function ContractNotes({
             </AnimatePresence>
           </div>
         ) : !showInput ? (
-          <div className="text-center py-6">
-            <MessageSquare className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-500">No notes yet</p>
-            <p className="text-xs text-slate-400 mt-1">Add a note to keep track of important details</p>
-          </div>
+          <EmptyState
+            type="notes"
+            className="py-6"
+            action={{
+              label: 'Add note',
+              onClick: () => setShowInput(true),
+            }}
+          />
         ) : null}
       </CardContent>
     </Card>
