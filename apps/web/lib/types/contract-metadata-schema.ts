@@ -35,6 +35,12 @@ export type Periodicity =
 
 export type UIAttention = 'none' | 'warning' | 'error' | 'info';
 
+export type SignatureStatus = 
+  | 'signed'
+  | 'partially_signed'
+  | 'unsigned'
+  | 'unknown';
+
 // ============ EXTERNAL PARTY ============
 
 export interface ExternalParty {
@@ -125,6 +131,12 @@ export interface ContractMetadataSchema {
   
   /** Date of the last signature (final execution date) */
   signature_date?: string | null;
+  
+  /** Signature status - whether contract is signed, partially signed, or unsigned */
+  signature_status: SignatureStatus;
+  
+  /** Flag indicating contract requires signature attention */
+  signature_required_flag: boolean;
   
   /** Effective/commencement date */
   start_date: string;
@@ -347,6 +359,29 @@ export const CONTRACT_METADATA_FIELDS: MetadataFieldDefinition[] = [
     displayOrder: 1
   },
   {
+    key: 'signature_status',
+    label: 'Signature Status',
+    type: 'enum',
+    required: true,
+    editable: true,
+    enum: ['signed', 'partially_signed', 'unsigned', 'unknown'],
+    extraction_hint: 'Check for signature blocks, executed signatures, or "duly executed" language. Look for dates near signatures and witness attestations.',
+    ui_attention: 'warning',
+    section: 'dates',
+    displayOrder: 2
+  },
+  {
+    key: 'signature_required_flag',
+    label: 'Signature Attention Required',
+    type: 'boolean',
+    required: false,
+    editable: true,
+    system_generated: true,
+    ui_attention: 'error',
+    section: 'dates',
+    displayOrder: 3
+  },
+  {
     key: 'start_date',
     label: 'Start Date (Effective)',
     type: 'date',
@@ -463,6 +498,8 @@ export function getDefaultContractMetadata(): Partial<ContractMetadataSchema> {
     periodicity: 'none',
     currency: 'USD',
     signature_date: null,
+    signature_status: 'unknown',
+    signature_required_flag: false,
     start_date: '',
     end_date: null,
     termination_date: null,

@@ -352,6 +352,17 @@ Guidelines:
 6. If a field cannot be found, mark it with confidence 0 and explain why
 7. Always include the source text where you found the value
 
+Signature Status Detection Guidelines:
+- Look for signature blocks at the end of the document
+- Check for actual handwritten signatures, typed names with dates, or electronic signature indicators
+- "IN WITNESS WHEREOF" or "duly executed" language suggests execution intent
+- Empty signature lines (___________) indicate unsigned
+- If all parties have signatures with dates: "signed"
+- If some but not all parties have signed: "partially_signed"
+- If no signatures found or all lines empty: "unsigned"
+- If unclear or cannot determine: "unknown"
+- Flag as requiring attention if unsigned, partially signed, or missing execution date
+
 Confidence Scoring Guidelines:
 - 95-100: Value is explicitly stated in a clear, unambiguous way
 - 80-94: Value is clearly present but may require minor interpretation

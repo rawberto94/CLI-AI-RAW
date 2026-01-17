@@ -48,6 +48,8 @@ interface EnterpriseMetadata {
   
   // Dates
   signature_date?: string | null;
+  signature_status?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
+  signature_required_flag?: boolean;
   start_date?: string;
   end_date?: string | null;
   termination_date?: string | null;
@@ -186,6 +188,13 @@ export async function GET(
       
       // Dates
       signature_date: aiMetadata.signature_date || null,
+      signature_status: aiMetadata.signature_status || 'unknown',
+      signature_required_flag: aiMetadata.signature_required_flag ?? (
+        // Auto-flag if unsigned or partially signed
+        aiMetadata.signature_status === 'unsigned' || 
+        aiMetadata.signature_status === 'partially_signed' ||
+        (!aiMetadata.signature_date && aiMetadata.signature_status !== 'signed')
+      ),
       start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || '',
       end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || null,
       termination_date: aiMetadata.termination_date || null,

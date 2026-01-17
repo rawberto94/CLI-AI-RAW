@@ -17,6 +17,8 @@ interface ContractMetadata {
   periodicity: string
   currency: string
   signature_date: string
+  signature_status: 'signed' | 'partially_signed' | 'unsigned' | 'unknown'
+  signature_required_flag: boolean
   start_date: string
   end_date: string
   termination_date: string
@@ -48,6 +50,8 @@ interface ContractData {
   effectiveDate?: string | null
   expirationDate?: string | null
   signature_date?: string | null
+  signature_status?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown' | null
+  signature_required_flag?: boolean | null
   start_date?: string | null
   end_date?: string | null
   termination_date?: string | null
@@ -121,6 +125,8 @@ export function useContractMetadata(contract: ContractData | null) {
         periodicity: 'none',
         currency: 'USD',
         signature_date: '',
+        signature_status: 'unknown' as const,
+        signature_required_flag: false,
         start_date: '',
         end_date: '',
         termination_date: '',
@@ -152,6 +158,13 @@ export function useContractMetadata(contract: ContractData | null) {
       
       // Dates
       signature_date: formatDateStr(contract.signature_date),
+      signature_status: contract.signature_status || 'unknown',
+      signature_required_flag: contract.signature_required_flag ?? (
+        // Auto-flag if unsigned or partially signed
+        contract.signature_status === 'unsigned' || 
+        contract.signature_status === 'partially_signed' ||
+        (!contract.signature_date && contract.signature_status !== 'signed')
+      ),
       start_date: formatDateStr(contract.start_date || contract.effectiveDate || overviewData?.effectiveDate),
       end_date: formatDateStr(contract.end_date || contract.expirationDate || overviewData?.expirationDate),
       termination_date: formatDateStr(contract.termination_date),
