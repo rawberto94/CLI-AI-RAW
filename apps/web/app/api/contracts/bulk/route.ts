@@ -5,6 +5,11 @@ import { safeDeleteContract } from '@/lib/services/contract-deletion.service'
 import { bulkOperationSchema } from '@/lib/validation/contract.validation'
 import { ZodError } from 'zod'
 import { addActivityLogEntry } from '@/lib/activity-log'
+import {
+  triggerDocumentReclassified,
+  triggerSignatureStatusChanged,
+  triggerNonContractDetected,
+} from '@/lib/webhook-triggers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -608,6 +613,31 @@ export async function POST(request: NextRequest) {
           )
         )
 
+        // Trigger webhooks for reclassification
+        const nonContractTypes = ['purchase_order', 'invoice', 'quote', 'work_order', 'letter_of_intent', 'memorandum']
+        const isNonContract = nonContractTypes.includes(classification)
+
+        await Promise.all(
+          contractIds.map(async (contractId: string) => {
+            // Trigger reclassification webhook
+            await triggerDocumentReclassified(tenantId, contractId, {
+              newClassification: classification,
+              signatureStatusUpdated: !!(signatureUpdate && signatureUpdate !== 'no_change'),
+              newSignatureStatus: signatureUpdate !== 'no_change' ? signatureUpdate : undefined,
+              changedBy: userId,
+              bulk: true,
+            })
+
+            // If reclassified to non-contract, trigger alert webhook
+            if (isNonContract) {
+              await triggerNonContractDetected(tenantId, contractId, {
+                documentClassification: classification,
+                uploadedBy: userId,
+              })
+            }
+          })
+        )
+
         return NextResponse.json({
           success: true,
           message: `Reclassified ${contractIds.length} document${contractIds.length > 1 ? 's' : ''} as "${classification}"${signatureUpdate && signatureUpdate !== 'no_change' ? ` and marked as ${signatureUpdate}` : ''}`,
@@ -649,6 +679,17 @@ export async function POST(request: NextRequest) {
           )
         )
 
+        // Trigger webhook for signature status change
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            triggerSignatureStatusChanged(tenantId, contractId, {
+              newStatus: 'signed',
+              changedBy: userId,
+              bulk: true,
+            })
+          )
+        )
+
         return NextResponse.json({
           success: true,
           message: `Marked ${contractIds.length} document${contractIds.length > 1 ? 's' : ''} as signed`
@@ -683,6 +724,17 @@ export async function POST(request: NextRequest) {
               event: 'contract:updated',
               data: { tenantId, contractId, signatureStatus: 'unsigned' },
               source: 'api:contracts/bulk',
+            })
+          )
+        )
+
+        // Trigger webhook for signature status change
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            triggerSignatureStatusChanged(tenantId, contractId, {
+              newStatus: 'unsigned',
+              changedBy: userId,
+              bulk: true,
             })
           )
         )

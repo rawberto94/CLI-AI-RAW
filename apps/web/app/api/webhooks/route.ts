@@ -34,6 +34,11 @@ export const WEBHOOK_EVENTS = [
   'alert.risk_detected',
   'alert.deadline_approaching',
   'alert.compliance_issue',
+  // Document classification events
+  'document.classified',
+  'document.non_contract_detected',
+  'document.signature_status_changed',
+  'document.reclassified',
 ] as const;
 
 export type WebhookEvent = typeof WEBHOOK_EVENTS[number];

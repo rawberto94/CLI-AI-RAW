@@ -319,3 +319,106 @@ export async function triggerRateCardAnalyzed(
     },
   });
 }
+
+// ============================================================================
+// DOCUMENT CLASSIFICATION WEBHOOKS
+// ============================================================================
+
+/**
+ * Trigger webhook when a document is classified
+ */
+export async function triggerDocumentClassified(
+  tenantId: string,
+  contractId: string,
+  classification: {
+    documentClassification: string;
+    signatureStatus?: string;
+    confidence?: number;
+  }
+) {
+  return triggerWebhook({
+    tenantId,
+    event: 'document.classified',
+    data: {
+      contractId,
+      ...classification,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}
+
+/**
+ * Trigger webhook when a non-contract document is detected
+ * This is useful for alerting external systems about non-contract uploads
+ */
+export async function triggerNonContractDetected(
+  tenantId: string,
+  contractId: string,
+  details: {
+    documentClassification: string;
+    fileName?: string;
+    uploadedBy?: string;
+    confidence?: number;
+  }
+) {
+  return triggerWebhook({
+    tenantId,
+    event: 'document.non_contract_detected',
+    data: {
+      contractId,
+      ...details,
+      timestamp: new Date().toISOString(),
+      message: `Non-contract document detected: ${details.documentClassification}`,
+    },
+  });
+}
+
+/**
+ * Trigger webhook when signature status changes
+ */
+export async function triggerSignatureStatusChanged(
+  tenantId: string,
+  contractId: string,
+  details: {
+    previousStatus?: string;
+    newStatus: string;
+    changedBy?: string;
+    bulk?: boolean;
+  }
+) {
+  return triggerWebhook({
+    tenantId,
+    event: 'document.signature_status_changed',
+    data: {
+      contractId,
+      ...details,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}
+
+/**
+ * Trigger webhook when a document is reclassified
+ */
+export async function triggerDocumentReclassified(
+  tenantId: string,
+  contractId: string,
+  details: {
+    previousClassification?: string;
+    newClassification: string;
+    signatureStatusUpdated?: boolean;
+    newSignatureStatus?: string;
+    changedBy?: string;
+    bulk?: boolean;
+  }
+) {
+  return triggerWebhook({
+    tenantId,
+    event: 'document.reclassified',
+    data: {
+      contractId,
+      ...details,
+      timestamp: new Date().toISOString(),
+    },
+  });
+}
