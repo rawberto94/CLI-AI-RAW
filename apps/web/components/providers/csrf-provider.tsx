@@ -8,7 +8,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { CSRF_CONSTANTS } from '@/lib/csrf';
+import { CSRF_CONSTANTS } from '@/lib/csrf-constants';
 
 interface CSRFContextValue {
   token: string | null;
@@ -54,8 +54,8 @@ export function CSRFProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       
-      // Fetch new token from API
-      const response = await fetch('/api/auth/csrf', {
+      // Fetch new token from API (use /api/csrf to avoid NextAuth conflict)
+      const response = await fetch('/api/csrf', {
         method: 'GET',
         credentials: 'include',
       });

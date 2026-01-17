@@ -1,16 +1,18 @@
 /**
- * CSRF Protection
+ * CSRF Protection (Server-only)
  * 
  * Provides CSRF token generation and validation for state-changing operations.
  * Uses the Double Submit Cookie pattern for stateless CSRF protection.
  */
 
+import 'server-only';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { CSRF_CONSTANTS } from './csrf-constants';
 
-const CSRF_TOKEN_NAME = 'csrf_token';
-const CSRF_HEADER_NAME = 'x-csrf-token';
+const CSRF_TOKEN_NAME = CSRF_CONSTANTS.TOKEN_NAME;
+const CSRF_HEADER_NAME = CSRF_CONSTANTS.HEADER_NAME;
 const CSRF_TOKEN_LENGTH = 32;
 const CSRF_TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
 
@@ -201,8 +203,5 @@ export function getCSRFHeaders(token: string): Record<string, string> {
   };
 }
 
-// Export constants for client use
-export const CSRF_CONSTANTS = {
-  TOKEN_NAME: CSRF_TOKEN_NAME,
-  HEADER_NAME: CSRF_HEADER_NAME,
-} as const;
+// Re-export constants for backwards compatibility (server-side only)
+export { CSRF_CONSTANTS } from './csrf-constants';
