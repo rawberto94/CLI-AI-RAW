@@ -261,6 +261,13 @@ export default function ContractDetailPage() {
   // Current version number for header badge
   const [currentVersionNumber, setCurrentVersionNumber] = useState<number>(1)
   
+  // Health data from family-health API
+  const [healthData, setHealthData] = useState<{
+    healthScore: number
+    completeness: number
+    issues: Array<{ type: string; severity: 'low' | 'medium' | 'high'; message: string }>
+  } | null>(null)
+  
   // Split pane for PDF viewer
   const {
     containerRef: splitContainerRef,
@@ -373,6 +380,7 @@ export default function ContractDetailPage() {
       setContract(data)
       loadVersions()
       loadNotes()
+      loadHealthData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')
     } finally {
@@ -436,6 +444,24 @@ export default function ContractDetailPage() {
       }
     } catch {
       // Notes loading failed silently
+    }
+  }, [params.id])
+
+  const loadHealthData = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/contracts/${params.id}/family-health`)
+      if (!response.ok) return
+      
+      const data = await response.json()
+      if (data.success !== false) {
+        setHealthData({
+          healthScore: data.healthScore ?? 100,
+          completeness: data.completeness ?? 0,
+          issues: data.issues || []
+        })
+      }
+    } catch {
+      // Health data loading failed silently - will use defaults
     }
   }, [params.id])
 
@@ -1111,9 +1137,9 @@ export default function ContractDetailPage() {
                     riskInfo={riskInfo}
                     complianceInfo={complianceInfo}
                     healthInfo={{
-                      score: contract?.healthScore ?? 100,
-                      completeness: contract?.completeness ?? 0,
-                      issues: contract?.healthIssues || [],
+                      score: healthData?.healthScore ?? 100,
+                      completeness: healthData?.completeness ?? 0,
+                      issues: healthData?.issues || [],
                     }}
                     extractionConfidence={contract?.extractionConfidence}
                     isProcessing={isProcessing}

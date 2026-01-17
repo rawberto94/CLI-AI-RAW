@@ -194,14 +194,38 @@ export function useContractMetadata(contract: ContractData | null) {
     const riskScore = score ?? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : 75)
     const risks = riskData?.risks || []
     
-    return { riskLevel, riskScore, risks }
+    // Extract risk factors as string array for display
+    const factors: string[] = risks.map((r: { title?: string; description?: string }) => 
+      r.title || r.description || ''
+    ).filter(Boolean)
+    
+    // Extract mitigations if available
+    const mitigations: string[] = riskData?.mitigations || riskData?.recommendations || []
+    
+    return { riskLevel, riskScore, risks, factors, mitigations }
   }, [contract?.extractedData?.risk])
   
   const complianceInfo = useMemo(() => {
     const complianceData = contract?.extractedData?.compliance
+    const checks = complianceData?.checks || []
+    
+    // Extract violations from failed checks
+    const violations: string[] = checks
+      .filter((c: { status?: string; passed?: boolean }) => c.status === 'failed' || c.passed === false)
+      .map((c: { name?: string; message?: string }) => c.message || c.name || '')
+      .filter(Boolean)
+    
+    // Calculate compliance score from checks if available
+    const passedChecks = checks.filter((c: { status?: string; passed?: boolean }) => 
+      c.status === 'passed' || c.passed === true
+    ).length
+    const score = checks.length > 0 ? Math.round((passedChecks / checks.length) * 100) : undefined
+    
     return {
-      isCompliant: complianceData?.compliant ?? true,
-      checks: complianceData?.checks || []
+      isCompliant: complianceData?.compliant ?? (violations.length === 0),
+      checks,
+      violations,
+      score
     }
   }, [contract?.extractedData?.compliance])
   
