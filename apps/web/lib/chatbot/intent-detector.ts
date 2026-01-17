@@ -491,6 +491,58 @@ export function detectIntent(query: string): DetectedIntent {
     };
   }
 
+  // ============================================
+  // SIGNATURE STATUS PATTERNS
+  // ============================================
+
+  // Show unsigned contracts
+  if (/(?:unsigned|not\s+signed|missing\s+signature|without\s+signature)\s*contracts?/i.test(lowerQuery) ||
+      /contracts?\s+(?:that\s+)?(?:are\s+)?(?:not\s+signed|unsigned|need\s+signature)/i.test(lowerQuery) ||
+      /contracts?\s+(?:without|with\s+no|missing)\s+(?:a\s+)?signature/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'show_unsigned',
+      entities: { signatureStatus: 'unsigned' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show signed contracts
+  if (/(?:show|list|find|get)\s+(?:all\s+)?signed\s+contracts?/i.test(lowerQuery) ||
+      /contracts?\s+(?:that\s+)?(?:are\s+)?(?:fully\s+)?signed/i.test(lowerQuery) ||
+      /executed\s+contracts?/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'show_signed',
+      entities: { signatureStatus: 'signed' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show partially signed contracts
+  if (/(?:partially|partly)\s+signed\s+contracts?/i.test(lowerQuery) ||
+      /contracts?\s+(?:that\s+)?(?:are\s+)?partially\s+signed/i.test(lowerQuery) ||
+      /contracts?\s+(?:with\s+)?(?:some|missing)\s+signatures?/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'show_partially_signed',
+      entities: { signatureStatus: 'partially_signed' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show contracts needing signature attention
+  if (/contracts?\s+(?:needing|requiring|need|require)\s+(?:signature\s+)?attention/i.test(lowerQuery) ||
+      /contracts?\s+flagged\s+for\s+signature/i.test(lowerQuery) ||
+      /signature\s+(?:issues?|problems?|attention)/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'show_needing_signature',
+      entities: {},
+      confidence: 0.95,
+    };
+  }
+
   // Show uncategorized
   if (/(?:uncategorized|untagged|no\s+category|missing\s+category)\s*contracts?/i.test(lowerQuery) ||
       /contracts?\s+(?:without|with\s+no)\s+(?:a\s+)?category/i.test(lowerQuery)) {

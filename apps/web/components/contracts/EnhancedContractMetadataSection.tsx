@@ -513,6 +513,15 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
       if (field.key === 'payment_type') return formatPaymentType(value as PaymentType);
       if (field.key === 'billing_frequency_type') return formatBillingFrequency(value as BillingFrequencyType);
       if (field.key === 'periodicity') return formatPeriodicity(value as Periodicity);
+      if (field.key === 'signature_status') {
+        const statusLabels: Record<string, string> = {
+          signed: '✓ Signed',
+          partially_signed: '⚠ Partially Signed',
+          unsigned: '✗ Unsigned',
+          unknown: '? Unknown',
+        };
+        return statusLabels[value as string] || value || 'Not specified';
+      }
       return value || 'Not specified';
     }
     
@@ -581,6 +590,22 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
     }
     
     if (field.type === 'enum' && field.enum) {
+      const getEnumLabel = (opt: string) => {
+        if (field.key === 'payment_type') return formatPaymentType(opt as PaymentType);
+        if (field.key === 'billing_frequency_type') return formatBillingFrequency(opt as BillingFrequencyType);
+        if (field.key === 'periodicity') return formatPeriodicity(opt as Periodicity);
+        if (field.key === 'signature_status') {
+          const labels: Record<string, string> = {
+            signed: '✓ Signed',
+            partially_signed: '⚠ Partially Signed',
+            unsigned: '✗ Unsigned',
+            unknown: '? Unknown',
+          };
+          return labels[opt] || opt;
+        }
+        return opt;
+      };
+      
       return (
         <Select value={fieldValue || ''} onValueChange={setFieldValue}>
           <SelectTrigger className="h-9 text-sm bg-white">
@@ -589,10 +614,7 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
           <SelectContent>
             {field.enum.map(opt => (
               <SelectItem key={opt} value={opt}>
-                {field.key === 'payment_type' ? formatPaymentType(opt as PaymentType) :
-                 field.key === 'billing_frequency_type' ? formatBillingFrequency(opt as BillingFrequencyType) :
-                 field.key === 'periodicity' ? formatPeriodicity(opt as Periodicity) :
-                 opt}
+                {getEnumLabel(opt)}
               </SelectItem>
             ))}
           </SelectContent>

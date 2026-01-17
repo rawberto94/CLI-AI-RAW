@@ -12,6 +12,8 @@ const openai = new OpenAI({
 interface DetectedIntent {
   type: 'search' | 'action' | 'question' | 'workflow' | 'list' | 'analytics' | 'procurement' | 'taxonomy' | 'comparison' | 'system';
   action?: 'renew' | 'generate' | 'approve' | 'create' | 'start_workflow' | 'list_by_supplier' | 'list_expiring' | 'list_by_status' | 'list_by_value' | 'count' | 'summarize' | 'create_linked' | 'link_contracts' | 'show_hierarchy' | 'find_master' | 
+    // Signature status actions
+    'list_by_signature' | 'list_needing_signature' |
     // New procurement actions
     'spend_analysis' | 'cost_savings' | 'rate_comparison' | 'risk_assessment' | 'compliance_check' | 'compliance_status' | 'budget_status' | 'supplier_performance' | 'negotiate_terms' | 'category_spend' | 'top_suppliers' | 'savings_opportunities' | 'contract_risks' | 'auto_renewals' | 'payment_terms' |
     // Taxonomy actions
@@ -41,6 +43,8 @@ interface DetectedIntent {
     fieldToUpdate?: string;
     newValue?: string;
     contractId?: string;
+    // Signature status entity
+    signatureStatus?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
     // Procurement entities
     category?: string;
     timePeriod?: string;  // 'this_year', 'last_year', 'q1', 'q2', '2024', etc.
@@ -275,6 +279,54 @@ function detectIntent(query: string): DetectedIntent {
       action: 'list_by_status',
       entities: { status },
       confidence: 0.85,
+    };
+  }
+
+  // ============================================
+  // SIGNATURE STATUS PATTERNS
+  // ============================================
+
+  // Pattern: "unsigned contracts" or "contracts not signed"
+  const unsignedPattern = /(?:unsigned|not\s+signed|missing\s+signature|without\s+signature)\s*contracts?|contracts?\s+(?:that\s+)?(?:are\s+)?(?:not\s+signed|unsigned|need\s+signature)/i;
+  if (unsignedPattern.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_signature',
+      entities: { signatureStatus: 'unsigned' },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "signed contracts" or "fully signed"
+  const signedPattern = /(?:show|list|find|get)\s+(?:all\s+)?(?:fully\s+)?signed\s+contracts?|contracts?\s+(?:that\s+)?(?:are\s+)?(?:fully\s+)?signed|executed\s+contracts?/i;
+  if (signedPattern.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_signature',
+      entities: { signatureStatus: 'signed' },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "partially signed contracts"
+  const partiallySignedPattern = /(?:partially|partly)\s+signed\s+contracts?|contracts?\s+(?:that\s+)?(?:are\s+)?partially\s+signed|contracts?\s+(?:with\s+)?(?:some|missing)\s+signatures?/i;
+  if (partiallySignedPattern.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_signature',
+      entities: { signatureStatus: 'partially_signed' },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "contracts needing signature attention"
+  const signatureAttentionPattern = /contracts?\s+(?:needing|requiring|need|require)\s+(?:signature\s+)?attention|contracts?\s+flagged\s+for\s+signature|signature\s+(?:issues?|problems?|attention)/i;
+  if (signatureAttentionPattern.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_needing_signature',
+      entities: {},
+      confidence: 0.95,
     };
   }
 
@@ -1221,6 +1273,117 @@ async function listHighValueContracts(threshold: number, tenantId: string) {
       take: 20,
     });
     return contracts;
+  } catch {
+    return [];
+  }
+}
+
+// ============================================
+// SIGNATURE STATUS QUERY FUNCTIONS
+// ============================================
+
+type SignatureStatusType = 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
+
+async function listContractsBySignatureStatus(signatureStatus: SignatureStatusType, tenantId: string) {
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: { tenantId },
+      include: {
+        artifacts: {
+          where: { type: 'METADATA' },
+          select: { id: true, content: true },
+          take: 1,
+        },
+      },
+      orderBy: { uploadedAt: 'desc' },
+      take: 50,
+    });
+
+    // Filter by signature status from metadata
+    const filtered = contracts.filter(contract => {
+      const metadataArtifact = contract.artifacts[0];
+      if (!metadataArtifact?.content) {
+        return signatureStatus === 'unknown';
+      }
+      
+      try {
+        const metadata = typeof metadataArtifact.content === 'string' 
+          ? JSON.parse(metadataArtifact.content) 
+          : metadataArtifact.content;
+        return metadata.signature_status === signatureStatus;
+      } catch {
+        return signatureStatus === 'unknown';
+      }
+    }).slice(0, 20);
+
+    // Map with signature status
+    return filtered.map(c => {
+      const metadata = c.artifacts[0]?.content;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
+      } catch {
+        // ignore parse error
+      }
+      return {
+        ...c,
+        signatureStatus: parsed?.signature_status || 'unknown',
+        signatureRequiredFlag: parsed?.signature_required_flag || false,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function listContractsNeedingSignature(tenantId: string) {
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: { tenantId },
+      include: {
+        artifacts: {
+          where: { type: 'METADATA' },
+          select: { id: true, content: true },
+          take: 1,
+        },
+      },
+      orderBy: { uploadedAt: 'desc' },
+      take: 50,
+    });
+
+    // Filter by signature_required_flag or signature status needing attention
+    const filtered = contracts.filter(contract => {
+      const metadataArtifact = contract.artifacts[0];
+      if (!metadataArtifact?.content) return false;
+      
+      try {
+        const metadata = typeof metadataArtifact.content === 'string' 
+          ? JSON.parse(metadataArtifact.content) 
+          : metadataArtifact.content;
+        
+        return metadata.signature_required_flag === true ||
+               metadata.signature_status === 'unsigned' ||
+               metadata.signature_status === 'partially_signed';
+      } catch {
+        return false;
+      }
+    }).slice(0, 20);
+
+    // Map with signature status
+    return filtered.map(c => {
+      const metadata = c.artifacts[0]?.content;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
+      } catch {
+        // ignore parse error
+      }
+      return {
+        ...c,
+        signatureStatus: parsed?.signature_status || 'unknown',
+        signatureRequiredFlag: parsed?.signature_required_flag || false,
+      };
+    });
   } catch {
     return [];
   }
@@ -6504,6 +6667,23 @@ export async function POST(request: NextRequest) {
         additionalContext = `\n\n**High Value Contracts (>$${(intent.entities.valueThreshold || 100000).toLocaleString()}):**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Value: $${Number(c.totalValue || 0).toLocaleString()}`
         ).join('\n') || 'No high-value contracts found.'}`;
+      } else if (intent.action === 'list_by_signature' && intent.entities.signatureStatus) {
+        // Query contracts by signature status from metadata
+        contracts = await listContractsBySignatureStatus(intent.entities.signatureStatus, tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
+        const statusLabel = intent.entities.signatureStatus === 'signed' ? 'Signed' :
+                           intent.entities.signatureStatus === 'partially_signed' ? 'Partially Signed' :
+                           intent.entities.signatureStatus === 'unsigned' ? 'Unsigned' : 'Unknown Status';
+        additionalContext = `\n\n**📝 ${statusLabel} Contracts:**\n${contracts.map(c => 
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Status: ${c.status}, Signature: ${c.signatureStatus || 'unknown'}`
+        ).join('\n') || `No ${statusLabel.toLowerCase()} contracts found.`}`;
+      } else if (intent.action === 'list_needing_signature') {
+        // Query contracts needing signature attention (flagged or unsigned/partially_signed)
+        contracts = await listContractsNeedingSignature(tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
+        additionalContext = `\n\n**⚠️ Contracts Needing Signature Attention:**\n${contracts.map(c => 
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Signature: ${c.signatureStatus || 'unknown'}${c.signatureRequiredFlag ? ' ⚠️ FLAGGED' : ''}`
+        ).join('\n') || 'No contracts need signature attention.'}`;
       }
     }
 

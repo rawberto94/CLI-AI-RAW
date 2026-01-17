@@ -32,6 +32,8 @@ import {
   Heart,
   Link2,
   GitBranch,
+  FileSignature,
+  PenTool,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -119,6 +121,9 @@ export interface EnhancedContract {
   keyTerms?: string[];
   category?: { id: string; name: string; color: string; icon?: string };
   processing?: { progress: number; currentStage?: string };
+  // Signature status
+  signatureStatus?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
+  signatureRequiredFlag?: boolean;
   // Contract hierarchy
   hierarchy?: ContractHierarchyInfo;
   parentContractId?: string;
@@ -444,6 +449,68 @@ const ExpiryBadge = memo(function ExpiryBadge({ endDate, status }: ExpiryBadgePr
       <Clock className="w-3 h-3" />
       {label}
     </span>
+  );
+});
+
+// ============================================================================
+// SignatureBadge Component - Shows signature status
+// ============================================================================
+
+interface SignatureBadgeProps {
+  signatureStatus?: EnhancedContract["signatureStatus"];
+  signatureRequiredFlag?: boolean;
+}
+
+const SignatureBadge = memo(function SignatureBadge({ signatureStatus, signatureRequiredFlag }: SignatureBadgeProps) {
+  if (!signatureStatus || signatureStatus === 'unknown') return null;
+
+  const configs = {
+    signed: {
+      color: "bg-emerald-100 text-emerald-700",
+      icon: CheckCircle2,
+      label: "Signed",
+    },
+    partially_signed: {
+      color: "bg-amber-100 text-amber-700",
+      icon: PenTool,
+      label: "Partial",
+    },
+    unsigned: {
+      color: signatureRequiredFlag ? "bg-red-100 text-red-700 animate-pulse" : "bg-red-100 text-red-700",
+      icon: FileSignature,
+      label: "Unsigned",
+    },
+  };
+
+  const config = configs[signatureStatus];
+  if (!config) return null;
+  const Icon = config.icon;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
+              config.color
+            )}
+          >
+            <Icon className="w-3 h-3" />
+            {config.label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">
+            {signatureStatus === 'signed' && 'Contract has been fully signed'}
+            {signatureStatus === 'partially_signed' && 'Contract is partially signed - awaiting additional signatures'}
+            {signatureStatus === 'unsigned' && (signatureRequiredFlag 
+              ? '⚠️ Contract needs signature attention' 
+              : 'Contract has not been signed yet')}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 });
 
@@ -810,7 +877,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
           </div>
         )}
 
-        {/* Info Row: Value, Date, Expiry, Hierarchy */}
+        {/* Info Row: Value, Date, Expiry, Hierarchy, Signature */}
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm">
           {contract.value !== undefined && (
             <div className="flex items-center gap-1.5 text-gray-700">
@@ -831,6 +898,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
             </div>
           )}
           <ExpiryBadge endDate={contract.endDate} status={contract.status} />
+          <SignatureBadge signatureStatus={contract.signatureStatus} signatureRequiredFlag={contract.signatureRequiredFlag} />
           <HierarchyBadge contract={contract} />
         </div>
 
@@ -1114,6 +1182,7 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
             {contract.title}
           </h4>
           <ExpiryBadge endDate={contract.endDate} status={contract.status} />
+          <SignatureBadge signatureStatus={contract.signatureStatus} signatureRequiredFlag={contract.signatureRequiredFlag} />
           <HierarchyBadge contract={contract} />
         </div>
         <p className="text-sm text-muted-foreground truncate">{contract.type}</p>

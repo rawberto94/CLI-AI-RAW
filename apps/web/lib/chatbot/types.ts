@@ -30,6 +30,8 @@ export interface DetectedIntent {
     | 'filter_contracts' | 'search_contracts' | 'show_expired' | 'show_expiring' 
     | 'show_high_risk' | 'show_uncategorized' | 'show_by_status' | 'contract_stats'
     | 'bulk_operations' | 'change_view'
+    // SIGNATURE STATUS ACTIONS
+    | 'show_unsigned' | 'show_signed' | 'show_partially_signed' | 'show_needing_signature'
     // WORKFLOW ACTIONS
     | 'list_workflows' | 'workflow_status' | 'pending_approvals' | 'approve_step'
     | 'reject_step' | 'create_workflow' | 'assign_approver' | 'escalate' | 'cancel_workflow'
@@ -137,6 +139,8 @@ export interface DetectedIntent {
     categoryName?: string;
     partyName?: string;
     filterType?: string;
+    // Signature status entities
+    signatureStatus?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
     // Workflow entities
     workflowId?: string;
     executionId?: string;

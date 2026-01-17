@@ -18,6 +18,9 @@ import {
   ArrowRight,
   Bell,
   AlertCircle,
+  FileSignature,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react'
 
 interface Party {
@@ -38,6 +41,8 @@ interface QuickOverviewProps {
   riskLevel: 'low' | 'medium' | 'high'
   complianceStatus: 'ok' | 'review'
   contractStatus: string
+  signatureStatus?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown'
+  signatureRequiredFlag?: boolean
 }
 
 // Memoized sub-components for better performance
@@ -220,7 +225,9 @@ const AssessmentSection = memo(function AssessmentSection({
   riskLevel,
   complianceStatus,
   contractStatus,
-}: Pick<QuickOverviewProps, 'riskLevel' | 'complianceStatus' | 'contractStatus'>) {
+  signatureStatus,
+  signatureRequiredFlag,
+}: Pick<QuickOverviewProps, 'riskLevel' | 'complianceStatus' | 'contractStatus' | 'signatureStatus' | 'signatureRequiredFlag'>) {
   return (
     <div className="p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-2 sm:mb-3">
@@ -230,6 +237,38 @@ const AssessmentSection = memo(function AssessmentSection({
         <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Health</span>
       </div>
       <div className="space-y-2">
+        {/* Signature Status */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className={cn(
+              "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
+              signatureStatus === 'signed' ? 'bg-emerald-500' : 
+              signatureStatus === 'partially_signed' ? 'bg-amber-500' : 
+              signatureStatus === 'unsigned' ? 'bg-red-500' :
+              'bg-slate-400'
+            )} />
+            <span className="text-xs sm:text-sm font-medium text-slate-700">Signature</span>
+            {signatureRequiredFlag && (
+              <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500" />
+            )}
+          </div>
+          <Badge className={cn(
+            "text-[10px] sm:text-xs font-medium border-0 flex items-center gap-1",
+            signatureStatus === 'signed' ? 'bg-emerald-100 text-emerald-700' : 
+            signatureStatus === 'partially_signed' ? 'bg-amber-100 text-amber-700' : 
+            signatureStatus === 'unsigned' ? 'bg-red-100 text-red-700' :
+            'bg-slate-100 text-slate-600'
+          )}>
+            {signatureStatus === 'signed' && <CheckCircle2 className="h-2.5 w-2.5" />}
+            {signatureStatus === 'partially_signed' && <Clock className="h-2.5 w-2.5" />}
+            {signatureStatus === 'unsigned' && <FileSignature className="h-2.5 w-2.5" />}
+            {signatureStatus === 'signed' ? 'Signed' : 
+             signatureStatus === 'partially_signed' ? 'Partial' : 
+             signatureStatus === 'unsigned' ? 'Unsigned' : 
+             'Unknown'}
+          </Badge>
+        </div>
+
         {/* Risk Level */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -292,6 +331,8 @@ export const ContractQuickOverview = memo(function ContractQuickOverview(props: 
           riskLevel={props.riskLevel}
           complianceStatus={props.complianceStatus}
           contractStatus={props.contractStatus}
+          signatureStatus={props.signatureStatus}
+          signatureRequiredFlag={props.signatureRequiredFlag}
         />
       </div>
     </Card>
