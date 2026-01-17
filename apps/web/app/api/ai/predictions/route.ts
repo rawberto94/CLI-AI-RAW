@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -9,9 +10,14 @@ export const maxDuration = 120;
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'contract';
-    const tenantId = searchParams.get('tenantId');
     const contractId = searchParams.get('contractId');
     const predictionType = searchParams.get('type'); // renewal, risk, cost, value
     const horizon = searchParams.get('horizon') || 'medium'; // short, medium, long
@@ -47,12 +53,6 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'portfolio':
-        if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for portfolio predictions' },
-            { status: 400 }
-          );
-        }
         result = await predictionEngine.getPortfolioPredictions(tenantId, horizon);
         break;
 
@@ -97,22 +97,10 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'at-risk':
-        if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required' },
-            { status: 400 }
-          );
-        }
         result = await predictionEngine.getAtRiskContracts(tenantId);
         break;
 
       case 'high-value':
-        if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required' },
-            { status: 400 }
-          );
-        }
         result = await predictionEngine.getHighValueOpportunities(tenantId);
         break;
 
@@ -142,6 +130,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { action = 'generate', ...data } = body;
 
