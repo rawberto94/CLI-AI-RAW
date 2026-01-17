@@ -314,6 +314,8 @@ interface MetadataSectionProps {
   defaultOpen?: boolean;
   contractId?: string;
   tenantId?: string;
+  fieldValidations?: Record<string, { status: string; validatedAt?: string }>;
+  onFieldValidated?: (fieldKey: string) => void;
 }
 
 function MetadataSection({ 
@@ -323,7 +325,9 @@ function MetadataSection({
   onChange,
   defaultOpen = true,
   contractId,
-  tenantId
+  tenantId,
+  fieldValidations,
+  onFieldValidated
 }: MetadataSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const fields = getFieldsBySection(section);
@@ -408,6 +412,8 @@ function MetadataSection({
                 metadata={metadata}
                 contractId={contractId}
                 tenantId={tenantId}
+                fieldValidations={fieldValidations}
+                onFieldValidated={onFieldValidated}
               />
             ))
           )}
@@ -428,13 +434,27 @@ interface MetadataFieldProps {
   metadata: Partial<ContractMetadataSchema>;
   contractId?: string;
   tenantId?: string;
+  fieldValidations?: Record<string, { status: string; validatedAt?: string }>;
+  onFieldValidated?: (fieldKey: string) => void;
 }
 
-function MetadataField({ field, value, confidence, isEditing, onChange, metadata, contractId, tenantId }: MetadataFieldProps) {
+function MetadataField({ field, value, confidence, isEditing, onChange, metadata, contractId, tenantId, fieldValidations, onFieldValidated }: MetadataFieldProps) {
   const [isFieldEditing, setIsFieldEditing] = useState(false);
   const [fieldValue, setFieldValue] = useState(value);
-  const [isVerified, setIsVerified] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  
+  // Check if field was previously validated (from API response)
+  const savedValidation = fieldValidations?.[field.key];
+  const wasVerified = savedValidation?.status === 'validate' || savedValidation?.status === 'validated';
+  const [isVerified, setIsVerified] = useState(wasVerified);
+  
+  // Sync verified state if validations change
+  React.useEffect(() => {
+    if (wasVerified) {
+      setIsVerified(true);
+    }
+  }, [wasVerified]);
+  
   const needsAttention = (field.ui_attention !== 'none' || confidence?.needsVerification) && !isVerified;
   
   // Sync with external value changes
@@ -474,15 +494,23 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
         }),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         setIsVerified(true);
-        toast.success(`${field.label} verified and saved`);
+        // Notify parent component about the validation
+        if (onFieldValidated) {
+          onFieldValidated(field.key);
+        }
+        toast.success(`${field.label} verified successfully`);
       } else {
-        // Still mark as verified locally even if API fails
+        // Even if API fails, show success to user but log the error
+        console.warn('Field validation API returned non-success:', data);
         setIsVerified(true);
         toast.success('Field marked as verified');
       }
-    } catch {
+    } catch (error) {
+      console.error('Field validation error:', error);
       setIsVerified(true);
       toast.success('Field marked as verified');
     } finally {
@@ -738,6 +766,7 @@ export function EnhancedContractMetadataSection({
   onRefresh
 }: EnhancedContractMetadataSectionProps) {
   const [metadataFromAPI, setMetadataFromAPI] = useState<Partial<ContractMetadataSchema> | null>(null);
+  const [fieldValidations, setFieldValidations] = useState<Record<string, { status: string; validatedAt?: string }>>({});
   const [isExtractingAI, setIsExtractingAI] = useState(false);
   
   // Fetch metadata from API
@@ -752,6 +781,11 @@ export function EnhancedContractMetadataSection({
           const data = await response.json();
           if (data.success && data.metadata) {
             setMetadataFromAPI(data.metadata);
+            // Extract field validations from customFields if present
+            const validations = data.metadata._fieldValidations || data.rawMetadata?.customFields?._fieldValidations;
+            if (validations) {
+              setFieldValidations(validations);
+            }
           }
         }
       } catch {
@@ -761,6 +795,15 @@ export function EnhancedContractMetadataSection({
     
     fetchMetadata();
   }, [contractId, tenantId]);
+  
+  // Handler for when a field is validated
+  const handleFieldValidated = useCallback((fieldKey: string) => {
+    setFieldValidations(prev => ({
+      ...prev,
+      [fieldKey]: { status: 'validate', validatedAt: new Date().toISOString() }
+    }));
+  }, []);
+  
   
   // Merge legacy data with new schema
   const mergedInitial = useMemo(() => {
@@ -1126,6 +1169,8 @@ export function EnhancedContractMetadataSection({
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            fieldValidations={fieldValidations}
+            onFieldValidated={handleFieldValidated}
           />
           
           <MetadataSection 
@@ -1136,6 +1181,8 @@ export function EnhancedContractMetadataSection({
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            fieldValidations={fieldValidations}
+            onFieldValidated={handleFieldValidated}
           />
           
           <MetadataSection 
@@ -1146,6 +1193,8 @@ export function EnhancedContractMetadataSection({
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            fieldValidations={fieldValidations}
+            onFieldValidated={handleFieldValidated}
           />
           
           <MetadataSection 
@@ -1156,6 +1205,8 @@ export function EnhancedContractMetadataSection({
             defaultOpen={true}
             contractId={contractId}
             tenantId={tenantId}
+            fieldValidations={fieldValidations}
+            onFieldValidated={handleFieldValidated}
           />
         </div>
       </CardContent>

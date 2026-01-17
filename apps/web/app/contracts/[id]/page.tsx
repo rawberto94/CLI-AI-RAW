@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigat
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Tooltip,
@@ -54,8 +54,8 @@ import {
   CategorySelector, 
   ContractAuditLog, 
   EnhancedContractMetadataSection, 
-  ContractHierarchy,
-  ContractFamilyHealth,
+  ContractRelationshipsCard,
+  ContractScoresCard,
   ExtractionAccuracyCard 
 } from '@/components/contracts'
 import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
@@ -1106,6 +1106,21 @@ export default function ContractDetailPage() {
 
                 {/* Details Tab */}
                 <TabsContent value="details" className="space-y-4 sm:space-y-6">
+                  {/* Contract Scores & Assessment - Prominent position */}
+                  <ContractScoresCard
+                    riskInfo={riskInfo}
+                    complianceInfo={complianceInfo}
+                    healthInfo={{
+                      score: contract?.healthScore ?? 100,
+                      completeness: contract?.completeness ?? 0,
+                      issues: contract?.healthIssues || [],
+                    }}
+                    extractionConfidence={contract?.extractionConfidence}
+                    isProcessing={isProcessing}
+                    onRefresh={loadContract}
+                  />
+                  
+                  {/* Contract Metadata */}
                   <EnhancedContractMetadataSection
                     contractId={params.id as string}
                     tenantId="demo"
@@ -1115,7 +1130,8 @@ export default function ContractDetailPage() {
                     onRefresh={loadContract}
                   />
                   
-                  <ContractHierarchy
+                  {/* Contract Relationships - Improved UI with AI suggestions */}
+                  <ContractRelationshipsCard
                     contractId={params.id as string}
                     contractTitle={contract?.filename}
                     parentContract={contract?.parentContract}
@@ -1132,25 +1148,13 @@ export default function ContractDetailPage() {
                         body: JSON.stringify({ parentContractId: parentId, relationshipType: relType, relationshipNote: note }),
                       })
                       if (!response.ok) throw new Error('Failed to link parent contract')
+                      toast.success('Contract linked successfully')
                       await loadContract()
                     }}
                     onUnlinkParent={async () => {
                       const response = await fetch(`/api/contracts/${params.id}/hierarchy`, { method: 'DELETE' })
                       if (!response.ok) throw new Error('Failed to unlink parent contract')
-                      await loadContract()
-                    }}
-                  />
-
-                  {/* Contract Family Health Assessment */}
-                  <ContractFamilyHealth
-                    contractId={params.id as string}
-                    onLinkSuggestion={async (parentId) => {
-                      const response = await fetch(`/api/contracts/${params.id}/hierarchy`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ parentContractId: parentId, relationshipType: 'SOW_UNDER_MSA' }),
-                      })
-                      if (!response.ok) throw new Error('Failed to link parent contract')
+                      toast.success('Contract unlinked')
                       await loadContract()
                     }}
                   />

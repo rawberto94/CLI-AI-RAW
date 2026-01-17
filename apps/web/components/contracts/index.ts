@@ -79,6 +79,12 @@ export type { ContractsPageHeaderProps, ContractsPageHeaderProps as ContractsHea
 // Contract Hierarchy (Parent-Child Relationships)
 export { ContractHierarchy } from './ContractHierarchy';
 
+// Contract Relationships Card (Improved Parent-Child UI with AI suggestions)
+export { ContractRelationshipsCard } from './ContractRelationshipsCard';
+
+// Contract Scores Card (Risk, Compliance, Health with explanations)
+export { ContractScoresCard } from './ContractScoresCard';
+
 // Contract Family Health Assessment
 export { ContractFamilyHealth } from './ContractFamilyHealth';
 
