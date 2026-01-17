@@ -10,9 +10,10 @@
  * - Tag usage statistics
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { getServerSession } from '@/lib/auth'
 
 interface TaxonomyMetrics {
   migration: {
@@ -41,19 +42,23 @@ interface TaxonomyMetrics {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const tenantId = request.nextUrl.searchParams.get('tenantId')
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    // Admin route - require admin/owner role
+    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
+    }
+    const tenantId = session.user.tenantId
 
     // Build where clause for tenant filtering
-    const whereClause = tenantId
-      ? {
-          tenantId,
-          isDeleted: false,
-        }
-      : {
-          isDeleted: false,
-        }
+    const whereClause = {
+      tenantId,
+      isDeleted: false,
+    }
 
     // Total contracts
     const totalContracts = await prisma.contract.count({

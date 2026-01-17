@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sseConnectionManager } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +16,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    // Admin-only route for connection management
+    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    }
+    const tenantId = session.user.tenantId;
+
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get('action');
 
@@ -26,7 +37,7 @@ export async function GET(request: NextRequest) {
         return getMetricsHistory();
       
       case 'tenant':
-        return getConnectionsByTenant(searchParams.get('tenantId'));
+        return getConnectionsByTenant(tenantId);
       
       case 'user':
         return getConnectionsByUser(searchParams.get('userId'));
