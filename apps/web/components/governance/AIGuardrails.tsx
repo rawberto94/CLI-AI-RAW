@@ -47,7 +47,6 @@ import {
   ExternalLink,
   Loader2,
 } from 'lucide-react';
-import { useDataMode } from '@/contexts/DataModeContext';
 import { useRiskFlags } from '@/hooks/use-optimistic-mutations';
 
 interface Policy {
@@ -339,7 +338,6 @@ const getDecisionColor = (decision: string) => {
 };
 
 export function AIGuardrails() {
-  const { isMockData } = useDataMode();
   const [activeTab, setActiveTab] = useState<'policies' | 'flags' | 'audit' | 'thresholds'>('policies');
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
@@ -348,52 +346,34 @@ export function AIGuardrails() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch governance data from API or use mock data based on mode
+  // Fetch governance data from API - no mock data fallback
   useEffect(() => {
     async function fetchGovernance() {
-      // If in demo mode, always use mock data
-      if (isMockData) {
-        setPolicies(mockPolicies);
-        setRiskFlags(mockRiskFlags);
-        setAuditLogs(mockAuditLogs);
-        setLoading(false);
-        return;
-      }
-      
       try {
         const res = await fetch('/api/governance');
         const json = await res.json();
         if (json.success && json.data) {
-          if (json.data.policies?.length > 0) {
-            setPolicies(json.data.policies);
-          } else {
-            setPolicies(mockPolicies);
-          }
-          if (json.data.flags?.length > 0) {
-            setRiskFlags(json.data.flags);
-          } else {
-            setRiskFlags(mockRiskFlags);
-          }
-          if (json.data.auditLogs?.length > 0) {
-            setAuditLogs(json.data.auditLogs);
-          } else {
-            setAuditLogs(mockAuditLogs);
-          }
+          // Use real data from API, even if empty
+          setPolicies(json.data.policies || []);
+          setRiskFlags(json.data.flags || []);
+          setAuditLogs(json.data.auditLogs || []);
         } else {
-          setPolicies(mockPolicies);
-          setRiskFlags(mockRiskFlags);
-          setAuditLogs(mockAuditLogs);
+          // API error - show empty state, not mock data
+          setPolicies([]);
+          setRiskFlags([]);
+          setAuditLogs([]);
         }
       } catch {
-        setPolicies(mockPolicies);
-        setRiskFlags(mockRiskFlags);
-        setAuditLogs(mockAuditLogs);
+        // Network error - show empty state, not mock data
+        setPolicies([]);
+        setRiskFlags([]);
+        setAuditLogs([]);
       } finally {
         setLoading(false);
       }
     }
     fetchGovernance();
-  }, [isMockData]);
+  }, []);
 
   const openFlags = riskFlags.filter(f => f.status === 'open').length;
   const criticalFlags = riskFlags.filter(f => f.severity === 'critical' && f.status !== 'resolved').length;
