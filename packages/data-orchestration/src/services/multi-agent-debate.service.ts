@@ -16,10 +16,17 @@
  */
 
 import { ChatOpenAI } from '@langchain/openai';
-// @ts-ignore - Optional dependency, will fall back to OpenAI if not available
-import { ChatAnthropic } from '@langchain/anthropic';
 import { SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages';
 import { z } from 'zod';
+
+// Dynamic import for optional Anthropic dependency
+let ChatAnthropic: any = null;
+try {
+  // Attempt to load at runtime - will be null if not installed
+  ChatAnthropic = require('@langchain/anthropic').ChatAnthropic;
+} catch {
+  // @langchain/anthropic not installed - Claude models will fall back to OpenAI
+}
 
 // =============================================================================
 // TYPES
@@ -376,7 +383,7 @@ export const DEBATE_PRESETS = {
 
 export class MultiAgentDebateService {
   private agents: Map<string, DebateAgent>;
-  private llmCache: Map<string, ChatOpenAI | ChatAnthropic>;
+  private llmCache: Map<string, ChatOpenAI>;
 
   constructor(customAgents?: DebateAgent[]) {
     this.agents = new Map();
@@ -578,24 +585,27 @@ Please provide your ${agent.role} perspective.`;
   /**
    * Get LLM instance for agent
    */
-  private getLLMForAgent(agent: DebateAgent): ChatOpenAI | ChatAnthropic {
+  private getLLMForAgent(agent: DebateAgent): ChatOpenAI {
     const cacheKey = `${agent.model}-${agent.temperature}`;
     
     if (this.llmCache.has(cacheKey)) {
       return this.llmCache.get(cacheKey)!;
     }
 
-    let llm: ChatOpenAI | ChatAnthropic;
+    let llm: ChatOpenAI;
 
-    if (agent.model.startsWith('claude')) {
+    if (agent.model.startsWith('claude') && ChatAnthropic) {
+      // Use Anthropic if available
       llm = new ChatAnthropic({
         modelName: agent.model,
         temperature: agent.temperature,
         maxTokens: 4000,
-      });
+      }) as unknown as ChatOpenAI;
     } else {
+      // Fall back to OpenAI (use gpt-4o for claude models if Anthropic not available)
+      const modelName = agent.model.startsWith('claude') ? 'gpt-4o' : agent.model;
       llm = new ChatOpenAI({
-        modelName: agent.model,
+        modelName,
         temperature: agent.temperature,
         maxTokens: 4000,
       });
