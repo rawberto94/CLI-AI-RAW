@@ -268,6 +268,9 @@ export default function ContractDetailPage() {
     issues: Array<{ type: string; severity: 'low' | 'medium' | 'high'; message: string }>
   } | null>(null)
   
+  // Extraction confidence from extraction-confidence API (real data, not mock)
+  const [extractionConfidence, setExtractionConfidence] = useState<number | undefined>(undefined)
+  
   // Split pane for PDF viewer
   const {
     containerRef: splitContainerRef,
@@ -279,7 +282,7 @@ export default function ContractDetailPage() {
   } = useSplitPaneResize({ initialRatio: 45, minRatio: 20, maxRatio: 75 })
 
   // Use the custom hook for metadata derivation
-  const { metadata, riskInfo, complianceInfo, isProcessing, extractionConfidence, overviewData, financialData } = useContractMetadata(contract)
+  const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } = useContractMetadata(contract)
 
   // ============ KEYBOARD SHORTCUTS ============
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
@@ -381,6 +384,7 @@ export default function ContractDetailPage() {
       loadVersions()
       loadNotes()
       loadHealthData()
+      loadExtractionConfidence()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')
     } finally {
@@ -462,6 +466,22 @@ export default function ContractDetailPage() {
       }
     } catch {
       // Health data loading failed silently - will use defaults
+    }
+  }, [params.id])
+
+  const loadExtractionConfidence = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/contracts/${params.id}/extraction-confidence`, {
+        headers: { 'x-tenant-id': 'demo' }
+      })
+      if (!response.ok) return
+      
+      const data = await response.json()
+      if (data.success && data.data?.summary?.averageConfidence !== null) {
+        setExtractionConfidence(data.data.summary.averageConfidence)
+      }
+    } catch {
+      // Extraction confidence loading failed silently
     }
   }, [params.id])
 
