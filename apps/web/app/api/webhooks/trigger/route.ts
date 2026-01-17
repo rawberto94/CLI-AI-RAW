@@ -24,9 +24,19 @@ async function getPrisma() {
 export async function POST(request: NextRequest) {
   try {
     const internalSecret = request.headers.get('x-internal-secret');
-    const expectedSecret = process.env.INTERNAL_API_SECRET || 'dev-internal-secret';
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
     
-    if (process.env.NODE_ENV === 'production' && internalSecret !== expectedSecret) {
+    // In production, INTERNAL_API_SECRET must be set and match
+    if (process.env.NODE_ENV === 'production') {
+      if (!expectedSecret) {
+        console.error('INTERNAL_API_SECRET not configured in production');
+        return NextResponse.json({ success: false, error: 'Server misconfiguration' }, { status: 500 });
+      }
+      if (internalSecret !== expectedSecret) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+    } else if (internalSecret !== (expectedSecret || 'dev-internal-secret')) {
+      // In development, allow fallback but still validate
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
     

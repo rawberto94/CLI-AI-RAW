@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataProviderFactory } from 'data-orchestration';
 import { DataMode } from 'data-orchestration/types';
+import { prisma } from '@/lib/prisma';
+import { getServerTenantId } from '@/lib/tenant-server';
 
 /**
  * Savings Pipeline API Endpoints
@@ -80,20 +82,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Real implementation would save to database
-    // TODO: Implement real savings opportunity creation
+    // Real implementation - save to database
+    const tenantId = await getServerTenantId();
+    
+    const opportunity = await prisma.costSavingsOpportunity.create({
+      data: {
+        tenantId,
+        title,
+        category: category || 'general',
+        potentialSavingsAmount: potentialSavings || 0,
+        probability: probability || 'medium',
+        timeToRealize: timeToRealize || 'medium',
+        status: 'IDENTIFIED',
+        priority: 'medium',
+        description: body.description || '',
+      }
+    });
     
     return NextResponse.json({
       success: true,
       data: {
-        id: `OPP${Math.floor(Math.random() * 1000)}`,
-        title,
-        category,
-        potentialSavings,
-        probability,
-        timeToRealize,
-        status: 'identified',
-        createdAt: new Date().toISOString()
+        id: opportunity.id,
+        title: opportunity.title,
+        category: opportunity.category,
+        potentialSavings: opportunity.potentialSavingsAmount,
+        probability: opportunity.probability,
+        timeToRealize: opportunity.timeToRealize,
+        status: opportunity.status.toLowerCase(),
+        createdAt: opportunity.createdAt.toISOString()
       },
       timestamp: new Date().toISOString()
     });

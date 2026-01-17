@@ -7,8 +7,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import EmailService from '@/lib/services/email.service';
 
-// Internal API secret for authentication
-const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || 'internal-secret';
+// Internal API secret for authentication - MUST be set in production
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
+
+if (process.env.NODE_ENV === 'production' && !INTERNAL_API_SECRET) {
+  throw new Error('INTERNAL_API_SECRET must be set in production environment');
+}
 
 export async function POST(request: NextRequest) {
   // Validate internal API secret

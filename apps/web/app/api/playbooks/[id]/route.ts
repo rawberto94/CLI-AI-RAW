@@ -24,7 +24,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const tenantId = (session.user as any).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
 
     const legalReviewService = getLegalReviewService();
     const playbook = await legalReviewService.getPlaybook(id, tenantId);
@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const tenantId = (session.user as any).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
     const body = await request.json();
 
     const legalReviewService = getLegalReviewService();

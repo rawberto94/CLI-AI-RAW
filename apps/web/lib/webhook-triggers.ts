@@ -31,13 +31,18 @@ export async function triggerWebhook(options: TriggerOptions): Promise<{
   
   try {
     const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const internalSecret = process.env.INTERNAL_API_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-internal-secret' : '');
+    
+    if (process.env.NODE_ENV === 'production' && !process.env.INTERNAL_API_SECRET) {
+      console.warn('INTERNAL_API_SECRET not configured - webhook triggers may fail');
+    }
     
     const response = await fetch(`${baseUrl}/api/webhooks/trigger`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-tenant-id': tenantId,
-        'x-internal-secret': process.env.INTERNAL_API_SECRET || 'dev-internal-secret',
+        'x-internal-secret': internalSecret,
       },
       body: JSON.stringify({
         event,

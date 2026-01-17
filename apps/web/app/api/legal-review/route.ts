@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = (session.user as any).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
 
     const legalReviewService = getLegalReviewService();
     const result = await legalReviewService.reviewContract(contractText, playbookId, {

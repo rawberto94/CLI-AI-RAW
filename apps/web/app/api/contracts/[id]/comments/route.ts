@@ -80,27 +80,57 @@ export async function GET(
         orderBy: { createdAt: 'desc' }
       });
 
+      // Collect all user IDs from comments and replies
+      const userIds = new Set<string>();
+      comments.forEach(comment => {
+        userIds.add(comment.userId);
+        comment.replies?.forEach(reply => userIds.add(reply.userId));
+      });
+
+      // Fetch user info for all comment authors
+      const users = await db.user.findMany({
+        where: { id: { in: Array.from(userIds) } },
+        select: { id: true, email: true, firstName: true, lastName: true }
+      });
+      
+      // Create lookup map for users
+      const userMap = new Map(users.map(u => [u.id, u]));
+      const getUserInfo = (userId: string) => {
+        const user = userMap.get(userId);
+        if (user) {
+          const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email.split('@')[0];
+          return { author: fullName, authorEmail: user.email };
+        }
+        return { author: userId, authorEmail: `${userId}@unknown.com` };
+      };
+
       // Transform to frontend format
-      const formattedComments = comments.map(comment => ({
-        id: comment.id,
-        author: comment.userId, // TODO: Join with User table for real name
-        authorEmail: `${comment.userId}@example.com`, // TODO: Get from User table
-        content: comment.content,
-        createdAt: comment.createdAt.toISOString(),
-        mentions: comment.mentions,
-        isResolved: comment.isResolved,
-        likes: comment.likes,
-        replies: comment.replies?.map(reply => ({
-          id: reply.id,
-          author: reply.userId,
-          authorEmail: `${reply.userId}@example.com`,
-          content: reply.content,
-          createdAt: reply.createdAt.toISOString(),
-          mentions: reply.mentions,
-          isResolved: reply.isResolved,
-          likes: reply.likes,
-        })) || []
-      }));
+      const formattedComments = comments.map(comment => {
+        const userInfo = getUserInfo(comment.userId);
+        return {
+          id: comment.id,
+          author: userInfo.author,
+          authorEmail: userInfo.authorEmail,
+          content: comment.content,
+          createdAt: comment.createdAt.toISOString(),
+          mentions: comment.mentions,
+          isResolved: comment.isResolved,
+          likes: comment.likes,
+          replies: comment.replies?.map(reply => {
+            const replyUserInfo = getUserInfo(reply.userId);
+            return {
+              id: reply.id,
+              author: replyUserInfo.author,
+              authorEmail: replyUserInfo.authorEmail,
+              content: reply.content,
+              createdAt: reply.createdAt.toISOString(),
+              mentions: reply.mentions,
+              isResolved: reply.isResolved,
+              likes: reply.likes,
+            };
+          }) || []
+        };
+      });
 
       return NextResponse.json({
         success: true,

@@ -33,10 +33,26 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
+// Constants for pagination limits
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 20;
+const MIN_PAGE = 1;
+
+// Safe pagination parameter parsing
+function parsePaginationParams(searchParams: URLSearchParams) {
+  const rawPage = Number(searchParams.get("page"));
+  const rawLimit = Number(searchParams.get("limit"));
+  
+  // Validate and constrain pagination values
+  const page = Math.max(MIN_PAGE, isNaN(rawPage) ? MIN_PAGE : Math.floor(rawPage));
+  const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, isNaN(rawLimit) ? DEFAULT_PAGE_SIZE : Math.floor(rawLimit)));
+  
+  return { page, limit };
+}
+
 // Mock contracts data (wrapped with caching)
 function returnMockContracts(searchParams: URLSearchParams) {
-  const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 20;
+  const { page, limit } = parsePaginationParams(searchParams);
   
   const mockContracts = [
     {

@@ -12,11 +12,26 @@ import { getServerTenantId } from "@/lib/tenant-server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Safe constants for pagination bounds
+const MAX_DAYS = 365;
+const DEFAULT_DAYS = 90;
+const MAX_LIMIT = 100;
+const DEFAULT_LIMIT = 10;
+
+function safeParsePaginationParams(searchParams: URLSearchParams) {
+  const rawDays = Number(searchParams.get("days"));
+  const rawLimit = Number(searchParams.get("limit"));
+  
+  const days = Math.min(MAX_DAYS, Math.max(1, isNaN(rawDays) ? DEFAULT_DAYS : Math.floor(rawDays)));
+  const limit = Math.min(MAX_LIMIT, Math.max(1, isNaN(rawLimit) ? DEFAULT_LIMIT : Math.floor(rawLimit)));
+  
+  return { days, limit };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const days = Number(searchParams.get("days")) || 90;
-    const limit = Number(searchParams.get("limit")) || 10;
+    const { days, limit } = safeParsePaginationParams(searchParams);
     
     const tenantId = await getServerTenantId();
     const now = new Date();

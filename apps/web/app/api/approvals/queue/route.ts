@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
 
     // Get tenant ID from session
-    const tenantId = (session.user as any).tenantId;
+    const tenantId = session.user.tenantId;
 
     // Build query filters
     const where: any = {

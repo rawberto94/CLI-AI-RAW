@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as any).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
     const legalReviewService = getLegalReviewService();
     const playbooks = await legalReviewService.listPlaybooks(tenantId);
 
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = (session.user as any).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
 
     const legalReviewService = getLegalReviewService();
     const playbook = await legalReviewService.createPlaybook({
