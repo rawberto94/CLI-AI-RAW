@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -9,9 +10,14 @@ export const maxDuration = 120;
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'stats';
-    const tenantId = searchParams.get('tenantId');
     const entityId = searchParams.get('entityId');
     const entityType = searchParams.get('entityType');
     const contractId = searchParams.get('contractId');
@@ -32,12 +38,6 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'stats':
-        if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for graph stats' },
-            { status: 400 }
-          );
-        }
         result = await graphService.getGraphStats(tenantId);
         break;
 
@@ -117,6 +117,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const body = await request.json();
     const { action = 'build', ...data } = body;
 
@@ -135,11 +141,11 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'build':
-        const { tenantId, contractId, contractText, existingArtifacts } = data;
+        const { contractId, contractText, existingArtifacts } = data;
 
-        if (!tenantId || !contractId || !contractText) {
+        if (!contractId || !contractText) {
           return NextResponse.json(
-            { error: 'tenantId, contractId, and contractText are required' },
+            { error: 'contractId and contractText are required' },
             { status: 400 }
           );
         }
@@ -155,14 +161,14 @@ export async function POST(request: NextRequest) {
       case 'add-entity':
         const { entity } = data;
 
-        if (!entity || !entity.tenantId || !entity.type || !entity.name) {
+        if (!entity || !entity.type || !entity.name) {
           return NextResponse.json(
-            { error: 'Complete entity object with tenantId, type, and name is required' },
+            { error: 'Complete entity object with type and name is required' },
             { status: 400 }
           );
         }
 
-        result = await graphService.addEntity(entity);
+        result = await graphService.addEntity({ ...entity, tenantId });
         break;
 
       case 'add-relation':

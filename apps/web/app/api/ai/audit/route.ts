@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -9,9 +10,14 @@ export const maxDuration = 60;
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'decisions';
-    const tenantId = searchParams.get('tenantId');
     const featureId = searchParams.get('featureId');
     const fromDate = searchParams.get('from');
     const toDate = searchParams.get('to');
@@ -42,12 +48,6 @@ export async function GET(request: NextRequest) {
         break;
 
       case 'stats':
-        if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for usage stats' },
-            { status: 400 }
-          );
-        }
         result = await auditService.getUsageStats(
           tenantId,
           fromDate ? new Date(fromDate) : undefined,
@@ -101,6 +101,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const body = await request.json();
     const { action = 'log', ...data } = body;
 
@@ -120,7 +126,6 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'log':
         const { 
-          tenantId, 
           contractId, 
           feature, 
           input, 
@@ -132,9 +137,9 @@ export async function POST(request: NextRequest) {
           tokenUsage 
         } = data;
 
-        if (!tenantId || !feature || !input || !output) {
+        if (!feature || !input || !output) {
           return NextResponse.json(
-            { error: 'tenantId, feature, input, and output are required' },
+            { error: 'feature, input, and output are required' },
             { status: 400 }
           );
         }

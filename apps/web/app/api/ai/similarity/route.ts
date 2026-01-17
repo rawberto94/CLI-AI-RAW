@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 interface ContractMetadata {
   title?: string;
@@ -40,19 +41,17 @@ interface SimilaritySearchOptions {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const services = await import('@repo/data-orchestration/services');
     const contractSimilarityService = services.contractSimilarityService;
 
     const body = await request.json();
-    const { action, contractId, contractText, tenantId, metadata } = body;
-
-    // Validate tenant
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
-        { status: 400 }
-      );
-    }
+    const { action, contractId, contractText, metadata } = body;
 
     switch (action) {
       case 'generate-embedding': {
@@ -193,11 +192,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const services = await import('@repo/data-orchestration/services');
     const contractSimilarityService = services.contractSimilarityService;
 
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
     const action = searchParams.get('action');
 
     if (action === 'stats') {
@@ -212,7 +216,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    if (action === 'clusters' && tenantId) {
+    if (action === 'clusters') {
       const numClusters = parseInt(searchParams.get('numClusters') || '5');
       const clusters = await contractSimilarityService.getContractClusters(
         tenantId,

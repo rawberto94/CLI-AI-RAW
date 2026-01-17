@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -9,9 +10,14 @@ export const maxDuration = 120;
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
-    const tenantId = searchParams.get('tenantId');
     const contractId = searchParams.get('contractId');
     const obligationId = searchParams.get('obligationId');
     const status = searchParams.get('status');
@@ -33,12 +39,6 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'list':
-        if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required' },
-            { status: 400 }
-          );
-        }
         result = await obligationService.getObligations({
           tenantId,
           contractId,
@@ -135,6 +135,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const body = await request.json();
     const { action = 'extract', ...data } = body;
 
@@ -153,11 +159,11 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'extract':
-        const { tenantId, contractId, contractText, existingArtifacts } = data;
+        const { contractId, contractText, existingArtifacts } = data;
 
-        if (!tenantId || !contractId || !contractText) {
+        if (!contractId || !contractText) {
           return NextResponse.json(
-            { error: 'tenantId, contractId, and contractText are required' },
+            { error: 'contractId and contractText are required' },
             { status: 400 }
           );
         }
@@ -173,9 +179,9 @@ export async function POST(request: NextRequest) {
       case 'create':
         const { obligation } = data;
 
-        if (!obligation || !obligation.tenantId || !obligation.type || !obligation.description) {
+        if (!obligation || !obligation.type || !obligation.description) {
           return NextResponse.json(
-            { error: 'Complete obligation object with tenantId, type, and description is required' },
+            { error: 'Complete obligation object with type and description is required' },
             { status: 400 }
           );
         }
