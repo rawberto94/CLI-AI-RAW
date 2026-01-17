@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // Dynamic import to avoid build-time resolution issues
 async function getWebhookService() {
@@ -17,10 +18,15 @@ async function getWebhookService() {
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const webhookId = searchParams.get('webhookId');
     const deliveryHistory = searchParams.get('history') === 'true';
-    const tenantId = searchParams.get('tenantId') || 'default';
 
     const webhookService = await getWebhookService();
 
@@ -71,8 +77,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const body = await request.json();
-    const { action, tenantId = 'default', ...data } = body;
+    const { action, ...data } = body;
 
     const webhookService = await getWebhookService();
 

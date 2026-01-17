@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // Dynamic import helper with proper typing
 async function getAiCostOptimizerService() {
@@ -18,10 +19,15 @@ async function getAiCostOptimizerService() {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const aiCostOptimizerService = await getAiCostOptimizerService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'budget';
-    const tenantId = searchParams.get('tenantId') || 'default';
 
     switch (action) {
       case 'budget': {
@@ -91,13 +97,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const aiCostOptimizerService = await getAiCostOptimizerService();
     const body = await request.json();
     const { action } = body;
 
     switch (action) {
       case 'set-budget': {
-        const { tenantId = 'default', config } = body;
+        const { config } = body;
         if (!config || !config.dailyLimit || !config.monthlyLimit) {
           return NextResponse.json(
             { error: 'config with dailyLimit and monthlyLimit is required' },

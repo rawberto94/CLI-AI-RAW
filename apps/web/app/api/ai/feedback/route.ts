@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 interface CorrectionRequest {
   contractId: string;
@@ -26,6 +27,13 @@ interface CorrectionRequest {
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
+
     const services = await import('@repo/data-orchestration/services');
     const aiLearningService = services.aiLearningService;
 
@@ -54,12 +62,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Record the correction
     await aiLearningService.recordCorrection({
       contractId: body.contractId,
-      tenantId: body.tenantId || 'default',
+      tenantId,
       artifactType: body.artifactType,
       originalData: body.originalData as Record<string, unknown>,
       correctedData: body.correctedData as Record<string, unknown>,
       correctionFields,
-      userId: body.userId || 'anonymous',
+      userId,
       feedbackType: body.feedbackType || 'correction',
     });
 
@@ -87,11 +95,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const services = await import('@repo/data-orchestration/services');
     const aiLearningService = services.aiLearningService;
 
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default';
     const artifactType = searchParams.get('artifactType') || undefined;
 
     // Get learned patterns

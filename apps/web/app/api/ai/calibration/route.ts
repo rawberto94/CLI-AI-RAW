@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // Dynamic import helper with proper typing
 async function getConfidenceCalibrationService() {
@@ -17,11 +18,16 @@ async function getConfidenceCalibrationService() {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const confidenceCalibrationService = await getConfidenceCalibrationService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'report';
     const artifactType = searchParams.get('artifactType');
-    const tenantId = searchParams.get('tenantId') || 'default';
 
     if (!artifactType) {
       return NextResponse.json(
@@ -82,13 +88,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const confidenceCalibrationService = await getConfidenceCalibrationService();
     const body = await request.json();
     const { action } = body;
 
     switch (action) {
       case 'record': {
-        const { artifactType, tenantId = 'default', predictedConfidence, wasCorrect, fieldName } = body;
+        const { artifactType, predictedConfidence, wasCorrect, fieldName } = body;
         if (!artifactType || predictedConfidence === undefined || wasCorrect === undefined) {
           return NextResponse.json(
             { error: 'artifactType, predictedConfidence, and wasCorrect are required' },

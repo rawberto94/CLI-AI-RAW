@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // Dynamic import to avoid build-time resolution issues
 async function getAnomalyDetectionService() {
@@ -17,12 +18,17 @@ async function getAnomalyDetectionService() {
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const severity = searchParams.get('severity');
     const type = searchParams.get('type');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const includeResolved = searchParams.get('includeResolved') === 'true';
-    const tenantId = searchParams.get('tenantId') || 'default';
 
     const anomalyService = await getAnomalyDetectionService();
 
@@ -95,8 +101,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const body = await request.json();
-    const { action, tenantId = 'default', ...data } = body;
+    const { action, ...data } = body;
 
     const anomalyService = await getAnomalyDetectionService();
 

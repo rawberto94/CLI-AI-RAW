@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // Dynamic import helper with proper typing
 async function getAutoPromptOptimizerService() {
@@ -19,11 +20,16 @@ async function getAutoPromptOptimizerService() {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const autoPromptOptimizerService = await getAutoPromptOptimizerService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
     const artifactType = searchParams.get('artifactType');
-    const tenantId = searchParams.get('tenantId') || 'default';
 
     switch (action) {
       case 'list': {
@@ -114,13 +120,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const autoPromptOptimizerService = await getAutoPromptOptimizerService();
     const body = await request.json();
     const { action } = body;
 
     switch (action) {
       case 'create': {
-        const { artifactType, prompt, tenantId = 'default', parentId } = body;
+        const { artifactType, prompt, parentId } = body;
         if (!artifactType || !prompt) {
           return NextResponse.json(
             { error: 'artifactType and prompt are required' },

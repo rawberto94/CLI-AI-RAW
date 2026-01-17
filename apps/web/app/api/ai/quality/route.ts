@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // Dynamic import to avoid build-time resolution issues
 async function getQualityDashboardService() {
@@ -17,10 +18,15 @@ async function getQualityDashboardService() {
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const period = (searchParams.get('period') as any) || 'week';
     const format = searchParams.get('format');
-    const tenantId = searchParams.get('tenantId') || 'default';
 
     const qualityService = await getQualityDashboardService();
 
@@ -57,8 +63,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const body = await request.json();
-    const { action, tenantId = 'default', ...data } = body;
+    const { action, ...data } = body;
 
     const qualityService = await getQualityDashboardService();
 
