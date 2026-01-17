@@ -41,6 +41,22 @@ export type SignatureStatus =
   | 'unsigned'
   | 'unknown';
 
+/**
+ * Document classification - distinguishes actual contracts from non-binding documents
+ */
+export type DocumentClassification =
+  | 'contract'           // Binding legal agreement
+  | 'purchase_order'     // PO - typically one-sided, may reference a contract
+  | 'invoice'            // Billing document, not a contract
+  | 'quote'              // Price quote, non-binding
+  | 'proposal'           // Business proposal, non-binding
+  | 'work_order'         // Task assignment, may or may not be binding
+  | 'letter_of_intent'   // LOI - typically non-binding
+  | 'memorandum'         // MoU or internal memo
+  | 'amendment'          // Contract modification (still a contract type)
+  | 'addendum'           // Contract addition (still a contract type)
+  | 'unknown';
+
 // ============ EXTERNAL PARTY ============
 
 export interface ExternalParty {
@@ -92,6 +108,15 @@ export interface ContractMetadataSchema {
   
   /** Source of the title: 'extracted' or 'generated' */
   title_source?: 'extracted' | 'generated';
+  
+  /** Document classification - contract vs PO/invoice/quote etc. */
+  document_classification: DocumentClassification;
+  
+  /** Confidence score for document classification (0-1) */
+  document_classification_confidence?: number;
+  
+  /** Warning message if document is not a proper contract */
+  document_classification_warning?: string;
   
   /** 1-2 sentence purpose summary */
   contract_short_description: string;

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@ta
 import { useEffect, useCallback, useRef } from 'react';
 import { STALE_TIMES } from '@/lib/query-client';
 import { getTenantId } from '@/lib/tenant';
+import type { SignatureStatus, DocumentClassification } from '@/lib/types/contract-metadata-schema';
 
 // =====================
 // Types
@@ -37,6 +38,9 @@ export interface Contract {
   } | null;
   type?: string;
   createdAt?: string;
+  // Signature and document classification
+  signatureStatus?: SignatureStatus;
+  documentClassification?: DocumentClassification;
   // Contract hierarchy fields
   parentContractId?: string | null;
   parentContract?: {

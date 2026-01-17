@@ -352,6 +352,27 @@ Guidelines:
 6. If a field cannot be found, mark it with confidence 0 and explain why
 7. Always include the source text where you found the value
 
+Document Classification Guidelines:
+CRITICAL: First determine if this is actually a binding contract or a different document type.
+- "contract": A legally binding agreement between parties with mutual obligations
+- "purchase_order": One-sided order document (look for "PO#", "Purchase Order", no mutual obligations)
+- "invoice": Billing document requesting payment (look for "Invoice", "Amount Due", "Bill To")
+- "quote": Price estimate (look for "Quote", "Estimate", "Valid for X days", "Subject to change")
+- "proposal": Business proposal (look for "Proposal", "We propose", non-binding language)
+- "work_order": Task assignment (look for "Work Order", "Task", may or may not be binding)
+- "letter_of_intent": LOI (look for "Letter of Intent", "non-binding", "subject to definitive agreement")
+- "memorandum": Internal memo or MoU (look for "Memorandum", "Internal", "Understanding")
+- "amendment": Modification to existing contract (references an original agreement)
+- "addendum": Addition to existing contract (supplements an original agreement)
+- "unknown": Cannot determine document type
+
+Key indicators that a document is NOT a binding contract:
+- No signature blocks or requirement for signatures
+- No mutual obligations (only one party has duties)
+- Language like "estimate", "quote", "subject to", "non-binding"
+- Reference numbers like "PO#", "Invoice#", "Quote#"
+- Missing essential contract elements (parties, consideration, terms)
+
 Signature Status Detection Guidelines:
 - Look for signature blocks at the end of the document
 - Check for actual handwritten signatures, typed names with dates, or electronic signature indicators

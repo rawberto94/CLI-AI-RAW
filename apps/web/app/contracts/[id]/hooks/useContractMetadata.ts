@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
+import type { DocumentClassification } from '@/lib/types/contract-metadata-schema'
 
 interface ContractMetadata {
   document_number: string
@@ -9,6 +10,8 @@ interface ContractMetadata {
   contract_type: string
   jurisdiction: string
   contract_language: string
+  document_classification: DocumentClassification
+  document_classification_warning?: string
   external_parties: Array<{ legalName: string; role?: string; legalForm?: string }>
   tcv_amount: number
   tcv_text: string
@@ -40,6 +43,8 @@ interface ContractData {
   contract_short_description?: string | null
   jurisdiction?: string | null
   contract_language?: string | null
+  document_classification?: DocumentClassification | null
+  document_classification_warning?: string | null
   external_parties?: Array<{ legalName: string; role?: string; legalForm?: string }> | null
   tcv_amount?: number | null
   tcv_text?: string | null
@@ -117,6 +122,8 @@ export function useContractMetadata(contract: ContractData | null) {
         contract_type: '',
         jurisdiction: '',
         contract_language: '',
+        document_classification: 'unknown' as DocumentClassification,
+        document_classification_warning: undefined,
         external_parties: [],
         tcv_amount: 0,
         tcv_text: '',
@@ -144,6 +151,8 @@ export function useContractMetadata(contract: ContractData | null) {
       contract_type: overviewData?.contractType || overviewData?.type || '',
       jurisdiction: contract.jurisdiction || overviewData?.jurisdiction || '',
       contract_language: contract.contract_language || overviewData?.language || 'en',
+      document_classification: contract.document_classification || overviewData?.documentClassification || 'contract' as DocumentClassification,
+      document_classification_warning: contract.document_classification_warning || overviewData?.documentClassificationWarning,
       
       // Parties
       external_parties: buildExternalParties(),

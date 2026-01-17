@@ -123,6 +123,7 @@ import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, useContractStats, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
+import type { SignatureStatus } from "@/lib/types/contract-metadata-schema";
 
 // Lazy load heavy components for better performance
 import { 
@@ -155,6 +156,51 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { ContractCompareWidget, generateDemoContracts as generateCompareContracts } from "@/components/contracts/ContractCompareWidget";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
+
+// ============ SIGNATURE STATUS BADGE COMPONENT ============
+interface SignatureStatusBadgeProps {
+  status?: SignatureStatus;
+}
+
+const SignatureStatusBadge = memo(function SignatureStatusBadge({ status }: SignatureStatusBadgeProps) {
+  if (!status || status === 'unknown') {
+    return <span className="text-[11px] text-slate-400">—</span>;
+  }
+  
+  const config: Record<Exclude<SignatureStatus, 'unknown'>, { label: string; bgClass: string; textClass: string; icon: string }> = {
+    signed: {
+      label: 'Signed',
+      bgClass: 'bg-green-50',
+      textClass: 'text-green-700',
+      icon: '✓',
+    },
+    partially_signed: {
+      label: 'Partial',
+      bgClass: 'bg-amber-50',
+      textClass: 'text-amber-700',
+      icon: '⚠',
+    },
+    unsigned: {
+      label: 'Unsigned',
+      bgClass: 'bg-red-50',
+      textClass: 'text-red-700',
+      icon: '✗',
+    },
+  };
+  
+  const { label, bgClass, textClass, icon } = config[status];
+  
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium",
+      bgClass,
+      textClass
+    )}>
+      <span>{icon}</span>
+      {label}
+    </span>
+  );
+});
 
 // ============ LIVE UPDATE INDICATOR COMPONENT ============
 interface LiveIndicatorProps {
@@ -475,7 +521,7 @@ const CompactContractRow = memo(function CompactContractRow({
       transition={{ duration: 0.2, delay: index * 0.015 }}
       whileHover={{ scale: 1.002, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
       className={cn(
-        "grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 items-center cursor-pointer transition-all duration-200 group border-b border-slate-100 rounded-lg mx-1",
+        "grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_80px_100px_44px] gap-3 px-4 py-3 items-center cursor-pointer transition-all duration-200 group border-b border-slate-100 rounded-lg mx-1",
         isSelected 
           ? "bg-gradient-to-r from-blue-50/80 to-indigo-50/60 hover:from-blue-50 hover:to-indigo-50 shadow-sm" 
           : "hover:bg-gradient-to-r hover:from-slate-50/90 hover:to-slate-50/50"
@@ -593,6 +639,11 @@ const CompactContractRow = memo(function CompactContractRow({
         ) : (
           <span className="text-[13px] text-slate-400">—</span>
         )}
+      </div>
+
+      {/* Signature Status */}
+      <div className="hidden lg:block">
+        <SignatureStatusBadge status={contract.signatureStatus} />
       </div>
 
       {/* Status */}
@@ -3070,7 +3121,7 @@ export default function ContractsPage() {
             >
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-lg">
                 {/* Table Header */}
-                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px] gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
+                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_80px_100px_44px] gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
                   <div className="flex items-center justify-center">
                     <Checkbox
                       checked={allVisibleSelected && paginatedContracts.length > 0}
@@ -3091,6 +3142,7 @@ export default function ContractsPage() {
                   <div className="hidden md:block">Party</div>
                   <div className="hidden lg:block text-right">Value</div>
                   <div className="hidden md:block">Expires</div>
+                  <div className="hidden lg:block">Signed</div>
                   <div>Status</div>
                   <div></div>
                 </div>

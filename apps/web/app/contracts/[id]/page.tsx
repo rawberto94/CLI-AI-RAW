@@ -847,8 +847,12 @@ export default function ContractDetailPage() {
               endDate={metadata.end_date}
               riskLevel={riskInfo.riskLevel}
               complianceOk={complianceInfo.isCompliant}
+              signatureStatus={metadata.signature_status}
+              documentClassification={metadata.document_classification}
+              documentClassificationWarning={metadata.document_classification_warning}
               onAction={() => setActiveTab('overview')}
               onInitiateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
+              onSetReminder={() => setReminderDialogOpen(true)}
             />
 
             {/* Quick Overview Card */}
