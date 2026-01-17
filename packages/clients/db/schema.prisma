@@ -334,6 +334,14 @@ model Contract {
   relationshipNote String?   @db.Text
   linkedAt         DateTime? // When the link was established
 
+  // Signature & Document Classification
+  signatureStatus              String?   @default("unknown") // signed, partially_signed, unsigned, unknown
+  signatureDate                DateTime? // Date of final execution
+  signatureRequiredFlag        Boolean   @default(false) // Flag for contracts needing signature attention
+  documentClassification       String?   @default("contract") // contract, purchase_order, invoice, quote, proposal, etc.
+  documentClassificationConf   Float?    // Classification confidence 0-1
+  documentClassificationWarning String?  // Warning message if not a proper contract
+
   artifacts           Artifact[]
   clauses             Clause[]
   client              Party?                   @relation("ClientContracts", fields: [clientId], references: [id])
@@ -419,6 +427,12 @@ model Contract {
   @@index([renewalInitiatedAt])
   @@index([importSource])
   @@index([externalId])
+  // Signature & Document Classification indexes
+  @@index([signatureStatus])
+  @@index([documentClassification])
+  @@index([tenantId, signatureStatus])
+  @@index([tenantId, documentClassification])
+  @@index([tenantId, signatureStatus, documentClassification])
   // === SCALABILITY INDEXES ===
   // Multi-column composite indexes for complex dashboard queries
   @@index([tenantId, status, totalValue(sort: Desc)])

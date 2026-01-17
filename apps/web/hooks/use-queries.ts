@@ -40,7 +40,11 @@ export interface Contract {
   createdAt?: string;
   // Signature and document classification
   signatureStatus?: SignatureStatus;
+  signatureDate?: string;
+  signatureRequiredFlag?: boolean;
   documentClassification?: DocumentClassification;
+  documentClassificationConfidence?: number;
+  documentClassificationWarning?: string;
   // Contract hierarchy fields
   parentContractId?: string | null;
   parentContract?: {

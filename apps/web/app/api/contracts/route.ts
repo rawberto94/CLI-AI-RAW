@@ -339,6 +339,13 @@ async function handler(request: NextRequest) {
             // Contract hierarchy fields
             parentContractId: true,
             relationshipType: true,
+            // Signature & Document Classification
+            signatureStatus: true,
+            signatureDate: true,
+            signatureRequiredFlag: true,
+            documentClassification: true,
+            documentClassificationConf: true,
+            documentClassificationWarning: true,
             parentContract: {
               select: {
                 id: true,
@@ -448,6 +455,13 @@ async function handler(request: NextRequest) {
               } : null,
               childContractCount: (contract as any)._count?.childContracts || 0,
               hasHierarchy: !!(contract as any).parentContractId || ((contract as any)._count?.childContracts || 0) > 0,
+              // Signature & Document Classification
+              signatureStatus: (contract as any).signatureStatus || (contract.aiMetadata as any)?.signature_status || 'unknown',
+              signatureDate: (contract as any).signatureDate?.toISOString() || (contract.aiMetadata as any)?.signature_date || null,
+              signatureRequiredFlag: (contract as any).signatureRequiredFlag ?? false,
+              documentClassification: (contract as any).documentClassification || (contract.aiMetadata as any)?.document_classification || 'contract',
+              documentClassificationConfidence: (contract as any).documentClassificationConf || null,
+              documentClassificationWarning: (contract as any).documentClassificationWarning || (contract.aiMetadata as any)?.document_classification_warning || null,
             };
           }),
           pagination: {

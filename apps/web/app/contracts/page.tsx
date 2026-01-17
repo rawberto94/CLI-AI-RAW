@@ -115,6 +115,10 @@ import {
   Scale,
   Edit3,
   GitBranch,
+  CheckCircle2,
+  XCircle,
+  PenLine,
+  FileWarning,
 } from "lucide-react";
 import { ObligationWidget, type Obligation } from "@/components/contracts/ObligationTracker";
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
@@ -123,7 +127,7 @@ import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { useContracts, useContractStats, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
-import type { SignatureStatus } from "@/lib/types/contract-metadata-schema";
+import type { SignatureStatus, DocumentClassification } from "@/lib/types/contract-metadata-schema";
 
 // Lazy load heavy components for better performance
 import { 
@@ -197,6 +201,86 @@ const SignatureStatusBadge = memo(function SignatureStatusBadge({ status }: Sign
       textClass
     )}>
       <span>{icon}</span>
+      {label}
+    </span>
+  );
+});
+
+// ============ DOCUMENT TYPE BADGE COMPONENT ============
+interface DocumentTypeBadgeProps {
+  classification?: DocumentClassification;
+  showWarning?: boolean;
+}
+
+const DocumentTypeBadge = memo(function DocumentTypeBadge({ classification, showWarning }: DocumentTypeBadgeProps) {
+  // Only show badge for non-contract documents
+  if (!classification || classification === 'contract') {
+    return null;
+  }
+  
+  const config: Record<Exclude<DocumentClassification, 'contract'>, { label: string; bgClass: string; textClass: string }> = {
+    purchase_order: {
+      label: 'PO',
+      bgClass: 'bg-orange-50',
+      textClass: 'text-orange-700',
+    },
+    invoice: {
+      label: 'Invoice',
+      bgClass: 'bg-purple-50',
+      textClass: 'text-purple-700',
+    },
+    quote: {
+      label: 'Quote',
+      bgClass: 'bg-cyan-50',
+      textClass: 'text-cyan-700',
+    },
+    proposal: {
+      label: 'Proposal',
+      bgClass: 'bg-indigo-50',
+      textClass: 'text-indigo-700',
+    },
+    work_order: {
+      label: 'Work Order',
+      bgClass: 'bg-pink-50',
+      textClass: 'text-pink-700',
+    },
+    letter_of_intent: {
+      label: 'LOI',
+      bgClass: 'bg-yellow-50',
+      textClass: 'text-yellow-700',
+    },
+    memorandum: {
+      label: 'Memo',
+      bgClass: 'bg-slate-100',
+      textClass: 'text-slate-700',
+    },
+    amendment: {
+      label: 'Amendment',
+      bgClass: 'bg-teal-50',
+      textClass: 'text-teal-700',
+    },
+    addendum: {
+      label: 'Addendum',
+      bgClass: 'bg-emerald-50',
+      textClass: 'text-emerald-700',
+    },
+    unknown: {
+      label: 'Unknown',
+      bgClass: 'bg-slate-100',
+      textClass: 'text-slate-600',
+    },
+  };
+  
+  const { label, bgClass, textClass } = config[classification];
+  
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium",
+      bgClass,
+      textClass,
+      showWarning && "ring-1 ring-orange-300"
+    )}>
+      {showWarning && <FileWarning className="h-3 w-3" />}
       {label}
     </span>
   );
@@ -574,6 +658,10 @@ const CompactContractRow = memo(function CompactContractRow({
                   New
                 </span>
               )}
+              <DocumentTypeBadge 
+                classification={contract.documentClassification as DocumentClassification} 
+                showWarning={!!contract.documentClassificationWarning}
+              />
             </div>
             <p className="text-xs text-slate-400 mt-0.5">{formatDate(contract.createdAt)}</p>
           </div>
@@ -1000,6 +1088,25 @@ const EXPIRATION_FILTERS = [
   { value: 'no-expiry', label: 'No Expiration', icon: CircleDot, color: 'text-slate-500' },
 ];
 
+// Signature status filter options
+const SIGNATURE_FILTERS = [
+  { value: 'signed', label: 'Signed', icon: CheckCircle2, color: 'text-green-600' },
+  { value: 'partially_signed', label: 'Partially Signed', icon: AlertTriangle, color: 'text-amber-600' },
+  { value: 'unsigned', label: 'Unsigned', icon: XCircle, color: 'text-red-600' },
+  { value: 'unknown', label: 'Unknown', icon: CircleDot, color: 'text-slate-500' },
+];
+
+// Document type filter options
+const DOCUMENT_TYPE_FILTERS = [
+  { value: 'contract', label: 'Contract', icon: FileText, color: 'text-blue-600' },
+  { value: 'purchase_order', label: 'Purchase Order', icon: FileText, color: 'text-orange-600' },
+  { value: 'invoice', label: 'Invoice', icon: FileText, color: 'text-purple-600' },
+  { value: 'quote', label: 'Quote', icon: FileText, color: 'text-cyan-600' },
+  { value: 'proposal', label: 'Proposal', icon: FileText, color: 'text-indigo-600' },
+  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-teal-600' },
+  { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-emerald-600' },
+];
+
 // Pagination options
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -1068,6 +1175,8 @@ export default function ContractsPage() {
   const [dateRangeFilter, setDateRangeFilter] = useState<string | null>(null);
   const [expirationFilters, setExpirationFilters] = useState<string[]>([]);
   const [supplierFilters, setSupplierFilters] = useState<string[]>([]);
+  const [signatureFilters, setSignatureFilters] = useState<string[]>([]);
+  const [documentTypeFilters, setDocumentTypeFilters] = useState<string[]>([]);
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [advancedFilters, setAdvancedFilters] = useState<AdvancedSearchFilters>({});
@@ -1392,6 +1501,8 @@ export default function ContractsPage() {
     setDateRangeFilter(null);
     setExpirationFilters([]);
     setSupplierFilters([]);
+    setSignatureFilters([]);
+    setDocumentTypeFilters([]);
     setActivePreset(null);
     setAdvancedFilters({});
     setCategoryFilter(null);
@@ -1709,7 +1820,7 @@ export default function ContractsPage() {
   }, [pendingBulkAction]);
 
   // Check if any filters are active
-  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
+  const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
   
   // Count active filters for badge
   const activeFilterCount = [
@@ -1722,6 +1833,8 @@ export default function ContractsPage() {
     dateRangeFilter ? 1 : 0,
     expirationFilters.length,
     supplierFilters.length,
+    signatureFilters.length,
+    documentTypeFilters.length,
     categoryFilter ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
   
@@ -1820,6 +1933,14 @@ export default function ContractsPage() {
       const matchesSupplier = supplierFilters.length === 0 || 
         (contract.parties?.supplier && supplierFilters.includes(contract.parties.supplier));
 
+      // Signature status filter
+      const matchesSignature = signatureFilters.length === 0 || 
+        signatureFilters.includes(contract.signatureStatus || 'unknown');
+
+      // Document type/classification filter
+      const matchesDocumentType = documentTypeFilters.length === 0 || 
+        documentTypeFilters.includes(contract.documentClassification || 'contract');
+
       // Advanced filters
       const matchesAdvanced = 
         (!advancedFilters.clientName || contract.parties?.client?.toLowerCase().includes(advancedFilters.clientName.toLowerCase())) &&
@@ -1832,10 +1953,10 @@ export default function ContractsPage() {
         (categoryFilter === 'uncategorized' ? !contract.category : contract.category?.id === categoryFilter)) &&
         (filterState.categories.length === 0 || (contract.category && filterState.categories.includes(contract.category.id)));
 
-      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesAdvanced && matchesCategory;
+      return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesSignature && matchesDocumentType && matchesAdvanced && matchesCategory;
     });
      
-  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, advancedFilters, categoryFilter, filterState]);
+  }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, signatureFilters, documentTypeFilters, advancedFilters, categoryFilter, filterState]);
 
   // Sort filtered contracts
   const sortedContracts = useMemo(() => {
