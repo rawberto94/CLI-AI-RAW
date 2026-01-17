@@ -6,17 +6,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contractHealthMonitor } from '@repo/workers/agents';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
-    const tenantId = searchParams.get('tenantId');
     const forceRefresh = searchParams.get('refresh') === 'true';
 
-    if (!contractId || !tenantId) {
+    if (!contractId) {
       return NextResponse.json(
-        { error: 'contractId and tenantId are required' },
+        { error: 'contractId is required' },
         { status: 400 }
       );
     }

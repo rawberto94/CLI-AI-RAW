@@ -6,21 +6,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { opportunityDiscoveryEngine } from '@repo/workers/agents';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
     const contractId = searchParams.get('contractId');
     const minValue = parseInt(searchParams.get('minValue') || '0');
     const opportunityType = searchParams.get('type');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
-        { status: 400 }
-      );
-    }
 
     // If contractId provided, get opportunities for specific contract
     if (contractId) {
