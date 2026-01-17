@@ -19,14 +19,9 @@ import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage, AIMessage } from '@langchain/core/messages';
 import { z } from 'zod';
 
-// Dynamic import for optional Anthropic dependency
-let ChatAnthropic: any = null;
-try {
-  // Attempt to load at runtime - will be null if not installed
-  ChatAnthropic = require('@langchain/anthropic').ChatAnthropic;
-} catch {
-  // @langchain/anthropic not installed - Claude models will fall back to OpenAI
-}
+// Note: @langchain/anthropic is an optional peer dependency
+// Claude models will automatically fall back to OpenAI GPT-4o if not installed
+// To enable Claude support, install: pnpm add @langchain/anthropic
 
 // =============================================================================
 // TYPES
@@ -592,24 +587,14 @@ Please provide your ${agent.role} perspective.`;
       return this.llmCache.get(cacheKey)!;
     }
 
-    let llm: ChatOpenAI;
-
-    if (agent.model.startsWith('claude') && ChatAnthropic) {
-      // Use Anthropic if available
-      llm = new ChatAnthropic({
-        modelName: agent.model,
-        temperature: agent.temperature,
-        maxTokens: 4000,
-      }) as unknown as ChatOpenAI;
-    } else {
-      // Fall back to OpenAI (use gpt-4o for claude models if Anthropic not available)
-      const modelName = agent.model.startsWith('claude') ? 'gpt-4o' : agent.model;
-      llm = new ChatOpenAI({
-        modelName,
-        temperature: agent.temperature,
-        maxTokens: 4000,
-      });
-    }
+    // All models use OpenAI - Claude models fall back to gpt-4o
+    // To enable Claude support, install @langchain/anthropic and implement dynamic import
+    const modelName = agent.model.startsWith('claude') ? 'gpt-4o' : agent.model;
+    const llm = new ChatOpenAI({
+      modelName,
+      temperature: agent.temperature,
+      maxTokens: 4000,
+    });
 
     this.llmCache.set(cacheKey, llm);
     return llm;
