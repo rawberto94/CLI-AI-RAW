@@ -153,6 +153,7 @@ export interface ContractFilters {
   periodicity?: string[];
   currency?: string[];
   signatureStatus?: 'signed' | 'unsigned' | 'pending' | 'all';
+  documentClassification?: string[];
   reminderEnabled?: boolean;
   category?: string[];
   confidenceScore?: { min?: number; max?: number };
@@ -274,6 +275,7 @@ function getActiveFilterCount(filters: ContractFilters): number {
   if (filters.periodicity?.length) count++;
   if (filters.currency?.length) count++;
   if (filters.signatureStatus && filters.signatureStatus !== 'all') count++;
+  if (filters.documentClassification?.length) count++;
   if (filters.reminderEnabled !== undefined) count++;
   if (filters.category?.length) count++;
   if (filters.needsVerification !== undefined) count++;
@@ -299,6 +301,21 @@ const BILLING_FREQUENCIES = [
   { value: 'recurring', label: 'Recurring', color: 'bg-green-100 text-green-700' },
   { value: 'mixed', label: 'Mixed', color: 'bg-purple-100 text-purple-700' },
   { value: 'none', label: 'None', color: 'bg-slate-100 text-slate-700' },
+];
+
+// Document classification options for filtering
+const DOCUMENT_CLASSIFICATIONS = [
+  { value: 'contract', label: 'Contract', color: 'bg-blue-100 text-blue-700', icon: FileText },
+  { value: 'purchase_order', label: 'Purchase Order', color: 'bg-orange-100 text-orange-700', icon: FileText },
+  { value: 'invoice', label: 'Invoice', color: 'bg-purple-100 text-purple-700', icon: FileText },
+  { value: 'quote', label: 'Quote', color: 'bg-cyan-100 text-cyan-700', icon: FileText },
+  { value: 'proposal', label: 'Proposal', color: 'bg-indigo-100 text-indigo-700', icon: FileText },
+  { value: 'work_order', label: 'Work Order', color: 'bg-amber-100 text-amber-700', icon: FileText },
+  { value: 'amendment', label: 'Amendment', color: 'bg-teal-100 text-teal-700', icon: FileText },
+  { value: 'addendum', label: 'Addendum', color: 'bg-emerald-100 text-emerald-700', icon: FileText },
+  { value: 'letter_of_intent', label: 'Letter of Intent', color: 'bg-pink-100 text-pink-700', icon: FileText },
+  { value: 'memorandum', label: 'Memorandum', color: 'bg-rose-100 text-rose-700', icon: FileText },
+  { value: 'unknown', label: 'Unknown', color: 'bg-slate-100 text-slate-700', icon: FileText },
 ];
 
 const PERIODICITIES = [
@@ -811,6 +828,15 @@ export const SmartFilters = memo(function SmartFilters({
     if (effectiveFilters.signatureStatus && effectiveFilters.signatureStatus !== 'all') {
       chips.push({ key: "signatureStatus", label: `Signature: ${effectiveFilters.signatureStatus}` });
     }
+    if (effectiveFilters.documentClassification?.length) {
+      const labels = effectiveFilters.documentClassification.map(c => 
+        DOCUMENT_CLASSIFICATIONS.find(doc => doc.value === c)?.label || c
+      );
+      chips.push({ 
+        key: "documentClassification", 
+        label: `Doc Type: ${labels.slice(0, 2).join(", ")}${labels.length > 2 ? ` +${labels.length - 2}` : ''}` 
+      });
+    }
     if (effectiveFilters.category?.length) {
       chips.push({ key: "category", label: `Category: ${effectiveFilters.category.length}` });
     }
@@ -1147,6 +1173,60 @@ export const SmartFilters = memo(function SmartFilters({
                             <span className="text-sm font-medium flex-1 text-left">Needs Verification</span>
                             {effectiveFilters.needsVerification && <Check className="w-4 h-4" />}
                           </button>
+                        </div>
+                      </div>
+
+                      {/* Document Classification */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-teal-600" />
+                          Document Type
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
+                          {DOCUMENT_CLASSIFICATIONS.map((docType) => {
+                            const isSelected = effectiveFilters.documentClassification?.includes(docType.value);
+                            return (
+                              <button
+                                key={docType.value}
+                                onClick={() => {
+                                  const current = effectiveFilters.documentClassification || [];
+                                  const updated = isSelected
+                                    ? current.filter((c) => c !== docType.value)
+                                    : [...current, docType.value];
+                                  updateFilter("documentClassification", updated.length > 0 ? updated : undefined);
+                                }}
+                                className={cn(
+                                  "flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-sm font-medium transition-all",
+                                  isSelected
+                                    ? docType.color + " border-current/30"
+                                    : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                                )}
+                              >
+                                <docType.icon className="w-3.5 h-3.5" />
+                                <span className="truncate text-xs">{docType.label}</span>
+                                {isSelected && <Check className="w-3.5 h-3.5 ml-auto flex-shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {/* Quick toggles for common filtering scenarios */}
+                        <div className="flex gap-2 pt-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => updateFilter("documentClassification", ['contract'])}
+                          >
+                            Only Contracts
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => updateFilter("documentClassification", ['purchase_order', 'invoice', 'quote'])}
+                          >
+                            Non-Contracts
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
