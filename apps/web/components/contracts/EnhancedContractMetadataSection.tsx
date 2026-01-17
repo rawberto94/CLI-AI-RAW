@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -46,16 +45,7 @@ import {
   Bell,
   Shield,
   Building2,
-  Globe,
-  Languages,
-  Hash,
-  CreditCard,
-  Clock,
-  UserCircle,
-  Lock,
   Sparkles,
-  Eye,
-  EyeOff,
   Copy,
   Check,
   Plus,
@@ -69,7 +59,6 @@ import {
   PaymentType,
   BillingFrequencyType,
   Periodicity,
-  CONTRACT_METADATA_FIELDS,
   getFieldsBySection,
   getFieldsNeedingAttention,
   formatPaymentType,

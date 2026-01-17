@@ -35,12 +35,10 @@ import {
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { EnhancedArtifactViewer } from '@/components/artifacts/EnhancedArtifactViewer'
 import { ComprehensiveAIAnalysis } from '@/components/artifacts/ComprehensiveAIAnalysis'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { useWebSocket } from '@/contexts/websocket-context'
 import { useCrossModuleInvalidation } from '@/hooks/use-queries'
-import { formatDate } from '@/lib/design-tokens'
 import {
   Dialog,
   DialogContent,
@@ -323,6 +321,7 @@ export default function ContractDetailPage() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer])
 
   // Initialize tab from URL (shareable deep-link)
@@ -379,6 +378,7 @@ export default function ContractDetailPage() {
     } finally {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id, dataMode])
 
   const loadVersions = useCallback(async () => {
@@ -1181,7 +1181,7 @@ export default function ContractDetailPage() {
                     <VersionManager
                       contractId={params.id as string}
                       contractTitle={metadata.document_title || contract?.filename || 'Contract'}
-                      onVersionChange={(versionId) => {
+                      onVersionChange={() => {
                         toast.success('Version updated')
                         loadContract()
                       }}
