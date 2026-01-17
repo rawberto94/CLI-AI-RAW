@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import cors from '@/lib/security/cors';
 import OpenAI from 'openai';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/contract-metadata-schema';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -84,11 +85,11 @@ export async function POST(
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      // Return mock validation if no API key
+      // Return deterministic rule-based validation if no API key
       return NextResponse.json({
         success: true,
-        data: generateMockValidation(fieldsToProcess),
-        message: 'Validation completed using mock data (OpenAI not configured)'
+        data: generateFallbackValidation(fieldsToProcess),
+        message: 'Validation completed using rule-based validation (OpenAI not configured)'
       });
     }
 
@@ -395,91 +396,324 @@ function validateWithRules(fields: [string, unknown][]): ValidationResult {
   };
 }
 
+/**
+ * Schema-aware rule-based confidence calculation.
+ * Uses field definitions from CONTRACT_METADATA_FIELDS for more accurate scoring.
+ */
 function calculateRuleBasedConfidence(key: string, value: unknown): number {
-  // Base confidence
-  let confidence = 60;
+  // Find field definition from schema
+  const fieldDef = CONTRACT_METADATA_FIELDS.find(
+    f => f.key === key || f.key === key.replace(/_/g, '')
+  );
+  
+  // Base confidence depends on whether we have schema definition
+  let confidence = fieldDef ? 55 : 45;
 
   // Check if value exists and is not empty
   if (value === null || value === undefined || value === '') {
+    // If required field is empty, very low confidence
+    if (fieldDef?.required) {
+      return 15;
+    }
     return 30;
   }
 
-  // Key-specific validation
+  // Schema-aware validation
+  if (fieldDef) {
+    confidence += validateByFieldType(fieldDef, value);
+    
+    // Boost confidence if field has no attention flags
+    if (fieldDef.ui_attention === 'none') {
+      confidence += 5;
+    }
+    
+    // Lower confidence for fields marked as needing attention
+    if (fieldDef.ui_attention === 'error') {
+      confidence -= 10;
+    } else if (fieldDef.ui_attention === 'warning') {
+      confidence -= 5;
+    }
+  } else {
+    // Fallback to key-name based validation
+    confidence += validateByKeyName(key, value);
+  }
+
+  // Cap at 100, minimum 10
+  return Math.min(100, Math.max(10, confidence));
+}
+
+/**
+ * Validate value based on field type definition
+ */
+function validateByFieldType(fieldDef: MetadataFieldDefinition, value: unknown): number {
+  let bonus = 0;
+  
+  switch (fieldDef.type) {
+    case 'date':
+      if (isValidDate(value)) {
+        bonus += 30;
+        // Extra bonus for ISO format
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+          bonus += 10;
+        }
+      } else {
+        bonus -= 25;
+      }
+      break;
+      
+    case 'decimal':
+    case 'integer':
+      if (typeof value === 'number') {
+        bonus += 25;
+        // Ensure positive for amounts
+        if (fieldDef.key.includes('amount') || fieldDef.key.includes('value')) {
+          bonus += value >= 0 ? 10 : -15;
+        }
+      } else if (!isNaN(parseFloat(String(value)))) {
+        bonus += 15;
+      } else {
+        bonus -= 20;
+      }
+      break;
+      
+    case 'enum':
+      if (fieldDef.enum?.includes(String(value))) {
+        bonus += 35; // High confidence for valid enum value
+      } else {
+        bonus -= 30; // Low confidence for invalid enum
+      }
+      break;
+      
+    case 'boolean':
+      if (typeof value === 'boolean' || value === 'true' || value === 'false') {
+        bonus += 30;
+      } else {
+        bonus -= 20;
+      }
+      break;
+      
+    case 'string':
+      const strValue = String(value);
+      if (strValue.length >= 1 && strValue.length <= 1000) {
+        bonus += 15;
+        
+        // Format-specific validation
+        if (fieldDef.format === 'ISO4217' && isValidCurrencyCode(strValue)) {
+          bonus += 20;
+        } else if (fieldDef.format === 'ISO639-1_or_name' && isValidLanguageCode(strValue)) {
+          bonus += 20;
+        } else if (fieldDef.format === 'ISO3166-1-alpha2_or_name' && strValue.length >= 2) {
+          bonus += 15;
+        }
+      }
+      break;
+      
+    case 'fk':
+    case 'array_fk':
+      // Foreign key references - check if valid ID format
+      if (Array.isArray(value)) {
+        bonus += value.length > 0 ? 20 : 0;
+      } else if (typeof value === 'string' && value.length > 0) {
+        bonus += 20;
+      }
+      break;
+  }
+  
+  return bonus;
+}
+
+/**
+ * Fallback validation based on key name patterns
+ */
+function validateByKeyName(key: string, value: unknown): number {
+  let bonus = 0;
   const keyLower = key.toLowerCase();
 
   // Date fields
   if (keyLower.includes('date') || keyLower.includes('expir')) {
     if (isValidDate(value)) {
-      confidence += 25;
+      bonus += 25;
     } else {
-      confidence -= 20;
+      bonus -= 20;
     }
   }
 
   // Email fields
   if (keyLower.includes('email')) {
     if (isValidEmail(String(value))) {
-      confidence += 30;
+      bonus += 30;
     } else {
-      confidence -= 20;
+      bonus -= 20;
     }
   }
 
   // Amount/value fields
   if (keyLower.includes('value') || keyLower.includes('amount') || keyLower.includes('price')) {
     if (typeof value === 'number' || !isNaN(parseFloat(String(value)))) {
-      confidence += 20;
+      bonus += 20;
     }
   }
 
   // Name fields - check for reasonable length
   if (keyLower.includes('name') || keyLower.includes('party')) {
     if (String(value).length >= 2 && String(value).length <= 200) {
-      confidence += 15;
+      bonus += 15;
     }
   }
 
-  // Cap at 100
-  return Math.min(100, Math.max(0, confidence));
+  return bonus;
 }
 
+/**
+ * Check if value is a valid ISO 4217 currency code
+ */
+function isValidCurrencyCode(value: string): boolean {
+  const commonCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD', 'CNY', 'INR', 'BRL', 'MXN', 'KRW', 'SGD', 'HKD', 'SEK', 'NOK', 'DKK', 'NZD', 'ZAR', 'RUB'];
+  return commonCurrencies.includes(value.toUpperCase()) || /^[A-Z]{3}$/.test(value.toUpperCase());
+}
+
+/**
+ * Check if value is a valid language code or name
+ */
+function isValidLanguageCode(value: string): boolean {
+  const commonLanguages = ['en', 'es', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ko', 'ar', 'ru', 'nl', 'pl', 'sv', 'da', 'no', 'fi'];
+  const languageNames = ['english', 'spanish', 'french', 'german', 'italian', 'portuguese', 'chinese', 'japanese', 'korean', 'arabic', 'russian', 'dutch'];
+  return commonLanguages.includes(value.toLowerCase()) || 
+         languageNames.includes(value.toLowerCase()) ||
+         /^[a-z]{2}(-[A-Z]{2})?$/.test(value);
+}
+
+/**
+ * Generate schema-aware suggestions for field improvement
+ */
 function generateSuggestions(key: string, value: unknown): string[] {
   const suggestions: string[] = [];
   const keyLower = key.toLowerCase();
-
-  // Date suggestions
-  if (keyLower.includes('date') && value) {
-    const dateStr = String(value);
-    if (!dateStr.includes('-') && !dateStr.includes('/')) {
-      suggestions.push('Consider using ISO 8601 date format (YYYY-MM-DD)');
-    }
-  }
+  
+  // Find field definition from schema
+  const fieldDef = CONTRACT_METADATA_FIELDS.find(
+    f => f.key === key || f.key === key.replace(/_/g, '')
+  );
 
   // Empty value suggestions
   if (!value || value === '') {
-    suggestions.push('Value is empty - please provide a value or mark as N/A');
+    if (fieldDef?.required) {
+      suggestions.push(`${fieldDef.label || key} is required - please provide a value`);
+    } else {
+      suggestions.push('Value is empty - please provide a value or confirm as N/A');
+    }
+    return suggestions;
+  }
+
+  // Schema-based suggestions
+  if (fieldDef) {
+    // Date format suggestion
+    if (fieldDef.type === 'date') {
+      const dateStr = String(value);
+      if (!dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+        suggestions.push('Consider using ISO 8601 date format (YYYY-MM-DD) for consistency');
+      }
+    }
+    
+    // Enum validation
+    if (fieldDef.type === 'enum' && fieldDef.enum) {
+      if (!fieldDef.enum.includes(String(value))) {
+        suggestions.push(`Value should be one of: ${fieldDef.enum.join(', ')}`);
+      }
+    }
+    
+    // Currency format
+    if (fieldDef.format === 'ISO4217') {
+      const currValue = String(value).toUpperCase();
+      if (!/^[A-Z]{3}$/.test(currValue)) {
+        suggestions.push('Currency should be a 3-letter ISO 4217 code (e.g., USD, EUR)');
+      }
+    }
+    
+    // Extraction hint as suggestion
+    if (fieldDef.extraction_hint) {
+      suggestions.push(`Tip: ${fieldDef.extraction_hint}`);
+    }
+  } else {
+    // Fallback suggestions based on key name
+    if (keyLower.includes('date') && value) {
+      const dateStr = String(value);
+      if (!dateStr.includes('-') && !dateStr.includes('/')) {
+        suggestions.push('Consider using ISO 8601 date format (YYYY-MM-DD)');
+      }
+    }
   }
 
   return suggestions;
 }
 
+/**
+ * Schema-aware field validation
+ */
 function validateField(key: string, value: unknown): string[] {
   const errors: string[] = [];
   const keyLower = key.toLowerCase();
+  
+  // Find field definition from schema
+  const fieldDef = CONTRACT_METADATA_FIELDS.find(
+    f => f.key === key || f.key === key.replace(/_/g, '')
+  );
 
-  // Required field check
-  if (isRequiredField(key) && (!value || value === '')) {
+  // Required field check (schema-based)
+  if (fieldDef?.required && (!value || value === '' || (Array.isArray(value) && value.length === 0))) {
+    errors.push(`${fieldDef.label || key} is a required field`);
+  } else if (!fieldDef && isRequiredField(key) && (!value || value === '')) {
+    // Fallback for non-schema fields
     errors.push(`${key} is a required field`);
   }
 
-  // Date validation
-  if (keyLower.includes('date') && value && !isValidDate(value)) {
-    errors.push('Invalid date format');
-  }
-
-  // Email validation
-  if (keyLower.includes('email') && value && !isValidEmail(String(value))) {
-    errors.push('Invalid email format');
+  // Type-specific validation (schema-based)
+  if (fieldDef && value) {
+    switch (fieldDef.type) {
+      case 'date':
+        if (!isValidDate(value)) {
+          errors.push(`Invalid date format for ${fieldDef.label || key}`);
+        }
+        break;
+        
+      case 'decimal':
+      case 'integer':
+        const numVal = typeof value === 'number' ? value : parseFloat(String(value));
+        if (isNaN(numVal)) {
+          errors.push(`${fieldDef.label || key} must be a valid number`);
+        }
+        if (fieldDef.type === 'integer' && !Number.isInteger(numVal)) {
+          errors.push(`${fieldDef.label || key} must be a whole number`);
+        }
+        break;
+        
+      case 'enum':
+        if (fieldDef.enum && !fieldDef.enum.includes(String(value))) {
+          errors.push(`Invalid value for ${fieldDef.label || key}. Expected one of: ${fieldDef.enum.join(', ')}`);
+        }
+        break;
+        
+      case 'boolean':
+        if (typeof value !== 'boolean' && value !== 'true' && value !== 'false') {
+          errors.push(`${fieldDef.label || key} must be a boolean value`);
+        }
+        break;
+    }
+    
+    // Format-specific validation
+    if (fieldDef.format === 'ISO4217' && value) {
+      if (!/^[A-Z]{3}$/i.test(String(value))) {
+        errors.push(`Currency should be a valid ISO 4217 code (3 letters)`);
+      }
+    }
+  } else {
+    // Fallback validation for non-schema fields
+    if (keyLower.includes('date') && value && !isValidDate(value)) {
+      errors.push('Invalid date format');
+    }
+    if (keyLower.includes('email') && value && !isValidEmail(String(value))) {
+      errors.push('Invalid email format');
+    }
   }
 
   return errors;
@@ -505,39 +739,14 @@ function isValidEmail(email: string): boolean {
   return emailRegex.test(email);
 }
 
-function generateMockValidation(fields: [string, unknown][]): ValidationResult {
-  const validatedFields: MetadataField[] = fields.map(([key, value]) => {
-    const confidence = Math.floor(Math.random() * 30) + 65; // 65-95
-    const isValid = confidence >= 75;
-    
-    return {
-      key,
-      value,
-      status: isValid ? 'validated' : 'pending',
-      aiConfidence: confidence,
-      humanValidated: false,
-      suggestions: !isValid ? ['Consider verifying this value against the contract'] : undefined
-    };
-  });
-
-  const validated = validatedFields.filter(f => f.status === 'validated').length;
-
-  return {
-    fields: validatedFields,
-    summary: {
-      total: validatedFields.length,
-      validated,
-      pending: validatedFields.length - validated,
-      rejected: 0,
-      modified: 0,
-      overallConfidence: 
-        validatedFields.reduce((sum, f) => sum + f.aiConfidence, 0) / validatedFields.length
-    },
-    suggestions: [
-      'Review any fields with confidence below 75%',
-      'Ensure all required fields are validated before saving'
-    ]
-  };
+/**
+ * Deterministic validation fallback when OpenAI is not available.
+ * Uses rule-based validation instead of random mock values.
+ * This ensures consistent, reproducible confidence scores.
+ */
+function generateFallbackValidation(fields: [string, unknown][]): ValidationResult {
+  // Use the same rule-based validation instead of random values
+  return validateWithRules(fields);
 }
 
 /**
