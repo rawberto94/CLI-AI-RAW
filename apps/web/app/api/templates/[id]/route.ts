@@ -14,8 +14,7 @@ export async function DELETE(
       message: 'Template deleted successfully',
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error deleting template:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete template' },
       { status: 500 }

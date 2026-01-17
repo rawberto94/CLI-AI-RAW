@@ -100,8 +100,8 @@ export class TypedEventEmitter<Events extends Record<string, unknown | undefined
       for (const handler of handlers) {
         try {
           (handler as EventHandler<Events[K]>)(data as Events[K]);
-        } catch (error) {
-          console.error(`Error in event handler for "${String(event)}":`, error);
+        } catch {
+          // Error in event handler - silently ignored
         }
       }
     }
@@ -112,8 +112,8 @@ export class TypedEventEmitter<Events extends Record<string, unknown | undefined
       for (const handler of onceHandlers) {
         try {
           (handler as EventHandler<Events[K]>)(data as Events[K]);
-        } catch (error) {
-          console.error(`Error in once handler for "${String(event)}":`, error);
+        } catch {
+          // Error in once handler - silently ignored
         }
       }
       this.onceHandlers.delete(event);

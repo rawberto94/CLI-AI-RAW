@@ -174,8 +174,8 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
             try {
               const conversion = await convert(dailyRate, currency, 'USD');
               rateInUSD = conversion.convertedAmount;
-            } catch (error) {
-              console.error('Currency conversion failed:', error);
+            } catch {
+              // Currency conversion failed, using original rate
             }
           }
 
@@ -218,8 +218,7 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
         toast.success(`Successfully imported ${importResult.success} rate cards`);
         onImportComplete?.();
       }
-    } catch (error) {
-      console.error('Import error:', error);
+    } catch (error: unknown) {
       toast.error('Failed to import rate cards');
       setResult({
         success: 0,

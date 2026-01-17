@@ -68,8 +68,8 @@ export function NotificationCenter({ maxHeight = '400px', onClose, className }: 
         setNotifications(data.notifications || []);
         setUnreadCount(data.unreadCount || 0);
       }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -106,8 +106,8 @@ export function NotificationCenter({ maxHeight = '400px', onClose, className }: 
         prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -121,8 +121,8 @@ export function NotificationCenter({ maxHeight = '400px', onClose, className }: 
       
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -137,8 +137,8 @@ export function NotificationCenter({ maxHeight = '400px', onClose, className }: 
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
-    } catch (error) {
-      console.error('Failed to delete notification:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -340,8 +340,8 @@ export function NotificationBell({ className }: { className?: string }) {
         const response = await fetch('/api/notifications?unread=true');
         const data = await response.json();
         setUnreadCount(data.unreadCount || 0);
-      } catch (error) {
-        console.error('Failed to fetch unread count:', error);
+      } catch {
+        // Error handled silently
       }
     };
 

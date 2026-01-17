@@ -136,9 +136,7 @@ export class SchemaAwareMetadataExtractor {
           opts.contractType || '',
           fieldNames
         );
-        console.log(`🧠 Loaded adaptive enhancements: ${this.adaptiveEnhancements.fewShotExamples.length} few-shot examples, ${this.adaptiveEnhancements.warningPatterns.length} warning patterns`);
-      } catch (error) {
-        console.warn('Failed to load adaptive enhancements:', error);
+      } catch {
         this.adaptiveEnhancements = null;
       }
     }
@@ -158,7 +156,6 @@ export class SchemaAwareMetadataExtractor {
     const fieldsByCategory = this.groupFieldsByCategory(sortedFields);
 
     // First pass: Extract all fields
-    console.log(`🔍 Starting metadata extraction with ${sortedFields.length} fields`);
     let results = await this.firstPassExtraction(
       documentText,
       fieldsByCategory,
@@ -173,7 +170,6 @@ export class SchemaAwareMetadataExtractor {
       );
       
       if (lowConfidenceResults.length > 0) {
-        console.log(`🔄 Second pass: Re-extracting ${lowConfidenceResults.length} low-confidence fields`);
         const reExtracted = await this.secondPassExtraction(
           documentText,
           lowConfidenceResults,
@@ -260,8 +256,7 @@ export class SchemaAwareMetadataExtractor {
           results.push(this.processExtractionResult(field, extraction, opts));
         }
       }
-    } catch (error) {
-      console.error('First pass extraction error:', error);
+    } catch {
       // Return empty results for all fields
       for (const [_, fields] of fieldsByCategory) {
         for (const field of fields) {
@@ -334,8 +329,7 @@ export class SchemaAwareMetadataExtractor {
           results.push(result);
         }
       }
-    } catch (error) {
-      console.error('Second pass extraction error:', error);
+    } catch {
       return lowConfidenceResults;
     }
 

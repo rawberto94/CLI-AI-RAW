@@ -743,8 +743,7 @@ export const ApprovalsQueue: React.FC = () => {
         setLastUpdated(new Date());
         toast.success('Approvals refreshed');
       }
-    } catch (error) {
-      console.error('Refresh error:', error);
+    } catch {
       toast.error('Failed to refresh approvals');
     } finally {
       setRefreshing(false);
@@ -827,8 +826,7 @@ export const ApprovalsQueue: React.FC = () => {
           setApprovals([]);
           setSelectedId(null);
         }
-      } catch (error) {
-        console.error('Error fetching approvals:', error);
+      } catch {
         setApprovals([]);
         setSelectedId(null);
       } finally {
@@ -836,7 +834,7 @@ export const ApprovalsQueue: React.FC = () => {
       }
     }
     fetchApprovals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Derive these before the keyboard effect uses them
@@ -979,8 +977,7 @@ export const ApprovalsQueue: React.FC = () => {
           actionUrl: `/approvals?id=${approval.id}`,
         }),
       });
-    } catch (error) {
-      console.error('Failed to send notification:', error);
+    } catch {
       // Don't block the main action if notification fails
     }
   };
@@ -1039,8 +1036,7 @@ export const ApprovalsQueue: React.FC = () => {
           description: `"${selectedApprovalTitle}" has been approved successfully.`,
         });
       }
-    } catch (error) {
-      console.error('Approve error:', error);
+    } catch {
       // Fallback to local state update
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'approved' as const } : a
@@ -1117,8 +1113,7 @@ export const ApprovalsQueue: React.FC = () => {
         setRejectModalOpen(false);
         setRejectReason('');
       }
-    } catch (error) {
-      console.error('Reject error:', error);
+    } catch {
       // Fallback to local state update
       setApprovals(prev => prev.map(a => 
         a.id === selectedId ? { ...a, status: 'rejected' as const } : a
@@ -1172,8 +1167,7 @@ export const ApprovalsQueue: React.FC = () => {
           description: `"${selectedApprovalTitle}" has been escalated to the next level.`,
         });
       }
-    } catch (error) {
-      console.error('Escalate error:', error);
+    } catch {
       toast.error('Escalation failed', {
         description: 'Unable to escalate the approval. Please try again.',
       });
@@ -1221,8 +1215,7 @@ export const ApprovalsQueue: React.FC = () => {
         });
         setDelegateModalOpen(false);
       }
-    } catch (error) {
-      console.error('Delegate error:', error);
+    } catch {
       toast.error('Delegation failed', {
         description: 'Unable to delegate the approval. Please try again.',
       });
@@ -1265,8 +1258,7 @@ export const ApprovalsQueue: React.FC = () => {
       });
       
       clearSelection();
-    } catch (error) {
-      console.error('Bulk approve error:', error);
+    } catch {
       // Fallback to local state update
       setApprovals(prev => prev.map(a => 
         selectedIds.has(a.id) ? { ...a, status: 'approved' as const } : a
@@ -1337,8 +1329,7 @@ export const ApprovalsQueue: React.FC = () => {
       clearSelection();
       setRejectModalOpen(false);
       setRejectReason('');
-    } catch (error) {
-      console.error('Bulk reject error:', error);
+    } catch {
       toast.error('Some rejections failed', {
         description: 'Please try again or reject individually.',
       });

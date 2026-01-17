@@ -83,7 +83,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('Error fetching clusters:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch clusters' },
       { status: 500 }

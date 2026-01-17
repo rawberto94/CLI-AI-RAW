@@ -145,9 +145,7 @@ export async function applySecurityMiddleware(
       success: true,
       data,
     };
-  } catch (error) {
-    console.error('[Security Middleware] Error:', error);
-
+  } catch {
     return {
       success: false,
       response: NextResponse.json(
@@ -221,9 +219,7 @@ export function withSecurity<T = any>(
       }
       
       return response;
-    } catch (error) {
-      console.error('[Route Handler] Error:', error);
-
+    } catch {
       const errorResponse = NextResponse.json(
         {
           error: 'INTERNAL_ERROR',

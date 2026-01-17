@@ -121,8 +121,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('Error analyzing document:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

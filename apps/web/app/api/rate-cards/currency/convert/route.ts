@@ -39,8 +39,7 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(converted);
-  } catch (error) {
-    console.error('Error converting currency:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to convert currency' },
       { status: 500 }

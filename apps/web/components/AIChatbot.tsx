@@ -296,8 +296,8 @@ How can I help you today?`;
       }
       const currentId = localStorage.getItem(STORAGE_KEYS.currentSession);
       if (currentId) setCurrentSessionId(currentId);
-    } catch (e) {
-      console.error('Failed to load chat sessions:', e);
+    } catch {
+      // Failed to load chat sessions
     }
   }, []);
 
@@ -318,8 +318,8 @@ How can I help you today?`;
         setChatSessions(newSessions);
         try {
           localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(newSessions));
-        } catch (e) {
-          console.error('Failed to save session:', e);
+        } catch {
+          // Failed to save session
         }
       }
     }
@@ -464,8 +464,8 @@ How can I help you today?`;
     try {
       const updated = chatSessions.filter(s => s.id !== sessionId);
       localStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to delete session:', e);
+    } catch {
+      // Failed to delete session
     }
   }, [currentSessionId, chatSessions]);
 
@@ -581,8 +581,7 @@ How can I help you today?`;
           } else {
             toast.error('Failed to transcribe');
           }
-        } catch (err) {
-          console.error('Transcription error:', err);
+        } catch {
           toast.error('Transcription failed');
         }
       };
@@ -591,8 +590,7 @@ How can I help you today?`;
       mediaRecorder.start();
       setIsRecording(true);
       toast.info('Recording... Click again to stop');
-    } catch (err) {
-      console.error('Microphone access error:', err);
+    } catch {
       toast.error('Could not access microphone');
     }
   }, []);
@@ -771,7 +769,7 @@ How can I help you today?`;
         return;
       }
 
-      console.log('Streaming failed, falling back to standard API');
+      // Streaming failed, falling back to standard API
       setIsStreaming(false);
 
       try {
@@ -812,9 +810,7 @@ How can I help you today?`;
         if (data.suggestions && data.suggestions.length > 0) {
           setSuggestions(data.suggestions);
         }
-      } catch (error) {
-        console.error('AI Chat error:', error);
-        
+      } catch {
         // Retry logic
         if (retryAttempt < RETRY_CONFIG.maxRetries) {
           const delay = Math.min(
@@ -864,9 +860,6 @@ How can I help you today?`;
   };
 
   const handleActionClick = async (action: string) => {
-    // Parse and execute suggested actions
-    console.log('Executing action:', action);
-    
     // Handle workflow actions
     if (action.startsWith('start-renewal:')) {
       const contractId = action.split(':')[1];
@@ -920,8 +913,7 @@ Would you like me to notify the first approver or do anything else?`,
         } else {
           throw new Error('Failed to start workflow');
         }
-      } catch (error) {
-        console.error('Workflow error:', error);
+      } catch {
         toast.error('Failed to start workflow');
         
         const errorMessage: Message = {
@@ -1039,8 +1031,7 @@ Would you like me to notify the first approver or do anything else?`,
                 description: 'The AI knowledge base will be refreshed automatically.',
               });
             }
-          } catch (error) {
-            console.error('Action confirmation error:', error);
+          } catch {
             toast.error('Failed to process action');
             
             const errorMessage: Message = {
@@ -1053,8 +1044,6 @@ Would you like me to notify the first approver or do anything else?`,
           }
           return;
         }
-        
-        console.log('Unknown action:', action);
     }
   };
 
@@ -1484,7 +1473,7 @@ Would you like me to notify the first approver or do anything else?`,
                             <button
                               key={idx}
                               className="text-xs text-blue-600 hover:underline block"
-                              onClick={() => console.log('Navigate to:', source)}
+                              onClick={() => {}}
                             >
                           • {source}
                         </button>

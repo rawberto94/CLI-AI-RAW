@@ -67,8 +67,7 @@ export async function GET(request: NextRequest) {
       total: contractComments.length,
       unresolved: contractComments.filter(c => !c.isResolved).length,
     });
-  } catch (error) {
-    console.error('Error fetching comments:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch comments' },
       { status: 500 }
@@ -117,8 +116,7 @@ export async function POST(request: NextRequest) {
     contractComments.push(comment);
 
     return NextResponse.json({ comment }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating comment:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create comment' },
       { status: 500 }
@@ -158,8 +156,7 @@ export async function PUT(request: NextRequest) {
     contractComments[index] = updatedComment;
 
     return NextResponse.json({ comment: updatedComment });
-  } catch (error) {
-    console.error('Error updating comment:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update comment' },
       { status: 500 }
@@ -197,8 +194,7 @@ export async function DELETE(request: NextRequest) {
     comments.set(contractId, filtered);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting comment:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete comment' },
       { status: 500 }

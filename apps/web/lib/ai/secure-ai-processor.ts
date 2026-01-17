@@ -33,7 +33,7 @@
  *
  *   // With streaming progress:
  *   const result = await processDocumentWithStreaming(fileBuffer, tenantId, {
- *     onProgress: (stage, progress) => console.log(`${stage}: ${progress}%`)
+ *     onProgress: (stage, progress) => {}
  *   });
  */
 
@@ -225,7 +225,6 @@ async function withRetry<T>(
         maxDelay
       );
 
-      console.log(`⚠️ Retry attempt ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms`);
       await sleep(delay);
     }
   }
@@ -374,12 +373,7 @@ export async function analyzeContractSecurely(
   const anonymizer = new ContractAnonymizer();
 
   // Step 1: Anonymize the contract text
-  const { anonymizedText, mappings, stats } = anonymizer.anonymize(contractText);
-
-  if (debug) {
-    console.log('📝 Anonymization Stats:', stats);
-    console.log('📝 Sample mappings:', mappings.slice(0, 5));
-  }
+  const { anonymizedText, mappings } = anonymizer.anonymize(contractText);
 
   // Step 2: Build the prompt with anonymized text
   const systemPrompt = `You are a contract analysis assistant. Analyze contracts and extract key information.
@@ -421,10 +415,6 @@ Respond in this JSON format:
 }`;
 
   // Step 3: Call AI with anonymized text (with retry logic)
-  if (debug) {
-    console.log('🤖 Sending anonymized text to AI...');
-    console.log('📤 Text preview:', anonymizedText.substring(0, 500) + '...');
-  }
 
   const response = await withRetry(async () => {
     return openai.chat.completions.create({
@@ -440,16 +430,8 @@ Respond in this JSON format:
 
   const aiResponseText = response.choices[0]?.message?.content || '{}';
 
-  if (debug) {
-    console.log('📥 AI Response (anonymized):', aiResponseText.substring(0, 500) + '...');
-  }
-
   // Step 4: De-anonymize the response
   const realResponseText = anonymizer.deAnonymize(aiResponseText, mappings);
-
-  if (debug) {
-    console.log('✅ De-anonymized response:', realResponseText.substring(0, 500) + '...');
-  }
 
   // Step 5: Parse and return
   try {
@@ -464,8 +446,7 @@ Respond in this JSON format:
     }
 
     return parsed;
-  } catch (error) {
-    console.error('Failed to parse AI response:', error);
+  } catch {
     throw new Error('Failed to parse contract analysis result');
   }
 }
@@ -588,26 +569,13 @@ export async function processDocumentSecurely(
   const { debug = false } = options;
 
   // Step 1: EU-compliant OCR with anonymization
-  if (debug) {
-    console.log('📄 Step 1: Performing EU-compliant OCR...');
-    logProviderStatus();
-  }
 
   const ocrResult = await secureOCRWithAnonymization(fileBuffer, {
     ...options,
     anonymize: false, // We'll anonymize separately for more control
   });
 
-  if (debug) {
-    console.log(`✅ OCR completed with ${ocrResult.provider} (${ocrResult.region})`);
-    console.log(`📊 Confidence: ${(ocrResult.confidence * 100).toFixed(1)}%`);
-    console.log(`📝 Text length: ${ocrResult.text.length} characters`);
-  }
-
   // Step 2: Analyze with AI (includes anonymization)
-  if (debug) {
-    console.log('🤖 Step 2: Analyzing with AI (anonymized)...');
-  }
 
   const analysisResult = await analyzeContractSecurely(ocrResult.text, {
     model: options.model,
@@ -709,27 +677,15 @@ export async function analyzeContractIntelligently(
   const extractionHintsMap = detectedType ? getExtractionHintsForType(detectedType.id) : {};
   const extractionHints = Object.values(extractionHintsMap);
 
-  if (debug) {
-    console.log(`🔍 Detected contract type: ${detectedType?.name || 'unknown'}`);
-    console.log(`💡 Using ${extractionHints.length} extraction hints`);
-  }
-
   // Step 2: Anonymize the contract text
   const anonymizer = new ContractAnonymizer();
   const { anonymizedText, mappings, stats } = anonymizer.anonymize(contractText);
-
-  if (debug) {
-    console.log('📝 Anonymization Stats:', stats);
-  }
 
   // Step 3: Build enhanced prompt with type-specific hints
   const systemPrompt = buildEnhancedSystemPrompt(detectedType?.name || null, extractionHints);
   const userPrompt = buildEnhancedUserPrompt(anonymizedText, detectedType?.name || null);
 
   // Step 4: Call AI
-  if (debug) {
-    console.log('🤖 Sending to AI for analysis...');
-  }
 
   const response = await openai.chat.completions.create({
     model,
@@ -756,8 +712,7 @@ export async function analyzeContractIntelligently(
         baseAnalysis.totalValue = numericValue;
       }
     }
-  } catch (error) {
-    console.error('Failed to parse AI response:', error);
+  } catch {
     throw new Error('Failed to parse contract analysis result');
   }
 
@@ -767,14 +722,9 @@ export async function analyzeContractIntelligently(
 
   if (extractMetadata && tenantId) {
     try {
-      if (debug) {
-        console.log('📊 Performing schema-aware metadata extraction...');
-      }
-
       // Note: Full metadata extraction requires fetching the schema and using the original document text
       // This is a simplified version that skips the extraction for now
       // TODO: Implement proper schema loading and extraction
-      console.log('⚠️ Schema-aware metadata extraction requires schema configuration');
 
       /* Full implementation would be:
       const schemaService = await import('./services/metadata-schema.service');
@@ -786,8 +736,7 @@ export async function analyzeContractIntelligently(
         // Calibrate and validate as needed
       }
       */
-    } catch (error) {
-      console.error('Metadata extraction error:', error);
+    } catch {
       // Don't fail the whole analysis if metadata extraction fails
     }
   }
@@ -952,25 +901,13 @@ export async function processDocumentWithMetadata(
   const { debug = false } = options;
 
   // Step 1: EU-compliant OCR
-  if (debug) {
-    console.log('📄 Step 1: Performing EU-compliant OCR...');
-    logProviderStatus();
-  }
 
   const ocrResult = await secureOCRWithAnonymization(fileBuffer, {
     ...options,
     anonymize: false,
   });
 
-  if (debug) {
-    console.log(`✅ OCR completed with ${ocrResult.provider} (${ocrResult.region})`);
-    console.log(`📊 Confidence: ${(ocrResult.confidence * 100).toFixed(1)}%`);
-  }
-
   // Step 2: Intelligent analysis with metadata extraction
-  if (debug) {
-    console.log('🤖 Step 2: Intelligent analysis with metadata extraction...');
-  }
 
   const analysisResult = await analyzeContractIntelligently(ocrResult.text, {
     model: options.model,
@@ -1055,9 +992,6 @@ export async function processDocumentAdvanced(
   const report = (stage: ProcessingStage, progress: number, message?: string) => {
     if (onProgress) {
       onProgress(stage, progress, message);
-    }
-    if (debug) {
-      console.log(`📊 ${stage}: ${progress}% ${message || ''}`);
     }
   };
 
@@ -1148,8 +1082,7 @@ export async function processDocumentAdvanced(
         baseAnalysis.totalValue = numericValue;
       }
     }
-  } catch (error) {
-    console.error('Failed to parse AI response:', error);
+  } catch {
     throw new Error('Failed to parse contract analysis result');
   }
 
@@ -1204,8 +1137,8 @@ export async function processDocumentAdvanced(
             extractedFields,
             ocrResult.text
           );
-        } catch (error) {
-          console.error('Metadata extraction error:', error);
+        } catch {
+          // Metadata extraction failed silently
         }
       })()
     );
@@ -1221,8 +1154,8 @@ export async function processDocumentAdvanced(
             ...categorizationOptions,
             contractId: options.contractId,
           });
-        } catch (error) {
-          console.error('Categorization error:', error);
+        } catch {
+          // Categorization failed silently
         }
       })()
     );

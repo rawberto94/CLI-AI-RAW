@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to get supplier analytics data:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

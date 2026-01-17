@@ -48,28 +48,28 @@ const STATE_STYLES: Record<InputState, {
   text: string;
 }> = {
   default: {
-    border: 'border-slate-200 focus:border-indigo-400',
+    border: 'border-slate-200 dark:border-slate-600 focus:border-indigo-400 dark:focus:border-indigo-500',
     ring: 'focus:ring-indigo-500/20',
-    icon: 'text-slate-400',
-    text: 'text-slate-600',
+    icon: 'text-slate-400 dark:text-slate-500',
+    text: 'text-slate-600 dark:text-slate-400',
   },
   error: {
-    border: 'border-red-300 focus:border-red-400',
+    border: 'border-red-300 dark:border-red-700 focus:border-red-400 dark:focus:border-red-500',
     ring: 'focus:ring-red-500/20',
-    icon: 'text-red-500',
-    text: 'text-red-600',
+    icon: 'text-red-500 dark:text-red-400',
+    text: 'text-red-600 dark:text-red-400',
   },
   success: {
-    border: 'border-emerald-300 focus:border-emerald-400',
+    border: 'border-emerald-300 dark:border-emerald-700 focus:border-emerald-400 dark:focus:border-emerald-500',
     ring: 'focus:ring-emerald-500/20',
-    icon: 'text-emerald-500',
-    text: 'text-emerald-600',
+    icon: 'text-emerald-500 dark:text-emerald-400',
+    text: 'text-emerald-600 dark:text-emerald-400',
   },
   warning: {
-    border: 'border-amber-300 focus:border-amber-400',
+    border: 'border-amber-300 dark:border-amber-700 focus:border-amber-400 dark:focus:border-amber-500',
     ring: 'focus:ring-amber-500/20',
-    icon: 'text-amber-500',
-    text: 'text-amber-600',
+    icon: 'text-amber-500 dark:text-amber-400',
+    text: 'text-amber-600 dark:text-amber-400',
   },
 };
 
@@ -125,13 +125,13 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(({
       {/* Label */}
       {label && (
         <div className="flex items-center justify-between">
-          <label htmlFor={id} className="text-sm font-medium text-slate-700">
+          <label htmlFor={id} className="text-sm font-medium text-slate-700 dark:text-slate-300">
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
           {helpText && (
             <Tooltip content={helpText}>
-              <HelpCircle className="w-4 h-4 text-slate-400 cursor-help" />
+              <HelpCircle className="w-4 h-4 text-slate-400 dark:text-slate-500 cursor-help" />
             </Tooltip>
           )}
         </div>
@@ -139,7 +139,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(({
       
       {/* Hint */}
       {hint && !message && (
-        <p className="text-xs text-slate-500">{hint}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>
       )}
       
       {/* Input */}
@@ -154,8 +154,9 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(({
           ref={ref}
           id={id}
           className={cn(
-            'w-full rounded-lg border bg-white',
-            'placeholder:text-slate-400',
+            'w-full rounded-lg border bg-white dark:bg-slate-800',
+            'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+            'dark:text-slate-100',
             'focus:outline-none focus:ring-2',
             'transition-all duration-200',
             sizeStyles[size].input,
@@ -242,7 +243,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-10 top-[2.1rem] p-1 text-slate-400 hover:text-slate-600 transition-colors"
+          className="absolute right-10 top-[2.1rem] p-1 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           tabIndex={-1}
         >
           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -258,13 +259,13 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
                 key={i}
                 className={cn(
                   'h-1 flex-1 rounded-full transition-colors',
-                  i < strength ? strengthColors[strength - 1] : 'bg-slate-200'
+                  i < strength ? strengthColors[strength - 1] : 'bg-slate-200 dark:bg-slate-700'
                 )}
               />
             ))}
           </div>
           {strength > 0 && (
-            <p className="text-xs text-slate-500">{strengthLabels[strength - 1]}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{strengthLabels[strength - 1]}</p>
           )}
         </div>
       )}
@@ -310,20 +311,20 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
       {/* Label */}
       {label && (
         <div className="flex items-center justify-between">
-          <label htmlFor={id} className="text-sm font-medium text-slate-700">
+          <label htmlFor={id} className="text-sm font-medium text-slate-700 dark:text-slate-300">
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
           {helpText && (
             <Tooltip content={helpText}>
-              <HelpCircle className="w-4 h-4 text-slate-400 cursor-help" />
+              <HelpCircle className="w-4 h-4 text-slate-400 dark:text-slate-500 cursor-help" />
             </Tooltip>
           )}
         </div>
       )}
       
       {hint && !message && (
-        <p className="text-xs text-slate-500">{hint}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>
       )}
       
       <div className="relative">
@@ -333,8 +334,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
           value={value}
           maxLength={maxLength}
           className={cn(
-            'w-full min-h-[100px] px-4 py-3 rounded-lg border bg-white',
-            'placeholder:text-slate-400',
+            'w-full min-h-[100px] px-4 py-3 rounded-lg border bg-white dark:bg-slate-800',
+            'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+            'dark:text-slate-100',
             'focus:outline-none focus:ring-2',
             'transition-all duration-200 resize-y',
             styles.border,
@@ -347,7 +349,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
         
         {/* Character count */}
         {showCount && maxLength && (
-          <div className="absolute bottom-2 right-2 text-xs text-slate-400">
+          <div className="absolute bottom-2 right-2 text-xs text-slate-400 dark:text-slate-500">
             {charCount}/{maxLength}
           </div>
         )}
@@ -419,27 +421,28 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
     <div className={cn('space-y-1.5', className)}>
       {label && (
         <div className="flex items-center justify-between">
-          <label htmlFor={id} className="text-sm font-medium text-slate-700">
+          <label htmlFor={id} className="text-sm font-medium text-slate-700 dark:text-slate-300">
             {label}
             {required && <span className="text-red-500 ml-1">*</span>}
           </label>
           {helpText && (
             <Tooltip content={helpText}>
-              <HelpCircle className="w-4 h-4 text-slate-400 cursor-help" />
+              <HelpCircle className="w-4 h-4 text-slate-400 dark:text-slate-500 cursor-help" />
             </Tooltip>
           )}
         </div>
       )}
       
       {hint && !message && (
-        <p className="text-xs text-slate-500">{hint}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>
       )}
       
       <select
         ref={ref}
         id={id}
         className={cn(
-          'w-full px-4 rounded-lg border bg-white',
+          'w-full px-4 rounded-lg border bg-white dark:bg-slate-800',
+          'dark:text-slate-100',
           'focus:outline-none focus:ring-2',
           'transition-all duration-200',
           'appearance-none cursor-pointer',
@@ -510,7 +513,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
               'w-5 h-5 rounded border-2 appearance-none cursor-pointer',
               'transition-all duration-200',
               'checked:bg-indigo-600 checked:border-indigo-600',
-              error ? 'border-red-300' : 'border-slate-300',
+              error ? 'border-red-300 dark:border-red-700' : 'border-slate-300 dark:border-slate-600',
               'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500/30'
             )}
             {...props}
@@ -518,14 +521,14 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
           <Check className="absolute w-3 h-3 text-white pointer-events-none opacity-0 [input:checked+&]:opacity-100" />
         </div>
         <div>
-          <span className="text-sm font-medium text-slate-700">{label}</span>
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</span>
           {description && (
-            <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
           )}
         </div>
       </label>
       {error && (
-        <p className="text-xs text-red-600 ml-8">{error}</p>
+        <p className="text-xs text-red-600 dark:text-red-400 ml-8">{error}</p>
       )}
     </div>
   );

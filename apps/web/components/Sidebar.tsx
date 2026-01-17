@@ -453,9 +453,12 @@ export function Sidebar() {
     localStorage.removeItem(welcomeBannerKey);
     localStorage.removeItem(legacyWelcomeBannerKey);
     localStorage.removeItem('contigo-tutorial-completed');
+    localStorage.removeItem('contigo-welcome-tour-completed');
+    localStorage.removeItem('contigo-welcome-tour-skipped');
+    localStorage.removeItem('contigo-welcome-dont-show');
     setShowTutorial(true);
-    // Dispatch event to trigger the main tutorial
-    window.dispatchEvent(new CustomEvent('show-tutorial'));
+    // Dispatch event to trigger the welcome tour
+    window.dispatchEvent(new CustomEvent('contigo-start-tour'));
   }, []);
   
   return (
@@ -621,8 +624,8 @@ export function Sidebar() {
               whileHover={{ x: 2 }}
               className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
             >
-              <HelpCircle className="h-4 w-4" />
-              <span className="font-medium">Quick Start Guide</span>
+              <PlayCircle className="h-4 w-4" />
+              <span className="font-medium">Take the Tour</span>
             </motion.button>
             
             {/* Learning Center Link */}

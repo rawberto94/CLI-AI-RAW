@@ -98,6 +98,14 @@ const ROUTE_CONFIG: Record<string, { label: string; icon: React.ComponentType<{ 
   '/monitoring': { label: 'Monitoring', icon: Activity },
   '/jobs': { label: 'Jobs', icon: Activity },
   '/runs': { label: 'Runs', icon: Activity },
+  '/obligations': { label: 'Obligations', icon: Target },
+  '/drafting/copilot': { label: 'AI Copilot', icon: Sparkles },
+  '/contracts/upload': { label: 'Upload', icon: Upload },
+  // Contract-specific routes (dynamic)
+  '/legal-review': { label: 'Legal Review', icon: Shield },
+  '/redline': { label: 'Redline Editor', icon: Edit3 },
+  '/renewal': { label: 'Renewal', icon: Calendar },
+  '/amendment': { label: 'Amendment', icon: FileText },
 };
 
 // ============================================================================

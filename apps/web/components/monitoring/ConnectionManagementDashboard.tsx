@@ -70,8 +70,8 @@ export function ConnectionManagementDashboard() {
       if (result.success) {
         setMetrics(result.data);
       }
-    } catch (error) {
-      console.error('Error fetching metrics:', error);
+    } catch {
+      // Failed to fetch metrics
     }
   };
 
@@ -82,8 +82,8 @@ export function ConnectionManagementDashboard() {
       if (result.success) {
         setStaleData(result.data);
       }
-    } catch (error) {
-      console.error('Error fetching stale connections:', error);
+    } catch {
+      // Failed to fetch stale connections
     }
   };
 
@@ -100,8 +100,8 @@ export function ConnectionManagementDashboard() {
         // Refresh data
         await Promise.all([fetchMetrics(), fetchStaleConnections()]);
       }
-    } catch (error) {
-      console.error('Error performing cleanup:', error);
+    } catch {
+      // Cleanup failed silently
     } finally {
       setCleanupLoading(false);
     }

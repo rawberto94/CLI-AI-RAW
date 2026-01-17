@@ -47,8 +47,7 @@ export async function GET(request: NextRequest) {
       accountName: connection.accountName,
       expiresAt: connection.tokenExpiresAt,
     });
-  } catch (error) {
-    console.error('Google Drive status error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get status' },
       { status: 500 }
@@ -149,8 +148,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('Google Drive action error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -178,8 +176,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Google Drive disconnected',
     });
-  } catch (error) {
-    console.error('Google Drive disconnect error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to disconnect' },
       { status: 500 }

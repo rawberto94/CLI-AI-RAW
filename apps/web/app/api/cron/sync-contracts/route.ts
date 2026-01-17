@@ -323,9 +323,6 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
-    // Log sync completion
-    console.log(`[CRON] Contract sync completed in ${duration}ms`, results);
-
     return NextResponse.json({
       success: true,
       data: {
@@ -335,8 +332,7 @@ export async function POST(request: NextRequest) {
         completedAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error('[CRON] Sync error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

@@ -57,7 +57,6 @@ export function devOnlyMockData<T>(
   productionFallback: T | null = null
 ): T | null {
   if (isDevelopment() || isMockDataEnabled()) {
-    console.warn('[Dev Mode] Using mock data - this should not appear in production');
     return mockData;
   }
   return productionFallback;
@@ -154,14 +153,11 @@ export async function withDatabaseFallback<T>({
   try {
     const data = await query();
     return { data, fromDatabase: true };
-  } catch (error) {
-    console.error(`[Database Error] ${errorContext}:`, error);
-    
+  } catch (error: unknown) {
     if (isProduction() && throwOnProductionError) {
       throw error;
     }
     
-    console.warn(`[Dev Mode] Returning empty fallback for: ${errorContext}`);
     return { data: emptyFallback, fromDatabase: false };
   }
 }
@@ -193,9 +189,7 @@ export async function withExternalService<T>({
   try {
     const data = await call();
     return { data, available: true };
-  } catch (error) {
-    console.error(`[External Service Error] ${serviceName}:`, error);
-    
+  } catch {
     if (required) {
       throw new Error(`Required service ${serviceName} is unavailable`);
     }
@@ -230,19 +224,14 @@ export function shouldUseMockData(feature: string): boolean {
  */
 export function logMockDataUsage(context: string, details?: Record<string, unknown>): void {
   if (isProduction()) {
-    console.error('[SECURITY WARNING] Mock data function called in production:', context);
     return;
   }
-  
-  console.warn(`[Dev Mode] Using mock data for: ${context}`, details || '');
 }
 
 /**
  * Log when production data source is unavailable
  */
 export function logDataSourceUnavailable(source: string, error: unknown): void {
-  console.error(`[Data Source Unavailable] ${source}:`, error);
-  
   // In production, this should be sent to monitoring
   if (isProduction()) {
     // TODO: Send to monitoring service (e.g., Sentry, DataDog)

@@ -102,8 +102,7 @@ export default function RateCardEntriesPage() {
       await fetch(`/api/rate-cards/${rateCardToDelete}`, { method: 'DELETE' });
       crossModule.onRateCardChange();
       toast.success('Rate card deleted successfully');
-    } catch (error) {
-      console.error('Error deleting rate card:', error);
+    } catch {
       toast.error('Failed to delete rate card');
     } finally {
       setRateCardToDelete(null);

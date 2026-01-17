@@ -166,7 +166,6 @@ export async function POST(
 
         controller.close();
       } catch (error: unknown) {
-        console.error('Streaming improvement error:', error);
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ 
             type: 'error', 

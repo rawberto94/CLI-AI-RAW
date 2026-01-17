@@ -95,7 +95,6 @@ export class EnhancedSearchIndexationService {
    * Index a contract and all its artifacts for comprehensive search
    */
   async indexContract(contractId: string): Promise<IndexationResult> {
-    console.log(`🔍 Starting comprehensive indexation for contract ${contractId}`);
     const startTime = Date.now();
     const errors: string[] = [];
     
@@ -124,7 +123,6 @@ export class EnhancedSearchIndexationService {
       await this.updateContractSearchMetadata(contractId, searchableContent);
       
       const processingTime = Date.now() - startTime;
-      console.log(`✅ Successfully indexed contract ${contractId} in ${processingTime}ms`);
       
       return {
         contractId,
@@ -135,7 +133,6 @@ export class EnhancedSearchIndexationService {
         errors: errors.length > 0 ? errors : undefined
       };
     } catch (error) {
-      console.error(`❌ Failed to index contract ${contractId}:`, error);
       errors.push(error instanceof Error ? error.message : 'Unknown error');
       
       return {
@@ -189,8 +186,8 @@ export class EnhancedSearchIndexationService {
           totalConfidence += artifactConfidence;
           confidenceCount++;
         }
-      } catch (error) {
-        console.warn(`Failed to process artifact ${artifact.type} for search:`, error);
+      } catch {
+        // Failed to process artifact for search - continue processing
       }
     }
 
@@ -238,7 +235,7 @@ export class EnhancedSearchIndexationService {
         this.processOverviewArtifact(data, searchableContent);
         break;
       default:
-        console.log(`Unknown artifact type: ${artifact.type}`);
+        // Unknown artifact type - skip
     }
   }
 
@@ -457,10 +454,7 @@ export class EnhancedSearchIndexationService {
           metadata = ${JSON.stringify(metadata)}::jsonb,
           updated_at = NOW()
       `;
-
-      console.log(`📝 Updated search index for contract ${searchableContent.contractId}`);
     } catch (error) {
-      console.error('Failed to update search index:', error);
       throw error;
     }
   }
@@ -486,8 +480,7 @@ export class EnhancedSearchIndexationService {
           }
         }
       });
-    } catch (error) {
-      console.warn('Failed to update contract search metadata:', error);
+    } catch {
       // Don't throw - this is not critical for indexation
     }
   }
@@ -554,9 +547,7 @@ export class EnhancedSearchIndexationService {
         }
       }));
     } catch (error) {
-      console.error('Search failed:', error);
-      throw error;
-    }
+
   }
 
   /**
@@ -593,7 +584,6 @@ export class EnhancedSearchIndexationService {
    * Batch index multiple contracts
    */
   async batchIndexContracts(contractIds: string[]): Promise<IndexationResult[]> {
-    console.log(`🔄 Starting batch indexation for ${contractIds.length} contracts`);
     const results: IndexationResult[] = [];
 
     for (const contractId of contractIds) {
@@ -601,7 +591,6 @@ export class EnhancedSearchIndexationService {
         const result = await this.indexContract(contractId);
         results.push(result);
       } catch (error) {
-        console.error(`Failed to index contract ${contractId}:`, error);
         results.push({
           contractId,
           indexed: false,
@@ -612,9 +601,6 @@ export class EnhancedSearchIndexationService {
         });
       }
     }
-
-    const successCount = results.filter(r => r.indexed).length;
-    console.log(`✅ Batch indexation complete: ${successCount}/${contractIds.length} contracts indexed`);
 
     return results;
   }
@@ -656,8 +642,7 @@ export class EnhancedSearchIndexationService {
         lastIndexed: result.last_indexed ? new Date(result.last_indexed) : null,
         indexedByType: result.indexed_by_type || {}
       };
-    } catch (error) {
-      console.error('Failed to get indexation stats:', error);
+    } catch {
       return {
         totalIndexed: 0,
         averageConfidence: 0,
@@ -675,9 +660,7 @@ export class EnhancedSearchIndexationService {
       await this.databaseManager.prisma.$executeRaw`
         DELETE FROM contract_search_index WHERE contract_id = ${contractId}
       `;
-      console.log(`🗑️ Removed contract ${contractId} from search index`);
     } catch (error) {
-      console.error(`Failed to remove contract ${contractId} from index:`, error);
       throw error;
     }
   }

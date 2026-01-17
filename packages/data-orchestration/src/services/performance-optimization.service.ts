@@ -60,8 +60,7 @@ export class PerformanceOptimizationService {
       await this.redis.setex(cacheKey, config.ttl, JSON.stringify(result));
 
       return result;
-    } catch (error) {
-      console.error('Cache error:', error);
+    } catch {
       return fn();
     }
   }
@@ -82,8 +81,7 @@ export class PerformanceOptimizationService {
 
       await this.redis.del(...keys);
       return keys.length;
-    } catch (error) {
-      console.error('Cache invalidation error:', error);
+    } catch {
       return 0;
     }
   }
@@ -249,10 +247,8 @@ export class PerformanceOptimizationService {
     const result = await fn();
     const duration = Date.now() - start;
 
-    // Log slow queries
-    if (duration > 1000) {
-      console.warn(`Slow query detected: ${queryName} took ${duration}ms`);
-    }
+    // Slow query threshold: 1000ms
+    // Duration tracked in returned object for monitoring
 
     return { result, duration };
   }

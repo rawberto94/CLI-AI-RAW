@@ -282,8 +282,7 @@ export class AIInsightsGeneratorService {
     try {
       const aiInsights = await this.callOpenAI(PromptTemplates.benchmarkInsights(context));
       return this.parseBenchmarkInsights(rateCardEntryId, aiInsights, context);
-    } catch (error) {
-      console.error('Error generating AI insights:', error);
+    } catch {
       return this.generateFallbackInsights(rateCardEntryId, context);
     }
   }
@@ -365,8 +364,7 @@ export class AIInsightsGeneratorService {
         marketTrends,
         competitorRates: competitorData.length > 0 ? competitorData : undefined,
       };
-    } catch (error) {
-      console.error('Error enriching context:', error);
+    } catch {
       return baseContext;
     }
   }
@@ -391,8 +389,7 @@ export class AIInsightsGeneratorService {
         dataPoints: context.cohortSize,
         generatedAt: new Date(),
       };
-    } catch (error) {
-      console.error('Error parsing AI response:', error);
+    } catch {
       return this.generateFallbackInsights(rateCardEntryId, context);
     }
   }
@@ -699,8 +696,7 @@ export class AIInsightsGeneratorService {
 
       const data = await response.json();
       return data.choices[0]?.message?.content || '';
-    } catch (error) {
-      console.error('Error calling OpenAI API:', error);
+    } catch (error: unknown) {
       throw error;
     }
   }

@@ -238,8 +238,7 @@ export class AutoPopulateService {
         processingTime: Date.now() - startTime,
       };
 
-    } catch (error) {
-      console.error('Auto-populate error:', error);
+    } catch (error: unknown) {
       return {
         contractId,
         tenantId,
@@ -248,7 +247,7 @@ export class AutoPopulateService {
         appliedFields: [],
         reviewRequiredFields: [],
         skippedFields: [],
-        errors: [(error as Error).message],
+        errors: [error instanceof Error ? error.message : 'Unknown error'],
         processingTime: Date.now() - startTime,
       };
     }
@@ -456,11 +455,8 @@ export class AutoPopulateService {
           },
         });
       }
-
-      console.log(`✅ Auto-applied ${Object.keys(appliedFields).length} fields to contract ${contractId}`);
-    } catch (error) {
-      console.error('Error applying metadata:', error);
-      throw error;
+    } catch {
+      throw new Error('Failed to apply metadata');
     }
   }
 
@@ -503,11 +499,8 @@ export class AutoPopulateService {
           },
         });
       }
-
-      console.log(`✅ Applied reviewed field "${fieldName}" to contract ${contractId}`);
-    } catch (error) {
-      console.error('Error applying single field:', error);
-      throw error;
+    } catch {
+      throw new Error('Failed to apply single field');
     }
   }
 
@@ -515,14 +508,13 @@ export class AutoPopulateService {
    * Send notification
    */
   private async sendNotification(
-    type: 'complete' | 'review_required',
-    contractId: string,
-    tenantId: string,
-    fieldCount: number
+    _type: 'complete' | 'review_required',
+    _contractId: string,
+    _tenantId: string,
+    _fieldCount: number
   ): Promise<void> {
     // TODO: Implement actual notification system
     // This could integrate with email, Slack, in-app notifications, etc.
-    console.log(`📬 Notification: ${type} for contract ${contractId} - ${fieldCount} fields`);
   }
 
   /**

@@ -28,8 +28,8 @@ export function DashboardKPICards() {
         const data = await response.json();
         setMetrics(data);
       }
-    } catch (error) {
-      console.error('Error fetching dashboard metrics:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }

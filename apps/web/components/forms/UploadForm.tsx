@@ -86,7 +86,6 @@ export function UploadForm({ onSubmit, defaultValues, clients = [] }: UploadForm
     setAutoSaveStatus("saving");
     const timeout = setTimeout(() => {
       // Here you would call your auto-save API
-      console.log("Auto-saving draft:", watchedValues);
       setAutoSaveStatus("saved");
       setTimeout(() => setAutoSaveStatus("idle"), 2000);
     }, 2000);
@@ -163,8 +162,8 @@ export function UploadForm({ onSubmit, defaultValues, clients = [] }: UploadForm
 
       setUploadProgress(100);
       clearInterval(progressInterval);
-    } catch (error) {
-      console.error("Upload failed:", error);
+    } catch {
+      // Error handled silently
     } finally {
       setIsSubmitting(false);
     }

@@ -53,8 +53,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         session.user.tenantId,
         monthsBack
       );
-    } catch (error) {
-      console.error('Error analyzing supplier trends:', error);
+    } catch {
       // Continue without trends
     }
 
@@ -68,8 +67,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           maxRecommendations: 5,
           minCoveragePercent: 70
         });
-      } catch (error) {
-        console.error('Error getting alternative suppliers:', error);
+      } catch {
         // Continue without alternatives
       }
     }
@@ -83,8 +81,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           session.user.tenantId,
           10 // 10% threshold
         );
-      } catch (error) {
-        console.error('Error detecting rate increases:', error);
+      } catch {
         // Continue without analysis
       }
     }
@@ -97,10 +94,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       alternatives,
       generatedAt: new Date().toISOString()
     });
-  } catch (error: unknown) {
-    console.error('Error fetching supplier intelligence:', error);
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch supplier intelligence' },
+      { error: 'Failed to fetch supplier intelligence' },
       { status: 500 }
     );
   }

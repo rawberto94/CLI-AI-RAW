@@ -158,8 +158,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const entry = await rateCardService.getEntry(id, tenantId);
 
     return NextResponse.json(entry);
-  } catch (error) {
-    console.error('Error getting rate card:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Rate card not found', details: error instanceof Error ? error.message : String(error) },
       { status: 404 }
@@ -200,8 +199,7 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
     const entry = await rateCardService.updateEntry(id, body, tenantId);
 
     return NextResponse.json(entry);
-  } catch (error) {
-    console.error('Error updating rate card:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to update rate card', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }
@@ -233,8 +231,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     await rateCardService.deleteEntry(id, tenantId);
 
     return NextResponse.json({ success: true, message: 'Rate card deleted' });
-  } catch (error) {
-    console.error('Error deleting rate card:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to delete rate card', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }

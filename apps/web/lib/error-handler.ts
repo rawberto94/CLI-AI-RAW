@@ -129,16 +129,6 @@ export function handleError(
     }
   }
 
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.error('[Error Handler]', {
-      error,
-      context,
-      eventId,
-      userMessage,
-    });
-  }
-
   return {
     message,
     userMessage,

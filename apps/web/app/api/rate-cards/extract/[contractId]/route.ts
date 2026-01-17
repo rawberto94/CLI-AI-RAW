@@ -59,8 +59,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
       );
     }
 
-    console.log(`🔍 Starting rate card extraction for contract: ${contract.fileName}`);
-
     // Extract rate cards using AI
     const extractionResult = await rateCardExtractionService.extractFromContract(
       contractId,
@@ -93,8 +91,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
             roleSubCategory: standardization.subCategory,
             standardizationConfidence: standardization.confidence,
           };
-        } catch (error) {
-          console.error(`Error standardizing role ${rate.roleOriginal}:`, error);
+        } catch {
           return {
             ...rate,
             roleStandardized: rate.roleOriginal,
@@ -134,13 +131,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
       },
     };
 
-    console.log(
-      `✅ Extracted ${enrichedRates.length} rate cards from contract ${contractId}`
-    );
-
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error in rate card extraction:', error);
     return NextResponse.json(
       {
         error: 'Failed to extract rate cards',
@@ -169,7 +161,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ contr
     }
 
     // Check if rate cards already exist for this contract
-    const existingRateCards = await (prisma as any).rateCardEntry.findMany({
+    const existingRateCards = await prisma.rateCardEntry.findMany({
       where: {
         contractId,
         tenantId,
@@ -192,8 +184,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ contr
       count: existingRateCards.length,
       rateCards: existingRateCards,
     });
-  } catch (error) {
-    console.error('Error checking existing rate cards:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to check existing rate cards',

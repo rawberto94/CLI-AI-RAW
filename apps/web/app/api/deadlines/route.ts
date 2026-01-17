@@ -257,8 +257,7 @@ export async function GET(request: NextRequest) {
         }
       });
 
-    } catch (dbError) {
-      console.warn('Database query failed, using mock data:', dbError);
+    } catch {
       return NextResponse.json({
         success: true,
         deadlines: getMockDeadlines(),
@@ -273,8 +272,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-  } catch (error) {
-    console.error('Error fetching deadlines:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

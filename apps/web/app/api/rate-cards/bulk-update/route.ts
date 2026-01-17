@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     updateData.editedAt = new Date();
 
     // Perform bulk update
-    const result = await (prisma as any).rateCardEntry.updateMany({
+    const result = await prisma.rateCardEntry.updateMany({
       where: {
         id: { in: ids },
         tenantId,
@@ -89,18 +89,16 @@ export async function POST(request: NextRequest) {
     // Create audit log entries
     await Promise.all(
       ids.map((id) =>
-        (prisma as any).auditLog.create({
+        prisma.auditLog.create({
           data: {
             tenantId,
             userId,
             action: 'BULK_UPDATE',
             entityType: 'RateCardEntry',
             entityId: id,
-            changes: JSON.stringify(updates),
-            timestamp: new Date(),
+            changes: updates,
           },
-        }).catch((error: unknown) => {
-          console.error(`Failed to create audit log for ${id}:`, error);
+        }).catch(() => {
           // Don't fail the whole operation if audit log fails
         })
       )
@@ -118,8 +116,7 @@ export async function POST(request: NextRequest) {
       updatedCount: result.count,
       message: `Successfully updated ${result.count} rate card(s)`,
     });
-  } catch (error) {
-    console.error('Error bulk updating rate cards:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to bulk update rate cards', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

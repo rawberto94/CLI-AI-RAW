@@ -189,8 +189,8 @@ export default function TemplateEditorPage() {
         { name: 'startDate', label: 'Start Date', type: 'date', required: true },
         { name: 'endDate', label: 'End Date', type: 'date', required: true },
       ])
-    } catch (error) {
-      console.error('Failed to load template:', error)
+    } catch {
+      // Template loading failed silently
     } finally {
       setLoading(false)
     }
@@ -234,8 +234,8 @@ export default function TemplateEditorPage() {
       // In production, save to API
       await new Promise(resolve => setTimeout(resolve, 1000))
       router.push('/templates')
-    } catch (error) {
-      console.error('Failed to save template:', error)
+    } catch {
+      // Save failed silently
     } finally {
       setSaving(false)
     }

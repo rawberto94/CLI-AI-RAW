@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
           source: 'database',
         });
       }
-    } catch (dbError) {
-      console.warn('Database lookup failed:', dbError);
+    } catch {
+      // Database lookup failed, fall through to mock
     }
 
     // Fallback to mock
@@ -99,8 +99,7 @@ export async function GET(request: NextRequest) {
       total: 2,
       source: 'mock',
     });
-  } catch (error) {
-    console.error('Error fetching shares:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch shares' },
       { status: 500 }
@@ -190,10 +189,8 @@ export async function POST(request: NextRequest) {
         message: `Document shared with ${recipients.length} recipient(s)`,
         source: 'database',
       });
-    } catch (dbError) {
-      console.warn('Database insert failed:', dbError);
-      
-      // Mock response
+    } catch {
+      // Database insert failed, fall through to mock response
       const mockShares = recipients.map((recipient: string, idx: number) => ({
         id: `share-${Date.now()}-${idx}`,
         documentId,
@@ -212,8 +209,7 @@ export async function POST(request: NextRequest) {
         source: 'mock',
       });
     }
-  } catch (error) {
-    console.error('Error creating share:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to create share' },
       { status: 500 }
@@ -267,9 +263,7 @@ export async function PATCH(request: NextRequest) {
         message: 'Share updated successfully',
         source: 'database',
       });
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
-      
+    } catch {
       return NextResponse.json({
         success: true,
         share: { id: shareId, permission, expiresAt, isActive },
@@ -277,8 +271,7 @@ export async function PATCH(request: NextRequest) {
         source: 'mock',
       });
     }
-  } catch (error) {
-    console.error('Error updating share:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update share' },
       { status: 500 }
@@ -326,17 +319,14 @@ export async function DELETE(request: NextRequest) {
         message: 'Share revoked successfully',
         source: 'database',
       });
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
-      
+    } catch {
       return NextResponse.json({
         success: true,
         message: 'Share revoked (mock)',
         source: 'mock',
       });
     }
-  } catch (error) {
-    console.error('Error revoking share:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to revoke share' },
       { status: 500 }

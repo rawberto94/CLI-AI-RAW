@@ -546,8 +546,8 @@ export async function wafMiddleware(
           };
         }
       }
-    } catch (error) {
-      console.error(`[WAF] Rule ${rule.id} error:`, error);
+    } catch {
+      // Rule evaluation error - continue with other rules
     }
   }
 

@@ -53,8 +53,7 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
       setCopiedSection(section)
       toast.success('Copied to clipboard')
       setTimeout(() => setCopiedSection(null), 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
+    } catch {
       toast.error('Failed to copy to clipboard')
     }
   }

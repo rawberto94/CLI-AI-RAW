@@ -71,8 +71,8 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
       if (stored) {
         setRecentSearches(JSON.parse(stored));
       }
-    } catch (e) {
-      console.error('Failed to load recent searches:', e);
+    } catch {
+      // Silent fail for localStorage access
     }
   }, []);
 
@@ -85,8 +85,8 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
       const updated = [searchTerm, ...filtered].slice(0, MAX_RECENT_SEARCHES);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save recent searches:', e);
+      } catch {
+        // Silent fail for localStorage access
       }
       return updated;
     });
@@ -97,8 +97,8 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
     setRecentSearches([]);
     try {
       localStorage.removeItem(STORAGE_KEY);
-    } catch (e) {
-      console.error('Failed to clear recent searches:', e);
+    } catch {
+      // Silent fail for localStorage access
     }
   }, []);
 
@@ -108,8 +108,8 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
       const updated = prev.filter((s) => s !== searchTerm);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to remove recent search:', e);
+      } catch {
+        // Silent fail for localStorage access
       }
       return updated;
     });

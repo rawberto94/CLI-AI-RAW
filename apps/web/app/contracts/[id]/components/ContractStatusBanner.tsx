@@ -13,6 +13,8 @@ interface StatusBannerProps {
   riskLevel: 'low' | 'medium' | 'high'
   complianceOk: boolean
   onAction?: () => void
+  onInitiateRenewal?: () => void
+  onSetReminder?: () => void
 }
 
 export const ContractStatusBanner = memo(function ContractStatusBanner({
@@ -20,6 +22,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   riskLevel,
   complianceOk,
   onAction,
+  onInitiateRenewal,
+  onSetReminder,
 }: StatusBannerProps) {
   const bannerInfo = useMemo(() => {
     if (!endDate && riskLevel !== 'high' && complianceOk) return null
@@ -79,6 +83,21 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   
   const Icon = bannerInfo.icon
   
+  // Determine which action to call based on banner type
+  const handleAction = () => {
+    if (bannerInfo.type === 'expired' && onInitiateRenewal) {
+      onInitiateRenewal()
+    } else if (bannerInfo.type === 'expiring' && onSetReminder) {
+      onSetReminder()
+    } else if (onAction) {
+      onAction()
+    }
+  }
+  
+  const hasAction = onAction || 
+    (bannerInfo.type === 'expired' && onInitiateRenewal) || 
+    (bannerInfo.type === 'expiring' && onSetReminder)
+  
   return (
     <div className={cn(
       "mb-4 flex items-center gap-3 p-3 border rounded-xl",
@@ -91,11 +110,11 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         <span className="mx-2 hidden sm:inline">·</span>
         <span className="block sm:inline text-sm">{bannerInfo.subtitle}</span>
       </div>
-      {onAction && (
+      {hasAction && (
         <Button 
           size="sm" 
           variant="outline" 
-          onClick={onAction}
+          onClick={handleAction}
           className={cn("shrink-0", bannerInfo.buttonClass)}
         >
           <span className="hidden sm:inline">{bannerInfo.buttonText}</span>

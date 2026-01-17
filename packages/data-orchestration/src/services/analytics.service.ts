@@ -893,9 +893,8 @@ class AnalyticsService {
   // EVENT TRACKING (original methods)
   // ============================================
 
-  async trackEvent(event: string, properties?: any): Promise<void> {
+  async trackEvent(_event: string, _properties?: any): Promise<void> {
     // Track analytics event - can be expanded to store in database
-    console.log(`[Analytics] Event: ${event}`, properties);
   }
 
   async getMetrics(startDate: Date, endDate: Date): Promise<any> {

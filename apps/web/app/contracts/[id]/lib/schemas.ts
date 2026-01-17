@@ -252,8 +252,7 @@ export function parseContractResponse(data: unknown): ContractResponse | null {
   if (result.success) {
     return result.data;
   }
-  console.warn('[Contract Validation] Parse error:', result.error.issues);
-  // Return data as-is for backward compatibility, but log the issues
+  // Return data as-is for backward compatibility
   return data as ContractResponse;
 }
 

@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('Error generating strategic recommendations:', error);
     return NextResponse.json(
       { 
         error: 'Failed to generate strategic recommendations',

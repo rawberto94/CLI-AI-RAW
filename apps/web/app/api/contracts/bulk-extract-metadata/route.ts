@@ -151,8 +151,7 @@ export async function POST(request: NextRequest) {
         estimatedTime: `${Math.ceil(jobIds.length * 30 / 60)} minutes`,
         jobIds: jobIds.slice(0, 10), // Return first 10 job IDs
       });
-    } catch (queueError) {
-      console.error('Queue error:', queueError);
+    } catch (queueError: unknown) {
       return NextResponse.json({
         success: false,
         error: 'Failed to queue contracts for processing',
@@ -160,8 +159,7 @@ export async function POST(request: NextRequest) {
       }, { status: 503 });
     }
 
-  } catch (error) {
-    console.error('Bulk extract metadata API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -247,8 +245,7 @@ export async function GET(request: NextRequest) {
           : 0,
       })),
     });
-  } catch (error) {
-    console.error('Get bulk extraction status error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -19,8 +19,7 @@ export async function GET(
       versions,
       total: versions.length,
     });
-  } catch (error) {
-    console.error('Error fetching version history:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch version history' },
       { status: 500 }

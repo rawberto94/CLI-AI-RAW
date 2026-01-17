@@ -54,8 +54,8 @@ export function EnhancedRateCardEditor({
     try {
       await onSave(formData);
       setIsEditing(false);
-    } catch (error) {
-      console.error('Error saving rate card:', error);
+    } catch {
+      // Error saving rate card
     } finally {
       setSaving(false);
     }

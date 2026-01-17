@@ -101,8 +101,7 @@ export async function GET(
       info,
       suggestedFixes,
     })
-  } catch (error) {
-    console.error('Contract integrity check error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Integrity check failed',

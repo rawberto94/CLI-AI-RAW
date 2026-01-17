@@ -345,8 +345,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error("Processing status API error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -379,8 +378,7 @@ async function getContractStatus(contractId: string) {
       };
     }
     return null;
-  } catch (error) {
-    console.error("Error reading contract status:", error);
+  } catch {
     return null;
   }
 }
@@ -462,8 +460,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error("Processing status action error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

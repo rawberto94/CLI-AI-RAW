@@ -243,8 +243,6 @@ export function handleApiError(
   context: ApiContext,
   error: unknown
 ): NextResponse<ApiErrorResponse> {
-  console.error(`[${context.requestId}] API Error:`, error);
-
   if (error instanceof ZodError) {
     return createValidationErrorResponse(context, error);
   }

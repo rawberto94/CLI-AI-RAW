@@ -87,32 +87,25 @@ export function getContractQueue(): ContractQueueManager {
       // Ensure the QueueService singleton is initialized before constructing queue managers
       initializeQueueService();
       queueInstance = getContractQueueFromUtils();
-    } catch (error) {
-      console.warn('Contract queue not available, using stub implementation:', error);
-      // Return a stub implementation that logs operations
+    } catch {
+      // Return a stub implementation for when queue is not available
       queueInstance = {
-        async queueMetadataExtraction(data, options) {
-          console.log('[Queue Stub] Would queue metadata extraction:', { data, options });
+        async queueMetadataExtraction(_data, _options) {
           return `stub-job-${Date.now()}`;
         },
-        async queueContractProcessing(data, options) {
-          console.log('[Queue Stub] Would queue contract processing:', { data, options });
+        async queueContractProcessing(_data, _options) {
           return `stub-job-${Date.now()}`;
         },
-        async queueCategorization(data, options) {
-          console.log('[Queue Stub] Would queue categorization:', { data, options });
+        async queueCategorization(_data, _options) {
           return `stub-job-${Date.now()}`;
         },
-        async queueArtifactGeneration(data, options) {
-          console.log('[Queue Stub] Would queue artifact generation:', { data, options });
+        async queueArtifactGeneration(_data, _options) {
           return `stub-job-${Date.now()}`;
         },
-        async queueAgentOrchestration(data, options) {
-          console.log('[Queue Stub] Would queue agent orchestration:', { data, options });
+        async queueAgentOrchestration(_data, _options) {
           return `stub-job-${Date.now()}`;
         },
-        async getJobStatus(queueName, jobId) {
-          console.log('[Queue Stub] Would get job status:', { queueName, jobId });
+        async getJobStatus(_queueName, _jobId) {
           return { state: 'pending' };
         },
       };

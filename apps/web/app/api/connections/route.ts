@@ -43,8 +43,7 @@ export async function GET(request: NextRequest) {
       default:
         return getMetrics();
     }
-  } catch (error) {
-    console.error('[Connections API] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: {
@@ -87,8 +86,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('[Connections API] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: {

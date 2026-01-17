@@ -46,16 +46,13 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes);
     await writeFile(chunkPath, buffer);
 
-    console.log(`✅ Chunk ${chunkIndex + 1}/${totalChunks} uploaded for ${uploadId}`);
-
     return NextResponse.json({
       success: true,
       chunkIndex,
       uploadId,
       message: `Chunk ${chunkIndex + 1}/${totalChunks} uploaded`,
     });
-  } catch (error) {
-    console.error('Failed to upload chunk:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to upload chunk',

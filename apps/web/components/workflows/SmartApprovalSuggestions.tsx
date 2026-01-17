@@ -778,9 +778,8 @@ export function useSmartSuggestion(approvalId: string | null) {
       await new Promise(resolve => setTimeout(resolve, 800));
       const mockSuggestion = generateMockSuggestion(approvalId);
       setSuggestion(mockSuggestion);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch AI suggestion');
-      console.error('Error fetching suggestion:', err);
     } finally {
       setIsLoading(false);
     }

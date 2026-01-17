@@ -39,8 +39,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     `;
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting saved filter:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete saved filter' },
       { status: 500 }
@@ -86,8 +85,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     `;
 
     return NextResponse.json({ filter: updatedFilter[0] });
-  } catch (error) {
-    console.error('Error updating saved filter:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update saved filter' },
       { status: 500 }

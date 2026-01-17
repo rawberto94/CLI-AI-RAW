@@ -120,8 +120,7 @@ export function OAuthConnectionManager({
           }
           setConnecting(null);
         }, 5 * 60 * 1000);
-      } catch (error) {
-        console.error("OAuth connection error:", error);
+      } catch {
         setConnecting(null);
       }
     },

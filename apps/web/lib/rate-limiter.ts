@@ -256,9 +256,8 @@ export class RateLimiter {
         default:
           return await this.slidingWindow(key);
       }
-    } catch (error) {
-      // On Redis error, fail open (allow request) but log
-      console.error('Rate limiter error:', error);
+    } catch {
+      // On Redis error, fail open (allow request)
       return {
         allowed: true,
         remaining: this.config.limit,

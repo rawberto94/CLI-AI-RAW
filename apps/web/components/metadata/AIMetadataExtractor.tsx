@@ -74,8 +74,8 @@ export function AIMetadataExtractor({
   } = useMetadataExtraction({
     contractId,
     tenantId,
-    onExtractionComplete: (result) => {
-      console.log('Extraction complete:', result.summary);
+    onExtractionComplete: () => {
+      // Extraction complete
     },
   });
 

@@ -97,7 +97,6 @@ export function HighRiskRatesAlert({
       setLastUpdated(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
-      console.error('Error fetching high-risk rates:', err);
     } finally {
       setLoading(false);
     }

@@ -638,8 +638,8 @@ export default function GenerateContractPage() {
       
       setGeneratedContract(content)
       setStep(4)
-    } catch (error) {
-      console.error('Failed to generate contract:', error)
+    } catch {
+      // Error handled silently
     } finally {
       setGenerating(false)
     }

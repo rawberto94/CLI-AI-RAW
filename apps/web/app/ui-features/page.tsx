@@ -39,10 +39,9 @@ export default function UIFeaturesShowcase() {
   // Auto-save demo
   const { isSaving, lastSaved, hasUnsavedChanges } = useAutoSave({
     data: formData,
-    onSave: async (data) => {
+    onSave: async () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Auto-saved:', data);
     },
     delay: 2000,
     showSuccessToast: true,

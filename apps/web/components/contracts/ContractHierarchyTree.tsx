@@ -163,7 +163,6 @@ export function ContractHierarchyTree({
         const data = await response.json();
         setHierarchy(data.hierarchy);
       } catch (err) {
-        console.error('Error fetching hierarchy:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);

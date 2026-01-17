@@ -87,18 +87,16 @@ export class WebSocketServer {
     // Initialize Redis if URL provided and Redis is available
     if (options?.redisUrl && Redis) {
       this.redis = new Redis(options.redisUrl);
-      this.redis.on('error', (err: Error) => {
-        console.error('Redis connection error:', err);
+      this.redis.on('error', () => {
+        // Redis connection error handled silently
       });
     }
 
     this.setupEventHandlers();
-    console.log('WebSocket server initialized');
   }
 
   private setupEventHandlers(): void {
     this.io.on('connection', (socket: Socket) => {
-      console.log(`Client connected: ${socket.id}`);
 
       // User authentication
       socket.on('authenticate', async (data: { user: User }) => {
@@ -160,8 +158,6 @@ export class WebSocketServer {
           })),
           documentVersion: roomState.documentVersion,
         });
-
-        console.log(`User ${user.name} joined room ${roomId}`);
       });
 
       // Leave a room
@@ -328,7 +324,6 @@ export class WebSocketServer {
       // Disconnect handling
       socket.on('disconnect', async () => {
         const user = socket.data.user as User;
-        console.log(`Client disconnected: ${socket.id}${user ? ` (${user.name})` : ''}`);
 
         // Clean up all rooms
         for (const [roomId, roomState] of this.rooms) {
@@ -365,8 +360,6 @@ export class WebSocketServer {
       if (roomState.users.size === 0) {
         this.rooms.delete(roomId);
       }
-
-      console.log(`User ${user.name} left room ${roomId}`);
     }
 
     socket.leave(roomId);
@@ -415,7 +408,6 @@ export class WebSocketServer {
       await this.redis.quit();
     }
     await this.io.close();
-    console.log('WebSocket server closed');
   }
 }
 

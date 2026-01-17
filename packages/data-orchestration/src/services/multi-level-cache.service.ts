@@ -66,15 +66,13 @@ class RedisCache {
 
       this.client.on('connect', () => {
         this.connected = true;
-        console.log('✅ Redis cache connected');
       });
 
-      this.client.on('error', (err) => {
-        console.error('❌ Redis cache error:', err);
+      this.client.on('error', () => {
         this.connected = false;
       });
-    } catch (error) {
-      console.error('Failed to initialize Redis:', error);
+    } catch {
+      // Redis initialization failed, continue without it
     }
   }
 
@@ -83,8 +81,8 @@ class RedisCache {
 
     try {
       await this.client.setex(key, ttlSeconds, JSON.stringify(value));
-    } catch (error) {
-      console.error('Redis set error:', error);
+    } catch {
+      // Redis set failed, continue silently
     }
   }
 
@@ -94,8 +92,7 @@ class RedisCache {
     try {
       const value = await this.client.get(key);
       return value ? JSON.parse(value) : null;
-    } catch (error) {
-      console.error('Redis get error:', error);
+    } catch {
       return null;
     }
   }
@@ -105,8 +102,8 @@ class RedisCache {
 
     try {
       await this.client.del(key);
-    } catch (error) {
-      console.error('Redis delete error:', error);
+    } catch {
+      // Redis delete failed, continue silently
     }
   }
 
@@ -122,8 +119,8 @@ class RedisCache {
       } else {
         await this.client.flushdb();
       }
-    } catch (error) {
-      console.error('Redis clear error:', error);
+    } catch {
+      // Redis clear failed, continue silently
     }
   }
 
@@ -237,7 +234,6 @@ export class MultiLevelCacheService {
    */
   async warmCache(entries: Array<{ key: string; value: any; ttl: number }>): Promise<void> {
     await Promise.all(entries.map((entry) => this.set(entry.key, entry.value, entry.ttl)));
-    console.log(`✅ Cache warmed with ${entries.length} entries`);
   }
 
   /**

@@ -12,7 +12,8 @@ export async function handleWorkflowActions(
   context: ChatContext
 ): Promise<ActionResponse> {
   const { action, entities } = intent;
-  const { tenantId, userId, contractId } = context;
+  const { tenantId, userId, currentContractId } = context;
+  const contractId = currentContractId; // Alias for backward compatibility
 
   try {
     switch (action) {
@@ -52,8 +53,7 @@ export async function handleWorkflowActions(
           message: `Unknown workflow action: ${action}`,
         };
     }
-  } catch (error) {
-    console.error('[Workflow Actions] Error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'Failed to process workflow request',
@@ -134,7 +134,7 @@ async function startWorkflow(
       workflowId: workflow.id,
       contractId,
       status: 'PENDING',
-      currentStep: 0,
+      currentStep: '0',
       startedBy: userId,
       startedAt: new Date(),
     },
@@ -147,7 +147,7 @@ async function startWorkflow(
         executionId: execution.id,
         stepId: step.id,
         status: idx === 0 ? 'PENDING' : 'WAITING',
-        order: idx,
+        stepOrder: idx,
       })),
     });
   }
@@ -217,7 +217,7 @@ async function getWorkflowStatus(
       contract: { select: { id: true, contractTitle: true } },
       stepExecutions: {
         include: { step: true },
-        orderBy: { order: 'asc' },
+        orderBy: { stepOrder: 'asc' },
       },
     },
     orderBy: { startedAt: 'desc' },
@@ -334,7 +334,7 @@ async function approveStep(
         include: {
           workflow: true,
           contract: { select: { id: true, contractTitle: true } },
-          stepExecutions: { orderBy: { order: 'asc' } },
+          stepExecutions: { orderBy: { stepOrder: 'asc' } },
         },
       },
     },
@@ -351,13 +351,13 @@ async function approveStep(
       status: 'COMPLETED',
       completedAt: new Date(),
       completedBy: userId,
-      comments: comment,
+      result: { approved: true, comment },
     },
   });
 
   // Find and activate next step
   const nextStep = stepExecution.execution.stepExecutions.find(
-    (s) => s.order === stepExecution.order + 1 && s.status === 'WAITING'
+    (s) => s.stepOrder === stepExecution.stepOrder + 1 && s.status === 'WAITING'
   );
 
   if (nextStep) {
@@ -444,7 +444,7 @@ async function rejectStep(
         status: 'REJECTED',
         completedAt: new Date(),
         completedBy: userId,
-        comments: reason,
+        result: { rejected: true, reason },
       },
     }),
     prisma.workflowExecution.update({
@@ -484,7 +484,8 @@ async function createWorkflowTemplate(
   tenantId: string,
   userId: string
 ): Promise<ActionResponse> {
-  const { workflowName, workflowType, steps } = entities;
+  const workflowName = entities.contractTitle; // Reuse contractTitle for workflow name
+  const { workflowType } = entities;
 
   if (!workflowName) {
     return {
@@ -503,8 +504,8 @@ async function createWorkflowTemplate(
     },
   });
 
-  // Create default steps if none provided
-  const defaultSteps = steps || [
+  // Create default steps
+  const defaultSteps = [
     { name: 'Manager Review', type: 'APPROVAL' },
     { name: 'Legal Review', type: 'APPROVAL' },
     { name: 'Final Approval', type: 'APPROVAL' },
@@ -561,7 +562,8 @@ async function assignApprover(
       tenantId,
       OR: [
         { email: { contains: assignee, mode: 'insensitive' } },
-        { name: { contains: assignee, mode: 'insensitive' } },
+        { firstName: { contains: assignee, mode: 'insensitive' } },
+        { lastName: { contains: assignee, mode: 'insensitive' } },
       ],
     },
   });
@@ -578,9 +580,10 @@ async function assignApprover(
     data: { assignedTo: user.id },
   });
 
+  const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
   return {
     success: true,
-    message: `Assigned "${stepExecution.step.name}" to ${user.name || user.email}`,
+    message: `Assigned "${stepExecution.step.name}" to ${userName}`,
     data: { stepId: stepExecution.id, assignedTo: user.id },
   };
 }
@@ -614,12 +617,17 @@ async function escalateWorkflow(
     return { success: false, message: 'Active workflow not found' };
   }
 
+  // Store escalation info in metadata JSON field since dedicated fields don't exist
+  const currentMetadata = (execution.metadata as Record<string, unknown>) || {};
   await prisma.workflowExecution.update({
     where: { id: execution.id },
     data: {
-      isEscalated: true,
-      escalatedAt: new Date(),
-      escalationReason: reason,
+      metadata: {
+        ...currentMetadata,
+        isEscalated: true,
+        escalatedAt: new Date().toISOString(),
+        escalationReason: reason,
+      },
     },
   });
 

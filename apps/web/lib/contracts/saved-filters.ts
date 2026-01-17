@@ -27,8 +27,8 @@ export function getSavedFilters(): SavedFilter[] {
     if (stored) {
       return JSON.parse(stored)
     }
-  } catch (error) {
-    console.error('Error loading saved filters:', error)
+  } catch {
+    // Error loading saved filters - silently ignored
   }
   
   return []
@@ -56,8 +56,8 @@ export function saveFilterPreset(
   
   try {
     localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updated))
-  } catch (error) {
-    console.error('Error saving filter preset:', error)
+  } catch {
+    // Error saving filter preset - silently ignored
   }
   
   return newFilter
@@ -84,8 +84,8 @@ export function updateFilterPreset(
   
   try {
     localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updated))
-  } catch (error) {
-    console.error('Error updating filter preset:', error)
+  } catch {
+    // Error updating filter preset - silently ignored
   }
 }
 
@@ -98,8 +98,8 @@ export function deleteFilterPreset(id: string): void {
   
   try {
     localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(filtered))
-  } catch (error) {
-    console.error('Error deleting filter preset:', error)
+  } catch {
+    // Error deleting filter preset - silently ignored
   }
 }
 
@@ -123,8 +123,8 @@ export function setDefaultFilter(id: string): void {
   
   try {
     localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(updated))
-  } catch (error) {
-    console.error('Error setting default filter:', error)
+  } catch {
+    // Error setting default filter - silently ignored
   }
 }
 

@@ -43,40 +43,117 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-// Workflow template presets
+// Workflow template presets - synced with backend WORKFLOW_TEMPLATES
 const workflowTemplates = [
   {
-    id: 'standard-approval',
+    id: 'standard',
     name: 'Standard Approval',
-    description: 'Legal → Finance → Management approval chain',
+    description: 'Initial Review → Legal Review → Final Approval',
     icon: CheckCircle,
     color: 'bg-gradient-to-br from-blue-500 to-indigo-600',
     steps: 3,
     popular: true,
+    type: 'APPROVAL',
   },
   {
-    id: 'quick-approval',
-    name: 'Quick Approval',
-    description: 'Single manager approval for low-value contracts',
+    id: 'express',
+    name: 'Express Approval',
+    description: 'Quick review for low-value contracts (<$25K)',
     icon: Zap,
     color: 'bg-gradient-to-br from-green-500 to-emerald-600',
-    steps: 1,
+    steps: 2,
+    type: 'APPROVAL',
   },
   {
-    id: 'comprehensive-review',
-    name: 'Comprehensive Review',
-    description: 'Full review with Legal, Security, Finance, and Executive sign-off',
+    id: 'legal_review',
+    name: 'Legal Review',
+    description: 'Legal Analysis → Compliance → Legal Director',
+    icon: FileText,
+    color: 'bg-gradient-to-br from-slate-500 to-slate-700',
+    steps: 3,
+    type: 'APPROVAL',
+  },
+  {
+    id: 'executive',
+    name: 'Executive Approval',
+    description: 'Full approval chain for high-value contracts',
     icon: GitBranch,
     color: 'bg-gradient-to-br from-purple-500 to-fuchsia-600',
     steps: 5,
+    popular: true,
+    type: 'APPROVAL',
   },
   {
-    id: 'renewal-workflow',
-    name: 'Renewal Workflow',
-    description: 'Automated renewal review with performance check',
-    icon: RefreshCw,
+    id: 'amendment',
+    name: 'Amendment Approval',
+    description: 'For amendments, addendums, and change orders',
+    icon: Edit,
     color: 'bg-gradient-to-br from-amber-500 to-orange-600',
+    steps: 3,
+    type: 'APPROVAL',
+  },
+  {
+    id: 'nda_fast_track',
+    name: 'NDA Fast Track',
+    description: 'Expedited approval for standard NDAs',
+    icon: Zap,
+    color: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     steps: 2,
+    type: 'APPROVAL',
+  },
+  {
+    id: 'vendor_onboarding',
+    name: 'Vendor Onboarding',
+    description: 'Compliance → Finance → Procurement review',
+    icon: Activity,
+    color: 'bg-gradient-to-br from-teal-500 to-emerald-600',
+    steps: 3,
+    type: 'REVIEW',
+  },
+  {
+    id: 'termination',
+    name: 'Contract Termination',
+    description: 'Legal → Finance Impact → Manager → Executive',
+    icon: AlertTriangle,
+    color: 'bg-gradient-to-br from-red-500 to-rose-600',
+    steps: 4,
+    type: 'APPROVAL',
+  },
+  {
+    id: 'renewal_opt_out',
+    name: 'Renewal Opt-Out',
+    description: 'Notification workflow for auto-renewal cancellation',
+    icon: RefreshCw,
+    color: 'bg-gradient-to-br from-orange-500 to-amber-600',
+    steps: 3,
+    type: 'NOTIFICATION',
+  },
+  {
+    id: 'risk_escalation',
+    name: 'Risk Escalation',
+    description: 'Risk Assessment → Compliance → Legal Director → Executive',
+    icon: AlertTriangle,
+    color: 'bg-gradient-to-br from-rose-500 to-red-700',
+    steps: 4,
+    type: 'APPROVAL',
+  },
+  {
+    id: 'multi_party',
+    name: 'Multi-Party Signature',
+    description: 'Internal → Counter-party A → Counter-party B → Final',
+    icon: GitBranch,
+    color: 'bg-gradient-to-br from-violet-500 to-purple-700',
+    steps: 4,
+    type: 'APPROVAL',
+  },
+  {
+    id: 'procurement',
+    name: 'Procurement Review',
+    description: 'Budget → Procurement → Finance → Department Head',
+    icon: FileText,
+    color: 'bg-gradient-to-br from-indigo-500 to-blue-700',
+    steps: 4,
+    type: 'APPROVAL',
   },
 ]
 
@@ -110,7 +187,7 @@ function WorkflowsPageContent() {
     active: workflows.filter(w => w.isActive).length,
     inactive: workflows.filter(w => !w.isActive).length,
     totalExecutions: workflows.reduce((sum, w) => sum + (w.executions || 0), 0),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }), [workflows])
 
   useEffect(() => {
@@ -124,10 +201,31 @@ function WorkflowsPageContent() {
     setShowBuilder(true)
   }
 
-  const createFromTemplate = (templateId: string) => {
-    toast.info('Template selected', { description: 'Creating workflow from template...' })
-    setSelectedWorkflow(null)
-    setShowBuilder(true)
+  const createFromTemplate = async (templateId: string) => {
+    const template = workflowTemplates.find(t => t.id === templateId)
+    toast.info('Creating workflow', { description: `Creating "${template?.name}" from template...` })
+    
+    try {
+      const response = await fetch('/api/workflows/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_from_template',
+          templateKey: templateId,
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to create workflow')
+      }
+      
+      const result = await response.json()
+      toast.success('Workflow created', { description: `"${template?.name}" workflow is ready` })
+      crossModule.onWorkflowChange()
+      refetch()
+    } catch (error) {
+      toast.error('Failed to create workflow from template')
+    }
   }
 
   const editWorkflow = (workflow: WorkflowType) => {
@@ -140,8 +238,7 @@ function WorkflowsPageContent() {
       await updateWorkflow.mutateAsync({ id: workflowId, data: { isActive } })
       toast.success(isActive ? 'Workflow activated' : 'Workflow deactivated')
       crossModule.onWorkflowChange()
-    } catch (error) {
-      console.error('Failed to toggle workflow:', error)
+    } catch {
       toast.error('Failed to update workflow')
     }
   }
@@ -154,8 +251,7 @@ function WorkflowsPageContent() {
       crossModule.onWorkflowChange()
       setDeleteModalOpen(false)
       setWorkflowToDelete(null)
-    } catch (error) {
-      console.error('Failed to delete workflow:', error)
+    } catch {
       toast.error('Failed to delete workflow')
     } finally {
       setIsDeleting(false)
@@ -176,19 +272,18 @@ function WorkflowsPageContent() {
       })
       toast.success('Workflow duplicated')
       crossModule.onWorkflowChange()
-    } catch (error) {
-      console.error('Failed to duplicate workflow:', error)
+    } catch {
       toast.error('Failed to duplicate workflow')
     }
   }
 
   if (showBuilder) {
     return (
-      <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
+      <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20">
         <div className="max-w-7xl mx-auto p-6">
           <div className="mb-6">
-            <Button variant="outline" onClick={() => setShowBuilder(false)} className="gap-2">
-              <ArrowRight className="h-4 w-4 rotate-180" />
+            <Button variant="outline" onClick={() => setShowBuilder(false)} className="gap-2 dark:border-slate-600 dark:hover:bg-slate-700">
+              <ArrowRight className="h-4 w-4 rotate-180" aria-hidden="true" />
               Back to Workflows
             </Button>
           </div>
@@ -214,31 +309,31 @@ function WorkflowsPageContent() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
+    <div className="h-full overflow-auto bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20">
       <div className="max-w-7xl mx-auto">
         {/* Unified Header */}
-        <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/50 px-6 py-5 sticky top-0 z-20">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-700/50 px-6 py-5 sticky top-0 z-20">
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+            className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 motion-reduce:transition-none"
           >
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl blur-md opacity-50" />
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl blur-md opacity-50" aria-hidden="true" />
                 <div className="relative p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg">
-                  <Workflow className="h-7 w-7 text-white" />
+                  <Workflow className="h-7 w-7 text-white" aria-hidden="true" />
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-900 via-purple-800 to-indigo-900 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-900 via-purple-800 to-indigo-900 dark:from-indigo-300 dark:via-purple-300 dark:to-indigo-300 bg-clip-text text-transparent">
                   Workflows
                 </h1>
-                <p className="text-sm text-slate-500 flex items-center gap-2">
+                <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                   Manage approvals and automation in one place
-                  <Badge variant="secondary" className="bg-indigo-100/80 text-indigo-700 text-xs px-3 py-1">
-                    <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  <Badge variant="secondary" className="bg-indigo-100/80 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs px-3 py-1">
+                    <Sparkles className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
                     Unified
                   </Badge>
                 </p>
@@ -247,18 +342,18 @@ function WorkflowsPageContent() {
 
             <div className="flex items-center gap-2.5">
               <div className="hidden lg:flex items-center gap-2.5 mr-2">
-                <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-amber-50 border-amber-200 text-amber-700">
-                  <Clock className="h-3.5 w-3.5" />
+                <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300">
+                  <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                   <span className="font-semibold">4</span> Pending
                 </Badge>
-                <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-green-50 border-green-200 text-green-700">
-                  <CheckCircle className="h-3.5 w-3.5" />
+                <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300">
+                  <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
                   <span className="font-semibold">{stats.active}</span> Active
                 </Badge>
               </div>
 
-              <Button variant="outline" onClick={() => refetch()} className="gap-2 h-8">
-                <RefreshCw className="h-3.5 w-3.5" />
+              <Button variant="outline" onClick={() => refetch()} className="gap-2 h-8 dark:border-slate-600 dark:hover:bg-slate-700" aria-label="Refresh workflows">
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
                 <span className="hidden sm:inline">Refresh</span>
               </Button>
               
@@ -275,28 +370,28 @@ function WorkflowsPageContent() {
           {/* Unified Tabs */}
           <div className="mt-5">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'queue' | 'automation' | 'templates')}>
-              <TabsList className="bg-slate-100/80 p-1 rounded-xl">
+              <TabsList className="bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-xl">
                 <TabsTrigger 
                   value="queue" 
-                  className="gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                  className="gap-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm dark:text-slate-300 dark:data-[state=active]:text-white"
                 >
-                  <Inbox className="h-4 w-4" />
+                  <Inbox className="h-4 w-4" aria-hidden="true" />
                   Queue
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-700 ml-1 text-xs">4</Badge>
+                  <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 ml-1 text-xs">4</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="automation" 
-                  className="gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                  className="gap-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm dark:text-slate-300 dark:data-[state=active]:text-white"
                 >
-                  <GitBranch className="h-4 w-4" />
+                  <GitBranch className="h-4 w-4" aria-hidden="true" />
                   Automation
-                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 ml-1 text-xs">{stats.total}</Badge>
+                  <Badge variant="secondary" className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 ml-1 text-xs">{stats.total}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="templates" 
-                  className="gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                  className="gap-2 rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm dark:text-slate-300 dark:data-[state=active]:text-white"
                 >
-                  <FileText className="h-4 w-4" />
+                  <FileText className="h-4 w-4" aria-hidden="true" />
                   Templates
                 </TabsTrigger>
               </TabsList>
@@ -332,20 +427,20 @@ function WorkflowsPageContent() {
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total', value: stats.total, icon: GitBranch, color: 'from-indigo-100 to-purple-100', iconColor: 'text-indigo-600' },
-                    { label: 'Active', value: stats.active, icon: CheckCircle, color: 'from-green-100 to-emerald-100', iconColor: 'text-green-600', valueColor: 'text-green-600' },
-                    { label: 'Inactive', value: stats.inactive, icon: Pause, color: 'from-slate-100 to-slate-50', iconColor: 'text-slate-600', valueColor: 'text-slate-600' },
-                    { label: 'Executions', value: stats.totalExecutions, icon: Activity, color: 'from-blue-100 to-cyan-100', iconColor: 'text-blue-600', valueColor: 'text-blue-600' },
+                    { label: 'Total', value: stats.total, icon: GitBranch, color: 'from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50', iconColor: 'text-indigo-600 dark:text-indigo-400' },
+                    { label: 'Active', value: stats.active, icon: CheckCircle, color: 'from-green-100 to-emerald-100 dark:from-green-900/50 dark:to-emerald-900/50', iconColor: 'text-green-600 dark:text-green-400', valueColor: 'text-green-600 dark:text-green-400' },
+                    { label: 'Inactive', value: stats.inactive, icon: Pause, color: 'from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-700/50', iconColor: 'text-slate-600 dark:text-slate-400', valueColor: 'text-slate-600 dark:text-slate-400' },
+                    { label: 'Executions', value: stats.totalExecutions, icon: Activity, color: 'from-blue-100 to-cyan-100 dark:from-blue-900/50 dark:to-cyan-900/50', iconColor: 'text-blue-600 dark:text-blue-400', valueColor: 'text-blue-600 dark:text-blue-400' },
                   ].map((stat) => (
-                    <Card key={stat.label} className="bg-white/70 backdrop-blur border-0 shadow-md hover:shadow-lg transition-all">
+                    <Card key={stat.label} className="bg-white/70 dark:bg-slate-800/70 backdrop-blur border-0 dark:border dark:border-slate-700/50 shadow-md hover:shadow-lg transition-all motion-reduce:transition-none">
                       <CardContent className="p-5">
                         <div className="flex items-center gap-3">
                           <div className={`p-2.5 bg-gradient-to-br ${stat.color} rounded-xl`}>
-                            <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
+                            <stat.icon className={`h-5 w-5 ${stat.iconColor}`} aria-hidden="true" />
                           </div>
                           <div>
-                            <p className="text-sm text-slate-500">{stat.label}</p>
-                            <p className={`text-2xl font-bold ${stat.valueColor || 'text-slate-900'}`}>{stat.value}</p>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">{stat.label}</p>
+                            <p className={`text-2xl font-bold ${stat.valueColor || 'text-slate-900 dark:text-slate-100'}`}>{stat.value}</p>
                           </div>
                         </div>
                       </CardContent>
@@ -355,29 +450,29 @@ function WorkflowsPageContent() {
 
                 {/* Workflows List */}
                 {loading ? (
-                  <Card className="shadow-xl border-0 bg-white/80">
+                  <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80">
                     <CardContent className="p-5 text-center">
-                      <RefreshCw className="h-12 w-12 mx-auto animate-spin text-indigo-600 mb-4" />
-                      <p className="text-gray-600">Loading workflows...</p>
+                      <RefreshCw className="h-12 w-12 mx-auto motion-safe:animate-spin text-indigo-600 dark:text-indigo-400 mb-4" aria-hidden="true" />
+                      <p className="text-gray-600 dark:text-gray-300">Loading workflows...</p>
                     </CardContent>
                   </Card>
                 ) : workflows.length === 0 ? (
-                  <Card className="shadow-xl border-0 bg-white/80 backdrop-blur">
+                  <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur">
                     <CardContent className="p-5 text-center">
-                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                        <GitBranch className="h-10 w-10 text-indigo-600" />
+                      <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                        <GitBranch className="h-10 w-10 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
                       </div>
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">No workflows yet</h3>
-                      <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No workflows yet</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
                         Create your first automated workflow to streamline contract approvals.
                       </p>
                       <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
                         <Button onClick={createNew} className="bg-gradient-to-r from-indigo-600 to-purple-600 gap-2 h-8">
-                          <Plus className="h-3.5 w-3.5" />
+                          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                           Create Workflow
                         </Button>
-                        <Button variant="outline" onClick={() => setActiveTab('templates')} className="gap-2 h-8">
-                          <FileText className="h-3.5 w-3.5" />
+                        <Button variant="outline" onClick={() => setActiveTab('templates')} className="gap-2 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
+                          <FileText className="h-3.5 w-3.5" aria-hidden="true" />
                           Use Template
                         </Button>
                       </div>
@@ -391,46 +486,47 @@ function WorkflowsPageContent() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.05 }}
+                        className="motion-reduce:transition-none"
                       >
-                        <Card className="shadow-lg border-0 bg-white/90 backdrop-blur hover:shadow-xl transition-all group">
+                        <Card className="shadow-lg border-0 dark:border dark:border-slate-700/50 bg-white/90 dark:bg-slate-800/90 backdrop-blur hover:shadow-xl transition-all motion-reduce:transition-none group">
                           <CardContent className="p-5">
                             <div className="flex items-start justify-between mb-4">
                               <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
-                                  <h3 className="text-xl font-bold text-gray-900">{workflow.name}</h3>
-                                  <Badge className={workflow.isActive ? 'bg-green-100 text-green-700 px-3 py-1' : 'bg-gray-100 text-gray-700 px-3 py-1'}>
+                                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{workflow.name}</h3>
+                                  <Badge className={workflow.isActive ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-3 py-1' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1'}>
                                     {workflow.isActive ? 'Active' : 'Inactive'}
                                   </Badge>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-3">{workflow.description || 'No description'}</p>
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{workflow.description || 'No description'}</p>
+                                <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                                   <span className="flex items-center gap-1">
-                                    <ArrowRight className="h-3.5 w-3.5" />
+                                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                                     {workflow.steps?.length || 0} steps
                                   </span>
-                                  <span>•</span>
+                                  <span aria-hidden="true">•</span>
                                   <span className="flex items-center gap-1">
-                                    <Activity className="h-3.5 w-3.5" />
+                                    <Activity className="h-3.5 w-3.5" aria-hidden="true" />
                                     {workflow.executions || 0} runs
                                   </span>
                                 </div>
                               </div>
-                              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-105 transition-transform">
-                                <Settings className="h-6 w-6 text-white" />
+                              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-105 transition-transform motion-reduce:transform-none">
+                                <Settings className="h-6 w-6 text-white" aria-hidden="true" />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2.5 pt-4 border-t">
-                              <Button variant="outline" size="sm" onClick={() => editWorkflow(workflow)} className="gap-1 h-8">
-                                <Edit className="h-3.5 w-3.5" /> Edit
+                            <div className="flex items-center gap-2.5 pt-4 border-t dark:border-slate-700">
+                              <Button variant="outline" size="sm" onClick={() => editWorkflow(workflow)} className="gap-1 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
+                                <Edit className="h-3.5 w-3.5" aria-hidden="true" /> Edit
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => duplicateWorkflow(workflow)} className="gap-1 h-8">
-                                <Copy className="h-3.5 w-3.5" /> Copy
+                              <Button variant="outline" size="sm" onClick={() => duplicateWorkflow(workflow)} className="gap-1 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
+                                <Copy className="h-3.5 w-3.5" aria-hidden="true" /> Copy
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => toggleWorkflow(workflow.id, !workflow.isActive)} className="gap-1 h-8">
-                                {workflow.isActive ? <><Pause className="h-3.5 w-3.5" /> Pause</> : <><Play className="h-3.5 w-3.5" /> Activate</>}
+                              <Button variant="outline" size="sm" onClick={() => toggleWorkflow(workflow.id, !workflow.isActive)} className="gap-1 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
+                                {workflow.isActive ? <><Pause className="h-3.5 w-3.5" aria-hidden="true" /> Pause</> : <><Play className="h-3.5 w-3.5" aria-hidden="true" /> Activate</>}
                               </Button>
-                              <Button variant="outline" size="sm" onClick={() => openDeleteModal(workflow)} className="hover:bg-red-50 hover:border-red-300 ml-auto h-8">
-                                <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                              <Button variant="outline" size="sm" onClick={() => openDeleteModal(workflow)} className="hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 ml-auto h-8 dark:border-slate-600" aria-label={`Delete ${workflow.name}`}>
+                                <Trash2 className="h-3.5 w-3.5 text-red-600 dark:text-red-400" aria-hidden="true" />
                               </Button>
                             </div>
                           </CardContent>
@@ -452,38 +548,66 @@ function WorkflowsPageContent() {
                 className="space-y-6"
               >
                 <div className="text-center mb-8">
-                  <h2 className="text-xl font-bold text-slate-900 mb-2">Quick Start Templates</h2>
-                  <p className="text-slate-500">Choose a template to get started quickly</p>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Quick Start Templates</h2>
+                  <p className="text-slate-500 dark:text-slate-400">Choose a template to get started quickly, or seed all templates to your database</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3 gap-2 dark:border-slate-600 dark:hover:bg-slate-700"
+                    onClick={async () => {
+                      toast.info('Seeding templates...', { description: 'Creating all workflow templates in database' })
+                      try {
+                        const response = await fetch('/api/workflows/templates', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ action: 'seed' }),
+                        })
+                        const result = await response.json()
+                        if (result.data?.created?.length > 0) {
+                          toast.success('Templates seeded', { 
+                            description: `Created ${result.data.created.length} workflows: ${result.data.created.slice(0, 3).join(', ')}${result.data.created.length > 3 ? '...' : ''}` 
+                          })
+                          refetch()
+                        } else {
+                          toast.info('All templates exist', { description: 'Workflow templates are already in your database' })
+                        }
+                      } catch {
+                        toast.error('Failed to seed templates')
+                      }
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Seed All Templates to Database
+                  </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {workflowTemplates.map((template) => {
                     const Icon = template.icon
                     return (
-                      <motion.div key={template.id} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }}>
+                      <motion.div key={template.id} whileHover={{ scale: 1.02, y: -2 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
                         <Card 
-                          className="shadow-lg border-0 bg-white/90 backdrop-blur hover:shadow-xl transition-all cursor-pointer group"
+                          className="shadow-lg border-0 dark:border dark:border-slate-700/50 bg-white/90 dark:bg-slate-800/90 backdrop-blur hover:shadow-xl transition-all motion-reduce:transition-none cursor-pointer group h-full"
                           onClick={() => createFromTemplate(template.id)}
                         >
-                          <CardContent className="p-5">
-                            <div className="flex items-start gap-4">
-                              <div className={`p-3 ${template.color} rounded-xl shadow-lg group-hover:scale-105 transition-transform`}>
-                                <Icon className="h-6 w-6 text-white" />
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2.5 ${template.color} rounded-xl shadow-lg group-hover:scale-105 transition-transform motion-reduce:transform-none flex-shrink-0`}>
+                                <Icon className="h-5 w-5 text-white" aria-hidden="true" />
                               </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="text-lg font-bold text-gray-900">{template.name}</h3>
-                                  {template.popular && <Badge className="bg-amber-100 text-amber-700 px-3 py-1">Popular</Badge>}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 truncate">{template.name}</h3>
+                                  {template.popular && <Badge className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-xs px-2 py-0.5">Popular</Badge>}
+                                  <Badge variant="outline" className="text-xs px-2 py-0.5 dark:border-slate-600 dark:text-slate-300">{template.type}</Badge>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-3">{template.description}</p>
-                                <div className="text-sm text-gray-500">
-                                  <span className="flex items-center gap-1">
-                                    <ArrowRight className="h-3.5 w-3.5" />
-                                    {template.steps} step{template.steps > 1 ? 's' : ''}
-                                  </span>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{template.description}</p>
+                                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                  <ArrowRight className="h-3 w-3" aria-hidden="true" />
+                                  {template.steps} step{template.steps > 1 ? 's' : ''}
                                 </div>
                               </div>
-                              <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all motion-reduce:transform-none flex-shrink-0" aria-hidden="true" />
                             </div>
                           </CardContent>
                         </Card>
@@ -493,9 +617,9 @@ function WorkflowsPageContent() {
                 </div>
                 
                 <div className="mt-8 text-center">
-                  <p className="text-gray-500 mb-4">Need something custom?</p>
-                  <Button onClick={createNew} variant="outline" size="lg" className="gap-2 h-8">
-                    <Plus className="h-3.5 w-3.5" />
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">Need something custom?</p>
+                  <Button onClick={createNew} variant="outline" size="lg" className="gap-2 h-8 dark:border-slate-600 dark:hover:bg-slate-700">
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                     Create from Scratch
                   </Button>
                 </div>
@@ -507,15 +631,15 @@ function WorkflowsPageContent() {
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-full">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+              <div className="p-2 bg-red-100 dark:bg-red-900/50 rounded-full">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden="true" />
               </div>
               <div>
-                <DialogTitle>Delete Workflow</DialogTitle>
-                <DialogDescription className="mt-1">
+                <DialogTitle className="dark:text-slate-100">Delete Workflow</DialogTitle>
+                <DialogDescription className="mt-1 dark:text-slate-400">
                   This action cannot be undone.
                 </DialogDescription>
               </div>
@@ -524,11 +648,11 @@ function WorkflowsPageContent() {
           
           {workflowToDelete && (
             <div className="py-4">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <p className="font-medium text-slate-900">{workflowToDelete.name}</p>
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                <p className="font-medium text-slate-900 dark:text-slate-100">{workflowToDelete.name}</p>
                 {workflowToDelete.isActive && (
-                  <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
-                    <AlertTriangle className="h-3.5 w-3.5" />
+                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                     This workflow is currently active
                   </p>
                 )}
@@ -544,6 +668,7 @@ function WorkflowsPageContent() {
                 setWorkflowToDelete(null)
               }}
               disabled={isDeleting}
+              className="dark:border-slate-600 dark:hover:bg-slate-700"
             >
               Cancel
             </Button>
@@ -555,12 +680,12 @@ function WorkflowsPageContent() {
             >
               {isDeleting ? (
                 <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 motion-safe:animate-spin" aria-hidden="true" />
                   Deleting...
                 </>
               ) : (
                 <>
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                   Delete Workflow
                 </>
               )}
@@ -575,8 +700,8 @@ function WorkflowsPageContent() {
 export default function UnifiedWorkflowsPage() {
   return (
     <Suspense fallback={
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
-        <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20 dark:from-slate-900 dark:via-indigo-950/20 dark:to-purple-950/20">
+        <RefreshCw className="h-8 w-8 motion-safe:animate-spin text-indigo-600 dark:text-indigo-400" aria-label="Loading workflows" />
       </div>
     }>
       <WorkflowsPageContent />

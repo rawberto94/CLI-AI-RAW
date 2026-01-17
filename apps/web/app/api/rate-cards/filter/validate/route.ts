@@ -52,8 +52,7 @@ export async function POST(request: NextRequest) {
       executionTime: matchCount.executionTime,
       summary,
     });
-  } catch (error) {
-    console.error('Error validating filter:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to validate filter', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }

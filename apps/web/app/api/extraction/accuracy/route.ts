@@ -163,8 +163,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       success: false,
       error: 'Invalid view parameter'
     }, { status: 400 })
-  } catch (error) {
-    console.error('Accuracy stats error:', error)
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get accuracy stats' },
       { status: 500 }

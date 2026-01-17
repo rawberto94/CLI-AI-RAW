@@ -17,7 +17,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       data: qualityScore,
     });
   } catch (error: unknown) {
-    console.error('Error calculating quality score:', error);
     return NextResponse.json(
       { 
         error: 'Failed to calculate quality score',

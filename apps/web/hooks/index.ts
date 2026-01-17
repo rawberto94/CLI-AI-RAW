@@ -108,6 +108,9 @@ export * from './use-prefetch';
 export * from './use-background-sync';
 export * from './use-focus-management';
 
+// Workflow Templates
+export * from './use-workflow-templates';
+
 // UI State
 export { useLocalStorage, useRecentItems, useLocalStorageToggle } from './useLocalStorage';
 export { useCopyToClipboard, copyToClipboard } from './useCopyToClipboard';

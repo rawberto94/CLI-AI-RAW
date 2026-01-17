@@ -268,12 +268,7 @@ export class WebhookService {
    */
   private async recordDelivery(delivery: WebhookDelivery): Promise<void> {
     // In production, save to database
-    console.log('Webhook delivery:', {
-      id: delivery.id,
-      status: delivery.status,
-      attempts: delivery.attempts,
-      error: delivery.error,
-    });
+    // Delivery record: id, status, attempts, error are available on delivery object
 
     // Example:
     // await prisma.webhookDelivery.create({

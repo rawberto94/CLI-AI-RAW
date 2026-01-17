@@ -27,8 +27,8 @@ export function FinancialMetricsCards() {
         const data = await response.json();
         setMetrics(data);
       }
-    } catch (error) {
-      console.error('Error fetching financial metrics:', error);
+    } catch {
+      // Error fetching financial metrics
     } finally {
       setLoading(false);
     }

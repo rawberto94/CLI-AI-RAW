@@ -109,8 +109,7 @@ export function BulkEditModal({
         const error = await response.json();
         toast.error(`Error: ${error.error || 'Failed to update rate cards'}`);
       }
-    } catch (error) {
-      console.error('Error bulk updating:', error);
+    } catch {
       toast.error('Failed to update rate cards');
     } finally {
       setLoading(false);

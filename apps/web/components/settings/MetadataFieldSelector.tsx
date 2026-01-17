@@ -93,8 +93,8 @@ export function MetadataFieldSelector({
             });
           }
         }
-      } catch (err) {
-        console.error('Failed to load metadata schema:', err);
+      } catch {
+        // Error handled silently
       } finally {
         setLoading(false);
       }

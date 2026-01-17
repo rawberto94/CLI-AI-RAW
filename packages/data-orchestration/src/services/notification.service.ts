@@ -33,8 +33,7 @@ async function sendEmailViaAPI(to: string[], subject: string, body: string): Pro
     });
     
     return response.ok;
-  } catch (error) {
-    console.error('Failed to send email via API:', error);
+  } catch {
     return false;
   }
 }
@@ -45,7 +44,6 @@ async function sendEmailDirect(to: string[], subject: string, body: string): Pro
   const fromEmail = process.env.EMAIL_FROM || 'notifications@contigo.ch';
   
   if (!apiKey) {
-    console.log('📧 [DEV MODE] Email would be sent:', { to, subject, body: body.substring(0, 100) });
     return true;
   }
   
@@ -81,15 +79,11 @@ async function sendEmailDirect(to: string[], subject: string, body: string): Pro
     });
     
     if (!response.ok) {
-      const error = await response.text();
-      console.error('SendGrid error:', error);
       return false;
     }
     
-    console.log('✅ Email sent via SendGrid:', { to, subject });
     return true;
-  } catch (error) {
-    console.error('Failed to send email via SendGrid:', error);
+  } catch {
     return false;
   }
 }
@@ -172,17 +166,16 @@ export class NotificationService {
     const recipients = userId
       ? await prisma.user.findMany({
           where: { id: userId },
-          select: { email: true, name: true },
+          select: { email: true, firstName: true, lastName: true },
         })
       : await prisma.user.findMany({
           where: { tenantId },
-          select: { email: true, name: true },
+          select: { email: true, firstName: true, lastName: true },
         });
 
     const emails = recipients.map((r) => r.email).filter(Boolean) as string[];
 
     if (emails.length === 0) {
-      console.warn('No email recipients found for notification');
       return;
     }
 
@@ -190,12 +183,7 @@ export class NotificationService {
     let success = await sendEmailViaAPI(emails, subject, body);
     
     if (!success) {
-      console.log('Internal API failed, trying direct SendGrid...');
       success = await sendEmailDirect(emails, subject, body);
-    }
-    
-    if (!success) {
-      console.error('Failed to send email notification:', { to: emails, subject });
     }
   }
 

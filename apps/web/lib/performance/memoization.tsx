@@ -316,16 +316,11 @@ export function RenderList<T>({
 /**
  * Hook to measure component render time
  */
-export function useRenderTime(componentName: string) {
+export function useRenderTime(_componentName: string) {
   const startTime = useRef(performance.now());
   
   useEffect(() => {
-    const endTime = performance.now();
-    const renderTime = endTime - startTime.current;
-    
-    if (process.env.NODE_ENV === 'development' && renderTime > 16) {
-      console.warn(`[Performance] ${componentName} render took ${renderTime.toFixed(2)}ms`);
-    }
+    const _renderTime = performance.now() - startTime.current;
     
     // Reset for next render
     startTime.current = performance.now();
@@ -342,20 +337,6 @@ export function useWhyDidYouRender<P extends Record<string, unknown>>(
   const previousProps = useRef<P | undefined>(undefined);
   
   useEffect(() => {
-    if (previousProps.current && process.env.NODE_ENV === 'development') {
-      const changedProps = Object.entries(props).filter(
-        ([key, value]) => (previousProps.current as P)[key] !== value
-      );
-      
-      if (changedProps.length > 0) {
-        console.group(`[Why Re-render] ${componentName}`);
-        changedProps.forEach(([key, value]) => {
-          console.log(`  ${key}:`, (previousProps.current as P)[key], '→', value);
-        });
-        console.groupEnd();
-      }
-    }
-    
     previousProps.current = props;
   });
 }

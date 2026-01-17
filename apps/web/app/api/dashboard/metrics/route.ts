@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       pendingContracts,
       completedContracts,
     ] = await Promise.all([
-      prisma.contract.count({ where: { tenantId, status: { not: 'DELETED' } } }),
+      prisma.contract.count({ where: { tenantId, isDeleted: false } }),
       prisma.contract.count({ where: { tenantId, status: 'COMPLETED' } }),
       prisma.contract.count({ where: { tenantId, status: 'PROCESSING' } }),
       prisma.contract.count({ where: { tenantId, status: 'PENDING' } }),
@@ -63,14 +63,14 @@ export async function GET(request: NextRequest) {
     const byCategory = await prisma.contract.groupBy({
       by: ['category'],
       _count: { id: true },
-      where: { tenantId, category: { not: null }, status: { not: 'DELETED' } },
+      where: { tenantId, category: { not: null }, isDeleted: false },
     });
 
     // Get contracts by status (tenant-scoped, excluding DELETED)
     const byStatus = await prisma.contract.groupBy({
       by: ['status'],
       _count: { id: true },
-      where: { tenantId, status: { not: 'DELETED' } },
+      where: { tenantId, isDeleted: false },
     });
 
     // Calculate total value (tenant-scoped, from metadata, excluding DELETED)
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     // Get all contracts with metadata to check expiration dates (tenant-scoped)
     const contractsWithMetadata = await prisma.contract.findMany({
       select: { id: true, metadata: true },
-      where: { tenantId, status: { not: 'DELETED' } },
+      where: { tenantId, isDeleted: false },
     });
 
     // Calculate expiring contracts from metadata
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     const recentContracts = await prisma.contract.findMany({
       take: 5,
       orderBy: { updatedAt: 'desc' },
-      where: { tenantId, status: { not: 'DELETED' } },
+      where: { tenantId, isDeleted: false },
       select: {
         id: true,
         fileName: true,
@@ -173,14 +173,14 @@ export async function GET(request: NextRequest) {
       prisma.contract.count({
         where: {
           tenantId,
-          status: { not: 'DELETED' },
+          isDeleted: false,
           createdAt: { gte: lastMonthStart, lt: thisMonthStart }
         }
       }),
       prisma.contract.count({
         where: {
           tenantId,
-          status: { not: 'DELETED' },
+          isDeleted: false,
           createdAt: { gte: thisMonthStart }
         }
       })
@@ -245,9 +245,7 @@ export async function GET(request: NextRequest) {
       recentActivity,
     });
 
-  } catch (error) {
-    console.error('Dashboard metrics error:', error);
-    
+  } catch {
     // Return empty state with error indicator - no mock data
     return NextResponse.json({
       totalContracts: 0,

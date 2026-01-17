@@ -245,6 +245,121 @@ ConTigo - Contract Intelligence Platform
 `,
   }),
 
+  // Renewal created notification
+  renewalCreated: (data: {
+    recipientName: string;
+    originalContractName: string;
+    renewedContractName: string;
+    renewedContractId: string;
+    renewalDate: string;
+    expiryDate: string;
+    value?: string;
+    viewUrl: string;
+    submittedForApproval: boolean;
+  }): EmailTemplate => ({
+    subject: `🔄 Contract Renewed: ${data.renewedContractName}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contract Renewed</title>
+</head>
+<body style="font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">🔄 Contract Renewed</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">A contract has been successfully renewed</p>
+  </div>
+  
+  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+    <p>Hi ${data.recipientName},</p>
+    
+    <p>Great news! A contract renewal has been completed:</p>
+    
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280; width: 140px;">Original Contract:</td>
+          <td style="padding: 8px 0; font-weight: 500;">${data.originalContractName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Renewed Contract:</td>
+          <td style="padding: 8px 0; font-weight: 500; color: #7c3aed;">${data.renewedContractName}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Renewal Date:</td>
+          <td style="padding: 8px 0; font-weight: 500;">${data.renewalDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">New Expiry Date:</td>
+          <td style="padding: 8px 0; font-weight: 500;">${data.expiryDate}</td>
+        </tr>
+        ${data.value ? `
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280;">Contract Value:</td>
+          <td style="padding: 8px 0; font-weight: 600; color: #059669;">${data.value}</td>
+        </tr>
+        ` : ''}
+      </table>
+    </div>
+    
+    ${data.submittedForApproval ? `
+    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">⏳</span>
+        <div>
+          <strong style="color: #92400e;">Pending Approval</strong>
+          <p style="margin: 4px 0 0 0; color: #92400e; font-size: 14px;">This renewal has been submitted for approval and is awaiting review.</p>
+        </div>
+      </div>
+    </div>
+    ` : `
+    <div style="background: #d1fae5; border: 1px solid #10b981; border-radius: 8px; padding: 15px; margin: 20px 0;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">✅</span>
+        <div>
+          <strong style="color: #065f46;">Active & Ready</strong>
+          <p style="margin: 4px 0 0 0; color: #065f46; font-size: 14px;">The renewed contract is now active and ready for use.</p>
+        </div>
+      </div>
+    </div>
+    `}
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${data.viewUrl}" style="display: inline-block; background: #8b5cf6; color: white; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600;">View Renewed Contract</a>
+    </div>
+  </div>
+  
+  <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+    <p>© ${new Date().getFullYear()} ConTigo - Contract Intelligence Platform</p>
+  </div>
+</body>
+</html>`,
+    text: `
+Contract Renewed
+
+Hi ${data.recipientName},
+
+Great news! A contract renewal has been completed:
+
+Original Contract: ${data.originalContractName}
+Renewed Contract: ${data.renewedContractName}
+Renewal Date: ${data.renewalDate}
+New Expiry Date: ${data.expiryDate}
+${data.value ? `Contract Value: ${data.value}` : ''}
+
+${data.submittedForApproval 
+  ? '⏳ Status: This renewal has been submitted for approval and is awaiting review.' 
+  : '✅ Status: The renewed contract is now active and ready for use.'}
+
+View the renewed contract at: ${data.viewUrl}
+
+---
+ConTigo - Contract Intelligence Platform
+`,
+  }),
+
   weeklyDigest: (data: {
     recipientName: string;
     stats: {
@@ -482,23 +597,14 @@ async function sendWithSendGrid(options: SendEmailOptions): Promise<EmailResult>
 async function sendWithConsole(options: SendEmailOptions): Promise<EmailResult> {
   const messageId = `console-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   
+  // In development/console mode, log email details for debugging
   logger.info('📧 Email (Console Mode)', {
     messageId,
     to: options.to,
     subject: options.subject,
     from: options.from || EMAIL_CONFIG.from,
+    preview: options.text?.substring(0, 200),
   });
-
-  console.log('\n📧 ═══════════════════════════════════════════════════════════');
-  console.log(`   TO: ${JSON.stringify(options.to)}`);
-  console.log(`   SUBJECT: ${options.subject}`);
-  console.log(`   FROM: ${options.from || EMAIL_CONFIG.from}`);
-  console.log('═══════════════════════════════════════════════════════════════\n');
-  
-  if (options.text) {
-    console.log(options.text.substring(0, 500) + (options.text.length > 500 ? '...' : ''));
-  }
-  console.log('\n═══════════════════════════════════════════════════════════════\n');
   
   return {
     success: true,
@@ -639,6 +745,59 @@ export class EmailService {
       text: template.text,
       tags: [
         { name: 'type', value: 'weekly-digest' },
+      ],
+    });
+  }
+
+  /**
+   * Send renewal notification
+   */
+  static async sendRenewalNotification(data: {
+    to: string;
+    recipientName: string;
+    originalContractName: string;
+    renewedContractName: string;
+    renewedContractId: string;
+    renewalDate: Date;
+    expiryDate: Date;
+    value?: number;
+    submittedForApproval?: boolean;
+    baseUrl?: string;
+  }): Promise<EmailResult> {
+    const baseUrl = data.baseUrl || process.env.NEXTAUTH_URL || 'https://app.contigo.ai';
+    const template = EMAIL_TEMPLATES.renewalCreated({
+      recipientName: data.recipientName,
+      originalContractName: data.originalContractName,
+      renewedContractName: data.renewedContractName,
+      renewedContractId: data.renewedContractId,
+      renewalDate: data.renewalDate.toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }),
+      expiryDate: data.expiryDate.toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }),
+      value: data.value ? new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      }).format(data.value) : undefined,
+      viewUrl: `${baseUrl}/contracts/${data.renewedContractId}`,
+      submittedForApproval: data.submittedForApproval || false,
+    });
+
+    return this.send({
+      to: data.to,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      tags: [
+        { name: 'type', value: 'renewal-notification' },
+        { name: 'contractId', value: data.renewedContractId },
       ],
     });
   }

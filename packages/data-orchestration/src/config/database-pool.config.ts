@@ -71,13 +71,6 @@ export function createPrismaClient(): PrismaClient {
   databaseUrl.searchParams.set('connection_limit', poolConfig.connectionLimit.toString());
   databaseUrl.searchParams.set('pool_timeout', (poolConfig.connectionTimeoutMillis / 1000).toString());
 
-  console.log(`✅ Database pool configured:`, {
-    connectionLimit: poolConfig.connectionLimit,
-    connectionTimeout: `${poolConfig.connectionTimeoutMillis}ms`,
-    idleTimeout: `${poolConfig.idleTimeoutMillis}ms`,
-    environment: process.env.NODE_ENV,
-  });
-
   return prisma;
 }
 
@@ -147,22 +140,18 @@ export class ConnectionPoolMonitor {
     // - Slow query rate > 10%
     
     if (metrics.utilizationRate > 0.9) {
-      console.warn('⚠️ High connection pool utilization:', metrics.utilizationRate);
       return false;
     }
 
     if (metrics.waitingRequests > 10) {
-      console.warn('⚠️ High number of waiting requests:', metrics.waitingRequests);
       return false;
     }
 
     if (metrics.errorRate > 0.05) {
-      console.warn('⚠️ High error rate:', metrics.errorRate);
       return false;
     }
 
     if (metrics.slowQueryRate > 0.1) {
-      console.warn('⚠️ High slow query rate:', metrics.slowQueryRate);
       return false;
     }
 
@@ -189,10 +178,6 @@ export function getPrismaClient(): PrismaClient {
         const duration = Date.now() - start;
         poolMonitor.recordQuery(duration);
 
-        if (duration > 1000) {
-          console.warn(`⚠️ Slow query detected (${duration}ms):`, params.model, params.action);
-        }
-
         return result;
       } catch (error) {
         poolMonitor.recordError();
@@ -211,7 +196,6 @@ export async function closePrismaClient(): Promise<void> {
   if (prismaInstance) {
     await prismaInstance.$disconnect();
     prismaInstance = null;
-    console.log('✅ Database connection pool closed');
   }
 }
 
@@ -223,8 +207,7 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     const prisma = getPrismaClient();
     await prisma.$queryRaw`SELECT 1`;
     return poolMonitor.isHealthy();
-  } catch (error) {
-    console.error('❌ Database health check failed:', error);
+  } catch {
     return false;
   }
 }

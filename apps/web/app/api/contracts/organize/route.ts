@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     if (groupBy === "expirationMonth") {
       // Group by expiration month
       const contracts = await prisma.contract.findMany({
-        where: { tenantId, status: { not: "DELETED" } },
+        where: { tenantId, isDeleted: false },
         select: {
           id: true,
           contractTitle: true,
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
     } else if (groupBy === "uploadMonth") {
       // Group by upload month
       const contracts = await prisma.contract.findMany({
-        where: { tenantId, status: { not: "DELETED" } },
+        where: { tenantId, isDeleted: false },
         select: {
           id: true,
           contractTitle: true,
@@ -217,7 +217,7 @@ export async function GET(request: NextRequest) {
 
       groups = await Promise.all(
         valueRanges.map(async (range) => {
-          const where: Record<string, unknown> = { tenantId, status: { not: "DELETED" } };
+          const where: Record<string, unknown> = { tenantId, isDeleted: false };
           
           if (range.min === null) {
             where.totalValue = null;
@@ -271,7 +271,7 @@ export async function GET(request: NextRequest) {
       // Standard field grouping
       const grouped = await prisma.contract.groupBy({
         by: [groupField as any],
-        where: { tenantId, status: { not: "DELETED" } },
+        where: { tenantId, isDeleted: false },
         _count: { id: true },
         _sum: { totalValue: true },
         orderBy: { _count: { id: sortOrder } },
@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
             const contracts = await prisma.contract.findMany({
               where: {
                 tenantId,
-                status: { not: "DELETED" },
+                isDeleted: false,
                 [groupField]: key,
               },
               select: {
@@ -358,7 +358,6 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("Error organizing contracts:", error);
     return NextResponse.json(
       {
         success: false,

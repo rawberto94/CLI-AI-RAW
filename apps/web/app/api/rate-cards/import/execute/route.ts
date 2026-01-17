@@ -31,8 +31,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`📥 Starting batch import of ${rows.length} rate cards`);
-
     const results = {
       imported: 0,
       failed: 0,
@@ -96,7 +94,7 @@ export async function POST(request: NextRequest) {
             }
 
             // Get or create supplier
-            let supplier = await (prisma as any).rateCardSupplier.findFirst({
+            let supplier = await prisma.rateCardSupplier.findFirst({
               where: {
                 tenantId,
                 name: data.supplierName,
@@ -104,12 +102,12 @@ export async function POST(request: NextRequest) {
             });
 
             if (!supplier) {
-              supplier = await (prisma as any).rateCardSupplier.create({
+              supplier = await prisma.rateCardSupplier.create({
                 data: {
                   tenantId,
                   name: data.supplierName,
                   legalName: data.supplierName,
-                  tier: data.supplierTier || 'TIER_2',
+                  tier: (data.supplierTier || 'TIER_2') as 'BIG_4' | 'TIER_2' | 'BOUTIQUE' | 'OFFSHORE',
                   country: data.supplierCountry || data.country,
                   region: data.region || 'Americas',
                 },
@@ -137,10 +135,10 @@ export async function POST(request: NextRequest) {
             const converted = convertCurrency(data.dailyRate, data.currency);
 
             // Create rate card entry
-            const rateCard = await (prisma as any).rateCardEntry.create({
+            const rateCard = await prisma.rateCardEntry.create({
               data: {
                 tenantId,
-                source: 'CSV_IMPORT',
+                source: 'CSV_UPLOAD',
                 enteredBy: userId,
 
                 // Supplier
@@ -154,7 +152,7 @@ export async function POST(request: NextRequest) {
                 roleOriginal: data.roleOriginal,
                 roleStandardized,
                 roleCategory: data.roleCategory || 'General',
-                seniority: data.seniority,
+                seniority: data.seniority as 'JUNIOR' | 'MID' | 'SENIOR' | 'PRINCIPAL' | 'PARTNER',
                 lineOfService: data.lineOfService || 'General',
                 subCategory: null,
 
@@ -193,7 +191,6 @@ export async function POST(request: NextRequest) {
 
             results.imported++;
             results.rateCardIds.push(rateCard.id);
-            console.log(`✅ Imported: ${rateCard.roleStandardized} - ${rateCard.dailyRate} ${rateCard.currency}`);
           } catch (error) {
             results.failed++;
             results.errors.push({
@@ -202,13 +199,10 @@ export async function POST(request: NextRequest) {
               role: row.data.roleOriginal,
               error: error instanceof Error ? error.message : 'Unknown error',
             });
-            console.error(`❌ Failed to import row ${row.rowNumber ?? row.index ?? 'unknown'}:`, error);
           }
         })
       );
     }
-
-    console.log(`✅ Import complete: ${results.imported} imported, ${results.failed} failed`);
 
     // Emit event for bulk import
     if (results.imported > 0) {
@@ -226,7 +220,6 @@ export async function POST(request: NextRequest) {
       }`,
     });
   } catch (error) {
-    console.error('Error executing import:', error);
     return NextResponse.json(
       {
         error: 'Failed to execute import',

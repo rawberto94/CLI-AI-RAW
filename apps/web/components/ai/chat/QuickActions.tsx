@@ -5,6 +5,10 @@
  * 
  * Renders actionable buttons within chat messages.
  * These actions can trigger navigation, chatbot commands, or UI state changes.
+ * 
+ * AGENTIC CAPABILITIES:
+ * The presetActions at the bottom provide generators for ALL app features,
+ * enabling the AI chatbot to initiate any action in the platform.
  */
 
 import React, { memo } from 'react'
@@ -39,6 +43,27 @@ import {
   Star,
   Settings,
   HelpCircle,
+  Sparkles,
+  Scale,
+  FileCheck,
+  FileWarning,
+  CalendarCheck,
+  ListTodo,
+  Wand2,
+  PenTool,
+  Brain,
+  Target,
+  MessageSquare,
+  LayoutTemplate,
+  Repeat,
+  FileX,
+  FolderUp,
+  Gavel,
+  ShieldCheck,
+  TrendingUp,
+  BarChart3,
+  Users,
+  AlertCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -51,7 +76,7 @@ export interface QuickAction {
   label: string
   action: string // Action identifier like 'navigate:/contracts', 'command:show-help', 'callback:function-name'
   icon?: string
-  variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'success' | 'warning'
+  variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'success' | 'warning' | 'premium'
   disabled?: boolean
   tooltip?: string
 }
@@ -98,6 +123,30 @@ const ICON_MAP: Record<string, React.ElementType> = {
   'bookmark': Bookmark,
   'star': Star,
   'settings': Settings,
+  // Premium feature icons
+  'sparkles': Sparkles,
+  'ai': Sparkles,
+  'legal': Scale,
+  'review': FileCheck,
+  'redline': FileWarning,
+  'obligation': CalendarCheck,
+  'obligations': ListTodo,
+  'wand': Wand2,
+  'draft': PenTool,
+  'brain': Brain,
+  'copilot': Brain,
+  'target': Target,
+  'message': MessageSquare,
+  'template': LayoutTemplate,
+  'renewal': Repeat,
+  'amendment': FileX,
+  'folderup': FolderUp,
+  'gavel': Gavel,
+  'shield': ShieldCheck,
+  'trend': TrendingUp,
+  'chart': BarChart3,
+  'users': Users,
+  'alert': AlertCircle,
   'help': HelpCircle,
 }
 
@@ -147,6 +196,8 @@ const getButtonVariant = (variant: QuickAction['variant']) => {
       return 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
     case 'destructive':
       return 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+    case 'premium':
+      return 'bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-indigo-700 border-indigo-200'
     default:
       return undefined
   }
@@ -273,7 +324,10 @@ QuickActions.displayName = 'QuickActions'
 // ============ PRESET ACTION GENERATORS ============
 
 export const presetActions = {
-  // Contract actions
+  // ═══════════════════════════════════════════════════════════════════
+  // CONTRACT VIEWING & MANAGEMENT
+  // ═══════════════════════════════════════════════════════════════════
+  
   viewContract: (id: string, name?: string): QuickAction => ({
     label: name ? `View ${name}` : 'View Contract',
     action: `navigate:/contracts/${id}`,
@@ -291,11 +345,175 @@ export const presetActions = {
     action: `navigate:/contracts/compare?a=${idA}&b=${idB}`,
     icon: 'compare',
   }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // UPLOAD & CREATION
+  // ═══════════════════════════════════════════════════════════════════
   
-  // Version actions
-  showVersionHistory: (): QuickAction => ({
-    label: 'Show Version History',
-    action: 'command:show version history',
+  uploadContract: (): QuickAction => ({
+    label: 'Upload Contract',
+    action: 'navigate:/upload',
+    icon: 'upload',
+  }),
+
+  createNewContract: (): QuickAction => ({
+    label: 'Create New',
+    action: 'navigate:/contracts/new',
+    icon: 'plus',
+  }),
+
+  quickUpload: (): QuickAction => ({
+    label: 'Quick Upload',
+    action: 'command:quick upload',
+    icon: 'folderup',
+  }),
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // GENERATE (Premium)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  generateContract: (type?: 'blank' | 'nda' | 'msa' | 'sow' | 'sla'): QuickAction => ({
+    label: type ? `Generate ${type.toUpperCase()}` : 'Generate Contract',
+    action: type ? `navigate:/generate?type=${type}` : 'navigate:/generate',
+    icon: 'wand',
+    variant: 'premium',
+    tooltip: 'AI-powered contract generation',
+  }),
+
+  generateBlank: (): QuickAction => ({
+    label: 'Start Blank Contract',
+    action: 'navigate:/generate?create=blank',
+    icon: 'plus',
+    variant: 'premium',
+  }),
+
+  generateFromTemplate: (template?: string): QuickAction => ({
+    label: template ? `Use ${template} Template` : 'Use Template',
+    action: template ? `navigate:/generate?create=template&template=${template}` : 'navigate:/generate?create=template',
+    icon: 'template',
+    variant: 'premium',
+  }),
+
+  generateRenewal: (contractId?: string): QuickAction => ({
+    label: 'Create Renewal',
+    action: contractId ? `navigate:/generate?create=renewal&source=${contractId}` : 'navigate:/generate?create=renewal',
+    icon: 'renewal',
+    variant: 'premium',
+    tooltip: 'Generate renewal from existing contract',
+  }),
+
+  generateAmendment: (contractId?: string): QuickAction => ({
+    label: 'Create Amendment',
+    action: contractId ? `navigate:/generate?create=amendment&source=${contractId}` : 'navigate:/generate?create=amendment',
+    icon: 'amendment',
+    variant: 'premium',
+    tooltip: 'Generate amendment to existing contract',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // AI COPILOT (Premium)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  openAICopilot: (mode?: 'draft' | 'review' | 'analyze'): QuickAction => ({
+    label: mode ? `AI Copilot: ${mode}` : 'AI Copilot',
+    action: mode ? `navigate:/drafting/copilot?mode=${mode}` : 'navigate:/drafting/copilot',
+    icon: 'copilot',
+    variant: 'premium',
+    tooltip: 'AI-powered contract drafting assistant',
+  }),
+
+  startAIDraft: (contractType?: string): QuickAction => ({
+    label: contractType ? `Draft ${contractType}` : 'Start AI Draft',
+    action: contractType ? `navigate:/drafting/copilot?mode=draft&type=${contractType}` : 'navigate:/drafting/copilot?mode=draft',
+    icon: 'brain',
+    variant: 'premium',
+  }),
+
+  aiAnalyzeContract: (contractId?: string): QuickAction => ({
+    label: 'AI Analysis',
+    action: contractId ? `command:analyze contract ${contractId}` : 'command:analyze this contract',
+    icon: 'sparkles',
+    variant: 'premium',
+    tooltip: 'Deep AI analysis of contract terms',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // LEGAL REVIEW (Premium)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  startLegalReview: (contractId?: string): QuickAction => ({
+    label: 'Legal Review',
+    action: contractId ? `navigate:/contracts/${contractId}/legal-review` : 'command:start legal review',
+    icon: 'legal',
+    variant: 'premium',
+    tooltip: 'AI-powered legal clause review',
+  }),
+
+  requestLegalApproval: (contractId: string): QuickAction => ({
+    label: 'Request Legal Approval',
+    action: `command:request legal approval for ${contractId}`,
+    icon: 'gavel',
+    variant: 'premium',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // REDLINING (Premium)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  openRedlineEditor: (contractId?: string): QuickAction => ({
+    label: 'Redline Editor',
+    action: contractId ? `navigate:/contracts/${contractId}/redline` : 'command:open redline editor',
+    icon: 'redline',
+    variant: 'premium',
+    tooltip: 'AI-powered document redlining',
+  }),
+
+  compareWithRedline: (originalId: string, revisedId: string): QuickAction => ({
+    label: 'Compare & Redline',
+    action: `navigate:/contracts/redline?original=${originalId}&revised=${revisedId}`,
+    icon: 'compare',
+    variant: 'premium',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // OBLIGATIONS TRACKING (Premium)
+  // ═══════════════════════════════════════════════════════════════════
+  
+  viewObligations: (contractId?: string): QuickAction => ({
+    label: 'View Obligations',
+    action: contractId ? `navigate:/obligations?contract=${contractId}` : 'navigate:/obligations',
+    icon: 'obligations',
+    variant: 'premium',
+    tooltip: 'Track contract obligations',
+  }),
+
+  addObligation: (contractId?: string): QuickAction => ({
+    label: 'Add Obligation',
+    action: contractId ? `navigate:/obligations?contract=${contractId}&action=add` : 'navigate:/obligations?action=add',
+    icon: 'plus',
+    variant: 'premium',
+  }),
+
+  showOverdueObligations: (): QuickAction => ({
+    label: 'Overdue Obligations',
+    action: 'command:show overdue obligations',
+    icon: 'alert',
+    variant: 'warning',
+  }),
+
+  showUpcomingObligations: (): QuickAction => ({
+    label: 'Upcoming Obligations',
+    action: 'command:show upcoming obligations',
+    icon: 'clock',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // VERSION CONTROL
+  // ═══════════════════════════════════════════════════════════════════
+  
+  showVersionHistory: (contractId?: string): QuickAction => ({
+    label: 'Version History',
+    action: contractId ? `navigate:/contracts/${contractId}/versions` : 'command:show version history',
     icon: 'clock',
   }),
   
@@ -311,16 +529,19 @@ export const presetActions = {
     icon: 'plus',
   }),
   
-  // Workflow actions
-  startApproval: (): QuickAction => ({
+  // ═══════════════════════════════════════════════════════════════════
+  // WORKFLOW & APPROVALS
+  // ═══════════════════════════════════════════════════════════════════
+  
+  startApproval: (contractId?: string): QuickAction => ({
     label: 'Start Approval',
-    action: 'command:start approval workflow',
+    action: contractId ? `command:start approval workflow for ${contractId}` : 'command:start approval workflow',
     icon: 'play',
   }),
   
-  approve: (): QuickAction => ({
+  approve: (itemId?: string): QuickAction => ({
     label: 'Approve',
-    action: 'command:approve this',
+    action: itemId ? `command:approve ${itemId}` : 'command:approve this',
     icon: 'approve',
     variant: 'success',
   }),
@@ -331,8 +552,23 @@ export const presetActions = {
     icon: 'reject',
     variant: 'destructive',
   }),
+
+  viewPendingApprovals: (): QuickAction => ({
+    label: 'Pending Approvals',
+    action: 'navigate:/workflows?status=pending',
+    icon: 'clock',
+  }),
+
+  viewWorkflows: (): QuickAction => ({
+    label: 'View Workflows',
+    action: 'navigate:/workflows',
+    icon: 'users',
+  }),
   
-  // Repository actions
+  // ═══════════════════════════════════════════════════════════════════
+  // REPOSITORY ACTIONS
+  // ═══════════════════════════════════════════════════════════════════
+  
   showExpired: (): QuickAction => ({
     label: 'Show Expired',
     action: 'command:show expired contracts',
@@ -350,10 +586,19 @@ export const presetActions = {
     action: `command:show ${status} contracts`,
     icon: 'filter',
   }),
+
+  searchContracts: (query?: string): QuickAction => ({
+    label: query ? `Search: ${query}` : 'Search Contracts',
+    action: query ? `navigate:/contracts?search=${encodeURIComponent(query)}` : 'navigate:/contracts',
+    icon: 'search',
+  }),
   
-  // Navigation actions
+  // ═══════════════════════════════════════════════════════════════════
+  // NAVIGATION
+  // ═══════════════════════════════════════════════════════════════════
+  
   goToRepository: (): QuickAction => ({
-    label: 'Go to Repository',
+    label: 'Contract Repository',
     action: 'navigate:/contracts',
     icon: 'file',
   }),
@@ -361,10 +606,53 @@ export const presetActions = {
   goToAnalytics: (): QuickAction => ({
     label: 'View Analytics',
     action: 'navigate:/analytics',
-    icon: 'external',
+    icon: 'chart',
   }),
+
+  goToDashboard: (): QuickAction => ({
+    label: 'Dashboard',
+    action: 'navigate:/',
+    icon: 'view',
+  }),
+
+  goToSettings: (): QuickAction => ({
+    label: 'Settings',
+    action: 'navigate:/settings',
+    icon: 'settings',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ANALYTICS & REPORTS
+  // ═══════════════════════════════════════════════════════════════════
   
-  // Help actions
+  showSpendAnalysis: (): QuickAction => ({
+    label: 'Spend Analysis',
+    action: 'command:show spend analysis',
+    icon: 'chart',
+  }),
+
+  showRiskAssessment: (): QuickAction => ({
+    label: 'Risk Assessment',
+    action: 'command:show risk assessment',
+    icon: 'shield',
+  }),
+
+  showTopSuppliers: (): QuickAction => ({
+    label: 'Top Suppliers',
+    action: 'command:show top suppliers',
+    icon: 'trend',
+  }),
+
+  generateReport: (type?: string): QuickAction => ({
+    label: type ? `Generate ${type} Report` : 'Generate Report',
+    action: type ? `command:generate ${type} report` : 'command:generate report',
+    icon: 'file',
+  }),
+
+  // ═══════════════════════════════════════════════════════════════════
+  // HELP & SUPPORT
+  // ═══════════════════════════════════════════════════════════════════
+  
   showHelp: (): QuickAction => ({
     label: 'Help',
     action: 'command:help',
@@ -375,6 +663,12 @@ export const presetActions = {
     label: 'List Commands',
     action: 'command:list all commands',
     icon: 'help',
+  }),
+
+  showCapabilities: (): QuickAction => ({
+    label: 'What Can You Do?',
+    action: 'command:what can you do',
+    icon: 'sparkles',
   }),
 }
 

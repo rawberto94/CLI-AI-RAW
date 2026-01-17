@@ -384,8 +384,7 @@ export function AIGuardrails() {
           setRiskFlags(mockRiskFlags);
           setAuditLogs(mockAuditLogs);
         }
-      } catch (error) {
-        console.log('Using mock governance data');
+      } catch {
         setPolicies(mockPolicies);
         setRiskFlags(mockRiskFlags);
         setAuditLogs(mockAuditLogs);

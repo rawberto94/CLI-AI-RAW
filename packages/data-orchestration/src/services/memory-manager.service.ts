@@ -89,7 +89,6 @@ class MemoryManagerService extends EventEmitter {
         
         // Check again
         if (this.totalCacheSize + size > this.config.maxCacheSize) {
-          console.warn(`[MemoryManager] Cannot add entry: would exceed max cache size`);
           return false;
         }
       }
@@ -122,8 +121,7 @@ class MemoryManagerService extends EventEmitter {
       this.emit('cache:set', { key, size });
 
       return true;
-    } catch (error) {
-      console.error(`[MemoryManager] Error setting cache entry:`, error);
+    } catch {
       return false;
     }
   }
@@ -205,8 +203,6 @@ class MemoryManagerService extends EventEmitter {
     this.totalCacheSize = 0;
 
     this.emit('cache:clear', { entriesRemoved, bytesFreed });
-
-    console.log(`[MemoryManager] Cache cleared: ${entriesRemoved} entries, ${this.formatBytes(bytesFreed)} freed`);
   }
 
   /**
@@ -232,7 +228,6 @@ class MemoryManagerService extends EventEmitter {
     }
 
     if (entriesRemoved > 0) {
-      console.log(`[MemoryManager] Evicted ${entriesRemoved} LRU entries, freed ${this.formatBytes(bytesFreed)}`);
       this.emit('cache:evicted', { entriesRemoved, bytesFreed });
     }
 
@@ -266,10 +261,6 @@ class MemoryManagerService extends EventEmitter {
     });
 
     const duration = Date.now() - startTime;
-
-    if (entriesRemoved > 0) {
-      console.log(`[MemoryManager] Cleaned up ${entriesRemoved} expired entries, freed ${this.formatBytes(bytesFreed)}`);
-    }
 
     return { entriesRemoved, bytesFreed, duration };
   }
@@ -329,13 +320,11 @@ class MemoryManagerService extends EventEmitter {
 
     if (heapUtilization >= this.config.memoryCriticalThreshold) {
       this.emit('memory:critical', stats);
-      console.error(`[MemoryManager] CRITICAL: Heap utilization at ${heapUtilization.toFixed(1)}%`);
       
       // Aggressive cleanup
       this.evictLRU(this.totalCacheSize * 0.3); // Free 30% of cache
     } else if (heapUtilization >= this.config.memoryWarningThreshold) {
       this.emit('memory:warning', stats);
-      console.warn(`[MemoryManager] WARNING: Heap utilization at ${heapUtilization.toFixed(1)}%`);
       
       // Moderate cleanup
       this.evictLRU(this.totalCacheSize * 0.1); // Free 10% of cache
@@ -410,13 +399,9 @@ class MemoryManagerService extends EventEmitter {
    * Shutdown the memory manager
    */
   shutdown(): void {
-    console.log('[MemoryManager] Shutting down...');
-
     this.stopCleanupTimer();
     this.stopMemoryCheckTimer();
     this.clear();
-
-    console.log('[MemoryManager] Shutdown complete');
   }
 }
 

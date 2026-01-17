@@ -98,8 +98,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔍 Comparing ${contractsWithText.length} contracts`);
-
     // Prepare contract summaries for comparison (truncated)
     const contractSummaries = contractsWithText.map(c => ({
       id: c.id,
@@ -169,8 +167,6 @@ Focus on: ${comparisonFocus === 'all' ? 'all aspects' : comparisonFocus}`;
 
     const processingTime = Date.now() - startTime;
 
-    console.log(`✅ Comparison complete in ${processingTime}ms`);
-
     return NextResponse.json({
       success: true,
       contractsCompared: contractsWithText.map(c => ({ id: c.id, name: c.fileName })),
@@ -183,7 +179,6 @@ Focus on: ${comparisonFocus === 'all' ? 'all aspects' : comparisonFocus}`;
     });
 
   } catch (error: unknown) {
-    console.error('Contract comparison error:', error);
     return NextResponse.json(
       {
         success: false,

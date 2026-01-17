@@ -60,8 +60,7 @@ export async function GET(request: NextRequest) {
 
     const schedules = await getSyncSchedules(tenantId);
     return NextResponse.json({ schedules });
-  } catch (error) {
-    console.error('Get sync schedules error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to get schedules' },
       { status: 500 }
@@ -238,8 +237,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('Sync API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Operation failed',
@@ -275,8 +273,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Delete sync schedule error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete schedule' },
       { status: 500 }

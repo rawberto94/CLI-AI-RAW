@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -38,45 +38,172 @@ import {
   Save,
   CheckCircle2,
   AlertCircle,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// Demo user data
-const DEMO_USER = {
-  id: "usr_001",
-  name: "John Smith",
-  email: "john.smith@company.com",
-  avatar: null,
-  role: "Contract Manager",
-  department: "Legal",
-  phone: "+1 (555) 123-4567",
-  timezone: "America/New_York",
-  language: "en",
-  company: "Acme Corporation",
-  bio: "Contract management professional with 10+ years of experience in enterprise procurement and vendor negotiations.",
-  twoFactorEnabled: true,
-  lastLogin: new Date(Date.now() - 1000 * 60 * 30),
-  createdAt: new Date(2023, 5, 15),
-};
+// User profile interface
+interface UserProfile {
+  id: string;
+  name: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  avatar: string | null;
+  initials: string;
+  role: string;
+  phone: string | null;
+  department: string | null;
+  timezone: string;
+  language: string;
+  bio: string | null;
+  company: string | null;
+  twoFactorEnabled: boolean;
+  lastLogin: string | null;
+  createdAt: string;
+}
+
+// Hook for fetching and updating user profile
+function useUserProfile() {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const res = await fetch('/api/user/profile');
+      if (!res.ok) throw new Error('Failed to fetch profile');
+      const data = await res.json();
+      if (data.success && data.data?.user) {
+        setUser(data.data.user);
+      } else {
+        throw new Error(data.error || 'Failed to load profile');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const updateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update profile');
+      const data = await res.json();
+      if (data.success && data.data?.user) {
+        setUser(prev => prev ? { ...prev, ...data.data.user } : data.data.user);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  return { user, isLoading, error, setUser, updateProfile, refresh: fetchProfile };
+}
 
 export default function ProfileSettingsPage() {
-  const [user, setUser] = useState(DEMO_USER);
+  const { user, isLoading, error, setUser, updateProfile, refresh } = useUserProfile();
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const handleSave = async () => {
+    if (!user) return;
+    
     setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setSaveError(false);
+    
+    const success = await updateProfile({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      department: user.department,
+      timezone: user.timezone,
+      language: user.language,
+      bio: user.bio,
+    });
+    
     setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    
+    if (success) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } else {
+      setSaveError(true);
+      setTimeout(() => setSaveError(false), 3000);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setUser((prev) => ({ ...prev, [field]: value }));
+    if (!user) return;
+    
+    // Handle name field specially - split into first/last
+    if (field === 'name') {
+      const parts = value.split(' ');
+      setUser({
+        ...user,
+        name: value,
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || '',
+      });
+    } else {
+      setUser({ ...user, [field]: value });
+    }
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+          <Skeleton className="h-8 w-48" />
+          <div className="space-y-4">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                <div>
+                  <p className="font-medium">Failed to load profile</p>
+                  <p className="text-sm text-muted-foreground">{error || 'Please try again'}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={refresh} className="ml-auto">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Retry
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -107,19 +234,18 @@ export default function ProfileSettingsPage() {
             <Button onClick={handleSave} disabled={isSaving}>
               {isSaving ? (
                 <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="mr-2"
-                  >
-                    <Save className="h-4 w-4" />
-                  </motion.div>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
                 </>
               ) : saveSuccess ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
                   Saved!
+                </>
+              ) : saveError ? (
+                <>
+                  <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                  Error
                 </>
               ) : (
                 <>
@@ -156,7 +282,7 @@ export default function ProfileSettingsPage() {
                     <Avatar className="h-24 w-24">
                       <AvatarImage src={user.avatar || undefined} />
                       <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white">
-                        {user.name.split(" ").map((n) => n[0]).join("")}
+                        {user.initials || user.name.split(" ").map((n) => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
                     <Button
@@ -195,7 +321,7 @@ export default function ProfileSettingsPage() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="name"
-                        value={user.name}
+                        value={user.name || ''}
                         onChange={(e) => handleInputChange("name", e.target.value)}
                         className="pl-10"
                       />
@@ -208,28 +334,30 @@ export default function ProfileSettingsPage() {
                       <Input
                         id="email"
                         type="email"
-                        value={user.email}
-                        onChange={(e) => handleInputChange("email", e.target.value)}
-                        className="pl-10"
+                        value={user.email || ''}
+                        disabled
+                        className="pl-10 bg-muted"
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground">Email cannot be changed here.</p>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="role">Job Title</Label>
+                    <Label htmlFor="role">Role</Label>
                     <Input
                       id="role"
-                      value={user.role}
-                      onChange={(e) => handleInputChange("role", e.target.value)}
+                      value={user.role || ''}
+                      disabled
+                      className="bg-muted"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
                     <Input
                       id="department"
-                      value={user.department}
+                      value={user.department || ''}
                       onChange={(e) => handleInputChange("department", e.target.value)}
                     />
                   </div>
@@ -242,9 +370,9 @@ export default function ProfileSettingsPage() {
                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="company"
-                        value={user.company}
-                        onChange={(e) => handleInputChange("company", e.target.value)}
-                        className="pl-10"
+                        value={user.company || ''}
+                        disabled
+                        className="pl-10 bg-muted"
                       />
                     </div>
                   </div>
@@ -254,7 +382,7 @@ export default function ProfileSettingsPage() {
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="phone"
-                        value={user.phone}
+                        value={user.phone || ''}
                         onChange={(e) => handleInputChange("phone", e.target.value)}
                         className="pl-10"
                       />
@@ -266,7 +394,7 @@ export default function ProfileSettingsPage() {
                   <Label htmlFor="bio">Bio</Label>
                   <Textarea
                     id="bio"
-                    value={user.bio}
+                    value={user.bio || ''}
                     onChange={(e) => handleInputChange("bio", e.target.value)}
                     rows={3}
                     placeholder="Tell us a little about yourself..."

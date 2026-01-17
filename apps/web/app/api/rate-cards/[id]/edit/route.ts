@@ -140,8 +140,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       success: true,
       rateCard: updatedRateCard,
     });
-  } catch (error) {
-    console.error('Error updating rate card:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update rate card' },
       { status: 500 }
@@ -184,8 +183,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     return NextResponse.json(rateCard);
-  } catch (error) {
-    console.error('Error fetching rate card:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch rate card' },
       { status: 500 }

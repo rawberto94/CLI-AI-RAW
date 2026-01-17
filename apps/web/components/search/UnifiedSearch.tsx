@@ -58,8 +58,8 @@ export function UnifiedSearch({
     if (history) {
       try {
         setSearchHistory(JSON.parse(history));
-      } catch (e) {
-        console.error('Failed to load search history:', e);
+      } catch {
+        // Failed to load search history
       }
     }
   }, []);
@@ -155,8 +155,8 @@ export function UnifiedSearch({
       }
 
       setResults({ contracts, rateCards, semantic });
-    } catch (error) {
-      console.error('Search failed:', error);
+    } catch {
+      // Search failed
     } finally {
       setIsSearching(false);
     }

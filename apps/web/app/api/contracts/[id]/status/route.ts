@@ -245,8 +245,7 @@ export async function GET(
         ? (processingJob?.error || 'Processing failed')
         : null,
     });
-  } catch (error) {
-    console.error('Error fetching contract status:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to fetch contract status',

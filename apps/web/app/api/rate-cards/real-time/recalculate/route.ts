@@ -70,8 +70,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error) {
-    console.error('Error recalculating benchmark:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to recalculate benchmark' },
       { status: 500 }

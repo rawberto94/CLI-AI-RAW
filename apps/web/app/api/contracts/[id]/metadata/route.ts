@@ -310,8 +310,7 @@ export async function GET(
       }
     });
 
-  } catch (error) {
-    console.error("Get contract metadata error:", error);
+  } catch (error: unknown) {
     return NextResponse.json({
       success: false,
       error: "Failed to get contract metadata",
@@ -476,10 +475,8 @@ export async function PUT(
           }
         );
         ragReindexQueued = true;
-        console.log(`📚 RAG re-indexing queued for contract ${contractId} due to metadata update`);
-      } catch (ragError) {
-        // Log but don't fail the request if RAG queuing fails
-        console.error('Failed to queue RAG re-indexing:', ragError);
+      } catch {
+        // RAG queuing failed but don't fail the request
       }
     }
 
@@ -495,8 +492,7 @@ export async function PUT(
         : "Contract metadata updated successfully"
     });
 
-  } catch (error) {
-    console.error("Update contract metadata error:", error);
+  } catch (error: unknown) {
     return NextResponse.json({
       success: false,
       error: "Failed to update contract metadata",

@@ -44,8 +44,8 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
       );
       const data = await response.json();
       setAnalysis(data);
-    } catch (error) {
-      console.error('Error loading scenarios:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }

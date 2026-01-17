@@ -79,8 +79,7 @@ export async function GET(request: NextRequest) {
       bestRates,
       total: bestRates.length,
     });
-  } catch (error) {
-    console.error('Error fetching best rates:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch best rates' },
       { status: 500 }

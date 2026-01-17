@@ -50,8 +50,7 @@ export async function GET() {
       categories,
     });
 
-  } catch (error) {
-    console.error('Filter options error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch filter options' },
       { status: 500 }

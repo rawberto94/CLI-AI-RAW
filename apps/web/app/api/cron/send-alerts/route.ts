@@ -73,22 +73,15 @@ export async function POST(request: NextRequest) {
       results.processed++;
 
       try {
-        // Get contract details
+        // Get contract details for notification
         const contract = contractMap.get(alert.contractId);
         const owner = contract?.uploadedBy;
-        const contractName = contract?.contractTitle || contract?.originalName || alert.title;
-        const severity = alert.severity;
-        const message = alert.message;
 
-        // Here you would integrate with your notification service
-        // For now, we'll simulate sending and log it
-        
+        // TODO: Integrate with notification service
         // Example integrations:
-        // - Email: await sendEmail({ to: owner, subject: `[${severity.toUpperCase()}] ${contractName}`, body: message })
-        // - Slack: await sendSlackMessage({ channel: '#contracts', text: message })
-        // - In-app: await createNotification({ userId: ownerId, type: 'contract_alert', message })
-
-        console.log(`[ALERT] Sending ${severity} alert for "${contractName}" to ${owner || 'system'}`);
+        // - Email: await sendEmail({ to: owner, subject: `[${alert.severity.toUpperCase()}] ${contract?.contractTitle}`, body: alert.message })
+        // - Slack: await sendSlackMessage({ channel: '#contracts', text: alert.message })
+        // - In-app: await createNotification({ userId: ownerId, type: 'contract_alert', message: alert.message })
 
         // Mark alert as sent
         await prisma.expirationAlert.update({
@@ -110,13 +103,10 @@ export async function POST(request: NextRequest) {
           },
         });
 
-      } catch (error) {
+      } catch (error: unknown) {
         results.failed++;
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
         results.errors.push(`Alert ${alert.id}: ${errorMsg}`);
-        
-        // Log but don't fail the whole job
-        console.error(`[ALERT] Failed to send alert ${alert.id}:`, error);
       }
     }
 
@@ -130,8 +120,7 @@ export async function POST(request: NextRequest) {
         completedAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error('[CRON] Alert sending error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

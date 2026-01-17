@@ -32,6 +32,10 @@ import {
   GitCompare,
   ChevronDown,
   GitBranch,
+  RefreshCcw,
+  Scale,
+  Target,
+  Edit3,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
@@ -42,6 +46,7 @@ interface ContractHeaderProps {
   showPdfViewer: boolean
   isEditing: boolean
   isExtractingAI: boolean
+  isExpiredOrExpiring?: boolean
   onRefresh: () => void
   onTogglePdf: () => void
   onEdit: () => void
@@ -49,6 +54,7 @@ interface ContractHeaderProps {
   onDownload: () => void
   onShare: () => void
   onCompare: () => void
+  onCreateRenewal?: () => void
 }
 
 export const ContractHeader = memo(function ContractHeader({
@@ -59,6 +65,7 @@ export const ContractHeader = memo(function ContractHeader({
   showPdfViewer,
   isEditing,
   isExtractingAI,
+  isExpiredOrExpiring = false,
   onRefresh,
   onTogglePdf,
   onEdit,
@@ -66,9 +73,10 @@ export const ContractHeader = memo(function ContractHeader({
   onDownload,
   onShare,
   onCompare,
+  onCreateRenewal,
 }: ContractHeaderProps) {
   return (
-    <div className="bg-white/95 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-40 shadow-sm">
+    <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50 sticky top-0 z-40 shadow-sm dark:shadow-slate-900/50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Left: Back + Title */}
@@ -77,14 +85,14 @@ export const ContractHeader = memo(function ContractHeader({
               variant="ghost" 
               size="sm" 
               asChild 
-              className="text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors shrink-0"
+              className="text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors shrink-0"
             >
               <Link href="/contracts">
                 <ArrowLeft className="h-4 w-4 mr-1.5" />
                 <span className="hidden sm:inline">Contracts</span>
               </Link>
             </Button>
-            <Separator orientation="vertical" className="h-6 bg-slate-200 hidden sm:block" />
+            <Separator orientation="vertical" className="h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block" />
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative group shrink-0">
                 <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/25 transition-transform group-hover:scale-105">
@@ -92,7 +100,7 @@ export const ContractHeader = memo(function ContractHeader({
                 </div>
               </div>
               <div className="min-w-0">
-                <h1 className="text-sm sm:text-base font-semibold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 bg-clip-text text-transparent truncate max-w-[150px] sm:max-w-[250px] lg:max-w-[350px]">
+                <h1 className="text-sm sm:text-base font-semibold bg-gradient-to-r from-slate-900 via-slate-700 to-slate-600 dark:from-slate-100 dark:via-slate-300 dark:to-slate-400 bg-clip-text text-transparent truncate max-w-[150px] sm:max-w-[250px] lg:max-w-[350px]">
                   {filename || 'Contract Details'}
                 </h1>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -101,11 +109,11 @@ export const ContractHeader = memo(function ContractHeader({
                   <StatusBadge status={status || 'unknown'} />
                   {currentVersion !== undefined && currentVersion > 0 && (
                     <>
-                      <span className="text-slate-300 hidden sm:inline">•</span>
+                      <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                               <GitBranch className="h-3 w-3" />
                               v{currentVersion}
                             </span>
@@ -131,7 +139,7 @@ export const ContractHeader = memo(function ContractHeader({
                     variant="ghost" 
                     size="icon" 
                     onClick={onRefresh} 
-                    className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-slate-100 transition-colors"
+                    className="h-8 w-8 sm:h-9 sm:w-9 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     aria-label="Refresh contract data"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -146,13 +154,13 @@ export const ContractHeader = memo(function ContractHeader({
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="shadow-sm hover:shadow-md hover:border-slate-300 transition-all"
+                  className="shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-600 transition-all"
                 >
                   <span className="hidden sm:inline">Actions</span>
                   <ChevronDown className="h-4 w-4 sm:ml-1.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200">
+              <DropdownMenuContent align="end" className="w-56 shadow-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800">
                 <DropdownMenuItem onClick={onTogglePdf} className="cursor-pointer">
                   <FileType className="h-4 w-4 mr-2" />
                   {showPdfViewer ? 'Hide PDF' : 'View PDF'}
@@ -182,6 +190,43 @@ export const ContractHeader = memo(function ContractHeader({
                   <GitCompare className="h-4 w-4 mr-2" />
                   Compare Versions
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/30">
+                  ✨ Premium AI Features
+                </div>
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 focus:from-purple-100 focus:to-pink-100 dark:focus:from-purple-900/40 dark:focus:to-pink-900/40">
+                  <Link href={`/contracts/${contractId}/legal-review`}>
+                    <Scale className="h-4 w-4 mr-2 text-purple-600" />
+                    Legal Review & Redlining
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">AI</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 focus:from-purple-100 focus:to-pink-100 dark:focus:from-purple-900/40 dark:focus:to-pink-900/40">
+                  <Link href={`/contracts/${contractId}/redline`}>
+                    <Edit3 className="h-4 w-4 mr-2 text-purple-600" />
+                    Redline Editor
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">AI</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 focus:from-purple-100 focus:to-pink-100 dark:focus:from-purple-900/40 dark:focus:to-pink-900/40">
+                  <Link href={`/obligations?contract=${contractId}`}>
+                    <Target className="h-4 w-4 mr-2 text-purple-600" />
+                    Track Obligations
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">AI</span>
+                  </Link>
+                </DropdownMenuItem>
+                {onCreateRenewal && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem 
+                      onClick={onCreateRenewal} 
+                      className="cursor-pointer text-amber-600 dark:text-amber-400 focus:text-amber-600 dark:focus:text-amber-400 focus:bg-amber-50 dark:focus:bg-amber-900/30"
+                    >
+                      <RefreshCcw className="h-4 w-4 mr-2" />
+                      {isExpiredOrExpiring ? 'Initiate Renewal' : 'Create Renewal'}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

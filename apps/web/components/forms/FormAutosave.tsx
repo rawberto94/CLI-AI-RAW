@@ -77,8 +77,8 @@ function setLocalBackup<T>(key: string, data: T): void {
       `autosave:${key}`,
       JSON.stringify({ data, timestamp: Date.now() })
     );
-  } catch (error) {
-    console.warn('Failed to save local backup:', error);
+  } catch {
+    // Failed to save local backup - silently ignore
   }
 }
 

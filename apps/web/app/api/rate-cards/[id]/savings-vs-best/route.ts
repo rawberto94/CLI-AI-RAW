@@ -40,8 +40,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const savingsVsBest = await benchmarkEngine.calculateSavingsVsBest(rateCardId);
 
     return NextResponse.json(savingsVsBest);
-  } catch (error) {
-    console.error('Error calculating savings vs best:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to calculate savings' },
       { status: 500 }

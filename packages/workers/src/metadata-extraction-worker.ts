@@ -79,8 +79,6 @@ export async function processMetadataExtractionJob(
   const errors: string[] = [];
   const trace = getTraceContextFromJobData(job.data);
 
-  console.log(`📊 Starting metadata extraction for contract ${contractId} (traceId=${trace.traceId})`);
-
   try {
     // Update job progress
     await job.updateProgress(5);
@@ -137,7 +135,6 @@ export async function processMetadataExtractionJob(
     });
 
     if (!contract.rawText || contract.rawText.length < 100) {
-      console.log(`⚠️ Contract ${contractId} has insufficient text for extraction`);
       throw new RetryableError('Insufficient text content for metadata extraction');
     }
 
@@ -151,7 +148,6 @@ export async function processMetadataExtractionJob(
       const hasPriorExtraction = typeof existingCustomFields === 'object' && !!existingCustomFields?._aiExtraction;
       const priorHash = existingCustomFields?._aiExtraction?.lastExtraction?.rawTextHash as string | undefined;
       if (hasPriorExtraction && (!priorHash || priorHash === rawTextHash)) {
-        console.log(`📋 Contract ${contractId} already has extraction results, skipping`);
 
         await updateStep({
           tenantId,
@@ -341,7 +337,7 @@ export async function processMetadataExtractionJob(
     });
 
     if (Object.keys(metadataToApply).length > 0) {
-      console.log(`✅ Auto-applied ${fieldsAutoApplied} fields to contract ${contractId}`);
+      // Auto-applied fields to contract
     }
 
     await job.updateProgress(95);
@@ -377,12 +373,6 @@ export async function processMetadataExtractionJob(
       currentStep: 'metadata.extract',
     });
 
-    console.log(
-      `📊 Metadata extraction complete for ${contractId}: ` +
-        `${fieldsAutoApplied} auto-applied, ${fieldsNeedingReview} need review, ` +
-        `${fieldsFailed} failed (avg confidence: ${(averageConfidence * 100).toFixed(1)}%)`
-    );
-
     return {
       success: true,
       contractId,
@@ -396,7 +386,6 @@ export async function processMetadataExtractionJob(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Metadata extraction failed for ${contractId}:`, errorMessage);
 
     await updateStep({
       tenantId,
@@ -504,8 +493,6 @@ export async function queueMetadataExtractionJob(
     }
   );
 
-  console.log(`📥 Queued metadata extraction for contract ${data.contractId}`);
-  
   return jobId;
 }
 
@@ -530,8 +517,6 @@ export async function queueBulkMetadataExtraction(
     jobIds.push(jobId);
   }
 
-  console.log(`📦 Queued ${jobIds.length} metadata extraction jobs`);
-  
   return jobIds;
 }
 

@@ -84,8 +84,7 @@ export async function POST(request: NextRequest) {
         warningThresholdDays,
       },
     });
-  } catch (error) {
-    console.error('Failed to trigger obligation scan:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

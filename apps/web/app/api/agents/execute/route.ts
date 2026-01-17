@@ -44,8 +44,7 @@ export async function POST(request: NextRequest) {
       agent: agentName,
       result,
     });
-  } catch (error) {
-    console.error('Error executing agent:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

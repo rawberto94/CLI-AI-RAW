@@ -112,9 +112,7 @@ export async function POST(request: NextRequest) {
         needsReview: artifactsWithConfidence.filter(a => a.needsReview).length,
       },
     });
-  } catch (error) {
-    console.error('Enhanced artifact generation error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Artifact generation failed',
@@ -164,9 +162,7 @@ export async function GET(request: NextRequest) {
       success: true,
       ...result,
     });
-  } catch (error) {
-    console.error('Get artifacts error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to retrieve artifacts',

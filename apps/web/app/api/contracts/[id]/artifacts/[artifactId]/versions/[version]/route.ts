@@ -33,8 +33,7 @@ export async function GET(
     }
 
     return NextResponse.json(version);
-  } catch (error) {
-    console.error('Error fetching version:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch version' },
       { status: 500 }

@@ -64,8 +64,7 @@ export async function GET(request: NextRequest) {
       topViolations,
       recentComparisons: [], // Will be populated when comparison records are tracked
     });
-  } catch (error) {
-    console.error('Error fetching baseline tracking data:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch baseline tracking data' },
       { status: 500 }

@@ -12,27 +12,27 @@ export async function handleTaxonomyActions(
   context: ChatContext
 ): Promise<ActionResponse> {
   const { action, entities } = intent;
-  const { tenantId, userId, contractId } = context;
+  const { tenantId, userId, currentContractId } = context;
 
   try {
     switch (action) {
       case 'list_categories':
-        return await listCategories(tenantId, entities.level);
+        return await listCategories(tenantId);
 
       case 'browse_taxonomy':
-        return await browseTaxonomy(tenantId, entities.parentCategory);
+        return await browseTaxonomy(tenantId, entities.category);
 
       case 'categorize_contract':
-        return await categorizeContract(entities.contractId || contractId, entities, tenantId, userId);
+        return await categorizeContract(entities.contractId || currentContractId, entities, tenantId, userId);
 
       case 'category_details':
-        return await getCategoryDetails(entities.categoryId, tenantId);
+        return await getCategoryDetails(entities.category, tenantId);
 
       case 'suggest_category':
-        return await suggestCategory(entities.contractId || contractId, tenantId);
+        return await suggestCategory(entities.contractId || currentContractId, tenantId);
 
       case 'update_category':
-        return await updateCategory(entities.contractId || contractId, entities, tenantId, userId);
+        return await updateCategory(entities.contractId || currentContractId, entities, tenantId, userId);
 
       case 'category_stats':
         return await getCategoryStats(tenantId);
@@ -46,8 +46,7 @@ export async function handleTaxonomyActions(
           message: `Unknown taxonomy action: ${action}`,
         };
     }
-  } catch (error) {
-    console.error('[Taxonomy Actions] Error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'Failed to process taxonomy request',
@@ -56,23 +55,14 @@ export async function handleTaxonomyActions(
   }
 }
 
-async function listCategories(tenantId: string, level?: number): Promise<ActionResponse> {
+async function listCategories(tenantId: string): Promise<ActionResponse> {
   const where: Record<string, unknown> = {
     OR: [{ tenantId }, { tenantId: null }], // Include global and tenant-specific
   };
 
-  if (level !== undefined) {
-    where.level = level;
-  }
-
   const categories = await prisma.taxonomyCategory.findMany({
     where,
     orderBy: [{ level: 'asc' }, { name: 'asc' }],
-    include: {
-      parent: { select: { id: true, name: true } },
-      children: { select: { id: true, name: true } },
-      _count: { select: { contracts: true } },
-    },
   });
 
   // Group by level
@@ -93,9 +83,7 @@ async function listCategories(tenantId: string, level?: number): Promise<ActionR
         id: c.id,
         name: c.name,
         level: c.level,
-        parent: c.parent?.name,
-        childCount: c.children.length,
-        contractCount: c._count.contracts,
+        parentId: c.parentId,
       })),
     },
   };
@@ -121,7 +109,6 @@ async function browseTaxonomy(tenantId: string, parentId?: string): Promise<Acti
         select: { id: true, name: true },
         orderBy: { name: 'asc' },
       },
-      _count: { select: { contracts: true } },
     },
   });
 
@@ -143,7 +130,6 @@ async function browseTaxonomy(tenantId: string, parentId?: string): Promise<Acti
         id: c.id,
         name: c.name,
         hasChildren: c.children.length > 0,
-        contractCount: c._count.contracts,
       })),
     },
     actions: categories.map((c) => ({
@@ -175,13 +161,9 @@ async function categorizeContract(
     return { success: false, message: 'Contract not found' };
   }
 
-  // Find category
+  // Find category by name from entities
   let category = null;
-  if (entities.categoryId) {
-    category = await prisma.taxonomyCategory.findUnique({
-      where: { id: entities.categoryId },
-    });
-  } else if (entities.category) {
+  if (entities.category) {
     category = await prisma.taxonomyCategory.findFirst({
       where: {
         name: { contains: entities.category, mode: 'insensitive' },
@@ -217,7 +199,7 @@ async function categorizeContract(
   await prisma.contract.update({
     where: { id: contractId },
     data: {
-      taxonomyCategoryId: category.id,
+      contractCategoryId: category.id,
       category: category.name,
     },
   });
@@ -249,22 +231,7 @@ async function getCategoryDetails(categoryId: string | undefined, tenantId: stri
     where: { id: categoryId },
     include: {
       parent: true,
-      children: {
-        include: {
-          _count: { select: { contracts: true } },
-        },
-      },
-      contracts: {
-        take: 5,
-        orderBy: { totalValue: 'desc' },
-        select: {
-          id: true,
-          contractTitle: true,
-          supplierName: true,
-          totalValue: true,
-        },
-      },
-      _count: { select: { contracts: true } },
+      children: true,
     },
   });
 
@@ -272,9 +239,27 @@ async function getCategoryDetails(categoryId: string | undefined, tenantId: stri
     return { success: false, message: 'Category not found' };
   }
 
+  // Get contracts count separately
+  const contractCount = await prisma.contract.count({
+    where: { contractCategoryId: categoryId },
+  });
+
   const totalValue = await prisma.contract.aggregate({
-    where: { taxonomyCategoryId: categoryId },
+    where: { contractCategoryId: categoryId },
     _sum: { totalValue: true },
+  });
+
+  // Get top contracts
+  const topContracts = await prisma.contract.findMany({
+    where: { contractCategoryId: categoryId },
+    take: 5,
+    orderBy: { totalValue: 'desc' },
+    select: {
+      id: true,
+      contractTitle: true,
+      supplierName: true,
+      totalValue: true,
+    },
   });
 
   return {
@@ -288,11 +273,10 @@ async function getCategoryDetails(categoryId: string | undefined, tenantId: stri
       parent: category.parent?.name,
       children: category.children.map((c) => ({
         name: c.name,
-        contractCount: c._count.contracts,
       })),
-      contractCount: category._count.contracts,
+      contractCount,
       totalSpend: totalValue._sum.totalValue || 0,
-      topContracts: category.contracts,
+      topContracts,
     },
   };
 }
@@ -310,7 +294,7 @@ async function suggestCategory(contractId: string | undefined, tenantId: string)
     include: {
       artifacts: {
         where: { type: 'OVERVIEW' },
-        select: { summary: true },
+        select: { data: true },
       },
     },
   });
@@ -319,50 +303,20 @@ async function suggestCategory(contractId: string | undefined, tenantId: string)
     return { success: false, message: 'Contract not found' };
   }
 
-  // Check for AI suggestions
-  const suggestions = await prisma.categorySuggestion.findMany({
-    where: { contractId },
-    orderBy: { confidence: 'desc' },
-    take: 3,
-    include: {
-      category: true,
-    },
-  });
-
-  if (suggestions.length > 0) {
-    return {
-      success: true,
-      message: `AI suggests these categories for "${contract.contractTitle}"`,
-      data: {
-        suggestions: suggestions.map((s) => ({
-          id: s.categoryId,
-          name: s.category.name,
-          confidence: s.confidence,
-          reason: s.reason,
-        })),
-      },
-      actions: suggestions.map((s) => ({
-        label: `Apply "${s.category.name}" (${Math.round(s.confidence * 100)}% confidence)`,
-        action: 'categorize_contract',
-        params: { contractId, categoryId: s.categoryId },
-      })),
-    };
-  }
-
-  // No AI suggestions - suggest based on similar contracts
+  // No AI suggestions model exists - suggest based on similar contracts
   const similarContracts = await prisma.contract.findMany({
     where: {
       tenantId,
       supplierName: contract.supplierName,
-      taxonomyCategoryId: { not: null },
+      contractCategoryId: { not: null },
       id: { not: contractId },
     },
-    select: { taxonomyCategoryId: true },
+    select: { contractCategoryId: true },
     take: 10,
   });
 
   if (similarContracts.length > 0) {
-    const categoryIds = [...new Set(similarContracts.map((c) => c.taxonomyCategoryId!))];
+    const categoryIds = [...new Set(similarContracts.map((c) => c.contractCategoryId!))];
     const categories = await prisma.taxonomyCategory.findMany({
       where: { id: { in: categoryIds } },
     });
@@ -374,7 +328,7 @@ async function suggestCategory(contractId: string | undefined, tenantId: string)
       actions: categories.map((c) => ({
         label: `Apply "${c.name}"`,
         action: 'categorize_contract',
-        params: { contractId, categoryId: c.id },
+        params: { contractId, category: c.name },
       })),
     };
   }
@@ -405,18 +359,13 @@ async function getCategoryStats(tenantId: string): Promise<ActionResponse> {
       level: 1, // L1 categories
     },
     include: {
-      children: {
-        include: {
-          _count: { select: { contracts: true } },
-        },
-      },
-      _count: { select: { contracts: true } },
+      children: true,
     },
     orderBy: { name: 'asc' },
   });
 
   const totalCategorized = await prisma.contract.count({
-    where: { tenantId, taxonomyCategoryId: { not: null } },
+    where: { tenantId, contractCategoryId: { not: null } },
   });
 
   const totalContracts = await prisma.contract.count({ where: { tenantId } });
@@ -432,11 +381,8 @@ async function getCategoryStats(tenantId: string): Promise<ActionResponse> {
       categorizedPercent: parseFloat(categorizedPercent),
       byL1: stats.map((l1) => ({
         name: l1.name,
-        directCount: l1._count.contracts,
-        totalCount: l1._count.contracts + l1.children.reduce((sum, c) => sum + c._count.contracts, 0),
         l2Categories: l1.children.map((l2) => ({
           name: l2.name,
-          count: l2._count.contracts,
         })),
       })),
     },
@@ -447,7 +393,7 @@ async function getUncategorizedContracts(tenantId: string): Promise<ActionRespon
   const uncategorized = await prisma.contract.findMany({
     where: {
       tenantId,
-      taxonomyCategoryId: null,
+      contractCategoryId: null,
       status: 'ACTIVE',
     },
     select: {

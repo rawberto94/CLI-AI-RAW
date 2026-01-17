@@ -54,9 +54,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error('Failed to log client error:', error);
-    
+  } catch {
     return NextResponse.json(
       {
         success: false,

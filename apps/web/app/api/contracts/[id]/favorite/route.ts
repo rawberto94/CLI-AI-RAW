@@ -97,8 +97,7 @@ export async function POST(
       message: favorite ? 'Contract added to favorites' : 'Contract removed from favorites'
     })
     
-  } catch (error) {
-    console.error('Error toggling favorite:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update favorite status' },
       { status: 500 }
@@ -135,8 +134,7 @@ export async function GET(
       favorite: favoriteContracts.includes(contractId)
     })
     
-  } catch (error) {
-    console.error('Error checking favorite status:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to check favorite status' },
       { status: 500 }

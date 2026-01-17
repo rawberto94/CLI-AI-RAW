@@ -1,59 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-// Mock portal data
-const mockPortalData = {
-  supplier: {
-    id: 'sup1',
-    name: 'TechVendor Solutions Inc.',
-    contact: 'Roberto Ostojic',
-    email: 'roberto@techvendor.com',
-    phone: '+1 (555) 123-4567',
-    rating: 4.7,
-    activeContracts: 3,
-  },
-  contracts: [
-    {
-      id: 'c1',
-      name: 'Master Services Agreement',
-      status: 'pending-signature',
-      value: 1200000,
-      expiryDate: '2025-04-01',
-      actionRequired: true,
-    },
-    {
-      id: 'c2',
-      name: 'Cloud Services SLA',
-      status: 'in-negotiation',
-      value: 450000,
-      expiryDate: '2025-06-01',
-      actionRequired: true,
-    },
-  ],
-  pendingTasks: [
-    {
-      id: 't1',
-      title: 'Sign Master Services Agreement',
-      type: 'signature',
-      dueDate: '2024-03-15',
-      priority: 'critical',
-    },
-    {
-      id: 't2',
-      title: 'Upload Updated Insurance Certificate',
-      type: 'document',
-      dueDate: '2024-03-16',
-      priority: 'high',
-    },
-  ],
-  unreadMessages: 2,
-};
-
+/**
+ * Supplier Portal API
+ * Provides external suppliers access to their contracts, tasks, and messages
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
   const section = searchParams.get('section');
+  const supplierId = searchParams.get('supplierId');
 
-  // Validate magic link token (mock)
+  // Validate magic link token
   if (token && token.length < 10) {
     return NextResponse.json(
       { success: false, error: 'Invalid or expired token' },
@@ -61,30 +19,108 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (section) {
-    switch (section) {
-      case 'contracts':
-        return NextResponse.json({
-          success: true,
-          data: { contracts: mockPortalData.contracts },
-        });
-      case 'tasks':
-        return NextResponse.json({
-          success: true,
-          data: { tasks: mockPortalData.pendingTasks },
-        });
-      default:
-        return NextResponse.json({
-          success: true,
-          data: mockPortalData,
-        });
-    }
-  }
+  try {
+    // Get supplier info - for now, we'll use supplierName from contracts
+    // In production, this would be validated against a token/session
+    const supplierName = supplierId || 'Unknown Supplier';
 
-  return NextResponse.json({
-    success: true,
-    data: mockPortalData,
-  });
+    // Get contracts for this supplier
+    const contracts = await prisma.contract.findMany({
+      where: {
+        supplierName: supplierName !== 'Unknown Supplier' ? supplierName : undefined,
+        isDeleted: false,
+      },
+      select: {
+        id: true,
+        contractTitle: true,
+        fileName: true,
+        status: true,
+        totalValue: true,
+        expirationDate: true,
+        signatureRequests: {
+          where: { status: 'pending' },
+          select: { id: true },
+        },
+      },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Build portal data from real contracts
+    const portalContracts = contracts.map(c => ({
+      id: c.id,
+      name: c.contractTitle || c.fileName || 'Untitled Contract',
+      status: c.signatureRequests.length > 0 ? 'pending-signature' : c.status?.toLowerCase() || 'active',
+      value: Number(c.totalValue) || 0,
+      expiryDate: c.expirationDate?.toISOString().split('T')[0] || null,
+      actionRequired: c.signatureRequests.length > 0,
+    }));
+
+    // Get pending tasks (signature requests)
+    const signatureRequests = await prisma.signatureRequest.findMany({
+      where: {
+        status: 'pending',
+        contract: {
+          supplierName: supplierName !== 'Unknown Supplier' ? supplierName : undefined,
+        },
+      },
+      include: {
+        contract: {
+          select: { contractTitle: true, fileName: true },
+        },
+      },
+      take: 10,
+    });
+
+    const pendingTasks = signatureRequests.map(sr => ({
+      id: sr.id,
+      title: `Sign ${sr.contract.contractTitle || sr.contract.fileName || 'Contract'}`,
+      type: 'signature',
+      dueDate: sr.expiresAt?.toISOString().split('T')[0] || null,
+      priority: 'high',
+    }));
+
+    const portalData = {
+      supplier: {
+        id: supplierId || 'unknown',
+        name: supplierName,
+        activeContracts: portalContracts.length,
+      },
+      contracts: portalContracts,
+      pendingTasks,
+      unreadMessages: 0,
+    };
+
+    if (section) {
+      switch (section) {
+        case 'contracts':
+          return NextResponse.json({
+            success: true,
+            data: { contracts: portalData.contracts },
+          });
+        case 'tasks':
+          return NextResponse.json({
+            success: true,
+            data: { tasks: portalData.pendingTasks },
+          });
+        default:
+          return NextResponse.json({
+            success: true,
+            data: portalData,
+          });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: portalData,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch portal data' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

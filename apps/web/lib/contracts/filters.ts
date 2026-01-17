@@ -183,8 +183,8 @@ export const applyFilters = <T extends Record<string, any>>(
 export const saveFiltersToStorage = (key: string, filters: Record<string, any>) => {
   try {
     localStorage.setItem(`contract-filters-${key}`, JSON.stringify(filters))
-  } catch (error) {
-    console.warn('Failed to save filters:', error)
+  } catch {
+    // Failed to save filters to storage
   }
 }
 
@@ -200,8 +200,8 @@ export const loadFiltersFromStorage = (key: string): Record<string, any> | null 
       }
       return filters
     }
-  } catch (error) {
-    console.warn('Failed to load filters:', error)
+  } catch {
+    // Failed to load filters from storage
   }
   return null
 }

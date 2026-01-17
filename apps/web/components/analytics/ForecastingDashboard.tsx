@@ -412,8 +412,7 @@ export const ForecastingDashboard: React.FC = () => {
         if (data.opportunities?.length) setOpportunities(data.opportunities);
         if (data.supplierSpend?.length) setSupplierSpend(data.supplierSpend);
       }
-    } catch (err) {
-      console.error('Failed to fetch analytics:', err);
+    } catch {
       setError('Using sample data - connect database for real analytics');
     } finally {
       setLoading(false);

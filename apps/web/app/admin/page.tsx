@@ -134,8 +134,8 @@ function AIAccuracyDashboard() {
           const result = await response.json();
           setData(result.data);
         }
-      } catch (err) {
-        console.error('Failed to fetch accuracy:', err);
+      } catch {
+        // Error handled silently
       } finally {
         setLoading(false);
       }
@@ -373,9 +373,8 @@ export default function TenantAdminPage() {
         const invitationsData = await invitationsRes.json();
         setInvitations(invitationsData.invitations || []);
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load data");
-      console.error(err);
     } finally {
       setLoading(false);
     }

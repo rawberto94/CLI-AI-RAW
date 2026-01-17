@@ -72,7 +72,6 @@ class SmartCacheService {
         return;
       }
       // If memory manager fails, fall back to local cache
-      console.warn(`[SmartCache] Memory manager full, using local cache for ${key}`);
     }
 
     // Fallback to local cache

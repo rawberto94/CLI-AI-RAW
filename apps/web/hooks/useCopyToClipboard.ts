@@ -71,8 +71,7 @@ export function useCopyToClipboard(
         }
 
         return true;
-      } catch (error) {
-        console.error('Failed to copy to clipboard:', error);
+      } catch {
         setCopied(false);
 
         if (showToast) {
@@ -103,8 +102,7 @@ export async function copyToClipboard(
       toast.success(successMessage);
     }
     return true;
-  } catch (error) {
-    console.error('Failed to copy:', error);
+  } catch {
     if (showToast) {
       toast.error('Failed to copy to clipboard');
     }

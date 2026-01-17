@@ -41,8 +41,7 @@ export async function PATCH(
       fieldPath,
       value,
     });
-  } catch (error) {
-    console.error('Error updating field:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update field' },
       { status: 500 }

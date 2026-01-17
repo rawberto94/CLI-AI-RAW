@@ -79,8 +79,7 @@ export async function GET(request: NextRequest) {
         ? (totalSavingsRealized / totalSavingsIdentified) * 100 
         : 0,
     });
-  } catch (error) {
-    console.error('Error fetching financial metrics:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch financial metrics' },
       { status: 500 }

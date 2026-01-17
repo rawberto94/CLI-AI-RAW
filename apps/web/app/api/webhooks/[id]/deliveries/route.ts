@@ -82,8 +82,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       data: deliveries,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit), webhookId: id },
     });
-  } catch (error) {
-    console.error('Error fetching webhook deliveries:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to fetch deliveries' }, { status: 500 });
   }
 }

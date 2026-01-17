@@ -44,12 +44,9 @@ export async function triggerPostArtifactMetadataExtraction(
     skipIfExists = true,
   } = options;
 
-  console.log(`🔗 Triggering post-artifact metadata extraction for ${contractId}`);
-
   // Check if auto metadata extraction is enabled
   const autoExtract = process.env.AUTO_METADATA_EXTRACTION !== "false";
   if (!autoExtract) {
-    console.log("⏭️ Auto metadata extraction disabled");
     return { queued: false };
   }
 
@@ -69,12 +66,10 @@ export async function triggerPostArtifactMetadataExtraction(
           .some(([, value]) => value !== null && value !== undefined && value !== "");
 
         if (hasValues) {
-          console.log(`📋 Contract ${contractId} already has metadata, skipping`);
           return { queued: false };
         }
       }
-    } catch (error) {
-      console.warn("Failed to check existing metadata:", error);
+    } catch {
       // Continue with extraction
     }
   }
@@ -102,8 +97,7 @@ export async function triggerPostArtifactMetadataExtraction(
 
       const result = await processMetadataExtractionJob(mockJob as any);
       return { queued: false, result };
-    } catch (error) {
-      console.error("Synchronous metadata extraction failed:", error);
+    } catch {
       return { queued: false };
     }
   } else {
@@ -116,8 +110,7 @@ export async function triggerPostArtifactMetadataExtraction(
       });
 
       return { queued: true, jobId };
-    } catch (error) {
-      console.error("Failed to queue metadata extraction:", error);
+    } catch {
       return { queued: false };
     }
   }
@@ -234,11 +227,8 @@ export async function extractMetadataFromArtifacts(
       }
     }
 
-    console.log(`📋 Extracted ${Object.keys(metadata).length} metadata fields from artifacts`);
-
     return metadata;
-  } catch (error) {
-    console.error("Failed to extract metadata from artifacts:", error);
+  } catch {
     return {};
   }
 }
@@ -286,10 +276,8 @@ export async function applyArtifactMetadataToContract(
       },
     });
 
-    console.log(`✅ Applied artifact metadata to contract ${contractId}`);
     return true;
-  } catch (error) {
-    console.error("Failed to apply artifact metadata:", error);
+  } catch {
     return false;
   }
 }

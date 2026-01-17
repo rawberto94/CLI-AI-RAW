@@ -33,8 +33,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     return NextResponse.json({ comparison });
-  } catch (error) {
-    console.error('Error fetching comparison:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to fetch comparison', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -87,8 +86,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     });
 
     return NextResponse.json({ comparison });
-  } catch (error) {
-    console.error('Error updating comparison:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to update comparison', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -130,8 +128,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting comparison:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to delete comparison', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

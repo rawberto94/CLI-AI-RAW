@@ -105,7 +105,7 @@ async function showVersionHistory(
     // Get contract info
     const contract = await db.contract.findFirst({
       where: { id: contractId, tenantId: context.tenantId },
-      select: { id: true, filename: true, status: true }
+      select: { id: true, fileName: true, status: true }
     });
 
     if (!contract) {
@@ -130,7 +130,7 @@ async function showVersionHistory(
     if (versions.length === 0) {
       return {
         success: true,
-        message: `📋 **${contract.filename}**\n\nThis contract doesn't have any version history yet. When you make changes or upload new documents, versions will be tracked automatically.\n\n💡 **Tip:** You can create a snapshot anytime by saying "create a version snapshot for this contract".`,
+        message: `📋 **${contract.fileName}**\n\nThis contract doesn't have any version history yet. When you make changes or upload new documents, versions will be tracked automatically.\n\n💡 **Tip:** You can create a snapshot anytime by saying "create a version snapshot for this contract".`,
         data: { contract, versions: [] }
       };
     }
@@ -155,7 +155,7 @@ async function showVersionHistory(
 
     return {
       success: true,
-      message: `📋 **Version History: ${contract.filename}**\n\n${versionList}\n\n---\n**Current Version:** v${currentVersion?.versionNumber || versions[0]?.versionNumber || 1}\n**Total Versions:** ${versions.length}\n\n💡 Say "compare version X with version Y" to see differences, or "revert to version X" to roll back.`,
+      message: `📋 **Version History: ${contract.fileName}**\n\n${versionList}\n\n---\n**Current Version:** v${currentVersion?.versionNumber || versions[0]?.versionNumber || 1}\n**Total Versions:** ${versions.length}\n\n💡 Say "compare version X with version Y" to see differences, or "revert to version X" to roll back.`,
       data: { 
         contract, 
         versions: versions.map(v => ({
@@ -168,8 +168,7 @@ async function showVersionHistory(
         currentVersion: currentVersion?.versionNumber
       }
     };
-  } catch (error) {
-    console.error('Version history error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: "I encountered an error fetching the version history. Please try again.",
@@ -263,8 +262,7 @@ async function compareVersions(
         comparisonUrl: `/contracts/${contractId}/versions/compare?v1=${verA}&v2=${verB}`
       }
     };
-  } catch (error) {
-    console.error('Version comparison error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: "I encountered an error comparing versions. Please try again.",
@@ -286,7 +284,7 @@ async function createVersionSnapshot(
       where: { id: contractId, tenantId: context.tenantId },
       select: {
         id: true,
-        filename: true,
+        fileName: true,
         status: true,
         totalValue: true,
         expirationDate: true,
@@ -336,7 +334,7 @@ async function createVersionSnapshot(
         versionNumber: newVersionNumber,
         parentVersionId: latestVersion?.id || null,
         summary,
-        changes: currentState,
+        changes: JSON.parse(JSON.stringify(currentState)),
         uploadedBy: context.userId || 'Chatbot',
         isActive: true,
         uploadedAt: new Date()
@@ -345,7 +343,7 @@ async function createVersionSnapshot(
 
     return {
       success: true,
-      message: `✅ **Version ${newVersionNumber} Created**\n\n📋 **${contract.filename}**\n\n${summary}\n\nThis snapshot captures the current state of the contract. You can revert to this version anytime by saying "revert to version ${newVersionNumber}".`,
+      message: `✅ **Version ${newVersionNumber} Created**\n\n📋 **${contract.fileName}**\n\n${summary}\n\nThis snapshot captures the current state of the contract. You can revert to this version anytime by saying "revert to version ${newVersionNumber}".`,
       data: {
         version: {
           id: newVersion.id,
@@ -355,8 +353,7 @@ async function createVersionSnapshot(
         }
       }
     };
-  } catch (error) {
-    console.error('Create version error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: "I encountered an error creating the version snapshot. Please try again.",
@@ -432,8 +429,7 @@ async function revertToVersion(
         }
       }
     };
-  } catch (error) {
-    console.error('Revert version error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: "I encountered an error reverting to that version. Please try again.",
@@ -469,10 +465,10 @@ async function exportVersionHistory(
       where: { id: contractId, tenantId: context.tenantId },
       select: {
         id: true,
-        filename: true,
+        fileName: true,
         contractTitle: true,
         status: true,
-        contractVersions: {
+        versions: {
           orderBy: { versionNumber: 'desc' },
           select: {
             id: true,
@@ -495,10 +491,10 @@ async function exportVersionHistory(
       };
     }
 
-    if (!contract.contractVersions || contract.contractVersions.length === 0) {
+    if (!contract.versions || contract.versions.length === 0) {
       return {
         success: false,
-        message: `📋 **${contract.filename || contract.contractTitle}** has no version history to export yet.\n\nVersion history is created when you upload new versions or create snapshots.`,
+        message: `📋 **${contract.fileName || contract.contractTitle}** has no version history to export yet.\n\nVersion history is created when you upload new versions or create snapshots.`,
         error: 'no_versions'
       };
     }
@@ -506,11 +502,11 @@ async function exportVersionHistory(
     // Format version history for export
     const exportData = {
       contractId: contract.id,
-      contractName: contract.filename || contract.contractTitle,
+      contractName: contract.fileName || contract.contractTitle,
       status: contract.status,
       exportedAt: new Date().toISOString(),
-      totalVersions: contract.contractVersions.length,
-      versions: contract.contractVersions.map(v => ({
+      totalVersions: contract.versions.length,
+      versions: contract.versions.map(v => ({
         versionNumber: v.versionNumber,
         isActive: v.isActive,
         summary: v.summary || 'No summary provided',
@@ -522,29 +518,29 @@ async function exportVersionHistory(
 
     // Generate CSV format
     const csvHeader = 'Version,Status,Summary,Uploaded By,Uploaded At,Changes Count';
-    const csvRows = contract.contractVersions.map(v => 
+    const csvRows = contract.versions.map(v => 
       `${v.versionNumber},${v.isActive ? 'Current' : 'Previous'},"${(v.summary || 'No summary').replace(/"/g, '""')}",${v.uploadedBy || 'System'},${new Date(v.uploadedAt).toISOString()},${v.changes ? Object.keys(v.changes as object).length : 0}`
     );
     const csvContent = [csvHeader, ...csvRows].join('\n');
 
     // Generate markdown summary
-    const versionList = contract.contractVersions.slice(0, 5).map(v => {
+    const versionList = contract.versions.slice(0, 5).map(v => {
       const date = new Date(v.uploadedAt).toLocaleDateString();
       const status = v.isActive ? '✓ Current' : '';
       return `• **v${v.versionNumber}** ${status} - ${date} by ${v.uploadedBy || 'System'}`;
     }).join('\n');
 
-    const moreText = contract.contractVersions.length > 5 
-      ? `\n\n_...and ${contract.contractVersions.length - 5} more versions_` 
+    const moreText = contract.versions.length > 5 
+      ? `\n\n_...and ${contract.versions.length - 5} more versions_` 
       : '';
 
     return {
       success: true,
-      message: `📊 **Version History Export**\n\n📋 **${contract.filename || contract.contractTitle}**\n\n**${contract.contractVersions.length}** versions found:\n\n${versionList}${moreText}\n\n---\n\n**Export Options:**\n• 📋 Copy the data below to your clipboard\n• 💾 Download as CSV for spreadsheet analysis\n• 📄 Use the version comparison page for detailed diffs`,
+      message: `📊 **Version History Export**\n\n📋 **${contract.fileName || contract.contractTitle}**\n\n**${contract.versions.length}** versions found:\n\n${versionList}${moreText}\n\n---\n\n**Export Options:**\n• 📋 Copy the data below to your clipboard\n• 💾 Download as CSV for spreadsheet analysis\n• 📄 Use the version comparison page for detailed diffs`,
       data: {
         exportData,
         csvContent,
-        downloadFilename: `${(contract.filename || 'contract').replace(/[^a-z0-9]/gi, '_')}_version_history.csv`,
+        downloadFilename: `${(contract.fileName || 'contract').replace(/[^a-z0-9]/gi, '_')}_version_history.csv`,
         quickActions: [
           {
             label: '📋 Copy CSV',
@@ -564,8 +560,7 @@ async function exportVersionHistory(
         ]
       }
     };
-  } catch (error) {
-    console.error('Export version history error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: "I encountered an error exporting the version history. Please try again.",

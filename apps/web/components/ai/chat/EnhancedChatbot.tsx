@@ -458,8 +458,8 @@ export const EnhancedChatbot = memo(({
       if (stored) {
         setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
       }
-    } catch (e) {
-      console.warn('Failed to load chat settings:', e);
+    } catch {
+      // Failed to load chat settings, using defaults
     }
   }, []);
 
@@ -629,8 +629,7 @@ const ChatbotInner = memo(({
           },
         });
       }
-    } catch (error) {
-      console.error('Chat error:', error);
+    } catch {
       addMessage({
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',

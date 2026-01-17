@@ -176,8 +176,7 @@ Structure your response as JSON with the following format:
           recommendations: [],
         };
       }
-    } catch (parseError) {
-      console.error('Error parsing AI summary:', parseError);
+    } catch {
       // Fallback to structured data from contract
       const aiMeta = contract.aiMetadata as Record<string, any> || {};
       const externalParties = aiMeta.external_parties || [];
@@ -227,8 +226,7 @@ Structure your response as JSON with the following format:
       },
     });
 
-  } catch (error) {
-    console.error('Error generating contract summary:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Failed to generate summary',

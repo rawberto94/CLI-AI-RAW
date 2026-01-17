@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
+import { EmailService } from '@/lib/services/email.service';
 
 // Validation schema for renewal request
 const renewalRequestSchema = z.object({
@@ -220,6 +221,78 @@ export async function POST(
       });
     }
 
+    // Create audit log entries for compliance and traceability
+    await prisma.auditLog.createMany({
+      data: [
+        {
+          tenantId,
+          userId: null, // In production, get from session
+          action: 'CONTRACT_RENEWAL_CREATED',
+          resourceType: 'Contract',
+          entityType: 'Contract',
+          entityId: renewalContract.id,
+          resource: renewalContract.id,
+          details: {
+            description: `Created renewal contract "${renewalTitle}" from original contract "${originalContract.contractTitle || originalContractId}"`,
+          },
+          metadata: {
+            originalContractId,
+            renewalContractId: renewalContract.id,
+            originalTitle: originalContract.contractTitle,
+            renewalTitle,
+            effectiveDate: newEffectiveDate.toISOString(),
+            expirationDate: newExpirationDate.toISOString(),
+            totalValue: renewalContract.totalValue ? Number(renewalContract.totalValue) : null,
+            copyOptions: {
+              parties: validatedData.copyParties,
+              terms: validatedData.copyTerms,
+              metadata: validatedData.copyMetadata,
+            },
+          },
+          ipAddress: request.headers.get('x-forwarded-for') || null,
+          userAgent: request.headers.get('user-agent') || null,
+        },
+        {
+          tenantId,
+          userId: null,
+          action: 'CONTRACT_RENEWAL_STATUS_UPDATED',
+          resourceType: 'Contract',
+          entityType: 'Contract',
+          entityId: originalContractId,
+          resource: originalContractId,
+          details: {
+            description: `Original contract marked as renewed. New contract: ${renewalContract.id}`,
+          },
+          metadata: {
+            previousStatus: originalContract.renewalStatus,
+            newStatus: 'COMPLETED',
+            renewalContractId: renewalContract.id,
+          },
+          ipAddress: request.headers.get('x-forwarded-for') || null,
+          userAgent: request.headers.get('user-agent') || null,
+        },
+      ],
+    });
+
+    // Send email notification for the renewal (non-blocking)
+    // In production, get user email from session
+    const notifyEmail = process.env.NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL;
+    if (notifyEmail) {
+      EmailService.sendRenewalNotification({
+        to: notifyEmail,
+        recipientName: 'Contract Administrator',
+        originalContractName: originalContract.contractTitle || originalContractId,
+        renewedContractName: renewalTitle,
+        renewedContractId: renewalContract.id,
+        renewalDate: new Date(),
+        expiryDate: newExpirationDate,
+        value: renewalContract.totalValue ? Number(renewalContract.totalValue) : undefined,
+        submittedForApproval: body.submitForApproval || false,
+      }).catch(() => {
+        // Don't fail the request if email fails
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Renewal contract created successfully',
@@ -238,9 +311,7 @@ export async function POST(
         renewalStatus: 'COMPLETED',
       },
     });
-  } catch (error) {
-    console.error('[Renewal API] Error creating renewal:', error);
-    
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },
@@ -390,8 +461,7 @@ export async function GET(
       totalRenewals: renewalChain.length - 1,
       currentPosition: renewalChain.findIndex(c => c.isCurrent) + 1,
     });
-  } catch (error) {
-    console.error('[Renewal API] Error fetching renewal chain:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch renewal chain' },
       { status: 500 }

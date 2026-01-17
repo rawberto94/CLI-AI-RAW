@@ -80,8 +80,8 @@ export const useContractSearch = () => {
       try {
         const recentSearches = JSON.parse(saved)
         setSearchState(prev => ({ ...prev, recentSearches }))
-      } catch (error) {
-        console.warn('Failed to load recent searches:', error)
+      } catch {
+        // Failed to load recent searches - silently ignored
       }
     }
   }, [])
@@ -204,8 +204,8 @@ export const useContractSearch = () => {
         const suggestions = await response.json()
         setSearchState(prev => ({ ...prev, suggestions }))
       }
-    } catch (error) {
-      console.warn('Failed to get suggestions:', error)
+    } catch {
+      // Failed to get suggestions - silently ignored
     }
   }, [])
 
@@ -286,8 +286,8 @@ export const useSavedSearches = () => {
           createdAt: new Date(search.createdAt)
         }))
         setSavedSearches(searches)
-      } catch (error) {
-        console.warn('Failed to load saved searches:', error)
+      } catch {
+        // Failed to load saved searches - silently ignored
       }
     }
   }, [])
@@ -325,5 +325,4 @@ export const useSavedSearches = () => {
 // Search analytics
 export const trackSearchEvent = (event: string, data?: any) => {
   // In production, integrate with your analytics service
-  console.log('Search event:', event, data)
 }

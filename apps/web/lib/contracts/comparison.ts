@@ -240,8 +240,8 @@ export function saveComparison(comparison: Comparison): void {
     // Keep only last 10 comparisons
     const limited = saved.slice(0, 10)
     localStorage.setItem('contract-comparisons', JSON.stringify(limited))
-  } catch (error) {
-    console.error('Error saving comparison:', error)
+  } catch {
+    // Error saving comparison - silently ignored
   }
 }
 
@@ -254,8 +254,8 @@ export function getComparisons(): Comparison[] {
     if (saved) {
       return JSON.parse(saved)
     }
-  } catch (error) {
-    console.error('Error loading comparisons:', error)
+  } catch {
+    // Error loading comparisons - silently ignored
   }
   return []
 }
@@ -268,8 +268,8 @@ export function deleteComparison(id: string): void {
     const saved = getComparisons()
     const filtered = saved.filter(c => c.id !== id)
     localStorage.setItem('contract-comparisons', JSON.stringify(filtered))
-  } catch (error) {
-    console.error('Error deleting comparison:', error)
+  } catch {
+    // Error deleting comparison - silently ignored
   }
 }
 

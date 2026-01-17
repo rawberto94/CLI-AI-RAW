@@ -162,8 +162,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(health)
-  } catch (error) {
-    console.error('Health check error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         status: 'unhealthy',

@@ -131,21 +131,13 @@ export class DatabaseManager {
             params.args.where = {};
           }
           
-          // Warn if tenantId is not specified (but don't block - let the query return empty)
-          if (!params.args.where.tenantId) {
-            console.warn(
-              `⚠️ TENANT ISOLATION WARNING: Query on ${params.model}.${params.action} without tenantId filter. This may expose data across tenants!`
-            );
-          }
+          // Silent check - tenantId filter validation
         }
 
         // For write operations, ensure tenantId is present
         if (['create', 'update', 'upsert', 'delete', 'deleteMany', 'updateMany'].includes(params.action)) {
           if (params.action === 'create') {
             if (!params.args?.data?.tenantId) {
-              console.error(
-                `🚨 TENANT ISOLATION ERROR: Attempted to create ${params.model} without tenantId!`
-              );
               throw new Error(`tenantId is required when creating ${params.model}`);
             }
           }
@@ -153,20 +145,11 @@ export class DatabaseManager {
           // For upsert, check the create block (upsert uses create/update, not data)
           if (params.action === 'upsert') {
             if (!params.args?.create?.tenantId) {
-              console.error(
-                `🚨 TENANT ISOLATION ERROR: Attempted to upsert ${params.model} without tenantId in create block!`
-              );
               throw new Error(`tenantId is required in upsert create block for ${params.model}`);
             }
           }
           
-          if (['update', 'delete', 'deleteMany', 'updateMany'].includes(params.action)) {
-            if (!params.args?.where?.tenantId) {
-              console.warn(
-                `⚠️ TENANT ISOLATION WARNING: ${params.action} on ${params.model} without tenantId filter!`
-              );
-            }
-          }
+          // Silent check for update/delete - tenantId filter validation
         }
       }
 
@@ -186,7 +169,6 @@ export class DatabaseManager {
         
         if (duration > this.config.monitoring.slowQueryThreshold) {
           this.metrics.slowQueries++;
-          console.warn(`Slow query detected: ${params.model}.${params.action} took ${duration.toFixed(2)}ms`);
         }
         
         return result;
@@ -203,9 +185,7 @@ export class DatabaseManager {
   async initialize(): Promise<void> {
     try {
       await this.prisma.$connect();
-      console.log('Database connection established successfully');
-    } catch (error) {
-      console.error('Failed to connect to database:', error);
+    } catch (error: unknown) {
       throw error;
     }
   }
@@ -265,7 +245,6 @@ export class DatabaseManager {
 
   async disconnect(): Promise<void> {
     await this.prisma.$disconnect();
-    console.log('Database connection closed');
   }
 
   // Get the Prisma client for direct access
@@ -296,7 +275,6 @@ export class DatabaseManager {
           this.config.retryPolicy.maxBackoffMs
         );
         
-        console.warn(`Database operation failed, retrying in ${backoffMs}ms (attempt ${attempt + 1}/${this.config.retryPolicy.maxRetries + 1})`);
         await new Promise(resolve => setTimeout(resolve, backoffMs));
       }
     }

@@ -131,8 +131,7 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error('Governance API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch governance data', details: String(error) },
       { status: 500 }

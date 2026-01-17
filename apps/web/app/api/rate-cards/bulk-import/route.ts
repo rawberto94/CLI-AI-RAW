@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
 
         results.success++;
       } catch (error) {
-        console.error(`Error importing record ${i}:`, error);
         results.failed++;
         results.errors.push({
           row: i + 2,
@@ -97,8 +96,7 @@ export async function POST(request: NextRequest) {
       success: true,
       ...results,
     });
-  } catch (error) {
-    console.error('Bulk import error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

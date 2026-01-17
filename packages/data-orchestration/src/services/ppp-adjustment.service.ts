@@ -74,7 +74,7 @@ export class PPPAdjustmentService {
   getPPPFactor(countryCode: string): number {
     const factor = this.pppFactors.get(countryCode.toUpperCase());
     if (!factor) {
-      console.warn(`PPP factor not found for country: ${countryCode}, using 1.0`);
+      // PPP factor not found for country, using 1.0 as default
       return 1.0;
     }
     return factor;

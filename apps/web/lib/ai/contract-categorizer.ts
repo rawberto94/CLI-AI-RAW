@@ -445,9 +445,7 @@ Always respond with valid JSON matching the requested schema exactly.`,
       result.overallConfidence = this.calculateOverallConfidence(result);
 
       return result;
-    } catch (error) {
-      console.error('AI categorization error:', error);
-      
+    } catch {
       // Return fallback result with rule-based categorization
       return this.fallbackCategorization(truncatedText, startTime, model);
     }

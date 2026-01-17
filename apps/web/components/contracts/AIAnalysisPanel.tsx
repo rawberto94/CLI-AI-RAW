@@ -149,7 +149,7 @@ export function AIAnalysisPanel({
           setTemplates(templatesWithIcons);
         }
       } catch {
-        console.error('Failed to load templates');
+        // Error loading templates - fail silently
       }
     }
     loadTemplates();

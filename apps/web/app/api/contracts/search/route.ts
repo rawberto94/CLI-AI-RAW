@@ -295,9 +295,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Search error:", error);
-
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -374,9 +372,7 @@ export async function GET(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Search error:", error);
-
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

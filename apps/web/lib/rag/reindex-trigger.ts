@@ -63,8 +63,7 @@ export async function triggerContractReindex(
       chunksCreated: result.chunksCreated,
       embeddingsGenerated: result.embeddingsGenerated,
     };
-  } catch (error) {
-    console.error(`Error reindexing contract ${contractId}:`, error);
+  } catch (error: unknown) {
     return {
       success: false,
       contractId,
@@ -94,13 +93,10 @@ export async function queueContractReindex(
 
     // In a production system, you would publish to a message queue here
     // For now, we'll trigger async processing
-    triggerContractReindex(contractId, { tenantId }).catch(err => {
-      console.error(`Background reindex failed for ${contractId}:`, err);
-    });
+    triggerContractReindex(contractId, { tenantId }).catch(() => {});
 
     return { queued: true, message: 'Reindex queued for background processing' };
-  } catch (error) {
-    console.error(`Error queuing reindex for ${contractId}:`, error);
+  } catch (error: unknown) {
     return { queued: false, message: error instanceof Error ? error.message : 'Queue failed' };
   }
 }
@@ -146,8 +142,7 @@ export async function checkContractNeedsReindex(
     }
 
     return { needsReindex: false };
-  } catch (error) {
-    console.error(`Error checking reindex status for ${contractId}:`, error);
+  } catch {
     return { needsReindex: false, reason: 'Error checking status' };
   }
 }
@@ -192,8 +187,7 @@ export async function findContractsNeedingReindex(
 
     // Remove duplicates
     return [...new Set(contractIds)].slice(0, limit);
-  } catch (error) {
-    console.error('Error finding contracts needing reindex:', error);
+  } catch {
     return [];
   }
 }

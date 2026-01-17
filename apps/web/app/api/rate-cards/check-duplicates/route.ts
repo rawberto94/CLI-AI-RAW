@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find similar entries
-    const similarEntries = await (prisma as any).rateCardEntry.findMany({
+    const similarEntries = await prisma.rateCardEntry.findMany({
       where: {
         tenantId,
         roleStandardized: {
@@ -70,8 +70,7 @@ export async function POST(request: NextRequest) {
         ? `Found ${similarEntries.length} similar rate card(s)`
         : 'No duplicates found',
     });
-  } catch (error) {
-    console.error('Error checking duplicates:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to check duplicates',

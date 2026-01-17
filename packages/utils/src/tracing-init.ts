@@ -21,8 +21,8 @@ export function initTracing(serviceName: string) {
 
   try {
     sdk.start();
-  } catch (err: unknown) {
-    console.error('Tracing start failed', err);
+  } catch {
+    // Tracing start failed - silently handled
   }
 
   process.on('exit', () => { sdk?.shutdown().catch(() => {}); });

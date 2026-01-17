@@ -149,15 +149,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
       },
     });
 
-    console.log('Import job created:', {
-      jobId: importJob.id,
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: fileExtension,
-      tenantId,
-      status: importJob.status,
-    });
-
     return NextResponse.json(
       {
         success: true,
@@ -168,9 +159,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error('Upload error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -275,9 +264,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       rateCardsCreated: importJob.rateCards.length,
       mappingConfidence: Number(importJob.mappingConfidence),
     });
-  } catch (error) {
-    console.error('Status check error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to check status',

@@ -49,8 +49,7 @@ export async function GET(request: NextRequest) {
       durationMs: status.durationMs,
       error: status.error,
     });
-  } catch (error) {
-    console.error('Error fetching real-time status:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch real-time status' },
       { status: 500 }

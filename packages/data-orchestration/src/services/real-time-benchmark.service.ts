@@ -220,8 +220,8 @@ export class RealTimeBenchmarkService {
         batch.map(async (item) => {
           try {
             await this.benchmarkEngine.calculateBenchmark(item.rateCardEntryId);
-          } catch (error) {
-            console.error(`Error recalculating benchmark for ${item.rateCardEntryId}:`, error);
+          } catch {
+            // Silently handle errors for individual benchmarks
           }
         })
       );

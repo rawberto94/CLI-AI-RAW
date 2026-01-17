@@ -5,7 +5,7 @@ import { Sparkles, PlayCircle, GraduationCap, BookOpen } from 'lucide-react';
 
 export default function TourLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -34,7 +34,7 @@ export default function TourLoading() {
             className="absolute inset-0"
           >
             <motion.div
-              className="absolute -top-4 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md"
+              className="absolute -top-4 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50"
             >
               <PlayCircle className="h-4 w-4 text-violet-500" />
             </motion.div>
@@ -46,7 +46,7 @@ export default function TourLoading() {
             className="absolute inset-0"
           >
             <motion.div
-              className="absolute -bottom-4 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md"
+              className="absolute -bottom-4 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50"
             >
               <GraduationCap className="h-4 w-4 text-indigo-500" />
             </motion.div>
@@ -58,7 +58,7 @@ export default function TourLoading() {
             className="absolute inset-0"
           >
             <motion.div
-              className="absolute top-1/2 -right-8 -translate-y-1/2 p-2 bg-white rounded-lg shadow-md"
+              className="absolute top-1/2 -right-8 -translate-y-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50"
             >
               <BookOpen className="h-4 w-4 text-purple-500" />
             </motion.div>

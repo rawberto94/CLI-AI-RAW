@@ -686,8 +686,8 @@ function PortfolioHealthWidget() {
             });
           }
         }
-      } catch (error) {
-        console.log('Health data fetch error:', error);
+      } catch {
+        // Silent error - health data is non-critical
       } finally {
         setLoading(false);
       }
@@ -1200,9 +1200,9 @@ export function ProfessionalDashboard() {
         <ContractNotificationsWidget
           notifications={notifications}
           maxHeight={320}
-          onMarkRead={(id) => console.log('Mark read:', id)}
-          onMarkAllRead={() => console.log('Mark all read')}
-          onDelete={(id) => console.log('Delete:', id)}
+          onMarkRead={() => {}}
+          onMarkAllRead={() => {}}
+          onDelete={() => {}}
           onAction={(n) => router.push(n.actionUrl || `/contracts/${n.contractId}`)}
         />
         <div className="lg:col-span-2">
@@ -1256,7 +1256,7 @@ export function ProfessionalDashboard() {
         />
         <IntegrationStatusWidget
           integrations={integrations}
-          onRefresh={(id) => console.log('Refresh integration:', id)}
+          onRefresh={() => {}}
           onSettings={(id) => router.push(`/settings/integrations/${id}`)}
           onViewAll={() => router.push('/settings/integrations')}
         />

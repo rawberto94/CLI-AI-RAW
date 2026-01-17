@@ -53,8 +53,7 @@ export function CSVImportModal({ isOpen, onClose, onSuccess }: CSVImportModalPro
       const result = await response.json();
       setParseResult(result);
       toast.success(`Parsed ${result.summary.totalRows} rows`);
-    } catch (error) {
-      console.error('Error parsing CSV:', error);
+    } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Failed to parse CSV');
     } finally {
       setIsUploading(false);
@@ -87,8 +86,7 @@ export function CSVImportModal({ isOpen, onClose, onSuccess }: CSVImportModalPro
       toast.success(result.message);
       onSuccess?.();
       onClose();
-    } catch (error) {
-      console.error('Error importing:', error);
+    } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Failed to import');
     } finally {
       setIsImporting(false);

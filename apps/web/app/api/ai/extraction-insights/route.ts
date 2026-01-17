@@ -65,8 +65,7 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-  } catch (error) {
-    console.error('Extraction insights error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -135,8 +134,8 @@ export async function POST(request: NextRequest) {
         );
         break;
       default:
-        // For other event types, we'd need to add specific methods
-        console.log(`📊 Received event: ${eventType}`, { contractId, fieldKey });
+        // For other event types, additional methods would be needed
+        break;
     }
 
     return NextResponse.json({
@@ -144,7 +143,6 @@ export async function POST(request: NextRequest) {
       message: 'Event recorded',
     });
   } catch (error) {
-    console.error('Record extraction event error:', error);
     return NextResponse.json(
       {
         success: false,

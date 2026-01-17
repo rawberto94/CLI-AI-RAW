@@ -103,8 +103,8 @@ export default function ResourceMonitoringDashboard() {
       if (result.success) {
         setSummary(result.data);
       }
-    } catch (err) {
-      console.error('Failed to fetch summary:', err);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -164,8 +164,8 @@ export default function ResourceMonitoringDashboard() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Resource Monitoring</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Resource Monitoring</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
             Last updated: {new Date(metrics.timestamp).toLocaleTimeString()}
           </p>
         </div>
@@ -222,12 +222,12 @@ export default function ResourceMonitoringDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Memory Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Memory</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">Memory</h2>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-600">Heap Utilization</span>
+                <span className="text-sm text-gray-600 dark:text-slate-400">Heap Utilization</span>
                 <span className={`text-sm font-semibold ${getStatusColor(metrics.memory.heapUtilization)}`}>
                   {metrics.memory.heapUtilization}
                 </span>
@@ -238,14 +238,14 @@ export default function ResourceMonitoringDashboard() {
                   style={{ width: metrics.memory.heapUtilization }}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 {metrics.memory.formatted.heapUsed} / {metrics.memory.formatted.heapTotal}
               </p>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-600">Cache Utilization</span>
+                <span className="text-sm text-gray-600 dark:text-slate-400">Cache Utilization</span>
                 <span className={`text-sm font-semibold ${getStatusColor(metrics.memory.cacheUtilization)}`}>
                   {metrics.memory.cacheUtilization}
                 </span>
@@ -256,7 +256,7 @@ export default function ResourceMonitoringDashboard() {
                   style={{ width: metrics.memory.cacheUtilization }}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 {metrics.memory.formatted.cacheSize} | {metrics.memory.cacheEntries} entries
               </p>
             </div>
@@ -265,12 +265,12 @@ export default function ResourceMonitoringDashboard() {
 
         {/* CPU Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">CPU</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">CPU</h2>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-gray-600">Usage</span>
+                <span className="text-sm text-gray-600 dark:text-slate-400">Usage</span>
                 <span className={`text-sm font-semibold ${getStatusColor(metrics.cpu.usage)}`}>
                   {metrics.cpu.usage}
                 </span>
@@ -285,15 +285,15 @@ export default function ResourceMonitoringDashboard() {
 
             <div className="text-sm space-y-1">
               <div className="flex justify-between">
-                <span className="text-gray-600">Cores:</span>
+                <span className="text-gray-600 dark:text-slate-400">Cores:</span>
                 <span className="font-medium">{metrics.cpu.cores}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Speed:</span>
+                <span className="text-gray-600 dark:text-slate-400">Speed:</span>
                 <span className="font-medium">{metrics.cpu.speed}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Load Avg:</span>
+                <span className="text-gray-600 dark:text-slate-400">Load Avg:</span>
                 <span className="font-medium">{metrics.cpu.loadAverage.join(', ')}</span>
               </div>
             </div>
@@ -302,29 +302,29 @@ export default function ResourceMonitoringDashboard() {
 
         {/* Connections Card */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Connections</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">Connections</h2>
           
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-2xl font-bold text-blue-600">{metrics.connections.total}</p>
-                <p className="text-xs text-gray-600">Total</p>
+                <p className="text-xs text-gray-600 dark:text-slate-400">Total</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{metrics.connections.active}</p>
-                <p className="text-xs text-gray-600">Active</p>
+                <p className="text-xs text-gray-600 dark:text-slate-400">Active</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-orange-600">{metrics.connections.queued}</p>
-                <p className="text-xs text-gray-600">Queued</p>
+                <p className="text-xs text-gray-600 dark:text-slate-400">Queued</p>
               </div>
             </div>
 
             <div className="text-sm space-y-1">
-              <p className="font-medium text-gray-700 mb-2">By State:</p>
+              <p className="font-medium text-gray-700 dark:text-slate-300 mb-2">By State:</p>
               {Object.entries(metrics.connections.byState).map(([state, count]) => (
                 <div key={state} className="flex justify-between">
-                  <span className="text-gray-600 capitalize">{state}:</span>
+                  <span className="text-gray-600 dark:text-slate-400 capitalize">{state}:</span>
                   <span className="font-medium">{count}</span>
                 </div>
               ))}
@@ -335,27 +335,27 @@ export default function ResourceMonitoringDashboard() {
 
       {/* System Info */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">System Information</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">System Information</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
           <div>
-            <p className="text-gray-600">Platform</p>
+            <p className="text-gray-600 dark:text-slate-400">Platform</p>
             <p className="font-medium">{metrics.system.platform}</p>
           </div>
           <div>
-            <p className="text-gray-600">Hostname</p>
+            <p className="text-gray-600 dark:text-slate-400">Hostname</p>
             <p className="font-medium">{metrics.system.hostname}</p>
           </div>
           <div>
-            <p className="text-gray-600">Uptime</p>
+            <p className="text-gray-600 dark:text-slate-400">Uptime</p>
             <p className="font-medium">{metrics.system.uptime}</p>
           </div>
           <div>
-            <p className="text-gray-600">System Memory</p>
+            <p className="text-gray-600 dark:text-slate-400">System Memory</p>
             <p className="font-medium">
               {metrics.system.formatted.freeMemory} / {metrics.system.formatted.totalMemory}
             </p>
-            <p className="text-xs text-gray-500">({metrics.system.memoryUtilization} used)</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">({metrics.system.memoryUtilization} used)</p>
           </div>
         </div>
       </div>

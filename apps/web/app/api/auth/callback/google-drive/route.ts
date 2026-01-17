@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
 
   // Handle error from Google
   if (error) {
-    console.error('Google Drive OAuth error:', error);
     return NextResponse.redirect(
       new URL(`/integrations?error=${encodeURIComponent(error)}`, request.url)
     );
@@ -56,8 +55,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL('/integrations?connected=google-drive', request.url)
     );
-  } catch (err) {
-    console.error('Google Drive callback error:', err);
+  } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.redirect(
       new URL(`/integrations?error=${encodeURIComponent(message)}`, request.url)

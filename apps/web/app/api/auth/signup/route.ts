@@ -189,8 +189,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error("Signup error:", error);
-
     if (error instanceof Error && error.name === "ZodError") {
       const zodError = error as { errors?: Array<{ message?: string }> };
       return NextResponse.json(

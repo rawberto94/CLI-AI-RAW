@@ -89,8 +89,7 @@ export function PDFCanvasViewer({
           setTotalPages(pdf.numPages);
           setLoading(false);
         }
-      } catch (err) {
-        console.error('Error loading PDF:', err);
+      } catch {
         if (mounted) {
           setError('Failed to load PDF. Please try again.');
           setLoading(false);
@@ -139,8 +138,8 @@ export function PDFCanvasViewer({
         };
 
         await page.render(renderContext).promise;
-      } catch (err) {
-        console.error('Error rendering page:', err);
+      } catch {
+        // Error rendering page - fail silently
       }
     }
     
@@ -197,7 +196,7 @@ export function PDFCanvasViewer({
         setPdfDoc(pdf);
         setTotalPages(pdf.numPages);
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError('Failed to load PDF. Please try again.');
         setLoading(false);
       }

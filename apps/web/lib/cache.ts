@@ -21,13 +21,9 @@ try {
       url: process.env.REDIS_URL,
       token: process.env.REDIS_TOKEN,
     });
-  } else {
-    if (isDev) {
-      console.warn('Redis credentials not found. Caching disabled.');
-    }
   }
-} catch (error) {
-  console.warn('Redis initialization failed. Running without cache:', error);
+} catch {
+  // Redis initialization failed, running without cache
 }
 
 export interface CacheOptions {
@@ -46,13 +42,10 @@ export async function getCached<T>(key: string): Promise<T | null> {
   try {
     const value = await redis.get<T>(key);
     if (value) {
-      if (isDev) console.log(`Cache HIT: ${key}`);
       return value;
     }
-    if (isDev) console.log(`Cache MISS: ${key}`);
     return null;
-  } catch (error) {
-    console.error('Cache GET error:', error);
+  } catch {
     return null;
   }
 }
@@ -74,9 +67,8 @@ export async function setCached<T>(
 
   try {
     await redis.setex(key, ttl, JSON.stringify(value));
-    if (isDev) console.log(`Cache SET: ${key} (TTL: ${ttl}s)`);
-  } catch (error) {
-    console.error('Cache SET error:', error);
+  } catch {
+    // Cache SET error - ignore
   }
 }
 
@@ -89,9 +81,8 @@ export async function deleteCached(key: string): Promise<void> {
 
   try {
     await redis.del(key);
-    if (isDev) console.log(`Cache DELETE: ${key}`);
-  } catch (error) {
-    console.error('Cache DELETE error:', error);
+  } catch {
+    // Cache DELETE error - ignore
   }
 }
 
@@ -106,10 +97,9 @@ export async function deleteCachedByPattern(pattern: string): Promise<void> {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
       await redis.del(...keys);
-      if (isDev) console.log(`Cache DELETE pattern: ${pattern} (${keys.length} keys)`);
     }
-  } catch (error) {
-    console.error('Cache DELETE pattern error:', error);
+  } catch {
+    // Cache DELETE pattern error - ignore
   }
 }
 

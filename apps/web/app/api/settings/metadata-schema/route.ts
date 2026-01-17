@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: schema,
     });
-  } catch (error) {
-    console.error('Failed to get metadata schema:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get metadata schema' },
       { status: 500 }
@@ -94,8 +93,7 @@ export async function PUT(request: NextRequest) {
           message: 'Schema updated successfully',
         });
     }
-  } catch (error) {
-    console.error('Failed to update metadata schema:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update metadata schema' },
       { status: 500 }
@@ -163,8 +161,7 @@ export async function POST(request: NextRequest) {
         message: 'Field added successfully',
       });
     }
-  } catch (error) {
-    console.error('Failed to add to metadata schema:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Failed to add to schema' },
       { status: 500 }
@@ -204,8 +201,7 @@ export async function PATCH(request: NextRequest) {
         message: 'Field updated successfully',
       });
     }
-  } catch (error) {
-    console.error('Failed to update metadata schema:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Failed to update' },
       { status: 500 }
@@ -245,8 +241,7 @@ export async function DELETE(request: NextRequest) {
         message: 'Field deleted successfully',
       });
     }
-  } catch (error) {
-    console.error('Failed to delete from metadata schema:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Failed to delete' },
       { status: 500 }

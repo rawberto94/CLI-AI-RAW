@@ -233,8 +233,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
         // Use mock data
         setData(mockData);
       }
-    } catch (err) {
-      console.error('Failed to fetch rate cards:', err);
+    } catch {
       setError('Failed to load rate cards');
       setData(mockData);
     } finally {
@@ -296,7 +295,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 text-gray-400" />;
+    if (sortField !== field) return <ArrowUpDown className="ml-2 h-4 w-4 text-gray-400 dark:text-slate-500" />;
     return sortDirection === 'asc' 
       ? <ArrowUp className="ml-2 h-4 w-4" />
       : <ArrowDown className="ml-2 h-4 w-4" />;
@@ -341,7 +340,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
     const colors = {
       TIER_1: 'bg-purple-100 text-purple-800',
       TIER_2: 'bg-blue-100 text-blue-800',
-      TIER_3: 'bg-gray-100 text-gray-800',
+      TIER_3: 'bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300',
       TIER_4: 'bg-slate-100 text-slate-800',
     };
     return (
@@ -433,7 +432,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <Table>
-              <TableHeader className="bg-gray-50 sticky top-0 z-10">
+              <TableHeader className="bg-gray-50 dark:bg-slate-800/50 sticky top-0 z-10">
                 <TableRow>
                   {visibleColumns.has('roleStandardized') && (
                     <TableHead>
@@ -541,18 +540,18 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
                   </TableRow>
                 ) : sortedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={visibleColumns.size} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={visibleColumns.size} className="text-center py-8 text-gray-500 dark:text-slate-400">
                       No data found. Try adjusting your filters.
                     </TableCell>
                   </TableRow>
                 ) : (
                   sortedData.map((row) => (
-                    <TableRow key={row.id} className="hover:bg-gray-50">
+                    <TableRow key={row.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
                       {visibleColumns.has('roleStandardized') && (
                         <TableCell className="font-medium">{row.roleStandardized}</TableCell>
                       )}
                       {visibleColumns.has('roleOriginal') && (
-                        <TableCell className="text-sm text-gray-600">{row.roleOriginal}</TableCell>
+                        <TableCell className="text-sm text-gray-600 dark:text-slate-400">{row.roleOriginal}</TableCell>
                       )}
                       {visibleColumns.has('seniority') && (
                         <TableCell>
@@ -574,7 +573,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
                         <TableCell>{row.country}</TableCell>
                       )}
                       {visibleColumns.has('region') && (
-                        <TableCell className="text-sm text-gray-600">{row.region}</TableCell>
+                        <TableCell className="text-sm text-gray-600 dark:text-slate-400">{row.region}</TableCell>
                       )}
                       {visibleColumns.has('lineOfService') && (
                         <TableCell>{row.lineOfService}</TableCell>

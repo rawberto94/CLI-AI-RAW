@@ -59,13 +59,26 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
   useEffect(() => {
     // Initialize WebSocket connection
     const connectWebSocket = () => {
-      // TODO: Replace with actual WebSocket URL
-      // const socket = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}/realtime`);
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
       
-      // Mock WebSocket for demonstration
+      // Use real WebSocket if URL is configured, otherwise use mock
+      if (wsUrl) {
+        try {
+          const socket = new WebSocket(`${wsUrl}/realtime`);
+          socket.onopen = () => setConnected(true);
+          socket.onclose = () => setConnected(false);
+          socket.onerror = () => setConnected(false);
+          setWs(socket as any);
+          return () => socket.close();
+        } catch {
+          // WebSocket connection failed, using mock
+        }
+      }
+      
+      // Mock WebSocket for development/demo
       const mockSocket = {
-        send: (data: string) => console.log('WS Send:', data),
-        close: () => console.log('WS Close'),
+        send: () => {},
+        close: () => {},
         addEventListener: () => {},
         removeEventListener: () => {},
       } as any;

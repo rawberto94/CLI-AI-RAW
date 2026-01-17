@@ -27,8 +27,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
       success: true,
       data: opportunities,
     });
-  } catch (error) {
-    console.error('Error detecting opportunities:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -86,8 +85,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-  } catch (error) {
-    console.error('Error getting opportunities:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

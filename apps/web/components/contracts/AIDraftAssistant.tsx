@@ -139,7 +139,7 @@ async function generateAIResponse(
     
     const data = await response.json()
     return data
-  } catch (error) {
+  } catch {
     // Fallback: Generate a mock response
     const draft = generateMockDraft(userMessage)
     return {
@@ -285,8 +285,7 @@ export function AIDraftAssistant() {
         setCurrentDraft(draft)
         setShowDraftPanel(true)
       }
-    } catch (error) {
-      console.error('AI response error:', error)
+    } catch {
       setMessages(prev => prev.filter(m => !m.isLoading).concat({
         id: `error-${Date.now()}`,
         role: 'assistant',
@@ -347,8 +346,7 @@ export function AIDraftAssistant() {
       })
       
       router.push(`/contracts/${result.id}`)
-    } catch (error) {
-      console.error('Save error:', error)
+    } catch {
       toast.error('Failed to save draft', {
         description: 'Please try again',
       })

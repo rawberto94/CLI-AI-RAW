@@ -154,7 +154,8 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
         break;
 
       default:
-        console.log('[RealTimeUpdates] Unhandled event type:', event.type);
+        // Unhandled event type
+        break;
     }
   }, [handlers, showToasts, autoRefresh]);
 
@@ -162,13 +163,11 @@ export function useRealTimeUpdates(options: UseRealTimeUpdatesOptions = {}) {
     tenantId,
     userId,
     onEvent: handleEvent,
-    onError: (err) => {
-      console.error('[RealTimeUpdates] Connection error:', err);
+    onError: () => {
       if (showToasts) {
       }
     },
     onConnect: () => {
-      console.log('[RealTimeUpdates] Connected to real-time updates');
       if (showToasts) {
       }
     }

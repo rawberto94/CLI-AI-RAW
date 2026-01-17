@@ -110,8 +110,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error) {
-    console.error('Connection test error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, message: 'Connection test failed' },
       { status: 500 }

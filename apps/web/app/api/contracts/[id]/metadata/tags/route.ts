@@ -43,8 +43,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       message: 'Tags added successfully',
       tags,
     });
-  } catch (error) {
-    console.error('Error adding tags:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to add tags' },
       { status: 500 }

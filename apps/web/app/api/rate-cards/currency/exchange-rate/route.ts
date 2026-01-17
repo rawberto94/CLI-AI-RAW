@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
       source: 'exchangerate-api.io',
     });
   } catch (error: unknown) {
-    console.error('Error fetching exchange rate:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch exchange rate' },
       { status: 500 }

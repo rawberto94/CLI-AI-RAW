@@ -356,8 +356,7 @@ export async function GET(request: NextRequest) {
       },
       source: 'database',
     });
-  } catch (dbError) {
-    console.error('Database lookup failed:', dbError);
+  } catch (dbError: unknown) {
     return NextResponse.json(
       { success: false, error: 'Database error', details: String(dbError) },
       { status: 500 }
@@ -486,8 +485,8 @@ export async function POST(request: NextRequest) {
           source: 'database',
         });
       }
-    } catch (dbError) {
-      console.warn('Database operation failed:', dbError);
+    } catch {
+      // Database operation failed - fall through to mock responses
     }
 
     // Fallback mock responses

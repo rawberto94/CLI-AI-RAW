@@ -57,6 +57,40 @@ Tests the real-time update functionality:
 
 **Requirements Covered**: 8.3 - E2E tests for key user journeys, 1.1-1.5 - Real-time system requirements
 
+### 5. Contract Renewal Workflow (`12-renewals.e2e.spec.ts`)
+Tests the complete contract renewal workflow:
+- Dashboard renewals KPI and quick actions
+- Navigation to renewals page
+- Renewal wizard flow (5 steps)
+- Contract detail page renewal actions
+- Renewal analytics page
+- Notification settings for renewals
+- API integration for renewal creation
+
+**Requirements Covered**: 8.3 - E2E tests for key user journeys, Contract lifecycle management
+
+### 6. Contract Generation Workflow (`13-contract-generation.e2e.spec.ts`)
+Tests the complete contract generation workflow:
+- Template selection and browsing
+- Contract generation wizard
+- Variable filling and form completion
+- Draft management
+- Clause library integration
+- Contract preview and download
+
+**Requirements Covered**: 8.3 - E2E tests for key user journeys, Document generation
+
+### 7. Approval Workflows (`14-approval-workflows.e2e.spec.ts`)
+Tests the complete approval workflow:
+- Approval queue management
+- Workflow automation builder
+- Bulk approval actions
+- Workflow templates (Standard, Quick, Comprehensive, Renewal)
+- Submit for approval flow
+- Workflow statistics
+
+**Requirements Covered**: 8.3 - E2E tests for key user journeys, Approval workflow management
+
 ## Prerequisites
 
 ### 1. Install Dependencies

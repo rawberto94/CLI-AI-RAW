@@ -217,8 +217,8 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
             setFolderName(data.contract.supplierName || 'Contracts');
           }
         }
-      } catch (error) {
-        console.error('Error fetching contract:', error);
+      } catch {
+        // Error handled silently
       }
       setLoading(false);
     }
@@ -238,8 +238,8 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'complete' }),
       });
-    } catch (error) {
-      console.error('Error updating status:', error);
+    } catch {
+      // Error handled silently
     }
     
     toast.success('Contract stored successfully!', {

@@ -52,8 +52,7 @@ export async function POST(
         }
       });
 
-    } catch (dbError) {
-      console.warn('Database update failed, using mock response:', dbError);
+    } catch {
       return NextResponse.json({
         success: true,
         message: 'Comment resolved successfully',
@@ -61,8 +60,7 @@ export async function POST(
       });
     }
 
-  } catch (error) {
-    console.error('Error resolving comment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

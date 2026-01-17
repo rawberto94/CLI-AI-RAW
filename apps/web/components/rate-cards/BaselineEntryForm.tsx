@@ -148,8 +148,7 @@ export function BaselineEntryForm({
 
       const result = await response.json();
       onSuccess?.(result);
-    } catch (error) {
-      console.error('Error saving baseline:', error);
+    } catch (error: unknown) {
       setErrors({ submit: error instanceof Error ? error.message : 'Failed to save baseline' });
     } finally {
       setIsSubmitting(false);
@@ -160,7 +159,7 @@ export function BaselineEntryForm({
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Information */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Basic Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Basic Information</h3>
         
         <div>
           <Label htmlFor="baselineName">Baseline Name *</Label>
@@ -193,7 +192,7 @@ export function BaselineEntryForm({
 
       {/* Role Information */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Role Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Role Information</h3>
         
         <div>
           <Label htmlFor="role">Role *</Label>
@@ -247,7 +246,7 @@ export function BaselineEntryForm({
 
       {/* Geographic Information */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Geographic Scope</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Geographic Scope</h3>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -258,7 +257,7 @@ export function BaselineEntryForm({
               onChange={(e) => handleChange('country', e.target.value)}
               placeholder="e.g., United States"
             />
-            <p className="text-xs text-gray-500 mt-1">Leave empty for global baseline</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Leave empty for global baseline</p>
           </div>
           <div>
             <Label htmlFor="region">Region</Label>
@@ -274,7 +273,7 @@ export function BaselineEntryForm({
 
       {/* Rate Information */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Rate Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Rate Information</h3>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -350,7 +349,7 @@ export function BaselineEntryForm({
 
       {/* Source Information */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Source Information</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Source Information</h3>
         
         <div>
           <Label htmlFor="source">Source</Label>
@@ -379,7 +378,7 @@ export function BaselineEntryForm({
 
       {/* Validity Period */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Validity Period</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Validity Period</h3>
         
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -403,7 +402,7 @@ export function BaselineEntryForm({
               value={formData.expiryDate}
               onChange={(e) => handleChange('expiryDate', e.target.value)}
             />
-            <p className="text-xs text-gray-500 mt-1">Leave empty for no expiry</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">Leave empty for no expiry</p>
           </div>
         </div>
       </div>
@@ -422,13 +421,13 @@ export function BaselineEntryForm({
 
       {/* Error Message */}
       {errors.submit && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-400 px-4 py-3 rounded">
           {errors.submit}
         </div>
       )}
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-3 pt-4 border-t dark:border-slate-700">
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

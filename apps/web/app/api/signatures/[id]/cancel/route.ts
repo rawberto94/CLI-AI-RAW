@@ -14,8 +14,7 @@ export async function POST(
       message: 'Signature request cancelled successfully',
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error cancelling signature workflow:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to cancel signature request' },
       { status: 500 }

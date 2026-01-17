@@ -40,7 +40,6 @@ export class BaseErrorBoundary extends Component<ErrorBoundaryProps, ErrorBounda
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error boundary caught:', error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 
@@ -134,9 +133,8 @@ export class NetworkErrorBoundary extends Component<ErrorBoundaryProps, ErrorBou
     throw error; // Re-throw non-network errors
   }
 
-  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Network error caught:', error);
-    this.props.onError?.(error, errorInfo);
+  override componentDidCatch(_error: Error, errorInfo: React.ErrorInfo) {
+    this.props.onError?.(_error, errorInfo);
   }
 
   reset = () => {
@@ -208,7 +206,6 @@ export class ApiErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('API error caught:', error);
     this.props.onError?.(error, errorInfo);
   }
 
@@ -281,7 +278,6 @@ export class ComponentErrorBoundary extends Component<
   }
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(`Component "${this.props.componentName}" error:`, error);
     this.props.onError?.(error, errorInfo);
   }
 

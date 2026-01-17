@@ -26,8 +26,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const segment = await segmentService.getSegment(params.id, tenantId);
 
     return NextResponse.json(segment);
-  } catch (error) {
-    console.error('Error getting segment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to get segment', details: error instanceof Error ? error.message : String(error) },
       { status: 404 }
@@ -70,8 +69,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     );
 
     return NextResponse.json(segment);
-  } catch (error) {
-    console.error('Error updating segment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to update segment', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }
@@ -102,8 +100,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     await segmentService.deleteSegment(params.id, tenantId, userId);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting segment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to delete segment', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }

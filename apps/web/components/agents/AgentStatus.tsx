@@ -77,8 +77,8 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
       
       setEvents(data.events || []);
       setRecommendations(data.recommendations || []);
-    } catch (error) {
-      console.error('Failed to fetch agent data:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setIsLoading(false);
     }

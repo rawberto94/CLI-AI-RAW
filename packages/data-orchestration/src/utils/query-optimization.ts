@@ -232,7 +232,6 @@ export async function monitorQuery<T>(
     monitoringService.recordTiming(`query.${queryName}`, duration);
     
     if (duration > slowThreshold) {
-      console.warn(`⚠️ Slow query detected: ${queryName} (${duration}ms)`);
       monitoringService.incrementCounter('query.slow', { query: queryName });
     }
     

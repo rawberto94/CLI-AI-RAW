@@ -56,8 +56,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    console.log(`📦 Bulk extraction request: ${contractIds.length} contracts from ${tenantId}`);
-
     // Queue the batch
     const result: BatchExtractionResult = await queueBulkMetadataExtraction(
       contractIds,
@@ -81,8 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       })),
       message: `Queued ${result.totalContracts} contracts for extraction`,
     });
-  } catch (error) {
-    console.error("Bulk extraction error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -195,8 +192,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
-    console.error("Queue status error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -239,8 +235,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       jobId,
       message: "Job cancelled successfully",
     });
-  } catch (error) {
-    console.error("Cancel job error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

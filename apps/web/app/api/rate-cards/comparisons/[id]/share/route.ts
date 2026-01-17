@@ -27,8 +27,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       message: 'Comparison shared successfully',
       shareUrl: `/rate-cards/comparisons/${params.id}`,
     });
-  } catch (error) {
-    console.error('Error sharing comparison:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to share comparison', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

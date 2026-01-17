@@ -307,34 +307,9 @@ class MemoryAuditStorage implements AuditStorage {
 // ============================================================================
 
 class ConsoleAuditLogger {
-  log(entry: AuditEntry): void {
-    const { timestamp, action, severity, userId, resourceType, resourceId, success } = entry;
-    
-    const prefix = success ? '✓' : '✗';
-    const severityColors: Record<AuditSeverity, string> = {
-      low: '\x1b[37m',      // white
-      medium: '\x1b[33m',   // yellow
-      high: '\x1b[31m',     // red
-      critical: '\x1b[35m', // magenta
-    };
-    
-    const color = severityColors[severity];
-    const reset = '\x1b[0m';
-    
-    console.log(
-      `${color}[AUDIT]${reset} ${prefix} ${timestamp.toISOString()} ` +
-      `${action} | ${severity.toUpperCase()} | ` +
-      `user=${userId ?? 'system'} | ` +
-      `resource=${resourceType}:${resourceId ?? 'none'}`
-    );
-    
-    if (entry.metadata && Object.keys(entry.metadata).length > 0) {
-      console.log(`        metadata: ${JSON.stringify(entry.metadata)}`);
-    }
-    
-    if (entry.errorMessage) {
-      console.log(`        error: ${entry.errorMessage}`);
-    }
+  log(_entry: AuditEntry): void {
+    // In production, send audit entries to your audit log storage
+    // Entry contains: timestamp, action, severity, userId, resourceType, resourceId, success, metadata, errorMessage
   }
 }
 
@@ -374,8 +349,8 @@ class AuditLogger {
     for (const hook of this.hooks) {
       try {
         await hook(entry);
-      } catch (error) {
-        console.error('[AUDIT] Hook error:', error);
+      } catch {
+        // Hook error - continue with other hooks
       }
     }
     

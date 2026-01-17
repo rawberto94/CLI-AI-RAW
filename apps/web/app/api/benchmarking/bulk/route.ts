@@ -40,8 +40,7 @@ export async function POST(request: NextRequest) {
         duration: `${(duration / 1000).toFixed(2)}s`,
       },
     });
-  } catch (error) {
-    console.error('Error in bulk benchmark:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -84,8 +83,7 @@ export async function GET(request: NextRequest) {
         positionDistribution: {},
       },
     });
-  } catch (error) {
-    console.error('Error getting bulk status:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

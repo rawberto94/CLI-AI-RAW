@@ -7,7 +7,7 @@ export default function SettingsLoading() {
   const icons = [Key, Webhook, Users, HardDrive, Download];
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -30,7 +30,7 @@ export default function SettingsLoading() {
               className="absolute inset-0"
               style={{ transform: `rotate(${i * 90}deg)` }}
             >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
                 <Icon className="h-4 w-4 text-indigo-500" />
               </div>
             </motion.div>

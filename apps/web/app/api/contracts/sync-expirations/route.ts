@@ -140,8 +140,7 @@ export async function POST(request: NextRequest) {
         if (isExpired) results.expired++;
         results.synced++;
 
-      } catch (error) {
-        console.error(`Error syncing contract ${contract.id}:`, error);
+      } catch {
         results.errors++;
       }
     }
@@ -157,8 +156,7 @@ export async function POST(request: NextRequest) {
       meta: { timestamp: now.toISOString(), source: 'database' }
     });
 
-  } catch (error) {
-    console.error('Expiration sync error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: { code: 'SYNC_ERROR', message: error instanceof Error ? error.message : 'Failed to sync expirations' } },
       { status: 500 }
@@ -209,8 +207,7 @@ export async function GET(request: NextRequest) {
       meta: { timestamp: new Date().toISOString(), source: 'database' }
     });
 
-  } catch (error) {
-    console.error('Get expiration stats error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: { code: 'FETCH_ERROR', message: error instanceof Error ? error.message : 'Failed to get expiration stats' } },
       { status: 500 }

@@ -120,8 +120,7 @@ export async function GET(
         source: 'database'
       });
 
-    } catch (dbError) {
-      console.warn('Database query failed, using mock data:', dbError);
+    } catch {
       return NextResponse.json({
         success: true,
         executions: getMockExecutions(),
@@ -129,8 +128,7 @@ export async function GET(
       });
     }
 
-  } catch (error) {
-    console.error('Error fetching workflow executions:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -234,8 +232,7 @@ export async function POST(
       }
     });
 
-  } catch (error) {
-    console.error('Error starting workflow execution:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

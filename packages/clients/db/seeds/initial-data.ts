@@ -4,10 +4,8 @@ import { hash } from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seeding...');
 
   // Create system roles
-  console.log('Creating system roles...');
   
   const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
@@ -40,7 +38,6 @@ async function main() {
   });
 
   // Create system permissions
-  console.log('Creating system permissions...');
   
   const permissions = [
     // Contract permissions
@@ -84,7 +81,6 @@ async function main() {
   }
 
   // Assign permissions to roles
-  console.log('Assigning permissions to roles...');
   
   // Admin gets all permissions
   const allPermissions = await prisma.permission.findMany();
@@ -156,7 +152,6 @@ async function main() {
   }
 
   // Create demo tenant
-  console.log('Creating demo tenant...');
   
   const demoTenant = await prisma.tenant.upsert({
     where: { slug: 'demo' },
@@ -224,7 +219,6 @@ async function main() {
   });
 
   // Create demo admin user
-  console.log('Creating demo admin user...');
   
   const hashedPassword = await hash('admin123', 10);
   
@@ -258,7 +252,6 @@ async function main() {
   });
 
   // Create demo regular user
-  console.log('Creating demo regular user...');
   
   const userHashedPassword = await hash('user123', 10);
   
@@ -292,7 +285,6 @@ async function main() {
   });
 
   // Create sample contract templates
-  console.log('Creating sample contract templates...');
   
   const templates = [
     {
@@ -395,17 +387,10 @@ async function main() {
     });
   }
 
-  console.log('✅ Database seeding completed successfully!');
-  console.log('');
-  console.log('Demo credentials:');
-  console.log('Admin: admin@demo.com / admin123');
-  console.log('User:  user@demo.com / user123');
-  console.log('');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Database seeding failed:', e);
+  .catch(() => {
     process.exit(1);
   })
   .finally(async () => {

@@ -91,7 +91,6 @@ export class RoleStandardizationService {
     // Check cache first
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey)!;
-      console.log(`📦 Cache hit for "${originalRole}" → "${cached.standardized}"`);
       return { ...cached, source: 'CACHE' };
     }
 
@@ -213,8 +212,6 @@ Return JSON format:
 
       const result = JSON.parse(content);
 
-      console.log(`🤖 AI standardized "${originalRole}" → "${result.standardized}" (${result.confidence})`);
-
       return {
         standardized: result.standardized || originalRole,
         confidence: Math.max(0, Math.min(1, result.confidence || 0.7)),
@@ -224,8 +221,7 @@ Return JSON format:
         source: 'AI',
         reasoning: result.reasoning,
       };
-    } catch (error) {
-      console.error('Error in AI standardization:', error);
+    } catch {
       // Fallback
       return {
         standardized: originalRole,
@@ -264,10 +260,8 @@ Return JSON format:
 
       // Clear cache for this role
       this.clearCacheForRole(feedback.originalRole, feedback.tenantId);
-
-      console.log(`📚 Learned: "${feedback.originalRole}" → "${feedback.correctedRole}"`);
-    } catch (error) {
-      console.error('Error learning from correction:', error);
+    } catch {
+      // Error learning from correction - silent fail
     }
   }
 
@@ -311,8 +305,7 @@ Return JSON format:
       mappingResults.forEach((r) => suggestions.add(r.standardizedRole));
 
       return Array.from(suggestions).slice(0, limit);
-    } catch (error) {
-      console.error('Error getting role suggestions:', error);
+    } catch {
       return [];
     }
   }
@@ -352,8 +345,7 @@ Return JSON format:
         })),
         recentlyAdded: recent.map((r) => r.standardizedName),
       };
-    } catch (error) {
-      console.error('Error getting taxonomy stats:', error);
+    } catch {
       return {
         totalRoles: 0,
         totalMappings: 0,
@@ -402,8 +394,7 @@ Return JSON format:
       });
 
       return mapping as RoleMapping | null;
-    } catch (error) {
-      console.error('Error finding existing mapping:', error);
+    } catch {
       return null;
     }
   }
@@ -444,8 +435,7 @@ Return JSON format:
       });
 
       return match as RoleTaxonomy | null;
-    } catch (error) {
-      console.error('Error finding taxonomy match:', error);
+    } catch {
       return null;
     }
   }
@@ -490,8 +480,8 @@ Return JSON format:
           },
         });
       }
-    } catch (error) {
-      console.error('Error updating taxonomy:', error);
+    } catch {
+      // Error updating taxonomy - silent fail
     }
   }
 
@@ -504,8 +494,8 @@ Return JSON format:
         where: { id: taxonomyId },
         data: { usageCount: { increment: 1 } },
       });
-    } catch (error) {
-      console.error('Error incrementing taxonomy usage:', error);
+    } catch {
+      // Error incrementing taxonomy usage - silent fail
     }
   }
 
@@ -531,8 +521,8 @@ Return JSON format:
           },
         },
       })
-      .catch((error) => {
-        console.error('Error storing mapping:', error);
+      .catch(() => {
+        // Error storing mapping - silent fail
       });
   }
 
@@ -568,7 +558,6 @@ Return JSON format:
    */
   clearCache(): void {
     this.cache.clear();
-    console.log('🗑️ Role standardization cache cleared');
   }
 }
 

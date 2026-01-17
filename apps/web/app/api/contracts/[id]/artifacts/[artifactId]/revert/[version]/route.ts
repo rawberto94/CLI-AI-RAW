@@ -38,8 +38,7 @@ export async function POST(
     return NextResponse.json({
       message: `Artifact reverted to version ${versionNumber}`,
     });
-  } catch (error) {
-    console.error('Error reverting version:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to revert version' },
       { status: 500 }

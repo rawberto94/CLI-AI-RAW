@@ -117,8 +117,7 @@ export function OrphanContractsBanner({
       const data = await response.json()
       setOrphans(data.orphans || [])
       setStats(data.stats || null)
-    } catch (err) {
-      console.warn('Failed to fetch orphan contracts:', err)
+    } catch {
       setOrphans([])
       setStats(null)
     } finally {
@@ -157,8 +156,7 @@ export function OrphanContractsBanner({
       }
       
       onRefresh?.()
-    } catch (err) {
-      console.error('Failed to link contract:', err)
+    } catch {
       toast.error('Failed to link contract')
     } finally {
       setIsLinking(null)

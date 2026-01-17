@@ -55,8 +55,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     });
 
     return NextResponse.json(updated);
-  } catch (error) {
-    console.error('Error updating baseline approval:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update baseline approval' },
       { status: 500 }

@@ -338,7 +338,7 @@ export function FeatureFlagProvider({
     // Get flag and evaluate
     const flag = flagMap.get(flagId);
     if (!flag) {
-      console.warn(`Feature flag "${flagId}" not found`);
+      // Flag not found - return default value silently
       return false;
     }
 

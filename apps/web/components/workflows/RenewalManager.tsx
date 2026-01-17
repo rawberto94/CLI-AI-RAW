@@ -400,6 +400,17 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
           )}
           
           <div className="flex items-center gap-1">
+            {/* Start Renewal Wizard - Primary Action */}
+            {(renewal.status === 'upcoming' || renewal.status === 'in-progress') && (
+              <Link
+                href={`/contracts/${renewal.contractId}/renew`}
+                onClick={(e) => e.stopPropagation()}
+                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                title="Start renewal wizard"
+              >
+                <Play className="w-4 h-4" />
+              </Link>
+            )}
             {(!renewal.approvalStatus || renewal.approvalStatus === 'none' || renewal.approvalStatus === 'rejected') && (
               <button
                 onClick={(e) => {
@@ -423,7 +434,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
               </Link>
             )}
             <Link
-              href={`/contracts/${renewal.id}`}
+              href={`/contracts/${renewal.contractId}`}
               onClick={(e) => e.stopPropagation()}
               className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               title="View contract"
@@ -559,8 +570,7 @@ export const RenewalManager: React.FC = () => {
         } else {
           setRenewals([]); // No data available
         }
-      } catch (error) {
-        console.error('Error fetching renewals:', error);
+      } catch {
         setRenewals([]); // Error state - empty data
       } finally {
         setLoading(false);

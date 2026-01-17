@@ -103,8 +103,6 @@ export class ConfidenceCalibrationService {
     
     // Persist to database
     await this.persistFeedback(feedback);
-    
-    console.log(`📊 Recorded feedback for ${feedback.fieldName}: ${feedback.correctionType}`);
   }
 
   /**
@@ -476,7 +474,6 @@ export class ConfidenceCalibrationService {
         )
       `.catch(() => {
         // Table might not exist yet - that's OK
-        console.log('Could not persist feedback - table may not exist');
       });
     } catch {
       // Silently fail - persistence is optional
@@ -549,10 +546,8 @@ export class ConfidenceCalibrationService {
         const fieldType = typeof fieldTypeRaw === 'string' ? fieldTypeRaw : 'text';
         await this.updateFieldStats(tenantId, fieldName, fieldType);
       }
-
-      console.log(`📊 Loaded ${results.length} historical feedback records for tenant ${tenantId}`);
-    } catch (error) {
-      console.error('Error loading historical feedback:', error);
+    } catch {
+      // Failed to load historical feedback
     }
   }
 

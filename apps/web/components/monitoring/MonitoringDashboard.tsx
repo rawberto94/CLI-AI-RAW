@@ -102,8 +102,8 @@ export function MonitoringDashboard({ refreshInterval = 5000 }: { refreshInterva
         
         const logsData = await response.json();
         setLogs(logsData.logs);
-      } catch (err) {
-        console.error('Failed to fetch logs:', err);
+      } catch {
+        // Error handled silently
       }
     };
 
@@ -114,8 +114,8 @@ export function MonitoringDashboard({ refreshInterval = 5000 }: { refreshInterva
         
         const alertsData = await response.json();
         setAlerts(alertsData.active);
-      } catch (err) {
-        console.error('Failed to fetch alerts:', err);
+      } catch {
+        // Error handled silently
       }
     };
 
@@ -383,8 +383,8 @@ export function MonitoringDashboard({ refreshInterval = 5000 }: { refreshInterva
                             const response = await fetch('/api/monitoring/alerts');
                             const data = await response.json();
                             setAlerts(data.active);
-                          } catch (err) {
-                            console.error('Failed to acknowledge alert:', err);
+                          } catch {
+                            // Error handled silently
                           }
                         }}
                         className="text-sm text-primary hover:underline"

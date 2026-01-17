@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(intelligence);
   } catch (error: unknown) {
-    console.error('Error fetching market intelligence:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch market intelligence' },
       { status: 500 }

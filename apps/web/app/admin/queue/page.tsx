@@ -110,8 +110,8 @@ export default function ImportQueuePage() {
         setHealth(data.health || null);
         setLastRefresh(new Date());
       }
-    } catch (err) {
-      console.error('Failed to fetch queue data:', err);
+    } catch {
+      // Error handled silently
     } finally {
       setIsLoading(false);
     }
@@ -140,8 +140,8 @@ export default function ImportQueuePage() {
         body: JSON.stringify({ action: pause ? 'pause' : 'resume', queue: queueName }),
       });
       fetchData();
-    } catch (err) {
-      console.error('Failed to toggle queue:', err);
+    } catch {
+      // Error handled silently
     }
   }, [fetchData]);
 
@@ -154,8 +154,8 @@ export default function ImportQueuePage() {
         body: JSON.stringify({ action: 'retry', jobId, queue }),
       });
       fetchData();
-    } catch (err) {
-      console.error('Failed to retry job:', err);
+    } catch {
+      // Error handled silently
     }
   }, [fetchData]);
 
@@ -168,8 +168,8 @@ export default function ImportQueuePage() {
         body: JSON.stringify({ action: 'clear-completed', queue: queueName }),
       });
       fetchData();
-    } catch (err) {
-      console.error('Failed to clear completed:', err);
+    } catch {
+      // Error handled silently
     }
   }, [fetchData]);
 

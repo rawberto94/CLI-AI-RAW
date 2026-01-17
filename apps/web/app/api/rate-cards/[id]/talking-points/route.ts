@@ -20,8 +20,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       data: talkingPoints,
     });
   } catch (error: unknown) {
-    console.error('Error generating talking points:', error);
-    
     return NextResponse.json(
       {
         success: false,

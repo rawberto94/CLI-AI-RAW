@@ -245,8 +245,8 @@ export class QueryBuilder {
     if (multiSort) {
       try {
         options.multiSort = JSON.parse(multiSort);
-      } catch (e) {
-        console.error('Invalid multiSort format:', e);
+      } catch {
+        // Invalid multiSort format, ignore
       }
     }
 

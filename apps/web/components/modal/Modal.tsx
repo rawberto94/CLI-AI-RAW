@@ -143,7 +143,7 @@ export function Modal({
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                'relative w-full bg-white rounded-2xl shadow-2xl overflow-hidden',
+                'relative w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl dark:shadow-slate-900/50 overflow-hidden',
                 sizeClasses[size],
                 className
               )}
@@ -153,7 +153,7 @@ export function Modal({
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors z-10"
+                  className="absolute top-4 right-4 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors z-10"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -174,7 +174,7 @@ export function Modal({
 export function ModalHeader({ children, className }: ModalHeaderProps) {
   return (
     <div className={cn('px-6 pt-6 pb-4', className)}>
-      <h2 className="text-xl font-semibold text-slate-900">{children}</h2>
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{children}</h2>
     </div>
   );
 }
@@ -189,7 +189,7 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        'px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3',
+        'px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-end gap-3',
         className
       )}
     >
@@ -215,10 +215,10 @@ interface AlertModalProps {
 }
 
 const alertConfig: Record<AlertType, { icon: LucideIcon; color: string; bgColor: string }> = {
-  info: { icon: Info, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  success: { icon: CheckCircle, color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
-  warning: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-100' },
-  error: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100' },
+  info: { icon: Info, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/50' },
+  success: { icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50' },
+  warning: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/50' },
+  error: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/50' },
 };
 
 export function AlertModal({
@@ -249,8 +249,8 @@ export function AlertModal({
         >
           <Icon className={cn('w-8 h-8', config.color)} />
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">{title}</h3>
-        <p className="text-slate-600 mb-6">{message}</p>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">{title}</h3>
+        <p className="text-slate-600 dark:text-slate-400 mb-6">{message}</p>
         <button
           onClick={handleConfirm}
           className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
@@ -324,20 +324,20 @@ export function Drawer({
             exit={slideDirection}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={cn(
-              'fixed top-0 bottom-0 z-50 w-full bg-white shadow-2xl flex flex-col',
+              'fixed top-0 bottom-0 z-50 w-full bg-white dark:bg-slate-800 shadow-2xl dark:shadow-slate-900/50 flex flex-col',
               side === 'right' ? 'right-0' : 'left-0',
               drawerSizes[size],
               className
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
               {title && (
-                <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
               )}
               <button
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors ml-auto"
+                className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors ml-auto"
               >
                 <X className="w-5 h-5" />
               </button>

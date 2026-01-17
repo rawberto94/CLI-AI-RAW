@@ -56,8 +56,7 @@ export async function convertCurrency(
       rate: data.rate || data.data?.rate || 1,
       timestamp: new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('Currency conversion error:', error);
+  } catch {
     return {
       success: false,
       fromCurrency: fromCurrency.toUpperCase(),
@@ -103,8 +102,7 @@ export async function adjustWithPPP(
       pppFactor: data.pppFactor || data.data?.pppFactor || 1,
       timestamp: new Date().toISOString(),
     };
-  } catch (error) {
-    console.error('PPP adjustment error:', error);
+  } catch {
     return {
       success: false,
       amount,
@@ -135,8 +133,7 @@ export async function getExchangeRate(
 
     const data = await response.json();
     return data.rate || data.data?.rate || 1;
-  } catch (error) {
-    console.error('Exchange rate fetch error:', error);
+  } catch {
     return 1;
   }
 }
@@ -156,8 +153,7 @@ export function formatCurrency(
       minimumFractionDigits: 0,
       maximumFractionDigits: 2,
     }).format(amount);
-  } catch (error) {
-    console.error('Currency formatting error:', error);
+  } catch {
     return `${currency} ${amount.toFixed(2)}`;
   }
 }

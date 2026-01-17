@@ -85,8 +85,7 @@ export function useNegotiationPrep(filters?: NegotiationPrepFilters, mode: DataM
             lastUpdated: new Date().toISOString()
           }
         }));
-      } catch (error) {
-        console.error('Failed to fetch negotiation data:', error);
+      } catch (error: unknown) {
         setState(prev => ({
           ...prev,
           loading: false,

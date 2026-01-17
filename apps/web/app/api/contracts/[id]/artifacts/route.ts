@@ -86,8 +86,7 @@ export async function GET(
         },
       }
     );
-  } catch (error) {
-    console.error("Error fetching artifacts:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

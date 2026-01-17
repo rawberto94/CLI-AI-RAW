@@ -74,9 +74,6 @@ function getEnvConfig(): EnvConfig {
   const result = envSchema.safeParse(process.env);
   
   if (!result.success) {
-    const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`);
-    console.warn('[Environment] Validation warnings:', errors.join(', '));
-    
     // Return with defaults for missing optional values
     return envSchema.parse({
       ...process.env,

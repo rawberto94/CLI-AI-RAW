@@ -281,8 +281,6 @@ export class BenchmarkInvalidationService {
     // await redis.del(key);
     // or
     // await cacheClient.invalidate(key);
-
-    console.log(`Cache key invalidated: ${key}`);
   }
 
   /**

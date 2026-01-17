@@ -112,9 +112,7 @@ export async function GET(request: NextRequest) {
       suggestions: suggestions.slice(0, limit),
       query,
     });
-  } catch (error) {
-    console.error('Search suggestions error:', error);
-    
+  } catch {
     // Return fallback suggestions
     const query = request.nextUrl.searchParams.get('q') || '';
     return NextResponse.json({

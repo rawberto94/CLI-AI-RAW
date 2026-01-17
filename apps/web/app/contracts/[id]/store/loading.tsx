@@ -5,7 +5,7 @@ import { Database, Archive, FolderOpen, HardDrive } from 'lucide-react';
 
 export default function ContractStoreLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
       <div className="flex flex-col items-center">
         {/* Main Icon with Orbiting Icons */}
         <div className="relative">
@@ -25,13 +25,13 @@ export default function ContractStoreLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <Archive className="h-4 w-4 text-slate-600" />
+              <Archive className="h-4 w-4 text-slate-600 dark:text-slate-400" />
             </div>
             <div className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 bg-white rounded-full shadow-lg">
               <FolderOpen className="h-4 w-4 text-gray-600" />
             </div>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <HardDrive className="h-4 w-4 text-slate-600" />
+              <HardDrive className="h-4 w-4 text-slate-600 dark:text-slate-400" />
             </div>
           </motion.div>
         </div>

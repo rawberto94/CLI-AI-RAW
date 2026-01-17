@@ -23,8 +23,7 @@ export async function GET(request: NextRequest) {
     ];
 
     return NextResponse.json({ templates });
-  } catch (error) {
-    console.error("Error fetching templates:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch templates" },
       { status: 500 }
@@ -46,8 +45,7 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error("Error saving template:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to save template" },
       { status: 500 }

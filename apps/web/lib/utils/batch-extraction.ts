@@ -92,8 +92,6 @@ export class BatchExtractionProcessor {
     const errors: Array<{ contractId: string; error: string }> = [];
 
     // Queue all contracts
-    console.log(`📦 Starting batch extraction of ${contractIds.length} contracts`);
-
     const batchResult = await fetch("/api/contracts/bulk-extract", {
       method: "POST",
       headers: {
@@ -158,8 +156,6 @@ export class BatchExtractionProcessor {
       errors,
     };
 
-    console.log(`✅ Batch complete: ${successful}/${contractIds.length} successful`);
-
     return result;
   }
 
@@ -180,7 +176,6 @@ export class BatchExtractionProcessor {
     while (pendingJobIds.size > 0) {
       // Check for timeout
       if (Date.now() - pollStartTime > maxPollTime) {
-        console.warn("⚠️ Batch polling timed out");
         break;
       }
 
@@ -204,8 +199,8 @@ export class BatchExtractionProcessor {
               this.config.onJobComplete(job);
             }
           }
-        } catch (error) {
-          console.error(`Error checking job ${jobId}:`, error);
+        } catch {
+          // Job check failed, will retry on next poll
         }
       }
 

@@ -47,15 +47,6 @@ export async function sendEmail(options: EmailOptions): Promise<SendEmailResult>
         subject: options.subject,
       });
       
-      // In development, log email content
-      if (process.env.NODE_ENV === 'development') {
-        console.log('\n📧 EMAIL SIMULATION (SendGrid not configured)');
-        console.log('To:', options.to);
-        console.log('Subject:', options.subject);
-        console.log('HTML:', options.html.substring(0, 200) + '...');
-        console.log('---\n');
-      }
-      
       return {
         success: true,
         messageId: 'simulated-' + Date.now(),

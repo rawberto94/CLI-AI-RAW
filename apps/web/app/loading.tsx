@@ -1,16 +1,17 @@
 export default function Loading() {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-white">
-      <div className="flex flex-col items-center gap-6">
+    <div className="min-h-[60vh] flex items-center justify-center bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-800">
+      <div className="flex flex-col items-center gap-6" role="status" aria-live="polite">
         {/* Logo with pulse animation */}
-        <div className="relative animate-pulse">
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-3xl blur-2xl opacity-20 scale-150" />
+        <div className="relative motion-safe:animate-pulse">
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-cyan-500 rounded-3xl blur-2xl opacity-20 dark:opacity-30 scale-150" />
           {/* Inline SVG Logo */}
           <svg 
             width="120" 
             height="120" 
             viewBox="0 0 100 100" 
             className="relative z-10"
+            aria-hidden="true"
           >
             <defs>
               <linearGradient id="docGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -37,18 +38,21 @@ export default function Loading() {
         {/* ConTigo Text */}
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-slate-800">Con</span>
-            <span className="text-teal-600">Tigo</span>
+            <span className="text-slate-800 dark:text-slate-200">Con</span>
+            <span className="text-teal-600 dark:text-teal-400">Tigo</span>
           </h1>
-          <p className="text-sm text-slate-500 mt-2">Loading your contract intelligence...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Loading your contract intelligence...</p>
         </div>
         
-        {/* Loading dots */}
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-teal-600 animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+        {/* Loading dots with reduced motion support */}
+        <div className="flex items-center gap-1.5" aria-hidden="true">
+          <span className="w-2 h-2 rounded-full bg-teal-500 motion-safe:animate-bounce motion-reduce:opacity-75" style={{ animationDelay: '0ms' }} />
+          <span className="w-2 h-2 rounded-full bg-teal-600 motion-safe:animate-bounce motion-reduce:opacity-75" style={{ animationDelay: '150ms' }} />
+          <span className="w-2 h-2 rounded-full bg-teal-500 motion-safe:animate-bounce motion-reduce:opacity-75" style={{ animationDelay: '300ms' }} />
         </div>
+        
+        {/* Screen reader text */}
+        <span className="sr-only">Loading content, please wait...</span>
       </div>
     </div>
   );

@@ -130,7 +130,7 @@ export function validateEnvironment(options?: {
   throwOnError?: boolean;
   logResults?: boolean;
 }): ValidationResult {
-  const { throwOnError = false, logResults = true } = options ?? {};
+  const { throwOnError = false, logResults: _logResults = true } = options ?? {};
   const errors: string[] = [];
   const warnings: string[] = [];
   const summary: ValidationResult['summary'] = {};
@@ -211,36 +211,7 @@ export function validateEnvironment(options?: {
     summary,
   };
 
-  if (logResults && typeof console !== 'undefined') {
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    if (!isProduction) {
-      console.log('\n📋 Environment Validation Results:');
-      console.log('─'.repeat(50));
-      
-      for (const [name, status] of Object.entries(summary)) {
-        const icon = status.valid ? (status.set ? '✅' : '⚠️') : '❌';
-        const valueStr = status.value ? ` = ${status.value}` : '';
-        console.log(`${icon} ${name}${valueStr}`);
-      }
-      
-      console.log('─'.repeat(50));
-    }
-
-    if (errors.length > 0) {
-      console.error('❌ Environment validation errors:');
-      errors.forEach((e) => console.error(`   - ${e}`));
-    }
-
-    if (warnings.length > 0 && !isProduction) {
-      console.warn('⚠️  Environment warnings:');
-      warnings.forEach((w) => console.warn(`   - ${w}`));
-    }
-
-    if (result.valid) {
-      console.log('✅ Environment validation passed');
-    }
-  }
+  // Results are returned but not logged to console
 
   if (throwOnError && !result.valid) {
     throw new Error(`Environment validation failed:\n${errors.join('\n')}`);

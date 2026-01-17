@@ -299,8 +299,8 @@ export async function importFromExternalDatabase(
             useQueue: true,
             priority: 20, // Low priority for bulk imports
             source: 'bulk',
-          }).catch((err) => {
-            console.error(`Failed to queue processing for ${contract.id}:`, err);
+          }).catch(() => {
+            // Failed to queue processing - ignore
           });
         }
       } catch (error) {

@@ -606,11 +606,6 @@ export class DatabaseErrorHandler {
           onRetry(lastError, attempt);
         }
 
-        console.warn(
-          `Database operation failed (attempt ${attempt + 1}/${lastError.recovery.maxRetries}). ` +
-          `Retrying in ${delay}ms...`
-        );
-
         await new Promise(resolve => setTimeout(resolve, delay));
         attempt++;
       }

@@ -180,7 +180,6 @@ export function createPendingAction(
   };
   
   pendingActions.set(action.id, action);
-  console.log(`[Update Actions] Created pending action: ${action.id} for ${field}`);
   
   return action;
 }
@@ -239,9 +238,6 @@ async function executeAction(action: PendingAction): Promise<ActionResponse> {
     // Mark action as approved
     action.status = 'approved';
     
-    // Log the action for audit
-    console.log(`[Update Actions] Executed: ${action.field} = ${action.newValue} for contract ${action.contractId}`);
-    
     return {
       success: true,
       message: `✅ Successfully updated ${action.field}. The RAG index will be refreshed automatically.`,
@@ -253,8 +249,7 @@ async function executeAction(action: PendingAction): Promise<ActionResponse> {
         ragReindexQueued: true,
       },
     };
-  } catch (error) {
-    console.error('[Update Actions] Execution error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'Failed to update contract',

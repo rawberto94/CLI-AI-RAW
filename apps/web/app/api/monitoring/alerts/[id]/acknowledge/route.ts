@@ -23,9 +23,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       alertId,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('[Alerts API] Error acknowledging alert:', error);
-    
+  } catch {
     return NextResponse.json(
       { error: 'Failed to acknowledge alert' },
       { status: 500 }

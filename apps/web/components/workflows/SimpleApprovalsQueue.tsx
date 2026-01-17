@@ -507,9 +507,7 @@ export function SimpleApprovalsQueue() {
             }
           }
         }
-      } catch (error) {
-        console.error('Error fetching approvals:', error);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+      } catch {
         // Set demo data if API fails
         setItems([
           {
@@ -588,8 +586,7 @@ export function SimpleApprovalsQueue() {
       toast.success('Contract approved!', {
         description: 'Ready for signatures.',
       });
-    } catch (error) {
-      console.error('Approval failed:', error);
+    } catch {
       toast.error('Failed to approve contract', {
         description: 'Please try again or contact support.',
       });
@@ -615,7 +612,7 @@ export function SimpleApprovalsQueue() {
       toast.success('Contract rejected', {
         description: 'The requester has been notified.',
       });
-    } catch (error) {
+    } catch {
       toast.error('Failed to reject');
     } finally {
       setIsProcessing(false);

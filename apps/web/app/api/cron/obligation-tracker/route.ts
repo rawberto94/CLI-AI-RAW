@@ -31,8 +31,6 @@ export async function GET(request: NextRequest) {
     const daysAhead = parseInt(searchParams.get('daysAhead') || '30');
     const includeOverdue = searchParams.get('includeOverdue') !== 'false';
 
-    console.log('[CRON] Starting obligation tracker scan', { tenantId, daysAhead, includeOverdue });
-
     const workerModule = await optionalImport<{ triggerObligationCheck: (args: any) => Promise<any> }>(
       '@workspace/workers/obligation-tracker-worker'
     );
@@ -61,16 +59,13 @@ export async function GET(request: NextRequest) {
       source: 'scheduled',
     });
 
-    console.log('[CRON] Obligation tracker job queued', { jobId: job.id });
-
     return NextResponse.json({
       success: true,
       message: 'Obligation tracker scan triggered',
       jobId: job.id,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('[CRON] Failed to trigger obligation tracker:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

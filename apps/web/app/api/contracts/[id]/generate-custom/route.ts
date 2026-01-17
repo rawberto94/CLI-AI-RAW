@@ -172,9 +172,7 @@ export async function POST(
       usage: completion.usage
     });
 
-  } catch (error) {
-    console.error('Custom artifact generation error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to generate custom artifact', details: (error as Error).message },
       { status: 500 }
@@ -407,8 +405,8 @@ async function getContractText(contractId: string, tenantId: string): Promise<st
       const data = await response.json();
       return data.rawText || data.content || data.extractedText || null;
     }
-  } catch (e) {
-    console.log('Could not fetch contract text, using mock');
+  } catch {
+    // Could not fetch contract text, using mock
   }
   
   // Return mock text for demo

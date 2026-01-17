@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
       affectedRateDetails: affectedRates,
     });
   } catch (error: unknown) {
-    console.error('Error detecting currency volatility:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to detect currency volatility' },
       { status: 500 }

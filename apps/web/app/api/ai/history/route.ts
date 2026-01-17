@@ -92,8 +92,7 @@ export async function POST(request: NextRequest) {
       logged: true,
     });
 
-  } catch (error) {
-    console.error('Error logging AI query:', error);
+  } catch (error: unknown) {
     // Don't fail the request - logging is non-critical
     return NextResponse.json({
       success: false,
@@ -198,8 +197,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (error) {
-    console.error('Error fetching AI history:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch history' },
       { status: 500 }

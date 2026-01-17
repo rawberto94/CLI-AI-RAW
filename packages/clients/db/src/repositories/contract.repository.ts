@@ -258,7 +258,7 @@ export class ContractRepository extends AbstractRepository<
   ) {
     const where: Prisma.ContractWhereInput = { 
       tenantId,
-      status: { not: 'DELETED' },
+      isDeleted: false,
     };
 
     if (dateRange) {

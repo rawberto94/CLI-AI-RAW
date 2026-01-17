@@ -302,8 +302,7 @@ export default function VersionComparePage() {
           if (!versionA) setVersionA(data.versions[0].versionNumber)
           if (!versionB) setVersionB(data.versions[data.versions.length - 1].versionNumber)
         }
-      } catch (err) {
-        console.error('Fetch error:', err)
+      } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load versions')
       } finally {
         setLoading(false)

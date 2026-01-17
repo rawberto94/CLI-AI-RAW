@@ -94,8 +94,7 @@ export default function TemplatesPage() {
       toast.success('Template duplicated successfully')
       crossModule.onTemplateChange()
       refetch()
-    } catch (error) {
-      console.error('Duplicate error:', error)
+    } catch {
       toast.error('Failed to duplicate template')
     }
   }
@@ -116,8 +115,7 @@ export default function TemplatesPage() {
       toast.success('Template deleted successfully')
       crossModule.onTemplateChange()
       refetch()
-    } catch (error) {
-      console.error('Delete error:', error)
+    } catch {
       toast.error('Failed to delete template')
     } finally {
       setTemplateToDelete(null)
@@ -214,6 +212,34 @@ export default function TemplatesPage() {
         lastModified: '2024-12-15',
         status: 'draft',
         usageCount: 0,
+      },
+      {
+        id: '7',
+        name: 'Standard Renewal Agreement',
+        description: 'Template for renewing existing contracts with updated terms and dates',
+        category: 'Renewal',
+        language: 'en-US',
+        variables: 14,
+        clauses: 12,
+        createdBy: 'Sarah Chen',
+        createdAt: '2024-06-15',
+        lastModified: '2025-01-10',
+        status: 'active',
+        usageCount: 28,
+      },
+      {
+        id: '8',
+        name: 'MSA Renewal Amendment',
+        description: 'Amendment template for extending Master Services Agreements',
+        category: 'Renewal',
+        language: 'en-US',
+        variables: 8,
+        clauses: 6,
+        createdBy: 'Mike Johnson',
+        createdAt: '2024-09-20',
+        lastModified: '2025-01-05',
+        status: 'active',
+        usageCount: 42,
       },
     ]
   }, [templatesData])

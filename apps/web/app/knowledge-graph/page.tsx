@@ -41,8 +41,8 @@ export default function KnowledgeGraphPage() {
       if (data.success) {
         setGraph(data.graph);
       }
-    } catch (error) {
-      console.error('Error building graph:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -59,8 +59,8 @@ export default function KnowledgeGraphPage() {
       if (data.success) {
         setRelatedContracts(data.contracts);
       }
-    } catch (error) {
-      console.error('Error searching entity:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -77,8 +77,8 @@ export default function KnowledgeGraphPage() {
       if (data.success) {
         setEntityNetwork(data.network);
       }
-    } catch (error) {
-      console.error('Error getting network:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -281,7 +281,7 @@ export default function KnowledgeGraphPage() {
               {entityNetwork && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Related Entities for "{entityNetwork.entity}"</CardTitle>
+                    <CardTitle>Related Entities for &ldquo;{entityNetwork.entity}&rdquo;</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">

@@ -303,8 +303,8 @@ export default function AIReportBuilderPage() {
             }));
           }
         }
-      } catch (err) {
-        console.error('Failed to fetch filter options:', err);
+      } catch {
+        // Filter options fetch failed silently
       }
     }
     fetchFilterOptions();
@@ -410,8 +410,7 @@ export default function AIReportBuilderPage() {
         }
       }
       
-    } catch (err) {
-      console.error('PDF export error:', err);
+    } catch {
       setError('Failed to export PDF');
     } finally {
       setIsExporting(false);

@@ -303,8 +303,8 @@ export default function AIInsightsDashboard() {
             ) : (
               <OpportunitiesDashboard 
                 opportunities={opportunitiesData?.opportunities || []}
-                onAccept={(id) => console.log('Accept opportunity:', id)}
-                onDismiss={(id) => console.log('Dismiss opportunity:', id)}
+                onAccept={() => {}}
+                onDismiss={() => {}}
               />
             )}
           </TabsContent>

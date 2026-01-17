@@ -69,8 +69,8 @@ export function ReportScheduler({ tenantId, userId, onSchedule }: ReportSchedule
         frequency: 'weekly',
         recipients: [''],
       });
-    } catch (error) {
-      console.error('Error scheduling report:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setSaving(false);
     }

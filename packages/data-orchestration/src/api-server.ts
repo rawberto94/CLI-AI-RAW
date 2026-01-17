@@ -116,8 +116,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse): Promise
     res.end(JSON.stringify(errorResponse));
 
   } catch (error) {
-    console.error('Error handling request:', error);
-    
     const errorResponse: ErrorResponse = {
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -135,37 +133,21 @@ const startServer = async (): Promise<void> => {
 
   server.on('error', (err: NodeJS.ErrnoException) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`❌ Port ${PORT} is already in use`);
-      console.error(`   Try: lsof -ti:${PORT} | xargs kill -9`);
       process.exit(1);
-    } else {
-      console.error('Server error:', err);
     }
   });
 
   server.listen(PORT, HOST, () => {
-    console.log(`
-╔═══════════════════════════════════════════════════════╗
-║  🚀 Data Orchestration API Server Running            ║
-║                                                        ║
-║  URL:      http://${HOST}:${PORT}                          ║
-║  Health:   http://${HOST}:${PORT}/healthz                 ║
-║  Version:  1.0.0                                       ║
-║  PID:      ${process.pid}                                  ║
-╚═══════════════════════════════════════════════════════╝
-    `);
+    // Server started successfully
   });
 
   // Graceful shutdown
   const shutdown = () => {
-    console.log('\n⚠️  Shutting down gracefully...');
     server.close(() => {
-      console.log('✅ Server closed');
       process.exit(0);
     });
 
     setTimeout(() => {
-      console.error('❌ Forced shutdown');
       process.exit(1);
     }, 5000);
   };
@@ -176,8 +158,7 @@ const startServer = async (): Promise<void> => {
 
 // Run if executed directly
 if (require.main === module) {
-  startServer().catch((err) => {
-    console.error('Failed to start server:', err);
+  startServer().catch(() => {
     process.exit(1);
   });
 }

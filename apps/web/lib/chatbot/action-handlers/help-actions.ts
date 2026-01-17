@@ -5,7 +5,7 @@
  * Shows available commands organized by category.
  */
 
-import { DetectedIntent, ActionResponse } from '../types'
+import { DetectedIntent, ActionResponse, ChatContext } from '../types'
 
 // Type alias for cleaner code
 type ChatActionResult = ActionResponse
@@ -20,6 +20,57 @@ const COMMAND_CATEGORIES = {
       { phrase: '"Quick upload a contract"', description: 'Opens fast upload dialog' },
       { phrase: '"Help me draft an NDA"', description: 'AI-assisted contract drafting' },
       { phrase: '"Use the MSA template"', description: 'Generate from template' },
+    ]
+  },
+  generate: {
+    title: '✨ Generate Contracts (Premium)',
+    commands: [
+      { phrase: '"Generate a new contract"', description: 'AI-powered contract generation' },
+      { phrase: '"Generate an NDA"', description: 'Create NDA with AI' },
+      { phrase: '"Generate an MSA"', description: 'Create Master Services Agreement' },
+      { phrase: '"Start from blank"', description: 'New contract from scratch' },
+      { phrase: '"Use a template"', description: 'Generate from template library' },
+      { phrase: '"Create a renewal"', description: 'Renew existing contract' },
+      { phrase: '"Create an amendment"', description: 'Amend existing contract' },
+    ]
+  },
+  copilot: {
+    title: '🤖 AI Copilot (Premium)',
+    commands: [
+      { phrase: '"Open AI Copilot"', description: 'Launch AI drafting assistant' },
+      { phrase: '"Help me draft a contract"', description: 'AI-assisted drafting' },
+      { phrase: '"Review my draft"', description: 'AI analysis of draft' },
+      { phrase: '"Improve this language"', description: 'Enhance contract wording' },
+      { phrase: '"Suggest missing clauses"', description: 'Identify gaps in contract' },
+    ]
+  },
+  legalReview: {
+    title: '⚖️ Legal Review (Premium)',
+    commands: [
+      { phrase: '"Start legal review"', description: 'AI legal clause analysis' },
+      { phrase: '"Review legal terms"', description: 'Analyze contract legality' },
+      { phrase: '"Check for legal risks"', description: 'Identify legal exposure' },
+      { phrase: '"Request legal approval"', description: 'Submit for legal review' },
+    ]
+  },
+  redlining: {
+    title: '📝 Redlining (Premium)',
+    commands: [
+      { phrase: '"Open redline editor"', description: 'Track changes editor' },
+      { phrase: '"Compare and redline"', description: 'Side-by-side with markup' },
+      { phrase: '"Accept all changes"', description: 'Apply tracked changes' },
+      { phrase: '"Show redline history"', description: 'View markup history' },
+    ]
+  },
+  obligations: {
+    title: '📅 Obligations (Premium)',
+    commands: [
+      { phrase: '"Show my obligations"', description: 'List all obligations' },
+      { phrase: '"Show overdue obligations"', description: 'Past-due items' },
+      { phrase: '"Upcoming obligations"', description: 'Next 7 days' },
+      { phrase: '"Add obligation"', description: 'Create new obligation' },
+      { phrase: '"Track this obligation"', description: 'Start tracking' },
+      { phrase: '"Obligations for [contract]"', description: 'Contract-specific items' },
     ]
   },
   versions: {
@@ -58,6 +109,7 @@ const COMMAND_CATEGORIES = {
       { phrase: '"Top 5 suppliers by spend"', description: 'Supplier analytics' },
       { phrase: '"Spend by category"', description: 'Category breakdown' },
       { phrase: '"Show savings opportunities"', description: 'Optimization insights' },
+      { phrase: '"Risk assessment"', description: 'Portfolio risk overview' },
     ]
   },
   updates: {
@@ -98,9 +150,10 @@ const COMMAND_CATEGORIES = {
 // ============ ACTION HANDLERS ============
 
 export async function handleHelpAction(
-  action: string,
-  entities: DetectedIntent['entities']
+  intent: DetectedIntent,
+  _context: ChatContext
 ): Promise<ChatActionResult> {
+  const { action, entities } = intent;
   switch (action) {
     case 'show_help':
       return showGeneralHelp()
@@ -122,10 +175,17 @@ I can help you manage your contracts! Here's what I can do:
 
 ## Quick Commands
 
-**Creating Contracts**
+**Creating & Generating Contracts**
 • "Create a new contract" → Opens creation wizard
 • "Quick upload" → Fast upload dialog
-• "Draft an NDA" → AI drafting assistant
+• "Generate an NDA" → AI-powered generation ✨
+• "Generate from template" → Use template library
+
+**Premium AI Features** ✨
+• "Open AI Copilot" → AI drafting assistant
+• "Start legal review" → Legal clause analysis
+• "Open redline editor" → Track changes
+• "Show my obligations" → Obligation tracking
 
 **Finding Contracts**
 • "Show expired contracts"
@@ -142,6 +202,7 @@ I can help you manage your contracts! Here's what I can do:
 • "Contract statistics"
 • "Top suppliers"
 • "Spend analysis"
+• "Risk assessment"
 
 **Updates**
 • "Update [field] to [value]"
@@ -160,6 +221,37 @@ function showCategoryHelp(category: string): ChatActionResult {
     'creating': 'creation',
     'creation': 'creation',
     'new': 'creation',
+    'upload': 'creation',
+    // Generate (Premium)
+    'generate': 'generate',
+    'generating': 'generate',
+    'generation': 'generate',
+    'ai generate': 'generate',
+    'renewal': 'generate',
+    'amendment': 'generate',
+    'template': 'generate',
+    // AI Copilot (Premium)
+    'copilot': 'copilot',
+    'ai copilot': 'copilot',
+    'draft': 'copilot',
+    'drafting': 'copilot',
+    'ai draft': 'copilot',
+    // Legal Review (Premium)
+    'legal': 'legalReview',
+    'legal review': 'legalReview',
+    'legal-review': 'legalReview',
+    'review': 'legalReview',
+    // Redlining (Premium)
+    'redline': 'redlining',
+    'redlining': 'redlining',
+    'track changes': 'redlining',
+    'markup': 'redlining',
+    // Obligations (Premium)
+    'obligation': 'obligations',
+    'obligations': 'obligations',
+    'tracking': 'obligations',
+    'deadlines': 'obligations',
+    // Standard categories
     'version': 'versions',
     'versions': 'versions',
     'history': 'versions',
@@ -181,7 +273,7 @@ function showCategoryHelp(category: string): ChatActionResult {
     'workflow': 'workflows',
     'workflows': 'workflows',
     'approve': 'workflows',
-    'renew': 'workflows',
+    'approval': 'workflows',
     'view': 'views',
     'views': 'views',
   }

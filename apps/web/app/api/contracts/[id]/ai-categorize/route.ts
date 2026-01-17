@@ -194,8 +194,7 @@ export async function POST(
           result,
           autoApplied: shouldApply,
         });
-      } catch (error) {
-        console.error('Synchronous categorization failed:', error);
+      } catch (error: unknown) {
         return NextResponse.json(
           {
             error: 'Categorization failed',
@@ -239,16 +238,14 @@ export async function POST(
           jobId,
           message: 'Categorization queued for background processing',
         });
-      } catch (error) {
-        console.error('Failed to queue categorization:', error);
+      } catch {
         return NextResponse.json(
           { error: 'Failed to queue categorization' },
           { status: 500 }
         );
       }
     }
-  } catch (error) {
-    console.error('Categorize API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -318,8 +315,7 @@ export async function GET(
       pendingCategorization: pendingCategorization || null,
       needsReview: pendingCategorization?.needsReview || false,
     });
-  } catch (error) {
-    console.error('Get categorization status error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

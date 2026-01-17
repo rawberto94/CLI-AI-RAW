@@ -120,8 +120,7 @@ export function BaselineCSVImport() {
 
       const importResult = await response.json();
       setResult(importResult);
-    } catch (err) {
-      console.error('Import error:', err);
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to import baselines');
     } finally {
       setImporting(false);

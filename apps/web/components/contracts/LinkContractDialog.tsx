@@ -96,8 +96,7 @@ export function LinkContractDialog({
 
       const data = await response.json();
       setSuggestions(data.suggestions || []);
-    } catch (error) {
-      console.error('Error fetching suggestions:', error);
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load parent contract suggestions',
@@ -145,8 +144,7 @@ export function LinkContractDialog({
 
       onOpenChange(false);
       onLinked?.();
-    } catch (error) {
-      console.error('Error linking contracts:', error);
+    } catch (error: unknown) {
       toast({
         title: 'Error',
         description: error instanceof Error ? error.message : 'Failed to link contracts',

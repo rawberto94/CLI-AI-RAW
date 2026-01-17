@@ -99,85 +99,85 @@ export class RepositoryManager {
       // Test each repository with a simple count operation
       await this.tenants.count();
       checks.tenants = true;
-    } catch (error) {
-      console.error('Tenants repository health check failed:', error);
+    } catch {
+      // Tenants repository health check failed
     }
 
     try {
       await this.contracts.count();
       checks.contracts = true;
-    } catch (error) {
-      console.error('Contracts repository health check failed:', error);
+    } catch {
+      // Contracts repository health check failed
     }
 
     try {
       await this.users.count();
       checks.users = true;
-    } catch (error) {
-      console.error('Users repository health check failed:', error);
+    } catch {
+      // Users repository health check failed
     }
 
     try {
       await this.artifacts.count();
       checks.artifacts = true;
-    } catch (error) {
-      console.error('Artifacts repository health check failed:', error);
+    } catch {
+      // Artifacts repository health check failed
     }
 
     try {
       await this.importJobs.count();
       checks.importJobs = true;
-    } catch (error) {
-      console.error('ImportJobs repository health check failed:', error);
+    } catch {
+      // ImportJobs repository health check failed
     }
 
     try {
       await this.rateCards.count();
       checks.rateCards = true;
-    } catch (error) {
-      console.error('RateCards repository health check failed:', error);
+    } catch {
+      // RateCards repository health check failed
     }
 
     try {
       await this.roleRates.count();
       checks.roleRates = true;
-    } catch (error) {
-      console.error('RoleRates repository health check failed:', error);
+    } catch {
+      // RoleRates repository health check failed
     }
 
     try {
       await this.mappingTemplates.count();
       checks.mappingTemplates = true;
-    } catch (error) {
-      console.error('MappingTemplates repository health check failed:', error);
+    } catch {
+      // MappingTemplates repository health check failed
     }
 
     try {
       await this.contractArtifacts.count();
       checks.contractArtifacts = true;
-    } catch (error) {
-      console.error('ContractArtifacts repository health check failed:', error);
+    } catch {
+      // ContractArtifacts repository health check failed
     }
 
     try {
       await this.clauses.count();
       checks.clauses = true;
-    } catch (error) {
-      console.error('Clauses repository health check failed:', error);
+    } catch {
+      // Clauses repository health check failed
     }
 
     try {
       await this.processingJobs.count();
       checks.processingJobs = true;
-    } catch (error) {
-      console.error('ProcessingJobs repository health check failed:', error);
+    } catch {
+      // ProcessingJobs repository health check failed
     }
 
     try {
       await this.parties.count();
       checks.parties = true;
-    } catch (error) {
-      console.error('Parties repository health check failed:', error);
+    } catch {
+      // Parties repository health check failed
     }
 
     const allHealthy = Object.values(checks).every(check => check);

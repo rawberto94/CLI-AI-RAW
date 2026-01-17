@@ -206,8 +206,8 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
       });
       setRecommendations(recs);
 
-    } catch (error) {
-      console.error('Error calculating analytics:', error);
+    } catch {
+      // Error calculating analytics
     } finally {
       setLoading(false);
     }

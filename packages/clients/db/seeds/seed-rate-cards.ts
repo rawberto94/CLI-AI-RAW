@@ -7,15 +7,12 @@ import { PrismaClient, SeniorityLevel, SupplierTier } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding rate card data...');
 
   // Get the first tenant
   const tenant = await prisma.tenant.findFirst();
   if (!tenant) {
     throw new Error('No tenant found. Please create a tenant first.');
   }
-
-  console.log(`✅ Using tenant: ${tenant.name} (${tenant.id})`);
 
   // Create sample suppliers
   const suppliers = await Promise.all([
@@ -88,8 +85,6 @@ async function main() {
       update: {},
     }),
   ]);
-
-  console.log(`✅ Created ${suppliers.length} suppliers`);
 
   // Sample rate cards for different roles
   const sampleRates = [
@@ -166,10 +161,7 @@ async function main() {
     rateCards.push(rateCard);
   }
 
-  console.log(`✅ Created ${rateCards.length} rate card entries`);
-
   // Calculate some benchmark data for a few entries
-  console.log('📊 Calculating sample benchmarks...');
   
   // Get all Software Engineer rates for benchmarking
   const swEngRates = rateCards
@@ -194,16 +186,12 @@ async function main() {
         marketRateP75: swEngRates[Math.floor(swEngRates.length * 0.75)],
       },
     });
-
-    console.log(`✅ Updated benchmarks for Software Engineer roles`);
   }
 
-  console.log('🎉 Rate card seeding complete!');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Error seeding rate cards:', e);
+  .catch(() => {
     process.exit(1);
   })
   .finally(async () => {

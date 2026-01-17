@@ -116,8 +116,7 @@ Return JSON array with format:
       await this.storeEntities(entities, contractId);
 
       return entities;
-    } catch (error) {
-      console.error('Error extracting entities:', error);
+    } catch {
       return [];
     }
   }
@@ -135,8 +134,8 @@ Return JSON array with format:
           } as any,
         },
       });
-    } catch (error) {
-      console.error('Error storing entities:', error);
+    } catch {
+      // Silently handle entity storage errors
     }
   }
 

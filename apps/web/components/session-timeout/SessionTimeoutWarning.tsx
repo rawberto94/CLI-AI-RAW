@@ -96,8 +96,7 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       } else {
         onExpire();
       }
-    } catch (error) {
-      console.error('Failed to extend session:', error);
+    } catch {
       onExpire();
     } finally {
       setState(prev => ({ ...prev, isExtending: false }));

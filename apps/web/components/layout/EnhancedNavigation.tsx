@@ -56,6 +56,7 @@ import {
   Brain,
   Database,
   Keyboard,
+  RefreshCcw,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -86,8 +87,9 @@ const navigationGroups: NavigationGroup[] = [
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard, description: 'Overview & insights' },
       { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
+      { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals', badge: 'Live' },
       { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
-      { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison', isNew: true },
+      { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison' },
     ]
   },
   {
@@ -110,8 +112,7 @@ const navigationGroups: NavigationGroup[] = [
         name: 'AI Report Builder', 
         href: '/reports/ai-builder', 
         icon: FileBarChart, 
-        description: 'Generate AI-powered contract summaries',
-        isNew: true
+        description: 'Generate AI-powered contract summaries'
       },
     ]
   },
@@ -127,10 +128,10 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Administration',
     requiresAdmin: true,
     items: [
-      { name: 'Clients', href: '/platform', icon: Users, description: 'Manage all client organizations', requiresAdmin: true, isNew: true },
+      { name: 'Clients', href: '/platform', icon: Users, description: 'Manage all client organizations', requiresAdmin: true },
       { name: 'My Organization', href: '/admin', icon: Building2, description: 'Manage team & settings', requiresAdmin: true },
-      { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases', requiresAdmin: true, isNew: true },
-      { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues', requiresAdmin: true, isNew: true },
+      { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases', requiresAdmin: true },
+      { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues', requiresAdmin: true },
       { name: 'Settings', href: '/settings', icon: Settings, description: 'System settings', requiresAdmin: true },
     ]
   },

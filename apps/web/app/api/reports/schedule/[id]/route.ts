@@ -15,8 +15,7 @@ export async function PATCH(
       success: true,
       message: `Schedule ${enabled ? "enabled" : "disabled"}`,
     });
-  } catch (error) {
-    console.error("Error updating schedule:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to update schedule" },
       { status: 500 }
@@ -35,8 +34,7 @@ export async function DELETE(
       success: true,
       message: "Schedule deleted",
     });
-  } catch (error) {
-    console.error("Error deleting schedule:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to delete schedule" },
       { status: 500 }

@@ -34,8 +34,8 @@ export function AlertsList({ userId }: AlertsListProps) {
       
       const data = await response.json();
       setAlerts(data);
-    } catch (error) {
-      console.error('Error fetching alerts:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -54,8 +54,8 @@ export function AlertsList({ userId }: AlertsListProps) {
       setAlerts(alerts.map(a => 
         a.id === alertId ? { ...a, read: true } : a
       ));
-    } catch (error) {
-      console.error('Error marking alert as read:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -70,8 +70,8 @@ export function AlertsList({ userId }: AlertsListProps) {
       if (!response.ok) throw new Error('Failed to mark all as read');
 
       setAlerts(alerts.map(a => ({ ...a, read: true })));
-    } catch (error) {
-      console.error('Error marking all as read:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

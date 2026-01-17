@@ -162,8 +162,7 @@ export async function GET(
         }
       }
     })
-  } catch (error) {
-    console.error('Extraction confidence error:', error)
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get extraction confidence' },
       { status: 500 }

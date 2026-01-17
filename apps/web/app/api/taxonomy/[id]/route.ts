@@ -122,8 +122,7 @@ export async function GET(
         contractCount,
       },
     });
-  } catch (error) {
-    console.error("Error fetching taxonomy category:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -295,12 +294,6 @@ export async function PUT(
       source: 'api:taxonomy/[id]',
     });
 
-    console.log("✅ Taxonomy category updated:", {
-      id,
-      name: updated.name,
-      pathChanged: newPath !== existing.path,
-    });
-
     return NextResponse.json({
       success: true,
       data: {
@@ -309,8 +302,7 @@ export async function PUT(
       },
       message: "Category updated successfully",
     });
-  } catch (error) {
-    console.error("Error updating taxonomy category:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -453,12 +445,6 @@ export async function DELETE(
       source: 'api:taxonomy/[id]',
     });
 
-    console.log("✅ Taxonomy category deleted:", {
-      id,
-      name: existing.name,
-      childrenHandled: hasChildren ? (deleteChildren ? "deleted" : "reassigned") : "none",
-    });
-
     return NextResponse.json({
       success: true,
       message: "Category deleted successfully",
@@ -468,8 +454,7 @@ export async function DELETE(
           : "reassigned"
         : "none",
     });
-  } catch (error) {
-    console.error("Error deleting taxonomy category:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

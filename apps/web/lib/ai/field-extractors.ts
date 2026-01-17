@@ -81,8 +81,7 @@ Always respond in valid JSON format with these fields:
 
       const response = JSON.parse(completion.choices[0]?.message?.content || '{}');
       return this.parseResponse(response, context);
-    } catch (error) {
-      console.error(`Extraction error for ${context.fieldName}:`, error);
+    } catch (error: unknown) {
       return {
         value: null,
         rawValue: '',
@@ -798,7 +797,6 @@ export async function extractFieldsBatch(
     const failed = results.filter(r => !r.success);
     
     if (failed.length > 0 && failed.length <= 3) {
-      console.log(`🔄 Retrying ${failed.length} failed extractions...`);
       
       for (const failedResult of failed) {
         const request = requests.find(r => r.context.fieldName === failedResult.fieldName);
@@ -823,15 +821,12 @@ export async function extractFieldsBatch(
               success: true,
             };
           }
-        } catch (error) {
-          console.log(`⚠️ Retry failed for ${failedResult.fieldName}`);
+        } catch {
+          // Retry failed
         }
       }
     }
   }
-
-  const totalTime = Date.now() - startTime;
-  console.log(`📊 Batch extraction completed: ${results.length} fields in ${totalTime}ms`);
 
   return results;
 }
@@ -943,7 +938,6 @@ export async function extractFieldsSmart(
     criticalFieldsSuccess = criticalResults.every(r => r.success && r.result.confidence > 0.5);
 
     if (stopOnCriticalFailure && !criticalFieldsSuccess) {
-      console.log('⚠️ Critical fields failed, stopping extraction');
       return {
         results: allResults,
         criticalFieldsSuccess: false,
@@ -1017,8 +1011,7 @@ Respond with:
     });
 
     return JSON.parse(response.choices[0]?.message?.content || '{}');
-  } catch (error) {
-    console.error('Document analysis failed:', error);
+  } catch {
     return {
       documentType: 'unknown',
       language: 'en',

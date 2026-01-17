@@ -374,7 +374,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     shortcut: ['⌘', 'N'],
     category: 'Create',
     keywords: ['create', 'add', 'document'],
-    action: () => console.log('New contract'),
+    action: () => { /* New contract action */ },
   },
   {
     id: 'upload-document',
@@ -384,7 +384,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     shortcut: ['⌘', 'U'],
     category: 'Create',
     keywords: ['import', 'pdf', 'file'],
-    action: () => console.log('Upload'),
+    action: () => { /* Upload action */ },
   },
   {
     id: 'search-contracts',
@@ -394,7 +394,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     shortcut: ['⌘', 'F'],
     category: 'Navigation',
     keywords: ['find', 'filter'],
-    action: () => console.log('Search'),
+    action: () => { /* Search action */ },
   },
   {
     id: 'view-recent',
@@ -403,7 +403,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     icon: Clock,
     category: 'Navigation',
     keywords: ['history', 'last'],
-    action: () => console.log('Recent'),
+    action: () => { /* Recent action */ },
   },
   {
     id: 'view-starred',
@@ -412,7 +412,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     icon: Star,
     category: 'Navigation',
     keywords: ['favorites', 'bookmarks'],
-    action: () => console.log('Starred'),
+    action: () => { /* Starred action */ },
   },
   {
     id: 'team-members',
@@ -421,7 +421,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     icon: Users,
     category: 'Team',
     keywords: ['people', 'invite'],
-    action: () => console.log('Team'),
+    action: () => { /* Team action */ },
   },
   {
     id: 'settings',
@@ -431,6 +431,6 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
     shortcut: ['⌘', ','],
     category: 'System',
     keywords: ['preferences', 'config'],
-    action: () => console.log('Settings'),
+    action: () => { /* Settings action */ },
   },
 ];

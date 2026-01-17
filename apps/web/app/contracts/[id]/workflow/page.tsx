@@ -157,8 +157,7 @@ export default function ContractWorkflowPage() {
           },
         ]);
       }
-    } catch (error) {
-      console.error('Failed to load contract workflow:', error);
+    } catch {
       toast.error('Failed to load workflow');
     } finally {
       setLoading(false);
@@ -229,8 +228,7 @@ export default function ContractWorkflowPage() {
       } else {
         throw new Error('Failed to save');
       }
-    } catch (error) {
-      console.error('Failed to save workflow:', error);
+    } catch {
       toast.error('Failed to save workflow');
     } finally {
       setSaving(false);

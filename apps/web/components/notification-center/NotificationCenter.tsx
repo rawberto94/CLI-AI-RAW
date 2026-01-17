@@ -154,7 +154,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
   const { unreadCount } = useNotifications();
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative', className)} data-tour="notifications">
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
@@ -439,8 +439,8 @@ export function useDemoNotifications() {
         title: 'You were mentioned',
         message: 'Sarah mentioned you in a comment on "Master Services Agreement".',
         actions: [
-          { label: 'View', onClick: () => console.log('View'), variant: 'primary' },
-          { label: 'Dismiss', onClick: () => console.log('Dismiss') },
+          { label: 'View', onClick: () => {}, variant: 'primary' },
+          { label: 'Dismiss', onClick: () => {} },
         ],
       });
     }, 1000);

@@ -54,11 +54,8 @@ class ConnectionCleanupSchedulerService {
    */
   start(): void {
     if (this.isRunning) {
-      console.log('[CleanupScheduler] Already running');
       return;
     }
-
-    console.log('[CleanupScheduler] Starting cleanup scheduler');
     this.isRunning = true;
 
     this.cleanupTimer = setInterval(() => {
@@ -74,11 +71,8 @@ class ConnectionCleanupSchedulerService {
    */
   stop(): void {
     if (!this.isRunning) {
-      console.log('[CleanupScheduler] Not running');
       return;
     }
-
-    console.log('[CleanupScheduler] Stopping cleanup scheduler');
     this.isRunning = false;
 
     if (this.cleanupTimer) {
@@ -99,9 +93,6 @@ class ConnectionCleanupSchedulerService {
         this.config.maxConnectionsBeforeCleanup &&
         metrics.totalConnections < this.config.maxConnectionsBeforeCleanup
       ) {
-        console.log(
-          `[CleanupScheduler] Skipping cleanup (${metrics.totalConnections} connections < ${this.config.maxConnectionsBeforeCleanup} threshold)`
-        );
         return;
       }
 
@@ -115,13 +106,8 @@ class ConnectionCleanupSchedulerService {
       ]).size;
 
       if (totalToClean === 0) {
-        console.log('[CleanupScheduler] No connections to clean up');
         return;
       }
-
-      console.log(
-        `[CleanupScheduler] Found ${totalToClean} connections to clean up (${staleConnections.length} stale, ${timedOutConnections.length} timed out)`
-      );
 
       // Perform cleanup
       const cleanedCount = sseConnectionManager.cleanupConnections();
@@ -147,12 +133,7 @@ class ConnectionCleanupSchedulerService {
         totalCleaned: this.stats.totalConnectionsCleaned,
       });
 
-      console.log(
-        `[CleanupScheduler] Cleaned up ${cleanedCount} connections (Total cleanups: ${this.stats.totalCleanups}, Total cleaned: ${this.stats.totalConnectionsCleaned})`
-      );
     } catch (error) {
-      console.error('[CleanupScheduler] Error during cleanup:', error);
-      
       monitoringService.logError(
         error instanceof Error ? error : new Error('Cleanup failed'),
         {
@@ -167,7 +148,6 @@ class ConnectionCleanupSchedulerService {
    * Force an immediate cleanup
    */
   forceCleanup(): number {
-    console.log('[CleanupScheduler] Forcing immediate cleanup');
     const cleanedCount = sseConnectionManager.cleanupConnections();
 
     // Update stats

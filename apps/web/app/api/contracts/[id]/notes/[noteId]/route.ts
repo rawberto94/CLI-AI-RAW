@@ -44,8 +44,7 @@ export async function GET(
       }
     })
     
-  } catch (error) {
-    console.error('Error fetching note:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch note' },
       { status: 500 }
@@ -153,8 +152,7 @@ export async function PATCH(
       }
     })
     
-  } catch (error) {
-    console.error('Error updating note:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update note' },
       { status: 500 }
@@ -213,8 +211,7 @@ export async function DELETE(
       message: 'Note deleted successfully'
     })
     
-  } catch (error) {
-    console.error('Error deleting note:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete note' },
       { status: 500 }

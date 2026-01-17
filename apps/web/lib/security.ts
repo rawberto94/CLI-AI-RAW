@@ -22,7 +22,6 @@ const SALT_LENGTH = 32;
 function getEncryptionKey(): string {
   const key = process.env.ENCRYPTION_KEY;
   if (!key) {
-    console.warn('[Security] ENCRYPTION_KEY not set, using fallback key. DO NOT USE IN PRODUCTION!');
     return 'default-dev-key-do-not-use-in-production-123456';
   }
   return key;

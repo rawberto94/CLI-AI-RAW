@@ -23,9 +23,7 @@ export async function GET(request: NextRequest) {
       },
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('[Alerts API] Error fetching alerts:', error);
-    
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch alerts' },
       { status: 500 }
@@ -46,9 +44,7 @@ export async function POST(request: NextRequest) {
       count: newAlerts.length,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('[Alerts API] Error checking thresholds:', error);
-    
+  } catch {
     return NextResponse.json(
       { error: 'Failed to check thresholds' },
       { status: 500 }

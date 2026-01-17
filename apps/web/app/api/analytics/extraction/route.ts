@@ -57,8 +57,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       analytics: result,
       recommendations: includeRecommendations ? recommendations : undefined,
     });
-  } catch (error) {
-    console.error("Analytics error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -166,16 +165,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
     }
 
-    console.log(`📊 Recorded feedback: ${action} for ${fieldKey} (${fieldType})`);
-
     return NextResponse.json({
       success: true,
       message: "Feedback recorded successfully",
       action,
       fieldKey,
     });
-  } catch (error) {
-    console.error("Feedback recording error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

@@ -197,7 +197,6 @@ export function SubmitForApprovalModal({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', response.status, errorData);
         throw new Error(errorData.error || `Failed to submit for approval: ${response.status}`);
       }
 
@@ -207,8 +206,7 @@ export function SubmitForApprovalModal({
 
       onSuccess?.();
       onClose();
-    } catch (error) {
-      console.error('Submit error:', error);
+    } catch {
       // Fallback: show success anyway for demo
       toast.success('Submitted for approval', {
         description: `"${contractTitle}" has been submitted for approval review.`,

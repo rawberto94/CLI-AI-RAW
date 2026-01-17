@@ -36,8 +36,7 @@ export async function handleListActions(
           message: `Unknown list action: ${action}`,
         };
     }
-  } catch (error) {
-    console.error('[List Actions] Error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'Failed to process list request',

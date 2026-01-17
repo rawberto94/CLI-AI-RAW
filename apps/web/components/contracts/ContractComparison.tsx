@@ -284,8 +284,7 @@ export function ContractComparison({
         }
 
         setDiffSections(sections);
-      } catch (err) {
-        console.error('Error fetching comparison:', err);
+      } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to load comparison');
       } finally {
         setIsLoading(false);

@@ -79,21 +79,10 @@ export function maskApiKey(key: string | undefined): string {
 }
 
 /**
- * Log API key status (safe for logs)
+ * Log API key status (safe for logs) - no-op in production
  */
 export function logApiKeyStatus(): void {
-  console.log('\n=== API Key Status ===');
-  const keys = getApiKeyStatus();
-  
-  keys.forEach(key => {
-    const status = key.isValid ? '✅' : '❌';
-    const value = maskApiKey(process.env[key.envVar]);
-    console.log(`${status} ${key.name}: ${value}`);
-    if (!key.isValid) {
-      console.log(`   → Configure at: ${key.rotationUrl}`);
-    }
-  });
-  console.log('======================\n');
+  // Logging removed for production
 }
 
 /**

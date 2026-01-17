@@ -9,8 +9,6 @@ import sgMail from '@sendgrid/mail';
 // Initialize SendGrid
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} else {
-  console.warn('⚠️ SENDGRID_API_KEY not configured - emails will be logged only');
 }
 
 export interface EmailOptions {
@@ -36,14 +34,8 @@ export interface EmailOptions {
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const from = options.from || process.env.EMAIL_FROM || 'notifications@contigo.ch';
   
-  // If no API key, log and return (dev mode)
+  // If no API key, return success (dev mode)
   if (!process.env.SENDGRID_API_KEY) {
-    console.log('📧 [DEV MODE] Email would be sent:', {
-      from,
-      to: options.to,
-      subject: options.subject,
-      html: options.html.substring(0, 200) + '...',
-    });
     return true;
   }
 
@@ -63,24 +55,8 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 
     await sgMail.send(msg);
     
-    console.log('✅ Email sent successfully:', {
-      to: options.to,
-      subject: options.subject,
-    });
-    
     return true;
-  } catch (error: any) {
-    console.error('❌ Failed to send email:', {
-      error: error.message,
-      to: options.to,
-      subject: options.subject,
-    });
-    
-    // Log SendGrid specific errors
-    if (error.response) {
-      console.error('SendGrid error:', error.response.body);
-    }
-    
+  } catch {
     return false;
   }
 }
@@ -98,8 +74,6 @@ export async function sendBatchEmails(emails: EmailOptions[]): Promise<{
   
   const sent = results.filter(r => r.status === 'fulfilled' && r.value).length;
   const failed = results.length - sent;
-  
-  console.log(`📧 Batch email results: ${sent} sent, ${failed} failed`);
   
   return { sent, failed };
 }

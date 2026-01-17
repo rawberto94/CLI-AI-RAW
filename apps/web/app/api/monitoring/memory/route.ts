@@ -31,8 +31,7 @@ export async function GET(request: NextRequest) {
       default:
         return getMemoryStats();
     }
-  } catch (error) {
-    console.error('[Memory API] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: {
@@ -75,8 +74,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('[Memory API] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: {

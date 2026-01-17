@@ -9,12 +9,22 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "target": "ES2022",
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "paths": {
+      "@repo/data-orchestration": ["../data-orchestration/src"],
+      "@repo/data-orchestration/*": ["../data-orchestration/src/*"],
+      "utils": ["../utils/src"],
+      "utils/*": ["../utils/src/*"],
+      "schemas": ["../schemas/src"],
+      "schemas/*": ["../schemas/src/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "test"],
   "references": [
     { "path": "../utils" },
-    { "path": "../schemas" }
+    { "path": "../schemas" },
+    { "path": "../data-orchestration" }
   ]
 }

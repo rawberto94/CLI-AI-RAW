@@ -111,8 +111,7 @@ export async function GET(request: NextRequest) {
       learningRecords,
       totalContracts: contracts.length,
     });
-  } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

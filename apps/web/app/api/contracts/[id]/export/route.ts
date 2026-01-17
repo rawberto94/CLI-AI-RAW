@@ -388,8 +388,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           { status: 400 }
         )
     }
-  } catch (error) {
-    console.error('Export error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Export failed', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

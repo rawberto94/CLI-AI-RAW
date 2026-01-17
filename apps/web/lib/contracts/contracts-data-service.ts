@@ -55,20 +55,17 @@ export async function fetchContracts(): Promise<Contract[]> {
     });
 
     if (!response.ok) {
-      console.error("Failed to fetch contracts:", response.statusText);
       return [];
     }
 
     const data: ContractsListResponse = await response.json();
 
     if (!data.success) {
-      console.error("API returned error:", data.error);
       return [];
     }
 
     return data.contracts || [];
-  } catch (error) {
-    console.error("Error fetching contracts:", error);
+  } catch {
     return [];
   }
 }
@@ -87,20 +84,17 @@ export async function fetchContract(id: string): Promise<Contract | null> {
     });
 
     if (!response.ok) {
-      console.error("Failed to fetch contract:", response.statusText);
       return null;
     }
 
     const data: ContractDetailResponse = await response.json();
 
     if (!data.success) {
-      console.error("API returned error:", data.error);
       return null;
     }
 
     return data.contract || null;
-  } catch (error) {
-    console.error("Error fetching contract:", error);
+  } catch {
     return null;
   }
 }
@@ -181,7 +175,6 @@ export function formatDate(dateString: string): string {
 
   // Check if date is valid
   if (isNaN(date.getTime())) {
-    console.warn("Invalid date string:", dateString);
     return "Invalid Date";
   }
 
@@ -202,7 +195,6 @@ export function formatDateTime(dateString: string): string {
 
   // Check if date is valid
   if (isNaN(date.getTime())) {
-    console.warn("Invalid date string:", dateString);
     return "Invalid Date";
   }
 

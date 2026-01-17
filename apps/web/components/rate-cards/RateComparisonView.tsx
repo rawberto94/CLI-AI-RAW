@@ -79,8 +79,8 @@ export function RateComparisonView({
       );
       const results = await Promise.all(promises);
       setRateCards(results);
-    } catch (error) {
-      console.error('Error fetching rate cards:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -113,9 +113,9 @@ export function RateComparisonView({
   };
 
   const getVarianceColor = (variance: number) => {
-    if (variance === 0) return 'text-green-600 bg-green-50';
-    if (variance < 10) return 'text-yellow-600 bg-yellow-50';
-    return 'text-red-600 bg-red-50';
+    if (variance === 0) return 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30';
+    if (variance < 10) return 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30';
+    return 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30';
   };
 
   const formatDate = (dateString: string) => {
@@ -144,8 +144,8 @@ export function RateComparisonView({
         open={showSaveDialog}
         onOpenChange={setShowSaveDialog}
         rateCardIds={rateCardIds}
-        onSave={(id) => {
-          console.log('Comparison saved:', id);
+        onSave={() => {
+          // Comparison saved
         }}
       />
 
@@ -235,10 +235,10 @@ export function RateComparisonView({
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left p-3 font-medium text-sm bg-gray-50">Field</th>
+                <tr className="border-b dark:border-slate-700">
+                  <th className="text-left p-3 font-medium text-sm bg-gray-50 dark:bg-slate-800/50">Field</th>
                   {rateCards.map((rc, index) => (
-                    <th key={rc.id} className="text-left p-3 font-medium text-sm bg-gray-50">
+                    <th key={rc.id} className="text-left p-3 font-medium text-sm bg-gray-50 dark:bg-slate-800/50">
                       <div className="flex items-center gap-2">
                         Option {index + 1}
                         {rc.dailyRateUSD === lowestRate && (
@@ -254,7 +254,7 @@ export function RateComparisonView({
               </thead>
               <tbody>
                 {/* Supplier */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Supplier</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">{rc.supplierName}</td>
@@ -262,7 +262,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Role */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Role</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -277,7 +277,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Seniority */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Seniority</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -287,7 +287,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Daily Rate */}
-                <tr className="border-b hover:bg-gray-50 bg-blue-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50 bg-blue-50 dark:bg-blue-950/20">
                   <td className="p-3 font-medium text-sm">Daily Rate</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3">
@@ -306,7 +306,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Variance from Lowest */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Variance from Best</td>
                   {rateCards.map(rc => {
                     const variance = calculateVariance(rc.dailyRateUSD);
@@ -324,7 +324,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Potential Savings */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Daily Savings vs Best</td>
                   {rateCards.map(rc => {
                     const savings = rc.dailyRateUSD - lowestRate;
@@ -343,7 +343,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Location */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Location</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -357,7 +357,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Line of Service */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Line of Service</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">{rc.lineOfService}</td>
@@ -365,7 +365,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Effective Date */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Effective Date</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">{formatDate(rc.effectiveDate)}</td>
@@ -373,7 +373,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Expiry Date */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Expiry Date</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -383,7 +383,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Negotiated */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Negotiated</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -395,7 +395,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Volume Committed */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Volume Committed</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -405,7 +405,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Source */}
-                <tr className="border-b hover:bg-gray-50">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                   <td className="p-3 font-medium text-sm">Source</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3 text-sm">
@@ -416,7 +416,7 @@ export function RateComparisonView({
 
                 {/* Skills */}
                 {rateCards.some(rc => rc.skills && rc.skills.length > 0) && (
-                  <tr className="border-b hover:bg-gray-50">
+                  <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                     <td className="p-3 font-medium text-sm">Skills</td>
                     {rateCards.map(rc => (
                       <td key={rc.id} className="p-3 text-sm">
@@ -438,7 +438,7 @@ export function RateComparisonView({
 
                 {/* Certifications */}
                 {rateCards.some(rc => rc.certifications && rc.certifications.length > 0) && (
-                  <tr className="border-b hover:bg-gray-50">
+                  <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50">
                     <td className="p-3 font-medium text-sm">Certifications</td>
                     {rateCards.map(rc => (
                       <td key={rc.id} className="p-3 text-sm">

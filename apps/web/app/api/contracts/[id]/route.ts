@@ -227,12 +227,6 @@ export async function GET(
       }
     }
 
-    console.log("[API] Contract result:", {
-      found: !!contract,
-      id: contract?.id,
-      status: contract?.status,
-    });
-
     if (!contract) {
       return NextResponse.json(
         { error: "Contract not found" },
@@ -246,11 +240,6 @@ export async function GET(
         contractId: contractId,
         tenantId: tenantId,
       },
-    });
-
-    console.log("[API] Artifacts result:", {
-      count: artifacts.length,
-      types: artifacts.map((a) => a.type),
     });
 
     // Transform artifacts into expected format
@@ -476,8 +465,7 @@ export async function GET(
         "X-Cache-Status": responseTime < 50 ? "HIT" : "MISS",
       },
     });
-  } catch (error) {
-    console.error("Error fetching contract:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: "Failed to fetch contract details",
@@ -517,7 +505,6 @@ export async function PUT(
     // Validate update data with Zod schema
     try {
       updates = contractUpdateSchema.parse(body);
-      console.log("✅ Update data validated for contract:", contractId);
     } catch (error) {
       if (error instanceof ZodError) {
         return NextResponse.json(
@@ -588,8 +575,7 @@ export async function PUT(
     await writeFile(contractDataPath, JSON.stringify(updatedData, null, 2));
 
     return NextResponse.json(updatedData);
-  } catch (error) {
-    console.error("Error updating contract:", error);
+  } catch {
     return NextResponse.json(
       {
         error: "Failed to update contract",
@@ -645,17 +631,15 @@ export async function DELETE(
       if (existsSync(contractDataPath)) {
         await unlink(contractDataPath);
       }
-    } catch (error) {
+    } catch {
       // Legacy file cleanup is optional
-      console.warn("Legacy file cleanup failed:", error);
     }
 
     return NextResponse.json({ 
       message: "Contract deleted successfully",
       deletedRecords: result.deletedRecords
     });
-  } catch (error) {
-    console.error("Error deleting contract:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: "Failed to delete contract",

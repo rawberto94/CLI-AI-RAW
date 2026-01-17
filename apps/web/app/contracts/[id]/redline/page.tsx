@@ -70,8 +70,8 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
             }
           }
         }
-      } catch (error) {
-        console.error('Error fetching contract:', error);
+      } catch {
+        // Error handled silently
       } finally {
         setLoading(false);
       }

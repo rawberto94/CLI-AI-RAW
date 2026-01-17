@@ -18,8 +18,7 @@ export async function POST(
       },
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error toggling favorite:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to toggle favorite' },
       { status: 500 }

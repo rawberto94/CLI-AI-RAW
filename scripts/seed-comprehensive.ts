@@ -167,21 +167,121 @@ async function main() {
 
   // 9. Create workflows and executions
   console.log('9️⃣ Creating workflows and executions...');
-  const workflow1 = await prisma.workflow.create({
-    data: { id: 'workflow-001', tenantId: tenant.id, name: 'Contract Approval', description: 'Standard approval workflow.', type: 'APPROVAL', isActive: true },
-  });
-  const workflow2 = await prisma.workflow.create({
-    data: { id: 'workflow-002', tenantId: tenant.id, name: 'Contract Renewal', description: 'Renewal notification workflow.', type: 'REVIEW', isActive: true },
-  });
+  
+  // Create all workflow templates
+  const workflowTemplates = [
+    { id: 'workflow-001', name: 'Standard Approval', type: 'APPROVAL', isDefault: true, description: 'Standard multi-step approval for general contracts' },
+    { id: 'workflow-002', name: 'Express Approval', type: 'APPROVAL', description: 'Fast-track approval for low-value contracts' },
+    { id: 'workflow-003', name: 'Legal Review', type: 'APPROVAL', description: 'In-depth legal review for complex contracts' },
+    { id: 'workflow-004', name: 'Executive Approval', type: 'APPROVAL', description: 'Full approval chain for high-value contracts' },
+    { id: 'workflow-005', name: 'Amendment Approval', type: 'APPROVAL', description: 'Approval for amendments and change orders' },
+    { id: 'workflow-006', name: 'NDA Fast Track', type: 'APPROVAL', description: 'Expedited approval for standard NDAs' },
+    { id: 'workflow-007', name: 'Vendor Onboarding', type: 'REVIEW', description: 'Vendor vetting and onboarding process' },
+    { id: 'workflow-008', name: 'Contract Termination', type: 'APPROVAL', description: 'Early contract termination approval' },
+    { id: 'workflow-009', name: 'Renewal Opt-Out', type: 'NOTIFICATION', description: 'Auto-renewal cancellation notification' },
+    { id: 'workflow-010', name: 'Risk Escalation', type: 'APPROVAL', description: 'High-risk contract escalation workflow' },
+    { id: 'workflow-011', name: 'Multi-Party Signature', type: 'APPROVAL', description: 'Multi-party contract signatures' },
+    { id: 'workflow-012', name: 'Procurement Review', type: 'APPROVAL', description: 'Purchase order and work order approval' },
+  ];
 
-  // Create workflow steps for workflow1
-  await prisma.workflowStep.createMany({
-    data: [
-      { workflowId: workflow1.id, name: 'Manager Review', type: 'APPROVAL', order: 1, config: {} },
-      { workflowId: workflow1.id, name: 'Legal Review', type: 'APPROVAL', order: 2, config: {} },
-      { workflowId: workflow1.id, name: 'Final Approval', type: 'APPROVAL', order: 3, config: {} },
+  const workflows = await Promise.all(
+    workflowTemplates.map(wf => 
+      prisma.workflow.create({
+        data: { tenantId: tenant.id, ...wf, isActive: true },
+      })
+    )
+  );
+  console.log('   ✅ Created ' + workflows.length + ' workflow templates');
+
+  const workflow1 = workflows[0]; // Standard Approval
+
+  // Create workflow steps for all workflows
+  const stepConfigs: Record<string, { name: string; role: string; timeoutHours: number }[]> = {
+    'workflow-001': [ // Standard Approval
+      { name: 'Initial Review', role: 'reviewer', timeoutHours: 48 },
+      { name: 'Legal Review', role: 'legal', timeoutHours: 72 },
+      { name: 'Final Approval', role: 'approver', timeoutHours: 48 },
     ],
-  });
+    'workflow-002': [ // Express Approval
+      { name: 'Quick Review', role: 'reviewer', timeoutHours: 24 },
+      { name: 'Final Approval', role: 'approver', timeoutHours: 24 },
+    ],
+    'workflow-003': [ // Legal Review
+      { name: 'Legal Analysis', role: 'legal', timeoutHours: 72 },
+      { name: 'Compliance Check', role: 'compliance', timeoutHours: 48 },
+      { name: 'Legal Director Approval', role: 'legal_director', timeoutHours: 48 },
+    ],
+    'workflow-004': [ // Executive Approval
+      { name: 'Manager Review', role: 'manager', timeoutHours: 48 },
+      { name: 'Legal Review', role: 'legal', timeoutHours: 72 },
+      { name: 'Finance Review', role: 'finance', timeoutHours: 48 },
+      { name: 'VP Approval', role: 'vp', timeoutHours: 48 },
+      { name: 'Executive Approval', role: 'executive', timeoutHours: 72 },
+    ],
+    'workflow-005': [ // Amendment Approval
+      { name: 'Legal Review', role: 'legal', timeoutHours: 48 },
+      { name: 'Original Approver Review', role: 'original_approver', timeoutHours: 48 },
+      { name: 'Final Sign-off', role: 'approver', timeoutHours: 24 },
+    ],
+    'workflow-006': [ // NDA Fast Track
+      { name: 'Legal Quick Review', role: 'legal', timeoutHours: 24 },
+      { name: 'Auto-Approval Check', role: 'auto', timeoutHours: 1 },
+    ],
+    'workflow-007': [ // Vendor Onboarding
+      { name: 'Compliance Check', role: 'compliance', timeoutHours: 72 },
+      { name: 'Finance Review', role: 'finance', timeoutHours: 48 },
+      { name: 'Procurement Approval', role: 'procurement', timeoutHours: 48 },
+    ],
+    'workflow-008': [ // Contract Termination
+      { name: 'Legal Review', role: 'legal', timeoutHours: 72 },
+      { name: 'Finance Impact Assessment', role: 'finance', timeoutHours: 48 },
+      { name: 'Manager Approval', role: 'manager', timeoutHours: 48 },
+      { name: 'Executive Approval', role: 'executive', timeoutHours: 48 },
+    ],
+    'workflow-009': [ // Renewal Opt-Out
+      { name: 'Stakeholder Notification', role: 'stakeholders', timeoutHours: 24 },
+      { name: 'Decision Confirmation', role: 'manager', timeoutHours: 72 },
+      { name: 'Legal Review', role: 'legal', timeoutHours: 48 },
+    ],
+    'workflow-010': [ // Risk Escalation
+      { name: 'Risk Assessment', role: 'risk', timeoutHours: 48 },
+      { name: 'Compliance Review', role: 'compliance', timeoutHours: 48 },
+      { name: 'Legal Director Approval', role: 'legal_director', timeoutHours: 48 },
+      { name: 'Executive Review', role: 'executive', timeoutHours: 72 },
+    ],
+    'workflow-011': [ // Multi-Party Signature
+      { name: 'Internal Approval', role: 'approver', timeoutHours: 48 },
+      { name: 'Counter-party A Signature', role: 'external_a', timeoutHours: 120 },
+      { name: 'Counter-party B Signature', role: 'external_b', timeoutHours: 120 },
+      { name: 'Final Execution', role: 'legal', timeoutHours: 24 },
+    ],
+    'workflow-012': [ // Procurement Review
+      { name: 'Budget Verification', role: 'finance', timeoutHours: 24 },
+      { name: 'Procurement Review', role: 'procurement', timeoutHours: 48 },
+      { name: 'Finance Approval', role: 'finance_director', timeoutHours: 48 },
+      { name: 'Department Head Approval', role: 'department_head', timeoutHours: 48 },
+    ],
+  };
+
+  // Create steps for all workflows
+  for (const wf of workflows) {
+    const steps = stepConfigs[wf.id] || [];
+    if (steps.length > 0) {
+      await prisma.workflowStep.createMany({
+        data: steps.map((step, idx) => ({
+          workflowId: wf.id,
+          name: step.name,
+          type: 'APPROVAL',
+          order: idx + 1,
+          assignedRole: step.role,
+          timeout: step.timeoutHours,
+          isRequired: true,
+          config: {},
+        })),
+      });
+    }
+  }
+  console.log('   ✅ Created workflow steps for all templates\n');
 
   // Create workflow executions
   let executionCount = 0;

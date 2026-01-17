@@ -40,9 +40,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     return NextResponse.json(progress);
-  } catch (error) {
-    console.error('Progress check error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to check progress',
@@ -77,9 +75,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     progressStore.set(jobId, updated);
 
     return NextResponse.json({ success: true, progress: updated });
-  } catch (error) {
-    console.error('Progress update error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to update progress',
@@ -122,9 +118,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       { error: 'Either jobId or olderThan parameter is required' },
       { status: 400 }
     );
-  } catch (error) {
-    console.error('Progress cleanup error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to cleanup progress',

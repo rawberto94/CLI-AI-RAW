@@ -87,8 +87,7 @@ export async function GET(request: NextRequest) {
       cached: false,
       timestamp: new Date(),
     });
-  } catch (error) {
-    console.error('Error fetching contract health:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

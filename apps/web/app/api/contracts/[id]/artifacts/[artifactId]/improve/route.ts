@@ -75,8 +75,7 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, artifactId: artifact.id, validation });
-  } catch (error) {
-    console.error('Error improving artifact:', error);
+  } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed' }, { status: 500 });
   }
 }

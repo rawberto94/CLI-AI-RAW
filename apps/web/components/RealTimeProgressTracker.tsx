@@ -93,8 +93,7 @@ export const RealTimeProgressTracker: React.FC<RealTimeProgressTrackerProps> = (
         if (contractId) {
           client.subscribe(contractId);
         }
-      } catch (error) {
-        console.error('Failed to connect to progress tracking:', error);
+      } catch {
         setConnection(prev => ({ ...prev, status: 'disconnected' }));
       }
     };

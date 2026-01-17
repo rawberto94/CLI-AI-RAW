@@ -51,8 +51,8 @@ export function AlertRuleBuilder({ tenantId, userId, onSave }: AlertRuleBuilderP
         condition: 'greater_than',
         enabled: true,
       });
-    } catch (error) {
-      console.error('Error saving alert rule:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setSaving(false);
     }

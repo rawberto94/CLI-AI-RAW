@@ -137,8 +137,7 @@ export default function EnhancedContractDetailPage() {
 
       const data = await response.json()
       setContract(data)
-    } catch (err) {
-      console.error('Load contract error:', err)
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')
     } finally {
       setLoading(false)
@@ -159,8 +158,8 @@ export default function EnhancedContractDetailPage() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-    } catch (error) {
-      console.error('Export error:', error)
+    } catch {
+      // Error handled silently
     }
   }
 

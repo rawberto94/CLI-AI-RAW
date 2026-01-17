@@ -86,7 +86,7 @@ function setStoredVariant(experimentId: string, variant: string): void {
     stored[experimentId] = variant
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
   } catch {
-    console.warn('Failed to store A/B variant')
+    // Storage failed silently
   }
 }
 
@@ -155,11 +155,6 @@ export function ABTestingProvider({ children }: { children: React.ReactNode }) {
       eventName,
       data,
       timestamp: new Date().toISOString(),
-    }
-
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[A/B Event]', event)
     }
 
     // Send to analytics endpoint

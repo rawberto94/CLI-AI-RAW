@@ -30,8 +30,6 @@ export async function GET(request: NextRequest) {
     const tenantId = searchParams.get('tenantId') || undefined;
     const daysAhead = parseInt(searchParams.get('daysAhead') || '90');
 
-    console.log('[CRON] Starting renewal alerts scan', { tenantId, daysAhead });
-
     const workerModule = await optionalImport<{ triggerRenewalCheck: (args: any) => Promise<any> }>(
       '@workspace/workers/renewal-alert-worker'
     );
@@ -58,16 +56,13 @@ export async function GET(request: NextRequest) {
       source: 'scheduled',
     });
 
-    console.log('[CRON] Renewal alerts job queued', { jobId: job.id });
-
     return NextResponse.json({
       success: true,
       message: 'Renewal alerts scan triggered',
       jobId: job.id,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('[CRON] Failed to trigger renewal alerts:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

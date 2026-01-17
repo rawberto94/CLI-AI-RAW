@@ -1,5 +1,5 @@
 {
-  "name": "agents",
+  "name": "@repo/agents",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,6 +8,21 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.js"
+    },
+    "./autonomous-orchestrator": {
+      "types": "./dist/autonomous-orchestrator.d.ts",
+      "import": "./dist/autonomous-orchestrator.js",
+      "require": "./dist/autonomous-orchestrator.js"
+    },
+    "./react-agent": {
+      "types": "./dist/react-agent.d.ts",
+      "import": "./dist/react-agent.js",
+      "require": "./dist/react-agent.js"
+    },
+    "./tool-registry": {
+      "types": "./dist/tool-registry.d.ts",
+      "import": "./dist/tool-registry.js",
+      "require": "./dist/tool-registry.js"
     }
   },
   "scripts": {
@@ -21,6 +36,7 @@
   "dependencies": {
     "@langchain/core": "^0.2.36",
     "@langchain/openai": "^0.2.8",
+    "@repo/data-orchestration": "workspace:*",
     "jsonschema": "^1.4.1",
     "langchain": "^0.2.19",
     "schemas": "workspace:*",

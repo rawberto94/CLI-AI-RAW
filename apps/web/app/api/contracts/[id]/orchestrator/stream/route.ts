@@ -101,8 +101,7 @@ export async function GET(
           }
 
           consecutiveErrors = 0; // Reset on success
-        } catch (error) {
-          console.error('SSE polling error:', error);
+        } catch {
           consecutiveErrors++;
 
           if (consecutiveErrors >= MAX_ERRORS) {

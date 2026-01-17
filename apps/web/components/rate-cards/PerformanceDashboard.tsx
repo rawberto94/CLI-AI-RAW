@@ -51,8 +51,8 @@ export function PerformanceDashboard() {
       const response = await fetch('/api/rate-cards/performance-metrics');
       const data = await response.json();
       setMetrics(data);
-    } catch (error) {
-      console.error('Error fetching performance metrics:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }

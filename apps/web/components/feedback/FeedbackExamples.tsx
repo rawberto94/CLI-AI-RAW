@@ -27,7 +27,7 @@ export function FeedbackExamples() {
       {
         action: {
           label: 'View Contract',
-          onClick: () => console.log('Navigate to contract'),
+          onClick: () => {},
         },
       }
     );
@@ -41,7 +41,7 @@ export function FeedbackExamples() {
       {
         action: {
           label: 'Retry',
-          onClick: () => console.log('Retry upload'),
+          onClick: () => {},
         },
       }
     );
@@ -63,7 +63,7 @@ export function FeedbackExamples() {
       {
         action: {
           label: 'Learn More',
-          onClick: () => console.log('Navigate to feature'),
+          onClick: () => {},
         },
       }
     );
@@ -204,7 +204,7 @@ export function FeedbackExamples() {
           {showInlineError && (
             <InlineError
               message="Unable to connect to the server. Please check your internet connection."
-              onRetry={() => console.log('Retry')}
+              onRetry={() => {}}
               onDismiss={() => setShowInlineError(false)}
             />
           )}

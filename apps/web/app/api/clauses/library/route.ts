@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
-// Mock library clauses matching the contract editor's LibraryClause type
-const mockLibraryClauses = [
+// Default library clauses to seed if database is empty
+const defaultLibraryClauses = [
   {
-    id: 'lib1',
-    tenantId: 'demo',
     name: 'standard_indemnification',
     title: 'Standard Indemnification',
     category: 'INDEMNIFICATION',
@@ -15,14 +15,8 @@ const mockLibraryClauses = [
     isMandatory: false,
     isNegotiable: true,
     tags: ['indemnification', 'standard'],
-    usageCount: 45,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
   },
   {
-    id: 'lib2',
-    tenantId: 'demo',
     name: 'data_protection',
     title: 'Data Protection & GDPR',
     category: 'DATA_PROTECTION',
@@ -32,14 +26,8 @@ const mockLibraryClauses = [
     isMandatory: true,
     isNegotiable: false,
     tags: ['gdpr', 'data', 'privacy', 'mandatory'],
-    usageCount: 78,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
   },
   {
-    id: 'lib3',
-    tenantId: 'demo',
     name: 'force_majeure',
     title: 'Force Majeure',
     category: 'FORCE_MAJEURE',
@@ -49,14 +37,8 @@ const mockLibraryClauses = [
     isMandatory: false,
     isNegotiable: true,
     tags: ['force majeure', 'acts of god'],
-    usageCount: 56,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
   },
   {
-    id: 'lib4',
-    tenantId: 'demo',
     name: 'confidentiality',
     title: 'Confidentiality',
     category: 'CONFIDENTIALITY',
@@ -66,14 +48,8 @@ const mockLibraryClauses = [
     isMandatory: true,
     isNegotiable: true,
     tags: ['confidentiality', 'nda', 'proprietary'],
-    usageCount: 92,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
   },
   {
-    id: 'lib5',
-    tenantId: 'demo',
     name: 'limitation_of_liability',
     title: 'Limitation of Liability',
     category: 'LIABILITY',
@@ -83,106 +59,134 @@ const mockLibraryClauses = [
     isMandatory: false,
     isNegotiable: true,
     tags: ['liability', 'limitation', 'damages', 'cap'],
-    usageCount: 67,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
   },
   {
-    id: 'lib6',
-    tenantId: 'demo',
     name: 'dispute_resolution',
     title: 'Dispute Resolution',
     category: 'DISPUTE_RESOLUTION',
-    content: 'Any dispute arising out of or in connection with this Agreement shall first be attempted to be resolved through good faith negotiations between the parties. If negotiations fail, the parties agree to submit the dispute to binding arbitration under the rules of the [Arbitration Body], with the arbitration to take place in [Location].',
+    content: 'Any dispute arising out of or in connection with this Agreement shall first be attempted to be resolved through good faith negotiations between the parties. If negotiations fail, the parties agree to submit the dispute to binding arbitration under the rules of the American Arbitration Association, with the arbitration to take place in the location agreed upon by both parties.',
     riskLevel: 'MEDIUM',
     isStandard: true,
     isMandatory: false,
     isNegotiable: true,
     tags: ['dispute', 'arbitration', 'resolution'],
-    usageCount: 34,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
   },
   {
-    id: 'lib7',
-    tenantId: 'demo',
-    name: 'intellectual_property',
-    title: 'Intellectual Property Rights',
-    category: 'IP_RIGHTS',
-    content: 'All intellectual property rights in any work product, deliverables, or materials created by Supplier in the performance of this Agreement shall be the exclusive property of the Client. Supplier hereby assigns all right, title, and interest in such intellectual property to the Client upon creation.',
-    riskLevel: 'HIGH',
-    isStandard: true,
-    isMandatory: true,
-    isNegotiable: true,
-    tags: ['ip', 'intellectual property', 'ownership', 'assignment'],
-    usageCount: 51,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'lib8',
-    tenantId: 'demo',
-    name: 'termination_for_cause',
-    title: 'Termination for Cause',
+    name: 'termination_for_convenience',
+    title: 'Termination for Convenience',
     category: 'TERMINATION',
-    content: 'Either party may terminate this Agreement immediately upon written notice if the other party: (a) materially breaches this Agreement and fails to cure such breach within thirty (30) days after receipt of written notice; (b) becomes insolvent or files for bankruptcy; or (c) engages in any fraudulent or illegal activity.',
+    content: 'Either party may terminate this Agreement at any time for any reason by providing written notice to the other party at least thirty (30) days prior to the desired termination date. Upon termination, all rights and obligations shall cease except for those that by their nature should survive termination.',
     riskLevel: 'MEDIUM',
     isStandard: true,
     isMandatory: false,
     isNegotiable: true,
-    tags: ['termination', 'breach', 'cause'],
-    usageCount: 43,
-    createdBy: 'admin',
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    tags: ['termination', 'convenience', 'notice'],
+  },
+  {
+    name: 'intellectual_property',
+    title: 'Intellectual Property Rights',
+    category: 'IP_RIGHTS',
+    content: 'Each party retains all right, title, and interest in and to its pre-existing intellectual property. Any intellectual property developed jointly by the parties shall be jointly owned. Neither party shall use the other party\'s trademarks, logos, or other intellectual property without prior written consent.',
+    riskLevel: 'HIGH',
+    isStandard: true,
+    isMandatory: false,
+    isNegotiable: true,
+    tags: ['ip', 'intellectual property', 'ownership', 'trademarks'],
   },
 ];
 
-// GET /api/clauses/library - Get clause library
+// GET /api/clauses/library - Get all library clauses
 export async function GET(request: NextRequest) {
   try {
+    const tenantId = await getTenantIdFromRequest(request);
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const mandatory = searchParams.get('mandatory');
+    const riskLevel = searchParams.get('riskLevel');
+    const search = searchParams.get('search');
+    const isStandard = searchParams.get('isStandard');
+    const isMandatory = searchParams.get('isMandatory');
 
-    // Try to get clauses from database
+    // Try to get from database first
     try {
-      // When Clause model is added to schema:
-      // const clauses = await prisma.clause.findMany({
-      //   where: {
-      //     isLibrary: true,
-      //     ...(category && { category }),
-      //     ...(mandatory === 'true' && { isMandatory: true }),
-      //   },
-      //   orderBy: { usageCount: 'desc' },
-      // });
-      // if (clauses.length > 0) {
-      //   return NextResponse.json({ clauses, source: 'database' });
-      // }
-    } catch (dbError) {
-      console.warn('Database lookup failed:', dbError);
-    }
+      // Check if library exists
+      const count = await prisma.clauseLibrary.count({ where: { tenantId } });
+      
+      // Seed default clauses if empty
+      if (count === 0) {
+        await prisma.clauseLibrary.createMany({
+          data: defaultLibraryClauses.map(clause => ({
+            ...clause,
+            tenantId,
+            tags: JSON.stringify(clause.tags),
+            createdBy: 'system',
+          })),
+          skipDuplicates: true,
+        });
+      }
 
-    // Filter mock data
-    let filteredClauses = [...mockLibraryClauses];
-    
-    if (category) {
-      filteredClauses = filteredClauses.filter(c => c.category === category);
-    }
-    
-    if (mandatory === 'true') {
-      filteredClauses = filteredClauses.filter(c => c.isMandatory);
-    }
+      // Build where clause
+      const where: Record<string, unknown> = { tenantId };
+      if (category) where.category = category;
+      if (riskLevel) where.riskLevel = riskLevel;
+      if (isStandard === 'true') where.isStandard = true;
+      if (isMandatory === 'true') where.isMandatory = true;
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { content: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search, mode: 'insensitive' } },
+        ];
+      }
 
-    return NextResponse.json({ 
-      clauses: filteredClauses,
-      source: 'mock'
-    });
-  } catch (error) {
-    console.error('Error fetching clause library:', error);
+      const clauses = await prisma.clauseLibrary.findMany({
+        where,
+        orderBy: [
+          { usageCount: 'desc' },
+          { title: 'asc' },
+        ],
+      });
+
+      return NextResponse.json({ 
+        clauses: clauses.map(c => ({
+          ...c,
+          tags: typeof c.tags === 'string' ? JSON.parse(c.tags) : c.tags,
+        })),
+        source: 'database',
+        total: clauses.length,
+      });
+    } catch {
+      // Fallback to default clauses
+      let filteredClauses = defaultLibraryClauses.map((c, i) => ({
+        ...c,
+        id: `lib${i + 1}`,
+        tenantId,
+        usageCount: Math.floor(Math.random() * 100),
+        createdBy: 'system',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      if (category) {
+        filteredClauses = filteredClauses.filter(c => c.category === category);
+      }
+      if (riskLevel) {
+        filteredClauses = filteredClauses.filter(c => c.riskLevel === riskLevel);
+      }
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filteredClauses = filteredClauses.filter(c => 
+          c.title.toLowerCase().includes(searchLower) ||
+          c.content.toLowerCase().includes(searchLower)
+        );
+      }
+
+      return NextResponse.json({ 
+        clauses: filteredClauses,
+        source: 'default',
+        total: filteredClauses.length,
+      });
+    }
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch clause library' },
       { status: 500 }
@@ -193,6 +197,8 @@ export async function GET(request: NextRequest) {
 // POST /api/clauses/library - Add clause to library
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
+    const tenantId = await getTenantIdFromRequest(request);
     const body = await request.json();
     const { 
       name, 
@@ -204,45 +210,73 @@ export async function POST(request: NextRequest) {
       isMandatory = false,
       isNegotiable = true,
       tags = [],
+      jurisdiction,
+      contractTypes = [],
+      alternativeText,
     } = body;
 
-    const newClause = {
-      id: `lib-${Date.now()}`,
-      tenantId: 'demo',
-      name,
-      title,
-      category,
-      content,
-      riskLevel,
-      isStandard,
-      isMandatory,
-      isNegotiable,
-      tags,
-      usageCount: 0,
-      createdBy: 'user',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    if (!name || !title || !category || !content) {
+      return NextResponse.json(
+        { error: 'Missing required fields: name, title, category, content' },
+        { status: 400 }
+      );
+    }
 
-    // Try to save to database when schema is available
-    // try {
-    //   const clause = await prisma.clause.create({
-    //     data: {
-    //       ...newClause,
-    //       isLibrary: true,
-    //     },
-    //   });
-    //   return NextResponse.json({ clause, source: 'database' });
-    // } catch (dbError) {
-    //   console.warn('Database save failed:', dbError);
-    // }
+    try {
+      const clause = await prisma.clauseLibrary.create({
+        data: {
+          tenantId,
+          name,
+          title,
+          category,
+          content,
+          plainText: content.replace(/<[^>]*>/g, ''), // Strip HTML
+          riskLevel,
+          isStandard,
+          isMandatory,
+          isNegotiable,
+          tags: JSON.stringify(tags),
+          jurisdiction,
+          contractTypes: JSON.stringify(contractTypes),
+          alternativeText,
+          createdBy: session?.user?.id || 'system'
+        },
+      });
 
-    return NextResponse.json({ 
-      clause: newClause,
-      source: 'mock'
-    });
-  } catch (error) {
-    console.error('Error adding clause to library:', error);
+      return NextResponse.json({ 
+        clause: {
+          ...clause,
+          tags: typeof clause.tags === 'string' ? JSON.parse(clause.tags as string) : clause.tags,
+        },
+        source: 'database',
+      });
+    } catch {
+      // Return mock response for development
+      const newClause = {
+        id: `lib-${Date.now()}`,
+        tenantId,
+        name,
+        title,
+        category,
+        content,
+        riskLevel,
+        isStandard,
+        isMandatory,
+        isNegotiable,
+        tags,
+        usageCount: 0,
+        createdBy: 'user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      return NextResponse.json({ 
+        clause: newClause,
+        source: 'memory',
+        warning: 'Database unavailable, clause not persisted',
+      });
+    }
+  } catch {
     return NextResponse.json(
       { error: 'Failed to add clause to library' },
       { status: 500 }

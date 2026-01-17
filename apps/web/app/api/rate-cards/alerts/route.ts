@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(notifications);
   } catch (error: unknown) {
-    console.error('Error fetching alerts:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch alerts' },
       { status: 500 }
@@ -48,7 +47,6 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error updating alert:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update alert' },
       { status: 500 }

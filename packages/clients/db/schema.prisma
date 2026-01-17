@@ -14,21 +14,24 @@ datasource db {
 }
 
 model Tenant {
-  id            String              @id @default(cuid())
-  name          String              @unique
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-  slug          String              @unique
-  status        TenantStatus        @default(ACTIVE)
-  auditLogs     AuditLog[]
-  contracts     Contract[]
-  templates     ContractTemplate[]
-  metrics       Metric[]
-  configuration TenantConfig?
-  subscription  TenantSubscription?
-  usage         TenantUsage?
-  users         User[]
-  invitations   TeamInvitation[]
+  id                      String                   @id @default(cuid())
+  name                    String                   @unique
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  slug                    String                   @unique
+  status                  TenantStatus             @default(ACTIVE)
+  auditLogs               AuditLog[]
+  contracts               Contract[]
+  templates               ContractTemplate[]
+  metrics                 Metric[]
+  configuration           TenantConfig?
+  subscription            TenantSubscription?
+  usage                   TenantUsage?
+  users                   User[]
+  invitations             TeamInvitation[]
+  contractDrafts          ContractDraft[]
+  chatConversations       ChatConversation[]
+  obligationNotifications ObligationNotification[]
 
   @@index([status])
   @@index([createdAt])
@@ -148,6 +151,8 @@ model User {
   widgetAnalytics     WidgetAnalytics[]
   rateCardSegments    RateCardSegment[]
   uploadedVersions    ContractVersion[]     @relation("VersionUploader")
+  createdDrafts       ContractDraft[]       @relation("DraftCreator")
+  chatConversations   ChatConversation[]
 
   @@index([email])
   @@index([tenantId])
@@ -348,6 +353,9 @@ model Contract {
   costSavings         CostSavingsOpportunity[]
   rateCardEntries     RateCardEntry[]
   workflowExecutions  WorkflowExecution[]
+  signatureRequests   SignatureRequest[]
+  legalReviews        LegalReview[]
+  sourcedDrafts       ContractDraft[]          @relation("DraftSourceContract")
 
   // Extraction corrections relation
   extractionCorrections ExtractionCorrection[]
@@ -968,7 +976,7 @@ model Embedding {
 }
 
 model ContractTemplate {
-  id          String    @id @default(cuid())
+  id          String          @id @default(cuid())
   tenantId    String
   name        String
   description String?
@@ -976,21 +984,186 @@ model ContractTemplate {
   clauses     Json
   structure   Json
   metadata    Json
-  version     Int       @default(1)
-  isActive    Boolean   @default(true)
+  version     Int             @default(1)
+  isActive    Boolean         @default(true)
   parentId    String?
-  usageCount  Int       @default(0)
+  usageCount  Int             @default(0)
   lastUsedAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   createdBy   String?
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  drafts      ContractDraft[]
 
   @@unique([tenantId, name, version])
   @@index([tenantId])
   @@index([category])
   @@index([isActive])
   @@index([tenantId, category])
+}
+
+/// Contract Draft - Stores in-progress contract generation drafts
+model ContractDraft {
+  id               String  @id @default(cuid())
+  tenantId         String
+  templateId       String?
+  title            String
+  type             String  @default("MSA") // MSA, SOW, NDA, AMENDMENT, RENEWAL
+  sourceType       String  @default("NEW") // NEW, TEMPLATE, RENEWAL, AMENDMENT
+  sourceContractId String? // For renewals/amendments, reference to original contract
+
+  // Draft content
+  content   String? @db.Text
+  clauses   Json    @default("[]")
+  variables Json    @default("{}")
+  structure Json    @default("{}")
+
+  // Status tracking
+  status   String    @default("DRAFT") // DRAFT, IN_REVIEW, PENDING_APPROVAL, APPROVED, REJECTED, FINALIZED
+  version  Int       @default(1)
+  isLocked Boolean   @default(false)
+  lockedBy String?
+  lockedAt DateTime?
+
+  // Financial details
+  estimatedValue    Decimal?  @db.Decimal(15, 2)
+  currency          String    @default("USD")
+  proposedStartDate DateTime?
+  proposedEndDate   DateTime?
+
+  // Parties
+  externalParties Json @default("[]") // Array of { name, role, contact }
+
+  // AI Generation metadata
+  aiPrompt         String? @db.Text
+  aiModel          String?
+  generationParams Json?   @default("{}")
+
+  // Workflow
+  currentStep       String?
+  completionPercent Int     @default(0)
+  approvalWorkflow  Json?   @default("[]")
+
+  // Audit
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template       ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sourceContract Contract?         @relation("DraftSourceContract", fields: [sourceContractId], references: [id], onDelete: SetNull)
+  createdByUser  User?             @relation("DraftCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([templateId])
+  @@index([status])
+  @@index([type])
+  @@index([sourceType])
+  @@index([tenantId, status])
+  @@index([tenantId, type])
+  @@index([createdAt(sort: Desc)])
+  @@map("contract_drafts")
+}
+
+/// AI Chat Conversation - Stores chat history for AI Copilot
+model ChatConversation {
+  id          String  @id @default(cuid())
+  tenantId    String
+  userId      String
+  title       String?
+  context     String? // Contract ID or other context
+  contextType String? // CONTRACT, GENERAL, ANALYSIS
+
+  // Conversation metadata
+  messageCount  Int       @default(0)
+  lastMessageAt DateTime?
+  isArchived    Boolean   @default(false)
+  isPinned      Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([tenantId, userId])
+  @@index([contextType])
+  @@index([createdAt(sort: Desc)])
+  @@map("chat_conversations")
+}
+
+/// AI Chat Message - Individual messages in a conversation
+model ChatMessage {
+  id             String @id @default(cuid())
+  conversationId String
+  role           String // user, assistant, system
+  content        String @db.Text
+
+  // AI metadata
+  model          String?
+  tokensUsed     Int?
+  processingTime Int? // ms
+  confidence     Float?
+
+  // Sources and references
+  sources     Json? @default("[]")
+  suggestions Json? @default("[]")
+
+  // Feedback
+  feedback     String? // positive, negative
+  feedbackNote String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([role])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+/// Obligation Notification - Tracks obligation reminders
+model ObligationNotification {
+  id           String @id @default(cuid())
+  tenantId     String
+  contractId   String
+  obligationId String // ID within contract metadata
+
+  // Notification details
+  type         String // EMAIL, IN_APP, SMS
+  status       String    @default("PENDING") // PENDING, SENT, FAILED, CANCELLED
+  scheduledFor DateTime
+  sentAt       DateTime?
+
+  // Content
+  subject    String?
+  message    String? @db.Text
+  recipients Json    @default("[]") // Array of { email, name, userId }
+
+  // Retry tracking
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  errorMessage  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([tenantId, status])
+  @@map("obligation_notifications")
 }
 
 model AuditLog {
@@ -3565,4 +3738,233 @@ model OpportunityDiscovery {
   @@index([potentialValue(sort: Desc)])
   @@index([tenantId, status])
   @@map("opportunity_discoveries")
+}
+
+// ============================================================================
+// E-SIGNATURE INTEGRATION
+// ============================================================================
+
+/// Tracks e-signature requests for contracts
+model SignatureRequest {
+  id                String    @id @default(cuid())
+  tenantId          String    @map("tenant_id")
+  contractId        String    @map("contract_id")
+  provider          String // docusign, adobe_sign, hellosign
+  externalId        String?   @map("external_id") // Provider's envelope/agreement ID
+  status            String    @default("draft") // draft, sent, viewed, signed, declined, expired, voided
+  subject           String?
+  message           String?   @db.Text
+  createdBy         String    @map("created_by")
+  sentAt            DateTime? @map("sent_at")
+  completedAt       DateTime? @map("completed_at")
+  expiresAt         DateTime? @map("expires_at")
+  signers           Json      @default("[]") // Array of signer objects with status
+  webhookEvents     Json?     @default("[]") @map("webhook_events")
+  documentUrl       String?   @map("document_url")
+  signedDocumentUrl String?   @map("signed_document_url")
+  metadata          Json?     @default("{}")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([status])
+  @@index([provider])
+  @@index([externalId])
+  @@index([tenantId, status])
+  @@map("signature_requests")
+}
+
+// ============================================================================
+// CLAUSE LIBRARY
+// ============================================================================
+
+/// Standard clause library for contract authoring
+model ClauseLibrary {
+  id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  name            String // Unique identifier within tenant
+  title           String
+  category        String // INDEMNIFICATION, CONFIDENTIALITY, LIABILITY, etc.
+  content         String    @db.Text
+  plainText       String?   @map("plain_text") @db.Text // For search
+  riskLevel       String    @default("MEDIUM") @map("risk_level") // LOW, MEDIUM, HIGH
+  isStandard      Boolean   @default(false) @map("is_standard")
+  isMandatory     Boolean   @default(false) @map("is_mandatory")
+  isNegotiable    Boolean   @default(true) @map("is_negotiable")
+  tags            Json      @default("[]")
+  usageCount      Int       @default(0) @map("usage_count")
+  version         Int       @default(1)
+  parentId        String?   @map("parent_id") // For version tracking
+  jurisdiction    String? // US, EU, GLOBAL
+  contractTypes   Json      @default("[]") @map("contract_types") // MSA, NDA, SOW, etc.
+  alternativeText String?   @map("alternative_text") @db.Text // Fallback language
+  aiEmbedding     Bytes?    @map("ai_embedding") // Vector for semantic search
+  createdBy       String    @map("created_by")
+  approvedBy      String?   @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([category])
+  @@index([riskLevel])
+  @@index([isStandard])
+  @@index([isMandatory])
+  @@index([tenantId, category])
+  @@index([usageCount(sort: Desc)])
+  @@map("clause_library")
+}
+
+// ============================================================================
+// LEGAL REVIEW & PLAYBOOK MODELS
+// ============================================================================
+
+/// Legal playbook for contract review automation
+model Playbook {
+  id            String  @id @default(cuid())
+  tenantId      String  @map("tenant_id")
+  name          String
+  description   String? @db.Text
+  contractTypes Json    @default("[]") @map("contract_types") // MSA, NDA, SOW, etc.
+  isDefault     Boolean @default(false) @map("is_default")
+  isActive      Boolean @default(true) @map("is_active")
+  version       Int     @default(1)
+
+  // Risk thresholds
+  criticalCountThreshold   Int @default(2) @map("critical_count_threshold")
+  highRiskScoreThreshold   Int @default(70) @map("high_risk_score_threshold")
+  acceptableScoreThreshold Int @default(40) @map("acceptable_score_threshold")
+
+  // Preferred language settings (JSON map of category -> preferred text)
+  preferredLanguage Json @default("{}") @map("preferred_language")
+
+  createdBy String   @map("created_by")
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  clauses           PlaybookClause[]
+  redFlags          PlaybookRedFlag[]
+  fallbackPositions PlaybookFallback[]
+  reviews           LegalReview[]
+
+  @@unique([tenantId, name, version])
+  @@index([tenantId])
+  @@index([isDefault])
+  @@index([isActive])
+  @@index([tenantId, isDefault])
+  @@map("playbooks")
+}
+
+/// Playbook clause definitions
+model PlaybookClause {
+  id                  String   @id @default(cuid())
+  playbookId          String   @map("playbook_id")
+  category            String // liability, indemnification, termination, etc.
+  name                String
+  preferredText       String   @map("preferred_text") @db.Text
+  minimumAcceptable   String?  @map("minimum_acceptable") @db.Text
+  walkawayTriggers    Json     @default("[]") @map("walkaway_triggers") // String array
+  riskLevel           String   @default("medium") @map("risk_level") // critical, high, medium, low
+  notes               String?  @db.Text
+  negotiationGuidance String?  @map("negotiation_guidance") @db.Text
+  sortOrder           Int      @default(0) @map("sort_order")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@index([playbookId])
+  @@index([category])
+  @@index([playbookId, category])
+  @@map("playbook_clauses")
+}
+
+/// Playbook red flags for automatic detection
+model PlaybookRedFlag {
+  id          String   @id @default(cuid())
+  playbookId  String   @map("playbook_id")
+  pattern     String // Regex or text pattern
+  category    String // Risk category
+  severity    String   @default("medium") // critical, high, medium, low
+  explanation String   @db.Text
+  suggestion  String   @db.Text
+  isRegex     Boolean  @default(false) @map("is_regex")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@index([playbookId])
+  @@index([category])
+  @@map("playbook_red_flags")
+}
+
+/// Playbook fallback negotiation positions
+model PlaybookFallback {
+  id         String   @id @default(cuid())
+  playbookId String   @map("playbook_id")
+  category   String // Risk category this fallback applies to
+  initial    String   @db.Text // Best position
+  fallback1  String   @db.Text // First fallback
+  fallback2  String?  @db.Text // Second fallback
+  walkaway   String   @db.Text // Minimum acceptable / walkaway
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+
+  @@unique([playbookId, category])
+  @@index([playbookId])
+  @@map("playbook_fallbacks")
+}
+
+/// Legal review results
+model LegalReview {
+  id         String  @id @default(cuid())
+  tenantId   String  @map("tenant_id")
+  contractId String? @map("contract_id")
+  playbookId String  @map("playbook_id")
+
+  // Overall assessment
+  overallRiskScore     Float   @map("overall_risk_score")
+  overallRiskLevel     String  @map("overall_risk_level") // critical, high, medium, low
+  recommendation       String // accept, reject, negotiate, escalate, review
+  recommendationReason String? @map("recommendation_reason") @db.Text
+
+  // Summary stats
+  totalClauses      Int @default(0) @map("total_clauses")
+  criticalIssues    Int @default(0) @map("critical_issues")
+  highRiskClauses   Int @default(0) @map("high_risk_clauses")
+  redlinesGenerated Int @default(0) @map("redlines_generated")
+
+  // Full results stored as JSON
+  clauseAssessments Json @default("[]") @map("clause_assessments")
+  redlines          Json @default("[]")
+  redFlagsFound     Json @default("[]") @map("red_flags_found")
+  summary           Json @default("{}")
+
+  reviewedBy String?   @map("reviewed_by")
+  reviewedAt DateTime? @map("reviewed_at")
+  status     String    @default("pending") // pending, in_review, approved, rejected
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  playbook Playbook  @relation(fields: [playbookId], references: [id])
+  contract Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([playbookId])
+  @@index([status])
+  @@index([tenantId, status])
+  @@map("legal_reviews")
 }

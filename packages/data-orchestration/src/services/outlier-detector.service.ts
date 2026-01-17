@@ -185,8 +185,8 @@ export class OutlierDetectorService {
         if (result.isOutlier) {
           results.push(result);
         }
-      } catch (error) {
-        console.error(`Error detecting outlier for ${rateCard.id}:`, error);
+      } catch {
+        // Outlier detection failed for rate card
       }
     }
 

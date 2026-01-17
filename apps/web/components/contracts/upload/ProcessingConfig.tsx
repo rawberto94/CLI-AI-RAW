@@ -50,7 +50,7 @@ import {
 // ============================================================================
 
 export interface ProcessingOptions {
-  aiModel: 'gpt-4o' | 'gpt-4o-mini' | 'auto';
+  aiModel: 'gpt-4o' | 'gpt-4o-mini' | 'claude-3-5-haiku-20241022' | 'auto';
   processingMode: 'standard' | 'thorough' | 'quick';
   concurrency: number;
   enabledArtifacts: string[];
@@ -85,6 +85,13 @@ const AI_MODELS = [
     description: 'Fast and cost-effective',
     badge: 'Fast',
     badgeColor: 'bg-blue-100 text-blue-700'
+  },
+  { 
+    id: 'claude-3-5-haiku-20241022', 
+    name: 'Claude Haiku 4.5', 
+    description: 'Lightning fast with excellent comprehension',
+    badge: 'New',
+    badgeColor: 'bg-orange-100 text-orange-700'
   },
   { 
     id: 'auto', 

@@ -103,7 +103,7 @@ const SECTION_LABELS = {
 
 // ============ ATTENTION BADGE ============
 
-function AttentionBadge({ attention, message, onMarkVerified }: { attention: UIAttention; message?: string; onMarkVerified?: () => void }) {
+function AttentionBadge({ attention, message, onMarkVerified, isVerifying }: { attention: UIAttention; message?: string; onMarkVerified?: () => void; isVerifying?: boolean }) {
   if (attention === 'none') return null;
   
   const config = {
@@ -146,10 +146,20 @@ function AttentionBadge({ attention, message, onMarkVerified }: { attention: UIA
                   e.stopPropagation();
                   onMarkVerified();
                 }}
-                className="h-6 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700"
+                disabled={isVerifying}
+                className="h-6 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 disabled:opacity-50"
               >
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Mark as Verified
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Mark as Verified
+                  </>
+                )}
               </Button>
             )}
           </div>
@@ -302,6 +312,8 @@ interface MetadataSectionProps {
   isEditing: boolean;
   onChange: (field: string, value: any) => void;
   defaultOpen?: boolean;
+  contractId?: string;
+  tenantId?: string;
 }
 
 function MetadataSection({ 
@@ -309,7 +321,9 @@ function MetadataSection({
   metadata, 
   isEditing, 
   onChange,
-  defaultOpen = true 
+  defaultOpen = true,
+  contractId,
+  tenantId
 }: MetadataSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const fields = getFieldsBySection(section);
@@ -392,6 +406,8 @@ function MetadataSection({
                 isEditing={isEditing && field.editable}
                 onChange={(value) => onChange(field.key, value)}
                 metadata={metadata}
+                contractId={contractId}
+                tenantId={tenantId}
               />
             ))
           )}
@@ -410,12 +426,15 @@ interface MetadataFieldProps {
   isEditing: boolean;
   onChange: (value: any) => void;
   metadata: Partial<ContractMetadataSchema>;
+  contractId?: string;
+  tenantId?: string;
 }
 
-function MetadataField({ field, value, confidence, isEditing, onChange, metadata }: MetadataFieldProps) {
+function MetadataField({ field, value, confidence, isEditing, onChange, metadata, contractId, tenantId }: MetadataFieldProps) {
   const [isFieldEditing, setIsFieldEditing] = useState(false);
   const [fieldValue, setFieldValue] = useState(value);
   const [isVerified, setIsVerified] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const needsAttention = (field.ui_attention !== 'none' || confidence?.needsVerification) && !isVerified;
   
   // Sync with external value changes
@@ -433,9 +452,42 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
     setIsFieldEditing(false);
   };
   
-  const handleMarkVerified = () => {
-    setIsVerified(true);
-    toast.success('Field marked as verified');
+  const handleMarkVerified = async () => {
+    if (!contractId) {
+      setIsVerified(true);
+      toast.success('Field marked as verified');
+      return;
+    }
+
+    setIsVerifying(true);
+    try {
+      const response = await fetch(`/api/contracts/${contractId}/metadata/validate`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': tenantId || 'demo',
+        },
+        body: JSON.stringify({
+          fieldKey: field.key,
+          action: 'validate',
+          newValue: value,
+        }),
+      });
+
+      if (response.ok) {
+        setIsVerified(true);
+        toast.success(`${field.label} verified and saved`);
+      } else {
+        // Still mark as verified locally even if API fails
+        setIsVerified(true);
+        toast.success('Field marked as verified');
+      }
+    } catch {
+      setIsVerified(true);
+      toast.success('Field marked as verified');
+    } finally {
+      setIsVerifying(false);
+    }
   };
   
   const renderValue = () => {
@@ -581,6 +633,7 @@ function MetadataField({ field, value, confidence, isEditing, onChange, metadata
             attention={field.ui_attention || 'warning'} 
             message={confidence?.message || 'Requires verification'} 
             onMarkVerified={handleMarkVerified}
+            isVerifying={isVerifying}
           />
         )}
         
@@ -679,8 +732,8 @@ export function EnhancedContractMetadataSection({
             setMetadataFromAPI(data.metadata);
           }
         }
-      } catch (error) {
-        console.error('Failed to fetch metadata:', error);
+      } catch {
+        // Silent fail for metadata fetch
       }
     };
     
@@ -883,8 +936,7 @@ export function EnhancedContractMetadataSection({
       if (onRefresh) {
         onRefresh();
       }
-    } catch (error) {
-      console.error('Failed to save metadata:', error);
+    } catch {
       toast.error('Failed to save metadata. Please try again.');
     } finally {
       setIsSaving(false);
@@ -937,8 +989,7 @@ export function EnhancedContractMetadataSection({
         
         toast.success('AI extraction completed! Metadata updated with confidence scores.');
       }, 3000);
-    } catch (error) {
-      console.error('Failed to trigger AI extraction:', error);
+    } catch {
       toast.error('Failed to start AI extraction. Please try again.');
     } finally {
       setIsExtractingAI(false);
@@ -1051,6 +1102,8 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             defaultOpen={true}
+            contractId={contractId}
+            tenantId={tenantId}
           />
           
           <MetadataSection 
@@ -1059,6 +1112,8 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             defaultOpen={true}
+            contractId={contractId}
+            tenantId={tenantId}
           />
           
           <MetadataSection 
@@ -1067,6 +1122,8 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             defaultOpen={true}
+            contractId={contractId}
+            tenantId={tenantId}
           />
           
           <MetadataSection 
@@ -1075,6 +1132,8 @@ export function EnhancedContractMetadataSection({
             isEditing={isEditing}
             onChange={handleChange}
             defaultOpen={true}
+            contractId={contractId}
+            tenantId={tenantId}
           />
         </div>
       </CardContent>

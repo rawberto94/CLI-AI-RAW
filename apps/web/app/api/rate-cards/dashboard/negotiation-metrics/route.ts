@@ -125,16 +125,14 @@ export async function GET(request: NextRequest) {
         opportunitiesCount,
         source: 'database',
       });
-    } catch (dbError) {
+    } catch {
       // Table doesn't exist or other DB error - return mock data
-      console.warn('Database query failed, returning mock data:', dbError);
       return NextResponse.json({
         ...mockNegotiationMetrics,
         source: 'mock',
       });
     }
-  } catch (error) {
-    console.error('Error fetching negotiation metrics:', error);
+  } catch {
     return NextResponse.json({
       ...mockNegotiationMetrics,
       source: 'mock-fallback',

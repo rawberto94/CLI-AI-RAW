@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
         totalAffectedRateCards: changes.reduce((sum, c) => sum + c.affectedRateCards, 0),
       },
     });
-  } catch (error) {
-    console.error('Error tracking best rate changes:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to track changes' },
       { status: 500 }

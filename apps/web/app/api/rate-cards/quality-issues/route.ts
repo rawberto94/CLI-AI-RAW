@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('Error fetching quality issues:', error);
     return NextResponse.json(
       { 
         error: 'Failed to fetch quality issues',

@@ -67,8 +67,7 @@ export function AlertManagementDashboard() {
       if (!response.ok) throw new Error('Failed to fetch alert rules');
       const data = await response.json();
       setAlertRules(data.data || data.alerts || []);
-    } catch (error) {
-      console.error('Error fetching alert rules:', error);
+    } catch {
       toast.error('Failed to load alert rules');
     } finally {
       setIsLoading(false);
@@ -93,8 +92,7 @@ export function AlertManagementDashboard() {
         await fetchAlertRules();
         setIsCreateDialogOpen(false);
         toast.success('Alert rule created successfully');
-      } catch (error) {
-        console.error('Error creating alert rule:', error);
+      } catch (error: unknown) {
         throw error;
       }
     },
@@ -117,8 +115,7 @@ export function AlertManagementDashboard() {
         await fetchAlertRules();
         setEditingRule(null);
         toast.success('Alert rule updated successfully');
-      } catch (error) {
-        console.error('Error updating alert rule:', error);
+      } catch (error: unknown) {
         throw error;
       }
     },
@@ -138,8 +135,7 @@ export function AlertManagementDashboard() {
 
         await fetchAlertRules();
         toast.success(`Alert rule ${isActive ? 'enabled' : 'disabled'}`);
-      } catch (error) {
-        console.error('Error toggling alert rule:', error);
+      } catch {
         toast.error('Failed to toggle alert rule');
       }
     },
@@ -158,8 +154,7 @@ export function AlertManagementDashboard() {
         await fetchAlertRules();
         setDeletingRuleId(null);
         toast.success('Alert rule deleted successfully');
-      } catch (error) {
-        console.error('Error deleting alert rule:', error);
+      } catch {
         toast.error('Failed to delete alert rule');
       }
     },

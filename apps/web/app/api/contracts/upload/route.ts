@@ -180,8 +180,6 @@ function sanitizeFileName(fileName: string): string {
 export async function POST(
   request: NextRequest
 ): Promise<NextResponse> {
-  console.log("📤 Contract upload request received");
-
   try {
     const tenantId = request.headers.get("x-tenant-id");
     
@@ -196,7 +194,6 @@ export async function POST(
         { status: 400 }
       );
     }
-    console.log("Tenant ID:", tenantId);
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
@@ -211,12 +208,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    console.log("📋 File received:", {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    });
 
     // Extract and validate metadata using Zod schema
     try {
@@ -237,12 +228,7 @@ export async function POST(
       };
 
       // Validate with contractUploadSchema
-      const validatedMetadata = contractUploadSchema.parse(metadata);
-      console.log("✅ Metadata validated:", {
-        hasStartDate: !!validatedMetadata.startDate,
-        hasEndDate: !!validatedMetadata.endDate,
-        hasTotalValue: !!validatedMetadata.totalValue,
-      });
+      contractUploadSchema.parse(metadata);
     } catch (error) {
       if (error instanceof ZodError) {
         return NextResponse.json(
@@ -293,7 +279,6 @@ export async function POST(
     
     // Generate content hash for deduplication (uses checksum field)
     const contentHash = generateContentHash(buffer);
-    console.log("🔍 Content hash:", contentHash.substring(0, 16) + "...");
     
     // Check for duplicate file using transactional read for consistency
     try {
@@ -302,6 +287,7 @@ export async function POST(
           where: {
             tenantId,
             checksum: contentHash,
+            isDeleted: false,
             status: { notIn: ['FAILED', 'DELETED'] }
           },
           select: { id: true, status: true, fileName: true, createdAt: true }
@@ -323,7 +309,6 @@ export async function POST(
       });
       
       if (existingContract) {
-        console.log("⚠️ Duplicate file detected:", existingContract.id);
         return NextResponse.json(
           {
             success: true,
@@ -338,12 +323,9 @@ export async function POST(
           { status: 200 }
         );
       }
-    } catch (dupCheckError) {
-      // Log but don't fail - continue with upload
-      console.warn("⚠️ Duplicate check failed, proceeding with upload:", dupCheckError);
+    } catch {
+      // Continue with upload if duplicate check fails
     }
-    
-    console.log("📝 Creating new contract");
 
     let filePath = objectKey;
     let storageProvider = "s3";
@@ -367,7 +349,6 @@ export async function POST(
         });
 
         if (uploadResult.success) {
-          console.log("💾 File saved to object storage:", objectKey);
           filePath = objectKey;
           storageProvider = "s3";
         } else {
@@ -376,9 +357,7 @@ export async function POST(
       } else {
         throw new Error("Storage service not available");
       }
-    } catch (storageError) {
-      console.warn("⚠️  Object storage upload failed, falling back to local:", storageError);
-      
+    } catch {
       // Fallback to local filesystem
       const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
       await mkdir(uploadDir, { recursive: true });
@@ -387,7 +366,6 @@ export async function POST(
       
       filePath = localPath;
       storageProvider = "local";
-      console.log("💾 File saved to local filesystem:", localPath);
     }
 
     // Extract metadata
@@ -436,8 +414,7 @@ export async function POST(
           },
           idempotencyKey,
         });
-      } catch (error) {
-        console.error("❌ Transaction service import failed, using direct creation:", error);
+      } catch {
         
         // Fallback to direct creation
         const contract = await prisma.contract.create({
@@ -485,12 +462,6 @@ export async function POST(
 
     const { contract, processingJob } = transactionResult;
 
-    console.log("✅ Contract created in transaction:", {
-      contractId: contract.id,
-      status: contract.status,
-      wasExecuted,
-    });
-
     if (wasExecuted) {
       await publishRealtimeEvent({
         event: "contract:created",
@@ -515,11 +486,11 @@ export async function POST(
         supplierName: metadata.supplierName,
         totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
         currency: metadata.currency,
-      }).catch((error) => {
-        console.error("❌ Metadata initialization error:", error);
+      }).catch(() => {
+        // Silently handle metadata initialization errors
       });
-    } catch (error) {
-      console.error("❌ Failed to import contract-integration:", error);
+    } catch {
+      // Silently handle import errors
     }
 
     // Classify contract using taxonomy (non-blocking, async)
@@ -532,12 +503,6 @@ export async function POST(
       // Run classification in background
       quickClassifyContract(textContent, file.name)
         .then(async (classification) => {
-          console.log("✅ Contract classified:", {
-            contractId: contract.id,
-            category: classification.category_id,
-            confidence: classification.confidence
-          });
-          
           // Validate category ownership before assignment
           const category = await prisma.taxonomyCategory.findFirst({
             where: { 
@@ -559,18 +524,13 @@ export async function POST(
                 classifiedAt: new Date(),
               },
             });
-          } else {
-            console.warn(`⚠️ Invalid category ${classification.category_id} for tenant ${tenantId}, skipping classification`);
           }
-          
-          console.log("✅ Contract updated with taxonomy classification");
         })
-        .catch((error) => {
-          console.error("❌ Contract classification error:", error);
+        .catch(() => {
           // Don't fail upload if classification fails
         });
-    } catch (error) {
-      console.error("❌ Failed to import taxonomy classifier:", error);
+    } catch {
+      // Silently handle taxonomy classifier import errors
     }
 
     // Trigger artifact generation via queue (non-blocking)
@@ -604,8 +564,6 @@ export async function POST(
         ocrMode: ocrMode || undefined, // Pass user's AI model selection
       });
       
-      console.log("🎉 Artifact generation queued:", artifactResult);
-      
       if (artifactResult.jobId) {
         // Update processing job with queue job ID
         await prisma.processingJob.update({
@@ -614,10 +572,9 @@ export async function POST(
             queueId: artifactResult.jobId,
             status: "RUNNING",
           },
-        }).catch(err => console.error("Failed to update job with queueId:", err));
+        }).catch(() => { /* Silently handle update failure */ });
       }
-    } catch (error) {
-      console.error("❌ Failed to queue artifact generation:", error);
+    } catch {
       // Continue anyway - job will still process via fallback
     }
 
@@ -635,9 +592,7 @@ export async function POST(
       { status: 201 }
     );
     return cors.addCorsHeaders(response, request, "POST, OPTIONS");
-  } catch (error) {
-    console.error("❌ Upload error:", error);
-    
+  } catch (error: unknown) {
     // Determine error type and retryability
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     let code = "UPLOAD_ERROR";

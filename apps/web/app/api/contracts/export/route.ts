@@ -157,8 +157,7 @@ export async function POST(request: NextRequest) {
       data: config.format === 'json' ? data : undefined,
     });
     
-  } catch (error) {
-    console.error('Export error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Export failed' },
       { status: 500 }

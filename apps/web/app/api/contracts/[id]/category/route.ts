@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
+import { getServerSession } from "@/lib/auth";
 
 /**
  * GET /api/contracts/[id]/category
@@ -90,8 +91,7 @@ export async function GET(
         availableCategories: l1Categories,
       },
     });
-  } catch (error) {
-    console.error("Get category error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: "Failed to get category", details: error instanceof Error ? error.message : "Unknown" },
       { status: 500 }
@@ -216,7 +216,7 @@ export async function PUT(
             ...meta._categorization,
             manualOverride: feedbackType !== "confirmation",
             overriddenAt: new Date().toISOString(),
-            overriddenBy: "user", // TODO: get actual user ID
+            overriddenBy: (await getServerSession())?.user?.id || "system",
           },
           // Remove pending if it existed
           _pendingCategorization: undefined,
@@ -235,8 +235,7 @@ export async function PUT(
         wasCorrect,
       },
     });
-  } catch (error) {
-    console.error("Update category error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: "Failed to update category", details: error instanceof Error ? error.message : "Unknown" },
       { status: 500 }
@@ -287,8 +286,7 @@ export async function POST(
         message: "Categorization job queued",
       },
     });
-  } catch (error) {
-    console.error("Trigger categorization error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: "Failed to trigger categorization", details: error instanceof Error ? error.message : "Unknown" },
       { status: 500 }

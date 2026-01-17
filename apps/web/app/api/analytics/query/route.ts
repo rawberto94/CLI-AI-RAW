@@ -23,8 +23,7 @@ export async function POST(request: NextRequest) {
     const response = await nlqEngine.processQuery(query, queryContext);
     return NextResponse.json(response);
 
-  } catch (error) {
-    console.error('Natural language query API error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -63,8 +62,7 @@ export async function GET(request: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-  } catch (error) {
-    console.error('Natural language query API error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

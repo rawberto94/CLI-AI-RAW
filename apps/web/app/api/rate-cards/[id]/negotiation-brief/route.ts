@@ -17,8 +17,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       data: brief,
     });
   } catch (error: unknown) {
-    console.error('Error generating negotiation brief:', error);
-    
     return NextResponse.json(
       {
         success: false,

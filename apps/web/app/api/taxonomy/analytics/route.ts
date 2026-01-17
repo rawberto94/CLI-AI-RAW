@@ -44,7 +44,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        status: { not: 'DELETED' },
+        isDeleted: false,
         ...(dateFrom && { createdAt: { gte: dateFrom } }),
       },
       select: {
@@ -187,7 +187,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    console.error("Analytics error:", error);
     return NextResponse.json(
       {
         success: false,

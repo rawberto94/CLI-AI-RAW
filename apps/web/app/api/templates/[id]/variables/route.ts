@@ -133,8 +133,8 @@ export async function GET(
           });
         }
       }
-    } catch (dbError) {
-      console.warn('Database lookup failed:', dbError);
+    } catch {
+      // Database lookup failed, fallback to mock
     }
 
     // Return mock variables
@@ -142,8 +142,7 @@ export async function GET(
       variables: mockVariables,
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error fetching template variables:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch template variables' },
       { status: 500 }
@@ -186,16 +185,15 @@ export async function PUT(
           source: 'database'
         });
       }
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
+    } catch {
+      // Database update failed, fallback to mock
     }
 
     return NextResponse.json({ 
       variables,
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error updating template variables:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update template variables' },
       { status: 500 }
@@ -250,16 +248,15 @@ export async function POST(
           source: 'database'
         });
       }
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
+    } catch {
+      // Database update failed, fallback to mock
     }
 
     return NextResponse.json({ 
       variable: newVariable,
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error adding template variable:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to add template variable' },
       { status: 500 }

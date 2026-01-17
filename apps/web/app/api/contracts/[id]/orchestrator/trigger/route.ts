@@ -41,8 +41,7 @@ export async function POST(
       jobId,
       traceId,
     });
-  } catch (error) {
-    console.error('Error triggering orchestrator:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to trigger orchestrator' },
       { status: 500 }

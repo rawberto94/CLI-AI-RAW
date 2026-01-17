@@ -233,9 +233,7 @@ export async function GET() {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
-  } catch (error) {
-    console.error('Prometheus metrics endpoint error:', error);
-    
+  } catch {
     // Return error metric
     return new NextResponse(
       `# HELP metrics_error Metrics collection error\n# TYPE metrics_error gauge\nmetrics_error 1\n`,

@@ -105,10 +105,8 @@ export async function queueRAGReindex(options: QueueRAGReindexOptions): Promise<
         delay,
       }
     );
-    console.log(`📚 RAG re-indexing queued for contract ${contractId} (${reason})`);
     return true;
-  } catch (error) {
-    console.error(`Failed to queue RAG re-indexing for ${contractId}:`, error);
+  } catch {
     return false;
   }
 }

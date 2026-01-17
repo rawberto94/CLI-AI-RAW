@@ -561,9 +561,7 @@ What would you like to know about your contracts?`,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      
+    } catch {
       const errorMessage: Message = {
         id: `error-${Date.now()}`,
         role: 'assistant',

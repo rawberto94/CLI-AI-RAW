@@ -129,7 +129,9 @@ export class ExtractionAnalyticsService {
     }
 
     // Persist to database asynchronously
-    this.persistEvent(fullEvent).catch(console.error);
+    this.persistEvent(fullEvent).catch(() => {
+      // Silently ignore persistence errors
+    });
   }
 
   /**
@@ -588,19 +590,9 @@ export class ExtractionAnalyticsService {
       .sort((a, b) => a.date.localeCompare(b.date));
   }
 
-  private async persistEvent(event: ExtractionEvent): Promise<void> {
+  private async persistEvent(_event: ExtractionEvent): Promise<void> {
     // Store in database for long-term analytics
-    try {
-      // This would persist to a dedicated analytics table
-      // For now, just log
-      console.debug(`📊 Analytics event: ${event.eventType}`, {
-        contractId: event.contractId,
-        fieldKey: event.fieldKey,
-        success: event.success,
-      });
-    } catch (error) {
-      console.error("Failed to persist analytics event:", error);
-    }
+    // This would persist to a dedicated analytics table
   }
 
   // --------------------------------------------------------------------------

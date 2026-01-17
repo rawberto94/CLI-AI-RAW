@@ -107,7 +107,7 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
             Contract Reminder
           </DialogTitle>
           <DialogDescription>
-            Set up automatic reminders for "{contractName}"
+            Set up automatic reminders for &ldquo;{contractName}&rdquo;
           </DialogDescription>
         </DialogHeader>
 
@@ -188,7 +188,7 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
                 </Select>
                 {calculatedReminderDate && (
                   <p className="text-xs text-muted-foreground">
-                    You'll be reminded on {format(calculatedReminderDate, 'PPP')}
+                    You&apos;ll be reminded on {format(calculatedReminderDate, 'PPP')}
                   </p>
                 )}
               </div>

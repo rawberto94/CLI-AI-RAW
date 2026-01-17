@@ -247,8 +247,7 @@ Return ONLY a JSON array of strings, no explanation.
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const variations = JSON.parse(content) as string[];
     return [query, ...variations.slice(0, 4)];
-  } catch (error) {
-    console.error('Query expansion failed:', error);
+  } catch {
     return [query];
   }
 }
@@ -329,8 +328,7 @@ async function vectorSearch(
     `;
     
     return results;
-  } catch (error) {
-    console.error('Vector search error:', error);
+  } catch {
     return [];
   }
 }
@@ -390,8 +388,7 @@ async function keywordSearch(
     `;
     
     return results;
-  } catch (error) {
-    console.error('Keyword search error:', error);
+  } catch {
     return [];
   }
 }
@@ -510,8 +507,7 @@ Return relevance scores as JSON array:`,
     reranked.sort((a, b) => b.rerankedScore - a.rerankedScore);
     
     return reranked.slice(0, topK);
-  } catch (error) {
-    console.error('Reranking failed:', error);
+  } catch {
     return results.slice(0, topK).map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
   }
 }
@@ -538,7 +534,6 @@ export async function hybridSearch(
   
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    console.warn('No OpenAI API key, falling back to keyword search');
     return keywordOnlySearch(query, filters, k);
   }
   
@@ -547,7 +542,6 @@ export async function hybridSearch(
     let queries = [query];
     if (shouldExpand && mode !== 'keyword') {
       queries = await expandQuery(query, { apiKey });
-      console.log(`📝 Expanded query into ${queries.length} variations`);
     }
     
     // Step 2: Generate embeddings for all query variations
@@ -636,7 +630,6 @@ export async function hybridSearch(
     // Step 5: Rerank top results
     let finalResults = combinedResults;
     if (shouldRerank && combinedResults.length > 0) {
-      console.log(`🔄 Reranking ${combinedResults.length} results`);
       const reranked = await rerank(query, combinedResults, { apiKey, topK: k });
       finalResults = reranked.map(r => ({
         contractId: r.contractId,
@@ -722,8 +715,7 @@ export async function hybridSearch(
         highlights: extractHighlights(r.text, query),
       }));
       
-  } catch (error) {
-    console.error('Hybrid search error:', error);
+  } catch {
     return [];
   }
 }
@@ -818,9 +810,7 @@ export async function processContractWithSemanticChunking(
   }
   
   // Step 1: Semantic chunking
-  console.log(`📄 Semantic chunking contract: ${contractId}`);
   const chunks = semanticChunk(text);
-  console.log(`📦 Created ${chunks.length} semantic chunks`);
   
   if (chunks.length === 0) {
     return { chunksCreated: 0, embeddingsGenerated: 0 };
@@ -836,8 +826,6 @@ export async function processContractWithSemanticChunking(
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
     const batch = chunks.slice(i, i + BATCH_SIZE);
     const texts = batch.map(c => c.text);
-    
-    console.log(`🌐 Embedding batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}`);
     
     const response = await openai.embeddings.create({ model, input: texts });
     embeddings.push(...response.data.map(d => d.embedding));
@@ -866,8 +854,6 @@ export async function processContractWithSemanticChunking(
       `(gen_random_uuid(), '${r.contractId}', ${r.chunkIndex}, $${i * 2 + 1}, '${r.embedding}'::vector, $${i * 2 + 2}, ${r.section ? `'${r.section}'` : 'NULL'}, NOW(), NOW())`
     ).join(', ')}
   `, ...records.flatMap(r => [r.chunkText, r.chunkType]));
-  
-  console.log(`✅ Stored ${records.length} embeddings with semantic metadata`);
   
   return {
     chunksCreated: chunks.length,

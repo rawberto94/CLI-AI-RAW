@@ -315,8 +315,8 @@ async function enrichChunksWithMetadata(chunks: SemanticChunk[]): Promise<void> 
       try {
         const metadata = await extractChunkMetadata(chunk.text);
         chunk.metadata = { ...chunk.metadata, ...metadata };
-      } catch (error) {
-        console.error('Failed to extract metadata for chunk:', error);
+      } catch {
+        // Skip metadata extraction on error
       }
     }));
   }

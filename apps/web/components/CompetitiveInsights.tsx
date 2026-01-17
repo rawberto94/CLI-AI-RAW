@@ -152,7 +152,7 @@ export const CompetitiveTooltip: React.FC<CompetitiveTooltipProps> = ({
                   <AlertCircle className="w-3 h-3 text-red-500" />
                   <span className="text-xs font-medium text-red-700">Competitor Weakness:</span>
                 </div>
-                <p className="text-xs text-gray-700">{insight.vsCompetitor}</p>
+                <p className="text-xs text-gray-700 dark:text-slate-300">{insight.vsCompetitor}</p>
               </div>
               
               <div>
@@ -160,7 +160,7 @@ export const CompetitiveTooltip: React.FC<CompetitiveTooltipProps> = ({
                   <CheckCircle className="w-3 h-3 text-green-500" />
                   <span className="text-xs font-medium text-green-700">Our Advantage:</span>
                 </div>
-                <p className="text-xs text-gray-700">{insight.ourAdvantage}</p>
+                <p className="text-xs text-gray-700 dark:text-slate-300">{insight.ourAdvantage}</p>
               </div>
               
               <div className={`p-2 rounded border ${getColorClasses(insight.color)}`}>
@@ -176,7 +176,7 @@ export const CompetitiveTooltip: React.FC<CompetitiveTooltipProps> = ({
                   <Lightbulb className="w-3 h-3 text-yellow-500" />
                   <span className="text-xs font-medium">Key Message:</span>
                 </div>
-                <p className="text-xs italic text-gray-600 mt-1">&ldquo;{insight.keyMessage}&rdquo;</p>
+                <p className="text-xs italic text-gray-600 dark:text-slate-400 mt-1">&ldquo;{insight.keyMessage}&rdquo;</p>
               </div>
             </CardContent>
           </Card>
@@ -363,7 +363,7 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
                           {advantage.competitor}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700">{advantage.weakness}</p>
+                      <p className="text-sm text-gray-700 dark:text-slate-300">{advantage.weakness}</p>
                     </div>
                     
                     {/* Our Solution */}
@@ -374,7 +374,7 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
                           Chain IQ Solution
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700">{advantage.ourSolution}</p>
+                      <p className="text-sm text-gray-700 dark:text-slate-300">{advantage.ourSolution}</p>
                     </div>
                     
                     {/* Quantified Benefit */}
@@ -399,8 +399,8 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
               <div className="flex items-center gap-3">
                 <Lightbulb className="w-5 h-5 text-yellow-500" />
                 <div>
-                  <span className="font-semibold text-gray-900">Key Competitive Message:</span>
-                  <p className="text-gray-700 italic mt-1">&ldquo;{data.keyMessage}&rdquo;</p>
+                  <span className="font-semibold text-gray-900 dark:text-slate-100">Key Competitive Message:</span>
+                  <p className="text-gray-700 dark:text-slate-300 italic mt-1">&ldquo;{data.keyMessage}&rdquo;</p>
                 </div>
               </div>
             </CardContent>

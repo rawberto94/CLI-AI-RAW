@@ -71,8 +71,7 @@ export async function expandQuery(
     expansion.hypotheticalAnswer = hypotheticalAnswer;
     expansion.keywords = keywords;
 
-  } catch (error) {
-    console.error('Query expansion error:', error);
+  } catch {
     // Fallback: return original query with basic variations
     expansion.variations = [
       query,

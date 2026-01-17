@@ -523,8 +523,7 @@ export class RateCardBenchmarkingEngine {
         confidence,
         dataPoints: currentRates.length,
       };
-    } catch (error) {
-      console.error('Error calculating trend:', error);
+    } catch {
       return undefined;
     }
   }
@@ -1260,9 +1259,8 @@ export class RateCardBenchmarkingEngine {
             });
           }
         }
-      } catch (error) {
+      } catch {
         // Skip combinations with insufficient data
-        console.error(`Error tracking best rate for ${combo.roleStandardized}:`, error);
       }
     }
 
@@ -1297,9 +1295,8 @@ export class RateCardBenchmarkingEngine {
           tenantId,
         });
         bestRates.push(bestRate);
-      } catch (error) {
+      } catch {
         // Skip combinations with no data
-        console.error(`Error getting best rate for ${combo.roleStandardized}:`, error);
       }
     }
 
@@ -1330,18 +1327,14 @@ export class RateCardBenchmarkingEngine {
       select: { id: true },
     });
 
-    console.log(`Calculating benchmarks for ${rateCards.length} rate cards...`);
-
     for (const rateCard of rateCards) {
       try {
         await this.calculateBenchmark(rateCard.id);
         await this.detectSavingsOpportunities(rateCard.id);
-      } catch (error) {
-        console.error(`Error benchmarking rate card ${rateCard.id}:`, error);
+      } catch {
+        // Skip rate cards that fail benchmarking
       }
     }
-
-    console.log('Benchmark calculation complete');
   }
 }
 

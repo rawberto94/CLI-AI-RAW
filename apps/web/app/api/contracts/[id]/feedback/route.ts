@@ -159,8 +159,7 @@ export async function POST(
         learningImpact: calculateLearningImpact(correctCount, incorrectCount),
       }
     })
-  } catch (error) {
-    console.error('Feedback recording error:', error)
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to record feedback' },
       { status: 500 }
@@ -272,8 +271,7 @@ export async function GET(
       success: false,
       error: 'Invalid view parameter'
     }, { status: 400 })
-  } catch (error) {
-    console.error('Get feedback error:', error)
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get feedback history' },
       { status: 500 }
@@ -331,8 +329,8 @@ async function analyzeCorrectionsForPatterns(
         }
       }
     }
-  } catch (err) {
-    console.error('Pattern analysis error:', err)
+  } catch {
+    // Pattern analysis failed silently
   }
 
   return patterns

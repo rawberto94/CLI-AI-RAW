@@ -160,8 +160,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to get procurement intelligence data:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -227,8 +226,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
 
-  } catch (error) {
-    console.error('Failed to process procurement intelligence action:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

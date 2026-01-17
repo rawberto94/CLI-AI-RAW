@@ -81,7 +81,6 @@ export class SievoIntegrationService {
     suppliers?: string[]
   ): Promise<SievoSpendData[]> {
     if (!this.apiKey) {
-      console.warn('Sievo API key not configured, using mock data');
       return this.generateMockSpendData(dateRange, categories, suppliers);
     }
 
@@ -107,8 +106,7 @@ export class SievoIntegrationService {
 
       const data = await response.json();
       return this.transformSievoData(data);
-    } catch (error) {
-      console.error('Sievo API fetch failed:', error);
+    } catch {
       return this.generateMockSpendData(dateRange, categories, suppliers);
     }
   }

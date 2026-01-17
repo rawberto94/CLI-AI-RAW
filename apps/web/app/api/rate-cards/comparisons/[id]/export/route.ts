@@ -94,8 +94,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       message: 'Use client-side PDF generation with this data',
     });
 
-  } catch (error) {
-    console.error('Error exporting comparison:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to export comparison', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

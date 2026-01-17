@@ -505,8 +505,8 @@ export function useCommandBar() {
       if (stored) {
         setRecentItems(JSON.parse(stored));
       }
-    } catch (e) {
-      console.warn('Failed to load recent commands:', e);
+    } catch {
+      // Silently handle parse failure
     }
   }, []);
 

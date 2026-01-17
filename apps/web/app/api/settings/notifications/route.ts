@@ -79,8 +79,7 @@ export async function GET(request: NextRequest) {
       : defaultSettings;
 
     return NextResponse.json(settings);
-  } catch (error) {
-    console.error('Failed to get notification settings:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to get notification settings' },
       { status: 500 }
@@ -169,8 +168,7 @@ export async function PUT(request: NextRequest) {
       message: 'Notification settings saved',
       settings,
     });
-  } catch (error) {
-    console.error('Failed to update notification settings:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update notification settings' },
       { status: 500 }

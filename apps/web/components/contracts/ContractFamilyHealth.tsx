@@ -259,8 +259,7 @@ export function ContractFamilyHealth({
       
       const data = await response.json()
       setFamilyData(data)
-    } catch (err) {
-      console.warn('Failed to fetch family health:', err)
+    } catch {
       // Provide fallback data
       setFamilyData({
         root: null,

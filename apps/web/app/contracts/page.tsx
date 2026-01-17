@@ -111,13 +111,17 @@ import {
   Pause,
   Play,
   Wand2,
+  Bot,
+  Scale,
+  Edit3,
+  GitBranch,
 } from "lucide-react";
 import { ObligationWidget, type Obligation } from "@/components/contracts/ObligationTracker";
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDataMode } from "@/contexts/DataModeContext";
-import { useContracts, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
+import { useContracts, useContractStats, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
 
 // Lazy load heavy components for better performance
@@ -194,30 +198,32 @@ const LiveIndicator = memo(function LiveIndicator({
             variant="outline"
             size="sm"
             onClick={onToggle}
+            aria-label={isLive ? "Pause auto-refresh" : "Enable auto-refresh"}
+            aria-pressed={isLive}
             className={cn(
               "h-8 gap-2 transition-all duration-300",
               isLive 
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300" 
-                : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300" 
+                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
             )}
           >
             {isRefetching ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
             ) : isLive ? (
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
               </span>
             ) : (
-              <WifiOff className="h-3.5 w-3.5" />
+              <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
             )}
             <span className="text-xs font-medium">
               {isLive ? 'Live' : 'Paused'}
             </span>
             {isLive ? (
-              <Pause className="h-3 w-3 opacity-60" />
+              <Pause className="h-3 w-3 opacity-60" aria-hidden="true" />
             ) : (
-              <Play className="h-3 w-3 opacity-60" />
+              <Play className="h-3 w-3 opacity-60" aria-hidden="true" />
             )}
           </Button>
         </TooltipTrigger>
@@ -288,21 +294,21 @@ const ContractRowSkeleton = memo(function ContractRowSkeleton({ index }: { index
       className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 items-center border-b border-slate-100/80"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="h-4 w-4 bg-slate-200 rounded animate-pulse" />
+      <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 bg-slate-200 rounded-lg animate-pulse" />
+        <div className="h-8 w-8 bg-slate-200 dark:bg-slate-700 rounded-lg motion-safe:animate-pulse" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
-          <div className="h-3 w-1/4 bg-slate-100 rounded animate-pulse" />
+          <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+          <div className="h-3 w-1/4 bg-slate-100 dark:bg-slate-800 rounded motion-safe:animate-pulse" />
         </div>
       </div>
-      <div className="h-5 w-20 bg-slate-200 rounded animate-pulse" />
-      <div className="h-4 w-16 bg-slate-200 rounded animate-pulse" />
-      <div className="h-4 w-24 bg-slate-200 rounded animate-pulse" />
-      <div className="h-4 w-16 bg-slate-200 rounded animate-pulse" />
-      <div className="h-4 w-20 bg-slate-200 rounded animate-pulse" />
-      <div className="h-5 w-16 bg-slate-200 rounded-full animate-pulse" />
-      <div className="h-6 w-6 bg-slate-200 rounded animate-pulse" />
+      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-full motion-safe:animate-pulse" />
+      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
     </div>
   );
 });
@@ -310,28 +316,28 @@ const ContractRowSkeleton = memo(function ContractRowSkeleton({ index }: { index
 const ContractCardSkeleton = memo(function ContractCardSkeleton({ index }: { index: number }) {
   return (
     <div 
-      className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse relative overflow-hidden"
+      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 motion-safe:animate-pulse relative overflow-hidden"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+      <div className="absolute inset-0 -translate-x-full motion-safe:animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-slate-700/60 to-transparent" />
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-slate-200 rounded-lg" />
+          <div className="h-10 w-10 bg-slate-200 dark:bg-slate-700 rounded-lg" />
           <div className="space-y-2">
-            <div className="h-4 w-40 bg-slate-200 rounded" />
-            <div className="h-3 w-24 bg-slate-100 rounded" />
+            <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded" />
+            <div className="h-3 w-24 bg-slate-100 dark:bg-slate-800 rounded" />
           </div>
         </div>
-        <div className="h-6 w-16 bg-slate-200 rounded-full" />
+        <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-full" />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <div className="h-3 w-16 bg-slate-100 rounded" />
-          <div className="h-4 w-24 bg-slate-200 rounded" />
+          <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded" />
+          <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
         </div>
         <div className="space-y-1">
-          <div className="h-3 w-16 bg-slate-100 rounded" />
-          <div className="h-4 w-20 bg-slate-200 rounded" />
+          <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded" />
+          <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
         </div>
       </div>
     </div>
@@ -610,12 +616,27 @@ const CompactContractRow = memo(function CompactContractRow({
               <MoreHorizontal className="h-4 w-4 text-slate-400" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuItem onClick={onView} className="text-sm">
-              <Eye className="h-3.5 w-3.5 mr-2 text-slate-500" /> View
+              <Eye className="h-3.5 w-3.5 mr-2 text-slate-500" /> View Details
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm">
               <Brain className="h-3.5 w-3.5 mr-2 text-violet-500" /> AI Analysis
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1 text-[10px] font-semibold text-purple-600 uppercase tracking-wide">Premium AI</div>
+            <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
+              <Scale className="h-3.5 w-3.5 mr-2 text-purple-500" /> Legal Review
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
+              <Edit3 className="h-3.5 w-3.5 mr-2 text-purple-500" /> Redline Editor
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm text-amber-700 focus:text-amber-800 focus:bg-amber-50">
+              <RefreshCw className="h-3.5 w-3.5 mr-2 text-amber-500" /> Start Renewal
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm">
+              <GitBranch className="h-3.5 w-3.5 mr-2 text-slate-500" /> Create Amendment
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDownload} className="text-sm">
@@ -832,14 +853,25 @@ const ContractCard = memo(function ContractCard({
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-white/95 backdrop-blur-md border-slate-200/80 shadow-xl rounded-xl">
+            <DropdownMenuContent align="end" className="w-52 bg-white/95 backdrop-blur-md border-slate-200/80 shadow-xl rounded-xl">
+              <div className="px-2 py-1 text-[10px] font-semibold text-purple-600 uppercase tracking-wide">Premium AI</div>
+              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="cursor-pointer text-purple-700 hover:bg-purple-50">
+                <Scale className="h-4 w-4 mr-2 text-purple-500" /> Legal Review
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/redline`} className="cursor-pointer text-purple-700 hover:bg-purple-50">
+                <Edit3 className="h-4 w-4 mr-2 text-purple-500" /> Redline Editor
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="cursor-pointer text-amber-700 hover:bg-amber-50">
+                <RefreshCw className="h-4 w-4 mr-2 text-amber-500" /> Start Renewal
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="cursor-pointer hover:bg-slate-50">
+                <GitBranch className="h-4 w-4 mr-2 text-slate-500" /> Create Amendment
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDownload} className="cursor-pointer hover:bg-green-50">
                 <Download className="h-4 w-4 mr-2 text-green-600" /> Download
               </DropdownMenuItem>
-              {/* Request Approval - Hidden for now, will be enabled in future */}
-              {/* <DropdownMenuItem onClick={onApproval} className="cursor-pointer hover:bg-blue-50">
-                <ClipboardCheck className="h-4 w-4 mr-2 text-blue-600" /> Request Approval
-              </DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 cursor-pointer hover:bg-red-50">
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -1104,6 +1136,9 @@ export default function ContractsPage() {
     }
   });
   
+  // Fetch real-time stats from the database (always accurate)
+  const { data: dbStats, refetch: refetchStats } = useContractStats();
+  
   const crossModule = useCrossModuleInvalidation();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1120,8 +1155,8 @@ export default function ContractsPage() {
           const data = await response.json();
           setCategories(data.data || []);
         }
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
+      } catch {
+        // Error handled silently
       }
     };
     fetchCategories();
@@ -1168,8 +1203,7 @@ export default function ContractsPage() {
       toast.success(`Categorized ${successCount} of ${selectedContracts.size} contracts`);
       refetch();
       setSelectedContracts(new Set());
-    } catch (err) {
-      console.error('Bulk categorize failed:', err);
+    } catch {
       toast.error('Failed to categorize contracts');
     } finally {
       setIsBulkCategorizing(false);
@@ -1289,8 +1323,7 @@ export default function ContractsPage() {
       }
       
       setSelectedContracts(new Set());
-    } catch (error) {
-      console.error('Bulk operation error:', error);
+    } catch {
       toast.error(`Failed to ${action} contracts`);
     } finally {
       setIsProcessingBulk(false);
@@ -1449,7 +1482,7 @@ export default function ContractsPage() {
     setShowVisualBuilder(false);
     
     const filterCount = groups.reduce((acc, g) => acc + g.filters.length, 0);
-    let message = `Applied ${filterCount} filter${filterCount === 1 ? '' : 's'}`;
+    const message = `Applied ${filterCount} filter${filterCount === 1 ? '' : 's'}`;
     
     // Show info about additional filters that aren't in FilterState
     const additionalFilters = [];
@@ -1507,8 +1540,7 @@ export default function ContractsPage() {
       a.remove();
       window.URL.revokeObjectURL(url);
       toast.success('Download started');
-    } catch (error) {
-      console.error('Download error:', error);
+    } catch {
       toast.error('Failed to download contract');
     }
   }, []);
@@ -1559,8 +1591,7 @@ export default function ContractsPage() {
       
       toast.success('Contract deleted successfully');
       refetch();
-    } catch (error) {
-      console.error('Delete error:', error);
+    } catch {
       toast.error('Failed to delete contract');
     } finally {
       setContractToDelete(null);
@@ -1593,8 +1624,7 @@ export default function ContractsPage() {
       toast.success(`Deleted ${selectedContracts.size} contracts`);
       setSelectedContracts(new Set());
       refetch();
-    } catch (error) {
-      console.error('Bulk delete error:', error);
+    } catch {
       toast.error('Failed to delete some contracts');
     } finally {
       setIsProcessingBulk(false);
@@ -1753,7 +1783,7 @@ export default function ContractsPage() {
 
       return matchesSearch && matchesStatus && matchesDocumentRole && matchesType && matchesRisk && matchesApproval && matchesValueRange && matchesDateRange && matchesExpiration && matchesHasDeadline && matchesIsExpiring && matchesSupplier && matchesAdvanced && matchesCategory;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [contracts, searchQuery, statusFilter, typeFilters, riskFilters, approvalFilters, valueRangeFilter, dateRangeFilter, expirationFilters, supplierFilters, advancedFilters, categoryFilter, filterState]);
 
   // Sort filtered contracts
@@ -1806,13 +1836,50 @@ export default function ContractsPage() {
     return { totalValue, avgValue, highRiskCount, expiringCount };
   }, [sortedContracts]);
 
-  // Hero Dashboard Stats (enhanced version of filteredStats)
+  // Hero Dashboard Stats - Use real database stats when available, fallback to client-side calculation
   const heroStats: ContractStats = useMemo(() => {
     const now = Date.now();
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    const ninetyDays = 90 * 24 * 60 * 60 * 1000;
     
-    // Calculate real trends from actual contract data
+    // If we have real database stats, use them (always accurate)
+    if (dbStats) {
+      return {
+        totalContracts: dbStats.overview.total,
+        activeContracts: dbStats.overview.processed,
+        totalValue: dbStats.financial.totalValue,
+        monthlyChange: 0, // Could be computed on backend
+        expiringSoon: dbStats.timeline.expiringNext30Days,
+        expiringThisWeek: dbStats.timeline.expiringThisMonth, // Approximation
+        highRiskContracts: 0, // Not tracked yet
+        riskTrend: 'stable',
+        processingCount: dbStats.overview.byStatus?.processing || 0,
+        pendingReview: dbStats.overview.pending,
+        recentlyAdded: dbStats.timeline.recentlyUploaded,
+        // Calculate sparkline from client data for visualization
+        trendData: (() => {
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const date = new Date(now - (6 - i) * 24 * 60 * 60 * 1000);
+            const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+            
+            const dayContracts = contracts.filter(c => {
+              if (!c.createdAt) return false;
+              const created = new Date(c.createdAt);
+              return created >= dayStart && created < dayEnd;
+            });
+            
+            return {
+              date: days[date.getDay()],
+              contracts: dayContracts.length,
+              value: dayContracts.reduce((sum, c) => sum + (c.value || 0), 0)
+            };
+          });
+          return last7Days;
+        })(),
+      };
+    }
+    
+    // Fallback: Calculate from client-side contracts (may be paginated/incomplete)
     const totalValue = contracts.reduce((sum, c) => sum + (c.value || 0), 0);
     const expiringSoon = contracts.filter(c => {
       if (!c.expirationDate) return false;
@@ -1859,7 +1926,6 @@ export default function ContractsPage() {
         if (!c.createdAt) return false;
         return new Date(c.createdAt).getTime() > now - 7 * 24 * 60 * 60 * 1000;
       }).length,
-      // Calculate real sparkline data from actual contracts
       trendData: (() => {
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -1882,8 +1948,8 @@ export default function ContractsPage() {
         return last7Days;
       })(),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contracts, contractsData?.total]);
+     
+  }, [contracts, contractsData?.total, dbStats]);
 
   // Convert Contract to EnhancedContract for enhanced cards
   const enhancedContracts = useMemo(() => {
@@ -2462,6 +2528,45 @@ export default function ContractsPage() {
           }))}
         />
 
+        {/* Premium AI Features Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-4"
+        >
+          <Card className="bg-gradient-to-r from-purple-600/10 via-indigo-600/10 to-pink-600/10 border-purple-200/50 overflow-hidden">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg shadow-purple-500/30">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900 flex items-center gap-2">
+                      Premium AI Features Available
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">NEW</Badge>
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Select a contract to access <span className="font-medium text-purple-700">Legal Review & Redlining</span> • Extract <span className="font-medium text-emerald-700">Obligations</span> automatically
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="border-purple-200 text-purple-700 hover:bg-purple-50" onClick={() => router.push('/obligations')}>
+                    <Target className="h-4 w-4 mr-1.5" />
+                    Obligations
+                  </Button>
+                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" onClick={() => router.push('/drafting/copilot')}>
+                    <Bot className="h-4 w-4 mr-1.5" />
+                    AI Copilot
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* State of the Art Search & Filters */}
         <div data-tour="smart-search">
           <StateOfTheArtSearch
@@ -2816,8 +2921,7 @@ export default function ContractsPage() {
                     
                     toast.success(`Categorized ${successCount} of ${uncategorizedIds.length} contracts`);
                     refetch();
-                  } catch (err) {
-                    console.error('Auto-categorize failed:', err);
+                  } catch {
                     toast.error('Failed to categorize contracts');
                   } finally {
                     setIsBulkCategorizing(false);
@@ -3145,8 +3249,7 @@ export default function ContractsPage() {
                     
                     // Refresh contracts list
                     refetch();
-                  } catch (error) {
-                    console.error('Failed to update contract status:', error);
+                  } catch {
                     toast.error('Failed to update contract status');
                   }
                 }}
@@ -3458,7 +3561,6 @@ export default function ContractsPage() {
               }
               break;
             default:
-              console.log('Unhandled action:', actionId);
               toast.warning(`Action "${actionId}" is not available for the current selection`);
               break;
           }

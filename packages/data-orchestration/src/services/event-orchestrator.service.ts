@@ -70,8 +70,6 @@ export class EventOrchestratorService {
 
     const processingPromise = (async () => {
       try {
-        console.log(`[EventOrchestrator] Contract ${contractId} processing complete, triggering downstream tasks`);
-
         // Emit events for downstream services
         eventBus.emit(Events.ANALYTICS_UPDATED, {
           contractId,
@@ -91,8 +89,8 @@ export class EventOrchestratorService {
           tenantId
         });
 
-      } catch (error) {
-        console.error(`[EventOrchestrator] Error handling contract completion:`, error);
+      } catch {
+        // Error handling contract completion
       } finally {
         this.processingQueue.delete(queueKey);
       }
@@ -109,8 +107,6 @@ export class EventOrchestratorService {
     const { artifactId, contractId, type, tenantId } = data;
 
     try {
-      console.log(`[EventOrchestrator] Artifact ${artifactId} generated for contract ${contractId}`);
-
       // If it's a rates artifact, trigger rate card extraction
       if (type === 'rates' || type === 'financial') {
         eventBus.emit('artifact:extract-rates', {
@@ -129,8 +125,8 @@ export class EventOrchestratorService {
         });
       }
 
-    } catch (error) {
-      console.error(`[EventOrchestrator] Error handling artifact generation:`, error);
+    } catch {
+      // Error handling artifact generation
     }
   }
 
@@ -141,8 +137,6 @@ export class EventOrchestratorService {
     const { id, supplierName, roleStandardized, tenantId } = data;
 
     try {
-      console.log(`[EventOrchestrator] Rate card ${id} updated, triggering recalculations`);
-
       // Trigger benchmark recalculation
       eventBus.emit(Events.BENCHMARK_INVALIDATED, {
         rateCardId: id,
@@ -163,8 +157,8 @@ export class EventOrchestratorService {
         tenantId
       });
 
-    } catch (error) {
-      console.error(`[EventOrchestrator] Error handling rate card update:`, error);
+    } catch {
+      // Error handling rate card update
     }
   }
 
@@ -175,8 +169,6 @@ export class EventOrchestratorService {
     const { count, tenantId, source } = data;
 
     try {
-      console.log(`[EventOrchestrator] Bulk import of ${count} rate cards, triggering batch recalculation`);
-
       // Trigger batch benchmark recalculation
       eventBus.emit('benchmarks:batch-recalculate', {
         tenantId,
@@ -196,8 +188,8 @@ export class EventOrchestratorService {
         'analytics'
       ]);
 
-    } catch (error) {
-      console.error(`[EventOrchestrator] Error handling bulk import:`, error);
+    } catch {
+      // Error handling bulk import
     }
   }
 
@@ -208,8 +200,6 @@ export class EventOrchestratorService {
     const { contractId, changes, tenantId } = data;
 
     try {
-      console.log(`[EventOrchestrator] Metadata updated for contract ${contractId}`);
-
       // If financial data changed, trigger artifact regeneration
       if (changes.financial) {
         eventBus.emit('artifacts:regenerate-financial', {
@@ -226,8 +216,8 @@ export class EventOrchestratorService {
         });
       }
 
-    } catch (error) {
-      console.error(`[EventOrchestrator] Error handling metadata update:`, error);
+    } catch {
+      // Error handling metadata update
     }
   }
 
@@ -238,8 +228,6 @@ export class EventOrchestratorService {
     const { artifactId, contractId, changes, tenantId } = data;
 
     try {
-      console.log(`[EventOrchestrator] Artifact ${artifactId} updated, propagating changes`);
-
       // Trigger propagation to dependent artifacts
       eventBus.emit(Events.PROPAGATION_STARTED, {
         artifactId,
@@ -256,8 +244,8 @@ export class EventOrchestratorService {
         });
       }
 
-    } catch (error) {
-      console.error(`[EventOrchestrator] Error handling artifact update:`, error);
+    } catch {
+      // Error handling artifact update
     }
   }
 

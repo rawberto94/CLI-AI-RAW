@@ -55,8 +55,7 @@ export function RealTimeRateMonitoring() {
 
       const result = await response.json();
       setData(result.data || result);
-    } catch (error) {
-      console.error('Error fetching monitoring data:', error);
+    } catch {
       toast.error('Failed to load monitoring data');
 
       // Fallback data for development

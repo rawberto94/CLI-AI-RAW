@@ -255,8 +255,7 @@ export class PDFExportService {
 
         this.pdf.addImage(imgData, 'PNG', this.margin, this.currentY, imgWidth, imgHeight)
         this.currentY += imgHeight + 10
-      } catch (error) {
-        console.error('Error capturing chart:', error)
+      } catch {
         this.pdf.setFontSize(10)
         this.pdf.text('Chart could not be captured', this.margin, this.currentY)
         this.currentY += 10

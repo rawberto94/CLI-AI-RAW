@@ -223,8 +223,7 @@ export function ApprovalsWidget({
         } else {
           setData({ pendingCount: 0, urgentCount: 0, items: [] });
         }
-      } catch (err) {
-        console.error('Error fetching approvals:', err);
+      } catch {
         setData({ pendingCount: 0, urgentCount: 0, items: [] });
       } finally {
         setLoading(false);
@@ -353,8 +352,7 @@ export function RenewalsWidget({
           // No data - show empty state
           setData({ upcomingCount: 0, urgentCount: 0, items: [] });
         }
-      } catch (err) {
-        console.error('Error fetching renewals:', err);
+      } catch {
         setData({ upcomingCount: 0, urgentCount: 0, items: [] });
       } finally {
         setLoading(false);
@@ -476,8 +474,7 @@ export function GovernanceWidget({
         } else {
           setData({ policyViolations: 0, pendingReviews: 0, complianceScore: 0 });
         }
-      } catch (err) {
-        console.error('Error fetching governance:', err);
+      } catch {
         setData({ policyViolations: 0, pendingReviews: 0, complianceScore: 0 });
       } finally {
         setLoading(false);

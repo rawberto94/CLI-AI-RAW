@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ suggestions: [] });
     }
 
-    const suppliers = await (prisma as any).rateCardSupplier.findMany({
+    const suppliers = await prisma.rateCardSupplier.findMany({
       where: {
         tenantId,
         name: {
@@ -42,8 +42,7 @@ export async function GET(request: NextRequest) {
     const suggestions = suppliers.map((s: { name: string }) => s.name);
 
     return NextResponse.json({ suggestions });
-  } catch (error) {
-    console.error('Error fetching supplier suggestions:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch suggestions' },
       { status: 500 }

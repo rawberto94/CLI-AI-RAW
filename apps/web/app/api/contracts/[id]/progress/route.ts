@@ -38,8 +38,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               controller.close()
             }, 1000)
           }
-        } catch (error) {
-          console.error('Error sending SSE:', error)
+        } catch {
+          // SSE send failed
         }
       })
 

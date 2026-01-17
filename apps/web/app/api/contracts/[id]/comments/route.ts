@@ -108,8 +108,7 @@ export async function GET(
         source: 'database'
       });
 
-    } catch (dbError) {
-      console.warn('Database query failed, using mock data:', dbError);
+    } catch {
       return NextResponse.json({
         success: true,
         comments: getMockComments(),
@@ -117,8 +116,7 @@ export async function GET(
       });
     }
 
-  } catch (error) {
-    console.error('Error fetching comments:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -206,8 +204,7 @@ export async function POST(
         source: 'database'
       });
 
-    } catch (dbError) {
-      console.warn('Database insert failed, using mock response:', dbError);
+    } catch {
       const newComment = {
         id: Date.now().toString(),
         author,
@@ -228,8 +225,7 @@ export async function POST(
       });
     }
 
-  } catch (error) {
-    console.error('Error adding comment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

@@ -111,8 +111,7 @@ export async function GET(
       },
       workflow: workflowData,
     });
-  } catch (error) {
-    console.error('Error fetching contract workflow:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch workflow' },
       { status: 500 }
@@ -265,8 +264,7 @@ export async function POST(
       },
       message: 'Workflow created successfully',
     });
-  } catch (error) {
-    console.error('Error creating contract workflow:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to create workflow' },
       { status: 500 }
@@ -397,8 +395,7 @@ export async function PUT(
       },
       message: 'Workflow updated successfully',
     });
-  } catch (error) {
-    console.error('Error updating contract workflow:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update workflow' },
       { status: 500 }
@@ -441,8 +438,7 @@ export async function DELETE(
       success: true,
       message: 'Workflow deleted successfully',
     });
-  } catch (error) {
-    console.error('Error deleting contract workflow:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to delete workflow' },
       { status: 500 }

@@ -120,9 +120,7 @@ export async function performAzureSwitzerlandOCR(
 
   // Ensure we're using Swiss endpoint
   if (!endpoint.includes('switzerland') && !endpoint.includes('.ch.')) {
-    console.warn(
-      '⚠️ Azure endpoint may not be in Switzerland. Verify data residency!'
-    );
+    // Warning: Azure endpoint may not be in Switzerland
   }
 
   const languageHint = options.language === 'auto' ? undefined : options.language;
@@ -399,7 +397,6 @@ export async function performGoogleEUOCR(
       dataResidency: region === 'europe-west6' ? 'switzerland' : 'eu',
     };
   } catch (error) {
-    console.error('Google Vision error:', error);
     throw new Error(`Google EU Vision failed: ${error}`);
   }
 }
@@ -484,7 +481,6 @@ export async function performOVHCloudOCR(
       dataResidency: 'eu',
     };
   } catch (error) {
-    console.error('OVHcloud error:', error);
     throw new Error(`OVHcloud OCR failed: ${error}`);
   }
 }
@@ -561,7 +557,6 @@ export async function performTesseractOCR(
       dataResidency: 'switzerland', // Assuming Swiss deployment
     };
   } catch (error) {
-    console.error('Tesseract error:', error);
     throw new Error(`Tesseract OCR failed: ${error}`);
   }
 }
@@ -709,14 +704,11 @@ export async function performEUCompliantOCR(
     { fn: performTesseractOCR, name: 'Tesseract (local)' },
   ];
 
-  for (const { fn, name } of swissPriority) {
+  for (const { fn } of swissPriority) {
     try {
-      console.log(`🔍 Attempting OCR with ${name}...`);
       const result = await fn(fileBuffer, options);
-      console.log(`✅ OCR successful with ${name}`);
       return result;
-    } catch (error) {
-      console.warn(`⚠️ ${name} failed:`, error);
+    } catch {
       continue;
     }
   }
@@ -752,9 +744,7 @@ export async function secureOCRWithAnonymization(
   // Step 2: Optionally anonymize
   if (options.anonymize !== false) {
     const anonymizer = new ContractAnonymizer();
-    const { anonymizedText, mappingId, stats } = anonymizer.anonymize(ocrResult.text);
-
-    console.log(`🔐 Anonymized ${stats.totalEntities} sensitive items`);
+    const { anonymizedText, mappingId } = anonymizer.anonymize(ocrResult.text);
 
     return {
       ...ocrResult,
@@ -894,15 +884,7 @@ export function getAvailableProviders(): {
  * Log provider configuration status
  */
 export function logProviderStatus(): void {
-  console.log('\n🇪🇺 EU/Swiss-Compliant OCR Providers:\n');
-
+  // Provider status logging disabled
   const providers = getAvailableProviders();
-
-  for (const p of providers) {
-    const status = p.configured ? '✅' : '❌';
-    console.log(`${status} ${p.provider.padEnd(12)} | ${p.region.padEnd(30)} | ${p.dataResidency}`);
-  }
-
-  const configured = providers.filter((p) => p.configured);
-  console.log(`\n📊 ${configured.length}/${providers.length} providers configured\n`);
+  const _configured = providers.filter((p) => p.configured);
 }

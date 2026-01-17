@@ -77,8 +77,8 @@ export async function GET(
           source: 'database',
         });
       }
-    } catch (dbError) {
-      console.warn('Database lookup failed:', dbError);
+    } catch {
+      // Database lookup failed, fall back to mock
     }
     
     // Fallback to mock only if id matches and tenantId is demo
@@ -94,8 +94,7 @@ export async function GET(
       { success: false, error: 'Workflow not found' },
       { status: 404 }
     );
-  } catch (error) {
-    console.error('Error fetching workflow:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -192,8 +191,8 @@ export async function PUT(
         source: 'database',
         message: 'Workflow updated successfully',
       });
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
+    } catch {
+      // Database update failed, fall back to mock
     }
     
     // Fallback mock response
@@ -207,8 +206,7 @@ export async function PUT(
       source: 'mock',
       message: 'Workflow updated (mock)',
     });
-  } catch (error) {
-    console.error('Error updating workflow:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -273,8 +271,8 @@ export async function PATCH(
         source: 'database',
         message: 'Workflow updated successfully',
       });
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
+    } catch {
+      // Database update failed, fall back to mock
     }
     
     // Fallback mock response
@@ -288,8 +286,7 @@ export async function PATCH(
       source: 'mock',
       message: 'Workflow updated (mock)',
     });
-  } catch (error) {
-    console.error('Error updating workflow:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -348,8 +345,8 @@ export async function DELETE(
         source: 'database',
         message: 'Workflow deleted successfully',
       });
-    } catch (dbError) {
-      console.warn('Database delete failed:', dbError);
+    } catch {
+      // Database delete failed, fall back to mock
     }
     
     // Fallback mock response
@@ -358,8 +355,7 @@ export async function DELETE(
       source: 'mock',
       message: 'Workflow deleted (mock)',
     });
-  } catch (error) {
-    console.error('Error deleting workflow:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

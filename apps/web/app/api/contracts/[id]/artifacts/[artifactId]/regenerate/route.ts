@@ -79,8 +79,8 @@ export async function POST(
 
     // Regenerate artifact in background (non-blocking)
     regenerateArtifactAsync(contractId, artifactId, artifact.type, contract.rawText, tenantId)
-      .catch(error => {
-        console.error(`Failed to regenerate artifact ${artifactId}:`, error);
+      .catch(() => {
+        // Error handled in regenerateArtifactAsync
       });
 
     return NextResponse.json({
@@ -91,8 +91,7 @@ export async function POST(
       type: artifact.type
     });
 
-  } catch (error) {
-    console.error('Error initiating artifact regeneration:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to initiate regeneration' },
       { status: 500 }
@@ -111,8 +110,6 @@ async function regenerateArtifactAsync(
   tenantId: string
 ) {
   try {
-    console.log(`Regenerating artifact ${artifactType} for contract ${contractId}`);
-
     const startTime = Date.now();
 
     // Generate new artifact content using AI generator
@@ -149,11 +146,7 @@ async function regenerateArtifactAsync(
       reason: `artifact ${artifactType} regenerated`,
     });
 
-    console.log(`✅ Artifact ${artifactType} regenerated in ${processingTime}ms`);
-
-  } catch (error) {
-    console.error(`❌ Failed to regenerate artifact ${artifactId}:`, error);
-
+  } catch (error: unknown) {
     // Mark artifact as failed
     await prisma.artifact.update({
       where: { id: artifactId },
@@ -207,8 +200,7 @@ export async function GET(
       updatedAt: artifact.updatedAt
     });
 
-  } catch (error) {
-    console.error('Error fetching regeneration status:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch status' },
       { status: 500 }

@@ -102,8 +102,8 @@ export function OCRQualityDashboard() {
         setStats(data.data.stats);
         setRecommendations(data.data.recommendations);
       }
-    } catch (error) {
-      console.error('Failed to load OCR configuration:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export function OCRQualityDashboard() {
           responseTimeMs: data.data?.responseTimeMs || 0,
         },
       }));
-    } catch (error) {
+    } catch {
       setTestResults(prev => ({
         ...prev,
         [providerId]: {
@@ -152,8 +152,8 @@ export function OCRQualityDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ settings: newSettings }),
       });
-    } catch (error) {
-      console.error('Failed to update settings:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

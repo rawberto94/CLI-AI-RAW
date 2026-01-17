@@ -337,11 +337,8 @@ export class SupplierBenchmarkService {
           periodMonths,
         });
         benchmarks.push(benchmark);
-      } catch (error) {
-        console.error(
-          `Failed to calculate benchmark for supplier ${supplier.name}:`,
-          error
-        );
+      } catch {
+        // Benchmark calculation failed for supplier
       }
     }
 

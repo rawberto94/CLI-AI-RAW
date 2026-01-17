@@ -97,13 +97,8 @@ export {
   NotificationStack,
 } from './ContractBanners';
 
-// Modular Page Components
-export { StatCard as StatCardNew } from './ContractStatsCards';
-export type { StatCardProps as StatsCardNewProps } from './ContractStatsCards';
-
-export { BulkActionsBar as BulkActionsBarNew } from './BulkActionsBar';
-
-export { ViewModeToggle as ViewModeToggleNew, VIEW_MODE_OPTIONS } from './ViewModeToggle';
+// Additional View Mode exports
+export { VIEW_MODE_OPTIONS } from './ViewModeToggle';
 export type { ViewModeOption, ViewModeToggleProps } from './ViewModeToggle';
 
 export { FilterToolbar } from './FilterToolbar';
@@ -120,7 +115,6 @@ export {
   ErrorState,
   LoadingState,
   ContractsSkeleton,
-  UncategorizedBanner as UncategorizedBannerNew,
   NoCategoriesState,
   ContractsEmptyState,
   ContractsNoResults,

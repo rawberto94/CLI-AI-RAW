@@ -620,7 +620,6 @@ async function categorizeByAI(
   }
 ): Promise<CategorizationResult | null> {
   if (!openai) {
-    console.warn("OpenAI client not initialized, skipping AI categorization");
     return null;
   }
 
@@ -715,8 +714,7 @@ async function categorizeByAI(
         })) || [],
       reasoning: parsed.reasoning,
     };
-  } catch (error) {
-    console.error("AI categorization error:", error);
+  } catch {
     return null;
   }
 }
@@ -826,17 +824,7 @@ export async function categorizeContract(
     }
 
     // Get AI-extracted metadata for smarter categorization
-    console.log(`📊 Fetching AI-extracted metadata for contract ${contractId}...`);
     const extractedMetadata = await getExtractedMetadata(contractId, tenantId);
-    
-    if (extractedMetadata.supplierName || extractedMetadata.serviceDescription || extractedMetadata.lineOfService) {
-      console.log(`✅ Found extracted metadata:`, {
-        supplier: extractedMetadata.supplierName,
-        lineOfService: extractedMetadata.lineOfService,
-        industry: extractedMetadata.industry,
-        keywordsCount: extractedMetadata.keywords?.length || 0,
-      });
-    }
 
     // Try AI categorization first (with extracted metadata for better accuracy)
     let result = await categorizeByAI(fullText, categoryTree, extractedMetadata);
@@ -876,7 +864,6 @@ export async function categorizeContract(
         where: { id: result.categoryId, tenantId },
       });
       if (!category) {
-        console.error(`⚠️ Category ${result.categoryId} does not belong to tenant ${tenantId}`);
         return {
           success: false,
           contractId,
@@ -909,19 +896,11 @@ export async function categorizeContract(
       reason: 'category updated via categorization service',
     });
 
-    console.log("✅ Contract categorized:", {
-      contractId,
-      category: result.category,
-      confidence: result.confidence,
-      method: result.method,
-    });
-
     return {
       ...result,
       contractId,
     };
-  } catch (error) {
-    console.error("Categorization error:", error);
+  } catch (error: unknown) {
     return {
       success: false,
       contractId,

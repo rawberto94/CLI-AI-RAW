@@ -38,36 +38,36 @@ export function ToastComponent({
     switch (type) {
       case "success":
         return {
-          bg: "bg-green-50",
-          border: "border-green-200",
-          icon: "text-green-600",
-          title: "text-green-900",
-          message: "text-green-700",
+          bg: "bg-green-50 dark:bg-green-950",
+          border: "border-green-200 dark:border-green-800",
+          icon: "text-green-600 dark:text-green-400",
+          title: "text-green-900 dark:text-green-100",
+          message: "text-green-700 dark:text-green-300",
         };
       case "error":
         return {
-          bg: "bg-red-50",
-          border: "border-red-200",
-          icon: "text-red-600",
-          title: "text-red-900",
-          message: "text-red-700",
+          bg: "bg-red-50 dark:bg-red-950",
+          border: "border-red-200 dark:border-red-800",
+          icon: "text-red-600 dark:text-red-400",
+          title: "text-red-900 dark:text-red-100",
+          message: "text-red-700 dark:text-red-300",
         };
       case "warning":
         return {
-          bg: "bg-orange-50",
-          border: "border-orange-200",
-          icon: "text-orange-600",
-          title: "text-orange-900",
-          message: "text-orange-700",
+          bg: "bg-orange-50 dark:bg-orange-950",
+          border: "border-orange-200 dark:border-orange-800",
+          icon: "text-orange-600 dark:text-orange-400",
+          title: "text-orange-900 dark:text-orange-100",
+          message: "text-orange-700 dark:text-orange-300",
         };
       case "info":
       default:
         return {
-          bg: "bg-blue-50",
-          border: "border-blue-200",
-          icon: "text-blue-600",
-          title: "text-blue-900",
-          message: "text-blue-700",
+          bg: "bg-blue-50 dark:bg-blue-950",
+          border: "border-blue-200 dark:border-blue-800",
+          icon: "text-blue-600 dark:text-blue-400",
+          title: "text-blue-900 dark:text-blue-100",
+          message: "text-blue-700 dark:text-blue-300",
         };
     }
   };

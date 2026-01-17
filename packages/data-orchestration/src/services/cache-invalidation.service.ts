@@ -81,8 +81,6 @@ export class CacheInvalidationService {
       this.invalidateKey(key)
     );
     await Promise.all(promises);
-
-    console.log(`[CacheInvalidation] Invalidated ${keysToInvalidate.size} keys for tags:`, tags);
     
     return keysToInvalidate.size;
   }
@@ -117,7 +115,6 @@ export class CacheInvalidationService {
     await getMultiLevelCache()?.clear();
     this.tagRegistry.clear();
     this.keyTags.clear();
-    console.log('[CacheInvalidation] Cleared all cache');
   }
 
   /**

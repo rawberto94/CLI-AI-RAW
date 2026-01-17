@@ -109,8 +109,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`📊 Generating AI report for ${contracts.length} contracts`);
-
     // Prepare contract summaries (used for both AI + mock flows)
     const contractSummaries: ContractSummary[] = contracts.map(c => ({
       id: c.id,
@@ -148,8 +146,6 @@ export async function POST(request: NextRequest) {
       portfolioAnalysis: portfolioStats,
     } satisfies AIReportResult;
 
-    console.log(`✅ AI Report generated in ${processingTime}ms`);
-
     return NextResponse.json({
       success: true,
       processingTime,
@@ -157,7 +153,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: unknown) {
-    console.error('AI Report generation error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -290,8 +285,7 @@ Focus on:
 
     const responseContent = completion.choices[0]?.message?.content || '{}';
     return JSON.parse(responseContent);
-  } catch (error) {
-    console.error('OpenAI API error:', error);
+  } catch {
     throw new Error('Failed to generate AI analysis');
   }
 }

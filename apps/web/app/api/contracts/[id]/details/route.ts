@@ -124,8 +124,8 @@ export async function GET(
           }
         };
       }
-    } catch (costSavingsError) {
-      console.error('Error fetching cost savings:', costSavingsError);
+    } catch {
+      // Cost savings fetch failed
     }
 
     // Return data in frontend format
@@ -142,8 +142,7 @@ export async function GET(
       success: true,
       data: responseData
     });
-  } catch (error) {
-    console.error('Error fetching contract details:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

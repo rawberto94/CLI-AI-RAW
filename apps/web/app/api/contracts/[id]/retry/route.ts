@@ -108,8 +108,7 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Error retrying contract processing:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: "Failed to start AI analysis",

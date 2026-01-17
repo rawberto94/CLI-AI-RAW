@@ -80,8 +80,7 @@ export function EnhancedDashboard() {
       } else {
         setMetrics(mockMetrics);
       }
-    } catch (error) {
-      console.error('Failed to fetch metrics:', error);
+    } catch {
       setMetrics(mockMetrics);
     } finally {
       setLoading(false);

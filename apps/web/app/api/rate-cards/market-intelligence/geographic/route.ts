@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(comparison);
   } catch (error: unknown) {
-    console.error('Error fetching geographic comparison:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch geographic comparison' },
       { status: 500 }

@@ -69,9 +69,8 @@ export function useUndoableAction<T = void>(
               await undoAction();
               toast.success(undoMessage);
               onUndo?.();
-            } catch (error) {
+            } catch {
               toast.error('Failed to undo action');
-              console.error('Undo failed:', error);
             }
           },
         },

@@ -51,8 +51,8 @@ export function useRecentlyViewed({
         const parsed = JSON.parse(stored) as RecentItem[];
         setItems(parsed);
       }
-    } catch (error) {
-      console.error('Failed to load recently viewed:', error);
+    } catch {
+      // Failed to load from localStorage
     }
   }, [storageKey]);
 
@@ -60,8 +60,8 @@ export function useRecentlyViewed({
   const saveToStorage = useCallback((newItems: RecentItem[]) => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(newItems));
-    } catch (error) {
-      console.error('Failed to save recently viewed:', error);
+    } catch {
+      // Failed to save to localStorage
     }
   }, [storageKey]);
 

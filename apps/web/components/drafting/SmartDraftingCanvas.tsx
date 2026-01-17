@@ -246,7 +246,6 @@ and
 
   const handleAIAssist = useCallback(() => {
     // Mock AI assistance
-    console.log('AI Assist:', aiPrompt);
     setAiPrompt('');
     setShowAIPanel(false);
   }, [aiPrompt]);

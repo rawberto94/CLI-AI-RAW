@@ -165,7 +165,7 @@ export default function SettingsClient() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/50 to-gray-50/30 dark:from-slate-900 dark:via-slate-800/50 dark:to-slate-900/30">
       <div className="p-6 space-y-6">
         <PageBreadcrumb />
         
@@ -197,24 +197,24 @@ export default function SettingsClient() {
               <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
                 System Settings
               </h1>
-              <p className="text-slate-600 mt-1">
+              <p className="text-slate-600 dark:text-slate-400 mt-1">
                 Configure system parameters and preferences
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleResetDefaults}
-                className="bg-white/80 backdrop-blur-sm border-slate-200/60 hover:bg-white shadow-sm"
+                className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 shadow-sm"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Reset to Defaults
               </Button>
             </motion.div>
-            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
               <Button 
                 onClick={handleSaveChanges}
                 className="bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 shadow-lg shadow-slate-500/25"
@@ -234,9 +234,9 @@ export default function SettingsClient() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
               <CardContent className="p-4">
-                <nav className="space-y-2">
+                <nav className="space-y-2" aria-label="Settings navigation">
                   {tabs.map((tab, index) => {
                     // External link tabs (like Taxonomy)
                     if ('href' in tab && tab.href) {
@@ -246,14 +246,15 @@ export default function SettingsClient() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.1 + index * 0.05 }}
+                          className="motion-reduce:transition-none"
                         >
                           <Link
                             href={tab.href}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all duration-200 text-slate-600 hover:bg-slate-100/80"
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-700/80"
                           >
                             {tab.icon}
                             {tab.name}
-                            <span className="ml-auto text-xs text-slate-400">→</span>
+                            <span className="ml-auto text-xs text-slate-400 dark:text-slate-500">→</span>
                           </Link>
                         </motion.div>
                       );
@@ -267,11 +268,12 @@ export default function SettingsClient() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.1 + index * 0.05 }}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all duration-200 ${
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg transition-all duration-200 motion-reduce:transition-none ${
                           activeTab === tab.id
                             ? "bg-gradient-to-r from-slate-700 to-slate-800 text-white shadow-lg shadow-slate-500/25"
-                            : "text-slate-600 hover:bg-slate-100/80"
+                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-700/80"
                         }`}
+                        aria-current={activeTab === tab.id ? 'page' : undefined}
                       >
                         {tab.icon}
                         {tab.name}
@@ -293,7 +295,7 @@ export default function SettingsClient() {
           {/* General Settings */}
           {activeTab === "general" && (
             <>
-              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/25">
@@ -305,31 +307,31 @@ export default function SettingsClient() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Full Name
                       </label>
                       <input
                         id="fullName"
                         type="text"
                         defaultValue={settingsData.user.name}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                     <div>
-                      <label htmlFor="emailAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label htmlFor="emailAddress" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Email Address
                       </label>
                       <input
                         id="emailAddress"
                         type="email"
                         defaultValue={settingsData.user.email}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="userRole" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="userRole" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       Role
                     </label>
                     <input
@@ -337,20 +339,20 @@ export default function SettingsClient() {
                       type="text"
                       value={settingsData.user.role}
                       disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-slate-50/80 rounded-lg">
-                    <span className="text-sm text-slate-600">Last Login:</span>
-                    <span className="text-sm font-medium text-slate-900">
+                  <div className="flex items-center justify-between p-3 bg-slate-50/80 dark:bg-slate-700/50 rounded-lg">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Last Login:</span>
+                    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {settingsData.user.lastLogin}
                     </span>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg shadow-lg shadow-green-500/25">
@@ -362,10 +364,10 @@ export default function SettingsClient() {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Timezone
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="UTC-8">UTC-8 (Pacific)</option>
                         <option value="UTC-5">UTC-5 (Eastern)</option>
                         <option value="UTC+0">UTC+0 (GMT)</option>
@@ -373,10 +375,10 @@ export default function SettingsClient() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Language
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="en-US">English (US)</option>
                         <option value="en-GB">English (UK)</option>
                         <option value="es-ES">Spanish</option>
@@ -387,10 +389,10 @@ export default function SettingsClient() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Date Format
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                         <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                         <option value="YYYY-MM-DD">YYYY-MM-DD</option>

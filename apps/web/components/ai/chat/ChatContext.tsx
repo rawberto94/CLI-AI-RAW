@@ -161,8 +161,7 @@ export function ChatContextProvider({ children, initialContractId = null }: Chat
         setConversations([newConv]);
         setCurrentConversationId(newConv.id);
       }
-    } catch (e) {
-      console.warn('Failed to load chat history:', e);
+    } catch {
       // Create a fresh conversation
       const newConv = createNewConversationInternal();
       setConversations([newConv]);
@@ -185,8 +184,8 @@ export function ChatContextProvider({ children, initialContractId = null }: Chat
       if (currentConversationId) {
         localStorage.setItem(STORAGE_KEY_CURRENT, currentConversationId);
       }
-    } catch (e) {
-      console.warn('Failed to save chat history:', e);
+    } catch {
+      // Silently handle save failure
     }
   }, [conversations, currentConversationId]);
 

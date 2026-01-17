@@ -104,8 +104,7 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-  } catch (error) {
-    console.error('[Report API] Error generating report:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to generate report', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -169,8 +168,7 @@ export async function POST(request: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-  } catch (error) {
-    console.error('[Report API] Error processing request:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to process request', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

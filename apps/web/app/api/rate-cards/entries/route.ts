@@ -108,8 +108,7 @@ export async function GET(request: NextRequest) {
         hasMore: offset + limit < totalCount,
       },
     });
-  } catch (error) {
-    console.error('Error fetching rate card entries:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch rate card entries' },
       { status: 500 }

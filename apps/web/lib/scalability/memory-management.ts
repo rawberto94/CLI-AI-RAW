@@ -355,11 +355,10 @@ class CacheManager {
 
     for (const [name, cache] of this.caches) {
       // Always prune expired entries
-      const pruned = cache.prune();
+      cache.prune();
 
       // If under memory pressure, clear caches more aggressively
       if (pressure === 'critical') {
-        console.warn(`[CacheManager] Critical memory pressure, clearing cache: ${name}`);
         cache.clear();
       } else if (pressure === 'moderate') {
         // Clear half the cache
@@ -368,10 +367,6 @@ class CacheManager {
         for (const key of toRemove) {
           cache.delete(key);
         }
-      }
-
-      if (pruned > 0 && process.env.NODE_ENV === 'development') {
-        console.log(`[CacheManager] Pruned ${pruned} expired entries from ${name}`);
       }
     }
   }

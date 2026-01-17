@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     const contractsCount = await prisma.contract.count({
       where: {
         tenantId: session.user.tenantId,
-        status: { not: 'DELETED' },
+        isDeleted: false,
       },
     });
 
@@ -69,8 +69,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-  } catch (error) {
-    console.error("Get tenant error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to get tenant information" },
       { status: 500 }
@@ -145,8 +144,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     return NextResponse.json({ tenant });
-  } catch (error) {
-    console.error("Update tenant error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to update tenant" },
       { status: 500 }

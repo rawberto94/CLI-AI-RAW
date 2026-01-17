@@ -38,8 +38,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('🔄 Starting taxonomy migration cron job')
-
     // Get contracts that need migration
     const contractsToMigrate = await prisma.contract.findMany({
       where: {
@@ -80,8 +78,6 @@ export async function POST(request: NextRequest) {
         createdAt: 'asc', // Migrate oldest first
       },
     })
-
-    console.log(`📊 Found ${contractsToMigrate.length} contracts to migrate`)
 
     if (contractsToMigrate.length === 0) {
       return NextResponse.json({
@@ -128,7 +124,6 @@ export async function POST(request: NextRequest) {
 
             if (!classification.classification?.category_id) {
               stats.skipped++
-              console.log(`⏭️  Skipped ${contract.id}: No classification`)
               return
             }
 
@@ -151,7 +146,6 @@ export async function POST(request: NextRequest) {
             })
 
             stats.migrated++
-            console.log(`✅ Migrated ${contract.id}: ${classification.classification.category_id}`)
           } catch (error) {
             stats.failed++
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -159,13 +153,10 @@ export async function POST(request: NextRequest) {
               contractId: contract.id,
               error: errorMessage,
             })
-            console.error(`❌ Failed ${contract.id}:`, errorMessage)
           }
         })
       )
     }
-
-    console.log('✅ Taxonomy migration cron job completed', stats)
 
     return NextResponse.json({
       success: true,
@@ -173,8 +164,7 @@ export async function POST(request: NextRequest) {
       stats,
       hasMore: contractsToMigrate.length === BATCH_SIZE,
     })
-  } catch (error) {
-    console.error('Taxonomy migration cron error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

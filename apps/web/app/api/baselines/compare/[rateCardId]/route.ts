@@ -31,8 +31,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ rateCardI
         belowBaseline: comparisons.filter(c => c.status === 'BELOW_BASELINE').length,
       },
     });
-  } catch (error) {
-    console.error('Baseline comparison error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to compare against baselines',

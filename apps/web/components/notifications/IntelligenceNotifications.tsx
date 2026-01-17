@@ -72,8 +72,8 @@ export function IntelligenceNotifications() {
         setNotifications(data.notifications || []);
         setUnreadCount(data.unreadCount || 0);
       }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setIsLoading(false);
     }
@@ -121,8 +121,8 @@ export function IntelligenceNotifications() {
         prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (error) {
-      console.error('Failed to mark as read:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -136,8 +136,8 @@ export function IntelligenceNotifications() {
       
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       setUnreadCount(0);
-    } catch (error) {
-      console.error('Failed to mark all as read:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

@@ -95,8 +95,7 @@ export class TemplateManager {
         updatedAt: new Date(t.updatedAt),
         lastUsed: t.lastUsed ? new Date(t.lastUsed) : undefined,
       }));
-    } catch (error) {
-      console.error('Failed to load templates:', error);
+    } catch {
       return [];
     }
   }
@@ -310,8 +309,8 @@ export class TemplateManager {
 
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(templates));
-    } catch (error) {
-      console.error('Failed to save templates:', error);
+    } catch {
+      // Failed to save templates - ignore
     }
   }
 

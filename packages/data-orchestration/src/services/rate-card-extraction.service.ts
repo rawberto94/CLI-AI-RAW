@@ -136,13 +136,8 @@ export class RateCardExtractionService {
       // Post-process and validate
       const result = this.postProcessExtraction(rawResult, processingTimeMs);
 
-      console.log(
-        `✅ Extracted ${result.rates.length} rate cards from contract ${contractId} (${processingTimeMs}ms)`
-      );
-
       return result;
-    } catch (error) {
-      console.error('Error extracting rate cards:', error);
+    } catch (error: unknown) {
       throw new Error(`Rate extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -445,16 +440,13 @@ Return JSON format:
 
       const result = JSON.parse(content);
 
-      console.log(`📝 Standardized "${roleOriginal}" → "${result.standardized}"`);
-
       return {
         standardized: result.standardized || roleOriginal,
         confidence: this.normalizeConfidence(result.confidence || 0.7),
         alternatives: Array.isArray(result.alternatives) ? result.alternatives : [],
         category: result.category || 'General',
       };
-    } catch (error) {
-      console.error('Error standardizing role:', error);
+    } catch {
       // Fallback
       return {
         standardized: roleOriginal,

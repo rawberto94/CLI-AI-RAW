@@ -194,8 +194,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ error: 'Invalid format' }, { status: 400 });
-  } catch (error) {
-    console.error('Error exporting rate cards:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to export rate cards' },
       { status: 500 }

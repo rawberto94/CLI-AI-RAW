@@ -114,8 +114,8 @@ export function RateCardEntryForm({
         const data = await response.json();
         setSupplierSuggestions(data.suggestions || []);
       }
-    } catch (error) {
-      console.error('Error fetching supplier suggestions:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -133,8 +133,8 @@ export function RateCardEntryForm({
         const data = await response.json();
         setRoleSuggestions(data.suggestions || []);
       }
-    } catch (error) {
-      console.error('Error fetching role suggestions:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -168,8 +168,7 @@ export function RateCardEntryForm({
         setValue('roleCategory', data.category);
         toast.success(`Standardized to: ${data.standardized}`);
       }
-    } catch (error) {
-      console.error('Error standardizing role:', error);
+    } catch {
       toast.error('Failed to standardize role');
     } finally {
       setIsStandardizing(false);
@@ -210,8 +209,7 @@ export function RateCardEntryForm({
           gbp: conversions[2],
           chf: conversions[3],
         });
-      } catch (error) {
-        console.error('Error converting currency:', error);
+      } catch {
         setConvertedRates(null);
       } finally {
         setIsConverting(false);
@@ -256,8 +254,8 @@ export function RateCardEntryForm({
             setDuplicateWarning(null);
           }
         }
-      } catch (error) {
-        console.error('Error checking duplicates:', error);
+      } catch {
+        // Error handled silently
       }
     };
 
@@ -300,8 +298,7 @@ export function RateCardEntryForm({
       const result = await response.json();
       toast.success('Rate card saved successfully');
       onSuccess?.(result.rateCard);
-    } catch (error) {
-      console.error('Error saving rate card:', error);
+    } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Failed to save rate card');
     } finally {
       setIsSubmitting(false);

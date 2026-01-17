@@ -45,8 +45,8 @@ export function DashboardTrendCharts() {
         const trendData = await response.json();
         setData(trendData);
       }
-    } catch (error) {
-      console.error('Error fetching trend data:', error);
+    } catch {
+      // Error fetching trend data
     } finally {
       setLoading(false);
     }

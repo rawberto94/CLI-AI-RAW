@@ -80,8 +80,6 @@ export class BenchmarkNotificationService {
     eventBus.on(Events.BEST_RATE_CHANGED, async (data: any) => {
       await this.handleBestRateChange(data);
     });
-
-    console.log('Benchmark notification service initialized');
   }
 
   /**
@@ -159,8 +157,7 @@ export class BenchmarkNotificationService {
       }
 
       return null;
-    } catch (error) {
-      console.error('Error detecting market shifts:', error);
+    } catch {
       return null;
     }
   }
@@ -177,7 +174,6 @@ export class BenchmarkNotificationService {
     const marketShift = await this.detectMarketShifts(data.rateCardEntryId, data.benchmark);
 
     if (marketShift) {
-      console.log(`[Notification] Market shift detected: ${marketShift.changePercentage.toFixed(1)}% change in ${marketShift.cohortIdentifier}`);
     }
 
     // Create notification for benchmark update
@@ -234,8 +230,6 @@ export class BenchmarkNotificationService {
         ? ['IN_APP', 'EMAIL'] 
         : ['IN_APP'],
     });
-
-    console.log(`[Notification] Market shift notification created for ${marketShift.cohortIdentifier}`);
   }
 
   /**
@@ -326,8 +320,6 @@ export class BenchmarkNotificationService {
   private async deliverInApp(notification: NotificationPayload): Promise<void> {
     // In production, would create database record
     // await this.prisma.notification.create({ data: notification });
-    
-    console.log(`[Notification] In-app notification delivered: ${notification.title}`);
   }
 
   /**
@@ -340,8 +332,6 @@ export class BenchmarkNotificationService {
     //   subject: notification.title,
     //   body: notification.message,
     // });
-
-    console.log(`[Notification] Email notification sent: ${notification.title}`);
   }
 
   /**
@@ -354,8 +344,6 @@ export class BenchmarkNotificationService {
     //   headers: { 'Content-Type': 'application/json' },
     //   body: JSON.stringify(notification),
     // });
-
-    console.log(`[Notification] Webhook notification sent: ${notification.title}`);
   }
 
   /**

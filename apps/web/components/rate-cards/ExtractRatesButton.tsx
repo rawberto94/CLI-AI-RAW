@@ -57,8 +57,7 @@ export function ExtractRatesButton({
       setExtractionResult(result);
       setIsModalOpen(true);
       toast.success(`Found ${result.extraction.rates.length} rate cards`);
-    } catch (error) {
-      console.error('Error extracting rate cards:', error);
+    } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to extract rate cards'
       );
@@ -93,8 +92,7 @@ export function ExtractRatesButton({
       
       // Refresh the page or update the UI
       window.location.reload();
-    } catch (error) {
-      console.error('Error saving rate cards:', error);
+    } catch (error: unknown) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to save rate cards'
       );

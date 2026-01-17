@@ -109,8 +109,8 @@ export function RealTimeProvider({
       handlers.forEach(handler => {
         try {
           handler(event.data);
-        } catch (error) {
-          console.error(`[RealTimeProvider] Error in event handler for ${event.type}:`, error);
+        } catch {
+          // Error in event handler - silently ignore
         }
       });
     }
@@ -121,8 +121,8 @@ export function RealTimeProvider({
       wildcardHandlers.forEach(handler => {
         try {
           handler({ type: event.type, data: event.data });
-        } catch (error) {
-          console.error('[RealTimeProvider] Error in wildcard handler:', error);
+        } catch {
+          // Error in wildcard handler - silently ignore
         }
       });
     }
@@ -206,8 +206,8 @@ export function RealTimeProvider({
       handlers.forEach(handler => {
         try {
           handler(data);
-        } catch (error) {
-          console.error(`[RealTimeProvider] Error in broadcast handler for ${eventType}:`, error);
+        } catch {
+          // Error in broadcast handler - silently ignore
         }
       });
     }

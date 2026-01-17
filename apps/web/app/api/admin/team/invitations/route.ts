@@ -35,8 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ invitations });
-  } catch (error) {
-    console.error("Get invitations error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to get invitations" },
       { status: 500 }
@@ -171,8 +170,7 @@ export async function POST(request: NextRequest) {
       },
       inviteLink,
     });
-  } catch (error) {
-    console.error("Create invitation error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to create invitation" },
       { status: 500 }

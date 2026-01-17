@@ -73,16 +73,14 @@ export async function GET(request: NextRequest) {
         compliantCount,
         source: 'database',
       });
-    } catch (dbError) {
+    } catch {
       // Table doesn't exist or other DB error - return mock data
-      console.warn('Database query failed, returning mock data:', dbError);
       return NextResponse.json({
         ...mockBaselineMetrics,
         source: 'mock',
       });
     }
-  } catch (error) {
-    console.error('Error fetching baseline metrics:', error);
+  } catch {
     return NextResponse.json({
       ...mockBaselineMetrics,
       source: 'mock-fallback',

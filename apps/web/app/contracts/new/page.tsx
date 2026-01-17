@@ -378,8 +378,7 @@ export default function CreateContractPage() {
       })
       
       router.push(`/contracts/${result.id}`)
-    } catch (error) {
-      console.error('Failed to create contract:', error)
+    } catch (error: unknown) {
       toast.error('Failed to create contract', {
         description: error instanceof Error ? error.message : 'An unexpected error occurred',
       })

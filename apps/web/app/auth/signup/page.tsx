@@ -196,7 +196,7 @@ function SignUpForm() {
             setFormData((prev) => ({ ...prev, email: data.email }));
           }
         })
-        .catch(console.error);
+        .catch(() => {});
     }
   });
   

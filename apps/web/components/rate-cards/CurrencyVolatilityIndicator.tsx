@@ -41,8 +41,8 @@ export function CurrencyVolatilityIndicator({
       // Find alert for this currency
       const alert = data.alerts?.find((a: VolatilityAlert) => a.currency === currency);
       setVolatility(alert || null);
-    } catch (error) {
-      console.error('Error fetching currency volatility:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }

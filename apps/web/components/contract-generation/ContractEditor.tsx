@@ -674,8 +674,7 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
       } else {
         setClauses(mockClauses);
       }
-    } catch (error) {
-      console.error('Failed to fetch clauses:', error);
+    } catch {
       setClauses(mockClauses);
     } finally {
       setLoading(false);
@@ -692,8 +691,8 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
           setLibraryClauses(data.clauses);
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch library clauses:', error);
+    } catch {
+      // Error handled silently
     }
   }, []);
 
@@ -707,8 +706,8 @@ export function ContractEditor({ draft, onSave, onSubmit }: EditorProps) {
           setVariables(data.variables);
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch variables:', error);
+    } catch {
+      // Error handled silently
     }
   }, [draft.templateId]);
 

@@ -108,8 +108,7 @@ export async function POST(
       contractName: contract.fileName,
       analysis: result,
     });
-  } catch (error) {
-    console.error('Custom analysis error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Analysis failed' },
       { status: 500 }
@@ -130,8 +129,7 @@ export async function GET() {
       supportedLanguages: ['en', 'de', 'fr', 'it'],
       supportedFormats: ['text', 'json', 'markdown', 'bullet-points'],
     });
-  } catch (error) {
-    console.error('Error fetching templates:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch templates' },
       { status: 500 }

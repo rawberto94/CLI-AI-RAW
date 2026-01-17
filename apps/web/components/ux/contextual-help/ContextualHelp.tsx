@@ -121,8 +121,8 @@ export function HelpProvider({ children }: HelpProviderProps) {
       if (stored) {
         setCompletedTips(new Set(JSON.parse(stored)));
       }
-    } catch (e) {
-      console.warn('Failed to load completed tips:', e);
+    } catch {
+      // Failed to load completed tips - use defaults
     }
   }, []);
 

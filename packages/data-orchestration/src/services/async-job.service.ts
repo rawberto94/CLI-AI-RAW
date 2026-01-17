@@ -239,8 +239,6 @@ export class AsyncJobService extends EventEmitter {
 
       this.emit('job:completed', { jobId, result });
     } catch (error: any) {
-      console.error(`Job ${jobId} failed:`, error);
-
       // Mark as failed
       await prisma.backgroundJob.update({
         where: { id: jobId },

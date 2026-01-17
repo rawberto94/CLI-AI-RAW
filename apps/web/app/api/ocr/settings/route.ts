@@ -205,8 +205,7 @@ export async function GET() {
         },
       },
     });
-  } catch (error) {
-    console.error('Error getting OCR settings:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get OCR settings' },
       { status: 500 }
@@ -248,8 +247,7 @@ export async function POST(request: NextRequest) {
       data: updatedSettings,
       note: 'Settings are applied for this session. For persistent settings, update environment variables.',
     });
-  } catch (error) {
-    console.error('Error updating OCR settings:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update OCR settings' },
       { status: 500 }
@@ -280,8 +278,7 @@ export async function PUT(request: NextRequest) {
       success: testResult.success,
       data: testResult,
     });
-  } catch (error) {
-    console.error('Error testing provider:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to test provider connection' },
       { status: 500 }

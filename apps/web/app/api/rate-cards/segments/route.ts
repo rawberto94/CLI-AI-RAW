@@ -37,8 +37,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(result);
-  } catch (error) {
-    console.error('Error listing segments:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to list segments', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -75,8 +74,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(segment, { status: 201 });
-  } catch (error) {
-    console.error('Error creating segment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to create segment', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }

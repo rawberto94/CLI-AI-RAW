@@ -122,8 +122,8 @@ export function SmartReExtraction({
     try {
       await onReExtract(Array.from(selectedFields));
       setSelectedFields(new Set());
-    } catch (error) {
-      console.error("Re-extraction failed:", error);
+    } catch {
+      // Re-extraction failed
     } finally {
       setIsReExtracting(false);
     }

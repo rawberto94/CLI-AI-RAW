@@ -69,8 +69,7 @@ export async function GET(
     }));
 
     return NextResponse.json({ rateCard: mappedRateCard, roles });
-  } catch (error) {
-    console.error("Error fetching rate card details:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch rate card details" },
       { status: 500 }

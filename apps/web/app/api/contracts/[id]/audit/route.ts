@@ -150,8 +150,7 @@ export async function GET(
         },
       },
     });
-  } catch (error) {
-    console.error('Error fetching audit logs:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch audit logs' },
       { status: 500 }
@@ -223,8 +222,7 @@ export async function POST(
       success: true,
       data: logEntry,
     });
-  } catch (error) {
-    console.error('Error creating audit log:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to create audit log' },
       { status: 500 }

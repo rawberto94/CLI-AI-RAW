@@ -109,7 +109,6 @@ export function useExtractionInsights(options: {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch insights');
-      console.error('Failed to fetch extraction insights:', err);
     } finally {
       setLoading(false);
     }
@@ -127,10 +126,10 @@ export function useExtractionInsights(options: {
       });
 
       if (!response.ok) {
-        console.error('Failed to record extraction event');
+        // Failed to record extraction event
       }
-    } catch (err) {
-      console.error('Error recording extraction event:', err);
+    } catch {
+      // Error recording extraction event
     }
   }, [tenantId]);
 

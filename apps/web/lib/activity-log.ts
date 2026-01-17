@@ -40,22 +40,15 @@ export async function addActivityLogEntry(entry: ActivityLogEntry): Promise<void
           userId,
           type: entry.action.toLowerCase(),
           action: entry.action,
-          metadata,
+          metadata: metadata as Parameters<typeof prisma.contractActivity.create>[0]['data']['metadata'],
         },
       });
     } else {
       // For other entity types, we could extend this to use different models
-      // For now, log to console in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[ActivityLog]', {
-          ...entry,
-          timestamp: new Date().toISOString(),
-        });
-      }
+      // No-op for non-contract entities
     }
-  } catch (error) {
+  } catch {
     // Don't fail the main operation if logging fails
-    console.error('Failed to log activity:', error);
   }
 }
 

@@ -119,7 +119,6 @@ export class BackupEncryptionService {
    */
   private async initializeVaultKeys(): Promise<void> {
     // In production, fetch from Vault Transit secrets engine
-    console.log('[BackupEncryption] Initializing Vault key provider');
     // vault.read('secret/backup-keys/active')
   }
 
@@ -128,7 +127,6 @@ export class BackupEncryptionService {
    */
   private async initializeAWSKMSKeys(): Promise<void> {
     // In production, use AWS KMS data keys
-    console.log('[BackupEncryption] Initializing AWS KMS key provider');
     // kms.generateDataKey({ KeyId: 'alias/backup-key' })
   }
 
@@ -137,7 +135,6 @@ export class BackupEncryptionService {
    */
   private async initializeAzureKeyVaultKeys(): Promise<void> {
     // In production, use Azure Key Vault keys
-    console.log('[BackupEncryption] Initializing Azure Key Vault key provider');
     // keyVaultClient.getKey('backup-key')
   }
 
@@ -388,8 +385,6 @@ export class BackupEncryptionService {
 
     this.activeKeyId = newKeyId;
 
-    console.log(`[BackupEncryption] Key rotated: ${newKeyId}`);
-
     return newKeyId;
   }
 
@@ -398,7 +393,6 @@ export class BackupEncryptionService {
    */
   async reEncryptBackups(backupPaths: string[]): Promise<void> {
     for (const path of backupPaths) {
-      console.log(`[BackupEncryption] Re-encrypting backup: ${path}`);
       // 1. Download and decrypt with old key
       // 2. Re-encrypt with new key
       // 3. Upload and replace
@@ -470,7 +464,6 @@ export class BackupEncryptionService {
     if (!config.dryRun) {
       for (const backup of toDelete) {
         await this.storage.delete(backup);
-        console.log(`[BackupEncryption] Deleted old backup: ${backup}`);
       }
     }
 
@@ -512,7 +505,6 @@ export class SwissBackupStorageProvider implements BackupStorageProvider {
   async upload(path: string, data: Buffer | Readable, metadata: Record<string, string>): Promise<string> {
     // Implementation would use S3-compatible SDK or Azure SDK
     const fullPath = `${this.bucket}/${path}`;
-    console.log(`[SwissStorage] Uploading to ${this.provider}: ${fullPath}`);
     
     // In production:
     // const s3 = new S3Client({ endpoint: this.endpoint, ... });
@@ -522,8 +514,6 @@ export class SwissBackupStorageProvider implements BackupStorageProvider {
   }
 
   async download(path: string): Promise<Readable> {
-    console.log(`[SwissStorage] Downloading from ${this.provider}: ${path}`);
-    
     // In production:
     // const s3 = new S3Client({ endpoint: this.endpoint, ... });
     // const response = await s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: path }));
@@ -533,15 +523,11 @@ export class SwissBackupStorageProvider implements BackupStorageProvider {
   }
 
   async delete(path: string): Promise<void> {
-    console.log(`[SwissStorage] Deleting from ${this.provider}: ${path}`);
-    
     // In production:
     // await s3.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: path }));
   }
 
   async list(prefix: string): Promise<string[]> {
-    console.log(`[SwissStorage] Listing from ${this.provider}: ${prefix}`);
-    
     // In production:
     // const response = await s3.send(new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix }));
     // return response.Contents?.map(obj => obj.Key!) || [];
@@ -575,8 +561,6 @@ export class DatabaseBackupService {
     const backupId = `db-${Date.now()}-${randomBytes(4).toString('hex')}`;
     const timestamp = new Date();
 
-    console.log(`[DatabaseBackup] Starting backup ${backupId}`);
-
     // In production, use pg_dump
     // const pgDumpArgs = [
     //   '-Fc', // Custom format (compressed)
@@ -606,8 +590,6 @@ export class DatabaseBackupService {
     const path = `backups/database/${timestamp.toISOString().split('T')[0]}/${backupId}.enc`;
     await this.encryptionService.uploadBackup(encrypted, path);
 
-    console.log(`[DatabaseBackup] Backup complete: ${backupId}`);
-
     return encrypted.metadata;
   }
 
@@ -615,8 +597,6 @@ export class DatabaseBackupService {
    * Restore database from encrypted backup
    */
   async restoreBackup(backupPath: string): Promise<void> {
-    console.log(`[DatabaseBackup] Restoring from: ${backupPath}`);
-
     // 1. Download encrypted backup
     // 2. Decrypt
     // 3. Verify checksum
@@ -648,12 +628,10 @@ export class DatabaseBackupService {
           retentionDays: config.retentionDays,
           keepMinimum: config.keepMinimum,
         });
-      } catch (error) {
-        console.error('[DatabaseBackup] Scheduled backup failed:', error);
+      } catch {
+        // Scheduled backup failed - error would be tracked by monitoring
       }
     }, intervals[config.schedule]);
-
-    console.log(`[DatabaseBackup] Scheduled ${config.schedule} backups`);
   }
 }
 
@@ -682,8 +660,6 @@ export class FileBackupService {
     const backupId = `files-${Date.now()}-${randomBytes(4).toString('hex')}`;
     const timestamp = new Date();
 
-    console.log(`[FileBackup] Starting backup ${backupId}`);
-
     // In production, use tar to create archive
     // const tarArgs = [
     //   '-czf', '-',
@@ -711,8 +687,6 @@ export class FileBackupService {
     // Upload to storage
     const path = `backups/files/${timestamp.toISOString().split('T')[0]}/${backupId}.enc`;
     await this.encryptionService.uploadBackup(encrypted, path);
-
-    console.log(`[FileBackup] Backup complete: ${backupId}`);
 
     return encrypted.metadata;
   }

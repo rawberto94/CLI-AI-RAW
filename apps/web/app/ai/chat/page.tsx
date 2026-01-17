@@ -1,16 +1,21 @@
 /**
  * AI Chat Page - Full-screen AI Assistant Interface
  * Dedicated page for AI-powered contract analysis and Q&A
+ * 
+ * Features:
+ * - Persistent conversation history via /api/chat/conversations
+ * - Real-time message streaming
+ * - Conversation sidebar for history access
+ * - Feedback collection for AI improvement
  */
 
 "use client";
 
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -20,15 +25,12 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Send,
-  Sparkles,
   FileText,
   TrendingUp,
   Calendar,
-  Search,
   Loader2,
   Bot,
   User,
-  Zap,
   Copy,
   Check,
   ThumbsUp,
@@ -36,24 +38,46 @@ import {
   Trash2,
   Download,
   Keyboard,
-  Volume2,
-  VolumeX,
-  Mic,
-  MicOff,
-  ExternalLink,
   Shield,
   DollarSign,
   Clock,
   ArrowLeft,
   History,
-  BookOpen,
-  Settings,
   MessageSquare,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Pin,
+  Archive,
+  MoreHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+
+// Conversation interface from API
+interface Conversation {
+  id: string;
+  title: string;
+  contextType: string | null;
+  context: string | null;
+  isPinned: boolean;
+  isArchived: boolean;
+  lastMessageAt: Date;
+  createdAt: Date;
+  lastMessage?: {
+    content: string;
+    role: string;
+  };
+}
 
 // Message interface
 interface Message {
@@ -68,6 +92,35 @@ interface Message {
     processingTime?: number;
   };
   feedback?: "positive" | "negative";
+  conversationId?: string;
+}
+
+// Hook for fetching conversations
+function useConversations() {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchConversations = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/chat/conversations?limit=50');
+      if (!res.ok) throw new Error('Failed to fetch conversations');
+      const data = await res.json();
+      setConversations(data.data?.conversations || []);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  return { conversations, isLoading, error, refresh: fetchConversations, setConversations };
 }
 
 // Quick action suggestions by context
@@ -147,9 +200,16 @@ Try asking me something, or click one of the quick actions below!`,
 
 function AIChatPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const contractId = searchParams?.get("contractId");
   const initialQuery = searchParams?.get("query");
+  const conversationIdParam = searchParams?.get("conversationId");
   const { dataMode, isRealData } = useDataMode();
+
+  // Conversation state
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(conversationIdParam);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { conversations, isLoading: loadingConversations, refresh: refreshConversations } = useConversations();
 
   // State
   const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
@@ -158,13 +218,160 @@ function AIChatPageContent() {
   const [isTyping, setIsTyping] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [isListening, setIsListening] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load conversation messages when switching conversations
+  const loadConversation = useCallback(async (conversationId: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/chat/conversations/${conversationId}?messageLimit=100`);
+      if (!res.ok) throw new Error('Failed to load conversation');
+      const data = await res.json();
+      
+      if (data.data?.conversation?.messages) {
+        const loadedMessages: Message[] = data.data.conversation.messages.map((msg: Record<string, unknown>) => ({
+          id: msg.id as string,
+          role: msg.role as "user" | "assistant" | "system",
+          content: msg.content as string,
+          timestamp: new Date(msg.createdAt as string),
+          feedback: msg.feedback as "positive" | "negative" | undefined,
+          conversationId,
+          metadata: msg.metadata ? {
+            sources: (msg.metadata as Record<string, unknown>).sources as string[],
+            confidence: (msg.metadata as Record<string, unknown>).confidence as number,
+            processingTime: (msg.metadata as Record<string, unknown>).processingTime as number,
+          } : undefined,
+        }));
+        
+        setMessages(loadedMessages.length > 0 ? loadedMessages : [WELCOME_MESSAGE]);
+      }
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Create new conversation
+  const createConversation = useCallback(async (title: string): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/chat/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.slice(0, 100),
+          contextType: contractId ? 'contract' : 'general',
+          context: contractId || null,
+        }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to create conversation');
+      const data = await res.json();
+      const newConversationId = data.data?.conversation?.id;
+      
+      if (newConversationId) {
+        setCurrentConversationId(newConversationId);
+        refreshConversations();
+        return newConversationId;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error creating conversation:', err);
+      return null;
+    }
+  }, [contractId, refreshConversations]);
+
+  // Save message to conversation
+  const saveMessage = useCallback(async (conversationId: string, message: Message) => {
+    try {
+      await fetch(`/api/chat/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: message.role,
+          content: message.content,
+          metadata: message.metadata,
+        }),
+      });
+    } catch (err) {
+      console.error('Error saving message:', err);
+    }
+  }, []);
+
+  // Handle conversation selection
+  const handleSelectConversation = useCallback((conversation: Conversation) => {
+    setCurrentConversationId(conversation.id);
+    loadConversation(conversation.id);
+    // Update URL without navigation
+    const url = new URL(window.location.href);
+    url.searchParams.set('conversationId', conversation.id);
+    router.replace(url.pathname + url.search);
+  }, [loadConversation, router]);
+
+  // Start new conversation
+  const handleNewConversation = useCallback(() => {
+    setCurrentConversationId(null);
+    setMessages([WELCOME_MESSAGE]);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('conversationId');
+    router.replace(url.pathname + url.search);
+  }, [router]);
+
+  // Pin/Archive conversation
+  const handleTogglePin = useCallback(async (conversationId: string, isPinned: boolean) => {
+    try {
+      await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPinned: !isPinned }),
+      });
+      refreshConversations();
+    } catch (err) {
+      console.error('Error toggling pin:', err);
+    }
+  }, [refreshConversations]);
+
+  const handleArchiveConversation = useCallback(async (conversationId: string) => {
+    try {
+      await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isArchived: true }),
+      });
+      if (currentConversationId === conversationId) {
+        handleNewConversation();
+      }
+      refreshConversations();
+    } catch (err) {
+      console.error('Error archiving conversation:', err);
+    }
+  }, [currentConversationId, handleNewConversation, refreshConversations]);
+
+  const handleDeleteConversation = useCallback(async (conversationId: string) => {
+    try {
+      await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: 'DELETE',
+      });
+      if (currentConversationId === conversationId) {
+        handleNewConversation();
+      }
+      refreshConversations();
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
+    }
+  }, [currentConversationId, handleNewConversation, refreshConversations]);
+
+  // Load conversation from URL param
+  useEffect(() => {
+    if (conversationIdParam && conversationIdParam !== currentConversationId) {
+      setCurrentConversationId(conversationIdParam);
+      loadConversation(conversationIdParam);
+    }
+  }, [conversationIdParam, currentConversationId, loadConversation]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -238,6 +445,19 @@ function AIChatPageContent() {
     setIsLoading(true);
     setIsTyping(true);
 
+    // Create conversation if this is the first user message
+    let activeConversationId = currentConversationId;
+    if (!activeConversationId) {
+      // Use first ~50 chars of message as title
+      const title = messageText.slice(0, 50) + (messageText.length > 50 ? '...' : '');
+      activeConversationId = await createConversation(title);
+    }
+
+    // Save user message
+    if (activeConversationId) {
+      await saveMessage(activeConversationId, userMessage);
+    }
+
     try {
       const response = await fetch("/api/ai/chat", {
         method: "POST",
@@ -248,6 +468,7 @@ function AIChatPageContent() {
         body: JSON.stringify({
           message: messageText,
           contractId,
+          conversationId: activeConversationId,
           history: messages.slice(-10), // Last 10 messages for context
         }),
       });
@@ -264,6 +485,7 @@ function AIChatPageContent() {
         content: data.response || data.message || "I apologize, but I couldn't process that request. Please try again.",
         timestamp: new Date(),
         suggestions: data.suggestions,
+        conversationId: activeConversationId || undefined,
         metadata: {
           sources: data.sources,
           confidence: data.confidence,
@@ -272,9 +494,12 @@ function AIChatPageContent() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error("AI Chat error:", error);
       
+      // Save assistant message
+      if (activeConversationId) {
+        await saveMessage(activeConversationId, assistantMessage);
+      }
+    } catch {
       // Demo mode fallback response
       const fallbackMessage: Message = {
         id: `assistant-${Date.now()}`,
@@ -283,6 +508,7 @@ function AIChatPageContent() {
           ? "I'm having trouble connecting to the AI service. Please try again in a moment."
           : `**Demo Mode Response**\n\nIn demo mode, I can show you how the AI assistant works. Here's a sample response to: "${messageText}"\n\n📊 **Analysis Summary:**\n- Your query has been processed\n- AI would analyze relevant contracts\n- Results would include actionable insights\n\n*Switch to real data mode for actual AI-powered analysis.*`,
         timestamp: new Date(),
+        conversationId: activeConversationId || undefined,
         suggestions: [
           "Try another question",
           "View my contracts",
@@ -291,17 +517,22 @@ function AIChatPageContent() {
       };
 
       setMessages((prev) => [...prev, fallbackMessage]);
+      
+      // Save fallback message too
+      if (activeConversationId) {
+        await saveMessage(activeConversationId, fallbackMessage);
+      }
     } finally {
       setIsLoading(false);
       setIsTyping(false);
       setStreamingContent("");
+      refreshConversations(); // Update conversation list with latest message
     }
   };
 
   // Clear chat
   const handleClearChat = () => {
-    setMessages([WELCOME_MESSAGE]);
-    setInput("");
+    handleNewConversation();
   };
 
   // Copy message
@@ -311,14 +542,26 @@ function AIChatPageContent() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Feedback
-  const handleFeedback = (messageId: string, feedback: "positive" | "negative") => {
+  // Feedback - now persists to database
+  const handleFeedback = async (messageId: string, feedback: "positive" | "negative") => {
     setMessages((prev) =>
       prev.map((msg) =>
         msg.id === messageId ? { ...msg, feedback } : msg
       )
     );
-    // Could send to analytics here
+    
+    // Persist feedback if we have a conversation
+    if (currentConversationId) {
+      try {
+        await fetch(`/api/chat/conversations/${currentConversationId}/messages/${messageId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ feedback }),
+        });
+      } catch (err) {
+        console.error('Error saving feedback:', err);
+      }
+    }
   };
 
   // Export chat
@@ -353,134 +596,234 @@ function AIChatPageContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      {/* Header */}
-      <header className="flex-shrink-0 border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  <span className="hidden sm:inline">Back</span>
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                  <Bot className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="font-semibold text-lg">AI Contract Assistant</h1>
-                  <p className="text-xs text-muted-foreground">
-                    Powered by advanced AI • {isRealData ? "Live Data" : "Demo Mode"}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowShortcuts((prev) => !prev)}
-                    >
-                      <Keyboard className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Keyboard Shortcuts (?)</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleExportChat}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Export Chat</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleClearChat}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Clear Chat (⌘L)</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Keyboard Shortcuts Modal */}
-      <AnimatePresence>
-        {showShortcuts && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowShortcuts(false)}
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      {/* Conversation History Sidebar */}
+      <AnimatePresence mode="wait">
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex-shrink-0 border-r bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm overflow-hidden"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Keyboard className="h-5 w-5" />
-                Keyboard Shortcuts
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Focus input</span>
-                  <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">/</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Clear chat</span>
-                  <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">⌘L</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Toggle shortcuts</span>
-                  <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">?</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Send message</span>
-                  <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">Enter</kbd>
-                </div>
+            <div className="flex flex-col h-full w-[280px]">
+              {/* Sidebar Header */}
+              <div className="p-4 border-b">
+                <Button
+                  onClick={handleNewConversation}
+                  className="w-full gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Chat
+                </Button>
               </div>
-              <Button
-                className="w-full mt-4"
-                variant="outline"
-                onClick={() => setShowShortcuts(false)}
-              >
-                Close
-              </Button>
-            </motion.div>
-          </motion.div>
+              
+              {/* Conversation List */}
+              <ScrollArea className="flex-1">
+                <div className="p-2 space-y-1">
+                  {loadingConversations ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : conversations.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>No conversations yet</p>
+                      <p className="text-xs mt-1">Start chatting to create one</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Pinned Conversations */}
+                      {conversations.filter(c => c.isPinned && !c.isArchived).length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs font-medium text-muted-foreground px-2 mb-2 flex items-center gap-1">
+                            <Pin className="h-3 w-3" /> Pinned
+                          </p>
+                          {conversations
+                            .filter(c => c.isPinned && !c.isArchived)
+                            .map(conv => (
+                              <ConversationItem
+                                key={conv.id}
+                                conversation={conv}
+                                isActive={currentConversationId === conv.id}
+                                onSelect={() => handleSelectConversation(conv)}
+                                onTogglePin={() => handleTogglePin(conv.id, conv.isPinned)}
+                                onArchive={() => handleArchiveConversation(conv.id)}
+                                onDelete={() => handleDeleteConversation(conv.id)}
+                              />
+                            ))}
+                        </div>
+                      )}
+                      
+                      {/* Recent Conversations */}
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground px-2 mb-2 flex items-center gap-1">
+                          <History className="h-3 w-3" /> Recent
+                        </p>
+                        {conversations
+                          .filter(c => !c.isPinned && !c.isArchived)
+                          .map(conv => (
+                            <ConversationItem
+                              key={conv.id}
+                              conversation={conv}
+                              isActive={currentConversationId === conv.id}
+                              onSelect={() => handleSelectConversation(conv)}
+                              onTogglePin={() => handleTogglePin(conv.id, conv.isPinned)}
+                              onArchive={() => handleArchiveConversation(conv.id)}
+                              onDelete={() => handleDeleteConversation(conv.id)}
+                            />
+                          ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Sidebar Toggle */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-l-none border border-l-0"
+        style={{ left: sidebarOpen ? 280 : 0 }}
+      >
+        {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+      </Button>
+
+      {/* Main Chat Area */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Header */}
+        <header className="flex-shrink-0 border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Back</span>
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <Bot className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="font-semibold text-lg">AI Contract Assistant</h1>
+                    <p className="text-xs text-muted-foreground">
+                      Powered by advanced AI • {isRealData ? "Live Data" : "Demo Mode"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowShortcuts((prev) => !prev)}
+                      >
+                        <Keyboard className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Keyboard Shortcuts (?)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExportChat}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Export Chat</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearChat}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear Chat (⌘L)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Keyboard Shortcuts Modal */}
+        <AnimatePresence>
+          {showShortcuts && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowShortcuts(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Keyboard className="h-5 w-5" />
+                  Keyboard Shortcuts
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Focus input</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">/</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Clear chat</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">⌘L</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Toggle shortcuts</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">?</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Send message</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">Enter</kbd>
+                  </div>
+                </div>
+                <Button
+                  className="w-full mt-4"
+                  variant="outline"
+                  onClick={() => setShowShortcuts(false)}
+                >
+                  Close
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content */}
+        <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Quick Actions */}
         <aside className="hidden lg:flex w-72 flex-col border-r bg-slate-50/50 dark:bg-slate-900/50">
           <div className="p-4 flex-1 overflow-auto">
@@ -745,6 +1088,90 @@ function AIChatPageContent() {
             </form>
           </div>
         </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+// Conversation Item Component for Sidebar
+function ConversationItem({
+  conversation,
+  isActive,
+  onSelect,
+  onTogglePin,
+  onArchive,
+  onDelete,
+}: {
+  conversation: Conversation;
+  isActive: boolean;
+  onSelect: () => void;
+  onTogglePin: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  const lastMessageDate = new Date(conversation.lastMessageAt);
+  const isToday = new Date().toDateString() === lastMessageDate.toDateString();
+  const timeStr = isToday 
+    ? lastMessageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : lastMessageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+  return (
+    <div
+      className={cn(
+        "group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors",
+        isActive
+          ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800"
+          : "hover:bg-slate-100 dark:hover:bg-slate-800"
+      )}
+      onClick={onSelect}
+    >
+      <MessageSquare className={cn(
+        "h-4 w-4 flex-shrink-0",
+        isActive ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground"
+      )} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{conversation.title}</p>
+        {conversation.lastMessage && (
+          <p className="text-xs text-muted-foreground truncate">
+            {conversation.lastMessage.content.slice(0, 50)}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+          {timeStr}
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onTogglePin(); }}>
+              <Pin className="h-4 w-4 mr-2" />
+              {conversation.isPinned ? 'Unpin' : 'Pin'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(); }}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archive
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-red-600 dark:text-red-400"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

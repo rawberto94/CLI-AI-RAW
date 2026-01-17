@@ -149,7 +149,13 @@ interface RenewalItemProps {
   variant?: 'card' | 'compact'
 }
 
-function RenewalItem({ renewal, onInitiateRenewal, onSetReminder, variant = 'card' }: RenewalItemProps) {
+function RenewalItem({ 
+  renewal, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onInitiateRenewal, 
+  onSetReminder, 
+  variant = 'card' 
+}: RenewalItemProps) {
   const urgency = getUrgency(renewal.daysRemaining, renewal.noticePeriodDays)
   const urgencyConfig = URGENCY_CONFIG[urgency]
   const statusConfig = STATUS_CONFIG[renewal.renewalStatus]
@@ -242,14 +248,15 @@ function RenewalItem({ renewal, onInitiateRenewal, onSetReminder, variant = 'car
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 opacity-0 group-hover:opacity-100"
-                    onClick={() => onInitiateRenewal?.(renewal.id)}
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                  </Button>
+                  <Link href={`/contracts/${renewal.id}/renew`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 opacity-0 group-hover:opacity-100"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                    </Button>
+                  </Link>
                 </TooltipTrigger>
                 <TooltipContent>Initiate Renewal</TooltipContent>
               </Tooltip>
@@ -278,9 +285,11 @@ function RenewalItem({ renewal, onInitiateRenewal, onSetReminder, variant = 'car
                 Contact Supplier
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onInitiateRenewal?.(renewal.id)}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Initiate Renewal
+              <DropdownMenuItem asChild>
+                <Link href={`/contracts/${renewal.id}/renew`} className="flex items-center">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Initiate Renewal
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -28,8 +28,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ comparisons });
-  } catch (error) {
-    console.error('Error fetching comparisons:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to fetch comparisons', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -79,8 +78,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ comparison }, { status: 201 });
-  } catch (error) {
-    console.error('Error saving comparison:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to save comparison', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

@@ -98,8 +98,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({ member: updatedMember });
-  } catch (error) {
-    console.error("Update member error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to update member" },
       { status: 500 }
@@ -183,8 +182,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Delete member error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to delete member" },
       { status: 500 }

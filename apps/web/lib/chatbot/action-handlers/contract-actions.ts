@@ -12,48 +12,48 @@ export async function handleContractActions(
   context: ChatContext
 ): Promise<ActionResponse> {
   const { action, entities, confidence } = intent;
-  const { tenantId, userId, contractId } = context;
+  const { tenantId, userId, currentContractId } = context;
 
   try {
     switch (action) {
       case 'renew':
-        return await handleRenewContract(entities.contractId || contractId, tenantId, userId);
+        return await handleRenewContract(entities.contractId || currentContractId, tenantId, userId || 'system');
 
       case 'approve':
-        return await handleApproveContract(entities.contractId || contractId, tenantId, userId);
+        return await handleApproveContract(entities.contractId || currentContractId, tenantId, userId || 'system');
 
       case 'terminate':
-        return await handleTerminateContract(entities.contractId || contractId, tenantId, userId, entities.reason);
+        return await handleTerminateContract(entities.contractId || currentContractId, tenantId, userId || 'system', entities.reason);
 
       case 'archive':
-        return await handleArchiveContract(entities.contractId || contractId, tenantId, userId);
+        return await handleArchiveContract(entities.contractId || currentContractId, tenantId, userId || 'system');
 
       case 'generate':
-        return await handleGenerateContract(entities, tenantId, userId);
+        return await handleGenerateContract(entities, tenantId, userId || 'system');
 
       case 'create':
-        return await handleCreateContract(entities, tenantId, userId);
+        return await handleCreateContract(entities, tenantId, userId || 'system');
 
       case 'create_linked':
-        return await handleCreateLinkedContract(entities, tenantId, userId);
+        return await handleCreateLinkedContract(entities, tenantId, userId || 'system');
 
       case 'link_contracts':
-        return await handleLinkContracts(entities, tenantId, userId);
+        return await handleLinkContracts(entities, tenantId, userId || 'system');
 
       case 'show_hierarchy':
-        return await handleShowHierarchy(entities.contractId || contractId, tenantId);
+        return await handleShowHierarchy(entities.contractId || currentContractId, tenantId);
 
       case 'find_master':
         return await handleFindMaster(entities.supplierName, tenantId);
 
       case 'set_reminder':
-        return await handleSetReminder(entities.contractId || contractId, entities, tenantId, userId);
+        return await handleSetReminder(entities.contractId || currentContractId, entities, tenantId, userId || 'system');
 
       case 'export_contract':
-        return await handleExportContract(entities.contractId || contractId, tenantId);
+        return await handleExportContract(entities.contractId || currentContractId, tenantId);
 
       case 'clone_contract':
-        return await handleCloneContract(entities.contractId || contractId, tenantId, userId);
+        return await handleCloneContract(entities.contractId || currentContractId, tenantId, userId || 'system');
 
       default:
         return {
@@ -61,8 +61,7 @@ export async function handleContractActions(
           message: `Unknown contract action: ${action}`,
         };
     }
-  } catch (error) {
-    console.error('[Contract Actions] Error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'Failed to process contract action',
@@ -85,7 +84,7 @@ async function handleRenewContract(
 
   const contract = await prisma.contract.findFirst({
     where: { id: contractId, tenantId },
-    include: { linkedChildren: true },
+    include: { childContracts: true },
   });
 
   if (!contract) {
@@ -159,7 +158,6 @@ async function handleApproveContract(
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
-        completedBy: userId,
       },
     });
 
@@ -215,9 +213,8 @@ async function handleTerminateContract(
   await prisma.contract.update({
     where: { id: contractId },
     data: {
-      status: 'TERMINATED',
-      terminatedAt: new Date(),
-      terminationReason: reason,
+      status: 'EXPIRED',
+      terminationClause: reason,
     },
   });
 
@@ -258,7 +255,7 @@ async function handleArchiveContract(
 
   await prisma.contract.update({
     where: { id: contractId },
-    data: { isArchived: true },
+    data: { status: 'ARCHIVED' },
   });
 
   await addActivityLogEntry({
@@ -321,17 +318,17 @@ async function handleCreateContract(
   userId: string
 ): Promise<ActionResponse> {
   // Create a draft contract with whatever info we have
+  const contractTitle = entities.contractTitle || 'New Contract (Draft)';
   const contract = await prisma.contract.create({
     data: {
       tenantId,
-      contractTitle: entities.contractTitle || 'New Contract (Draft)',
+      contractTitle,
       supplierName: entities.supplierName || null,
       category: entities.category || null,
       status: 'DRAFT',
-      effectiveDate: entities.effectiveDate ? new Date(entities.effectiveDate) : null,
-      expirationDate: entities.expirationDate ? new Date(entities.expirationDate) : null,
-      totalValue: entities.contractValue ? parseFloat(String(entities.contractValue)) : null,
-      createdBy: userId,
+      mimeType: 'application/pdf',
+      fileName: contractTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(),
+      fileSize: BigInt(0),
     },
   });
 
@@ -358,9 +355,9 @@ async function handleCreateLinkedContract(
   tenantId: string,
   userId: string
 ): Promise<ActionResponse> {
-  const { parentContractId, contractTitle } = entities;
+  const { contractId: parentId, contractTitle } = entities;
 
-  if (!parentContractId) {
+  if (!parentId) {
     return {
       success: false,
       message: 'Please specify the parent contract to link to',
@@ -368,23 +365,26 @@ async function handleCreateLinkedContract(
   }
 
   const parent = await prisma.contract.findFirst({
-    where: { id: parentContractId, tenantId },
+    where: { id: parentId, tenantId },
   });
 
   if (!parent) {
     return { success: false, message: 'Parent contract not found' };
   }
 
+  const childTitle = contractTitle || `${parent.contractTitle} - Amendment`;
   const child = await prisma.contract.create({
     data: {
       tenantId,
-      contractTitle: contractTitle || `${parent.contractTitle} - Amendment`,
+      contractTitle: childTitle,
       supplierName: parent.supplierName,
       category: parent.category,
       status: 'DRAFT',
-      masterAgreementId: parentContractId,
+      parentContractId: parentId,
       contractType: 'CHILD',
-      createdBy: userId,
+      mimeType: 'application/pdf',
+      fileName: childTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(),
+      fileSize: BigInt(0),
     },
   });
 
@@ -393,16 +393,16 @@ async function handleCreateLinkedContract(
     contractId: child.id,
     action: 'CONTRACT_LINKED',
     performedBy: userId,
-    details: { parentId: parentContractId, source: 'chatbot' },
+    details: { parentId, source: 'chatbot' },
   });
 
   return {
     success: true,
     message: `Created linked contract under "${parent.contractTitle}"`,
-    data: { contractId: child.id, parentId: parentContractId },
+    data: { contractId: child.id, parentId },
     actions: [
       { label: 'View New Contract', action: 'navigate', params: { url: `/contracts/${child.id}` } },
-      { label: 'View Hierarchy', action: 'navigate', params: { url: `/contracts/${parentContractId}/hierarchy` } },
+      { label: 'View Hierarchy', action: 'navigate', params: { url: `/contracts/${parentId}/hierarchy` } },
     ],
   };
 }
@@ -412,9 +412,10 @@ async function handleLinkContracts(
   tenantId: string,
   userId: string
 ): Promise<ActionResponse> {
-  const { contractId, parentContractId } = entities;
+  const childId = entities.contractId;
+  const parentId = entities.contractA; // contractA used as parent reference
 
-  if (!contractId || !parentContractId) {
+  if (!childId || !parentId) {
     return {
       success: false,
       message: 'Please specify both contracts to link',
@@ -422,8 +423,8 @@ async function handleLinkContracts(
   }
 
   const [child, parent] = await Promise.all([
-    prisma.contract.findFirst({ where: { id: contractId, tenantId } }),
-    prisma.contract.findFirst({ where: { id: parentContractId, tenantId } }),
+    prisma.contract.findFirst({ where: { id: childId, tenantId } }),
+    prisma.contract.findFirst({ where: { id: parentId, tenantId } }),
   ]);
 
   if (!child || !parent) {
@@ -431,25 +432,25 @@ async function handleLinkContracts(
   }
 
   await prisma.contract.update({
-    where: { id: contractId },
+    where: { id: childId },
     data: {
-      masterAgreementId: parentContractId,
+      parentContractId: parentId,
       contractType: 'CHILD',
     },
   });
 
   await addActivityLogEntry({
     tenantId,
-    contractId,
+    contractId: childId,
     action: 'CONTRACT_LINKED',
     performedBy: userId,
-    details: { parentId: parentContractId, source: 'chatbot' },
+    details: { parentId, source: 'chatbot' },
   });
 
   return {
     success: true,
     message: `Linked "${child.contractTitle}" under "${parent.contractTitle}"`,
-    data: { contractId, parentId: parentContractId },
+    data: { contractId: childId, parentId },
   };
 }
 
@@ -467,10 +468,10 @@ async function handleShowHierarchy(
   const contract = await prisma.contract.findFirst({
     where: { id: contractId, tenantId },
     include: {
-      masterAgreement: true,
-      linkedChildren: {
+      parentContract: true,
+      childContracts: {
         include: {
-          linkedChildren: true,
+          childContracts: true,
         },
       },
     },
@@ -485,14 +486,14 @@ async function handleShowHierarchy(
     id: contract.id,
     title: contract.contractTitle,
     type: contract.contractType,
-    parent: contract.masterAgreement
-      ? { id: contract.masterAgreement.id, title: contract.masterAgreement.contractTitle }
+    parent: contract.parentContract
+      ? { id: contract.parentContract.id, title: contract.parentContract.contractTitle }
       : null,
-    children: contract.linkedChildren.map((c) => ({
+    children: contract.childContracts.map((c) => ({
       id: c.id,
       title: c.contractTitle,
       type: c.contractType,
-      children: c.linkedChildren.map((gc) => ({
+      children: c.childContracts.map((gc) => ({
         id: gc.id,
         title: gc.contractTitle,
         type: gc.contractType,
@@ -529,7 +530,7 @@ async function handleFindMaster(
       status: 'ACTIVE',
     },
     include: {
-      _count: { select: { linkedChildren: true } },
+      _count: { select: { childContracts: true } },
     },
     orderBy: { effectiveDate: 'desc' },
   });
@@ -551,7 +552,7 @@ async function handleFindMaster(
         title: m.contractTitle,
         effectiveDate: m.effectiveDate,
         expirationDate: m.expirationDate,
-        childCount: m._count.linkedChildren,
+        childCount: m._count.childContracts,
       })),
     },
     actions: masterAgreements.map((m) => ({
@@ -583,27 +584,21 @@ async function handleSetReminder(
     return { success: false, message: 'Contract not found' };
   }
 
-  // Create a task/reminder
-  const dueDate = entities.reminderDate
-    ? new Date(entities.reminderDate)
-    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default 1 week
+  // Set expiration alert - we don't have a task model, use contract fields
+  const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default 1 week
 
-  const task = await prisma.task.create({
+  await prisma.contract.update({
+    where: { id: contractId },
     data: {
-      tenantId,
-      contractId,
-      title: entities.reminderNote || `Reminder: Review ${contract.contractTitle}`,
-      dueDate,
-      assignedTo: userId,
-      status: 'PENDING',
-      createdBy: userId,
+      expirationAlertSent: false,
+      expirationAlertAt: dueDate,
     },
   });
 
   return {
     success: true,
     message: `Reminder set for ${dueDate.toLocaleDateString()}`,
-    data: { taskId: task.id, dueDate },
+    data: { contractId, dueDate },
   };
 }
 
@@ -622,8 +617,7 @@ async function handleExportContract(
     where: { id: contractId, tenantId },
     include: {
       clauses: true,
-      obligations: true,
-      artifacts: { where: { type: 'DOCUMENT' }, take: 1 },
+      artifacts: { where: { type: 'OVERVIEW' }, take: 1 },
     },
   });
 
@@ -665,29 +659,33 @@ async function handleCloneContract(
   }
 
   // Create clone
+  const cloneTitle = `${original.contractTitle} (Copy)`;
   const clone = await prisma.contract.create({
     data: {
       tenantId,
-      contractTitle: `${original.contractTitle} (Copy)`,
+      contractTitle: cloneTitle,
       supplierName: original.supplierName,
       category: original.category,
       status: 'DRAFT',
       contractType: original.contractType,
       totalValue: original.totalValue,
       paymentTerms: original.paymentTerms,
-      autoRenewal: original.autoRenewal,
-      createdBy: userId,
+      autoRenewalEnabled: original.autoRenewalEnabled,
+      mimeType: original.mimeType || 'application/pdf',
+      fileName: cloneTitle.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase(),
+      fileSize: original.fileSize || BigInt(0),
     },
   });
 
   // Clone clauses
   if (original.clauses.length > 0) {
-    await prisma.contractClause.createMany({
+    await prisma.clause.createMany({
       data: original.clauses.map((c) => ({
         contractId: clone.id,
-        clauseType: c.clauseType,
-        content: c.content,
+        category: c.category,
+        text: c.text,
         position: c.position,
+        riskLevel: c.riskLevel,
       })),
     });
   }

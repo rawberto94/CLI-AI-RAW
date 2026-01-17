@@ -36,8 +36,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(result);
-  } catch (error) {
-    console.error('Error standardizing role:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to standardize role',

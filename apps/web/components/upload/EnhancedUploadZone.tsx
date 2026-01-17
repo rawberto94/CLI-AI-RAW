@@ -163,8 +163,8 @@ export function EnhancedUploadZone({
 
     try {
       await onUpload(pendingFiles.map(f => f.file));
-    } catch (error) {
-      console.error('Upload failed:', error);
+    } catch {
+      // Upload failed - error handled by caller
     }
 
     setIsUploading(false);

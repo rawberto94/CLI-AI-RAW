@@ -201,6 +201,60 @@ async function fetchAPI<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 // =====================
+// Contract Stats Hook
+// =====================
+
+export interface ContractStatsData {
+  overview: {
+    total: number;
+    byStatus: Record<string, number>;
+    processed: number;
+    pending: number;
+    failed: number;
+  };
+  financial: {
+    totalValue: number;
+    averageValue: number;
+  };
+  timeline: {
+    expiringThisMonth: number;
+    expiringNext30Days: number;
+    expiringNext90Days: number;
+    expired: number;
+    noExpirationDate: number;
+    recentlyUploaded: number;
+  };
+}
+
+/**
+ * Hook to fetch real-time contract statistics directly from the database
+ * Always fetches fresh data (no stale cache issues)
+ */
+export function useContractStats() {
+  return useQuery({
+    queryKey: ['contract-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/contracts/stats', {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-tenant-id': getTenantId(),
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stats: ${response.status}`);
+      }
+      
+      const json = await response.json();
+      return json.data as ContractStatsData;
+    },
+    staleTime: 10000, // 10 seconds
+    refetchOnWindowFocus: true,
+  });
+}
+
+// =====================
 // Contract Hooks
 // =====================
 

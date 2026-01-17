@@ -274,8 +274,7 @@ function LinkParentDialog({ contractId, open, onOpenChange, onLink }: LinkParent
           }))
         setSearchResults(filtered)
       }
-    } catch (error) {
-      console.error('Search error:', error)
+    } catch {
       toast.error('Failed to search contracts')
     } finally {
       setIsSearching(false)
@@ -293,8 +292,8 @@ function LinkParentDialog({ contractId, open, onOpenChange, onLink }: LinkParent
       setSearchQuery('')
       setSearchResults([])
       setNote('')
-    } catch (error) {
-      console.error('Link error:', error)
+    } catch {
+      // Link error - handled by caller
     } finally {
       setIsLinking(false)
     }
@@ -439,7 +438,7 @@ export function ContractHierarchy({
     try {
       await onUnlinkParent()
       toast.success('Parent contract unlinked')
-    } catch (error) {
+    } catch {
       toast.error('Failed to unlink parent contract')
     } finally {
       setIsUnlinking(false)

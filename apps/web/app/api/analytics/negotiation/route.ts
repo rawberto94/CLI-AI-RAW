@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to get negotiation prep data:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -78,8 +77,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to generate negotiation pack:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

@@ -74,45 +74,13 @@ export async function GET(request: NextRequest) {
         source: 'database',
       });
     } catch (dbError) {
-      console.warn('Database query failed, using mock users:', dbError);
-    }
-
-    // Fallback mock users
-    const mockUsers = [
-      { id: 'user-1', name: 'Sarah Chen', email: 'sarah.chen@company.com', role: 'admin', avatar: null, initials: 'SC' },
-      { id: 'user-2', name: 'Mike Johnson', email: 'mike.johnson@company.com', role: 'approver', avatar: null, initials: 'MJ' },
-      { id: 'user-3', name: 'Emily Davis', email: 'emily.davis@company.com', role: 'legal', avatar: null, initials: 'ED' },
-      { id: 'user-4', name: 'James Wilson', email: 'james.wilson@company.com', role: 'finance', avatar: null, initials: 'JW' },
-      { id: 'user-5', name: 'Alex Martinez', email: 'alex.martinez@company.com', role: 'member', avatar: null, initials: 'AM' },
-      { id: 'user-6', name: 'Lisa Park', email: 'lisa.park@company.com', role: 'member', avatar: null, initials: 'LP' },
-      { id: 'user-7', name: 'Tom Williams', email: 'tom.williams@company.com', role: 'manager', avatar: null, initials: 'TW' },
-      { id: 'user-8', name: 'Jane Smith', email: 'jane.smith@company.com', role: 'legal', avatar: null, initials: 'JS' },
-    ];
-
-    let filteredUsers = [...mockUsers];
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredUsers = filteredUsers.filter(
-        u => u.name.toLowerCase().includes(searchLower) || u.email.toLowerCase().includes(searchLower)
+      // Database query failed - return error, not mock data
+      return NextResponse.json(
+        { success: false, error: 'Database connection failed' },
+        { status: 503 }
       );
     }
-
-    if (role) {
-      filteredUsers = filteredUsers.filter(u => u.role === role);
-    }
-
-    if (excludeUserId) {
-      filteredUsers = filteredUsers.filter(u => u.id !== excludeUserId);
-    }
-
-    return NextResponse.json({
-      success: true,
-      users: filteredUsers.slice(0, limit),
-      source: 'mock',
-    });
-  } catch (error) {
-    console.error('Error fetching users:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch users' },
       { status: 500 }

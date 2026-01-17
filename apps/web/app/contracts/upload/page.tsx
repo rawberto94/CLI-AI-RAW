@@ -57,7 +57,8 @@ import {
   File,
   ImageIcon,
   Award,
-  Activity
+  Activity,
+  Scale,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
@@ -203,7 +204,6 @@ export default function UploadPage() {
       const responseData = await uploadResponse.json()
       
       if (!uploadResponse.ok) {
-        console.error('Upload validation failed:', responseData);
         const errorMessage = responseData.details 
           ? `${responseData.error}: ${responseData.details}` 
           : (responseData.error || 'Upload failed');
@@ -240,8 +240,7 @@ export default function UploadPage() {
       // Note: Real-time SSE will handle the rest of the progress updates
       // The RealtimeArtifactViewer component will show live artifact generation
 
-    } catch (error) {
-      console.error('Upload error:', error)
+    } catch (error: unknown) {
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
           ? { 
@@ -324,15 +323,15 @@ export default function UploadPage() {
   }, [isUploading, processingCount])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 dark:from-slate-900 dark:via-blue-950/30 dark:to-indigo-950/40">
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 shadow-2xl">
-        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" />
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 dark:from-blue-800 dark:via-indigo-800 dark:to-purple-900 shadow-2xl">
+        <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" aria-hidden="true" />
         
         {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
           <motion.div 
-            className="absolute top-10 right-10 w-64 h-64 bg-white/10 rounded-full blur-3xl"
+            className="absolute top-10 right-10 w-64 h-64 bg-white/10 rounded-full blur-3xl motion-reduce:animate-none"
             animate={{ 
               scale: [1, 1.2, 1],
               x: [0, 30, 0],
@@ -341,7 +340,7 @@ export default function UploadPage() {
             transition={{ duration: 8, repeat: Infinity }}
           />
           <motion.div 
-            className="absolute bottom-10 left-10 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl"
+            className="absolute bottom-10 left-10 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl motion-reduce:animate-none"
             animate={{ 
               scale: [1, 1.3, 1],
               x: [0, -20, 0],
@@ -387,11 +386,12 @@ export default function UploadPage() {
             <Badge className="bg-white/20 text-white border-white/30 px-4 py-2 text-sm font-medium backdrop-blur-sm">
               <Brain className="h-4 w-4 mr-2" />
               {processingOptions.aiModel === 'gpt-4o' ? 'GPT-4o' : 
-               processingOptions.aiModel === 'gpt-4o-mini' ? 'GPT-4o Mini' : 'Auto'}
+               processingOptions.aiModel === 'gpt-4o-mini' ? 'GPT-4o Mini' :
+               processingOptions.aiModel === 'claude-3-5-haiku-20241022' ? 'Claude Haiku 4.5' : 'Auto'}
             </Badge>
             {isUploading && (
-              <Badge className="bg-green-500/30 text-green-100 border-green-300/30 px-4 py-2 text-sm backdrop-blur-sm animate-pulse">
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Badge className="bg-green-500/30 text-green-100 border-green-300/30 px-4 py-2 text-sm backdrop-blur-sm motion-safe:animate-pulse">
+                <Loader2 className="h-4 w-4 mr-2 motion-safe:animate-spin" aria-hidden="true" />
                 Processing {processingCount} file{processingCount !== 1 ? 's' : ''}...
               </Badge>
             )}
@@ -404,22 +404,22 @@ export default function UploadPage() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <div className="flex items-center justify-between mb-4">
-            <TabsList className="bg-white shadow-sm">
-              <TabsTrigger value="upload" className="gap-2">
-                <Upload className="h-4 w-4" />
+            <TabsList className="bg-white dark:bg-slate-800 shadow-sm">
+              <TabsTrigger value="upload" className="gap-2 dark:data-[state=active]:bg-slate-700">
+                <Upload className="h-4 w-4" aria-hidden="true" />
                 Upload
               </TabsTrigger>
-              <TabsTrigger value="queue" className="gap-2">
-                <Layers className="h-4 w-4" />
+              <TabsTrigger value="queue" className="gap-2 dark:data-[state=active]:bg-slate-700">
+                <Layers className="h-4 w-4" aria-hidden="true" />
                 Queue
                 {hasFiles && (
-                  <Badge variant="secondary" className="ml-1 min-w-[20px] h-5">
+                  <Badge variant="secondary" className="ml-1 min-w-[20px] h-5 dark:bg-slate-600">
                     {files.length}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="recent" className="gap-2">
-                <History className="h-4 w-4" />
+              <TabsTrigger value="recent" className="gap-2 dark:data-[state=active]:bg-slate-700">
+                <History className="h-4 w-4" aria-hidden="true" />
                 Recent
               </TabsTrigger>
             </TabsList>
@@ -429,9 +429,10 @@ export default function UploadPage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => setShowSettings(!showSettings)}
-                className="gap-2"
+                className="gap-2 dark:border-slate-600 dark:hover:bg-slate-700"
+                aria-expanded={showSettings}
               >
-                <Settings2 className="h-4 w-4" />
+                <Settings2 className="h-4 w-4" aria-hidden="true" />
                 Settings
               </Button>
             </div>
@@ -457,74 +458,75 @@ export default function UploadPage() {
             </AnimatePresence>
             
             {/* Drop Zone */}
-            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardContent className="p-8">
                 <motion.div
                   whileHover={!isUploading ? { scale: 1.01 } : undefined}
                   whileTap={!isUploading ? { scale: 0.99 } : undefined}
+                  className="motion-reduce:transform-none"
                 >
                   <div
                     {...getRootProps()}
                     className={cn(
-                      'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden',
+                      'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden motion-reduce:transition-none',
                       isDragActive
-                        ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 scale-[1.02]'
-                        : 'border-gray-300 hover:border-blue-400 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30',
+                        ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 scale-[1.02]'
+                        : 'border-gray-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30 dark:hover:from-slate-800 dark:hover:to-blue-900/20',
                       isUploading && 'opacity-50 cursor-not-allowed'
                     )}
                   >
                     <input {...getInputProps()} disabled={isUploading} aria-label="Upload contract documents" />
                   
                     {/* Animated background pattern */}
-                    <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))] opacity-50" />
+                    <div className="absolute inset-0 bg-grid-slate-100 dark:bg-grid-slate-800 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))] opacity-50" aria-hidden="true" />
                     
                     <div className="relative z-10">
                     <motion.div
                       className={cn(
-                        'mx-auto mb-6 p-6 rounded-full w-fit',
+                        'mx-auto mb-6 p-6 rounded-full w-fit motion-reduce:animate-none',
                         isDragActive 
                           ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl'
-                          : 'bg-gradient-to-br from-slate-100 to-slate-200'
+                          : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600'
                       )}
                       animate={isDragActive ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
                       transition={{ repeat: Infinity, duration: 1.5 }}
                     >
                       {isDragActive ? (
-                        <CloudUpload className="h-12 w-12 text-white" />
+                        <CloudUpload className="h-12 w-12 text-white" aria-hidden="true" />
                       ) : (
-                        <FileUp className="h-12 w-12 text-slate-500" />
+                        <FileUp className="h-12 w-12 text-slate-500 dark:text-slate-400" aria-hidden="true" />
                       )}
                     </motion.div>
                     
                     {isDragActive ? (
                       <>
-                        <p className="text-2xl font-bold text-blue-600 mb-2">
+                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
                           Drop your contracts here!
                         </p>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 dark:text-gray-300">
                           Release to start the AI analysis
                         </p>
                       </>
                     ) : (
                       <>
-                        <p className="text-2xl font-bold text-gray-900 mb-3">
+                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                           Drag & drop contracts here
                         </p>
-                        <p className="text-gray-600 mb-6 text-lg">
+                        <p className="text-gray-600 dark:text-gray-400 mb-6 text-lg">
                           or click to browse your files
                         </p>
                         
                         {/* Supported formats */}
                         <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
                           {['PDF', 'DOC', 'DOCX', 'TXT', 'PNG', 'JPG'].map(format => (
-                            <Badge key={format} variant="outline" className="text-sm px-3 py-1.5">
-                              <FileText className="h-3.5 w-3.5 mr-1.5" />
+                            <Badge key={format} variant="outline" className="text-sm px-3 py-1.5 dark:border-slate-600 dark:text-slate-300">
+                              <FileText className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
                               {format}
                             </Badge>
                           ))}
                         </div>
                         
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           Maximum file size: 50MB per file • Upload multiple files at once
                         </p>
                       </>
@@ -538,62 +540,62 @@ export default function UploadPage() {
             {/* Quick Stats when files exist */}
             {hasFiles && (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <Card className="bg-gradient-to-br from-slate-50 to-gray-100 border-slate-200 hover:shadow-lg transition-all">
+                <Card className="bg-gradient-to-br from-slate-50 to-gray-100 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600 hover:shadow-lg transition-all motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-slate-200 rounded-lg">
-                      <Layers className="h-5 w-5 text-slate-600" />
+                    <div className="p-2 bg-slate-200 dark:bg-slate-600 rounded-lg">
+                      <Layers className="h-5 w-5 text-slate-600 dark:text-slate-300" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-slate-900">{files.length}</p>
-                      <p className="text-xs text-slate-600 font-medium">Total Files</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{files.length}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Total Files</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 border-blue-200 hover:shadow-lg transition-all">
+                <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-700 hover:shadow-lg transition-all motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-blue-200 rounded-lg">
-                      <Activity className={cn("h-5 w-5 text-blue-600", processingCount > 0 && "animate-pulse")} />
+                    <div className="p-2 bg-blue-200 dark:bg-blue-800 rounded-lg">
+                      <Activity className={cn("h-5 w-5 text-blue-600 dark:text-blue-400", processingCount > 0 && "motion-safe:animate-pulse")} aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-blue-600">{processingCount}</p>
-                      <p className="text-xs text-blue-600 font-medium">Processing</p>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{processingCount}</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Processing</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-amber-50 to-yellow-100 border-amber-200 hover:shadow-lg transition-all">
+                <Card className="bg-gradient-to-br from-amber-50 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/30 border-amber-200 dark:border-amber-700 hover:shadow-lg transition-all motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-amber-200 rounded-lg">
-                      <Clock className="h-5 w-5 text-amber-600" />
+                    <div className="p-2 bg-amber-200 dark:bg-amber-800 rounded-lg">
+                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-                      <p className="text-xs text-amber-600 font-medium">In Queue</p>
+                      <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{pendingCount}</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">In Queue</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 hover:shadow-lg transition-shadow">
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-700 hover:shadow-lg transition-shadow motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-green-200 rounded-lg">
-                      <Award className="h-5 w-5 text-green-600" />
+                    <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
+                      <Award className="h-5 w-5 text-green-600 dark:text-green-400" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-green-600">{completedCount}</p>
-                      <p className="text-xs text-green-600 font-medium">Completed</p>
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">{completedCount}</p>
+                      <p className="text-xs text-green-600 dark:text-green-400 font-medium">Completed</p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-red-50 to-rose-50 border-red-200 hover:shadow-lg transition-shadow">
+                <Card className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 border-red-200 dark:border-red-700 hover:shadow-lg transition-shadow motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-red-200 rounded-lg">
-                      <AlertTriangle className="h-5 w-5 text-red-600" />
+                    <div className="p-2 bg-red-200 dark:bg-red-800 rounded-lg">
+                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-red-600">{errorCount}</p>
-                      <p className="text-xs text-red-600 font-medium">Errors</p>
+                      <p className="text-2xl font-bold text-red-600 dark:text-red-400">{errorCount}</p>
+                      <p className="text-xs text-red-600 dark:text-red-400 font-medium">Errors</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -609,13 +611,13 @@ export default function UploadPage() {
                   { icon: Brain, gradient: 'from-purple-500 to-pink-600', title: 'AI Analysis', desc: 'GPT-4 powered insights' },
                   { icon: BarChart3, gradient: 'from-orange-500 to-red-600', title: 'Smart Reports', desc: '10 artifact types' },
                 ].map(feature => (
-                  <Card key={feature.title} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+                  <Card key={feature.title} className="border-0 dark:border dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-shadow motion-reduce:transition-none dark:bg-slate-800/80">
                     <CardContent className="p-6">
                       <div className={cn('p-3 rounded-xl shadow-lg w-fit mb-4 bg-gradient-to-br', feature.gradient)}>
-                        <feature.icon className="h-6 w-6 text-white" />
+                        <feature.icon className="h-6 w-6 text-white" aria-hidden="true" />
                       </div>
-                      <h3 className="font-bold text-gray-900 mb-2">{feature.title}</h3>
-                      <p className="text-sm text-gray-600">{feature.desc}</p>
+                      <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">{feature.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{feature.desc}</p>
                     </CardContent>
                   </Card>
                 ))}
@@ -626,12 +628,12 @@ export default function UploadPage() {
           {/* Queue Tab */}
           <TabsContent value="queue" className="space-y-6">
             {hasFiles ? (
-              <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-xl">Processing Queue</CardTitle>
-                      <CardDescription>
+                      <CardTitle className="text-xl dark:text-slate-100">Processing Queue</CardTitle>
+                      <CardDescription className="dark:text-slate-400">
                         {isUploading 
                           ? `Processing ${processingCount} of ${files.length} files...`
                           : `${files.length} file${files.length !== 1 ? 's' : ''} in queue`
@@ -641,29 +643,29 @@ export default function UploadPage() {
                     
                     <div className="flex items-center gap-2">
                       {completedCount > 0 && (
-                        <Button variant="outline" size="sm" onClick={clearCompleted} className="gap-1">
-                          <Trash2 className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="sm" onClick={clearCompleted} className="gap-1 dark:border-slate-600 dark:hover:bg-slate-700">
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                           Clear Completed
                         </Button>
                       )}
                       
                       {pendingCount > 0 && !isUploading && (
                         <Button onClick={handleUploadAll} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600">
-                          <Play className="h-4 w-4" />
+                          <Play className="h-4 w-4" aria-hidden="true" />
                           Start All ({pendingCount})
                         </Button>
                       )}
                       
                       {isUploading && !isPaused && (
-                        <Button onClick={handlePauseAll} variant="outline" className="gap-2">
-                          <Pause className="h-4 w-4" />
+                        <Button onClick={handlePauseAll} variant="outline" className="gap-2 dark:border-slate-600 dark:hover:bg-slate-700">
+                          <Pause className="h-4 w-4" aria-hidden="true" />
                           Pause
                         </Button>
                       )}
                       
                       {isPaused && (
                         <Button onClick={handleUploadAll} className="gap-2">
-                          <Play className="h-4 w-4" />
+                          <Play className="h-4 w-4" aria-hidden="true" />
                           Resume
                         </Button>
                       )}
@@ -713,11 +715,11 @@ export default function UploadPage() {
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200"
+                              className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-xl border border-purple-200 dark:border-purple-700"
                             >
                               <div className="flex items-center gap-2 mb-3">
-                                <Sparkles className="h-4 w-4 text-purple-600" />
-                                <span className="font-medium text-purple-900 text-sm">Live AI Processing</span>
+                                <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
+                                <span className="font-medium text-purple-900 dark:text-purple-200 text-sm">Live AI Processing</span>
                               </div>
                               <RealtimeArtifactViewer
                                 contractId={file.contractId}
@@ -738,16 +740,16 @@ export default function UploadPage() {
                   
                   {/* Retry all errors */}
                   {errorCount > 0 && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border border-red-200 flex items-center justify-between shadow-sm">
+                    <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 rounded-xl border border-red-200 dark:border-red-700 flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                          <AlertTriangle className="h-5 w-5 text-red-600" />
+                        <div className="p-2 bg-red-100 dark:bg-red-800 rounded-lg">
+                          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden="true" />
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-red-700">
+                          <p className="text-sm font-semibold text-red-700 dark:text-red-300">
                             {errorCount} file{errorCount !== 1 ? 's' : ''} failed to process
                           </p>
-                          <p className="text-xs text-red-600 mt-0.5">
+                          <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
                             Review errors and retry to continue
                           </p>
                         </div>
@@ -757,7 +759,7 @@ export default function UploadPage() {
                         className="gap-2 bg-red-600 hover:bg-red-700 text-white"
                         onClick={retryAllErrors}
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-4 w-4" aria-hidden="true" />
                         Retry All Errors
                       </Button>
                     </div>
@@ -765,15 +767,15 @@ export default function UploadPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+              <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
                 <CardContent className="py-16 text-center">
-                  <div className="p-4 bg-slate-100 rounded-full w-fit mx-auto mb-4">
-                    <FolderUp className="h-8 w-8 text-slate-400" />
+                  <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-full w-fit mx-auto mb-4">
+                    <FolderUp className="h-8 w-8 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No files in queue</h3>
-                  <p className="text-gray-500 mb-4">Upload some contracts to get started</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No files in queue</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">Upload some contracts to get started</p>
                   <Button onClick={() => setActiveTab('upload')}>
-                    <Upload className="h-4 w-4 mr-2" />
+                    <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
                     Go to Upload
                   </Button>
                 </CardContent>
@@ -783,53 +785,204 @@ export default function UploadPage() {
           
           {/* Recent Tab */}
           <TabsContent value="recent" className="space-y-6">
-            <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            {/* Success Banner when uploads complete */}
+            {completedCount > 0 && !isUploading && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 text-white">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <motion.div 
+                          className="p-3 bg-white/20 rounded-xl"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ repeat: 3, duration: 0.5 }}
+                        >
+                          <CheckCircle2 className="h-8 w-8" />
+                        </motion.div>
+                        <div>
+                          <h3 className="text-xl font-bold">
+                            {completedCount} Contract{completedCount !== 1 ? 's' : ''} Processed Successfully!
+                          </h3>
+                          <p className="text-green-100 mt-1">
+                            AI analysis complete. Your contracts are ready for review.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button 
+                          variant="secondary" 
+                          className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                          onClick={() => router.push('/contracts')}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          View All Contracts
+                        </Button>
+                        <Button 
+                          className="bg-white text-green-700 hover:bg-green-50"
+                          onClick={() => setActiveTab('upload')}
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload More
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {/* Next Steps Guide */}
+                    <div className="mt-6 pt-6 border-t border-white/20">
+                      <p className="text-sm font-medium text-green-100 mb-3">Recommended Next Steps:</p>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        {[
+                          { icon: Eye, label: 'Review Extractions', desc: 'Check AI analysis', href: '/contracts' },
+                          { icon: Scale, label: 'Legal Review', desc: 'Start redlining', href: '/contracts' },
+                          { icon: Target, label: 'Track Obligations', desc: 'Monitor deadlines', href: '/obligations' },
+                          { icon: Sparkles, label: 'AI Insights', desc: 'Get recommendations', href: '/ai/chat' },
+                        ].map(step => (
+                          <Link key={step.label} href={step.href}>
+                            <motion.div 
+                              className="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all cursor-pointer"
+                              whileHover={{ scale: 1.02 }}
+                            >
+                              <step.icon className="h-5 w-5 mb-2" />
+                              <p className="font-medium text-sm">{step.label}</p>
+                              <p className="text-xs text-green-100">{step.desc}</p>
+                            </motion.div>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-xl">Recent Uploads</CardTitle>
-                <CardDescription>Your recently processed contracts</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl dark:text-slate-100">Recent Uploads</CardTitle>
+                    <CardDescription className="dark:text-slate-400">Your recently processed contracts from this session</CardDescription>
+                  </div>
+                  {completedCount > 0 && (
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={clearCompleted}
+                        className="gap-1 dark:border-slate-600 dark:hover:bg-slate-700"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        Clear List
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {completedCount > 0 ? (
                   <div className="space-y-3">
-                    {files.filter(f => f.status === 'completed').map(file => (
-                      <div 
+                    {files.filter(f => f.status === 'completed').map((file, index) => (
+                      <motion.div 
                         key={file.id}
-                        className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-200"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border border-green-200 dark:border-green-700 hover:shadow-md transition-all motion-reduce:transition-none"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-green-200 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" aria-hidden="true" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{file.file.name}</p>
-                            <p className="text-sm text-gray-500">
-                              {formatFileSize(file.file.size)}
+                            <p className="font-medium text-gray-900 dark:text-gray-100">{file.file.name}</p>
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                              <span>{formatFileSize(file.file.size)}</span>
                               {file.endTime && file.startTime && (
-                                <span className="ml-2">
-                                  • Processed in {formatDuration(file.endTime - file.startTime)}
-                                </span>
+                                <>
+                                  <span aria-hidden="true">•</span>
+                                  <span className="flex items-center gap-1">
+                                    <Timer className="h-3 w-3" aria-hidden="true" />
+                                    {formatDuration(file.endTime - file.startTime)}
+                                  </span>
+                                </>
                               )}
-                            </p>
+                              {file.isDuplicate && (
+                                <>
+                                  <span aria-hidden="true">•</span>
+                                  <Badge variant="outline" className="text-xs bg-amber-50 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700">
+                                    Duplicate
+                                  </Badge>
+                                </>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => viewContract(file.contractId!)}
-                          className="gap-1"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
-                      </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/contracts/${file.contractId}/legal-review`)}
+                            className="gap-1 hidden md:flex dark:border-slate-600 dark:hover:bg-slate-700"
+                          >
+                            <Scale className="h-3.5 w-3.5" aria-hidden="true" />
+                            Review
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => viewContract(file.contractId!)}
+                            className="gap-1 bg-green-600 hover:bg-green-700"
+                          >
+                            <Eye className="h-4 w-4" aria-hidden="true" />
+                            View
+                          </Button>
+                        </div>
+                      </motion.div>
                     ))}
                   </div>
                 ) : (
                   <div className="py-12 text-center">
-                    <div className="p-4 bg-slate-100 rounded-full w-fit mx-auto mb-4">
-                      <History className="h-8 w-8 text-slate-400" />
+                    <div className="p-4 bg-slate-100 dark:bg-slate-700 rounded-full w-fit mx-auto mb-4">
+                      <History className="h-8 w-8 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No recent uploads</h3>
-                    <p className="text-gray-500">Your completed uploads will appear here</p>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No recent uploads</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                      Upload contracts to see them here. AI will extract key data, clauses, and obligations automatically.
+                    </p>
+                    
+                    {/* Quick Start Guide */}
+                    <div className="max-w-2xl mx-auto">
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-100 dark:border-blue-700 text-left">
+                        <h4 className="font-medium text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
+                          <Info className="h-4 w-4" aria-hidden="true" />
+                          How it works
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+                          {[
+                            { step: '1', label: 'Upload', desc: 'Drop PDF, DOC, or images' },
+                            { step: '2', label: 'AI Analysis', desc: 'GPT-4 extracts data' },
+                            { step: '3', label: 'Review', desc: 'Verify extractions' },
+                            { step: '4', label: 'Use', desc: 'Track & manage' },
+                          ].map(item => (
+                            <div key={item.step} className="flex items-start gap-2">
+                              <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0" aria-hidden="true">
+                                {item.step}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-gray-100">{item.label}</p>
+                                <p className="text-gray-500 dark:text-gray-400 text-xs">{item.desc}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Button onClick={() => setActiveTab('upload')} className="mt-6">
+                      <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
+                      Start Uploading
+                    </Button>
                   </div>
                 )}
               </CardContent>

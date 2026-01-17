@@ -106,8 +106,7 @@ export async function POST(
       },
     });
 
-  } catch (error) {
-    console.error('Data connection sync error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Sync failed' },
       { status: 500 }

@@ -126,9 +126,8 @@ export function UndoManagerProvider({
         setShowUndoBar(false);
         setLatestAction(null);
       }
-    } catch (error) {
-      console.error('Failed to undo action:', error);
-      throw error;
+    } catch {
+      throw new Error('Failed to undo action');
     }
   }, [history, latestAction]);
 
@@ -143,9 +142,8 @@ export function UndoManagerProvider({
       // Move back to history
       setUndoneStack(prev => prev.slice(0, -1));
       setHistory(prev => [...prev, { ...lastUndone, executedAt: Date.now() }]);
-    } catch (error) {
-      console.error('Failed to redo action:', error);
-      throw error;
+    } catch {
+      throw new Error('Failed to redo action');
     }
   }, [undoneStack]);
 

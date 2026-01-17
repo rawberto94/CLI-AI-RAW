@@ -124,8 +124,7 @@ export async function POST(request: NextRequest) {
       failed,
       details: results.map(r => r.status === 'fulfilled' ? r.value : { error: 'Promise rejected' }),
     });
-  } catch (error) {
-    console.error('Error triggering webhooks:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to trigger webhooks' }, { status: 500 });
   }
 }

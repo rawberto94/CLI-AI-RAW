@@ -389,7 +389,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-red-600">Delete Contract</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600">
-              Are you sure you want to delete <span className="font-medium text-slate-900">"{filename}"</span>? 
+              Are you sure you want to delete <span className="font-medium text-slate-900">&ldquo;{filename}&rdquo;</span>? 
               This action cannot be undone and will permanently remove all associated data, including:
               <ul className="mt-2 ml-4 list-disc text-sm">
                 <li>Contract metadata and extracted data</li>
@@ -432,12 +432,12 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
             <AlertDialogDescription>
               {isArchived ? (
                 <>
-                  Restore <span className="font-medium text-slate-900">"{filename}"</span> from the archive? 
+                  Restore <span className="font-medium text-slate-900">&ldquo;{filename}&rdquo;</span> from the archive? 
                   It will be visible in your contracts list again.
                 </>
               ) : (
                 <>
-                  Archive <span className="font-medium text-slate-900">"{filename}"</span>? 
+                  Archive <span className="font-medium text-slate-900">&ldquo;{filename}&rdquo;</span>? 
                   Archived contracts are hidden from the main list but can be restored later.
                 </>
               )}

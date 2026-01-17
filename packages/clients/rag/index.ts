@@ -10,9 +10,8 @@ function getDB(): unknown {
     try {
       const mod = require('../db');
       db = mod.default || mod;
-    } catch (e: unknown) {
-      const error = e as Error;
-      console.error('Failed to load DB client:', error.message);
+    } catch {
+      // Failed to load DB client
     }
   }
   return db;
@@ -45,67 +44,52 @@ export function chunkText(text: string, size = 1200, overlap = 150): Chunk[] {
 }
 
 export async function embedChunks(docId: string, tenantId: string, chunks: Chunk[], opts?: { model?: string; apiKey?: string }) {
-  console.log(`  📊 embedChunks called with ${chunks.length} chunks`);
   const apiKey = opts?.apiKey || process.env['OPENAI_API_KEY'];
   const model = opts?.model || process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small';
-  console.log(`  🔑 API key present: ${!!apiKey}, Model: ${model}`);
   
   if (!apiKey || !OpenAIClientCtor) {
-    console.log('  ⏭️  No API key or OpenAI client, skipping embeddings');
     return chunks; // silently skip in demo
   }
   
   // The OpenAI client in this repo exposes chat only; call embeddings via openai SDK directly if available
   let openai: unknown = null;
   try {
-    console.log('  🔌 Initializing OpenAI client...');
     const OpenAISDK = require('openai').OpenAI;
     openai = new OpenAISDK({ apiKey });
-    console.log('  ✅ OpenAI client initialized');
-  } catch (e: unknown) {
-    const error = e as Error;
-    console.log('  ❌ Failed to initialize OpenAI:', error.message);
+  } catch {
+    // Failed to initialize OpenAI
   }
   
   if (!openai) {
-    console.log('  ⏭️  No OpenAI client, skipping embeddings');
     return chunks; // can't embed without SDK
   }
   
   // Impose a hard cap on total chunks to embed in one go
   const MAX_CHUNKS = Number(process.env['RAG_MAX_CHUNKS'] || 256);
   const toEmbed = chunks.slice(0, MAX_CHUNKS);
-  console.log(`  🎯 Will embed ${toEmbed.length} chunks (max: ${MAX_CHUNKS})`);
   
   // Batch to smaller groups to limit payload/response size
   const BATCH = Number(process.env['RAG_EMBED_BATCH'] || 32);
-  console.log(`  📦 Using batch size: ${BATCH}`);
   
   for (let start = 0; start < toEmbed.length; start += BATCH) {
     const batch = toEmbed.slice(start, start + BATCH);
     const texts = batch.map(c => c.text);
-    console.log(`  🌐 Calling OpenAI embeddings API for batch ${start / BATCH + 1}/${Math.ceil(toEmbed.length / BATCH)} (${batch.length} chunks)...`);
     
     try {
       const res = await openai.embeddings.create({ model, input: texts });
-      console.log(`  ✅ Received ${res.data.length} embeddings from OpenAI`);
       
       const vectors = res.data.map((d: any) => d.embedding as number[]);
       for (let i = 0; i < batch.length; i++) {
         if (batch[i]) batch[i].embedding = vectors[i];
       }
-    } catch (e: any) {
-      console.error(`  ❌ OpenAI API error:`, e.message);
-      throw e;
+    } catch {
+      throw new Error('OpenAI embeddings API error');
     }
   }
   
-  console.log(`  ✅ All batches completed, proceeding to persistence...`);
   // persist - use ContractEmbedding table with vector type (not Embedding with Json)
   try {
-    console.log('  🔄 Starting embedding persistence...');
     const { pgvector } = require('pgvector/utils');
-    console.log('  ✅ pgvector loaded');
     
     // Use createMany for batch insert (much faster than loop)
     const embeddingsToCreate = toEmbed
@@ -117,28 +101,19 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
         embedding: pgvector.toSql(c.embedding)
       }));
     
-    console.log(`  💾 Preparing to persist ${embeddingsToCreate.length} embeddings...`);
-    
     if (embeddingsToCreate.length > 0) {
-      // Delete existing embeddings for this contract first (to handle re-processing)
-      console.log('  🗑️  Deleting existing embeddings...');
       const dbClient = getDB();
       if (!dbClient) throw new Error('Database client not available');
       
       await dbClient.contractEmbedding.deleteMany({ where: { contractId: docId } });
       
-      // Batch insert all embeddings at once
-      console.log('  📝 Inserting new embeddings...');
       await dbClient.contractEmbedding.createMany({ 
         data: embeddingsToCreate,
         skipDuplicates: true 
       });
-      console.log(`  ✅ Persisted ${embeddingsToCreate.length} embeddings to ContractEmbedding table`);
     }
-  } catch (e: any) {
-    console.error('  ❌ RAG embed persistence error:', e.message);
-    console.error('  Stack:', e.stack);
-    // Don't throw - allow artifact generation to continue without RAG
+  } catch {
+    // RAG embed persistence error - allow artifact generation to continue without RAG
   }
   return toEmbed;
 }
@@ -165,8 +140,7 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
       ORDER BY score DESC
       LIMIT ${k};
     `;
-  } catch (e) {
-    console.error('RAG retrieval error', e);
+  } catch {
     rows = [] as any;
   }
   return rows.map(r => ({ ...r, text: r.chunkText }));

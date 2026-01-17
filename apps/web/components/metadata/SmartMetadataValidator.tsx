@@ -147,8 +147,7 @@ export function SmartMetadataValidator({
       } else {
         setFields(generateMockFields());
       }
-    } catch (error) {
-      console.error('Failed to load metadata:', error);
+    } catch {
       setFields(generateMockFields());
     } finally {
       setLoading(false);
@@ -405,8 +404,8 @@ export function SmartMetadataValidator({
           reason: action === 'reject' ? 'Manual review required' : undefined
         })
       });
-    } catch (error) {
-      console.error('Failed to persist field validation:', error);
+    } catch {
+      // Failed to persist field validation
     }
   };
 
@@ -509,18 +508,14 @@ export function SmartMetadataValidator({
         })
       });
 
-      if (response.ok) {
-        console.log('✅ Metadata saved successfully');
-      }
-
       if (onSave) {
         onSave(metadata);
       }
       if (onValidationComplete) {
         onValidationComplete(summary);
       }
-    } catch (error) {
-      console.error('Failed to save metadata:', error);
+    } catch {
+      // Failed to save metadata
     } finally {
       setSaving(false);
     }

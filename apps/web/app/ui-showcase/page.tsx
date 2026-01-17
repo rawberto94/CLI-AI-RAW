@@ -449,7 +449,7 @@ function InputsSection() {
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder="Search contracts..."
-          onSearch={v => console.log('Search:', v)}
+          onSearch={() => {}}
         />
 
         <FloatingLabelInput label="Full Name" />
@@ -461,7 +461,7 @@ function InputsSection() {
           length={6}
           value={pin}
           onChange={setPin}
-          onComplete={v => console.log('PIN complete:', v)}
+          onComplete={() => {}}
         />
       </div>
 
@@ -967,7 +967,7 @@ function FileUploadSection() {
         <div>
           <h3 className="text-lg font-medium mb-4">Image Upload</h3>
           <ImageUpload
-            onChange={(file, preview) => console.log('Image:', file, preview)}
+            onChange={() => {}}
             aspectRatio="landscape"
           />
         </div>

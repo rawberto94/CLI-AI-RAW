@@ -57,8 +57,8 @@ export function BaselinesList() {
 
       const data = await response.json();
       setBaselines(data.baselines);
-    } catch (error) {
-      console.error('Error fetching baselines:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -75,8 +75,8 @@ export function BaselinesList() {
       if (!response.ok) throw new Error('Failed to update approval status');
 
       await fetchBaselines();
-    } catch (error) {
-      console.error('Error updating approval:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

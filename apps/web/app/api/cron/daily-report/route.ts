@@ -176,8 +176,6 @@ export async function POST(request: NextRequest) {
     };
 
     // Store report (you could save to database or send via email)
-    console.log('[DAILY REPORT]', JSON.stringify(report, null, 2));
-
     // Here you would:
     // 1. Store report in database for historical tracking
     // 2. Send email digest to admins/stakeholders
@@ -188,8 +186,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: report,
     });
-  } catch (error) {
-    console.error('[CRON] Daily report error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

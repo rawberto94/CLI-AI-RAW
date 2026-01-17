@@ -140,9 +140,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       message: 'Contract updated successfully'
     });
 
-  } catch (error) {
-    console.error('Error updating contract:', error);
-
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -184,9 +182,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       }
     });
 
-  } catch (error) {
-    console.error('Error retrieving audit trail:', error);
-
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Internal server error',

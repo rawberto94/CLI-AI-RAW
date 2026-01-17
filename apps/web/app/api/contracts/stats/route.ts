@@ -100,13 +100,13 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       // Total count
       prisma.contract.count({
-        where: { tenantId, status: { not: "DELETED" } },
+        where: { tenantId, isDeleted: false },
       }),
 
       // Status distribution
       prisma.contract.groupBy({
         by: ["status"],
-        where: { tenantId, status: { not: "DELETED" } },
+        where: { tenantId, isDeleted: false },
         _count: { id: true },
       }),
 
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             expirationDate: { gte: now, lte: endOfMonth },
           },
         }),
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             expirationDate: { gte: now, lte: thirtyDaysFromNow },
           },
         }),
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             expirationDate: { gte: now, lte: ninetyDaysFromNow },
           },
         }),
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             expirationDate: { lt: now },
           },
         }),
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             expirationDate: null,
           },
         }),
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             uploadedAt: { gte: sevenDaysAgo },
           },
         }),
@@ -165,21 +165,21 @@ export async function GET(request: NextRequest) {
       // Contract types
       prisma.contract.groupBy({
         by: ["contractType"],
-        where: { tenantId, status: { not: "DELETED" }, contractType: { not: null } },
+        where: { tenantId, isDeleted: false, contractType: { not: null } },
         _count: { id: true },
       }),
 
       // Categories
       prisma.contract.groupBy({
         by: ["category"],
-        where: { tenantId, status: { not: "DELETED" }, category: { not: null } },
+        where: { tenantId, isDeleted: false, category: { not: null } },
         _count: { id: true },
       }),
 
       // Top clients
       prisma.contract.groupBy({
         by: ["clientName"],
-        where: { tenantId, status: { not: "DELETED" }, clientName: { not: null } },
+        where: { tenantId, isDeleted: false, clientName: { not: null } },
         _count: { id: true },
         _sum: { totalValue: true },
         orderBy: { _count: { id: "desc" } },
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
       // Top suppliers
       prisma.contract.groupBy({
         by: ["supplierName"],
-        where: { tenantId, status: { not: "DELETED" }, supplierName: { not: null } },
+        where: { tenantId, isDeleted: false, supplierName: { not: null } },
         _count: { id: true },
         _sum: { totalValue: true },
         orderBy: { _count: { id: "desc" } },
@@ -199,12 +199,12 @@ export async function GET(request: NextRequest) {
       // Unique parties count
       Promise.all([
         prisma.contract.findMany({
-          where: { tenantId, status: { not: "DELETED" }, clientName: { not: null } },
+          where: { tenantId, isDeleted: false, clientName: { not: null } },
           select: { clientName: true },
           distinct: ["clientName"],
         }),
         prisma.contract.findMany({
-          where: { tenantId, status: { not: "DELETED" }, supplierName: { not: null } },
+          where: { tenantId, isDeleted: false, supplierName: { not: null } },
           select: { supplierName: true },
           distinct: ["supplierName"],
         }),
@@ -212,7 +212,7 @@ export async function GET(request: NextRequest) {
 
       // Value statistics
       prisma.contract.aggregate({
-        where: { tenantId, status: { not: "DELETED" }, totalValue: { not: null } },
+        where: { tenantId, isDeleted: false, totalValue: { not: null } },
         _sum: { totalValue: true },
         _avg: { totalValue: true },
         _count: { id: true },
@@ -221,18 +221,18 @@ export async function GET(request: NextRequest) {
       // Data quality stats
       Promise.all([
         prisma.contract.count({
-          where: { tenantId, status: { not: "DELETED" }, clientName: { not: null } },
+          where: { tenantId, isDeleted: false, clientName: { not: null } },
         }),
         prisma.contract.count({
-          where: { tenantId, status: { not: "DELETED" }, supplierName: { not: null } },
+          where: { tenantId, isDeleted: false, supplierName: { not: null } },
         }),
         prisma.contract.count({
-          where: { tenantId, status: { not: "DELETED" }, totalValue: { not: null } },
+          where: { tenantId, isDeleted: false, totalValue: { not: null } },
         }),
         prisma.contract.count({
           where: {
             tenantId,
-            status: { not: "DELETED" },
+            isDeleted: false,
             OR: [
               { effectiveDate: { not: null } },
               { expirationDate: { not: null } },
@@ -240,7 +240,7 @@ export async function GET(request: NextRequest) {
           },
         }),
         prisma.contract.count({
-          where: { tenantId, status: { not: "DELETED" }, description: { not: null } },
+          where: { tenantId, isDeleted: false, description: { not: null } },
         }),
       ]),
     ]);
@@ -248,19 +248,19 @@ export async function GET(request: NextRequest) {
     // Value range counts (separate queries for clarity)
     const valueRanges = await Promise.all([
       prisma.contract.count({
-        where: { tenantId, status: { not: "DELETED" }, totalValue: { lt: 10000 } },
+        where: { tenantId, isDeleted: false, totalValue: { lt: 10000 } },
       }),
       prisma.contract.count({
-        where: { tenantId, status: { not: "DELETED" }, totalValue: { gte: 10000, lt: 50000 } },
+        where: { tenantId, isDeleted: false, totalValue: { gte: 10000, lt: 50000 } },
       }),
       prisma.contract.count({
-        where: { tenantId, status: { not: "DELETED" }, totalValue: { gte: 50000, lt: 100000 } },
+        where: { tenantId, isDeleted: false, totalValue: { gte: 50000, lt: 100000 } },
       }),
       prisma.contract.count({
-        where: { tenantId, status: { not: "DELETED" }, totalValue: { gte: 100000, lt: 500000 } },
+        where: { tenantId, isDeleted: false, totalValue: { gte: 100000, lt: 500000 } },
       }),
       prisma.contract.count({
-        where: { tenantId, status: { not: "DELETED" }, totalValue: { gte: 500000 } },
+        where: { tenantId, isDeleted: false, totalValue: { gte: 500000 } },
       }),
     ]);
 
@@ -376,7 +376,6 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("Error fetching contract stats:", error);
     return NextResponse.json(
       {
         success: false,

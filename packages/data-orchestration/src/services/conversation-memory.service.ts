@@ -17,8 +17,8 @@ try {
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
   }
-} catch (error) {
-  console.warn('Redis not available, using database fallback for conversation memory');
+} catch {
+  // Redis not available, using database fallback for conversation memory
 }
 
 // ============================================

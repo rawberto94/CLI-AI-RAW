@@ -130,8 +130,8 @@ export class SupplierAlertService {
         );
         if (positionAlert) alerts.push(positionAlert);
 
-      } catch (error) {
-        console.error(`Error detecting alerts for supplier ${supplier.id}:`, error);
+      } catch {
+        // Error detecting alerts for supplier - continue with next supplier
       }
     }
 
@@ -301,8 +301,7 @@ export class SupplierAlertService {
         detectedAt: new Date(),
         updatedAt: new Date()
       };
-    } catch (error) {
-      console.error(`Error detecting competitiveness decline for ${supplierId}:`, error);
+    } catch {
       return null;
     }
   }
@@ -374,8 +373,7 @@ export class SupplierAlertService {
         detectedAt: new Date(),
         updatedAt: new Date()
       };
-    } catch (error) {
-      console.error(`Error detecting accelerating increases for ${supplierId}:`, error);
+    } catch {
       return null;
     }
   }
@@ -445,8 +443,7 @@ export class SupplierAlertService {
         detectedAt: new Date(),
         updatedAt: new Date()
       };
-    } catch (error) {
-      console.error(`Error detecting position decline for ${supplierId}:`, error);
+    } catch {
       return null;
     }
   }

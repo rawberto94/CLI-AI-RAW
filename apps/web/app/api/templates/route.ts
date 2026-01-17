@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getApiTenantId } from '@/lib/tenant-server'
+import { getServerSession } from '@/lib/auth'
 
 // GET /api/templates - List all templates
 export async function GET(request: NextRequest) {
@@ -53,8 +54,7 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
     })
-  } catch (error) {
-    console.error('Error fetching templates:', error)
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch templates' },
       { status: 500 }
@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
 // POST /api/templates - Create a new template
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession()
     const tenantId = await getApiTenantId(request)
     const body = await request.json()
 
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
         clauses: clauses || [],
         structure: structure || {},
         metadata,
-        createdBy: 'system', // TODO: Get from session when authenticated
+        createdBy: session?.user?.id || 'system',
       },
     })
 
@@ -101,8 +102,7 @@ export async function POST(request: NextRequest) {
       success: true,
       template,
     })
-  } catch (error) {
-    console.error('Error creating template:', error)
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to create template' },
       { status: 500 }

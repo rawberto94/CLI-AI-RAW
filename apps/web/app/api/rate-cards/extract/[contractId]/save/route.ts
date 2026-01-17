@@ -75,10 +75,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
       );
     }
 
-    console.log(`💾 Saving ${body.rates.length} rate cards for contract ${contractId}`);
-
     // Get or create supplier
-    let supplier = await (prisma as any).rateCardSupplier.findFirst({
+    let supplier = await prisma.rateCardSupplier.findFirst({
       where: {
         tenantId,
         name: body.supplierInfo.name,
@@ -86,7 +84,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
     });
 
     if (!supplier) {
-      supplier = await (prisma as any).rateCardSupplier.create({
+      supplier = await prisma.rateCardSupplier.create({
         data: {
           tenantId,
           name: body.supplierInfo.name,
@@ -124,7 +122,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
       try {
         const converted = convertCurrency(rate.dailyRate, rate.currency);
 
-        const rateCard = await (prisma as any).rateCardEntry.create({
+        const rateCard = await prisma.rateCardEntry.create({
           data: {
             tenantId,
             source: 'PDF_EXTRACTION',
@@ -184,11 +182,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
         });
 
         savedRateCards.push(rateCard);
-        console.log(
-          `✅ Saved: ${rateCard.roleStandardized} - ${rateCard.dailyRate} ${rateCard.currency}/day`
-        );
       } catch (error) {
-        console.error(`❌ Error saving rate card for ${rate.roleOriginal}:`, error);
         errors.push({
           role: rate.roleOriginal,
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -205,7 +199,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
             headers: {
               'x-tenant-id': tenantId,
             },
-          }).catch((err) => console.error('Benchmark calculation failed:', err))
+          }).catch(() => { /* Benchmark calculation failed silently */ })
         )
       );
     }
@@ -220,8 +214,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
         errors.length > 0 ? ` (${errors.length} failed)` : ''
       }`,
     });
-  } catch (error) {
-    console.error('Error saving rate cards:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to save rate cards',

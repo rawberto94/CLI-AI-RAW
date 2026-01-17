@@ -94,8 +94,7 @@ export async function POST(req: Request) {
       success: results.filter(r => r.status === 'success').length,
       failed: results.filter(r => r.status === 'error').length
     }, { status: 201 })
-  } catch (e) {
-    console.error("Batch upload error:", e)
+  } catch (e: unknown) {
     return NextResponse.json({ error: `Upload failed: ${getErrorMessage(e)}` }, { status: 500 })
   }
 }

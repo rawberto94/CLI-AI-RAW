@@ -111,8 +111,7 @@ export async function GET(request: NextRequest) {
       success: true,
       comparisons,
     });
-  } catch (error) {
-    console.error('Error fetching rate comparisons:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

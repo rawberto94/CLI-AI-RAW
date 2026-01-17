@@ -196,8 +196,8 @@ export class RateCardEntryService {
     });
 
     // Trigger benchmark calculation asynchronously
-    this.triggerBenchmarkCalculation(entry.id).catch(err => {
-      console.error('Failed to trigger benchmark calculation:', err);
+    this.triggerBenchmarkCalculation(entry.id).catch(() => {
+      // Failed to trigger benchmark calculation - silent fail
     });
 
     return entry;
@@ -255,8 +255,8 @@ export class RateCardEntryService {
     });
 
     // Re-trigger benchmark calculation
-    this.triggerBenchmarkCalculation(id).catch(err => {
-      console.error('Failed to trigger benchmark calculation:', err);
+    this.triggerBenchmarkCalculation(id).catch(() => {
+      // Failed to trigger benchmark calculation - silent fail
     });
 
     return updated;
@@ -711,10 +711,9 @@ export class RateCardEntryService {
   /**
    * Trigger benchmark calculation (async)
    */
-  private async triggerBenchmarkCalculation(rateCardId: string): Promise<void> {
+  private async triggerBenchmarkCalculation(_rateCardId: string): Promise<void> {
     // This would typically queue a background job
-    // For now, we'll just log it
-    console.log(`Benchmark calculation queued for rate card: ${rateCardId}`);
+    // Placeholder for future implementation
   }
 }
 

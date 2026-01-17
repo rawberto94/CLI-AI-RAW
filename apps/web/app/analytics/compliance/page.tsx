@@ -54,8 +54,7 @@ export default function ComplianceAnalyticsPage() {
       
       const result = await response.json();
       setData(result.data || result);
-    } catch (error) {
-      console.error('Error fetching compliance data:', error);
+    } catch {
       toast.error('Failed to load compliance data');
       
       // Fallback data for development
@@ -193,8 +192,7 @@ export default function ComplianceAnalyticsPage() {
 
       toast.success('Issue marked as resolved');
       fetchComplianceData();
-    } catch (error) {
-      console.error('Error resolving issue:', error);
+    } catch {
       toast.error('Failed to resolve issue');
     }
   };
@@ -215,8 +213,7 @@ export default function ComplianceAnalyticsPage() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Report exported successfully');
-    } catch (error) {
-      console.error('Error exporting report:', error);
+    } catch {
       toast.error('Failed to export report');
     }
   };

@@ -137,7 +137,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       arbitrageOpportunities,
     });
   } catch (error: unknown) {
-    console.error('Error fetching cluster details:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -181,7 +180,6 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
       message: 'Cluster deleted successfully',
     });
   } catch (error: unknown) {
-    console.error('Error deleting cluster:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

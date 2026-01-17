@@ -34,7 +34,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   GitBranch,
-  Sparkles
+  Sparkles,
+  Scale,
+  Edit3,
+  Bot,
+  Zap,
+  FilePlus,
 } from 'lucide-react'
 import { ApprovalNotificationBell } from '@/components/workflows/ApprovalNotificationBell'
 
@@ -45,6 +50,7 @@ interface NavigationItem {
   badge?: string
   description?: string
   children?: NavigationItem[]
+  isPremium?: boolean
 }
 
 const navigationItems: NavigationItem[] = [
@@ -65,6 +71,82 @@ const navigationItems: NavigationItem[] = [
     href: '/upload',
     icon: Upload,
     description: 'Upload contracts'
+  },
+  {
+    name: 'AI Studio',
+    href: '/drafting',
+    icon: Sparkles,
+    description: 'AI-powered tools',
+    isPremium: true,
+    children: [
+      {
+        name: 'Smart Drafting',
+        href: '/drafting',
+        icon: Edit3,
+        description: 'Draft contracts'
+      },
+      {
+        name: 'AI Copilot',
+        href: '/drafting/copilot',
+        icon: Bot,
+        description: 'Premium AI assistance',
+        isPremium: true
+      },
+      {
+        name: 'AI Chat',
+        href: '/ai/chat',
+        icon: Sparkles,
+        description: 'Ask anything'
+      }
+    ]
+  },
+  {
+    name: 'Generate',
+    href: '/generate',
+    icon: Zap,
+    description: 'Create contracts',
+    isPremium: true,
+    badge: 'NEW',
+    children: [
+      {
+        name: 'New Contract',
+        href: '/generate?create=new',
+        icon: FileText,
+        description: 'Start from scratch'
+      },
+      {
+        name: 'From Template',
+        href: '/generate?create=template',
+        icon: FileText,
+        description: 'Use a template'
+      },
+      {
+        name: 'Renewal',
+        href: '/generate?create=renewal',
+        icon: GitBranch,
+        description: 'Renew existing'
+      },
+      {
+        name: 'Amendment',
+        href: '/generate?create=amendment',
+        icon: GitBranch,
+        description: 'Amend existing'
+      },
+      {
+        name: 'All Drafts',
+        href: '/generate',
+        icon: FileText,
+        description: 'View all drafts'
+      }
+    ]
+  },
+  {
+    name: 'Obligations',
+    href: '/obligations',
+    icon: Target,
+    description: 'Track obligations',
+    isPremium: true,
+    badge: 'NEW'
   },
   {
     name: 'Analytics',
@@ -120,8 +202,7 @@ const navigationItems: NavigationItem[] = [
     name: 'Approvals',
     href: '/approvals',
     icon: CheckCircle2,
-    description: 'Approval workflows',
-    badge: 'New'
+    description: 'Approval workflows'
   },
   {
     name: 'Workflows',
@@ -300,15 +381,22 @@ function MainNavigation() {
                                   'group flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200',
                                   isActive(child.href)
                                     ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-100/50'
+                                    : child.isPremium
+                                    ? 'text-purple-600 hover:bg-purple-50 hover:text-purple-700'
                                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                                 )}
                               >
                                 <child.icon className={cn(
                                   'h-3.5 w-3.5 flex-shrink-0 transition-colors',
-                                  isActive(child.href) ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'
+                                  isActive(child.href) ? 'text-blue-600' : child.isPremium ? 'text-purple-500' : 'text-slate-400 group-hover:text-slate-600'
                                 )} />
                                 <span>{child.name}</span>
-                                {child.badge && (
+                                {child.isPremium && (
+                                  <Badge className="ml-auto text-[10px] px-1 py-0 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+                                    AI
+                                  </Badge>
+                                )}
+                                {child.badge && !child.isPremium && (
                                   <Badge className="ml-auto text-[10px] bg-slate-100 text-slate-600 border-0">
                                     {child.badge}
                                   </Badge>
@@ -329,6 +417,8 @@ function MainNavigation() {
                       'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isItemActive
                         ? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 text-blue-700 shadow-sm border border-blue-200/50'
+                        : item.isPremium
+                        ? 'text-purple-700 hover:bg-purple-50 hover:text-purple-900 border border-purple-100/50'
                         : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                     )}
                   >
@@ -336,6 +426,8 @@ function MainNavigation() {
                       'p-1.5 rounded-lg transition-all duration-200',
                       isItemActive
                         ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                        : item.isPremium
+                        ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/30'
                         : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
                     )}>
                       <item.icon className="h-4 w-4 flex-shrink-0" />

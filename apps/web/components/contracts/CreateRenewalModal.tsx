@@ -207,8 +207,7 @@ export function CreateRenewalModal({
       setStep('success');
       toast.success('Renewal contract created successfully!');
       onRenewalCreated(result.renewal);
-    } catch (error) {
-      console.error('Error creating renewal:', error);
+    } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Failed to create renewal');
     } finally {
       setIsSubmitting(false);
@@ -387,7 +386,7 @@ export function CreateRenewalModal({
                         <Calendar
                           mode="single"
                           selected={expirationDate}
-                          onSelect={setExpirationDate}
+                          onSelect={(date) => setExpirationDate(date as Date | undefined)}
                           initialFocus
                           disabled={(date) => effectiveDate ? date < effectiveDate : false}
                         />

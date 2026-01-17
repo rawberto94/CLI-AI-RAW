@@ -79,9 +79,7 @@ export function SupplierPerformanceDashboard() {
         const result = await response.json();
         setSuppliers(result.suppliers || []);
         setPerformanceTrends(result.trends || []);
-      } catch (error) {
-        console.error('Error fetching supplier performance:', error);
-
+      } catch {
         // Fallback data
         setSuppliers([
           {

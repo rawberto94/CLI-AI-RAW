@@ -76,7 +76,7 @@ export const LazyRateCardDataRepository = dynamic(
 
 // Dashboard components
 export const LazyCostSavingsDashboardWidget = dynamic(
-  () => import('@/components/dashboard/CostSavingsDashboardWidget').then(mod => mod.CostSavingsDashboardWidget),
+  () => import('@/components/dashboard/SavingsTrackerWidget').then(mod => mod.SavingsTrackerWidget),
   {
     loading: () => (
       <div className="w-full h-[300px] bg-muted animate-pulse rounded-lg" />

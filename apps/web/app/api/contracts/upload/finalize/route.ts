@@ -48,8 +48,6 @@ export async function POST(req: NextRequest) {
     // Use only the basename to prevent directory traversal
     const safeFileName = basename(sanitizePath(fileName)) || `contract-${Date.now()}`;
 
-    console.log(`🔄 Finalizing upload: ${uploadId}`);
-
     // Get chunks directory
     const chunksDir = join(process.cwd(), 'uploads', 'chunks', uploadId);
     
@@ -79,8 +77,6 @@ export async function POST(req: NextRequest) {
       }))
       .sort((a: { name: string; index: number }, b: { name: string; index: number }) => a.index - b.index);
 
-    console.log(`📦 Combining ${chunks.length} chunks...`);
-
     // Combine chunks in order
     const chunkBuffers: Buffer[] = [];
     for (const chunk of chunks) {
@@ -94,7 +90,6 @@ export async function POST(req: NextRequest) {
     await writeFile(finalFilePath, finalBuffer);
 
     const fileSize = finalBuffer.length;
-    console.log(`✅ File combined: ${fileSize} bytes`);
 
     // Detect MIME type
     const ext = safeFileName.toLowerCase().substring(safeFileName.lastIndexOf('.'));
@@ -122,8 +117,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log(`✅ Contract created: ${contract.id}`);
-
     await publishRealtimeEvent({
       event: 'contract:created',
       data: {
@@ -146,9 +139,8 @@ export async function POST(req: NextRequest) {
     // Clean up chunks
     try {
       await rm(chunksDir, { recursive: true, force: true });
-      console.log(`🧹 Cleaned up chunks directory`);
-    } catch (error) {
-      console.warn('Failed to clean up chunks:', error);
+    } catch {
+      // Silently continue if cleanup fails
     }
 
     return NextResponse.json({
@@ -160,8 +152,7 @@ export async function POST(req: NextRequest) {
       status: 'PROCESSING',
       message: 'Upload completed successfully',
     });
-  } catch (error) {
-    console.error('Failed to finalize upload:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to finalize upload',

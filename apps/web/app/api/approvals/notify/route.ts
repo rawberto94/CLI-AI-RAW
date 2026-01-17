@@ -183,12 +183,6 @@ export async function POST(request: NextRequest) {
 
     const emailContent = templateFn(notification);
 
-    // In production, integrate with email service (SendGrid, AWS SES, etc.)
-    console.log('📧 Email notification:', {
-      to: notification.recipientEmail,
-      subject: emailContent.subject,
-    });
-
     // Send email via SendGrid
     const { sendEmail } = await import('@/lib/email/email-service');
     const emailSent = await sendEmail({
@@ -198,10 +192,6 @@ export async function POST(request: NextRequest) {
       from: 'notifications@contigo.ch',
     });
     
-    if (!emailSent) {
-      console.warn('⚠️ Failed to send email notification');
-    }
-
     // Also create a notification record in database for in-app notifications
     // This would be stored in a notifications table
 
@@ -215,8 +205,7 @@ export async function POST(request: NextRequest) {
         inAppCreated: true,
       },
     });
-  } catch (error) {
-    console.error('Error sending approval notification:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to send notification' },
       { status: 500 }

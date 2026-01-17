@@ -16,8 +16,6 @@ export async function POST(
 
     const tenantId = await getServerTenantId()
 
-    console.log(`🔍 RAG processing request for contract: ${contractId} (semantic: ${useSemanticChunking})`)
-
     // Get contract with text
     const contract = await prisma.contract.findUnique({
       where: { id: contractId },
@@ -45,8 +43,6 @@ export async function POST(
       )
     }
 
-    console.log(`📄 Contract found: ${contract.fileName} (${contract.rawText.length} chars)`)
-
     let result: { chunksCreated: number; embeddingsGenerated: number }
 
     if (useSemanticChunking) {
@@ -64,7 +60,6 @@ export async function POST(
       const { chunkText, embedChunks } = await import('clients-rag')
       
       const chunks = chunkText(contract.rawText)
-      console.log(`📦 Created ${chunks.length} text chunks (legacy)`)
 
       if (chunks.length === 0) {
         return NextResponse.json({
@@ -77,7 +72,6 @@ export async function POST(
         })
       }
 
-      console.log(`🧠 Generating embeddings...`)
       const embeddedChunks = await embedChunks(contractId, tenantId, chunks, {
         apiKey: process.env['OPENAI_API_KEY'],
         model: process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small'
@@ -90,8 +84,6 @@ export async function POST(
     }
 
     const processingTime = Date.now() - startTime
-
-    console.log(`✅ RAG processing complete: ${result.embeddingsGenerated} embeddings in ${processingTime}ms`)
 
     return NextResponse.json({
       success: true,
@@ -108,8 +100,7 @@ export async function POST(
       },
     })
 
-  } catch (error) {
-    console.error('RAG processing error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Unknown error',

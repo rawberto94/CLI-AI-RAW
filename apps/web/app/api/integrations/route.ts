@@ -66,8 +66,7 @@ export async function GET(request: NextRequest) {
         stats,
       },
     });
-  } catch (error) {
-    console.error('Error fetching integrations:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch integrations' },
       { status: 500 }

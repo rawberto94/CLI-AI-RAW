@@ -37,8 +37,7 @@ export async function GET(request: NextRequest) {
 
     const health = await calculateContractHealth(contractId);
     return NextResponse.json(health);
-  } catch (error) {
-    console.error('Health score error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: (error as Error).message },
       { status: 500 }
@@ -80,8 +79,7 @@ export async function POST(request: NextRequest) {
       failed: scores.filter(s => !s.success).length,
       scores,
     });
-  } catch (error) {
-    console.error('Batch health score error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: (error as Error).message },
       { status: 500 }

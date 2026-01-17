@@ -63,16 +63,6 @@ function storeMetric(metric: PerformanceMetric): void {
   if (metricsStore.length > MAX_STORED_METRICS) {
     metricsStore.shift();
   }
-  
-  // Log in development
-  if (process.env.NODE_ENV === 'development') {
-    const color = metric.rating === 'good' ? '#22c55e' : 
-                  metric.rating === 'needs-improvement' ? '#f59e0b' : '#ef4444';
-    console.log(
-      `%c[Performance] ${metric.name}: ${metric.value.toFixed(2)}ms (${metric.rating})`,
-      `color: ${color}; font-weight: bold;`
-    );
-  }
 }
 
 // =====================
@@ -300,11 +290,8 @@ export function useRenderTime(componentName: string) {
   const renderStart = useRef(performance.now());
 
   useEffect(() => {
-    const renderTime = performance.now() - renderStart.current;
-    
-    if (process.env.NODE_ENV === 'development' && renderTime > 16) {
-      console.warn(`[Slow Render] ${componentName}: ${renderTime.toFixed(2)}ms`);
-    }
+    // Track render time for monitoring
+    const _renderTime = performance.now() - renderStart.current;
   }, [componentName]);
 }
 
@@ -339,8 +326,8 @@ export function WebVitalsMonitor({
 }: { 
   debug?: boolean;
 }) {
-  useWebVitals(debug ? (metric) => {
-    console.log('[WebVitals]', metric);
+  useWebVitals(debug ? (_metric) => {
+    // Debug mode enabled but logging removed
   } : undefined);
 
   return null;

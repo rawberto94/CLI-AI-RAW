@@ -64,8 +64,8 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
         })));
         setUnreadCount(data.unreadCount);
       }
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch {
+      // Error fetching notifications
     } finally {
       setLoading(false);
     }
@@ -78,8 +78,8 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
         const data = await response.json();
         setUnreadCount(data.unreadCount);
       }
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
+    } catch {
+      // Error fetching unread count
     }
   };
 
@@ -99,8 +99,8 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+    } catch {
+      // Error marking notification as read
     }
   };
 
@@ -118,8 +118,8 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
         );
         setUnreadCount(0);
       }
-    } catch (error) {
-      console.error('Error marking all as read:', error);
+    } catch {
+      // Error marking all as read
     }
   };
 
@@ -176,27 +176,33 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
+            aria-hidden="true"
           />
 
           {/* Panel */}
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
+          <div 
+            className="absolute right-0 mt-2 w-full max-w-[24rem] sm:w-96 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-gray-200 dark:border-slate-700 z-50 max-h-[600px] flex flex-col"
+            role="dialog"
+            aria-label="Notifications"
+          >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Notifications</h3>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
+              <h3 className="font-semibold text-gray-900 dark:text-slate-100">Notifications</h3>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
                   >
                     Mark all read
                   </button>
                 )}
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-gray-100 rounded"
+                  aria-label="Close notifications"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-slate-800 rounded"
                 >
-                  <X className="h-4 w-4 text-gray-500" />
+                  <X className="h-4 w-4 text-gray-500 dark:text-slate-400" />
                 </button>
               </div>
             </div>
@@ -205,20 +211,20 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" role="status" aria-label="Loading notifications" />
                 </div>
               ) : notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-gray-500">
-                  <Bell className="h-12 w-12 mb-2 opacity-50" />
+                <div className="flex flex-col items-center justify-center p-8 text-gray-500 dark:text-slate-400">
+                  <Bell className="h-12 w-12 mb-2 opacity-50" aria-hidden="true" />
                   <p className="text-sm">No notifications</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-gray-100 dark:divide-slate-800">
                   {notifications.map(notification => (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${
-                        !notification.readAt ? 'bg-blue-50' : ''
+                      className={`p-4 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-l-4 ${
+                        !notification.readAt ? 'bg-blue-50 dark:bg-blue-950/30' : ''
                       } ${getSeverityColor(notification.severity)}`}
                       onClick={() => {
                         if (!notification.readAt) {

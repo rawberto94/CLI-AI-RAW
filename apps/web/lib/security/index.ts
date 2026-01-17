@@ -118,6 +118,16 @@ export {
   type GeoLocation,
 } from './intrusion-detection';
 
+// Account Lockout
+export {
+  AccountLockout,
+  getAccountLockout,
+  checkLockoutStatus,
+  type LockoutConfig,
+  type LockoutStatus,
+  type AttemptRecord,
+} from './account-lockout';
+
 // Backup Encryption
 export {
   BackupEncryptionService,

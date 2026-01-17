@@ -338,7 +338,7 @@ export function ExtractionAccuracyCard({
         setStats(data.data)
       }
     } catch {
-      console.warn('Could not fetch accuracy stats')
+      // Silently handle fetch failure
     } finally {
       setIsLoading(false)
     }

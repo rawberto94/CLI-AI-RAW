@@ -101,9 +101,6 @@ export async function POST(
     }
 
     // Perform extraction
-    console.log(`🔍 Extracting metadata for contract ${contractId} using tenant schema`);
-    const startTime = Date.now();
-    
     const result = await extractor.extractMetadata(
       documentText,
       targetSchema,
@@ -119,17 +116,12 @@ export async function POST(
     // Save extraction results
     await saveExtractionResults(contractId, extractionResult);
 
-    console.log(`✅ Extraction completed in ${Date.now() - startTime}ms`);
-    console.log(`   - Fields: ${result.summary.extractedFields}/${result.summary.totalFields}`);
-    console.log(`   - Avg Confidence: ${Math.round(result.summary.averageConfidence * 100)}%`);
-
     return NextResponse.json({
       success: true,
       data: extractionResult
     });
 
-  } catch (error) {
-    console.error('Metadata extraction error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Failed to extract metadata',
@@ -165,8 +157,7 @@ export async function GET(
       data: results
     });
 
-  } catch (error) {
-    console.error('Error retrieving extraction results:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to retrieve extraction results' },
       { status: 500 }
@@ -235,8 +226,7 @@ export async function PUT(
       }
     });
 
-  } catch (error) {
-    console.error('Error applying metadata:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to apply metadata' },
       { status: 500 }
@@ -271,8 +261,7 @@ async function getContractText(contractId: string): Promise<string | null> {
     }
 
     return null;
-  } catch (error) {
-    console.error('Error getting contract text:', error);
+  } catch {
     return null;
   }
 }
@@ -336,10 +325,7 @@ async function saveExtractionResults(
         }
       });
     }
-
-    console.log(`💾 Saved extraction results for contract ${contractId}`);
-  } catch (error) {
-    console.error('Error saving extraction results:', error);
+  } catch {
     // Don't throw - extraction was still successful
   }
 }
@@ -357,8 +343,7 @@ async function getExtractionResults(
 
     const customFields = metadata?.customFields as Record<string, unknown> | null;
     return (customFields?._aiExtraction as Record<string, unknown>) || null;
-  } catch (error) {
-    console.error('Error getting extraction results:', error);
+  } catch {
     return null;
   }
 }
@@ -472,10 +457,7 @@ async function applyMetadataToContract(
         });
       }
     });
-
-    console.log(`✅ Applied ${Object.keys(appliedFields).length} fields to contract ${contractId}`);
-  } catch (error) {
-    console.error('Error applying metadata:', error);
+  } catch (error: unknown) {
     throw error;
   }
 }

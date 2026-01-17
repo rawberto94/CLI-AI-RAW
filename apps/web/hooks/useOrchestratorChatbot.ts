@@ -253,10 +253,9 @@ ${orchestratorSuggestions.slice(0, 3).map((s) => `- **${s.type}** (${s.relevance
         };
 
         setMessages((prev) => [...prev, botMessage]);
-      } catch (error: any) {
-        if (error.name === 'AbortError') return;
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name === 'AbortError') return;
         
-        console.error('Chat error:', error);
         const errorMessage: ChatMessage = {
           id: `error-${Date.now()}`,
           role: 'assistant',

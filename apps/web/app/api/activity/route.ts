@@ -98,8 +98,7 @@ export async function GET(request: NextRequest) {
       offset,
       hasMore: offset + limit < total,
     });
-  } catch (error) {
-    console.error('Error fetching activities:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch activities' },
       { status: 500 }
@@ -154,8 +153,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ activity }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating activity:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create activity' },
       { status: 500 }

@@ -74,7 +74,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      console.log("🔍 Suggesting categories for text preview...");
       const result = await suggestCategories(text, tenantId);
 
       return NextResponse.json({
@@ -110,8 +109,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      console.log(`🏷️ Bulk categorizing ${contractIds.length} contracts...`);
-
       const result: BulkCategorizationResult = await categorizeContracts(
         contractIds,
         tenantId,
@@ -137,8 +134,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
       }
-
-      console.log(`🏷️ Categorizing contract ${contractId}...`);
 
       const result: CategorizationResult = await categorizeContract({
         contractId,
@@ -171,8 +166,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 }
       );
     }
-  } catch (error) {
-    console.error("Categorization API error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

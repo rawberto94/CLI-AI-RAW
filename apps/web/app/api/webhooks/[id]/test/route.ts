@@ -109,8 +109,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         details: { message: fetchError instanceof Error ? fetchError.message : 'Unknown error', deliveryTimeMs: deliveryTime },
       }, { status: 422 });
     }
-  } catch (error) {
-    console.error('Error testing webhook:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to test webhook' }, { status: 500 });
   }
 }

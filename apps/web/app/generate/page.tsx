@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import {
   FileText,
   Plus,
@@ -27,6 +29,9 @@ import {
   DollarSign,
   Users,
   Zap,
+  Bot,
+  Scale,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageBreadcrumb } from '@/components/navigation';
@@ -88,192 +93,193 @@ const categoryLabels: Record<TemplateCategory, string> = {
 };
 
 // ====================
-// MOCK DATA
+// DATA FETCHING HOOKS
 // ====================
 
-const mockDrafts: ContractDraft[] = [
-  {
-    id: '1',
-    tenantId: 'demo',
-    title: 'Accenture Consulting MSA 2025',
-    type: 'MSA',
-    description: 'Master Service Agreement for consulting services',
-    sourceType: 'TEMPLATE',
-    templateId: 't1',
-    status: 'IN_REVIEW',
-    version: 3,
-    content: { sections: [] },
-    variables: {},
-    isLocked: false,
-    currency: 'USD',
-    estimatedValue: 2500000,
-    proposedStartDate: new Date('2025-02-01'),
-    proposedEndDate: new Date('2027-01-31'),
-    createdBy: 'user1',
-    createdAt: new Date('2025-01-10'),
-    updatedAt: new Date('2025-01-15'),
-    externalParties: [{ name: 'Accenture', type: 'SUPPLIER', signatories: [] }],
-  },
-  {
-    id: '2',
-    tenantId: 'demo',
-    title: 'Deloitte SOW - Digital Transformation',
-    type: 'SOW',
-    description: 'Statement of Work for digital transformation project',
-    sourceType: 'TEMPLATE',
-    templateId: 't2',
-    status: 'PENDING_APPROVAL',
-    version: 5,
-    content: { sections: [] },
-    variables: {},
-    isLocked: true,
-    lockedBy: 'approver1',
-    currency: 'USD',
-    estimatedValue: 850000,
-    proposedStartDate: new Date('2025-03-01'),
-    proposedEndDate: new Date('2025-08-31'),
-    createdBy: 'user2',
-    createdAt: new Date('2025-01-08'),
-    updatedAt: new Date('2025-01-14'),
-    externalParties: [{ name: 'Deloitte', type: 'SUPPLIER', signatories: [] }],
-  },
-  {
-    id: '3',
-    tenantId: 'demo',
-    title: 'TCS NDA - Project Phoenix',
-    type: 'NDA',
-    description: 'Mutual NDA for Project Phoenix discussions',
-    sourceType: 'TEMPLATE',
-    status: 'DRAFT',
-    version: 1,
-    content: { sections: [] },
-    variables: {},
-    isLocked: false,
-    currency: 'USD',
-    createdBy: 'user1',
-    createdAt: new Date('2025-01-14'),
-    updatedAt: new Date('2025-01-14'),
-    externalParties: [{ name: 'TCS', type: 'SUPPLIER', signatories: [] }],
-  },
-  {
-    id: '4',
-    tenantId: 'demo',
-    title: 'Infosys Amendment #3 - Rate Revision',
-    type: 'AMENDMENT',
-    description: 'Rate card amendment for existing MSA',
-    sourceType: 'AMENDMENT',
-    sourceContractId: 'c1',
-    status: 'APPROVED',
-    version: 2,
-    content: { sections: [] },
-    variables: {},
-    isLocked: false,
-    currency: 'CHF',
-    estimatedValue: 150000,
-    createdBy: 'user3',
-    createdAt: new Date('2025-01-05'),
-    updatedAt: new Date('2025-01-12'),
-    approvedAt: new Date('2025-01-12'),
-    externalParties: [{ name: 'Infosys', type: 'SUPPLIER', signatories: [] }],
-  },
-  {
-    id: '5',
-    tenantId: 'demo',
-    title: 'Cognizant MSA Renewal 2025',
-    type: 'RENEWAL',
-    description: 'Annual renewal for existing master agreement',
-    sourceType: 'RENEWAL',
-    sourceContractId: 'c2',
-    status: 'PENDING_SIGNATURE',
-    version: 4,
-    content: { sections: [] },
-    variables: {},
-    isLocked: true,
-    currency: 'EUR',
-    estimatedValue: 3200000,
-    proposedStartDate: new Date('2025-04-01'),
-    proposedEndDate: new Date('2028-03-31'),
-    createdBy: 'user1',
-    createdAt: new Date('2025-01-02'),
-    updatedAt: new Date('2025-01-13'),
-    submittedAt: new Date('2025-01-10'),
-    externalParties: [{ name: 'Cognizant', type: 'SUPPLIER', signatories: [] }],
-  },
-];
+interface DraftsMetrics {
+  total: number;
+  draft: number;
+  inReview: number;
+  pendingApproval: number;
+  approved: number;
+  finalized: number;
+}
 
-const mockTemplates: Template[] = [
-  {
-    id: 't1',
-    tenantId: 'demo',
-    name: 'Standard MSA',
-    description: 'Master Service Agreement template for consulting services',
-    category: 'MSA',
-    content: { sections: [] },
-    variables: [],
-    defaultClauses: [],
-    version: 2,
-    isActive: true,
-    isPublic: false,
-    usageCount: 45,
-    estimatedTime: 30,
-    createdBy: 'admin',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-06-15'),
-    complexity: 'moderate',
-    tags: ['consulting', 'services', 'standard'],
-  },
-  {
-    id: 't2',
-    tenantId: 'demo',
-    name: 'Project SOW',
-    description: 'Statement of Work for project-based engagements',
-    category: 'SOW',
-    content: { sections: [] },
-    variables: [],
-    defaultClauses: [],
-    version: 3,
-    isActive: true,
-    isPublic: false,
-    usageCount: 78,
-    estimatedTime: 20,
-    createdBy: 'admin',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-08-20'),
-    complexity: 'simple',
-    tags: ['project', 'deliverables'],
-  },
-  {
-    id: 't3',
-    tenantId: 'demo',
-    name: 'Mutual NDA',
-    description: 'Standard mutual non-disclosure agreement',
-    category: 'NDA',
-    content: { sections: [] },
-    variables: [],
-    defaultClauses: [],
-    version: 1,
-    isActive: true,
-    isPublic: false,
-    usageCount: 156,
-    estimatedTime: 10,
-    createdBy: 'admin',
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-03-10'),
-    complexity: 'simple',
-    tags: ['confidentiality', 'mutual'],
-  },
-];
+interface DraftsResponse {
+  success: boolean;
+  data?: {
+    drafts: ContractDraft[];
+    total: number;
+    metrics: DraftsMetrics;
+  };
+  error?: string;
+}
+
+interface TemplatesResponse {
+  success: boolean;
+  templates?: Template[];
+  total?: number;
+  error?: string;
+}
+
+function useDrafts() {
+  const [drafts, setDrafts] = useState<ContractDraft[]>([]);
+  const [metrics, setMetrics] = useState<DraftsMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDrafts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/drafts?limit=100&sortBy=updatedAt&sortOrder=desc');
+      const json: DraftsResponse = await response.json();
+      
+      if (json.success && json.data) {
+        // Map API response to ContractDraft format
+        const mappedDrafts: ContractDraft[] = json.data.drafts.map((d: Record<string, unknown>) => ({
+          id: d.id as string,
+          tenantId: d.tenantId as string,
+          title: d.title as string,
+          type: (d.type as TemplateCategory) || 'MSA',
+          description: d.content ? String(d.content).substring(0, 100) : undefined,
+          sourceType: (d.sourceType as string) || 'NEW',
+          templateId: d.templateId as string | undefined,
+          sourceContractId: d.sourceContractId as string | undefined,
+          status: (d.status as DraftStatus) || 'DRAFT',
+          version: (d.version as number) || 1,
+          content: d.clauses || { sections: [] },
+          variables: (d.variables as Record<string, unknown>) || {},
+          isLocked: (d.isLocked as boolean) || false,
+          lockedBy: d.lockedBy as string | undefined,
+          currency: (d.currency as string) || 'USD',
+          estimatedValue: d.estimatedValue ? Number(d.estimatedValue) : undefined,
+          proposedStartDate: d.proposedStartDate ? new Date(d.proposedStartDate as string) : undefined,
+          proposedEndDate: d.proposedEndDate ? new Date(d.proposedEndDate as string) : undefined,
+          createdBy: d.createdBy as string,
+          createdAt: new Date(d.createdAt as string),
+          updatedAt: new Date(d.updatedAt as string),
+          externalParties: (d.externalParties as Array<{ name: string; type: string; signatories: unknown[] }>) || [],
+        }));
+        setDrafts(mappedDrafts);
+        setMetrics(json.data.metrics);
+        setError(null);
+      } else {
+        setDrafts([]);
+        setError(json.error || 'Failed to fetch drafts');
+      }
+    } catch (err) {
+      console.error('Error fetching drafts:', err);
+      setDrafts([]);
+      setError('Failed to fetch drafts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDrafts();
+  }, [fetchDrafts]);
+
+  return { drafts, metrics, loading, error, refetch: fetchDrafts };
+}
+
+function useTemplates() {
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/templates?limit=100&isActive=true');
+      const json: TemplatesResponse = await response.json();
+      
+      if (json.success && json.templates) {
+        // Map API response to Template format
+        const mappedTemplates: Template[] = json.templates.map((t: Record<string, unknown>) => ({
+          id: t.id as string,
+          tenantId: t.tenantId as string,
+          name: t.name as string,
+          description: t.description as string | undefined,
+          category: (t.category as TemplateCategory) || 'OTHER',
+          content: t.structure || { sections: [] },
+          variables: [],
+          defaultClauses: (t.clauses as unknown[]) || [],
+          version: (t.version as number) || 1,
+          isActive: (t.isActive as boolean) ?? true,
+          isPublic: false,
+          usageCount: (t.usageCount as number) || 0,
+          estimatedTime: 15, // Default estimate
+          createdBy: t.createdBy as string,
+          createdAt: new Date(t.createdAt as string),
+          updatedAt: new Date(t.updatedAt as string),
+          complexity: 'moderate' as const,
+          tags: [],
+        }));
+        setTemplates(mappedTemplates);
+        setError(null);
+      } else {
+        setTemplates([]);
+        setError(json.error || 'Failed to fetch templates');
+      }
+    } catch (err) {
+      console.error('Error fetching templates:', err);
+      setTemplates([]);
+      setError('Failed to fetch templates');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  return { templates, loading, error, refetch: fetchTemplates };
+}
 
 // ====================
 // COMPONENTS
 // ====================
 
-function QuickStats() {
+function QuickStats({ metrics, drafts }: { metrics: DraftsMetrics | null; drafts: ContractDraft[] }) {
+  // Calculate total value from drafts
+  const totalValue = drafts.reduce((sum, d) => sum + (d.estimatedValue || 0), 0);
+  const formattedValue = totalValue >= 1000000 
+    ? `$${(totalValue / 1000000).toFixed(1)}M` 
+    : totalValue >= 1000 
+      ? `$${(totalValue / 1000).toFixed(0)}K` 
+      : `$${totalValue}`;
+
   const stats = [
-    { label: 'Active Drafts', value: 12, change: '+3 this week', icon: FileText, color: 'text-blue-600' },
-    { label: 'Pending Approval', value: 5, change: '2 urgent', icon: Clock, color: 'text-amber-600' },
-    { label: 'Avg. Cycle Time', value: '4.2d', change: '-12% vs last month', icon: Zap, color: 'text-green-600' },
-    { label: 'This Month Value', value: '$6.7M', change: '23 contracts', icon: DollarSign, color: 'text-purple-600' },
+    { 
+      label: 'Active Drafts', 
+      value: metrics?.draft || 0, 
+      change: `${metrics?.total || 0} total`, 
+      icon: FileText, 
+      color: 'text-blue-600' 
+    },
+    { 
+      label: 'Pending Approval', 
+      value: (metrics?.pendingApproval || 0) + (metrics?.inReview || 0), 
+      change: `${metrics?.inReview || 0} in review`, 
+      icon: Clock, 
+      color: 'text-amber-600' 
+    },
+    { 
+      label: 'Approved', 
+      value: metrics?.approved || 0, 
+      change: `${metrics?.finalized || 0} finalized`, 
+      icon: CheckCircle2, 
+      color: 'text-green-600' 
+    },
+    { 
+      label: 'Total Value', 
+      value: formattedValue, 
+      change: `${drafts.length} contracts`, 
+      icon: DollarSign, 
+      color: 'text-purple-600' 
+    },
   ];
 
   return (
@@ -581,30 +587,101 @@ function formatRelativeTime(date: Date): string {
 // ====================
 
 export default function ContractGenerationPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activeTab, setActiveTab] = useState('drafts');
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [createType, setCreateType] = useState<'new' | 'template' | 'renewal' | 'amendment' | null>(null);
 
+  // Fetch real data
+  const { drafts, metrics, loading: draftsLoading, error: draftsError, refetch: refetchDrafts } = useDrafts();
+  const { templates, loading: templatesLoading, error: templatesError, refetch: refetchTemplates } = useTemplates();
+
+  // Handle URL params for direct create links
+  useEffect(() => {
+    const create = searchParams?.get('create');
+    if (create) {
+      handleCreateSelect(create as 'new' | 'template' | 'renewal' | 'amendment');
+    }
+  }, [searchParams]);
+
   const handleCreateSelect = useCallback((type: 'new' | 'template' | 'renewal' | 'amendment') => {
     setCreateType(type);
-    if (type === 'template') {
-      setShowTemplateDialog(true);
+    switch (type) {
+      case 'new':
+        // Navigate to AI Copilot for blank document
+        router.push('/drafting/copilot?mode=blank');
+        break;
+      case 'template':
+        setShowTemplateDialog(true);
+        setActiveTab('templates');
+        break;
+      case 'renewal':
+        // Navigate to contracts list with renewal filter
+        router.push('/contracts?action=renewal');
+        break;
+      case 'amendment':
+        // Navigate to contracts list with amendment filter
+        router.push('/contracts?action=amendment');
+        break;
     }
-    // Handle other types...
-  }, []);
+  }, [router]);
 
   const handleTemplateSelect = useCallback((template: Template) => {
-    // Template selected for generation
+    // Template selected for generation - navigate to drafting with template
     setShowTemplateDialog(false);
-    // Navigate to draft editor with template
-  }, []);
+    router.push(`/drafting/copilot?template=${template.id}&name=${encodeURIComponent(template.name)}`);
+  }, [router]);
 
-  const filteredDrafts = mockDrafts.filter(draft => 
+  const handleDraftAction = useCallback(async (draftId: string, action: 'view' | 'edit' | 'submit' | 'delete') => {
+    switch (action) {
+      case 'view':
+        router.push(`/drafting/${draftId}`);
+        break;
+      case 'edit':
+        router.push(`/drafting/copilot?draft=${draftId}`);
+        break;
+      case 'submit':
+        // Submit for approval
+        try {
+          const response = await fetch(`/api/drafts/${draftId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'PENDING_APPROVAL' }),
+          });
+          if (response.ok) {
+            toast.success('Draft submitted for approval');
+            refetchDrafts();
+          }
+        } catch {
+          toast.error('Failed to submit draft');
+        }
+        break;
+      case 'delete':
+        // Delete draft
+        try {
+          const response = await fetch(`/api/drafts/${draftId}`, {
+            method: 'DELETE',
+          });
+          if (response.ok) {
+            toast.success('Draft deleted');
+            refetchDrafts();
+          }
+        } catch {
+          toast.error('Failed to delete draft');
+        }
+        break;
+    }
+  }, [router, refetchDrafts]);
+
+  const filteredDrafts = drafts.filter(draft => 
     draft.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    draft.externalParties?.[0]?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    draft.externalParties?.[0]?.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const isLoading = draftsLoading || templatesLoading;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -618,14 +695,19 @@ export default function ContractGenerationPage() {
             Create, manage, and track contract drafts through the approval workflow
           </p>
         </div>
-        <Button size="lg" className="gap-2">
-          <Plus className="h-4 w-4" />
-          New Contract
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="icon" onClick={() => { refetchDrafts(); refetchTemplates(); }} disabled={isLoading}>
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          </Button>
+          <Button size="lg" className="gap-2" onClick={() => handleCreateSelect('template')}>
+            <Plus className="h-4 w-4" />
+            New Contract
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
-      <QuickStats />
+      <QuickStats metrics={metrics} drafts={drafts} />
 
       {/* AI Assistant Banner */}
       <AIAssistantBanner />
@@ -640,14 +722,23 @@ export default function ContractGenerationPage() {
             <TabsTrigger value="drafts" className="gap-2">
               <FileText className="h-4 w-4" />
               My Drafts
+              {metrics && metrics.draft > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">{metrics.draft}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="pending" className="gap-2">
               <Clock className="h-4 w-4" />
               Pending Approval
+              {metrics && (metrics.pendingApproval + metrics.inReview) > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">{metrics.pendingApproval + metrics.inReview}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="templates" className="gap-2">
               <Copy className="h-4 w-4" />
               Templates
+              {templates.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5">{templates.length}</Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -690,55 +781,110 @@ export default function ContractGenerationPage() {
         </div>
 
         <TabsContent value="drafts" className="space-y-4">
-          <div className={cn(
-            'grid gap-4',
-            viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'
-          )}>
-            <AnimatePresence mode="popLayout">
-              {filteredDrafts.map((draft) => (
-                <DraftCard key={draft.id} draft={draft} />
-              ))}
-            </AnimatePresence>
-          </div>
-          
-          {filteredDrafts.length === 0 && (
+          {draftsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : draftsError ? (
             <Card className="p-12 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-semibold mb-2">No drafts found</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {searchQuery ? 'Try adjusting your search' : 'Create your first contract draft to get started'}
-              </p>
-              <Button onClick={() => handleCreateSelect('template')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Draft
+              <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
+              <h3 className="font-semibold mb-2">Failed to load drafts</h3>
+              <p className="text-sm text-muted-foreground mb-4">{draftsError}</p>
+              <Button onClick={refetchDrafts}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
               </Button>
             </Card>
+          ) : (
+            <>
+              <div className={cn(
+                'grid gap-4',
+                viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'
+              )}>
+                <AnimatePresence mode="popLayout">
+                  {filteredDrafts.map((draft) => (
+                    <DraftCard key={draft.id} draft={draft} />
+                  ))}
+                </AnimatePresence>
+              </div>
+              
+              {filteredDrafts.length === 0 && (
+                <Card className="p-12 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-semibold mb-2">No drafts found</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {searchQuery ? 'Try adjusting your search' : 'Create your first contract draft to get started'}
+                  </p>
+                  <Button onClick={() => handleCreateSelect('template')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Draft
+                  </Button>
+                </Card>
+              )}
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="pending" className="space-y-4">
-          <div className={cn(
-            'grid gap-4',
-            viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'
-          )}>
-            {mockDrafts
-              .filter(d => d.status === 'PENDING_APPROVAL' || d.status === 'IN_REVIEW')
-              .map((draft) => (
-                <DraftCard key={draft.id} draft={draft} />
-              ))}
-          </div>
+          {draftsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className={cn(
+              'grid gap-4',
+              viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'
+            )}>
+              {drafts
+                .filter(d => d.status === 'PENDING_APPROVAL' || d.status === 'IN_REVIEW')
+                .map((draft) => (
+                  <DraftCard key={draft.id} draft={draft} />
+                ))}
+            </div>
+          )}
+          {!draftsLoading && drafts.filter(d => d.status === 'PENDING_APPROVAL' || d.status === 'IN_REVIEW').length === 0 && (
+            <Card className="p-12 text-center">
+              <CheckCircle2 className="h-12 w-12 mx-auto text-green-500 mb-4" />
+              <h3 className="font-semibold mb-2">All caught up!</h3>
+              <p className="text-sm text-muted-foreground">No drafts pending approval at the moment.</p>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {mockTemplates.map((template) => (
-              <TemplateCard
-                key={template.id}
-                template={template}
-                onSelect={handleTemplateSelect}
-              />
-            ))}
-          </div>
+          {templatesLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : templatesError ? (
+            <Card className="p-12 text-center">
+              <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
+              <h3 className="font-semibold mb-2">Failed to load templates</h3>
+              <p className="text-sm text-muted-foreground mb-4">{templatesError}</p>
+              <Button onClick={refetchTemplates}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </Card>
+          ) : templates.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Copy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold mb-2">No templates available</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Contact your administrator to add contract templates.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {templates.map((template) => (
+                <TemplateCard
+                  key={template.id}
+                  template={template}
+                  onSelect={handleTemplateSelect}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

@@ -362,7 +362,7 @@ export class FileIntegrityService {
         where: {
           checksum,
           tenantId,
-          status: { not: 'DELETED' },
+          isDeleted: false,
         },
         select: {
           id: true,

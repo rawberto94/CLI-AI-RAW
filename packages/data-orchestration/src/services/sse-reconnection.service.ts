@@ -76,13 +76,11 @@ export class SSEReconnectionService {
   scheduleReconnect(): boolean {
     // Check if already reconnecting
     if (this.state.isReconnecting) {
-      console.log('[Reconnection] Already reconnecting, skipping...');
       return false;
     }
 
     // Check if max attempts reached
     if (this.state.attempts >= this.config.maxAttempts) {
-      console.log('[Reconnection] Max attempts reached');
       this.state.isReconnecting = false;
       this.onMaxAttemptsReached?.();
       return false;
@@ -94,10 +92,6 @@ export class SSEReconnectionService {
 
     this.state.isReconnecting = true;
     this.state.nextAttempt = nextAttempt;
-
-    console.log(
-      `[Reconnection] Scheduling attempt ${this.state.attempts + 1}/${this.config.maxAttempts} in ${Math.round(delay)}ms`
-    );
 
     // Schedule reconnection
     this.reconnectTimer = setTimeout(() => {
@@ -114,8 +108,6 @@ export class SSEReconnectionService {
     this.state.attempts++;
     this.state.lastAttempt = new Date();
 
-    console.log(`[Reconnection] Attempting reconnection (${this.state.attempts}/${this.config.maxAttempts})`);
-
     // Call reconnection callback
     this.onReconnect?.();
   }
@@ -124,8 +116,6 @@ export class SSEReconnectionService {
    * Handle successful reconnection
    */
   onSuccess(): void {
-    console.log('[Reconnection] Successfully reconnected');
-    
     this.state.totalReconnections++;
     this.state.attempts = 0;
     this.state.isReconnecting = false;
@@ -143,15 +133,12 @@ export class SSEReconnectionService {
    * Handle failed reconnection attempt
    */
   onFailure(): void {
-    console.log(`[Reconnection] Attempt ${this.state.attempts} failed`);
-    
     this.state.isReconnecting = false;
 
     // Schedule next attempt if not at max
     if (this.state.attempts < this.config.maxAttempts) {
       this.scheduleReconnect();
     } else {
-      console.log('[Reconnection] Max attempts reached, giving up');
       this.onMaxAttemptsReached?.();
     }
   }
@@ -160,8 +147,6 @@ export class SSEReconnectionService {
    * Reset reconnection state
    */
   reset(): void {
-    console.log('[Reconnection] Resetting state');
-    
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = undefined;
@@ -178,8 +163,6 @@ export class SSEReconnectionService {
    * Cancel any pending reconnection
    */
   cancel(): void {
-    console.log('[Reconnection] Cancelling reconnection');
-    
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = undefined;

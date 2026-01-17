@@ -445,17 +445,8 @@ export interface CSPViolationReport {
  * Use in a API route: /api/csp-report
  */
 export async function handleCSPReport(
-  report: CSPViolationReport
+  _report: CSPViolationReport
 ): Promise<void> {
-  // Log the violation
-  console.warn('CSP Violation:', {
-    blockedUri: report['blocked-uri'],
-    violatedDirective: report['violated-directive'],
-    documentUri: report['document-uri'],
-    sourceFile: report['source-file'],
-    lineNumber: report['line-number'],
-  });
-
   // In production, you might want to:
   // - Send to error tracking service (Sentry, etc.)
   // - Store in database for analysis

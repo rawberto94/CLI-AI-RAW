@@ -1,0 +1,325 @@
+# Prometheus Alerting Rules for Contigo Platform
+# Deploy to your Prometheus/Alertmanager instance
+
+groups:
+  # ============================================================================
+  # Application Health Alerts
+  # ============================================================================
+  - name: application_health
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) 
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://docs.contigo.app/runbooks/high-error-rate"
+
+      # Slow response times
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Slow API response times"
+          description: "95th percentile response time is {{ $value | humanizeDuration }}"
+
+      # Application down
+      - alert: ApplicationDown
+        expr: up{job="contigo-web"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Application instance down"
+          description: "Instance {{ $labels.instance }} is not responding"
+
+  # ============================================================================
+  # Database Alerts
+  # ============================================================================
+  - name: database_health
+    interval: 30s
+    rules:
+      # High connection usage
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          db_connection_pool_active / db_connection_pool_size > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value | humanizePercentage }} of connections in use"
+
+      # Slow queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(db_query_duration_seconds_bucket[5m])) by (le, operation)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Operation {{ $labels.operation }} 95th percentile is {{ $value | humanizeDuration }}"
+
+      # Database errors
+      - alert: DatabaseErrors
+        expr: |
+          sum(rate(db_queries_total{status="error"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Database errors detected"
+          description: "{{ $value }} errors per second"
+
+      # Replica lag
+      - alert: ReplicaLagHigh
+        expr: |
+          pg_replication_lag_bytes > 100000000
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Database replica lag is high"
+          description: "Replica lag is {{ $value | humanize1024 }}B"
+
+  # ============================================================================
+  # Redis/Cache Alerts
+  # ============================================================================
+  - name: cache_health
+    interval: 30s
+    rules:
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: |
+          sum(rate(redis_cache_hits_total[5m])) 
+          / (sum(rate(redis_cache_hits_total[5m])) + sum(rate(redis_cache_misses_total[5m]))) < 0.7
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Cache hit rate is low"
+          description: "Hit rate is {{ $value | humanizePercentage }} (threshold: 70%)"
+
+      # Redis memory high
+      - alert: RedisMemoryHigh
+        expr: |
+          redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Memory usage at {{ $value | humanizePercentage }}"
+
+  # ============================================================================
+  # AI/LLM Alerts
+  # ============================================================================
+  - name: ai_health
+    interval: 60s
+    rules:
+      # High AI latency
+      - alert: HighAILatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_request_duration_seconds_bucket[5m])) by (le, model)
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "AI model response times are high"
+          description: "Model {{ $labels.model }} 95th percentile is {{ $value | humanizeDuration }}"
+
+      # AI error rate
+      - alert: HighAIErrorRate
+        expr: |
+          sum(rate(llm_requests_total{status="error"}[10m])) by (model)
+          / sum(rate(llm_requests_total[10m])) by (model) > 0.1
+        for: 10m
+        labels:
+          severity: critical
+          team: ai
+        annotations:
+          summary: "High AI error rate"
+          description: "Model {{ $labels.model }} error rate is {{ $value | humanizePercentage }}"
+
+      # Token usage spike
+      - alert: AbnormalTokenUsage
+        expr: |
+          sum(rate(llm_tokens_total[1h])) > 1000000
+        for: 30m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "Abnormal AI token usage"
+          description: "Token usage rate is {{ $value | humanize }} tokens/hour"
+
+  # ============================================================================
+  # Job Queue Alerts
+  # ============================================================================
+  - name: queue_health
+    interval: 30s
+    rules:
+      # Job queue backlog
+      - alert: JobQueueBacklog
+        expr: |
+          sum(bull_queue_waiting{queue="contract-processing"}) > 100
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Job queue backlog growing"
+          description: "{{ $value }} jobs waiting in contract-processing queue"
+
+      # Failed jobs
+      - alert: HighJobFailureRate
+        expr: |
+          sum(rate(bull_queue_failed_total[10m])) by (queue) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High job failure rate"
+          description: "Queue {{ $labels.queue }} has {{ $value }} failures/second"
+
+      # Dead letter queue
+      - alert: DeadLetterQueueGrowing
+        expr: |
+          sum(bull_queue_waiting{queue=~".*-dlq"}) > 10
+        for: 30m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Dead letter queue has unprocessed jobs"
+          description: "{{ $value }} jobs in DLQ"
+
+  # ============================================================================
+  # Resource Alerts
+  # ============================================================================
+  - name: resource_health
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          avg(rate(process_cpu_seconds_total[5m])) by (instance) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage"
+          description: "Instance {{ $labels.instance }} CPU at {{ $value | humanizePercentage }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          process_resident_memory_bytes / node_memory_MemTotal_bytes > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage at {{ $value | humanizePercentage }}"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 10m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Disk space critically low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"
+
+  # ============================================================================
+  # Rate Limiting Alerts
+  # ============================================================================
+  - name: rate_limiting
+    interval: 30s
+    rules:
+      # High rate limit hits
+      - alert: HighRateLimitHits
+        expr: |
+          sum(rate(http_requests_total{status="429"}[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High rate of rate-limited requests"
+          description: "{{ $value }} requests/second being rate limited"
+
+      # Potential abuse
+      - alert: PotentialAbuse
+        expr: |
+          sum(rate(http_requests_total{status="429"}[5m])) by (tenant_id) > 50
+        for: 5m
+        labels:
+          severity: warning
+          team: security
+        annotations:
+          summary: "Potential abuse detected"
+          description: "Tenant {{ $labels.tenant_id }} hitting rate limits frequently"
+
+  # ============================================================================
+  # Business Metrics Alerts
+  # ============================================================================
+  - name: business_metrics
+    interval: 5m
+    rules:
+      # Contract processing failures
+      - alert: ContractProcessingFailures
+        expr: |
+          sum(rate(contracts_processed_total{status="failed"}[1h])) 
+          / sum(rate(contracts_processed_total[1h])) > 0.1
+        for: 30m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High contract processing failure rate"
+          description: "{{ $value | humanizePercentage }} of contracts failing to process"
+
+      # No contracts processed
+      - alert: NoContractsProcessed
+        expr: |
+          sum(rate(contracts_processed_total[1h])) == 0
+        for: 2h
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "No contracts processed recently"
+          description: "No contracts have been processed in the last 2 hours"

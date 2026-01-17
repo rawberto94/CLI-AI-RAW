@@ -466,8 +466,7 @@ Validate these extracted values against the contract text. Check for:
           });
         }
       }
-    } catch (error) {
-      console.error("Semantic validation error:", error);
+    } catch {
       // Don't throw - semantic validation is optional enhancement
     }
 

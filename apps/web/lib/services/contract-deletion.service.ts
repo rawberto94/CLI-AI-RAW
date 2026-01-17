@@ -196,9 +196,8 @@ export async function safeDeleteContract(
               userAgent: null,
             },
           });
-        } catch (logError) {
+        } catch {
           // Activity logging failure shouldn't stop deletion
-          console.error('Failed to log deletion activity:', logError);
         }
 
         return {
@@ -217,16 +216,9 @@ export async function safeDeleteContract(
     // Delete from storage (outside transaction)
     if (deleteFromStorage && result.contract.storagePath) {
       try {
-        const storageResult = await deleteContractFile(result.contract.storagePath);
-        
-        if (storageResult.success) {
-          console.log('✅ Deleted file from storage:', result.contract.storagePath);
-        } else {
-          console.warn('⚠️ Storage deletion failed:', storageResult.error);
-        }
-      } catch (storageError) {
-        console.error('⚠️ Storage deletion failed (non-fatal):', storageError);
-        // Don't fail the whole operation if storage deletion fails
+        await deleteContractFile(result.contract.storagePath);
+      } catch {
+        // Storage deletion failed - non-fatal
       }
     }
 
@@ -241,8 +233,8 @@ export async function safeDeleteContract(
         },
         source: 'service:contract-deletion',
       });
-    } catch (eventError) {
-      console.error('⚠️ Failed to publish deletion event:', eventError);
+    } catch {
+      // Event publishing failed - non-fatal
     }
 
     return {
@@ -250,8 +242,7 @@ export async function safeDeleteContract(
       deletedRecords: result.deletedRecords,
       unlinkedChildren: result.unlinkedChildren,
     };
-  } catch (error) {
-    console.error('❌ Safe contract deletion failed:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       deletedRecords: {
@@ -313,8 +304,7 @@ export async function softDeleteContract(
     });
 
     return { success: true };
-  } catch (error) {
-    console.error('❌ Soft delete failed:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -362,8 +352,7 @@ export async function restoreContract(
     });
 
     return { success: true };
-  } catch (error) {
-    console.error('❌ Contract restoration failed:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

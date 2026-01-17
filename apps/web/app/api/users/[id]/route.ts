@@ -51,8 +51,8 @@ export async function GET(
           source: 'database',
         });
       }
-    } catch (dbError) {
-      console.warn('Database query failed:', dbError);
+    } catch {
+      // Database query failed, fallback to mock
     }
 
     // Fallback mock user
@@ -79,8 +79,7 @@ export async function GET(
       { success: false, error: 'User not found' },
       { status: 404 }
     );
-  } catch (error) {
-    console.error('Error fetching user:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch user' },
       { status: 500 }

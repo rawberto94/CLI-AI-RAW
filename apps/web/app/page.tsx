@@ -28,6 +28,8 @@ import {
   Eye,
   FileUp,
   Bot,
+  Scale,
+  Target,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
@@ -65,8 +67,7 @@ const fetchDashboardData = async (): Promise<{ stats: DashboardData | null }> =>
     return {
       stats: statsData.success ? statsData.data : null,
     };
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+  } catch {
     return { stats: null };
   }
 };
@@ -101,6 +102,37 @@ const quickActions = [
     hoverBg: "group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30"
   },
   {
+    icon: Zap,
+    label: "Generate Contract",
+    description: "Create new contracts with AI",
+    href: "/generate",
+    gradient: "from-violet-500 to-purple-600",
+    shadow: "shadow-violet-500/25",
+    hoverBg: "group-hover:bg-violet-50 dark:group-hover:bg-violet-950/30",
+    isNew: true,
+    isPremium: true
+  },
+  {
+    icon: Target,
+    label: "Obligations",
+    description: "Track deadlines & compliance",
+    href: "/obligations",
+    gradient: "from-rose-500 to-pink-600",
+    shadow: "shadow-rose-500/25",
+    hoverBg: "group-hover:bg-rose-50 dark:group-hover:bg-rose-950/30",
+    isNew: true,
+    isPremium: true
+  },
+  {
+    icon: RefreshCw,
+    label: "Renewals",
+    description: "Track contracts due for renewal",
+    href: "/renewals",
+    gradient: "from-green-500 to-emerald-500",
+    shadow: "shadow-green-500/25",
+    hoverBg: "group-hover:bg-green-50 dark:group-hover:bg-green-950/30"
+  },
+  {
     icon: MessageSquare,
     label: "AI Assistant",
     description: "Ask anything about your contracts",
@@ -108,16 +140,6 @@ const quickActions = [
     gradient: "from-purple-500 to-pink-500",
     shadow: "shadow-purple-500/25",
     hoverBg: "group-hover:bg-purple-50 dark:group-hover:bg-purple-950/30",
-    isNew: true
-  },
-  {
-    icon: Bot,
-    label: "AI Insights",
-    description: "Autonomous agent recommendations",
-    href: "/ai-insights",
-    gradient: "from-indigo-500 to-purple-500",
-    shadow: "shadow-indigo-500/25",
-    hoverBg: "group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30",
     isNew: true
   },
   {
@@ -129,15 +151,6 @@ const quickActions = [
     shadow: "shadow-emerald-500/25",
     hoverBg: "group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/30"
   },
-  {
-    icon: BarChart3,
-    label: "Analytics",
-    description: "View insights and reports",
-    href: "/analytics",
-    gradient: "from-amber-500 to-orange-500",
-    shadow: "shadow-amber-500/25",
-    hoverBg: "group-hover:bg-amber-50 dark:group-hover:bg-amber-950/30"
-  }
 ];
 
 export default function DashboardPage() {
@@ -189,8 +202,9 @@ export default function DashboardPage() {
             variant="outline" 
             onClick={() => queryClient.invalidateQueries({ queryKey: ['dashboard'] })}
             className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            aria-label="Refresh dashboard data"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
             Refresh
           </Button>
           <Button 
@@ -333,7 +347,7 @@ export default function DashboardPage() {
         )}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
           {/* Total Contracts */}
           <motion.div variants={itemVariants} className="h-full">
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
@@ -361,6 +375,48 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Renewals Due - NEW CARD */}
+          <motion.div variants={itemVariants} className="h-full">
+            <Link href="/renewals" className="block h-full">
+              <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full cursor-pointer">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                {dashboardData.renewals.urgentCount > 0 && (
+                  <div className="absolute top-3 right-3">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                  </div>
+                )}
+                <CardContent className="p-6 h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform duration-300">
+                      <RefreshCw className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Renewals Due</p>
+                    <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-red-500 dark:from-orange-400 dark:to-red-300 bg-clip-text text-transparent">
+                      {dashboardData.renewals.expiringIn30Days}
+                    </p>
+                    <div className="flex items-center gap-2 pt-2">
+                      {dashboardData.renewals.urgentCount > 0 ? (
+                        <Badge variant="outline" className="px-3 py-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {dashboardData.renewals.urgentCount} urgent
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="px-3 py-1 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800">
+                          Next 30 days
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           </motion.div>
 
           {/* Portfolio Value */}
@@ -462,9 +518,10 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 {quickActions.map((action, index) => {
                   const Icon = action.icon;
+                  const isPremium = 'isPremium' in action && action.isPremium;
                   return (
                     <motion.div
                       key={action.label}
@@ -476,20 +533,20 @@ export default function DashboardPage() {
                         <motion.div
                           whileHover={{ scale: 1.02, y: -4 }}
                           whileTap={{ scale: 0.98 }}
-                          className={`group relative flex flex-col items-center p-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-lg ${action.shadow} transition-all duration-300 ${action.hoverBg}`}
+                          className={`group relative flex flex-col items-center p-5 rounded-xl border ${isPremium ? 'border-purple-200 dark:border-purple-700/50' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-800 hover:shadow-lg ${action.shadow} transition-all duration-300 ${action.hoverBg}`}
                         >
                           {action.isNew && (
-                            <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0 shadow-md">
-                              NEW
+                            <Badge className={`absolute -top-2 -right-2 ${isPremium ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'} text-white text-[10px] border-0 shadow-md`}>
+                              {isPremium ? 'AI' : 'NEW'}
                             </Badge>
                           )}
-                          <div className={`p-3.5 rounded-xl bg-gradient-to-br ${action.gradient} text-white shadow-lg ${action.shadow} group-hover:scale-110 transition-transform duration-300 mb-4`}>
-                            <Icon className="h-6 w-6" />
+                          <div className={`p-3 rounded-xl bg-gradient-to-br ${action.gradient} text-white shadow-lg ${action.shadow} group-hover:scale-110 transition-transform duration-300 mb-3`}>
+                            <Icon className="h-5 w-5" />
                           </div>
-                          <h3 className="font-semibold text-slate-900 dark:text-white mb-1">
+                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white mb-0.5 text-center">
                             {action.label}
                           </h3>
-                          <p className="text-xs text-muted-foreground text-center">
+                          <p className="text-[11px] text-muted-foreground text-center line-clamp-2">
                             {action.description}
                           </p>
                         </motion.div>
@@ -497,6 +554,118 @@ export default function DashboardPage() {
                     </motion.div>
                   );
                 })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Premium AI Features - NEW */}
+        <motion.div variants={itemVariants}>
+          <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 border-0 shadow-2xl shadow-purple-500/20">
+            {/* Animated background */}
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
+              <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+              <div className="absolute top-1/2 left-1/3 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl" />
+            </div>
+            
+            <CardHeader className="relative pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg text-white">AI-Powered Features</CardTitle>
+                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">
+                        PREMIUM
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-white/60">Next-generation contract intelligence tools</p>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="relative p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* AI Copilot Drafting */}
+                <Link href="/drafting/copilot">
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-purple-400/30 transition-all duration-300"
+                  >
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
+                      <Bot className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-1">AI Copilot Drafting</h3>
+                    <p className="text-xs text-white/60 mb-3">Real-time AI assistance while you draft contracts</p>
+                    <div className="flex items-center gap-1 text-purple-400 text-xs font-medium mt-auto">
+                      Try Now <ArrowRight className="h-3 w-3" />
+                    </div>
+                  </motion.div>
+                </Link>
+                
+                {/* Legal Review & Redlining */}
+                <Link href="/contracts">
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-indigo-400/30 transition-all duration-300"
+                  >
+                    <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] border-0 shadow-md">
+                      NEW
+                    </Badge>
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
+                      <Scale className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-1">Legal Review & Redlining</h3>
+                    <p className="text-xs text-white/60 mb-3">AI-powered clause analysis with playbook comparison</p>
+                    <div className="flex items-center gap-1 text-indigo-400 text-xs font-medium mt-auto">
+                      Open Contract <ArrowRight className="h-3 w-3" />
+                    </div>
+                  </motion.div>
+                </Link>
+                
+                {/* Obligation Tracker */}
+                <Link href="/obligations">
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-emerald-400/30 transition-all duration-300"
+                  >
+                    <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] border-0 shadow-md">
+                      NEW
+                    </Badge>
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
+                      <Target className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-1">Obligation Tracker</h3>
+                    <p className="text-xs text-white/60 mb-3">AI extracts & monitors contract obligations</p>
+                    <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium mt-auto">
+                      View Dashboard <ArrowRight className="h-3 w-3" />
+                    </div>
+                  </motion.div>
+                </Link>
+                
+                {/* Contract Generation */}
+                <Link href="/generate">
+                  <motion.div
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-amber-400/30 transition-all duration-300"
+                  >
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
+                      <Sparkles className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-semibold text-white mb-1">AI Contract Generation</h3>
+                    <p className="text-xs text-white/60 mb-3">Generate contracts from natural language</p>
+                    <div className="flex items-center gap-1 text-amber-400 text-xs font-medium mt-auto">
+                      Generate <ArrowRight className="h-3 w-3" />
+                    </div>
+                  </motion.div>
+                </Link>
               </div>
             </CardContent>
           </Card>

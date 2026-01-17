@@ -90,8 +90,7 @@ export function BulkApprovalActions({
       setIsOpen(false);
       setComment('');
       setAction(null);
-    } catch (error) {
-      console.error('Bulk action error:', error);
+    } catch {
       toast.error('Failed to process bulk action');
     } finally {
       setIsProcessing(false);

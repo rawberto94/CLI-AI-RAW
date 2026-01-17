@@ -146,8 +146,8 @@ export async function GET() {
         failedReason: Math.random() > 0.8 ? 'Rate limit exceeded' : undefined,
       }));
 
-    } catch (queueError) {
-      console.warn('Queue connection not available:', queueError);
+    } catch {
+      // Queue connection not available
     }
 
     // System health (simulated - in production, get real metrics)
@@ -169,8 +169,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
 
-  } catch (error) {
-    console.error('Queue status error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch queue status' },
       { status: 500 }

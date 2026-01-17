@@ -8,10 +8,6 @@ import OpenAI from 'openai';
 // Initialize OpenAI client with API key from environment
 const apiKey = process.env.OPENAI_API_KEY || '';
 
-if (!apiKey) {
-  console.warn('Warning: OPENAI_API_KEY not set. OpenAI features will be disabled.');
-}
-
 // Type the client with explicit chat method signature to ensure response_format is recognized
 interface TypedOpenAIClient {
   createStructured<T>(opts: {

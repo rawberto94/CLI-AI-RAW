@@ -10,8 +10,8 @@
     "dev:next": "next dev -H 0.0.0.0 -p 3005",
     "ws:server": "npx ts-node --esm server/start-websocket.ts",
     "ws:dev": "WEBSOCKET_PORT=3001 npx ts-node --esm server/start-websocket.ts",
-    "build": "NEXT_BUILD=true LOG_LEVEL=silent next build",
-    "build:analyze": "NEXT_BUILD=true LOG_LEVEL=silent ANALYZE=true next build",
+    "build": "NODE_OPTIONS=\"--max-old-space-size=8192\" NEXT_BUILD=true LOG_LEVEL=silent next build",
+    "build:analyze": "NODE_OPTIONS=\"--max-old-space-size=8192\" NEXT_BUILD=true LOG_LEVEL=silent ANALYZE=true next build",
     "start": "NODE_ENV=production node server.js",
     "start:next": "next start",
     "start:3002": "next start -p 3002",
@@ -120,6 +120,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
     "@next/bundle-analyzer": "^15.1.4",
     "@playwright/test": "^1.49.1",
     "@testing-library/jest-dom": "^6.9.1",

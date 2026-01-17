@@ -68,9 +68,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       processingTime: result.processingTime,
       regeneratedAt: new Date().toISOString()
     });
-  } catch (error) {
-    console.error('Artifact regeneration error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Regeneration failed',

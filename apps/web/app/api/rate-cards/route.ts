@@ -373,8 +373,7 @@ export async function GET(request: NextRequest) {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     });
-  } catch (error) {
-    console.error('Error listing rate cards:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to list rate cards', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -423,8 +422,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(entry, { status: 201 });
-  } catch (error) {
-    console.error('Error creating rate card:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to create rate card', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }

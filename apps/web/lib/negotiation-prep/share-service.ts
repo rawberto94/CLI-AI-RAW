@@ -196,8 +196,7 @@ export class ShareService {
       const success = document.execCommand('copy')
       document.body.removeChild(textArea)
       return success
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error)
+    } catch {
       return false
     }
   }

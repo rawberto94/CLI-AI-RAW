@@ -196,8 +196,7 @@ export function useSmartReExtraction({
 
       // Call external feedback handler if provided
       onFeedback?.(fieldKey, action, value);
-    } catch (err) {
-      console.error("Failed to record feedback:", err);
+    } catch (err: unknown) {
       throw err;
     }
   }, [contractId, tenantId, onFeedback]);

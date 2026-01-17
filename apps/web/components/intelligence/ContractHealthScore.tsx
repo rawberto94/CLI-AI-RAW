@@ -919,8 +919,7 @@ export const ContractHealthScore: React.FC = () => {
           setHealthData(mockHealthData);
           setSelectedContract(mockHealthData[0] ?? null);
         }
-      } catch (error) {
-        console.log('Using mock health data');
+      } catch {
         setHealthData(mockHealthData);
         setSelectedContract(mockHealthData[0] ?? null);
       } finally {
@@ -967,7 +966,7 @@ export const ContractHealthScore: React.FC = () => {
       } else {
         throw new Error('Failed to refresh');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to refresh health scores');
       setLoading(false);
     }
@@ -994,7 +993,7 @@ export const ContractHealthScore: React.FC = () => {
       link.download = `contract-health-report-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Health report exported successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export report');
     }
   }, [healthData]);
@@ -1014,7 +1013,7 @@ export const ContractHealthScore: React.FC = () => {
       } else {
         throw new Error('Failed to reassess');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to reassess contract');
     }
   }, []);

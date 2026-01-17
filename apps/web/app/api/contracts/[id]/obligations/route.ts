@@ -159,8 +159,7 @@ export async function GET(
       atRiskSLAs,
       reportingRequirements: data.reportingRequirements || [],
     });
-  } catch (error) {
-    console.error('Failed to get contract obligations:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get contract obligations' },
       { status: 500 }

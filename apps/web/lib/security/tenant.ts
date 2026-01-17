@@ -47,8 +47,7 @@ export async function getApiTenantId(request: NextRequest): Promise<string | nul
     }
     
     return session.user.tenantId;
-  } catch (error) {
-    console.error('Error extracting tenant ID from session:', error);
+  } catch {
     return null;
   }
 }
@@ -123,8 +122,7 @@ export async function hasAccessToTenant(
     }
     
     return false;
-  } catch (error) {
-    console.error('Error checking tenant access:', error);
+  } catch {
     return false;
   }
 }
@@ -259,9 +257,8 @@ export async function logTenantOperation(
         userAgent: null,
       },
     });
-  } catch (error) {
+  } catch {
     // Don't fail the operation if audit logging fails
-    console.error('Failed to log tenant operation:', error);
   }
 }
 
@@ -295,8 +292,7 @@ export async function getUserAccessibleTenants(
       name: user.tenant.name,
       role: user.role,
     }];
-  } catch (error) {
-    console.error('Error getting accessible tenants:', error);
+  } catch {
     return [];
   }
 }

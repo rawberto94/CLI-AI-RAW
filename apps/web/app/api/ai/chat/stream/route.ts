@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
           
           ragSources = ragResults.map(r => r.contractName);
         }
-      } catch (ragError) {
-        console.error('RAG search error:', ragError);
+      } catch {
+        // RAG search failed, continue without context
       }
     }
 
@@ -136,8 +136,7 @@ When answering:
           });
           controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
           controller.close();
-        } catch (error) {
-          console.error('Streaming error:', error);
+        } catch {
           const errorData = JSON.stringify({ 
             error: 'Stream interrupted',
             done: true,
@@ -158,7 +157,6 @@ When answering:
     });
 
   } catch (error: unknown) {
-    console.error('Streaming chat error:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to process request' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }

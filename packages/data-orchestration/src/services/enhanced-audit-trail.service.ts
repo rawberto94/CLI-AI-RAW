@@ -88,8 +88,7 @@ export class EnhancedAuditTrailService {
           userAgent: options.userAgent,
         },
       });
-    } catch (error) {
-      console.error('Failed to log audit event:', error);
+    } catch {
       // Don't throw - audit logging should not break the main flow
     }
   }

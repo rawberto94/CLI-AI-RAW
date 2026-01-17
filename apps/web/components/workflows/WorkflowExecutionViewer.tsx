@@ -51,8 +51,8 @@ export function WorkflowExecutionViewer({
         const data = await response.json()
         setExecution(data.execution)
       }
-    } catch (error) {
-      console.error('Failed to load execution:', error)
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false)
     }
@@ -78,8 +78,8 @@ export function WorkflowExecutionViewer({
         setSelectedAction(null)
         if (onUpdate) onUpdate()
       }
-    } catch (error) {
-      console.error('Failed to perform action:', error)
+    } catch {
+      // Error handled silently
     } finally {
       setActionLoading(false)
     }

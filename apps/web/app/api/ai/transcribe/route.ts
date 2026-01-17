@@ -49,16 +49,12 @@ export async function POST(request: NextRequest) {
       prompt: 'This is a query about contracts, agreements, suppliers, renewals, and contract lifecycle management.',
     });
 
-    console.log('[Transcribe] Successfully transcribed audio:', transcription.text.slice(0, 100));
-
     return NextResponse.json({
       text: transcription.text,
       duration: null, // Could add duration if needed
     });
 
   } catch (error: unknown) {
-    console.error('[Transcribe] Error:', error);
-
     // Handle specific OpenAI errors
     const errorCode = (error as { code?: string })?.code;
     if (errorCode === 'audio_too_short') {

@@ -82,8 +82,8 @@ export async function getCachedResponse<T>(
     if (cached) {
       return JSON.parse(cached);
     }
-  } catch (error) {
-    console.error('[ApiCache] Get error:', error);
+  } catch {
+    // Cache get failed, return null to fetch fresh data
   }
   return null;
 }
@@ -98,8 +98,8 @@ export async function setCachedResponse<T>(
 ): Promise<void> {
   try {
     await getRedis().setex(cacheKey, ttl, JSON.stringify(data));
-  } catch (error) {
-    console.error('[ApiCache] Set error:', error);
+  } catch {
+    // Cache set failed, continue without caching
   }
 }
 
@@ -123,8 +123,7 @@ export async function invalidateCache(pattern: string): Promise<number> {
     } while (cursor !== '0');
     
     return deletedCount;
-  } catch (error) {
-    console.error('[ApiCache] Invalidate error:', error);
+  } catch {
     return 0;
   }
 }

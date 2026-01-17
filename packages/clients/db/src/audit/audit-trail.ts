@@ -407,7 +407,6 @@ export class AuditTrail {
     } else {
       // Sync mode requires tenantId
       if (!fullEntry.tenantId) {
-        console.warn('Audit log skipped: tenantId is required');
         return;
       }
 
@@ -543,8 +542,8 @@ export function createAuditMiddleware(auditTrail: AuditTrail): Prisma.Middleware
           }
           break;
       }
-    } catch (error) {
-      console.error('Audit logging failed:', error);
+    } catch {
+      // Audit logging failed silently
     }
 
     return result;
@@ -572,7 +571,7 @@ export function getAuditTrail(
 
 export function resetAuditTrail(): void {
   if (auditTrailInstance) {
-    auditTrailInstance.flush().catch(console.error);
+    auditTrailInstance.flush().catch(() => {});
   }
   auditTrailInstance = null;
 }

@@ -21,7 +21,6 @@ export class ContractApi {
     if (!validation.isValid) {
       // Try to fix common issues
       const fixedId = ContractIdValidator.fixCommonIssues(contractId);
-      console.warn(`Invalid contract ID "${contractId}" fixed to "${fixedId}"`);
       contractId = fixedId;
     }
 
@@ -55,7 +54,6 @@ export class ContractApi {
     
     if (!validation.isValid) {
       const fixedId = ContractIdValidator.fixCommonIssues(contractId);
-      console.warn(`Invalid contract ID "${contractId}" fixed to "${fixedId}"`);
       contractId = fixedId;
     }
 
@@ -106,7 +104,6 @@ export class ContractApi {
           const validation = ContractIdValidator.validateId(contract.id);
           if (!validation.isValid) {
             const fixedId = ContractIdValidator.fixCommonIssues(contract.id);
-            console.warn(`Fixed invalid contract ID: ${contract.id} → ${fixedId}`);
             return { ...contract, id: fixedId };
           }
         }

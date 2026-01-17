@@ -121,8 +121,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
 
-  } catch (error) {
-    console.error('[Actions API] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }

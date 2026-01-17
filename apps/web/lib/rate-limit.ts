@@ -86,7 +86,6 @@ function getRedisClient(): InstanceType<typeof Redis> | null {
   
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) {
-    console.warn('[RateLimit] REDIS_URL not set, using in-memory rate limiting');
     return null;
   }
   
@@ -96,13 +95,12 @@ function getRedisClient(): InstanceType<typeof Redis> | null {
       lazyConnect: true,
     });
     
-    redis.on('error', (err: Error) => {
-      console.error('[RateLimit] Redis error:', err);
+    redis.on('error', (_err: Error) => {
+      // Redis error handling
     });
     
     return redis;
-  } catch (error) {
-    console.error('[RateLimit] Failed to connect to Redis:', error);
+  } catch {
     return null;
   }
 }
@@ -177,8 +175,8 @@ async function checkRateLimit(
         remaining,
         resetAt: actualResetAt,
       };
-    } catch (error) {
-      console.error('[RateLimit] Redis error, falling back to memory:', error);
+    } catch {
+      // Redis error, falling back to memory
     }
   }
   

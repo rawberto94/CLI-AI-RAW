@@ -10,8 +10,7 @@ export async function GET() {
   try {
     const providers = getConfiguredProviders();
     return NextResponse.json({ providers });
-  } catch (error) {
-    console.error("Error getting providers:", error);
+  } catch {
     return NextResponse.json({ providers: ["credentials"] });
   }
 }

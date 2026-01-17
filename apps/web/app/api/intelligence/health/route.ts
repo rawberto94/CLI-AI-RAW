@@ -305,8 +305,7 @@ export async function GET(request: NextRequest) {
         responseTime: `${Date.now() - startTime}ms`,
       },
     });
-  } catch (error) {
-    console.error('Intelligence health API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch health data', details: String(error) },
       { status: 500 }
@@ -384,8 +383,7 @@ export async function POST(request: NextRequest) {
         reassessmentTriggered: reassess,
       },
     });
-  } catch (error) {
-    console.error('Intelligence health POST error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Invalid request', details: String(error) },
       { status: 400 }

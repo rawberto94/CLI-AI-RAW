@@ -75,9 +75,8 @@ export async function getTenantContext(): Promise<TenantContext> {
         isAuthenticated: true,
       };
     }
-  } catch (error) {
+  } catch {
     // Session not available, continue with header-based lookup
-    console.debug("Session not available, using header-based tenant lookup");
   }
 
   // Fall back to header-based tenant ID

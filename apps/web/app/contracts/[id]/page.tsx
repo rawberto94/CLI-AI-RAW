@@ -376,7 +376,6 @@ export default function ContractDetailPage() {
       loadNotes()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')
-      console.error('Failed to load contract:', err)
     } finally {
       setLoading(false)
     }
@@ -411,8 +410,8 @@ export default function ContractDetailPage() {
           setCurrentVersionNumber(maxVersion)
         }
       }
-    } catch (err) {
-      console.warn('Failed to load versions:', err)
+    } catch {
+      // Version loading failed silently
     }
   }, [params.id, dataMode])
 
@@ -435,8 +434,8 @@ export default function ContractDetailPage() {
           isPinned: n.isPinned || false
         })))
       }
-    } catch (err) {
-      console.warn('Failed to load notes:', err)
+    } catch {
+      // Notes loading failed silently
     }
   }, [params.id])
 
@@ -464,8 +463,7 @@ export default function ContractDetailPage() {
       a.remove()
       window.URL.revokeObjectURL(url)
       toast.success('Download started')
-    } catch (error) {
-      console.error('Download error:', error)
+    } catch {
       toast.error('Failed to download contract')
     }
   }, [params.id])
@@ -486,8 +484,7 @@ export default function ContractDetailPage() {
         await loadContract()
         toast.success('AI extraction completed!')
       }, 3000)
-    } catch (err) {
-      console.error('Failed to trigger AI extraction:', err)
+    } catch {
       toast.error('Failed to start AI extraction.')
     } finally {
       setIsExtractingAI(false)
@@ -509,8 +506,7 @@ export default function ContractDetailPage() {
       setShowCategorySelector(false)
       crossModule.onTaxonomyChange()
       await loadContract()
-    } catch (err) {
-      console.error('Failed to update category:', err)
+    } catch {
       toast.error('Failed to update category')
     } finally {
       setIsSavingCategory(false)
@@ -535,8 +531,7 @@ export default function ContractDetailPage() {
       } else {
         toast.warning('AI could not determine a category')
       }
-    } catch (err) {
-      console.error('AI categorization failed:', err)
+    } catch {
       toast.error('Failed to run AI categorization')
     }
   }, [params.id, crossModule, loadContract])
@@ -572,8 +567,7 @@ export default function ContractDetailPage() {
         el.remove()
       }
       toast.success('Link copied')
-    } catch (err) {
-      console.error('Failed to copy link:', err)
+    } catch {
       toast.error('Failed to copy link')
     }
   }, [])
@@ -683,6 +677,11 @@ export default function ContractDetailPage() {
         showPdfViewer={showPdfViewer}
         isEditing={isEditing}
         isExtractingAI={isExtractingAI}
+        isExpiredOrExpiring={
+          contract?.expirationDate 
+            ? new Date(contract.expirationDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+            : false
+        }
         onRefresh={loadContract}
         onTogglePdf={() => setPdfViewerOpen(!showPdfViewer)}
         onEdit={() => setIsEditing(true)}
@@ -690,6 +689,7 @@ export default function ContractDetailPage() {
         onDownload={handleDownload}
         onShare={() => setShowShareDialog(true)}
         onCompare={() => setShowComparison(true)}
+        onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
       />
 
       {/* Main Content */}
@@ -802,6 +802,7 @@ export default function ContractDetailPage() {
               riskLevel={riskInfo.riskLevel}
               complianceOk={complianceInfo.isCompliant}
               onAction={() => setActiveTab('overview')}
+              onInitiateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
             />
 
             {/* Quick Overview Card */}
@@ -1409,7 +1410,7 @@ export default function ContractDetailPage() {
           window.URL.revokeObjectURL(url)
         }}
         onPrint={() => window.print()}
-        onCreateRenewal={() => setShowRenewalModal(true)}
+        onCreateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
       />
 
       {/* Create Renewal Modal */}

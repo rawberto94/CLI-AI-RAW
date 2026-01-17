@@ -106,8 +106,7 @@ export default function AddRateCardPage() {
 
       toast.success('Rate card created successfully!')
       router.push('/rate-cards')
-    } catch (error) {
-      console.error('Error creating rate card:', error)
+    } catch (error: unknown) {
       toast.error('Failed to create rate card', {
         description: error instanceof Error ? error.message : 'Please try again.'
       })

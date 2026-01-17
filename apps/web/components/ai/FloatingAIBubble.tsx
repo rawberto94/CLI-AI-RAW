@@ -364,8 +364,8 @@ export function FloatingAIBubble() {
           }
         }
       }
-    } catch (e) {
-      console.warn('Failed to restore chat history:', e);
+    } catch {
+      // Failed to restore chat history, starting fresh
     }
   }, []);
 
@@ -380,8 +380,8 @@ export function FloatingAIBubble() {
       if (toStore.length > 0) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       }
-    } catch (e) {
-      console.warn('Failed to save chat history:', e);
+    } catch {
+      // Failed to save chat history
     }
   }, [messages]);
 
@@ -723,8 +723,7 @@ export function FloatingAIBubble() {
       playSound("receive");
       
       if (!isOpen) setHasNewMessage(true);
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch {
       // Fallback to local response on API failure
       const response = generateAIResponse(messageContent, conversationContext);
       const assistantMessage: Message = {

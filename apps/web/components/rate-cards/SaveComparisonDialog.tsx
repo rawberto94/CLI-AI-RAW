@@ -89,8 +89,7 @@ export function SaveComparisonDialog({
         const error = await response.json();
         toast.error(`Failed to save comparison: ${error.error}`);
       }
-    } catch (error) {
-      console.error('Error saving comparison:', error);
+    } catch {
       toast.error('Failed to save comparison');
     } finally {
       setSaving(false);
@@ -114,8 +113,7 @@ export function SaveComparisonDialog({
           successMessage: 'Share link copied to clipboard!',
         });
       }
-    } catch (error) {
-      console.error('Error sharing comparison:', error);
+    } catch {
       toast.error('Failed to share comparison');
     }
   };

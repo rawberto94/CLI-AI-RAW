@@ -32,8 +32,8 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
       if (data.success) {
         setOpportunity(data.opportunity);
       }
-    } catch (error) {
-      console.error('Error fetching opportunity details:', error);
+    } catch {
+      // Error fetching opportunity details
     } finally {
       setLoading(false);
     }
@@ -51,8 +51,8 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
         await fetchOpportunityDetails();
         setNotes('');
       }
-    } catch (error) {
-      console.error('Error updating status:', error);
+    } catch {
+      // Error updating status
     }
   };
 
@@ -70,8 +70,8 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
         await fetchOpportunityDetails();
         setActualSavings('');
       }
-    } catch (error) {
-      console.error('Error tracking savings:', error);
+    } catch {
+      // Error tracking savings
     }
   };
 

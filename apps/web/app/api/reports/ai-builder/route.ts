@@ -143,7 +143,7 @@ async function performDeepAnalysis(
     // Build dynamic query (always exclude DELETED)
     const where: Prisma.ContractWhereInput = { 
       tenantId,
-      status: { not: 'DELETED' },
+      isDeleted: false,
     };
     
     // Supplier filter
@@ -209,8 +209,7 @@ async function performDeepAnalysis(
       where.AND = andConditions;
     }
     
-    console.log('[AI Report Builder] Query filters:', filters);
-    
+    // Query contracts with applied filters
     const contracts = await prisma.contract.findMany({
       where,
       orderBy: { totalValue: 'desc' },
@@ -225,8 +224,6 @@ async function performDeepAnalysis(
         },
       },
     }) as ContractWithArtifacts[];
-    
-    console.log(`[AI Report Builder] Found ${contracts.length} contracts`);
     
     if (contracts.length === 0) {
       return getEmptyResult(filters);
@@ -411,8 +408,7 @@ async function performDeepAnalysis(
       recommendations,
       filters,
     };
-  } catch (e) {
-    console.error('[AI Report Builder] Error:', e);
+  } catch {
     return getEmptyResult(filters);
   }
 }
@@ -849,8 +845,7 @@ Format with markdown (bold headers, bullets). Include contract links using the f
     });
     
     return completion.choices[0]?.message?.content || 'Analysis complete.';
-  } catch (e) {
-    console.error('[AI Report Builder] OpenAI error:', e);
+  } catch {
     return `## Portfolio Summary
 
 **Health Score: ${analysis.summary.healthScore}/100** | **Risk Score: ${analysis.summary.riskScore}/100**
@@ -895,8 +890,7 @@ export async function POST(request: NextRequest) {
         filtersApplied: Object.values(filters || {}).flat().length,
       },
     });
-  } catch (error) {
-    console.error('[AI Report Builder] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: getErrorMessage(error) },
       { status: 500 }

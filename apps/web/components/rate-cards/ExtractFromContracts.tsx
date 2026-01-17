@@ -98,8 +98,7 @@ export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFr
       } else {
         setContracts(mockContracts);
       }
-    } catch (err) {
-      console.error('Failed to load contracts:', err);
+    } catch {
       setContracts(mockContracts);
     } finally {
       setLoading(false);

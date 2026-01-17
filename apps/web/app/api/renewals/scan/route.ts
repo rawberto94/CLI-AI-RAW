@@ -66,8 +66,7 @@ export async function POST(request: NextRequest) {
         autoRenewalOnly,
       },
     });
-  } catch (error) {
-    console.error('Failed to trigger renewal scan:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

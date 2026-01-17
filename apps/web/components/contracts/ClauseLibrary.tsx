@@ -134,8 +134,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
         const data = await response.json();
         setClauses(data.clauses || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch clauses:', error);
+    } catch {
+      // Failed to fetch clauses
     } finally {
       setLoading(false);
     }
@@ -192,8 +192,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
           legalNotes: '',
         });
       }
-    } catch (error) {
-      console.error('Failed to create clause:', error);
+    } catch {
+      // Failed to create clause
     }
   };
 
@@ -211,8 +211,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
           clauses.map((c) => (c.id === clauseId ? { ...c, isFavorite: !c.isFavorite } : c))
         );
       }
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+    } catch {
+      // Failed to toggle favorite
     }
   };
 
@@ -238,8 +238,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
     try {
       await navigator.clipboard.writeText(clause.content);
       toast.success('Clause copied to clipboard');
-    } catch (error) {
-      console.error('Failed to copy clause:', error);
+    } catch {
       toast.error('Failed to copy clause');
     }
   };

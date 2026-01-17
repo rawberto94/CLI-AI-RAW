@@ -30,8 +30,7 @@ export async function GET(request: NextRequest) {
     `;
 
     return NextResponse.json({ filters });
-  } catch (error) {
-    console.error('Error fetching saved filters:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch saved filters' },
       { status: 500 }
@@ -86,8 +85,7 @@ export async function POST(request: NextRequest) {
     `;
 
     return NextResponse.json({ filter: savedFilter[0] });
-  } catch (error) {
-    console.error('Error creating saved filter:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create saved filter' },
       { status: 500 }

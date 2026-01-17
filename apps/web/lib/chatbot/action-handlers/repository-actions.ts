@@ -9,7 +9,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import { DetectedIntent, ActionResponse } from '../types'
+import { DetectedIntent, ActionResponse, ChatContext } from '../types'
 
 // Type alias for cleaner code
 type ChatActionResult = ActionResponse
@@ -40,7 +40,7 @@ export const repositoryActionPatterns = {
 
 export async function handleRepositoryAction(
   intent: DetectedIntent,
-  context: { tenantId: string }
+  context: ChatContext
 ): Promise<ChatActionResult> {
   const action = intent.action
   const entities = intent.entities
@@ -180,7 +180,7 @@ async function showExpiredContracts(tenantId: string): Promise<ChatActionResult>
       where: {
         tenantId,
         expirationDate: { lt: today },
-        status: { not: 'terminated' }
+        status: { not: 'EXPIRED' }
       }
     })
     
@@ -200,8 +200,7 @@ ${count > 0 ? `These contracts have passed their expiration date but haven't bee
 • Update contract statuses` : 'Great! All your contracts are up to date.'}`,
       data: count > 0 ? { url: '/contracts?filter=expired' } : undefined
     }
-  } catch (error) {
-    console.error('Error fetching expired contracts:', error)
+  } catch {
     return {
       success: true,
       message: `📋 To view expired contracts, click below:`,
@@ -223,7 +222,7 @@ async function showExpiringContracts(tenantId: string): Promise<ChatActionResult
       where: {
         tenantId,
         expirationDate: { gte: today, lte: thirtyDays },
-        status: 'active'
+        status: 'ACTIVE'
       }
     })
     
@@ -371,8 +370,7 @@ async function getContractStats(tenantId: string): Promise<ChatActionResult> {
 Want more detailed analytics? Check the Analytics dashboard for trends, insights, and reports.`,
       data: { url: '/analytics' }
     }
-  } catch (error) {
-    console.error('Error fetching contract stats:', error)
+  } catch {
     return {
       success: true,
       message: `📊 For detailed contract statistics and analytics, visit the Analytics dashboard:`,

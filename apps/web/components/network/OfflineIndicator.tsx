@@ -191,9 +191,7 @@ export function NetworkProvider({
         try {
           await action.action();
           setPendingActions(prev => prev.filter(a => a.id !== action.id));
-        } catch (error) {
-          console.error(`Failed to execute pending action: ${action.description}`, error);
-          
+        } catch {
           // Retry up to 3 times
           if (action.retries < 3) {
             setPendingActions(prev =>

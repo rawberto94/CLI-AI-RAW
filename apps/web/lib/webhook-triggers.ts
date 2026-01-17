@@ -54,8 +54,7 @@ export async function triggerWebhook(options: TriggerOptions): Promise<{
       failed: result.failed || 0,
       error: result.error,
     };
-  } catch (error) {
-    console.error('Error triggering webhook:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       delivered: 0,

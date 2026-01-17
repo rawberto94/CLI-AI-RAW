@@ -310,8 +310,7 @@ export function VersionManager({
       const data = await response.json()
       setVersions(data.versions || [])
       setError(null)
-    } catch (err) {
-      console.error('Fetch versions error:', err)
+    } catch {
       setError('Failed to load version history')
     } finally {
       setIsLoading(false)
@@ -357,8 +356,7 @@ export function VersionManager({
       setShowUploadDialog(false)
       fetchVersions()
       onVersionChange?.(data.version.id)
-    } catch (err) {
-      console.error('Upload error:', err)
+    } catch {
       toast.error('Failed to upload new version')
     } finally {
       setIsUploading(false)
@@ -395,8 +393,7 @@ export function VersionManager({
       setShowSnapshotDialog(false)
       setSnapshotSummary('')
       fetchVersions()
-    } catch (err) {
-      console.error('Snapshot error:', err)
+    } catch {
       toast.error('Failed to create snapshot')
     } finally {
       setIsCreatingSnapshot(false)
@@ -424,8 +421,7 @@ export function VersionManager({
       
       fetchVersions()
       onVersionChange?.(version.id)
-    } catch (err) {
-      console.error('Revert error:', err)
+    } catch {
       toast.error('Failed to revert version')
     } finally {
       setIsReverting(false)

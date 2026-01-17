@@ -126,20 +126,20 @@ class RedisEventBus {
             eventListeners?.forEach(listener => {
               try {
                 listener(payload);
-              } catch (err) {
-                console.error('[RedisEventBus] Listener error:', err);
+              } catch {
+                // Listener error - silently handled
               }
             });
             
             wildcardListeners?.forEach(listener => {
               try {
                 listener(payload);
-              } catch (err) {
-                console.error('[RedisEventBus] Wildcard listener error:', err);
+              } catch {
+                // Wildcard listener error - silently handled
               }
             });
-          } catch (err) {
-            console.error('[RedisEventBus] Failed to parse message:', err);
+          } catch {
+            // Failed to parse message - silently handled
           }
         });
 
@@ -147,9 +147,7 @@ class RedisEventBus {
         await this.subscriber.subscribe(CHANNEL_PREFIX);
         
         this.isConnected = true;
-        console.log('[RedisEventBus] Connected to Redis');
       } catch (err) {
-        console.error('[RedisEventBus] Failed to connect:', err);
         this.isConnected = false;
         throw err;
       }
@@ -167,7 +165,6 @@ class RedisEventBus {
       try {
         await this.connect();
       } catch {
-        console.warn('[RedisEventBus] Not connected, event not published:', event);
         return;
       }
     }
@@ -181,8 +178,8 @@ class RedisEventBus {
 
     try {
       await this.publisher!.publish(CHANNEL_PREFIX, JSON.stringify(payload));
-    } catch (err) {
-      console.error('[RedisEventBus] Failed to publish:', err);
+    } catch {
+      // Failed to publish - silently handled
     }
   }
 
@@ -223,7 +220,6 @@ class RedisEventBus {
     }
     this.isConnected = false;
     this.connectionPromise = null;
-    console.log('[RedisEventBus] Disconnected');
   }
 
   /**

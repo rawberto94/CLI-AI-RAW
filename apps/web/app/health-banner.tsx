@@ -1,24 +1,6 @@
 "use client"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { tenantHeaders, ensureTenantId } from "@/lib/tenant"
-
-// Simple client-side logger - only log persistent failures (3+ consecutive)
-const createLogger = () => {
-  const failCounts: Record<string, number> = {};
-  return {
-    warn: (key: string, msg: string) => {
-      failCounts[key] = (failCounts[key] || 0) + 1;
-      if (failCounts[key] === 3) {
-        console.warn(`[Health] ${msg}`);
-      }
-    },
-    reset: (key: string) => {
-      failCounts[key] = 0;
-    }
-  };
-};
-
-const logger = createLogger();
 
 export function HealthBanner() {
   const [api, setApi] = useState<'ok'|'down'|'?'>('?')
@@ -31,29 +13,15 @@ export function HealthBanner() {
     const check = async () => {
       try { 
         const r = await fetch('/api/healthz', { headers: tenantHeaders() }); 
-        if (r.ok) {
-          setApi('ok');
-          logger.reset('api');
-        } else {
-          setApi('down');
-          logger.warn('api', 'API health check failed');
-        }
+        setApi(r.ok ? 'ok' : 'down');
       } catch { 
         setApi('down');
-        logger.warn('api', 'API health check failed');
       }
       try { 
         const r2 = await fetch('/api/web-health'); 
-        if (r2.ok) {
-          setWeb('ok');
-          logger.reset('web');
-        } else {
-          setWeb('down');
-          logger.warn('web', 'Web health check failed');
-        }
+        setWeb(r2.ok ? 'ok' : 'down');
       } catch { 
         setWeb('down');
-        logger.warn('web', 'Web health check failed');
       }
     }
     check()

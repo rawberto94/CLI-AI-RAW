@@ -592,14 +592,11 @@ export default function ContractComparisonPage() {
         const contractsList = data.data?.contracts || data.contracts || data || [];
         
         if (!Array.isArray(contractsList)) {
-          console.error("Unexpected data format:", data);
           throw new Error("Invalid data format received from API");
         }
         
-        console.log(`Loaded ${contractsList.length} contracts for comparison`);
         setContracts(contractsList);
-      } catch (error) {
-        console.error("Failed to load contracts:", error);
+      } catch {
         // Optionally show error to user
         setContracts([]);
       } finally {
@@ -812,8 +809,6 @@ export default function ContractComparisonPage() {
       });
 
       if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error("AI comparison failed:", aiResponse.status, errorText);
         throw new Error(`AI analysis failed: ${aiResponse.status}`);
       }
 
@@ -822,7 +817,6 @@ export default function ContractComparisonPage() {
       
       if (analysisText) {
         setAiAnalysis(analysisText);
-        console.log("AI analysis completed successfully");
         
         // Update comparison with metrics from API if available
         if (aiData.data?.metrics) {
@@ -832,11 +826,9 @@ export default function ContractComparisonPage() {
           } : null);
         }
       } else {
-        console.warn("No analysis text in response:", aiData);
         setAiAnalysis(generateFallbackAnalysis(stats1, stats2, keyInsights));
       }
-    } catch (error) {
-      console.error("AI analysis failed:", error);
+    } catch {
       setAiAnalysis(generateFallbackAnalysis(stats1, stats2, keyInsights));
     } finally {
       setIsAiAnalyzing(false);

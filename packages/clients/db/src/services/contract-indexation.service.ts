@@ -178,7 +178,6 @@ export class ContractIndexationService {
           updated_at = NOW()
       `;
     } catch (error) {
-      console.error('Error indexing contract metadata:', error);
       throw error;
     }
   }
@@ -200,7 +199,6 @@ export class ContractIndexationService {
         `;
       }
     } catch (error) {
-      console.error('Error adding contract tags:', error);
       throw error;
     }
   }
@@ -229,7 +227,6 @@ export class ContractIndexationService {
         `;
       }
     } catch (error) {
-      console.error('Error indexing contract clauses:', error);
       throw error;
     }
   }
@@ -251,7 +248,6 @@ export class ContractIndexationService {
         `;
       }
     } catch (error) {
-      console.error('Error adding contract milestones:', error);
       throw error;
     }
   }
@@ -375,7 +371,6 @@ export class ContractIndexationService {
         aggregations
       };
     } catch (error) {
-      console.error('Error searching contracts:', error);
       throw error;
     }
   }
@@ -425,8 +420,7 @@ export class ContractIndexationService {
           (statusDistribution as any[]).map(item => [item.status, parseInt(item.count)])
         )
       };
-    } catch (error) {
-      console.error('Error getting search aggregations:', error);
+    } catch {
       return {};
     }
   }
@@ -443,7 +437,6 @@ export class ContractIndexationService {
       `;
       return result as any[];
     } catch (error) {
-      console.error('Error getting expiring contracts:', error);
       throw error;
     }
   }
@@ -460,7 +453,6 @@ export class ContractIndexationService {
       `;
       return result as any[];
     } catch (error) {
-      console.error('Error getting high-risk contracts:', error);
       throw error;
     }
   }
@@ -514,7 +506,6 @@ export class ContractIndexationService {
         avgComplianceScore: parseFloat((avgComplianceScore as any[])[0]?.avg_score || '0')
       };
     } catch (error) {
-      console.error('Error getting dashboard analytics:', error);
       throw error;
     }
   }
@@ -530,7 +521,6 @@ export class ContractIndexationService {
         WHERE contract_id = ${contractId}
       `;
     } catch (error) {
-      console.error('Error updating risk score:', error);
       throw error;
     }
   }
@@ -597,7 +587,6 @@ export class ContractIndexationService {
 
       return recommendations;
     } catch (error) {
-      console.error('Error getting contract recommendations:', error);
       throw error;
     }
   }

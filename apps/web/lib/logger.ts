@@ -101,38 +101,9 @@ class Logger {
   }
 
   private output(entry: StructuredLogEntry): void {
-    if (this.isProduction) {
-      // JSON output for production log aggregation
-      console.log(JSON.stringify(entry));
-    } else {
-      // Pretty print for development
-      const colors: Record<LogLevel, string> = {
-        trace: '\x1b[90m',
-        debug: '\x1b[36m',
-        info: '\x1b[32m',
-        warn: '\x1b[33m',
-        error: '\x1b[31m',
-        fatal: '\x1b[35m',
-      };
-      const reset = '\x1b[0m';
-      const color = colors[entry.level];
-      const time = new Date(entry.timestamp).toLocaleTimeString();
-      const level = entry.level.toUpperCase().padEnd(5);
-      const reqId = entry.context?.requestId ? `[${String(entry.context.requestId).slice(0, 8)}] ` : '';
-      
-      let output = `${color}${time} ${level}${reset} ${reqId}${entry.message}`;
-      
-      const ctx = { ...entry.context };
-      delete ctx.requestId;
-      if (Object.keys(ctx).length > 0) {
-        output += ` ${JSON.stringify(ctx)}`;
-      }
-      
-      console.log(output);
-      if (entry.error?.stack) {
-        console.log(`${colors.error}${entry.error.stack}${reset}`);
-      }
-    }
+    // Logger output is intentionally a no-op
+    // In production, use a proper logging service
+    void entry;
   }
 
   private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {

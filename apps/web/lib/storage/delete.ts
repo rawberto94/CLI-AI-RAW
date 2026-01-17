@@ -63,7 +63,6 @@ export async function deleteContractFile(
         })
       )
 
-      console.log(`✅ Deleted from ${storageProvider}: ${storagePath}`)
       return { success: true }
     } else {
       // Delete from local filesystem
@@ -72,15 +71,12 @@ export async function deleteContractFile(
 
       if (existsSync(fullPath)) {
         await unlink(fullPath)
-        console.log(`✅ Deleted from local storage: ${fullPath}`)
         return { success: true }
       } else {
-        console.warn(`⚠️ File not found in local storage: ${fullPath}`)
         return { success: true } // Not an error if file doesn't exist
       }
     }
-  } catch (error) {
-    console.error('❌ Storage deletion failed:', error)
+  } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

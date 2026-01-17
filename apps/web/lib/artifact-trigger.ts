@@ -70,16 +70,9 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
     filePath, 
     useQueue = true,
     priority = PROCESSING_PRIORITY.NORMAL,
-    source = 'upload',
     isReprocess = false,
     ocrMode,
   } = options;
-  
-  console.log(`🚀 Triggering artifact generation for contract: ${contractId}`);
-  console.log(`   File: ${filePath}`);
-  console.log(`   Priority: ${priority} (source: ${source})`);
-  console.log(`   Queue enabled: ${useQueue}`);
-  console.log(`   OCR Mode: ${ocrMode || 'auto'}`);
   
   if (useQueue) {
     try {
@@ -107,8 +100,6 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
       
       const estimatedWaitMs = estimateWaitTime(priority);
       
-      console.log(`✅ Contract queued for processing: ${contractId}, jobId: ${jobId}, priority: ${priority}`);
-      
       return {
         success: true,
         contractId,
@@ -117,11 +108,8 @@ export async function triggerArtifactGeneration(options: TriggerOptions): Promis
         priority,
         estimatedWaitMs,
       };
-    } catch (error) {
-      console.error('❌ Failed to queue contract:', error);
-      
+    } catch {
       // Fallback to direct processing if queue unavailable
-      console.log('⚠️  Falling back to legacy processing');
       return triggerLegacyProcessing(options);
     }
   }
@@ -148,13 +136,10 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   
   worker.unref(); // Allow parent to exit independently
   
-  console.log(`✅ Artifact generation worker spawned for contract: ${contractId}`);
-  
   return { success: true, contractId, status: 'processing' };
 }
 
-export async function triggerProcessing(contractId: string, options?: Record<string, unknown>) {
+export async function triggerProcessing(_contractId: string, _options?: Record<string, unknown>) {
   // Trigger processing workflow
-  console.log(`Triggering processing for contract: ${contractId}`, options);
   return { success: true, jobId: 'job-' + Date.now() };
 }

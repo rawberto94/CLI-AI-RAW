@@ -70,9 +70,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       message: 'All artifacts validation would be performed here',
       validationResults: {}
     });
-  } catch (error) {
-    console.error('Artifact validation error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Validation failed',

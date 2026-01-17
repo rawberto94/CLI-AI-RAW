@@ -55,8 +55,7 @@ export function ExportMenu({ contractId, contractName }: ExportMenuProps) {
         // Mock/AI mode - show success message
         toast.success(`Export to ${type.toUpperCase()} completed (${dataMode} mode)`)
       }
-    } catch (error) {
-      console.error('Export failed:', error)
+    } catch {
       toast.error('Export failed. Please try again.')
     } finally {
       setIsExporting(false)

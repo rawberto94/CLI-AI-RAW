@@ -107,8 +107,7 @@ export default function ReportDashboard() {
         if (!response.ok) throw new Error('Failed to generate custom report');
 
         const data = await response.json();
-        console.log('Custom report data:', data);
-        alert(`Custom report generated with ${data.rows} rows! Check console.`);
+        alert(`Custom report generated with ${data.rows} rows!`);
       } else {
         // Template report
         const params = new URLSearchParams({
@@ -128,8 +127,7 @@ export default function ReportDashboard() {
 
         if (exportFormat === 'json') {
           const data = await response.json();
-          console.log('Report data:', data);
-          alert('Report generated! Check console for data.');
+          alert('Report generated successfully!');
         } else {
           // Download file
           const blob = await response.blob();
@@ -143,8 +141,7 @@ export default function ReportDashboard() {
           document.body.removeChild(a);
         }
       }
-    } catch (error) {
-      console.error('Error generating report:', error);
+    } catch {
       alert('Failed to generate report');
     } finally {
       setLoading(false);

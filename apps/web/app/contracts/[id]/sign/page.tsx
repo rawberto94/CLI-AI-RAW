@@ -238,8 +238,8 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
             });
           }
         }
-      } catch (error) {
-        console.error('Error fetching contract:', error);
+      } catch {
+        // Error handled silently
       }
       
       // Demo signers
@@ -337,8 +337,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
       toast.success('Contract sent for signatures!', {
         description: `${signers.length} signer(s) have been notified.`,
       });
-    } catch (error) {
-      console.error('Error sending signature request:', error);
+    } catch {
       toast.error('Failed to send signature request');
     } finally {
       setSending(false);

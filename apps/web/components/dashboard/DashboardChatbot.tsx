@@ -151,7 +151,6 @@ export function DashboardChatbot() {
         return;
       }
       
-      console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',

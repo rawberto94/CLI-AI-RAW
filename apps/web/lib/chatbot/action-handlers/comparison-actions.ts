@@ -42,8 +42,7 @@ export async function handleComparisonActions(
           message: `Unknown comparison action: ${action}`,
         };
     }
-  } catch (error) {
-    console.error('[Comparison Actions] Error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'Failed to process comparison request',
@@ -70,7 +69,6 @@ async function compareContracts(
     },
     include: {
       clauses: true,
-      obligations: true,
     },
   });
 
@@ -90,16 +88,15 @@ async function compareContracts(
     value: c.totalValue,
     effectiveDate: c.effectiveDate,
     expirationDate: c.expirationDate,
-    autoRenewal: c.autoRenewal,
+    autoRenewal: c.autoRenewalEnabled,
     paymentTerms: c.paymentTerms,
     clauseCount: c.clauses.length,
-    obligationCount: c.obligations.length,
     category: c.category,
   }));
 
   // Find differences
   const differences: Record<string, { values: (string | number | null | boolean | Date)[]; differs: boolean }> = {};
-  const fields = ['supplier', 'status', 'autoRenewal', 'paymentTerms', 'category'];
+  const fields = ['supplier', 'status', 'autoRenewalEnabled', 'paymentTerms', 'category'];
   
   fields.forEach((field) => {
     const values = comparison.map((c) => (c as Record<string, unknown>)[field]);
@@ -156,27 +153,27 @@ async function compareClauses(
   };
   
   if (clauseType) {
-    where.clauseType = { contains: clauseType, mode: 'insensitive' };
+    where.category = { contains: clauseType, mode: 'insensitive' };
   }
 
-  const clauses = await prisma.contractClause.findMany({
+  const clauses = await prisma.clause.findMany({
     where,
     include: {
       contract: { select: { id: true, contractTitle: true, supplierName: true } },
     },
-    orderBy: [{ clauseType: 'asc' }, { contractId: 'asc' }],
+    orderBy: [{ category: 'asc' }, { contractId: 'asc' }],
   });
 
   // Group by clause type
   const byType = clauses.reduce((acc, clause) => {
-    const type = clause.clauseType || 'Other';
+    const type = clause.category || 'Other';
     if (!acc[type]) acc[type] = [];
     acc[type].push({
       contractId: clause.contractId,
       contractTitle: clause.contract.contractTitle,
       supplier: clause.contract.supplierName,
-      content: clause.content?.slice(0, 500),
-      fullContent: clause.content,
+      content: clause.text?.slice(0, 500),
+      fullContent: clause.text,
     });
     return acc;
   }, {} as Record<string, Array<{ contractId: string; contractTitle: string; supplier: string | null; content: string | undefined; fullContent: string | null }>>);
@@ -368,9 +365,8 @@ async function sideBySideComparison(
   const contracts = await prisma.contract.findMany({
     where: { id: { in: contractIds }, tenantId },
     include: {
-      clauses: { orderBy: { clauseType: 'asc' } },
-      obligations: { orderBy: { type: 'asc' } },
-      artifacts: { where: { type: 'OVERVIEW' }, select: { summary: true } },
+      clauses: { orderBy: { category: 'asc' } },
+      artifacts: { where: { type: 'OVERVIEW' }, select: { data: true } },
     },
   });
 
@@ -392,15 +388,14 @@ async function sideBySideComparison(
     },
     terms: {
       paymentTerms: [left.paymentTerms, right.paymentTerms],
-      autoRenewal: [left.autoRenewal, right.autoRenewal],
-      renewalNoticePeriod: [left.renewalNoticePeriod, right.renewalNoticePeriod],
+      autoRenewal: [left.autoRenewalEnabled, right.autoRenewalEnabled],
+      noticePeriodDays: [left.noticePeriodDays, right.noticePeriodDays],
     },
     content: {
       clauseCount: [left.clauses.length, right.clauses.length],
-      obligationCount: [left.obligations.length, right.obligations.length],
       summary: [
-        left.artifacts[0]?.summary || 'No summary',
-        right.artifacts[0]?.summary || 'No summary',
+        (left.artifacts[0]?.data as { summary?: string })?.summary || 'No summary',
+        (right.artifacts[0]?.data as { summary?: string })?.summary || 'No summary',
       ],
     },
   };
@@ -408,7 +403,7 @@ async function sideBySideComparison(
   // Identify differences
   const differences: string[] = [];
   if (left.totalValue !== right.totalValue) differences.push('value');
-  if (left.autoRenewal !== right.autoRenewal) differences.push('autoRenewal');
+  if (left.autoRenewalEnabled !== right.autoRenewalEnabled) differences.push('autoRenewal');
   if (left.paymentTerms !== right.paymentTerms) differences.push('paymentTerms');
   if (left.clauses.length !== right.clauses.length) differences.push('clauseCount');
 
@@ -463,9 +458,9 @@ async function findDifferences(
     'category',
     'supplierName',
     'totalValue',
-    'autoRenewal',
+    'autoRenewalEnabled',
     'paymentTerms',
-    'renewalNoticePeriod',
+    'noticePeriodDays',
   ];
 
   fieldsToCompare.forEach((field) => {
@@ -480,10 +475,10 @@ async function findDifferences(
     }
   });
 
-  // Compare clause types
+  // Compare clause types (using category field from Clause model)
   const clauseTypes: Record<string, Set<string>> = {};
   contracts.forEach((c) => {
-    clauseTypes[c.id] = new Set(c.clauses.map((cl) => cl.clauseType || 'Unknown'));
+    clauseTypes[c.id] = new Set(c.clauses.map((cl) => cl.category || 'Unknown'));
   });
 
   const allClauseTypes = new Set<string>();
@@ -550,7 +545,7 @@ async function benchmarkContract(
       contractTitle: true,
       totalValue: true,
       paymentTerms: true,
-      autoRenewal: true,
+      autoRenewalEnabled: true,
       effectiveDate: true,
       expirationDate: true,
     },
@@ -576,7 +571,7 @@ async function benchmarkContract(
     ? (values.filter((v) => v <= contractValue).length / values.length) * 100
     : 50;
 
-  const autoRenewalRate = similar.filter((c) => c.autoRenewal).length / similar.length;
+  const autoRenewalRate = similar.filter((c) => c.autoRenewalEnabled).length / similar.length;
 
   return {
     success: true,

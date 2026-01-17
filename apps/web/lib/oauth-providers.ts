@@ -437,7 +437,6 @@ export async function refreshOAuthToken(
     });
 
     if (!response.ok) {
-      console.error(`Failed to refresh ${provider} token:`, await response.text());
       return null;
     }
 
@@ -447,8 +446,7 @@ export async function refreshOAuthToken(
       refreshToken: data.refresh_token || refreshToken,
       expiresAt: Math.floor(Date.now() / 1000) + (data.expires_in || 3600),
     };
-  } catch (error) {
-    console.error(`Error refreshing ${provider} token:`, error);
+  } catch {
     return null;
   }
 }

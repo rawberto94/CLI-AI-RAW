@@ -26,8 +26,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   const contractId = params.id;
   const tenantId = await getApiTenantId(request);
 
-  console.log('[SSE] Stream requested:', { contractId, tenantId });
-
   // Check initial contract status - if already completed, we can send data immediately
   let contract: { id: string; status: string } | null = null;
   let useMockData = false;
@@ -39,11 +37,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       select: { id: true, status: true }
     });
     
-    console.log('[SSE] Contract found:', !!contract, 'status:', contract?.status);
-    
     if (!contract) {
       // Contract doesn't exist - return 404
-      console.log('[SSE] Contract not found, returning 404');
       return new Response(
         JSON.stringify({ error: 'Contract not found' }),
         { 
@@ -54,8 +49,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     } else {
       isInitiallyCompleted = contract.status === 'COMPLETED' || contract.status === 'FAILED';
     }
-  } catch (dbError) {
-    console.log('[SSE] Database unavailable, using mock stream data');
+  } catch {
     useMockData = true;
   }
 
@@ -81,8 +75,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         contractId,
         timestamp: new Date().toISOString()
       });
-      
-      console.log('[SSE] Stream started for contract:', contractId);
       
       // Heartbeat interval to keep connection alive (every 15 seconds)
       heartbeatInterval = setInterval(() => {
@@ -162,8 +154,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           controller.close();
           isClosed = true;
           return;
-        } catch (error) {
-          console.error('[SSE] Error fetching completed artifacts:', error);
+        } catch {
           // Fall through to polling
         }
       }
@@ -178,7 +169,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         
         // Timeout after max polls with no progress
         if (updateCount >= maxPolls && lastArtifactCount === 0) {
-          console.log('[SSE] Timeout: No artifacts generated after', maxPolls, 'seconds');
           sendEvent({
             type: 'complete',
             contractId,
@@ -195,7 +185,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         
         // Also timeout if we have some artifacts but processing seems stuck
         if (updateCount >= maxPolls && lastArtifactCount > 0 && lastArtifactCount < EXPECTED_ARTIFACT_COUNT) {
-          console.log('[SSE] Partial timeout: Only', lastArtifactCount, 'artifacts after', maxPolls, 'seconds');
           // Send what we have and mark as complete
           sendEvent({ 
             type: 'complete', 
@@ -328,13 +317,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             controller.close();
             isClosed = true;
           }
-        } catch (error) {
+        } catch {
           consecutiveErrors++;
-          console.error('Error polling artifacts:', error, 'consecutive:', consecutiveErrors);
           
           if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
             // Too many errors, close stream gracefully
-            console.error('[SSE] Too many consecutive errors, closing stream');
             sendEvent({
               type: 'error',
               error: 'Connection issue - please refresh the page',

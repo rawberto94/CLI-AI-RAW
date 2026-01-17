@@ -80,8 +80,8 @@ export async function GET(
           });
         }
       }
-    } catch (dbError) {
-      console.warn('Database lookup failed:', dbError);
+    } catch {
+      // Database lookup failed, will use fallback
     }
 
     // Fallback to mock data - filter by contractId or return all if it's a specific contract
@@ -93,8 +93,7 @@ export async function GET(
       workflows,
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error fetching signature workflows:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch signature workflows' },
       { status: 500 }
@@ -165,16 +164,15 @@ export async function POST(
           source: 'database'
         });
       }
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
+    } catch {
+      // Database update failed, will use fallback
     }
 
     return NextResponse.json({ 
       workflow: newWorkflow,
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error creating signature request:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create signature request' },
       { status: 500 }

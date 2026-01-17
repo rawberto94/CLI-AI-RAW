@@ -32,8 +32,8 @@ export function loadViewPreferences(): ViewPreferences {
         density: parsed.density || 'comfortable',
       }
     }
-  } catch (error) {
-    console.error('Error loading view preferences:', error)
+  } catch {
+    // Error loading view preferences - silently ignored
   }
   
   return {
@@ -50,8 +50,8 @@ export function saveViewPreferences(prefs: Partial<ViewPreferences>): void {
     const current = loadViewPreferences()
     const updated = { ...current, ...prefs }
     localStorage.setItem(VIEW_PREFS_KEY, JSON.stringify(updated))
-  } catch (error) {
-    console.error('Error saving view preferences:', error)
+  } catch {
+    // Error saving view preferences - silently ignored
   }
 }
 

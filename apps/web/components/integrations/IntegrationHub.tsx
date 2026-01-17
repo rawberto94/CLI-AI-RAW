@@ -380,8 +380,7 @@ export function IntegrationHub() {
       } else {
         setIntegrations(mockIntegrations);
       }
-    } catch (err) {
-      console.error('Failed to fetch integrations:', err);
+    } catch {
       setError('Failed to load integrations');
       setIntegrations(mockIntegrations);
     } finally {

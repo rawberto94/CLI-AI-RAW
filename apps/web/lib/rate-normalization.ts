@@ -207,7 +207,6 @@ export class RateNormalizationService {
   private convertToUSD(amount: number, currency: string): number {
     const rate = this.currencyRates[currency.toUpperCase()];
     if (!rate) {
-      console.warn(`Currency ${currency} not supported, assuming USD`);
       return amount;
     }
     return amount * rate;

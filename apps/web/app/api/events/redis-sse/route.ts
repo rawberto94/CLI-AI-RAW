@@ -53,26 +53,22 @@ async function ensureRedisSubscriber(): Promise<InstanceType<typeof Redis>> {
       try {
         const payload = JSON.parse(message);
         broadcastToConnections(payload);
-      } catch (err) {
-        console.error('[SSE] Failed to parse Redis message:', err);
+      } catch {
+        // Failed to parse Redis message - ignore invalid messages
       }
     });
 
-    redisSubscriber.on('error', (err: Error) => {
-      console.error('[SSE] Redis subscriber error:', err);
+    redisSubscriber.on('error', () => {
       subscriberReady = false;
     });
 
     redisSubscriber.on('close', () => {
-      console.log('[SSE] Redis subscriber closed');
       subscriberReady = false;
     });
 
     subscriberReady = true;
-    console.log('[SSE] Redis subscriber connected');
     return redisSubscriber;
   } catch (err) {
-    console.error('[SSE] Failed to connect Redis subscriber:', err);
     throw err;
   }
 }
@@ -110,8 +106,7 @@ function broadcastToConnections(payload: {
 
       connection.controller.enqueue(encoder.encode(`data: ${message}\n\n`));
       connection.lastActivity = Date.now();
-    } catch (err) {
-      console.error(`[SSE] Failed to send to connection ${id}:`, err);
+    } catch {
       // Remove dead connection
       connections.delete(id);
     }
@@ -139,8 +134,8 @@ export async function GET(request: NextRequest) {
   // Ensure Redis subscriber is running
   try {
     await ensureRedisSubscriber();
-  } catch (err) {
-    console.warn('[SSE] Redis not available, falling back to local events only');
+  } catch {
+    // Redis not available, falling back to local events only
   }
 
   const stream = new ReadableStream({
@@ -158,8 +153,6 @@ export async function GET(request: NextRequest) {
         lastActivity: Date.now(),
       };
       connections.set(connectionId, connection);
-      
-      console.log('[SSE] New connection:', connectionId, { tenantId, userId, total: connections.size });
 
       // Send connected message
       controller.enqueue(
@@ -183,7 +176,6 @@ export async function GET(request: NextRequest) {
 
       // Cleanup on disconnect
       request.signal.addEventListener('abort', () => {
-        console.log('[SSE] Connection closed:', connectionId, { remaining: connections.size - 1 });
         clearInterval(keepAliveInterval);
         connections.delete(connectionId);
         

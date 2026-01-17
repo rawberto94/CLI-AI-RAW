@@ -360,7 +360,7 @@ export class SecurityHeadersMiddleware {
   /**
    * Create middleware handler
    */
-  handler = (request: NextRequest): NextResponse => {
+  handler = (_request: NextRequest): NextResponse => {
     const response = NextResponse.next();
     const nonce = generateNonce();
     
@@ -467,16 +467,13 @@ export const swissComplianceHeaders: SecurityHeadersConfig = {
  */
 export async function handleCSPReport(request: NextRequest): Promise<NextResponse> {
   try {
-    const report = await request.json();
-    
-    console.log('[SecurityHeaders] CSP Violation:', JSON.stringify(report, null, 2));
+    await request.json(); // Consume the request body
     
     // In production, send to monitoring system
     // await sendToMonitoring('csp-violation', report);
     
     return NextResponse.json({ received: true }, { status: 204 });
-  } catch (error) {
-    console.error('[SecurityHeaders] Error processing CSP report:', error);
+  } catch {
     return NextResponse.json({ error: 'Invalid report' }, { status: 400 });
   }
 }

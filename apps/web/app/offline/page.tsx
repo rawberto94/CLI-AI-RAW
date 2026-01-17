@@ -21,12 +21,12 @@ export default function OfflinePage() {
 
         {/* Title */}
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-          You're Offline
+          You&apos;re Offline
         </h1>
 
         {/* Description */}
         <p className="text-gray-600 dark:text-gray-300 mb-8">
-          It looks like you've lost your internet connection. Some features may be unavailable until you're back online.
+          It looks like you&apos;ve lost your internet connection. Some features may be unavailable until you&apos;re back online.
         </p>
 
         {/* Actions */}
@@ -75,7 +75,7 @@ export default function OfflinePage() {
 
         {/* Status */}
         <p className="mt-8 text-sm text-gray-500 dark:text-gray-400">
-          We'll automatically reconnect when your connection is restored.
+          We&apos;ll automatically reconnect when your connection is restored.
         </p>
       </div>
     </div>

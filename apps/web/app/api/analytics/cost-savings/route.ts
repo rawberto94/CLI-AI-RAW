@@ -181,13 +181,10 @@ export async function GET(request: NextRequest) {
           }))
         }
       });
-    } catch (dbError) {
-      console.error('Database error in cost savings:', dbError);
+    } catch (dbError: unknown) {
       throw dbError;
     }
-  } catch (error) {
-    console.error('Cost savings analysis error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to analyze cost savings',
@@ -224,9 +221,7 @@ export async function POST(request: NextRequest) {
       status,
       trackedAt: new Date().toISOString()
     });
-  } catch (error) {
-    console.error('Track opportunity error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to track opportunity',

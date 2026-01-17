@@ -112,7 +112,7 @@ export function CommandPalette({ isOpen, onClose, customCommands = [] }: Command
     { id: 'action-search', label: 'Search Contracts', icon: Search, category: 'actions', action: () => router.push('/search'), shortcut: ['⌘', 'F'] },
     
     // Settings
-    { id: 'settings-theme', label: 'Toggle Dark Mode', icon: Moon, category: 'settings', action: () => console.log('Toggle theme'), keywords: ['dark', 'light', 'appearance'] },
+    { id: 'settings-theme', label: 'Toggle Dark Mode', icon: Moon, category: 'settings', action: () => {}, keywords: ['dark', 'light', 'appearance'] },
     { id: 'settings-keyboard', label: 'Keyboard Shortcuts', icon: Keyboard, category: 'settings', action: () => {}, shortcut: ['?'], keywords: ['keys', 'hotkeys'] },
     { id: 'settings-help', label: 'Help & Support', icon: HelpCircle, category: 'settings', action: () => router.push('/help'), keywords: ['support', 'docs'] },
     { id: 'settings-logout', label: 'Sign Out', icon: LogOut, category: 'settings', action: () => router.push('/auth/logout'), keywords: ['logout', 'exit'] },

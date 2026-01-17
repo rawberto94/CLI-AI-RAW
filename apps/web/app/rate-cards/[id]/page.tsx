@@ -38,8 +38,8 @@ export default function RateCardDetailPage() {
       });
       const data = await response.json();
       setRateCard(data);
-    } catch (error) {
-      console.error('Error fetching rate card:', error);
+    } catch {
+      // Error fetching rate card
     } finally {
       setLoading(false);
     }
@@ -60,8 +60,8 @@ export default function RateCardDetailPage() {
         await fetchRateCard();
         setEditMode(false);
       }
-    } catch (error) {
-      console.error('Error saving rate card:', error);
+    } catch {
+      // Error saving rate card
     }
   };
 

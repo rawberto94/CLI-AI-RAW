@@ -231,8 +231,7 @@ export async function POST(request: NextRequest) {
       workflowStatus: newStatus,
       contractStatus,
     })
-  } catch (error) {
-    console.error('Quick action error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to process action' },
       { status: 500 }
@@ -292,8 +291,7 @@ export async function GET(request: NextRequest) {
       count: simplified.length,
       approvals: simplified,
     })
-  } catch (error) {
-    console.error('List approvals error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch approvals' },
       { status: 500 }

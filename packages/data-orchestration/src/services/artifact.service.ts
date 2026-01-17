@@ -67,8 +67,7 @@ export class ArtifactService {
         success: true,
         data: validatedArtifacts,
       };
-    } catch (error) {
-      console.error("Error fetching contract artifacts:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {
@@ -113,8 +112,7 @@ export class ArtifactService {
         success: true,
         data: validated,
       };
-    } catch (error) {
-      console.error("Error fetching artifact:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {
@@ -173,8 +171,7 @@ export class ArtifactService {
         success: true,
         data: validated,
       };
-    } catch (error) {
-      console.error("Error fetching artifact by type:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {
@@ -218,8 +215,7 @@ export class ArtifactService {
         success: true,
         data: validated,
       };
-    } catch (error) {
-      console.error("Error creating artifact:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {
@@ -284,8 +280,7 @@ export class ArtifactService {
         success: true,
         data: validated,
       };
-    } catch (error) {
-      console.error("Error updating artifact:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {
@@ -342,8 +337,7 @@ export class ArtifactService {
         success: true,
         data: undefined,
       };
-    } catch (error) {
-      console.error("Error deleting artifact:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {
@@ -400,8 +394,7 @@ export class ArtifactService {
           lastUpdated,
         },
       };
-    } catch (error) {
-      console.error("Error fetching artifacts summary:", error);
+    } catch (error: unknown) {
       return {
         success: false,
         error: {

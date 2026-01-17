@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
       data: report,
     });
   } catch (error: unknown) {
-    console.error('Error generating anomaly report:', error);
     return NextResponse.json(
       { 
         error: 'Failed to generate anomaly report',

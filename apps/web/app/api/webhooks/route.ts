@@ -111,8 +111,7 @@ export async function GET(request: NextRequest) {
         supportedEvents: WEBHOOK_EVENTS,
       },
     });
-  } catch (error) {
-    console.error('Error fetching webhooks:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch webhooks' },
       { status: 500 }
@@ -221,8 +220,7 @@ export async function POST(request: NextRequest) {
       message: 'Webhook created successfully. Save the secret now - it will not be shown again.',
       _warning: 'Store this secret securely. It will be masked in future responses.'
     }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating webhook:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to create webhook' }, { status: 500 });
   }
 }
@@ -270,8 +268,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     return NextResponse.json({ success: false, error: 'Webhook not found' }, { status: 404 });
-  } catch (error) {
-    console.error('Error deleting webhook:', error);
+  } catch {
     return NextResponse.json({ success: false, error: 'Failed to delete webhook' }, { status: 500 });
   }
 }

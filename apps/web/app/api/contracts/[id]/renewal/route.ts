@@ -123,8 +123,7 @@ export async function GET(
       renewalCount: data.renewalCount,
       certainty: data.certainty,
     });
-  } catch (error) {
-    console.error('Failed to get contract renewal:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get contract renewal details' },
       { status: 500 }

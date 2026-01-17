@@ -127,8 +127,7 @@ export async function emitWithSideEffects(config: EventEmissionConfig): Promise<
         metadata: data
       });
     }
-  } catch (error) {
-    console.error('[EventIntegration] Error emitting event with side effects:', error);
+  } catch {
     // Don't throw - we don't want to break the main operation
   }
 }

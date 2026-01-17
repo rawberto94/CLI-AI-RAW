@@ -5,7 +5,7 @@ import { TrendingUp, LineChart, BarChart3, Calendar } from 'lucide-react';
 
 export default function RateTrendsLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -25,7 +25,7 @@ export default function RateTrendsLoading() {
             transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
             className="absolute inset-0"
           >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
               <LineChart className="h-4 w-4 text-purple-500" />
             </div>
           </motion.div>
@@ -35,7 +35,7 @@ export default function RateTrendsLoading() {
             transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
             className="absolute inset-0"
           >
-            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white rounded-lg shadow-md">
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
               <BarChart3 className="h-4 w-4 text-indigo-500" />
             </div>
           </motion.div>
@@ -45,7 +45,7 @@ export default function RateTrendsLoading() {
             transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
             className="absolute inset-0"
           >
-            <div className="absolute top-1/2 -right-4 -translate-y-1/2 p-2 bg-white rounded-lg shadow-md">
+            <div className="absolute top-1/2 -right-4 -translate-y-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
               <Calendar className="h-4 w-4 text-purple-400" />
             </div>
           </motion.div>

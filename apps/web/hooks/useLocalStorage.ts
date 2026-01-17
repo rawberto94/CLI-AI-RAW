@@ -41,8 +41,7 @@ export function useLocalStorage<T>(
     try {
       const item = window.localStorage.getItem(key);
       return item ? deserializer(item) : initialValue;
-    } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
+    } catch {
       return initialValue;
     }
   }, [key, initialValue, deserializer]);
@@ -54,9 +53,6 @@ export function useLocalStorage<T>(
     (value: SetValue<T>) => {
       // SSR guard
       if (typeof window === 'undefined') {
-        console.warn(
-          `Tried setting localStorage key "${key}" even though environment is not a client`
-        );
         return;
       }
 
@@ -75,8 +71,8 @@ export function useLocalStorage<T>(
           key,
           newValue: serializer(valueToStore),
         }));
-      } catch (error) {
-        console.warn(`Error setting localStorage key "${key}":`, error);
+      } catch {
+        // Silently ignore localStorage errors
       }
     },
     [key, serializer, storedValue]
@@ -98,8 +94,8 @@ export function useLocalStorage<T>(
         key,
         newValue: null,
       }));
-    } catch (error) {
-      console.warn(`Error removing localStorage key "${key}":`, error);
+    } catch {
+      // Silently ignore localStorage errors
     }
   }, [key, initialValue]);
 
@@ -113,8 +109,8 @@ export function useLocalStorage<T>(
       try {
         const newValue = event.newValue ? deserializer(event.newValue) : initialValue;
         setStoredValue(newValue);
-      } catch (error) {
-        console.warn(`Error parsing storage event for key "${key}":`, error);
+      } catch {
+        // Silently ignore parsing errors
       }
     };
 

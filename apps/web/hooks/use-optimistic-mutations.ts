@@ -126,12 +126,11 @@ export function useOptimisticMutation<TData, TVariables>({
       return { previousData };
     },
     // Rollback on error
-    onError: (err, _variables, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previousData !== undefined) {
         queryClient.setQueryData(queryKey, context.previousData);
       }
       toast.error(errorMessage);
-      console.error('Mutation error:', err);
     },
     // Invalidate and show success
     onSuccess: () => {

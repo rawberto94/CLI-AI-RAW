@@ -111,8 +111,6 @@ export async function processCategorizationJob(
   const errors: string[] = [];
   const trace = getTraceContextFromJobData(job.data);
 
-  console.log(`🏷️ Starting categorization for contract ${contractId} (traceId=${trace.traceId})`);
-
   try {
     await job.updateProgress(5);
 
@@ -167,8 +165,6 @@ export async function processCategorizationJob(
       const existingMeta = (contract.metadata as any) ?? {};
       const prevHash = existingMeta?._categorization?.rawTextHash as string | undefined;
       if (prevHash && prevHash === rawTextHash) {
-        console.log(`⏭️ Contract ${contractId} categorization unchanged, skipping`);
-
         await updateStep({
           tenantId,
           contractId,
@@ -191,8 +187,6 @@ export async function processCategorizationJob(
 
     // Skip if already categorized and not forcing
     if (contract.contractType && contract.category && !forceRecategorize) {
-      console.log(`⏭️ Contract ${contractId} already categorized, skipping`);
-
       await updateStep({
         tenantId,
         contractId,
@@ -392,7 +386,6 @@ export async function processCategorizationJob(
           path: best.category.path,
           score: best.score,
         };
-        console.log(`📊 L1 match: ${best.category.name} (score: ${best.score}, signals: ${best.signals.join(', ')})`);
       }
     }
 
@@ -415,7 +408,6 @@ export async function processCategorizationJob(
           parentId: bestL2.category.parentId,
           score: bestL2.score,
         };
-        console.log(`📊 L2 match: ${bestL2.category.name} (score: ${bestL2.score}, signals: ${bestL2.signals.join(', ')})`);
 
         // If we found L2 but not L1, get the L1 from L2's parent
         if (!matchedCategoryL1 && bestL2.category.parentId) {
@@ -439,8 +431,6 @@ export async function processCategorizationJob(
     const bestL2Score = matchedCategoryL2?.score || 0;
 
     if (bestL1Score < minConfidentScore && bestL2Score < minConfidentScore && allCategories.length > 0) {
-      console.log(`🤖 Low scoring match (L1: ${bestL1Score}, L2: ${bestL2Score}), using AI to select category...`);
-      
       try {
         const { openai } = await import("@/lib/openai-client");
         
@@ -487,7 +477,6 @@ export async function processCategorizationJob(
               path: aiMatchedCat.path,
               score: aiPick.confidence,
             };
-            console.log(`🤖 AI selected L1: ${aiMatchedCat.name} (confidence: ${aiPick.confidence}%)`);
             
             // Also try to find best L2 under this L1
             const l2UnderL1 = allCategories.filter(c => c.level === 1 && c.parentId === aiMatchedCat.id);
@@ -518,21 +507,13 @@ export async function processCategorizationJob(
                   parentId: bestL2Match.parentId,
                   score: bestL2MatchScore || 20, // Minimum score for AI-derived L2
                 };
-                console.log(`🤖 AI-derived L2: ${bestL2Match.name} (score: ${bestL2MatchScore})`);
               }
             }
           }
         }
-      } catch (aiError) {
-        console.warn(`⚠️ AI category selection failed, using signal-based match:`, aiError);
+      } catch {
+        // AI category selection failed, using signal-based match
       }
-    }
-
-    // Log final matching result
-    if (matchedCategoryL1 || matchedCategoryL2) {
-      console.log(`📂 Final taxonomy: L1=${matchedCategoryL1?.name || 'none'} (${matchedCategoryL1?.score || 0}), L2=${matchedCategoryL2?.name || 'none'} (${matchedCategoryL2?.score || 0})`);
-    } else {
-      console.log(`⚠️ No taxonomy match found for contract ${contractId}`);
     }
 
     if (shouldAutoApply) {
@@ -602,8 +583,6 @@ export async function processCategorizationJob(
           updatedAt: new Date(),
         },
       });
-
-      console.log(`✅ Auto-applied categorization for contract ${contractId}`);
     } else {
       // Store results but don't apply - still suggest categories
       const existingMetadata = ((contract.metadata as Record<string, unknown>) || {}) as any;
@@ -653,8 +632,6 @@ export async function processCategorizationJob(
           })),
         },
       });
-
-      console.log(`⚠️ Categorization needs review for contract ${contractId} (confidence: ${result.overallConfidence}%)`);
     }
 
     await job.updateProgress(100);
@@ -681,7 +658,6 @@ export async function processCategorizationJob(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`❌ Categorization failed for ${contractId}:`, errorMessage);
     errors.push(errorMessage);
 
     await updateStep({
@@ -739,8 +715,6 @@ export async function queueCategorizationJob(
       jobId,
     }
   );
-
-  console.log(`📥 Queued categorization for contract ${data.contractId}`);
   
   return jobId;
 }
@@ -765,8 +739,6 @@ export async function queueBulkCategorization(
     });
     jobIds.push(jobId);
   }
-
-  console.log(`📦 Queued ${jobIds.length} categorization jobs`);
   
   return jobIds;
 }

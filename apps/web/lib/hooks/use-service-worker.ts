@@ -70,8 +70,8 @@ export function useServiceWorker() {
         setInterval(() => {
           registration.update();
         }, 60 * 60 * 1000); // Every hour
-      } catch (error) {
-        console.error('Service worker registration failed:', error);
+      } catch {
+        // Service worker registration failed
       }
     };
 
@@ -157,8 +157,7 @@ export function usePWAInstall() {
       setCanInstall(false);
 
       return outcome === 'accepted';
-    } catch (error) {
-      console.error('PWA install failed:', error);
+    } catch {
       return false;
     }
   }, [deferredPrompt]);
@@ -208,7 +207,6 @@ export function usePushNotifications() {
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       
       if (!vapidPublicKey) {
-        console.warn('VAPID public key not configured');
         return false;
       }
 
@@ -230,8 +228,7 @@ export function usePushNotifications() {
       }
 
       return false;
-    } catch (error) {
-      console.error('Push subscription failed:', error);
+    } catch {
       return false;
     }
   }, [isSupported]);
@@ -256,8 +253,7 @@ export function usePushNotifications() {
 
       setIsSubscribed(false);
       return true;
-    } catch (error) {
-      console.error('Push unsubscribe failed:', error);
+    } catch {
       return false;
     }
   }, [isSupported]);

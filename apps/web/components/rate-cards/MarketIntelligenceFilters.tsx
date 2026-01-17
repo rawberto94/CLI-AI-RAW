@@ -58,8 +58,8 @@ export function MarketIntelligenceFilters({
       const response = await fetch('/api/rate-cards/filter-options');
       const data = await response.json();
       setFilterOptions(data);
-    } catch (error) {
-      console.error('Error loading filter options:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

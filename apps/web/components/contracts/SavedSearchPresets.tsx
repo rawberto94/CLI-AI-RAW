@@ -72,8 +72,8 @@ export function SavedSearchPresets({
         }));
         setSavedSearches(searches);
       }
-    } catch (error) {
-      console.error('Failed to load saved searches:', error);
+    } catch {
+      // Failed to load saved searches - silently handle
     }
   }, []);
 
@@ -82,8 +82,7 @@ export function SavedSearchPresets({
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(searches));
       setSavedSearches(searches);
-    } catch (error) {
-      console.error('Failed to save searches:', error);
+    } catch {
       toast.error('Failed to save search');
     }
   };

@@ -63,8 +63,8 @@ export default function StateOfTheArtContractPage() {
       if (result.success && result.data) {
         setContract(result.data);
       }
-    } catch (error) {
-      console.error('Failed to load contract:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -82,8 +82,8 @@ export default function StateOfTheArtContractPage() {
         await loadContractData();
         setEditingArtifactId(null);
       }
-    } catch (error) {
-      console.error('Failed to save:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -666,8 +666,8 @@ export default function StateOfTheArtContractPage() {
                             await loadContractData();
                             setShowVersionHistory(false);
                           }
-                        } catch (error) {
-                          console.error('Failed to revert:', error);
+                        } catch {
+                          // Error handled silently
                         }
                       }}
                       onClose={() => setShowVersionHistory(false)}

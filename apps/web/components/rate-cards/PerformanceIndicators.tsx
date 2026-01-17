@@ -27,8 +27,8 @@ export function PerformanceIndicators() {
         const data = await response.json();
         setMetrics(data);
       }
-    } catch (error) {
-      console.error('Error fetching performance indicators:', error);
+    } catch {
+      // Error fetching performance indicators
     } finally {
       setLoading(false);
     }

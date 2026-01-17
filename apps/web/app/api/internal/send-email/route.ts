@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
               { status: 400 }
             );
           }
-          result = await EmailService.sendContractExpiry({
+          result = await EmailService.sendContractExpiryAlert({
             to: Array.isArray(to) ? to[0] : to,
             ...templateData,
           });
@@ -119,8 +119,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-  } catch (error) {
-    console.error('Internal email API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

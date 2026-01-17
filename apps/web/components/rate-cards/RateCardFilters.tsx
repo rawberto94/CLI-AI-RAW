@@ -72,8 +72,8 @@ export function RateCardFilters({ onFilterChange, onSaveFilter, matchCount }: Ra
         setLinesOfService(data.linesOfService || []);
         setCountries(data.countries || []);
       }
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

@@ -271,8 +271,8 @@ export class AutomatedReportingService {
             nextRun,
           },
         });
-      } catch (error) {
-        console.error(`Failed to execute report ${report.id}:`, error);
+      } catch {
+        // Report execution failed
       }
     }
   }

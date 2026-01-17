@@ -43,8 +43,7 @@ export function ContextMenu({ x, y, contractId, onClose, onDelete }: ContextMenu
     if (e.key === 'Escape' && !deleteDialogOpen) onClose()
   })
 
-  const handleAction = (action: string) => {
-    console.log(`Action: ${action} on contract: ${contractId}`)
+  const handleAction = (_action: string) => {
     onClose()
   }
 

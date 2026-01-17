@@ -76,8 +76,8 @@ export function SavedSegments({
         const data = await response.json();
         setSegments(data.segments || []);
       }
-    } catch (error) {
-      console.error('Error loading segments:', error);
+    } catch {
+      // Error loading segments
     } finally {
       setLoading(false);
     }
@@ -95,8 +95,8 @@ export function SavedSegments({
         loadSegments();
         onRefresh?.();
       }
-    } catch (error) {
-      console.error('Error sharing segment:', error);
+    } catch {
+      // Error sharing segment
     }
   };
 
@@ -112,8 +112,7 @@ export function SavedSegments({
         loadSegments();
         onRefresh?.();
       }
-    } catch (error) {
-      console.error('Error unsharing segment:', error);
+    } catch {
       toast.error('Failed to unshare segment');
     }
   };
@@ -140,8 +139,7 @@ export function SavedSegments({
       } else {
         toast.error('Failed to delete segment');
       }
-    } catch (error) {
-      console.error('Error deleting segment:', error);
+    } catch {
       toast.error('Failed to delete segment');
     } finally {
       setIsDeleting(false);
@@ -169,8 +167,8 @@ export function SavedSegments({
         loadSegments();
         onRefresh?.();
       }
-    } catch (error) {
-      console.error('Error duplicating segment:', error);
+    } catch {
+      // Error duplicating segment
     }
   };
 

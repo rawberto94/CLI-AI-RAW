@@ -63,14 +63,6 @@ export function RobustPDFViewer({
   onToggle,
   isExpanded = true,
 }: RobustPDFViewerProps) {
-  const debug = process.env.NODE_ENV !== 'production';
-  const debugLog = (...args: any[]) => {
-    if (debug) console.log(...args);
-  };
-  const debugError = (...args: any[]) => {
-    if (debug) console.error(...args);
-  };
-
   const [mode, setMode] = useState<ViewerMode>('loading');
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -108,8 +100,6 @@ export function RobustPDFViewer({
         setMode('loading');
         setError(null);
         
-        debugLog('[PDFViewer] Fetching PDF from:', pdfUrl);
-        
         const response = await fetch(pdfUrl);
         
         if (!response.ok) {
@@ -117,25 +107,21 @@ export function RobustPDFViewer({
         }
         
         const contentType = response.headers.get('content-type');
-        debugLog('[PDFViewer] Content-Type:', contentType);
         
         if (!contentType?.includes('pdf') && !contentType?.includes('octet-stream')) {
-          // Try to read error message
-          const text = await response.text();
-          debugError('[PDFViewer] Unexpected content:', text.substring(0, 200));
+          // Non-PDF content received - consume body and throw
+          await response.text();
           throw new Error('Server returned non-PDF content');
         }
         
         const arrayBuffer = await response.arrayBuffer();
-        debugLog('[PDFViewer] PDF data received:', arrayBuffer.byteLength, 'bytes');
         
         if (mounted) {
           setPdfData(arrayBuffer);
           // Try canvas rendering first
           tryCanvasRendering(arrayBuffer);
         }
-      } catch (err) {
-        debugError('[PDFViewer] Fetch error:', err);
+      } catch {
         if (mounted) {
           // Try embed/object fallback
           setMode('embed');
@@ -145,15 +131,12 @@ export function RobustPDFViewer({
     
     async function tryCanvasRendering(data: ArrayBuffer) {
       try {
-        debugLog('[PDFViewer] Attempting canvas rendering with PDF.js');
         
         // Dynamically import PDF.js (legacy build avoids top-level await warnings)
         const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
         
         // Set up the worker - use local worker file from public folder
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf/pdf.worker.min.mjs';
-        
-        debugLog('[PDFViewer] Using PDF.js version:', pdfjsLib.version);
         
         // Load the PDF from array buffer
         const loadingTask = pdfjsLib.getDocument({
@@ -164,7 +147,6 @@ export function RobustPDFViewer({
         });
         
         const pdf = await loadingTask.promise;
-        debugLog('[PDFViewer] PDF loaded successfully, pages:', pdf.numPages);
         
         if (mounted) {
           setPdfDoc(pdf);
@@ -179,8 +161,7 @@ export function RobustPDFViewer({
           );
           setMode('canvas');
         }
-      } catch (err) {
-        debugError('[PDFViewer] Canvas rendering failed:', err);
+      } catch {
         if (mounted) {
           // Fall back to embed/object
           setMode('embed');
@@ -227,9 +208,8 @@ export function RobustPDFViewer({
         };
         
         await page.render(renderContext).promise;
-        debugLog('[PDFViewer] Page', currentPage, 'rendered successfully');
-      } catch (err) {
-        debugError('[PDFViewer] Error rendering page:', err);
+      } catch {
+        // Error rendering page - fail silently
       }
     }
     
@@ -278,8 +258,8 @@ export function RobustPDFViewer({
               )
             );
           }
-        } catch (err) {
-          debugError('[PDFViewer] Error generating thumbnail for page', i + 1, err);
+        } catch {
+          // Error generating thumbnail - fail silently
         }
       }
     }
@@ -293,7 +273,6 @@ export function RobustPDFViewer({
 
   // Handle embed/object load errors
   const handleEmbedError = () => {
-    debugLog('[PDFViewer] Embed failed, switching to fallback mode');
     setMode('fallback');
   };
 

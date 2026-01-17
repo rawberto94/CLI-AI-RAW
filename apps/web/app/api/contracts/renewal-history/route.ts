@@ -223,8 +223,7 @@ export async function GET(request: NextRequest) {
         responseTime: `${Date.now() - startTime}ms`,
       },
     });
-  } catch (error) {
-    console.error('Renewal history API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch renewal history', details: String(error) },
       { status: 500 }
@@ -355,8 +354,7 @@ export async function POST(request: NextRequest) {
         completedAt: now.toISOString(),
       },
     });
-  } catch (error) {
-    console.error('Renewal history POST error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to record renewal', details: String(error) },
       { status: 500 }

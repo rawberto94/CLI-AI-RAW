@@ -233,8 +233,6 @@ export function SupplierScorecard({
       if (intelligenceResponse.ok) {
         const intelligenceData = await intelligenceResponse.json();
         setIntelligence(intelligenceData);
-      } else {
-        console.warn('Failed to fetch intelligence data');
       }
     } catch (err: any) {
       setError(err.message);
@@ -286,7 +284,7 @@ export function SupplierScorecard({
       return <TrendingUp className="h-4 w-4 text-red-600" />;
     if (stability.overallTrend === 'DECREASING')
       return <TrendingDown className="h-4 w-4 text-green-600" />;
-    return <Minus className="h-4 w-4 text-gray-600" />;
+    return <Minus className="h-4 w-4 text-gray-600 dark:text-slate-400" />;
   };
 
   const getRecommendationBadge = (recommendation: string) => {
@@ -384,7 +382,7 @@ export function SupplierScorecard({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">{scorecard.supplierName}</h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-slate-400">
             Supplier Performance Scorecard
           </p>
         </div>
@@ -427,20 +425,20 @@ export function SupplierScorecard({
               <p className={`text-lg font-semibold ${rating.color}`}>
                 {rating.label}
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 dark:text-slate-400">
                 Score: {scorecard.competitivenessScore.toFixed(1)}/100
               </p>
             </div>
             <div className="text-right">
               {scorecard.costRank && (
                 <div className="mb-2">
-                  <p className="text-sm text-gray-600">Cost Rank</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Cost Rank</p>
                   <p className="text-2xl font-bold">#{scorecard.costRank}</p>
                 </div>
               )}
               {scorecard.overallRank && (
                 <div>
-                  <p className="text-sm text-gray-600">Overall Rank</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400">Overall Rank</p>
                   <p className="text-2xl font-bold">#{scorecard.overallRank}</p>
                 </div>
               )}
@@ -454,13 +452,13 @@ export function SupplierScorecard({
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-4 w-4 text-gray-600" />
-              <p className="text-sm text-gray-600">Average Rate</p>
+              <DollarSign className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+              <p className="text-sm text-gray-600 dark:text-slate-400">Average Rate</p>
             </div>
             <p className="text-2xl font-bold">
               ${scorecard.averageRate.toFixed(0)}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Market: ${scorecard.marketAverage.toFixed(0)}
             </p>
           </CardContent>
@@ -469,11 +467,11 @@ export function SupplierScorecard({
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Briefcase className="h-4 w-4 text-gray-600" />
-              <p className="text-sm text-gray-600">Total Roles</p>
+              <Briefcase className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+              <p className="text-sm text-gray-600 dark:text-slate-400">Total Roles</p>
             </div>
             <p className="text-2xl font-bold">{scorecard.totalRoles}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               {scorecard.totalContracts} contracts
             </p>
           </CardContent>
@@ -482,13 +480,13 @@ export function SupplierScorecard({
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
-              <MapPin className="h-4 w-4 text-gray-600" />
-              <p className="text-sm text-gray-600">Geographic Coverage</p>
+              <MapPin className="h-4 w-4 text-gray-600 dark:text-slate-400" />
+              <p className="text-sm text-gray-600 dark:text-slate-400">Geographic Coverage</p>
             </div>
             <p className="text-2xl font-bold">
               {scorecard.geographicCoverage.countries.length}
             </p>
-            <p className="text-xs text-gray-500">countries</p>
+            <p className="text-xs text-gray-500 dark:text-slate-400">countries</p>
           </CardContent>
         </Card>
 
@@ -496,12 +494,12 @@ export function SupplierScorecard({
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               {getTrendIcon()}
-              <p className="text-sm text-gray-600">Rate Trend</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">Rate Trend</p>
             </div>
             <p className="text-2xl font-bold">
               {stability?.overallTrend || 'N/A'}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Volatility: {stability?.volatility.toFixed(1) || 'N/A'}%
             </p>
           </CardContent>
@@ -699,19 +697,19 @@ export function SupplierScorecard({
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Total Annual Value</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Total Annual Value</p>
               <p className="text-2xl font-bold">
                 ${scorecard.totalAnnualValue.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Potential Savings</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Potential Savings</p>
               <p className="text-2xl font-bold text-green-600">
                 ${scorecard.potentialSavings.toLocaleString()}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Data Quality Score</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Data Quality Score</p>
               <p className="text-2xl font-bold">
                 {scorecard.dataQualityScore.toFixed(0)}%
               </p>
@@ -738,7 +736,7 @@ export function SupplierScorecard({
                 </div>
                 <div className="text-right">
                   {getTrendBadge(intelligence.competitiveness.trend)}
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
                     Rank #{intelligence.competitiveness.ranking}
                   </p>
                 </div>
@@ -770,7 +768,7 @@ export function SupplierScorecard({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-gray-600" />
+                        <DollarSign className="h-4 w-4 text-gray-600 dark:text-slate-400" />
                         <span className="text-sm font-medium">Price Competitiveness</span>
                       </div>
                       <span className="text-sm font-bold">
@@ -790,7 +788,7 @@ export function SupplierScorecard({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-600" />
+                        <MapPin className="h-4 w-4 text-gray-600 dark:text-slate-400" />
                         <span className="text-sm font-medium">Geographic Coverage</span>
                       </div>
                       <span className="text-sm font-bold">
@@ -810,7 +808,7 @@ export function SupplierScorecard({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-gray-600" />
+                        <Activity className="h-4 w-4 text-gray-600 dark:text-slate-400" />
                         <span className="text-sm font-medium">Rate Stability</span>
                       </div>
                       <span className="text-sm font-bold">
@@ -830,7 +828,7 @@ export function SupplierScorecard({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-gray-600" />
+                        <Zap className="h-4 w-4 text-gray-600 dark:text-slate-400" />
                         <span className="text-sm font-medium">Growth Trajectory</span>
                       </div>
                       <span className="text-sm font-bold">
@@ -877,16 +875,16 @@ export function SupplierScorecard({
                   {/* Trend Summary */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Overall Trend</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Overall Trend</p>
                       <div className="flex items-center gap-2">
                         {getTrendBadge(intelligence.trends.overallTrend)}
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-gray-600 dark:text-slate-400">
                           ({intelligence.trends.trendStrength.toFixed(0)}% strength)
                         </span>
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Avg Rate Change</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Avg Rate Change</p>
                       <p className={`text-xl font-bold ${
                         intelligence.trends.avgRateChange < 0 ? 'text-green-600' : 'text-red-600'
                       }`}>
@@ -895,7 +893,7 @@ export function SupplierScorecard({
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Market Share</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Market Share</p>
                       <div className="flex items-center gap-2">
                         {intelligence.trends.marketShareTrend === 'growing' && (
                           <Badge className="bg-green-600">Growing</Badge>
@@ -953,7 +951,7 @@ export function SupplierScorecard({
                             <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
                             <div className="flex-1">
                               <p className="text-sm font-medium">{pattern.description}</p>
-                              <p className="text-xs text-gray-600 mt-1">
+                              <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">
                                 Confidence: {pattern.confidence.toFixed(0)}% • 
                                 Affected {pattern.affectedPeriods} periods
                               </p>
@@ -1031,19 +1029,19 @@ export function SupplierScorecard({
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Best Alternative</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Best Alternative</p>
                       <p className="text-lg font-bold">
                         {intelligence.alternatives.recommendations[0]?.supplierName || 'N/A'}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Potential Savings</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Potential Savings</p>
                       <p className="text-lg font-bold text-green-600">
                         ${intelligence.alternatives.recommendations[0]?.estimatedSavings.toLocaleString() || 0}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Switching Score</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Switching Score</p>
                       <p className="text-lg font-bold text-blue-600">
                         {intelligence.alternatives.recommendations[0]?.switchingScore.toFixed(1) || 0}/100
                       </p>
@@ -1069,7 +1067,7 @@ export function SupplierScorecard({
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-gray-600">Rank #{alt.ranking}</p>
+                            <p className="text-sm text-gray-600 dark:text-slate-400">Rank #{alt.ranking}</p>
                             <p className="text-2xl font-bold text-blue-600">
                               {alt.switchingScore.toFixed(1)}
                             </p>
@@ -1078,7 +1076,7 @@ export function SupplierScorecard({
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                           <div>
-                            <p className="text-xs text-gray-600">Rate Difference</p>
+                            <p className="text-xs text-gray-600 dark:text-slate-400">Rate Difference</p>
                             <p className={`text-sm font-bold ${
                               alt.rateDifference < 0 ? 'text-green-600' : 'text-red-600'
                             }`}>
@@ -1087,19 +1085,19 @@ export function SupplierScorecard({
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600">Est. Savings</p>
+                            <p className="text-xs text-gray-600 dark:text-slate-400">Est. Savings</p>
                             <p className="text-sm font-bold text-green-600">
                               ${alt.estimatedSavings.toLocaleString()}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600">Geo Coverage</p>
+                            <p className="text-xs text-gray-600 dark:text-slate-400">Geo Coverage</p>
                             <p className="text-sm font-bold">
                               {alt.geographicCoverage.toFixed(0)}%
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-600">Role Coverage</p>
+                            <p className="text-xs text-gray-600 dark:text-slate-400">Role Coverage</p>
                             <p className="text-sm font-bold">
                               {alt.roleCoverage.toFixed(0)}%
                             </p>
@@ -1109,7 +1107,7 @@ export function SupplierScorecard({
                         {/* Strengths */}
                         {alt.strengths.length > 0 && (
                           <div className="mb-3">
-                            <p className="text-xs font-semibold text-gray-700 mb-2">Strengths</p>
+                            <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Strengths</p>
                             <div className="flex flex-wrap gap-2">
                               {alt.strengths.map((strength, sIdx) => (
                                 <div
@@ -1127,7 +1125,7 @@ export function SupplierScorecard({
                         {/* Risk Factors */}
                         {alt.riskFactors.length > 0 && (
                           <div className="mb-3">
-                            <p className="text-xs font-semibold text-gray-700 mb-2">Risk Factors</p>
+                            <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Risk Factors</p>
                             <div className="space-y-1">
                               {alt.riskFactors.map((risk, rIdx) => (
                                 <div
@@ -1148,10 +1146,10 @@ export function SupplierScorecard({
                         {/* Coverage Gaps */}
                         {alt.coverageGaps.length > 0 && (
                           <div>
-                            <p className="text-xs font-semibold text-gray-700 mb-2">Coverage Gaps</p>
+                            <p className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Coverage Gaps</p>
                             <div className="space-y-1">
                               {alt.coverageGaps.map((gap, gIdx) => (
-                                <p key={gIdx} className="text-xs text-gray-600">
+                                <p key={gIdx} className="text-xs text-gray-600 dark:text-slate-400">
                                   • {gap}
                                 </p>
                               ))}

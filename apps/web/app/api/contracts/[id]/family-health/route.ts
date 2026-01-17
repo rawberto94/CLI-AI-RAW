@@ -293,8 +293,7 @@ export async function GET(
       issues,
       suggestedParents
     })
-  } catch (error) {
-    console.error('Failed to get family health:', error)
+  } catch {
     return NextResponse.json(
       { 
         success: false, 

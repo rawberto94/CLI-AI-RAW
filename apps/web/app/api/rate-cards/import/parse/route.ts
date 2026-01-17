@@ -39,8 +39,6 @@ export async function POST(request: NextRequest) {
     // Read file content
     const csvContent = await file.text();
 
-    console.log(`📄 Parsing CSV file: ${file.name} (${file.size} bytes)`);
-
     // Parse and validate
     const parseResult = csvImportService.parseCSV(csvContent);
 
@@ -59,13 +57,8 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log(
-      `✅ Parsed ${parseResult.summary.totalRows} rows: ${parseResult.summary.validRows} valid, ${parseResult.summary.invalidRows} invalid`
-    );
-
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error parsing CSV:', error);
     return NextResponse.json(
       {
         error: 'Failed to parse CSV file',

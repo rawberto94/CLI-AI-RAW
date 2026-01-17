@@ -94,7 +94,6 @@ export async function GET(request: NextRequest) {
       trends,
     });
   } catch (error) {
-    console.error('Error fetching supplier performance:', error);
     return NextResponse.json(
       {
         success: false,

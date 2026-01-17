@@ -24,8 +24,8 @@ export class AIMapper {
     if (options.useAI && options.apiKey) {
       try {
         return await this.aiSuggestMappings(headers, sampleRows, options);
-      } catch (error) {
-        console.warn('AI mapping failed, falling back to fuzzy matching:', error);
+      } catch {
+        // AI mapping failed, falling back to fuzzy matching
       }
     }
 
@@ -154,8 +154,7 @@ Respond in JSON format:
         confidence: m.confidence || 0.8,
         method: 'ai' as const,
       }));
-    } catch (error) {
-      console.error('Failed to parse AI response:', error);
+    } catch {
       // Fallback to fuzzy matching
       return FuzzyMatcher.matchColumns(headers);
     }
@@ -194,8 +193,7 @@ Respond in JSON format:
         
         return fuzzyMatch;
       });
-    } catch (error) {
-      console.warn('Failed to enhance mappings with AI:', error);
+    } catch {
       return fuzzyMatches;
     }
   }

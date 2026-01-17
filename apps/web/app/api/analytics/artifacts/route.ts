@@ -111,9 +111,7 @@ export async function GET(request: NextRequest) {
         recentActivity
       }
     });
-  } catch (error) {
-    console.error('Artifact analytics error:', error);
-    
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to fetch artifact analytics',

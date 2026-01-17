@@ -40,8 +40,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const comparisons = await baselineService.compareAgainstBaselines(id);
 
     return NextResponse.json({ comparisons });
-  } catch (error) {
-    console.error('Error comparing against baselines:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to compare against baselines' },
       { status: 500 }

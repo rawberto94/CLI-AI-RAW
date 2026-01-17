@@ -15,8 +15,7 @@ export async function POST(
       message: 'Reminder sent successfully',
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error sending reminder:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to send reminder' },
       { status: 500 }

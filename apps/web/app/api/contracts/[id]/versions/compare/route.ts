@@ -134,8 +134,7 @@ export async function GET(
         }
       });
 
-    } catch (dbError) {
-      console.warn('Database query failed, using mock data:', dbError);
+    } catch {
       const mockDifferences = getMockDifferences();
       return NextResponse.json({
         success: true,
@@ -150,8 +149,7 @@ export async function GET(
       });
     }
 
-  } catch (error) {
-    console.error('Error comparing versions:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(adjusted);
   } catch (error: unknown) {
-    console.error('Error adjusting rate for PPP:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to adjust rate for PPP' },
       { status: 500 }
@@ -67,7 +66,6 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (error: unknown) {
-    console.error('Error in PPP adjustment endpoint:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to process PPP adjustment request' },
       { status: 500 }

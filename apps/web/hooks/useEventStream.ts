@@ -77,8 +77,6 @@ class SimpleReconnectionManager {
     this.attempts++;
     const delay = Math.min(this.baseDelay * Math.pow(2, this.attempts - 1), this.maxDelay);
     
-    console.log(`[EventStream] Scheduling reconnect attempt ${this.attempts}/${this.maxAttempts} in ${delay}ms`);
-    
     this.timeoutId = setTimeout(() => {
       if (!this.isCancelled) {
         this.onReconnect();
@@ -185,7 +183,6 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
           connectFnRef.current?.();
         },
         onMaxAttemptsReached: () => {
-          console.log('[EventStream] Max reconnection attempts reached');
           setConnectionState(prev => ({
             ...prev,
             status: 'error',
@@ -218,12 +215,10 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
 
       // Prefer the Redis-backed SSE endpoint, which receives worker-published events.
       const url = `/api/events/redis-sse?${params.toString()}`;
-      console.log('[EventStream] Connecting to:', url);
       
       const eventSource = new EventSource(url);
 
       eventSource.onopen = () => {
-        console.log('[EventStream] Connected successfully');
         isConnectingRef.current = false;
         setIsConnected(true);
         setError(null);
@@ -252,13 +247,12 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
 
           setLastEvent(streamEvent);
           stableOnEvent?.(streamEvent);
-        } catch (err) {
-          console.error('[EventStream] Error parsing event:', err);
+        } catch {
+          // Error parsing event
         }
       };
 
-      eventSource.onerror = (err) => {
-        console.warn('[EventStream] Connection error (this is optional functionality)');
+      eventSource.onerror = () => {
         isConnectingRef.current = false;
         setIsConnected(false);
         
@@ -286,7 +280,6 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
 
       eventSourceRef.current = eventSource;
     } catch (err) {
-      console.warn('[EventStream] Failed to create connection (feature disabled):', err);
       isConnectingRef.current = false;
       
       const error = err instanceof Error ? err : new Error('Failed to create EventStream');
@@ -346,8 +339,6 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
     // Only try to connect in development or if explicitly enabled
     if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENABLE_SSE === 'true') {
       connect();
-    } else {
-      console.log('[EventStream] SSE disabled in production');
     }
 
     return () => {

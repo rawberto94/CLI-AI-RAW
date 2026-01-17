@@ -300,8 +300,8 @@ function GlobalCommandPaletteModal({
       await command.action();
       onExecute(command.id);
       onClose();
-    } catch (error) {
-      console.error('Command execution failed:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setIsLoading(false);
     }
@@ -345,12 +345,12 @@ function GlobalCommandPaletteModal({
                     setSelectedIndex(0);
                   }}
                   placeholder={placeholder}
-                  className="flex-1 bg-transparent border-0 outline-none text-gray-900 dark:text-white placeholder-gray-400"
+                  className="flex-1 bg-transparent border-0 outline-none text-gray-900 dark:text-slate-100 dark:text-white placeholder-gray-400"
                 />
                 {query && (
                   <button
                     onClick={() => setQuery('')}
-                    className="p-1 text-gray-400 hover:text-gray-600"
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:text-slate-400"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -360,7 +360,7 @@ function GlobalCommandPaletteModal({
               {/* Results */}
               <div ref={listRef} className="max-h-80 overflow-y-auto">
                 {flatList.length === 0 ? (
-                  <div className="py-8 text-center text-gray-500">
+                  <div className="py-8 text-center text-gray-500 dark:text-slate-400">
                     <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No commands found</p>
                   </div>
@@ -393,7 +393,7 @@ function GlobalCommandPaletteModal({
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+              <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-slate-400">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1">
                     <ArrowUp className="w-3 h-3" />
@@ -466,7 +466,7 @@ function CommandItemRow({ item, isSelected, index, onClick, onMouseEnter }: Comm
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{item.label}</p>
         {item.description && (
-          <p className="text-xs text-gray-500 truncate">{item.description}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{item.description}</p>
         )}
       </div>
 

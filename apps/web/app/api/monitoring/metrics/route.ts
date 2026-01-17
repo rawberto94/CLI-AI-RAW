@@ -60,9 +60,7 @@ export async function GET(request: NextRequest) {
         hitRatio: cacheHitRatio,
       },
     });
-  } catch (error) {
-    console.error('[Monitoring API] Error fetching metrics:', error);
-    
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch metrics' },
       { status: 500 }

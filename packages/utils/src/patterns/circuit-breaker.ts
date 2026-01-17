@@ -328,12 +328,6 @@ export const openAICircuitBreaker = circuitBreakerRegistry.get('openai', {
     if (error.message.includes('Invalid request')) return false;
     return true;
   },
-  onStateChange: (from, to, metrics) => {
-    console.log(`[CircuitBreaker] OpenAI: ${from} -> ${to}`, {
-      failures: metrics.failures,
-      successes: metrics.successes,
-    });
-  },
 });
 
 export const mistralCircuitBreaker = circuitBreakerRegistry.get('mistral', {
@@ -341,12 +335,6 @@ export const mistralCircuitBreaker = circuitBreakerRegistry.get('mistral', {
   successThreshold: 3,
   resetTimeout: 30000,
   requestTimeout: 60000, // 1 minute for OCR
-  onStateChange: (from, to, metrics) => {
-    console.log(`[CircuitBreaker] Mistral: ${from} -> ${to}`, {
-      failures: metrics.failures,
-      successes: metrics.successes,
-    });
-  },
 });
 
 export const storageCircuitBreaker = circuitBreakerRegistry.get('storage', {
@@ -354,12 +342,6 @@ export const storageCircuitBreaker = circuitBreakerRegistry.get('storage', {
   successThreshold: 2,
   resetTimeout: 10000, // 10 seconds
   requestTimeout: 30000,
-  onStateChange: (from, to, metrics) => {
-    console.log(`[CircuitBreaker] Storage: ${from} -> ${to}`, {
-      failures: metrics.failures,
-      successes: metrics.successes,
-    });
-  },
 });
 
 export const databaseCircuitBreaker = circuitBreakerRegistry.get('database', {
@@ -367,12 +349,6 @@ export const databaseCircuitBreaker = circuitBreakerRegistry.get('database', {
   successThreshold: 2,
   resetTimeout: 5000, // 5 seconds - database should recover quickly
   requestTimeout: 10000,
-  onStateChange: (from, to, metrics) => {
-    console.log(`[CircuitBreaker] Database: ${from} -> ${to}`, {
-      failures: metrics.failures,
-      successes: metrics.successes,
-    });
-  },
 });
 
 /**

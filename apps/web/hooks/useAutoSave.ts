@@ -144,8 +144,8 @@ export function useLocalStorageAutoSave<T>(
   useEffect(() => {
     try {
       localStorage.setItem(key, JSON.stringify(debouncedData));
-    } catch (error) {
-      console.error('Failed to save to localStorage:', error);
+    } catch {
+      // Failed to save to localStorage
     }
   }, [key, debouncedData]);
 }
@@ -165,8 +165,8 @@ export function useRestoreFromLocalStorage<T>(
       if (saved) {
         setData(JSON.parse(saved));
       }
-    } catch (error) {
-      console.error('Failed to restore from localStorage:', error);
+    } catch {
+      // Failed to restore from localStorage
     }
   }, [key]);
 

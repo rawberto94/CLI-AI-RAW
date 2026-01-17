@@ -65,8 +65,8 @@ export function EnhancedRateCardFilters({ onFilterChange, matchCount }: Enhanced
         setSuppliers(data.suppliers || []);
         setCountries(data.countries || []);
       }
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
+    } catch {
+      // Error fetching filter options
     }
   };
 

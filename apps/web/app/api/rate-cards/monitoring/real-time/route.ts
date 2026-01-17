@@ -103,8 +103,7 @@ export async function GET(request: NextRequest) {
         alerts,
       },
     });
-  } catch (error) {
-    console.error('Error fetching monitoring data:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

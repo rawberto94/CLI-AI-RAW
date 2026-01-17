@@ -83,15 +83,15 @@ export function useImprovementStream(
                   setError(event.error || 'Unknown error');
                   setIsStreaming(false);
                 }
-              } catch (err) {
-                console.error('Failed to parse SSE event:', err);
+              } catch {
+                // Failed to parse SSE event
               }
             }
           }
         }
-      } catch (err: any) {
-        console.error('Stream error:', err);
-        setError(err.message || 'Streaming failed');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Streaming failed';
+        setError(message);
         setIsStreaming(false);
       }
     };

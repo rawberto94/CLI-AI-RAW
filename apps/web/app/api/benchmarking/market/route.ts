@@ -44,8 +44,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: intelligence,
     });
-  } catch (error) {
-    console.error('Error getting market intelligence:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

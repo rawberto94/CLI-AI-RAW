@@ -200,8 +200,7 @@ export async function GET(request: NextRequest) {
       stats,
       source: 'database'
     })
-  } catch (error) {
-    console.error('Failed to get orphan contracts:', error)
+  } catch {
     return NextResponse.json(
       { 
         success: false, 

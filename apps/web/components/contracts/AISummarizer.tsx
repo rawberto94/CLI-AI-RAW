@@ -255,8 +255,7 @@ export function AISummarizer({ contractId, contractTitle, isOpen, onClose }: AIS
       } else {
         throw new Error(data.error || 'Failed to parse summary');
       }
-    } catch (error) {
-      console.error('Error generating summary:', error);
+    } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : 'Failed to generate summary');
     } finally {
       setLoading(false);

@@ -99,8 +99,7 @@ export async function POST(request: NextRequest) {
     const result = await compareContracts(contracts);
 
     return NextResponse.json(result);
-  } catch (error) {
-    console.error('Contract comparison error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: (error as Error).message },
       { status: 500 }

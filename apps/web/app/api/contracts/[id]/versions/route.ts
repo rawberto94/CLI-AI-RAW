@@ -101,8 +101,7 @@ export async function GET(
         source: 'database'
       });
 
-    } catch (dbError) {
-      console.warn('Database query failed, using mock data:', dbError);
+    } catch {
       return NextResponse.json({
         success: true,
         versions: getMockVersions(),
@@ -110,8 +109,7 @@ export async function GET(
       });
     }
 
-  } catch (error) {
-    console.error('Error fetching versions:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -267,8 +265,7 @@ export async function POST(
       message: `Version ${newVersionNumber} created successfully`
     });
 
-  } catch (error) {
-    console.error('Error creating version:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -340,8 +337,7 @@ export async function PUT(
       }
     });
 
-  } catch (error) {
-    console.error('Error activating version:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

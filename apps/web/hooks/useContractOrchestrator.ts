@@ -89,8 +89,7 @@ export function useContractOrchestrator({
       setProgress(data.progress);
       setSuggestions(data.suggestions || []);
       setError(null);
-    } catch (err) {
-      console.error('Error fetching orchestrator progress:', err);
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     }
   }, [contractId, tenantId]);
@@ -122,13 +121,12 @@ export function useContractOrchestrator({
             setIsConnected(false);
           }, 1000);
         }
-      } catch (err) {
-        console.error('Error parsing SSE message:', err);
+      } catch {
+        // Failed to parse SSE message
       }
     };
 
-    eventSource.onerror = (err) => {
-      console.error('SSE error:', err);
+    eventSource.onerror = () => {
       setIsConnected(false);
       eventSource.close();
       
@@ -167,8 +165,7 @@ export function useContractOrchestrator({
 
       const data = await response.json();
       return data;
-    } catch (err) {
-      console.error('Error generating artifact:', err);
+    } catch (err: unknown) {
       throw err;
     }
   }, [contractId, tenantId]);
@@ -191,8 +188,7 @@ export function useContractOrchestrator({
 
       const data = await response.json();
       return data;
-    } catch (err) {
-      console.error('Error triggering orchestrator:', err);
+    } catch (err: unknown) {
       throw err;
     }
   }, [contractId, tenantId]);

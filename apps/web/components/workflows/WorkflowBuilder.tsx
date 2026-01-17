@@ -121,8 +121,8 @@ export function WorkflowBuilder({
           })
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch workflow:', error)
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false)
     }
@@ -213,8 +213,7 @@ export function WorkflowBuilder({
       if (onSave) {
         await onSave({ ...workflow, steps })
       }
-    } catch (error) {
-      console.error('Failed to save workflow:', error)
+    } catch {
       toast({
         title: 'Save failed',
         description: 'Could not save workflow. Please try again.',

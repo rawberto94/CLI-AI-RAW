@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[Cron] Starting deadline scan...');
-
     const now = new Date();
     const nineDaysFromNow = new Date();
     nineDaysFromNow.setDate(now.getDate() + 90);
@@ -67,8 +65,6 @@ export async function POST(request: NextRequest) {
         expirationDate: 'asc',
       },
     });
-
-    console.log(`[Cron] Found ${contracts.length} contracts expiring within 90 days`);
 
     const deadlines: ContractDeadline[] = [];
     const notifications: Array<{
@@ -132,8 +128,6 @@ export async function POST(request: NextRequest) {
 
     // Store or update deadline records
     // This would typically go to a ContractDeadline table
-    console.log(`[Cron] Processed ${deadlines.length} deadlines`);
-    console.log(`[Cron] Created ${notifications.length} notifications`);
 
     // Send email notifications for high-priority items
     const criticalDeadlines = deadlines.filter(d => d.riskLevel === 'high' || d.daysUntilExpiry <= 7);
@@ -168,7 +162,6 @@ export async function POST(request: NextRequest) {
           html: template.html,
         });
       }
-      console.log(`[Cron] Sent ${criticalDeadlines.length} email notifications`);
     }
 
     // Create in-app notifications for all deadlines
@@ -200,9 +193,8 @@ export async function POST(request: NextRequest) {
         await prisma.notification.createMany({
           data: notificationsData,
         });
-        console.log(`[Cron] Created ${deadlines.length} in-app notifications`);
-      } catch (notifError) {
-        console.warn('[Cron] Failed to create in-app notifications:', notifError);
+      } catch {
+        // Notification creation failed - continue without in-app notifications
       }
     }
 
@@ -222,8 +214,7 @@ export async function POST(request: NextRequest) {
       notifications: notifications.slice(0, 5),
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error('[Cron] Deadline scan failed:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

@@ -288,8 +288,7 @@ export async function GET(request: NextRequest) {
         tenantId,
       },
     });
-  } catch (error) {
-    console.error('Renewals API error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch renewals' },
       { status: 500 }
@@ -474,8 +473,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
-    console.error('Renewals POST error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to process renewal action' },
       { status: 500 }
@@ -565,8 +563,7 @@ export async function PATCH(request: NextRequest) {
         updatedAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error('Renewals PATCH error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update renewal' },
       { status: 500 }

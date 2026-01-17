@@ -27,8 +27,6 @@ export async function POST(request: NextRequest) {
     const { contractIds, limit = 50, forceReprocess = false } = body;
 
     const tenantId = await getServerTenantId();
-    
-    console.log(`🔄 Batch RAG processing for tenant: ${tenantId}`);
 
     // Find contracts to process
     const whereClause: Record<string, unknown> = { tenantId };
@@ -89,7 +87,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Process contracts in background (don't await)
-    processBatch(batchId, contractsWithText).catch(console.error);
+    processBatch(batchId, contractsWithText).catch(() => {
+      // Background processing error - status tracked in batchStatus map
+    });
 
     return NextResponse.json({
       success: true,
@@ -101,7 +101,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Batch RAG processing error:', error);
     return NextResponse.json(
       {
         success: false,
@@ -131,8 +130,6 @@ async function processBatch(
         continue;
       }
 
-      console.log(`📄 Processing: ${contract.fileName}`);
-      
       await processContractWithSemanticChunking(
         contract.id,
         contract.rawText,
@@ -149,7 +146,6 @@ async function processBatch(
       status.processed++;
       
     } catch (error) {
-      console.error(`Failed to process ${contract.id}:`, error);
       status.results.push({
         contractId: contract.id,
         success: false,
@@ -161,8 +157,6 @@ async function processBatch(
 
   status.status = status.failed === contracts.length ? 'failed' : 'completed';
   status.endTime = Date.now();
-  
-  console.log(`✅ Batch ${batchId} complete: ${status.processed}/${status.total} successful`);
 }
 
 export async function GET(request: NextRequest) {

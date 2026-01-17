@@ -79,8 +79,7 @@ export async function GET(request: NextRequest) {
         estimatedImpact: rec.estimatedImpact as any,
       })),
     });
-  } catch (error) {
-    console.error('Error fetching agent status:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

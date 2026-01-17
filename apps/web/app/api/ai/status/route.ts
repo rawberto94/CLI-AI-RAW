@@ -145,8 +145,7 @@ export async function GET(request: NextRequest) {
       },
     });
     
-  } catch (error) {
-    console.error('AI status check error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         status: 'error',

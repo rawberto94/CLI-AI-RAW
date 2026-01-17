@@ -49,7 +49,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       },
     });
   } catch (error: unknown) {
-    console.error('Error fetching rate cards:', error);
     return NextResponse.json(
       {
         success: false,

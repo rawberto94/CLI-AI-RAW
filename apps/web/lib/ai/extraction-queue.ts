@@ -127,7 +127,6 @@ export class ExtractionQueueService {
     };
 
     this.queue.set(jobId, job);
-    console.log(`📥 Queued extraction job ${jobId} for contract ${contractId}`);
     
     return job;
   }
@@ -158,8 +157,6 @@ export class ExtractionQueueService {
     const estimatedTime = Math.ceil(
       (request.contractIds.length / this.maxConcurrent) * avgTime
     );
-
-    console.log(`📦 Created batch ${batchId} with ${jobs.length} jobs`);
 
     return {
       batchId,
@@ -194,7 +191,6 @@ export class ExtractionQueueService {
     }
 
     job.status = "cancelled";
-    console.log(`❌ Cancelled job ${jobId}`);
     return true;
   }
 
@@ -249,7 +245,6 @@ export class ExtractionQueueService {
       }
     }
 
-    console.log(`🧹 Cleaned up ${removed} old jobs`);
     return removed;
   }
 
@@ -298,8 +293,6 @@ export class ExtractionQueueService {
     job.status = "running";
     job.startedAt = new Date();
 
-    console.log(`🚀 Processing job ${job.id} for contract ${job.contractId}`);
-
     const startTime = Date.now();
     let success = false;
 
@@ -307,31 +300,26 @@ export class ExtractionQueueService {
       // Create extractor and run extraction
       // Note: This needs proper integration with the contract text retrieval
       // For now, mark as needing implementation
-      const extractor = new SchemaAwareMetadataExtractor();
+      const _extractor = new SchemaAwareMetadataExtractor();
       
       // TODO: Get contract text and schema properly
       // For now, set a placeholder result
-      console.warn(`⚠️ Job ${job.id}: Extraction queue processing not fully implemented`);
       
       job.status = "failed";
       job.error = "Extraction queue processing requires contract text retrieval implementation";
       job.completedAt = new Date();
       success = false;
-    } catch (error) {
-      console.error(`❌ Job ${job.id} failed:`, error);
-      
+    } catch (error: unknown) {
       job.retryCount++;
       job.error = error instanceof Error ? error.message : "Unknown error";
 
       if (job.retryCount < job.maxRetries) {
         // Retry with exponential backoff
         job.status = "pending";
-        const backoffMs = Math.pow(2, job.retryCount) * 1000;
-        console.log(`🔄 Retrying job ${job.id} in ${backoffMs}ms (attempt ${job.retryCount + 1})`);
+        const _backoffMs = Math.pow(2, job.retryCount) * 1000;
       } else {
         job.status = "failed";
         job.completedAt = new Date();
-        console.log(`💀 Job ${job.id} failed after ${job.retryCount} retries`);
       }
     } finally {
       this.processing.delete(job.id);
@@ -371,9 +359,8 @@ export class ExtractionQueueService {
             : null,
         }),
       });
-      console.log(`📤 Webhook notification sent for job ${job.id}`);
-    } catch (error) {
-      console.error(`Failed to send webhook for job ${job.id}:`, error);
+    } catch {
+      // Webhook notification failed silently
     }
   }
 
@@ -389,7 +376,6 @@ export class ExtractionQueueService {
       clearInterval(this.processInterval);
       this.processInterval = null;
     }
-    console.log("🛑 Extraction queue stopped");
   }
 
   /**
@@ -398,7 +384,6 @@ export class ExtractionQueueService {
   resume(intervalMs: number = 1000): void {
     if (!this.processInterval) {
       this.processInterval = setInterval(() => this.processQueue(), intervalMs);
-      console.log("▶️ Extraction queue resumed");
     }
   }
 }

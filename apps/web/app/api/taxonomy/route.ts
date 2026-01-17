@@ -163,8 +163,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       data: result,
       total: categories.length,
     });
-  } catch (error) {
-    console.error("Error fetching taxonomy categories:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -278,14 +277,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    console.log("✅ Taxonomy category created:", {
-      id: category.id,
-      name: category.name,
-      tenantId,
-      path,
-      level,
-    });
-
     return NextResponse.json(
       {
         success: true,
@@ -299,8 +290,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("Error creating taxonomy category:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

@@ -34,8 +34,6 @@ export async function POST(request: NextRequest) {
       onlyMissing = false,   // Only process contracts without embeddings
     } = body;
 
-    console.log(`🔄 RAG Reindex triggered for tenant: ${tenantId}`);
-
     const results: Array<{ contractId: string; status: 'success' | 'skipped' | 'error'; message?: string }> = [];
     const whereClause: Prisma.ContractWhereInput = { tenantId, isDeleted: false };
 
@@ -149,7 +147,6 @@ export async function POST(request: NextRequest) {
           failed++;
         }
       } catch (error) {
-        console.error(`Error reindexing contract ${contract.id}:`, error);
         results.push({
           contractId: contract.id,
           status: 'error',
@@ -168,7 +165,6 @@ export async function POST(request: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error('Error in RAG reindex:', error);
     return NextResponse.json(
       { error: 'Reindex failed', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -257,7 +253,6 @@ export async function GET(request: NextRequest) {
       hasMore: needsReindexing.length > 50,
     });
   } catch (error) {
-    console.error('Error checking reindex status:', error);
     return NextResponse.json(
       { error: 'Failed to check reindex status', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

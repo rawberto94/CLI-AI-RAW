@@ -1,135 +1,95 @@
 'use client';
 
-import React, { use, useState } from 'react';
+import React, { use, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { VersionCompare, DocumentVersion } from '@/components/contracts/VersionCompare';
 import { VersionTimeline } from '@/components/contracts/VersionTimeline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, FileText, History, GitBranch, Clock, Sparkles, GitCompare } from 'lucide-react';
+import { ArrowLeft, FileText, History, GitBranch, Clock, Sparkles, GitCompare, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { Card } from '@/components/ui/card';
 
-// Mock versions data
-const mockVersions: DocumentVersion[] = [
-  {
-    id: 'v1',
-    version: 'v1.0',
-    author: { id: '1', name: 'John Smith' },
-    timestamp: new Date('2024-01-15'),
-    changes: 0,
-    label: 'Initial Draft',
-    content: `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below.
+interface ApiVersion {
+  id: string;
+  versionNumber: number;
+  uploadedBy: string;
+  uploadedAt: string;
+  isActive: boolean;
+  summary?: string;
+  changes?: Record<string, unknown>;
+  fileUrl?: string;
+}
 
-1. Term and Termination
+interface VersionsResponse {
+  success: boolean;
+  versions?: ApiVersion[];
+  error?: string;
+}
 
-The initial term of this Agreement shall be one (1) year from the Effective Date. Either party may terminate this Agreement upon thirty (30) days prior written notice.
+function useVersions(contractId: string) {
+  const [versions, setVersions] = useState<DocumentVersion[]>([]);
+  const [timelineVersions, setTimelineVersions] = useState<ApiVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-2. License Grant
+  const fetchVersions = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/contracts/${contractId}/versions`);
+      const json: VersionsResponse = await response.json();
 
-Subject to the terms of this Agreement, Provider grants Client a non-exclusive license to use the Services during the Term.
+      if (json.success && json.versions) {
+        // Store raw versions for timeline
+        setTimelineVersions(json.versions);
 
-3. Confidentiality
+        // Transform to DocumentVersion format for compare view
+        const docVersions: DocumentVersion[] = json.versions.map((v) => ({
+          id: v.id,
+          version: `v${v.versionNumber}.0`,
+          author: { id: v.id, name: v.uploadedBy },
+          timestamp: new Date(v.uploadedAt),
+          changes: v.changes ? Object.keys(v.changes).length : 0,
+          label: v.summary,
+          content: '', // Content would need to be fetched separately for full comparison
+        }));
+        setVersions(docVersions);
+        setError(null);
+      } else {
+        setVersions([]);
+        setTimelineVersions([]);
+        setError(json.error || 'Failed to fetch versions');
+      }
+    } catch (err) {
+      console.error('Error fetching versions:', err);
+      setVersions([]);
+      setTimelineVersions([]);
+      setError('Failed to fetch versions');
+    } finally {
+      setLoading(false);
+    }
+  }, [contractId]);
 
-Each party agrees to maintain in confidence all Confidential Information disclosed by the other party.`,
-  },
-  {
-    id: 'v2',
-    version: 'v1.1',
-    author: { id: '2', name: 'Sarah Johnson' },
-    timestamp: new Date('2024-01-20'),
-    changes: 5,
-    content: `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below. This Agreement governs all services.
+  useEffect(() => {
+    fetchVersions();
+  }, [fetchVersions]);
 
-1. Term and Termination
-
-The initial term of this Agreement shall be two (2) years from the Effective Date. Either party may terminate this Agreement upon sixty (60) days prior written notice to the other party.
-
-2. License Grant
-
-Subject to the terms of this Agreement, Provider grants Client an exclusive license to use the Services during the Term.
-
-3. Confidentiality
-
-Each party agrees to maintain in confidence all Confidential Information disclosed by the other party and to use such information only for purposes of this Agreement.`,
-  },
-  {
-    id: 'v3',
-    version: 'v1.2',
-    author: { id: '1', name: 'John Smith' },
-    timestamp: new Date('2024-01-25'),
-    changes: 8,
-    label: 'Legal Review',
-    content: `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below. This Agreement governs all services provided.
-
-1. Term and Termination
-
-The initial term of this Agreement shall be two (2) years from the Effective Date. Either party may terminate this Agreement upon sixty (60) days prior written notice to the other party. Termination shall not affect any accrued rights.
-
-2. License Grant
-
-Subject to the terms and conditions of this Agreement, Provider grants Client an exclusive license to use the Services during the Term.
-
-3. Confidentiality
-
-Each party agrees to maintain in confidence all Confidential Information disclosed by the other party and to use such information only for purposes of this Agreement.
-
-4. Limitation of Liability
-
-IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO THIS AGREEMENT.`,
-  },
-  {
-    id: 'v4',
-    version: 'v2.0',
-    author: { id: '3', name: 'Legal Team' },
-    timestamp: new Date('2024-02-01'),
-    changes: 12,
-    label: 'Final',
-    content: `This Master Services Agreement (the "Agreement") is entered into as of the Effective Date by and between the parties identified below. This Agreement shall govern all services provided under this arrangement.
-
-1. Term and Termination
-
-The initial term of this Agreement shall be three (3) years from the Effective Date. Either party may terminate this Agreement upon ninety (90) days prior written notice to the other party. Termination shall not affect any accrued rights or obligations.
-
-2. License Grant
-
-Subject to the terms and conditions of this Agreement, Provider grants Client an exclusive, worldwide license to use the Services during the Term.
-
-3. Confidentiality
-
-Each party agrees to maintain in strict confidence all Confidential Information disclosed by the other party and to use such information only for purposes of this Agreement. This obligation survives termination.
-
-4. Limitation of Liability
-
-IN NO EVENT SHALL EITHER PARTY BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO THIS AGREEMENT, REGARDLESS OF THE FORM OF ACTION OR THE BASIS OF THE CLAIM.
-
-5. Governing Law
-
-This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware.`,
-  },
-];
+  return { versions, timelineVersions, loading, error, refetch: fetchVersions };
+}
 
 export default function VersionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const [viewMode, setViewMode] = useState<'compare' | 'timeline'>('timeline');
   
-  // Transform versions for timeline (matching ContractVersion interface)
-  const timelineVersions = mockVersions.map((v, idx) => ({
-    id: v.id,
-    versionNumber: idx + 1,
-    uploadedBy: v.author.name,
-    uploadedAt: v.timestamp.toISOString(),
-    isActive: idx === mockVersions.length - 1,
-    summary: v.label || `${v.changes} changes made`,
-    changes: {},
-    fileUrl: null,
-  }));
+  // Fetch real version data
+  const { versions, timelineVersions, loading, error, refetch } = useVersions(id);
   
-  const handleAcceptVersion = (versionId: string) => {
-    const version = mockVersions.find((v) => v.id === versionId);
+  const handleAcceptVersion = async (versionId: string) => {
+    const version = versions.find((v) => v.id === versionId);
     toast.success(`Version ${version?.version || versionId} accepted`, {
       description: 'The selected version has been set as the current version.',
     });
@@ -144,6 +104,10 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
   const handleTimelineCompare = (versionA: number, versionB: number) => {
     router.push(`/contracts/${id}/versions/compare?a=${versionA}&b=${versionB}`);
   };
+
+  const latestVersion = timelineVersions.length > 0 
+    ? timelineVersions[timelineVersions.length - 1] 
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20">
@@ -174,11 +138,11 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
                   <div className="flex items-center gap-3 mt-0.5 text-sm text-cyan-100">
                     <span className="flex items-center gap-1">
                       <FileText className="w-3 h-3" />
-                      Master Services Agreement
+                      Contract Document
                     </span>
                     <span className="flex items-center gap-1">
                       <GitBranch className="w-3 h-3" />
-                      {mockVersions.length} versions
+                      {timelineVersions.length} version{timelineVersions.length !== 1 ? 's' : ''}
                     </span>
                   </div>
                 </div>
@@ -186,6 +150,17 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
             </div>
             
             <div className="hidden md:flex items-center gap-3">
+              {/* Refresh Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refetch}
+                disabled={loading}
+                className="text-white/80 hover:text-white hover:bg-white/20 gap-1"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+              
               {/* View Mode Toggle */}
               <div className="flex items-center bg-white/10 rounded-lg p-1">
                 <Button
@@ -207,10 +182,12 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
                   Compare
                 </Button>
               </div>
-              <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2">
-                <Clock className="w-4 h-4 mr-2" />
-                Last updated {mockVersions[mockVersions.length - 1]?.timestamp.toLocaleDateString() ?? 'N/A'}
-              </Badge>
+              {latestVersion && (
+                <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Last updated {new Date(latestVersion.uploadedAt).toLocaleDateString()}
+                </Badge>
+              )}
               <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm px-4 py-2">
                 <Sparkles className="w-4 h-4 mr-2" />
                 AI Comparison
@@ -227,7 +204,29 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
         transition={{ delay: 0.2 }}
         className="max-w-7xl mx-auto px-6 py-6"
       >
-        {viewMode === 'timeline' ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <Card className="p-12 text-center">
+            <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
+            <h3 className="font-semibold mb-2">Failed to load versions</h3>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <Button onClick={refetch}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </Card>
+        ) : timelineVersions.length === 0 ? (
+          <Card className="p-12 text-center">
+            <History className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-semibold mb-2">No versions yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              This contract has no version history. Upload a new version to start tracking changes.
+            </p>
+          </Card>
+        ) : viewMode === 'timeline' ? (
           <div className="space-y-6">
             {/* Visual Timeline */}
             <VersionTimeline
@@ -248,7 +247,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
         ) : (
           <VersionCompare
             documentId={id}
-            versions={mockVersions}
+            versions={versions}
             onAcceptVersion={handleAcceptVersion}
             onMergeVersions={handleMergeVersions}
             className="h-[calc(100vh-180px)]"

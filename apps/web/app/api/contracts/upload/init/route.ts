@@ -54,15 +54,12 @@ export async function POST(req: NextRequest) {
         updated_at = NOW()
     `;
 
-    console.log(`✅ Initialized chunked upload: ${uploadId} (${totalChunks} chunks)`);
-
     return NextResponse.json({
       success: true,
       uploadId,
       message: 'Upload session initialized',
     });
-  } catch (error) {
-    console.error('Failed to initialize upload:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to initialize upload',

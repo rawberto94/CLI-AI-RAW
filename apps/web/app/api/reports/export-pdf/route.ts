@@ -32,8 +32,7 @@ export async function POST(request: NextRequest) {
       filename: `ConTigo_AI_Report_${new Date().toISOString().split('T')[0]}.pdf`
     });
 
-  } catch (error) {
-    console.error('PDF export error:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to generate PDF' },
       { status: 500 }

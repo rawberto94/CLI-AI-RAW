@@ -36,8 +36,8 @@ export function ExchangeRateTimestamp({
         rate: data.rate,
         timestamp: data.timestamp,
       });
-    } catch (error) {
-      console.error('Error fetching exchange rate:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
       setRefreshing(false);

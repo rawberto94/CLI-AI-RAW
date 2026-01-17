@@ -137,8 +137,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-  } catch (error) {
-    console.error('Error fetching tags:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to fetch tags', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -219,8 +218,7 @@ export async function POST(request: NextRequest) {
       data: newTag,
       message: existingIndex >= 0 ? 'Tag updated successfully' : 'Tag created successfully',
     });
-  } catch (error) {
-    console.error('Error creating tag:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to create tag', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
@@ -279,8 +277,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Tag deleted successfully',
     });
-  } catch (error) {
-    console.error('Error deleting tag:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to delete tag', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

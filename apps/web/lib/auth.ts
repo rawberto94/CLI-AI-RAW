@@ -33,44 +33,33 @@ providers.push(
     },
     async authorize(credentials) {
       if (!credentials?.email || !credentials?.password) {
-        console.log("❌ Missing credentials");
         return null;
       }
 
       try {
-        console.log(`🔍 Looking for user: ${credentials.email}`);
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
           include: { tenant: true },
         });
 
         if (!user) {
-          console.log(`❌ User not found: ${credentials.email}`);
           return null;
         }
-
-        console.log(`✅ User found: ${user.email}, has password: ${!!user.passwordHash}, status: ${user.status}`);
 
         if (!user.passwordHash) {
-          console.log("❌ No password set for user");
           return null;
         }
 
-        console.log(`🔐 Comparing password for ${user.email}...`);
         const isPasswordValid = await compare(
           credentials.password as string,
           user.passwordHash
         );
 
-        console.log(`🔐 Password valid: ${isPasswordValid}`);
-
         if (!isPasswordValid) {
-          console.log("❌ Invalid password");
           return null;
         }
 
         if (user.status !== "ACTIVE") {
-          console.log("User account is not active");
           return null;
         }
 
@@ -82,8 +71,7 @@ providers.push(
           role: user.role,
           image: user.avatar || undefined,
         };
-      } catch (error) {
-        console.error("Authorization error:", error);
+      } catch {
         return null;
       }
     },
@@ -147,7 +135,6 @@ async function handleSSOSignIn(
 
   if (existingUser) {
     if (existingUser.status !== "ACTIVE") {
-      console.log("SSO user account is not active:", email);
       return null;
     }
     return { tenantId: existingUser.tenantId, role: existingUser.role };
@@ -176,7 +163,6 @@ async function handleSSOSignIn(
   }
 
   // Deny access - user must be pre-created or invited
-  console.log("SSO user not found and auto-provisioning disabled:", email);
   return null;
 }
 
@@ -233,12 +219,6 @@ export const authOptions: NextAuthConfig = {
   },
   events: {
     async signIn({ user, account }) {
-      console.log("User signed in:", { 
-        userId: user.id, 
-        email: user.email,
-        provider: account?.provider,
-      });
-      
       // Update last login time
       try {
         if (user.id) {
@@ -247,24 +227,18 @@ export const authOptions: NextAuthConfig = {
             data: { lastLoginAt: new Date() },
           });
         }
-      } catch (error) {
+      } catch {
         // User might not exist yet for SSO (will be created by adapter)
-        console.debug("Failed to update last login time:", error);
       }
     },
     async signOut(message) {
-      const token = 'token' in message ? message.token : null;
-      console.log("User signed out:", { userId: token?.id });
+      // User signed out
     },
     async createUser({ user }) {
-      // Log new user creation (especially for SSO)
-      console.log("New user created:", { userId: user.id, email: user.email });
+      // New user created (especially for SSO)
     },
     async linkAccount({ user, account }) {
-      console.log("Account linked:", { 
-        userId: user.id, 
-        provider: account.provider,
-      });
+      // Account linked
     },
   },
   debug: process.env.NODE_ENV === "development",

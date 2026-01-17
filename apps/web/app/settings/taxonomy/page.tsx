@@ -720,8 +720,8 @@ export default function TaxonomyPage() {
         const data = await response.json();
         setPresets(data.data || []);
       }
-    } catch (err) {
-      console.error("Failed to fetch presets:", err);
+    } catch {
+      // Error handled silently
     }
   }, []);
 

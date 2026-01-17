@@ -79,9 +79,7 @@ export class CurrencyAdvancedService {
       }
 
       return data.rates[to];
-    } catch (error) {
-      console.error('Error fetching exchange rate:', error);
-      
+    } catch {
       // Fallback to last known rate from database
       const lastKnown = await this.getLastKnownRate(from, to);
       if (lastKnown) {
@@ -105,8 +103,7 @@ export class CurrencyAdvancedService {
           timestamp: new Date(),
         },
       });
-    } catch (error) {
-      console.error('Error storing exchange rate:', error);
+    } catch {
       // Non-critical error, continue
     }
   }
@@ -127,8 +124,7 @@ export class CurrencyAdvancedService {
       });
 
       return lastRate?.rate ? Number(lastRate.rate) : null;
-    } catch (error) {
-      console.error('Error fetching last known rate:', error);
+    } catch {
       return null;
     }
   }
@@ -200,8 +196,8 @@ export class CurrencyAdvancedService {
             });
           }
         }
-      } catch (error) {
-        console.error(`Error checking volatility for ${currency}:`, error);
+      } catch {
+        // Volatility check failed, continue with next currency
       }
     }
 
@@ -233,7 +229,6 @@ export class CurrencyAdvancedService {
     }
 
     // If no historical rate found, use current rate
-    console.warn(`No historical rate found for ${from} to ${to} on ${date}, using current rate`);
     return await this.getExchangeRate(from, to);
   }
 
@@ -270,9 +265,8 @@ export class CurrencyAdvancedService {
 
       try {
         await this.getExchangeRate(baseCurrency, currency);
-        console.log(`Updated exchange rate: ${baseCurrency} to ${currency}`);
-      } catch (error) {
-        console.error(`Failed to update rate for ${currency}:`, error);
+      } catch {
+        // Failed to update rate, continue with next currency
       }
     }
   }

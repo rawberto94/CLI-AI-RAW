@@ -89,8 +89,6 @@ export async function GET(
           s3Key = s3Key.replace(`s3://${BUCKET_NAME}/`, '');
         }
         
-        console.log('Fetching file from MinIO:', { bucket: BUCKET_NAME, key: s3Key });
-        
         const command = new GetObjectCommand({
           Bucket: BUCKET_NAME,
           Key: s3Key,
@@ -104,9 +102,7 @@ export async function GET(
         }
         
         fileBuffer = Buffer.from(bodyBytes);
-        console.log('File fetched successfully from MinIO:', { size: fileBuffer.length });
-      } catch (s3Error) {
-        console.error('Failed to get file from MinIO/S3:', s3Error);
+      } catch {
         // Fall through to try local file
       }
     }
@@ -119,7 +115,6 @@ export async function GET(
       
       // Check for path traversal attempts
       if (hasPathTraversal(contract.fileName || '') || hasPathTraversal(contract.storagePath || '')) {
-        console.error('Path traversal attempt detected:', { fileName: contract.fileName, storagePath: contract.storagePath });
         return NextResponse.json(
           { success: false, error: 'Invalid file path' },
           { status: 400 }
@@ -153,7 +148,6 @@ export async function GET(
         }
 
         if (!found) {
-          console.error('File not found in any location:', contract.fileName);
           return NextResponse.json(
             { 
               success: false, 
@@ -192,8 +186,7 @@ export async function GET(
       status: 200,
       headers,
     });
-  } catch (error) {
-    console.error('Error serving contract file:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

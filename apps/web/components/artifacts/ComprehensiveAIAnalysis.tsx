@@ -539,8 +539,7 @@ export function ComprehensiveAIAnalysis({
       setShowDeepAnalysis(true)
       setActiveView('discovered')
       toast.success(`Discovered ${result.discoveredFields?.total || 0} additional fields!`)
-    } catch (error) {
-      console.error('Deep analysis error:', error)
+    } catch {
       toast.error('Failed to run deep analysis')
     } finally {
       setIsRunningDeepAnalysis(false)
@@ -564,7 +563,7 @@ export function ComprehensiveAIAnalysis({
   // Calculate overall health score
   const healthScore = useMemo(() => {
     let score = 100
-    let factors: { label: string; impact: number; status: 'good' | 'warning' | 'critical' }[] = []
+    const factors: { label: string; impact: number; status: 'good' | 'warning' | 'critical' }[] = []
     
     // Risk impact
     const riskScore = data.risk?.riskScore || data.risk?.overallScore || 50

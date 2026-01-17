@@ -33,8 +33,6 @@ export async function POST(request: NextRequest) {
     }
 
     const tenantId = await getServerTenantId();
-    
-    console.log(`🔍 Advanced RAG search: "${query}" (mode: ${mode}, rerank: ${rerank}, expand: ${expandQuery})`);
 
     const searchOptions: SearchOptions = {
       mode,
@@ -55,8 +53,6 @@ export async function POST(request: NextRequest) {
       : await crossContractSearch(query, tenantId, searchOptions);
 
     const processingTime = Date.now() - startTime;
-    
-    console.log(`✅ Found ${results.length} results in ${processingTime}ms`);
 
     return NextResponse.json({
       success: true,
@@ -85,7 +81,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Advanced RAG search error:', error);
     return NextResponse.json(
       {
         success: false,

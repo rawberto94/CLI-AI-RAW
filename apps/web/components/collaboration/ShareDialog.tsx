@@ -84,8 +84,8 @@ export function ShareDialog({
       if (data.success) {
         setShares(data.shares || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch shares:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -180,8 +180,8 @@ export function ShareDialog({
           description: 'Share permission has been updated',
         });
       }
-    } catch (error) {
-      console.error('Failed to update permission:', error);
+    } catch {
+      // Error handled silently
     }
     setShowPermissionDropdown(null);
   };
@@ -199,8 +199,8 @@ export function ShareDialog({
           description: 'Share access has been removed',
         });
       }
-    } catch (error) {
-      console.error('Failed to revoke share:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

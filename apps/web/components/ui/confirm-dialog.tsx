@@ -29,17 +29,17 @@ interface ConfirmDialogProps {
 const variantConfig = {
   default: {
     icon: Info,
-    iconClass: 'text-blue-600 bg-blue-100',
+    iconClass: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50',
     buttonClass: 'bg-blue-600 hover:bg-blue-700',
   },
   warning: {
     icon: AlertTriangle,
-    iconClass: 'text-amber-600 bg-amber-100',
+    iconClass: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50',
     buttonClass: 'bg-amber-600 hover:bg-amber-700',
   },
   destructive: {
     icon: Trash2,
-    iconClass: 'text-red-600 bg-red-100',
+    iconClass: 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/50',
     buttonClass: 'bg-red-600 hover:bg-red-700',
   },
 };
@@ -64,8 +64,8 @@ export function ConfirmDialog({
     try {
       await onConfirm();
       onOpenChange(false);
-    } catch (error) {
-      console.error('Confirm action failed:', error);
+    } catch {
+      // Action failed silently
     } finally {
       setIsPending(false);
     }

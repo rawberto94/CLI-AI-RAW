@@ -111,10 +111,9 @@ export async function GET(req: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-  } catch (error: any) {
-    console.error('Knowledge graph API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
@@ -193,8 +192,8 @@ export async function POST(req: NextRequest) {
                 results.push({ contractId: cid, entities, count: entities.length });
               }
             }
-          } catch (error) {
-            console.error(`Error processing contract ${cid}:`, error);
+          } catch {
+            // Skip failed contracts
           }
         }
 
@@ -209,10 +208,9 @@ export async function POST(req: NextRequest) {
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-  } catch (error: any) {
-    console.error('Knowledge graph API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

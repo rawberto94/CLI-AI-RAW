@@ -74,8 +74,8 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
         total: data.total,
         hasMore: data.hasMore,
       }));
-    } catch (error) {
-      console.error('Error fetching audit logs:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -120,8 +120,8 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
       a.href = url;
       a.download = `audit-logs-${new Date().toISOString()}.csv`;
       a.click();
-    } catch (error) {
-      console.error('Error exporting audit logs:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

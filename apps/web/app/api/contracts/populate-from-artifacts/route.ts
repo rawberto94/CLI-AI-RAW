@@ -268,8 +268,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       results,
     });
     
-  } catch (error) {
-    console.error("Error populating contracts from artifacts:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

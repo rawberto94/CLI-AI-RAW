@@ -40,15 +40,6 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
         onError(error);
       }
 
-      // Log to console in development
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[useErrorHandler]', {
-          error,
-          context,
-          errorResponse,
-        });
-      }
-
       return errorResponse;
     },
     [showToast, onError]

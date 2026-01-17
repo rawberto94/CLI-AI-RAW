@@ -234,8 +234,7 @@ export async function GET(request: NextRequest) {
         responseTime: `${Date.now() - startTime}ms`,
       },
     });
-  } catch (error) {
-    console.error('Alerts API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch alerts', details: String(error) },
       { status: 500 }
@@ -412,8 +411,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('Alerts POST error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to process action', details: String(error) },
       { status: 500 }

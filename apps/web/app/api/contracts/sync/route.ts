@@ -105,10 +105,9 @@ export async function POST(request: NextRequest) {
         duration: `${Date.now() - startTime}ms`,
       },
     });
-  } catch (error) {
-    console.error('Contract sync error:', error);
+  } catch {
     return NextResponse.json(
-      { success: false, error: 'Failed to sync contract data', details: String(error) },
+      { success: false, error: 'Failed to sync contract data' },
       { status: 500 }
     );
   }
@@ -137,7 +136,7 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to get sync status' },
       { status: 500 }

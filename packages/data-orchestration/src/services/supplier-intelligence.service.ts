@@ -354,8 +354,8 @@ export class SupplierIntelligenceService {
           tenantId
         );
         scores.push(score);
-      } catch (error) {
-        console.error(`Error calculating score for supplier ${supplier.id}:`, error);
+      } catch {
+        // Error calculating score for supplier - continue with next supplier
       }
     }
 

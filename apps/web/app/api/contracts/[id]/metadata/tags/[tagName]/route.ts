@@ -37,8 +37,7 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Tag removed successfully',
     });
-  } catch (error) {
-    console.error('Error removing tag:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to remove tag' },
       { status: 500 }

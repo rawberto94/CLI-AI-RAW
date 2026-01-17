@@ -42,7 +42,6 @@ export function useToast() {
     if (action) {
       // Note: react-hot-toast doesn't natively support action buttons
       // This is a placeholder for future enhancement with custom toast component
-      console.log('Action button:', action);
     }
 
     return toastId;

@@ -136,8 +136,8 @@ export function SessionTimeoutProvider({
     try {
       await onExtend?.();
       resetTimer();
-    } catch (error) {
-      console.error('Failed to extend session:', error);
+    } catch {
+      // Error handled silently
     }
   }, [onExtend, resetTimer]);
 

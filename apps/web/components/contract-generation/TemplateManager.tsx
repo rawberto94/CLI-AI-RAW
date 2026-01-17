@@ -684,8 +684,7 @@ export function TemplateManager() {
           // Use mock data
           setTemplates(mockTemplates);
         }
-      } catch (err) {
-        console.error('Failed to fetch templates:', err);
+      } catch {
         setError('Failed to load templates. Using sample data.');
         setTemplates(mockTemplates);
       } finally {
@@ -916,10 +915,10 @@ export function TemplateManager() {
               viewMode={viewMode}
               isFavorite={favorites.has(template.id)}
               onToggleFavorite={() => handleToggleFavorite(template.id)}
-              onEdit={() => console.log('Edit', template.id)}
+              onEdit={() => {}}
               onDuplicate={() => handleDuplicate(template)}
-              onPreview={() => console.log('Preview', template.id)}
-              onUse={() => console.log('Use', template.id)}
+              onPreview={() => {}}
+              onUse={() => {}}
               onDelete={() => handleDelete(template.id)}
             />
           ))}

@@ -25,19 +25,19 @@ export async function GET(request: NextRequest) {
       artifacts,
       upcomingContracts
     ] = await Promise.all([
-      prisma.contract.count({ where: { status: { not: 'DELETED' } } }),
+      prisma.contract.count({ where: { isDeleted: false } }),
       prisma.contract.aggregate({
-        where: { status: { not: 'DELETED' } },
+        where: { isDeleted: false },
         _sum: { totalValue: true }
       }),
       prisma.contract.groupBy({
         by: ['supplierName'],
-        where: { supplierName: { not: null }, status: { not: 'DELETED' } }
+        where: { supplierName: { not: null }, isDeleted: false }
       }),
       prisma.artifact.count(),
       prisma.contract.count({
         where: {
-          status: { not: 'DELETED' },
+          isDeleted: false,
           endDate: {
             gte: new Date(),
             lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
@@ -54,8 +54,7 @@ export async function GET(request: NextRequest) {
       upcomingRenewals: upcomingContracts,
       artifactsProcessed: artifacts
     })
-  } catch (error) {
-    console.error('Analytics metrics error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch metrics' },
       { status: 500 }

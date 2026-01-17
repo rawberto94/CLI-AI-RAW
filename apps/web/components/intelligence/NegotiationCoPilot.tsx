@@ -462,8 +462,7 @@ export const NegotiationCoPilot: React.FC = () => {
         } else {
           setRedlines(mockRedlines);
         }
-      } catch (error) {
-        console.log('Using mock redlines data');
+      } catch {
         setRedlines(mockRedlines);
       } finally {
         setLoading(false);
@@ -568,8 +567,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
 
       // Replace loading message with actual response
       setChatMessages(prev => prev.filter(m => m.id !== loadingId).concat(aiMsg));
-    } catch (error) {
-      console.error('Chat error:', error);
+    } catch {
       // Replace loading with error message
       setChatMessages(prev => prev.filter(m => m.id !== loadingId).concat({
         id: `m-${Date.now()}-error`,

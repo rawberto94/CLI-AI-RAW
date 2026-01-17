@@ -64,8 +64,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
-    console.error('Error fetching baselines:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch baselines' },
       { status: 500 }
@@ -187,8 +186,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(baseline, { status: 201 });
-  } catch (error) {
-    console.error('Error creating baseline:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create baseline' },
       { status: 500 }
@@ -244,8 +242,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json(baseline);
-  } catch (error) {
-    console.error('Error updating baseline:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update baseline' },
       { status: 500 }

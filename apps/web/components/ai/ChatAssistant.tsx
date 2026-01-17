@@ -139,8 +139,7 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
       }
 
       setMessages(prev => [...prev, response])
-    } catch (error) {
-      console.error('Chat error:', error)
+    } catch {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',

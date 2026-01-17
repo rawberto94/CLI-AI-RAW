@@ -128,8 +128,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log(`🚀 Batch RAG processing: ${processableContracts.length} contracts`);
-
     // Process contracts in batches to control concurrency
     const results: ContractProcessResult[] = [];
     let successCount = 0;
@@ -156,8 +154,6 @@ export async function POST(request: NextRequest) {
               };
             }
 
-            console.log(`📄 Processing: ${contract.fileName}`);
-            
             const result = await processContractWithSemanticChunking(
               contract.id,
               contract.rawText!,
@@ -178,7 +174,6 @@ export async function POST(request: NextRequest) {
             };
           } catch (error) {
             failedCount++;
-            console.error(`❌ Failed to process ${contract.fileName}:`, error);
             return {
               contractId: contract.id,
               fileName: contract.fileName,
@@ -208,8 +203,6 @@ export async function POST(request: NextRequest) {
 
     const totalTime = Date.now() - startTime;
 
-    console.log(`✅ Batch processing complete: ${successCount} success, ${failedCount} failed, ${skippedCount} skipped`);
-
     return NextResponse.json({
       success: true,
       summary: {
@@ -224,7 +217,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Batch RAG processing error:', error);
     return NextResponse.json(
       { 
         success: false,
@@ -299,7 +291,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching batch status:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to get batch status' },
       { status: 500 }

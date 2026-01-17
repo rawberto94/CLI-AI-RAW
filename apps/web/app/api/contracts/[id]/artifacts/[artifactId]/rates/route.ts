@@ -38,8 +38,7 @@ export async function POST(
       message: 'Rate card entry added successfully',
       rateId,
     });
-  } catch (error) {
-    console.error('Error adding rate card entry:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to add rate card entry' },
       { status: 500 }

@@ -55,8 +55,8 @@ class ProgressTracker {
       callbacks.forEach(callback => {
         try {
           callback(event)
-        } catch (error) {
-          console.error('Error in progress callback:', error)
+        } catch {
+          // Callback error, continue with other callbacks
         }
       })
     }

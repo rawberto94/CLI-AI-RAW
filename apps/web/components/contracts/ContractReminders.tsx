@@ -184,8 +184,8 @@ export function ContractReminders({
 
         setReminders(defaultReminders);
       }
-    } catch (error) {
-      console.error('Failed to load reminders:', error);
+    } catch {
+      // Error loading reminders - fail silently
     } finally {
       setLoading(false);
     }
@@ -236,8 +236,7 @@ export function ContractReminders({
         setShowCreateDialog(false);
         resetForm();
       }
-    } catch (error) {
-      console.error('Failed to create reminder:', error);
+    } catch {
       toast.error('Failed to create reminder');
     }
   };

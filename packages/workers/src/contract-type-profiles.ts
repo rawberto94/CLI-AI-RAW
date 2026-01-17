@@ -2265,7 +2265,6 @@ export async function detectContractTypeWithAI(text: string): Promise<{ type: Co
     const apiKey = process.env.OPENAI_API_KEY;
     
     if (!apiKey) {
-      console.warn('OPENAI_API_KEY not configured, falling back to keyword matching');
       return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
     }
     
@@ -2327,7 +2326,6 @@ Rules:
     
     // Validate the result
     if (!result.type || !contractTypes.includes(result.type)) {
-      console.warn(`AI returned invalid type: ${result.type}, falling back to keyword matching`);
       return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
     }
 
@@ -2340,8 +2338,7 @@ Rules:
       matchedKeywords: keywordHints.matchedKeywords,
     };
     
-  } catch (error) {
-    console.warn('AI contract type detection failed, falling back to keyword matching:', error);
+  } catch {
     return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
   }
 }

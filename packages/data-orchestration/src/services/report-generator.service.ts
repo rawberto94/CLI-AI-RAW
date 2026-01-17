@@ -165,8 +165,7 @@ Focus on business impact and key metrics. Be professional and data-driven.`;
 
       const content = message.content[0];
       return content.type === 'text' ? content.text : '';
-    } catch (error) {
-      console.error('Error generating AI summary:', error);
+    } catch {
       return `Portfolio Overview: Managing ${metrics.totalContracts} contracts worth $${spend.totalSpend.toLocaleString()}. ${metrics.expiringIn30Days} contracts require immediate attention. Portfolio risk score of ${risks.overallRiskScore}% with $${savings.totalPotential.toLocaleString()} in identified savings opportunities.`;
     }
   }

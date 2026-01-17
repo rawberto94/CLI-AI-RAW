@@ -249,7 +249,6 @@ export function QuickActionsPanel({
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50 hover:bg-indigo-100',
       onClick: () => onCompare?.(),
-      isNew: true,
     },
     {
       id: 'approval',

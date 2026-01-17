@@ -39,8 +39,7 @@ export async function POST(
       failed: result.failed,
       totalProcessed: result.totalProcessed,
     });
-  } catch (error) {
-    console.error('Error in bulk update:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to bulk update artifacts' },
       { status: 500 }

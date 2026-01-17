@@ -44,8 +44,6 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { forceRecategorize = true } = body;
 
-    console.log(`🏷️ AI Categorization request for contract: ${contractId}`);
-
     // Check contract exists
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
@@ -93,8 +91,7 @@ export async function POST(
         message: "Could not categorize contract",
       }, { status: 400 });
     }
-  } catch (error) {
-    console.error("Categorization API error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -161,8 +158,7 @@ export async function GET(
       },
       availableCategories: categories,
     });
-  } catch (error) {
-    console.error("Get category error:", error);
+  } catch {
     return NextResponse.json(
       { success: false, error: "Failed to get category" },
       { status: 500 }

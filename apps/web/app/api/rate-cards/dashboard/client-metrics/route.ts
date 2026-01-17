@@ -69,8 +69,7 @@ export async function GET(request: NextRequest) {
       topClients: topClients.sort((a, b) => b.totalSpend - a.totalSpend),
       unassignedRateCards: unassignedCount,
     });
-  } catch (error) {
-    console.error('Error fetching client metrics:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to fetch client metrics', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

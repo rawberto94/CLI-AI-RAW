@@ -60,8 +60,7 @@ export function AnomalyDetectionDashboard() {
       const result = await response.json();
       setAnomalies(result.anomalies || []);
       setStats(result.stats || null);
-    } catch (error) {
-      console.error('Error fetching anomalies:', error);
+    } catch {
       toast.error('Failed to load anomaly data');
 
       // Fallback data
@@ -157,8 +156,7 @@ export function AnomalyDetectionDashboard() {
       );
       toast.success('Anomaly status updated');
       fetchAnomalies(); // Refresh stats
-    } catch (error) {
-      console.error('Error updating anomaly:', error);
+    } catch {
       toast.error('Failed to update status');
     }
   };
@@ -275,7 +273,7 @@ export function AnomalyDetectionDashboard() {
             <CardTitle className="text-sm font-medium">False Positives</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">
+            <div className="text-2xl font-bold text-gray-600 dark:text-slate-400">
               {stats?.falsePositives || 0}
             </div>
           </CardContent>

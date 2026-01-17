@@ -250,9 +250,6 @@ export async function retryOpenAI<T>(fn: () => Promise<T>): Promise<T> {
       if (message.includes('timeout')) return true;
       return defaultIsRetryable(error);
     },
-    onRetry: (error, attempt, delay) => {
-      console.warn(`[OpenAI] Retry ${attempt} after ${delay}ms:`, error.message);
-    },
   });
 }
 
@@ -276,9 +273,6 @@ export async function retryDatabase<T>(fn: () => Promise<T>): Promise<T> {
       if (message.includes('too many connections')) return true;
       return false;
     },
-    onRetry: (error, attempt, delay) => {
-      console.warn(`[Database] Retry ${attempt} after ${delay}ms:`, error.message);
-    },
   });
 }
 
@@ -300,9 +294,6 @@ export async function retryStorage<T>(fn: () => Promise<T>): Promise<T> {
       if (message.includes('500')) return true;
       if (message.includes('503')) return true;
       return false;
-    },
-    onRetry: (error, attempt, delay) => {
-      console.warn(`[Storage] Retry ${attempt} after ${delay}ms:`, error.message);
     },
   });
 }

@@ -45,8 +45,7 @@ export async function GET() {
     }));
 
     return NextResponse.json(rateCards);
-  } catch (error) {
-    console.error("Error fetching rate cards:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch rate cards" },
       { status: 500 }

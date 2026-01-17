@@ -109,7 +109,7 @@ export async function GET(
       const formattedActivities = activities.map(activity => ({
         id: activity.id,
         type: activity.type,
-        user: activity.userId, // TODO: Join with User table
+        user: activity.userId || 'System',
         action: activity.action,
         details: activity.details,
         timestamp: activity.timestamp.toISOString(),
@@ -122,8 +122,7 @@ export async function GET(
         source: 'database'
       });
 
-    } catch (dbError) {
-      console.warn('Database query failed, using mock data:', dbError);
+    } catch {
       return NextResponse.json({
         success: true,
         activities: getMockActivities(),
@@ -131,13 +130,11 @@ export async function GET(
       });
     }
 
-  } catch (error) {
-    console.error('Error fetching activity:', error);
+  } catch {
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to fetch activity',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to fetch activity'
       },
       { status: 500 }
     );

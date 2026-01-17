@@ -44,8 +44,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     `;
 
     return NextResponse.json({ filter: updatedFilter[0] });
-  } catch (error) {
-    console.error('Error toggling filter share status:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update filter share status' },
       { status: 500 }

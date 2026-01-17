@@ -159,7 +159,6 @@ export async function POST(request: NextRequest) {
       ),
     });
   } catch (error: unknown) {
-    console.error('Error clustering rate cards:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to cluster rate cards' },
       { status: 500 }

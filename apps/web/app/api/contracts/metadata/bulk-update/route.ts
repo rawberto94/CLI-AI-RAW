@@ -43,8 +43,7 @@ export async function POST(request: NextRequest) {
       failed: result.failed,
       totalProcessed: contractIds.length,
     });
-  } catch (error) {
-    console.error('Error in bulk metadata update:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to bulk update metadata' },
       { status: 500 }

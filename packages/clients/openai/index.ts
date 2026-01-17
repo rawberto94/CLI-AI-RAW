@@ -53,7 +53,6 @@ export class OpenAIClient {
         const validate = ajv.compile(schema);
         if (!validate(structuredResponse)) {
             // TODO: Implement auto-repair logic
-            console.error('Schema validation failed:', validate.errors);
             throw new Error('Schema validation failed');
         }
 

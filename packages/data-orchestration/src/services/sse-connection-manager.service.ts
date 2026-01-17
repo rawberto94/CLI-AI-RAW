@@ -140,8 +140,6 @@ class SSEConnectionManagerService extends EventEmitter {
     // Emit event
     this.emit('connection:registered', connection);
 
-    console.log(`[ConnectionManager] Registered connection ${connectionId} (Total: ${this.connections.size})`);
-
     return connection;
   }
 
@@ -180,8 +178,6 @@ class SSEConnectionManagerService extends EventEmitter {
 
           this.connectionQueue.push(queuedConnection);
           this.emit('connection:queued', { tenantId, userId, queuePosition: this.connectionQueue.length });
-
-          console.log(`[ConnectionManager] Connection queued for ${tenantId} (Queue size: ${this.connectionQueue.length})`);
 
           // Set timeout for queued connection
           setTimeout(() => {
@@ -222,8 +218,6 @@ class SSEConnectionManagerService extends EventEmitter {
 
     // Emit event
     this.emit('connection:unregistered', connection);
-
-    console.log(`[ConnectionManager] Unregistered connection ${connectionId} (Total: ${this.connections.size})`);
 
     return true;
   }
@@ -383,10 +377,6 @@ class SSEConnectionManagerService extends EventEmitter {
       }
     });
 
-    if (cleanedCount > 0) {
-      console.log(`[ConnectionManager] Cleaned up ${cleanedCount} stale/timed-out connections`);
-    }
-
     return cleanedCount;
   }
 
@@ -477,8 +467,7 @@ class SSEConnectionManagerService extends EventEmitter {
         connection.controller.enqueue(encoded);
         this.updateActivity(connectionId);
         successCount++;
-      } catch (error) {
-        console.error(`[ConnectionManager] Error broadcasting to ${connectionId}:`, error);
+      } catch {
         this.updateConnectionState(connectionId, 'error');
       }
     });
@@ -500,8 +489,7 @@ class SSEConnectionManagerService extends EventEmitter {
         connection.controller.enqueue(encoded);
         this.updateActivity(connection.id);
         successCount++;
-      } catch (error) {
-        console.error(`[ConnectionManager] Error broadcasting to ${connection.id}:`, error);
+      } catch {
         this.updateConnectionState(connection.id, 'error');
       }
     });
@@ -523,8 +511,7 @@ class SSEConnectionManagerService extends EventEmitter {
         connection.controller.enqueue(encoded);
         this.updateActivity(connection.id);
         successCount++;
-      } catch (error) {
-        console.error(`[ConnectionManager] Error broadcasting to ${connection.id}:`, error);
+      } catch {
         this.updateConnectionState(connection.id, 'error');
       }
     });
@@ -593,8 +580,6 @@ class SSEConnectionManagerService extends EventEmitter {
           connectionId: connection.id, 
           queueTime: Date.now() - queued.queuedAt.getTime() 
         });
-
-        console.log(`[ConnectionManager] Processed queued connection for ${queued.tenantId}`);
       } catch (error) {
         // Reject the promise
         queued.reject(error as Error);
@@ -716,8 +701,6 @@ class SSEConnectionManagerService extends EventEmitter {
    * Shutdown the connection manager
    */
   shutdown(): void {
-    console.log('[ConnectionManager] Shutting down...');
-
     // Stop timers
     this.stopCleanupTimer();
     this.stopQueueProcessing();
@@ -742,8 +725,6 @@ class SSEConnectionManagerService extends EventEmitter {
     this.connections.clear();
     this.connectionsByTenant.clear();
     this.metricsHistory = [];
-
-    console.log('[ConnectionManager] Shutdown complete');
   }
 }
 

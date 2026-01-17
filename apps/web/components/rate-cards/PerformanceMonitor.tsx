@@ -51,8 +51,8 @@ export function PerformanceMonitor() {
         const data = await response.json();
         setMetrics(data);
       }
-    } catch (error) {
-      console.error('Failed to fetch performance metrics:', error);
+    } catch {
+      // Failed to fetch performance metrics
     } finally {
       setLoading(false);
     }
@@ -77,8 +77,8 @@ export function PerformanceMonitor() {
       if (response.ok) {
         await fetchMetrics();
       }
-    } catch (error) {
-      console.error(`Failed to execute ${action}:`, error);
+    } catch {
+      // Failed to execute action
     } finally {
       setActionLoading(null);
     }

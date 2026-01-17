@@ -119,13 +119,11 @@ function getStoredPreferences(): Partial<UserPreferences> {
     
     // Version migration if needed
     if (parsed.version !== STORAGE_VERSION) {
-      console.log('Migrating preferences from version', parsed.version);
       // Add migration logic here if needed
     }
     
     return parsed.preferences;
-  } catch (error) {
-    console.error('Error reading preferences:', error);
+  } catch {
     return {};
   }
 }
@@ -140,8 +138,8 @@ function setStoredPreferences(preferences: Partial<UserPreferences>): void {
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (error) {
-    console.error('Error saving preferences:', error);
+  } catch {
+    // Storage error - silently ignore
   }
 }
 
@@ -281,7 +279,6 @@ export function useUserPreferences() {
   ) => {
     setPreferencesState(prev => {
       if (typeof prev[key] !== 'boolean') {
-        console.warn(`Cannot toggle non-boolean preference: ${key}`);
         return prev;
       }
       const next = { ...prev, [key]: !prev[key] };

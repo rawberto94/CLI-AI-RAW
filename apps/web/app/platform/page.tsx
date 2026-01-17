@@ -128,9 +128,8 @@ export default function PlatformAdminPage() {
       }
       const data = await res.json();
       setTenants(data.tenants || []);
-    } catch (err: any) {
-      setError(err.message);
-      console.error(err);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }

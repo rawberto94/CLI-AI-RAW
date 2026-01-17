@@ -31,10 +31,10 @@ let smartAutoCorrection: any = null;
 async function getAdvancedIntelligence() {
   if (!advancedIntelligence) {
     try {
-      const module = await import('data-orchestration/services');
-      advancedIntelligence = module.advancedExtractionIntelligence;
-    } catch (e) {
-      console.warn('Advanced extraction intelligence not available:', e);
+      const services = await import('data-orchestration/services');
+      advancedIntelligence = services.advancedExtractionIntelligence;
+    } catch {
+      // Service not available
     }
   }
   return advancedIntelligence;
@@ -43,10 +43,10 @@ async function getAdvancedIntelligence() {
 async function getExtractionLearning() {
   if (!extractionLearning) {
     try {
-      const module = await import('data-orchestration/services');
-      extractionLearning = module.extractionLearning;
-    } catch (e) {
-      console.warn('Extraction learning not available:', e);
+      const services = await import('data-orchestration/services');
+      extractionLearning = services.extractionLearning;
+    } catch {
+      // Service not available
     }
   }
   return extractionLearning;
@@ -55,10 +55,10 @@ async function getExtractionLearning() {
 async function getClauseLevelExtraction() {
   if (!clauseLevelExtraction) {
     try {
-      const module = await import('data-orchestration/services');
-      clauseLevelExtraction = module.clauseLevelExtractionService;
-    } catch (e) {
-      console.warn('Clause-level extraction not available:', e);
+      const services = await import('data-orchestration/services');
+      clauseLevelExtraction = services.clauseLevelExtractionService;
+    } catch {
+      // Service not available
     }
   }
   return clauseLevelExtraction;
@@ -67,10 +67,10 @@ async function getClauseLevelExtraction() {
 async function getTemplateDetection() {
   if (!templateDetection) {
     try {
-      const module = await import('data-orchestration/services');
-      templateDetection = module.templateDetectionService;
-    } catch (e) {
-      console.warn('Template detection not available:', e);
+      const services = await import('data-orchestration/services');
+      templateDetection = services.templateDetectionService;
+    } catch {
+      // Service not available
     }
   }
   return templateDetection;
@@ -79,10 +79,10 @@ async function getTemplateDetection() {
 async function getSmartAutoCorrection() {
   if (!smartAutoCorrection) {
     try {
-      const module = await import('data-orchestration/services');
-      smartAutoCorrection = module.smartAutoCorrectionService;
-    } catch (e) {
-      console.warn('Smart auto-correction not available:', e);
+      const services = await import('data-orchestration/services');
+      smartAutoCorrection = services.smartAutoCorrectionService;
+    } catch {
+      // Service not available
     }
   }
   return smartAutoCorrection;
@@ -305,8 +305,8 @@ export async function POST(request: NextRequest) {
             })),
           };
         }
-      } catch (e) {
-        console.warn('Template detection failed:', e);
+      } catch {
+        // Template detection failed
       }
     }
 
@@ -456,8 +456,8 @@ Return JSON:
             return field;
           });
         }
-      } catch (e) {
-        console.warn('Auto-correction failed:', e);
+      } catch {
+        // Auto-correction failed
       }
     }
 
@@ -499,8 +499,8 @@ Return JSON:
             }, {}),
           };
         }
-      } catch (e) {
-        console.warn('Clause extraction failed:', e);
+      } catch {
+        // Clause extraction failed
       }
     }
 
@@ -686,8 +686,8 @@ Return JSON:
           detectedContractType,
           industry
         );
-      } catch (e) {
-        console.warn('Benchmarking failed:', e);
+      } catch {
+        // Benchmarking failed
       }
     }
 
@@ -699,8 +699,8 @@ Return JSON:
           validatedFields.map((f: DiscoveredField) => f.fieldName),
           detectedContractType
         );
-      } catch (e) {
-        console.warn('Missing field prediction failed:', e);
+      } catch {
+        // Missing field prediction failed
       }
     }
 
@@ -743,8 +743,8 @@ Return JSON:
           detectedContractType,
           textToAnalyze
         );
-      } catch (e) {
-        console.warn('Improvement suggestions failed:', e);
+      } catch {
+        // Improvement suggestions failed
       }
     }
 
@@ -878,8 +878,7 @@ Return JSON:
 
     return NextResponse.json(analysisResult);
 
-  } catch (error) {
-    console.error('Intelligent analysis error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Analysis failed', 

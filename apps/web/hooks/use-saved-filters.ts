@@ -166,8 +166,7 @@ function loadFromStorage(key: string): SavedFilter[] {
       usageCount: item.usageCount || 0,
       lastUsedAt: item.lastUsedAt,
     }));
-  } catch (error) {
-    console.error('Failed to load saved filters:', error);
+  } catch {
     return [];
   }
 }
@@ -177,8 +176,8 @@ function saveToStorage(key: string, filters: SavedFilter[]): void {
   
   try {
     localStorage.setItem(key, JSON.stringify(filters));
-  } catch (error) {
-    console.error('Failed to save filters:', error);
+  } catch {
+    // Storage error - silently ignore
   }
 }
 
@@ -210,7 +209,7 @@ export function useSavedFilters(options: UseSavedFiltersOptions = {}): UseSavedF
       } else {
         setSavedFilters(stored);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load saved filters');
     } finally {
       setIsLoading(false);
@@ -424,7 +423,7 @@ export function useSavedFilters(options: UseSavedFiltersOptions = {}): UseSavedF
       });
 
       return true;
-    } catch (err) {
+    } catch {
       setError('Failed to parse import data');
       return false;
     }

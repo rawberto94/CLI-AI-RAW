@@ -245,7 +245,7 @@ export async function validateContractIntegrity(
           });
           checks.taxonomy = false;
         }
-      } catch (error) {
+      } catch {
         issues.push({
           severity: 'warning',
           category: 'taxonomy',
@@ -459,9 +459,7 @@ export async function validateContractIntegrity(
       issues,
       checks,
     };
-  } catch (error) {
-    console.error('Contract integrity validation error:', error);
-    
+  } catch {
     return {
       valid: false,
       score: 0,

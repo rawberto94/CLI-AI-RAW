@@ -30,8 +30,7 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
       },
     });
-  } catch (error) {
-    console.error('Error fetching widget stats:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch widget stats' },
       { status: 500 }

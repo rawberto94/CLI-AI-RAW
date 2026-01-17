@@ -185,8 +185,8 @@ export class SupplierRecommenderService {
             recommendations.push(recommendation);
           }
         }
-      } catch (error) {
-        console.error(`Error analyzing supplier ${candidate.id}:`, error);
+      } catch {
+        // Skip this candidate on error
       }
     }
 
@@ -282,8 +282,8 @@ export class SupplierRecommenderService {
         tenantId
       );
       competitivenessScore = score.overallScore;
-    } catch (error) {
-      console.error('Error calculating competitiveness score:', error);
+    } catch {
+      // Use default competitiveness score
     }
 
     return {
@@ -692,8 +692,7 @@ export class SupplierRecommenderService {
       }
 
       return comparisons > 0 ? totalSimilarity / comparisons : 50;
-    } catch (error) {
-      console.error('Error calculating supplier similarity:', error);
+    } catch {
       return 50; // Default
     }
   }

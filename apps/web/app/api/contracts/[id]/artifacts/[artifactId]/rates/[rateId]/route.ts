@@ -38,8 +38,7 @@ export async function PUT(
     return NextResponse.json({
       message: 'Rate card entry updated successfully',
     });
-  } catch (error) {
-    console.error('Error updating rate card entry:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update rate card entry' },
       { status: 500 }
@@ -76,8 +75,7 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Rate card entry deleted successfully',
     });
-  } catch (error) {
-    console.error('Error deleting rate card entry:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete rate card entry' },
       { status: 500 }

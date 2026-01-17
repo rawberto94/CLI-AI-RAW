@@ -104,8 +104,6 @@ export async function PUT(
         },
       },
     });
-    
-    console.log(`[Hierarchy API] Linked contract ${contractId} to parent ${parentContractId}`);
 
     await publishRealtimeEvent({
       event: "contract:updated",
@@ -144,8 +142,7 @@ export async function PUT(
         } : null,
       },
     });
-  } catch (error) {
-    console.error("[Hierarchy API] Error linking contracts:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to link contracts" },
       { status: 500 }
@@ -199,8 +196,6 @@ export async function DELETE(
         linkedAt: null,
       },
     });
-    
-    console.log(`[Hierarchy API] Unlinked contract ${contractId} from parent`);
 
     await publishRealtimeEvent({
       event: "contract:updated",
@@ -229,8 +224,7 @@ export async function DELETE(
         linkedAt: null,
       },
     });
-  } catch (error) {
-    console.error("[Hierarchy API] Error unlinking contract:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to unlink contract" },
       { status: 500 }
@@ -328,8 +322,7 @@ export async function GET(
         createdAt: child.createdAt?.toISOString(),
       })) || [],
     });
-  } catch (error) {
-    console.error("[Hierarchy API] Error getting hierarchy:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to get contract hierarchy" },
       { status: 500 }

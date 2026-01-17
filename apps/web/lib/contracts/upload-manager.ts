@@ -140,7 +140,6 @@ export class UploadManager {
           }
         )
       } catch (primaryError) {
-        console.warn('Primary upload endpoint failed, trying fallback:', primaryError);
         uploadError = primaryError as Error;
         
         // Try fallback endpoint

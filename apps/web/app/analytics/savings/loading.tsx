@@ -5,7 +5,7 @@ import { DollarSign, TrendingDown, PiggyBank, Target } from 'lucide-react';
 
 export default function SavingsAnalyticsLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
       <div className="flex flex-col items-center">
         <div className="relative">
           <motion.div

@@ -54,7 +54,6 @@ export class RealTimeBenchmarkOrchestrator {
    */
   initialize(): void {
     if (this.isInitialized) {
-      console.log('Real-time benchmark orchestrator already initialized');
       return;
     }
 
@@ -79,7 +78,6 @@ export class RealTimeBenchmarkOrchestrator {
     });
 
     this.isInitialized = true;
-    console.log('Real-time benchmark orchestrator initialized');
   }
 
   /**
@@ -91,7 +89,6 @@ export class RealTimeBenchmarkOrchestrator {
     eventBus.removeAllListeners(Events.RATE_CARD_DELETED);
     eventBus.removeAllListeners(Events.RATE_CARD_IMPORTED);
     this.isInitialized = false;
-    console.log('Real-time benchmark orchestrator shut down');
   }
 
   /**
@@ -108,8 +105,6 @@ export class RealTimeBenchmarkOrchestrator {
     };
 
     try {
-      console.log(`[Real-Time] Rate card created: ${data.rateCardEntryId}, triggering benchmark recalculation...`);
-
       // Emit recalculating event
       eventBus.emit(Events.BENCHMARK_RECALCULATING, {
         rateCardEntryId: data.rateCardEntryId,
@@ -118,10 +113,6 @@ export class RealTimeBenchmarkOrchestrator {
 
       // Step 1: Invalidate affected cache entries
       const invalidationResult = await this.invalidationService.onRateCardCreated(data.rateCardEntryId);
-      
-      if (!invalidationResult.success) {
-        console.warn(`[Real-Time] Cache invalidation had errors:`, invalidationResult.errors);
-      }
 
       // Emit invalidation event
       eventBus.emit(Events.BENCHMARK_INVALIDATED, {
@@ -148,17 +139,12 @@ export class RealTimeBenchmarkOrchestrator {
           durationMs: recalcResult.durationMs,
           affectedCount: recalcResult.affectedCount,
         });
-
-        console.log(`[Real-Time] Benchmark recalculated successfully in ${recalcResult.durationMs}ms (${recalcResult.affectedCount} affected)`);
-      } else {
-        console.error(`[Real-Time] Benchmark recalculation failed:`, recalcResult.error);
       }
     } catch (error) {
       event.success = false;
       event.completedAt = new Date();
       event.durationMs = Date.now() - startTime;
       event.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[Real-Time] Error handling rate card created:`, error);
     } finally {
       this.trackRecalculationEvent(event);
     }
@@ -178,8 +164,6 @@ export class RealTimeBenchmarkOrchestrator {
     };
 
     try {
-      console.log(`[Real-Time] Rate card updated: ${data.rateCardEntryId}, triggering benchmark recalculation...`);
-
       // Emit recalculating event
       eventBus.emit(Events.BENCHMARK_RECALCULATING, {
         rateCardEntryId: data.rateCardEntryId,
@@ -188,10 +172,6 @@ export class RealTimeBenchmarkOrchestrator {
 
       // Step 1: Invalidate affected cache entries
       const invalidationResult = await this.invalidationService.onRateCardUpdated(data.rateCardEntryId);
-      
-      if (!invalidationResult.success) {
-        console.warn(`[Real-Time] Cache invalidation had errors:`, invalidationResult.errors);
-      }
 
       // Emit invalidation event
       eventBus.emit(Events.BENCHMARK_INVALIDATED, {
@@ -218,17 +198,12 @@ export class RealTimeBenchmarkOrchestrator {
           durationMs: recalcResult.durationMs,
           affectedCount: recalcResult.affectedCount,
         });
-
-        console.log(`[Real-Time] Benchmark recalculated successfully in ${recalcResult.durationMs}ms (${recalcResult.affectedCount} affected)`);
-      } else {
-        console.error(`[Real-Time] Benchmark recalculation failed:`, recalcResult.error);
       }
     } catch (error) {
       event.success = false;
       event.completedAt = new Date();
       event.durationMs = Date.now() - startTime;
       event.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[Real-Time] Error handling rate card updated:`, error);
     } finally {
       this.trackRecalculationEvent(event);
     }
@@ -248,8 +223,6 @@ export class RealTimeBenchmarkOrchestrator {
     };
 
     try {
-      console.log(`[Real-Time] Rate card deleted: ${data.rateCardEntryId}, invalidating affected benchmarks...`);
-
       // For deletions, we only invalidate cache (no recalculation needed for deleted entry)
       if (data.previousData) {
         const invalidationResult = await this.invalidationService.onRateCardDeleted(
@@ -267,15 +240,12 @@ export class RealTimeBenchmarkOrchestrator {
           tenantId: data.tenantId,
           keysInvalidated: invalidationResult.keysInvalidated,
         });
-
-        console.log(`[Real-Time] Cache invalidated for deleted rate card (${invalidationResult.keysInvalidated} keys)`);
       }
     } catch (error) {
       event.success = false;
       event.completedAt = new Date();
       event.durationMs = Date.now() - startTime;
       event.error = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[Real-Time] Error handling rate card deleted:`, error);
     } finally {
       this.trackRecalculationEvent(event);
     }
@@ -285,8 +255,6 @@ export class RealTimeBenchmarkOrchestrator {
    * Handle bulk import event
    */
   private async handleBulkImport(data: { rateCardEntryIds: string[]; tenantId: string }): Promise<void> {
-    console.log(`[Real-Time] Bulk import detected: ${data.rateCardEntryIds.length} rate cards, triggering batch recalculation...`);
-
     try {
       // Invalidate all benchmarks for the tenant
       await this.invalidationService.invalidateAllBenchmarks(data.tenantId);
@@ -297,8 +265,6 @@ export class RealTimeBenchmarkOrchestrator {
       const successCount = results.filter(r => r.success).length;
       const failureCount = results.filter(r => !r.success).length;
 
-      console.log(`[Real-Time] Bulk recalculation complete: ${successCount} succeeded, ${failureCount} failed`);
-
       // Emit event for bulk completion
       eventBus.emit(Events.BENCHMARK_CALCULATED, {
         tenantId: data.tenantId,
@@ -307,8 +273,8 @@ export class RealTimeBenchmarkOrchestrator {
         successCount,
         failureCount,
       });
-    } catch (error) {
-      console.error(`[Real-Time] Error handling bulk import:`, error);
+    } catch {
+      // Error handling bulk import
     }
   }
 

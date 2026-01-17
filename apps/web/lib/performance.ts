@@ -90,7 +90,7 @@ export function reportWebVitals(onReport: VitalsReporter): void {
     onLCP(reporter);
     onTTFB(reporter);
     onINP(reporter);
-  }).catch(console.error);
+  }).catch(() => {});
 }
 
 function getNavigationType(): WebVitalMetric["navigationType"] {
@@ -121,11 +121,6 @@ export function measureStart(name: string, metadata?: Record<string, unknown>): 
       metadata,
     };
     performanceEntries.push(entry);
-    
-    // Log in development
-    if (process.env.NODE_ENV === "development") {
-      console.log(`[Perf] ${name}: ${duration.toFixed(2)}ms`, metadata || "");
-    }
     
     return duration;
   };
@@ -230,10 +225,6 @@ export function useRenderTime(componentName: string): void {
         duration,
         startTime: startTimeRef.current,
       });
-
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[Perf] Render ${componentName}: ${duration.toFixed(2)}ms`);
-      }
     }
   }, [componentName]);
 }
@@ -255,7 +246,6 @@ export function useInteractionTiming(
 
   const endInteraction = useCallback(() => {
     if (startTimeRef.current === null) {
-      console.warn(`Interaction "${interactionName}" was not started`);
       return 0;
     }
 
@@ -391,21 +381,7 @@ export function sendVitalsToAnalytics(
       body: JSON.stringify(body),
       keepalive: true,
       headers: { "Content-Type": "application/json" },
-    }).catch(console.error);
-  }
-
-  // Log in development
-  if (process.env.NODE_ENV === "development") {
-    const color = {
-      good: "\x1b[32m", // green
-      "needs-improvement": "\x1b[33m", // yellow
-      poor: "\x1b[31m", // red
-    }[metric.rating];
-    
-    console.log(
-      `%c[Web Vital] ${metric.name}: ${metric.value.toFixed(2)} (${metric.rating})`,
-      `color: ${color === "\x1b[32m" ? "green" : color === "\x1b[33m" ? "orange" : "red"}`
-    );
+    }).catch(() => {});
   }
 }
 

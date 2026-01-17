@@ -93,8 +93,7 @@ export function SavedComparisons({ onViewComparison }: SavedComparisonsProps) {
       } else if (format === 'pdf') {
         toast.info('PDF export requires additional setup. Use CSV export for now.');
       }
-    } catch (error) {
-      console.error('Error exporting comparison:', error);
+    } catch {
       toast.error('Failed to export comparison');
     }
   };

@@ -83,7 +83,6 @@ export default function ContractDetailPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load contract'
       setError(errorMessage)
-      console.error('Failed to load contract:', err)
     } finally {
       setLoading(false)
     }
@@ -133,13 +132,13 @@ export default function ContractDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 flex items-center justify-center p-6">
         <Card className="max-w-2xl w-full shadow-2xl border-0">
           <CardContent className="p-12 text-center">
-            <div className="p-4 bg-red-100 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+            <div className="p-4 bg-red-100 dark:bg-red-950/30 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
               <AlertCircle className="h-12 w-12 text-red-600" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-4">
               Error Loading Contract
             </h2>
-            <p className="text-gray-600 mb-8 text-lg">
+            <p className="text-gray-600 dark:text-slate-400 mb-8 text-lg">
               {error}
             </p>
             <div className="flex gap-4 justify-center">
@@ -166,16 +165,16 @@ export default function ContractDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
         <div className="max-w-[1600px] mx-auto space-y-6">
           <div className="flex items-center gap-4 mb-6">
-            <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
-            <div className="h-12 flex-1 bg-gray-200 rounded-lg animate-pulse"></div>
+            <div className="h-10 w-32 bg-gray-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
+            <div className="h-12 flex-1 bg-gray-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
           </div>
-          <div className="h-64 bg-white rounded-2xl animate-pulse shadow-lg"></div>
+          <div className="h-64 bg-white dark:bg-slate-800 rounded-2xl animate-pulse shadow-lg"></div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="h-40 bg-white rounded-2xl animate-pulse shadow-lg"></div>
-            <div className="h-40 bg-white rounded-2xl animate-pulse shadow-lg"></div>
-            <div className="h-40 bg-white rounded-2xl animate-pulse shadow-lg"></div>
+            <div className="h-40 bg-white dark:bg-slate-800 rounded-2xl animate-pulse shadow-lg"></div>
+            <div className="h-40 bg-white dark:bg-slate-800 rounded-2xl animate-pulse shadow-lg"></div>
+            <div className="h-40 bg-white dark:bg-slate-800 rounded-2xl animate-pulse shadow-lg"></div>
           </div>
-          <div className="h-96 bg-white rounded-2xl animate-pulse shadow-lg"></div>
+          <div className="h-96 bg-white dark:bg-slate-800 rounded-2xl animate-pulse shadow-lg"></div>
         </div>
       </div>
     )
@@ -193,7 +192,7 @@ export default function ContractDetailPage() {
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="flex items-start gap-4 flex-1 min-w-0">
             <Link href="/contracts">
-              <Button variant="ghost" size="lg" className="hover:bg-white/80">
+              <Button variant="ghost" size="lg" className="hover:bg-white dark:bg-slate-800/80">
                 <ArrowLeft className="h-5 w-5 mr-2" />
                 Back
               </Button>
@@ -203,12 +202,12 @@ export default function ContractDetailPage() {
                 <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
                   <FileText className="h-7 w-7 text-white" />
                 </div>
-                <h1 className="text-4xl font-bold text-gray-900 truncate">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-slate-100 truncate">
                   {contract?.filename || 'Contract Details'}
                 </h1>
               </div>
               <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1.5 rounded-lg">
+                <span className="text-sm text-gray-500 dark:text-slate-400 font-mono bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
                   ID: {params.id}
                 </span>
                 <Badge className={`${statusConfig.className} px-4 py-2 shadow-md text-sm font-semibold`}>
@@ -225,7 +224,7 @@ export default function ContractDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="lg" onClick={loadContract} className="hover:bg-blue-50 hover:border-blue-400">
+            <Button variant="outline" size="lg" onClick={loadContract} className="hover:bg-blue-50 dark:bg-blue-950/30 hover:border-blue-400">
               <RefreshCw className="h-5 w-5 mr-2" />
               Refresh
             </Button>
@@ -239,7 +238,7 @@ export default function ContractDetailPage() {
           {financialData?.totalValue && (
             <div className="group relative">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
-              <Card className="relative bg-white shadow-xl border-0">
+              <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
@@ -247,8 +246,8 @@ export default function ContractDetailPage() {
                     </div>
                     <TrendingUp className="h-5 w-5 text-green-600" />
                   </div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Contract Value</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wide">Contract Value</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1">
                     {financialData.currency} {financialData.totalValue?.toLocaleString()}
                   </p>
                 </CardContent>
@@ -264,7 +263,7 @@ export default function ContractDetailPage() {
                 riskData.riskScore < 70 ? 'from-yellow-500 to-orange-500' :
                 'from-red-500 to-pink-500'
               } rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur`}></div>
-              <Card className="relative bg-white shadow-xl border-0">
+              <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className={`p-3 bg-gradient-to-br ${
@@ -280,11 +279,11 @@ export default function ContractDetailPage() {
                       'text-red-600'
                     }`} />
                   </div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Risk Score</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wide">Risk Score</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1">
                     {riskData.riskScore}/100
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">{riskData.riskLevel} Risk</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{riskData.riskLevel} Risk</p>
                 </CardContent>
               </Card>
             </div>
@@ -294,7 +293,7 @@ export default function ContractDetailPage() {
           {complianceData?.complianceScore !== undefined && (
             <div className="group relative">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
-              <Card className="relative bg-white shadow-xl border-0">
+              <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
@@ -302,11 +301,11 @@ export default function ContractDetailPage() {
                     </div>
                     <CheckCircle2 className="h-5 w-5 text-blue-600" />
                   </div>
-                  <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Compliance</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wide">Compliance</p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1">
                     {complianceData.complianceScore}%
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">{complianceData.regulations?.length || 0} regulations</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{complianceData.regulations?.length || 0} regulations</p>
                 </CardContent>
               </Card>
             </div>
@@ -315,7 +314,7 @@ export default function ContractDetailPage() {
           {/* Artifacts Count */}
           <div className="group relative">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
-            <Card className="relative bg-white shadow-xl border-0">
+            <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
@@ -323,11 +322,11 @@ export default function ContractDetailPage() {
                   </div>
                   <FileText className="h-5 w-5 text-purple-600" />
                 </div>
-                <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">AI Artifacts</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
+                <p className="text-sm font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wide">AI Artifacts</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1">
                   {contract?.artifactCount || contract?.artifacts?.length || 0}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">Generated insights</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Generated insights</p>
               </CardContent>
             </Card>
           </div>
@@ -335,15 +334,15 @@ export default function ContractDetailPage() {
 
         {/* Contract Overview Card */}
         {overviewData && (
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <Card className="shadow-2xl border-0 bg-white dark:bg-slate-800/80 backdrop-blur-sm">
             <CardContent className="p-8">
               <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 Contract Overview
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {overviewData.parties?.map((party: any, idx: number) => (
-                  <div key={idx} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <div key={idx} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 dark:border-slate-700">
+                    <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                       {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
                         <Building className="h-5 w-5 text-blue-600" />
                       ) : (
@@ -351,32 +350,32 @@ export default function ContractDetailPage() {
                       )}
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase">{party.role}</p>
-                      <p className="text-sm font-bold text-gray-900">{party.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase">{party.role}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{party.name}</p>
                     </div>
                   </div>
                 ))}
                 
                 {(overviewData.startDate || overviewData.contractDate) && (
-                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 dark:border-slate-700">
+                    <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                       <Calendar className="h-5 w-5 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase">Start Date</p>
-                      <p className="text-sm font-bold text-gray-900">{overviewData.startDate || overviewData.contractDate}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase">Start Date</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{overviewData.startDate || overviewData.contractDate}</p>
                     </div>
                   </div>
                 )}
                 
                 {(overviewData.endDate || overviewData.expiryDate) && (
-                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 dark:border-slate-700">
+                    <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                       <Clock className="h-5 w-5 text-orange-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium uppercase">End Date</p>
-                      <p className="text-sm font-bold text-gray-900">{overviewData.endDate || overviewData.expiryDate}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-medium uppercase">End Date</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-slate-100">{overviewData.endDate || overviewData.expiryDate}</p>
                     </div>
                   </div>
                 )}
@@ -384,8 +383,8 @@ export default function ContractDetailPage() {
 
               {overviewData.summary && (
                 <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Executive Summary</h3>
-                  <p className="text-gray-700 leading-relaxed">{overviewData.summary}</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-3">Executive Summary</h3>
+                  <p className="text-gray-700 dark:text-slate-300 leading-relaxed">{overviewData.summary}</p>
                 </div>
               )}
             </CardContent>
@@ -393,7 +392,7 @@ export default function ContractDetailPage() {
         )}
 
         {/* Enhanced Artifacts Viewer */}
-        <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="shadow-2xl border-0 bg-white dark:bg-slate-800/80 backdrop-blur-sm">
           <CardContent className="p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
@@ -417,7 +416,7 @@ export default function ContractDetailPage() {
 
         {/* Insights Section */}
         {contract?.insights && contract.insights.length > 0 && (
-          <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <Card className="shadow-2xl border-0 bg-white dark:bg-slate-800/80 backdrop-blur-sm">
             <CardContent className="p-8">
               <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 AI Insights
@@ -431,8 +430,8 @@ export default function ContractDetailPage() {
                     insight.color === 'blue' ? 'bg-blue-50 border-blue-500' :
                     'bg-purple-50 border-purple-500'
                   }`}>
-                    <h3 className="font-bold text-gray-900 mb-2">{insight.title}</h3>
-                    <p className="text-sm text-gray-700">{insight.description}</p>
+                    <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-2">{insight.title}</h3>
+                    <p className="text-sm text-gray-700 dark:text-slate-300">{insight.description}</p>
                   </div>
                 ))}
               </div>

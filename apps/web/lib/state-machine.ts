@@ -213,7 +213,6 @@ export function createMachine<TContext = unknown>(
 
     const stateNode = getStateNode(state.value);
     if (!stateNode) {
-      console.warn(`State "${state.value}" not found`);
       return state;
     }
 

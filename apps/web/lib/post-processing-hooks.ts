@@ -18,8 +18,6 @@ export async function triggerAutoCategorization(
   contractId: string,
   tenantId: string
 ): Promise<{ success: boolean; category?: string; error?: string }> {
-  console.log(`🏷️ Auto-categorizing contract: ${contractId}`);
-
   try {
     // Check if tenant has taxonomy categories
     const categoryCount = await prisma.taxonomyCategory.count({
@@ -27,7 +25,6 @@ export async function triggerAutoCategorization(
     });
 
     if (categoryCount === 0) {
-      console.log(`⏭️ No taxonomy categories for tenant ${tenantId}, skipping auto-categorization`);
       return { success: true, category: undefined };
     }
 
@@ -38,7 +35,6 @@ export async function triggerAutoCategorization(
     });
 
     if (contract?.category) {
-      console.log(`⏭️ Contract already categorized as "${contract.category}"`);
       return { success: true, category: contract.category };
     }
 
@@ -50,14 +46,11 @@ export async function triggerAutoCategorization(
     });
 
     if (result.success && result.category) {
-      console.log(`✅ Contract categorized as "${result.category}" (${result.confidence}% confidence)`);
       return { success: true, category: result.category };
     }
 
-    console.log(`⚠️ Could not categorize contract: ${result.error || "No matching category"}`);
     return { success: false, error: result.error };
-  } catch (error) {
-    console.error("❌ Auto-categorization error:", error);
+  } catch (error: unknown) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
@@ -74,8 +67,6 @@ export async function runPostProcessingHooks(
 ): Promise<{
   categorization: { success: boolean; category?: string; error?: string };
 }> {
-  console.log(`🔧 Running post-processing hooks for contract: ${contractId}`);
-
   // Run categorization
   const categorizationResult = await triggerAutoCategorization(contractId, tenantId);
 

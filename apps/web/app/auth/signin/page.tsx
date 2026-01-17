@@ -235,7 +235,7 @@ function TestimonialCarousel() {
             transition={{ duration: 0.3 }}
           >
             <p className="text-white/90 text-sm leading-relaxed mb-4">
-              "{testimonial.quote}"
+              &ldquo;{testimonial.quote}&rdquo;
             </p>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-white/30 to-white/10 flex items-center justify-center text-white font-semibold text-sm border border-white/20">

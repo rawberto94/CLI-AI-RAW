@@ -702,8 +702,8 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       if (stored) {
         setRecentSearches(JSON.parse(stored));
       }
-    } catch (e) {
-      console.error('Failed to load search history:', e);
+    } catch {
+      // Failed to load search history - silently handle
     }
   }, []);
 
@@ -715,8 +715,8 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       const updated = [query, ...filtered].slice(0, MAX_HISTORY);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.error('Failed to save search history:', e);
+      } catch {
+        // Failed to save search history - silently handle
       }
       return updated;
     });

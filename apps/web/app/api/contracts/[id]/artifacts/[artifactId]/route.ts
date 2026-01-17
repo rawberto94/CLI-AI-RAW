@@ -47,8 +47,7 @@ export async function GET(
     }
 
     return NextResponse.json(artifact);
-  } catch (error) {
-    console.error('Error fetching artifact:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch artifact' },
       { status: 500 }
@@ -111,9 +110,8 @@ export async function PUT(
           }
         );
         ragReindexQueued = true;
-        console.log(`📚 RAG re-indexing queued for contract ${params.id} due to artifact update`);
-      } catch (ragError) {
-        console.error('Failed to queue RAG re-indexing:', ragError);
+      } catch {
+        // RAG re-indexing failed silently
       }
     }
 
@@ -124,8 +122,7 @@ export async function PUT(
         : 'Artifact updated successfully',
       ragReindexQueued,
     });
-  } catch (error) {
-    console.error('Error updating artifact:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update artifact' },
       { status: 500 }
@@ -152,8 +149,7 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Artifact deleted successfully',
     });
-  } catch (error) {
-    console.error('Error deleting artifact:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete artifact' },
       { status: 500 }

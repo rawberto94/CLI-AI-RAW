@@ -347,7 +347,6 @@ export class ReplicaManager {
       
       // If replica failed, retry on primary
       if (routing.isReadReplica) {
-        console.warn(`Replica ${routing.replicaId} failed, falling back to primary`);
         return operation(this.primaryClient);
       }
       
@@ -453,8 +452,7 @@ export class ReplicaManager {
       const lag = found ? Date.now() - start : Infinity;
       this.healthTracker.updateStatus(replicaId, { lag });
       return lag;
-    } catch (error) {
-      console.error(`Failed to check replication lag for ${replicaId}:`, error);
+    } catch {
       return Infinity;
     }
   }
@@ -506,8 +504,7 @@ export class ReplicaManager {
       try {
         await client.$connect();
         this.healthTracker.updateStatus(id, { healthy: true });
-      } catch (error) {
-        console.error(`Failed to connect to replica ${id}:`, error);
+      } catch {
         this.healthTracker.updateStatus(id, { healthy: false });
       }
     }

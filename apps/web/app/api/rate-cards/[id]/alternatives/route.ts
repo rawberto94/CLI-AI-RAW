@@ -16,8 +16,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       data: alternatives,
     });
   } catch (error: unknown) {
-    console.error('Error finding alternative suppliers:', error);
-    
     return NextResponse.json(
       {
         success: false,

@@ -51,8 +51,7 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
 
       const data = await response.json();
       setComparisons(data.comparisons);
-    } catch (err) {
-      console.error('Error fetching baseline comparisons:', err);
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load comparisons');
     } finally {
       setLoading(false);

@@ -55,7 +55,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       },
     });
   } catch (error: unknown) {
-    console.error('Error exporting negotiation brief:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to export negotiation brief';
 
     return NextResponse.json(

@@ -88,8 +88,7 @@ export function BulkOperations() {
 
       // Clear selection
       setContracts(prev => prev.map(c => ({ ...c, selected: false })))
-    } catch (error) {
-      console.error('Bulk operation error:', error)
+    } catch {
       toast.error('Operation failed. Please try again.')
     } finally {
       setIsProcessing(false)

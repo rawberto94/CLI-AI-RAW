@@ -140,28 +140,13 @@ export async function GET(request: NextRequest) {
         total: notifications.length,
         source: 'database',
       });
-    } catch (dbError) {
-      console.warn('Database lookup failed, using mock:', dbError);
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Database connection failed' },
+        { status: 503 }
+      );
     }
-
-    // Fallback to mock
-    let notifications = getMockNotifications(userId);
-    if (unreadOnly) {
-      notifications = notifications.filter(n => !n.isRead);
-    }
-    if (type) {
-      notifications = notifications.filter(n => n.type === type);
-    }
-
-    return NextResponse.json({
-      success: true,
-      notifications: notifications.slice(0, limit),
-      unreadCount: notifications.filter(n => !n.isRead).length,
-      total: notifications.length,
-      source: 'mock',
-    });
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch notifications' },
       { status: 500 }
@@ -230,19 +215,13 @@ export async function POST(request: NextRequest) {
         count: notifications.count,
         source: 'database',
       });
-    } catch (dbError) {
-      console.warn('Database insert failed:', dbError);
-      
-      // Mock response
-      return NextResponse.json({
-        success: true,
-        message: `${targetUsers.length} notification(s) created (mock)`,
-        count: targetUsers.length,
-        source: 'mock',
-      });
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Database operation failed' },
+        { status: 503 }
+      );
     }
-  } catch (error) {
-    console.error('Error creating notification:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to create notification' },
       { status: 500 }
@@ -314,17 +293,13 @@ export async function PATCH(request: NextRequest) {
         { success: false, error: 'Either notificationIds or markAllRead is required' },
         { status: 400 }
       );
-    } catch (dbError) {
-      console.warn('Database update failed:', dbError);
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Notifications marked as read (mock)',
-        source: 'mock',
-      });
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Database operation failed' },
+        { status: 503 }
+      );
     }
-  } catch (error) {
-    console.error('Error updating notifications:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update notifications' },
       { status: 500 }
@@ -394,17 +369,13 @@ export async function DELETE(request: NextRequest) {
         { success: false, error: 'Either id or deleteRead parameter is required' },
         { status: 400 }
       );
-    } catch (dbError) {
-      console.warn('Database delete failed:', dbError);
-      
-      return NextResponse.json({
-        success: true,
-        message: 'Notification deleted (mock)',
-        source: 'mock',
-      });
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Database operation failed' },
+        { status: 503 }
+      );
     }
-  } catch (error) {
-    console.error('Error deleting notification:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to delete notification' },
       { status: 500 }

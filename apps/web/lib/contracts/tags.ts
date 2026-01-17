@@ -53,8 +53,8 @@ export function getAllTags(): Tag[] {
     if (stored) {
       return JSON.parse(stored)
     }
-  } catch (error) {
-    console.error('Error loading tags:', error)
+  } catch {
+    // Error loading tags - silently ignored
   }
   
   return DEFAULT_TAGS
@@ -68,8 +68,8 @@ export function saveTags(tags: Tag[]): void {
   
   try {
     localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tags))
-  } catch (error) {
-    console.error('Error saving tags:', error)
+  } catch {
+    // Error saving tags - silently ignored
   }
 }
 
@@ -85,8 +85,8 @@ export function getContractTags(contractId: string): string[] {
       const assignments: Record<string, string[]> = JSON.parse(stored)
       return assignments[contractId] || []
     }
-  } catch (error) {
-    console.error('Error loading contract tags:', error)
+  } catch {
+    // Error loading contract tags - silently ignored
   }
   
   return []
@@ -105,8 +105,8 @@ export function setContractTags(contractId: string, tagIds: string[]): void {
     assignments[contractId] = tagIds
     
     localStorage.setItem(CONTRACT_TAGS_STORAGE_KEY, JSON.stringify(assignments))
-  } catch (error) {
-    console.error('Error saving contract tags:', error)
+  } catch {
+    // Error saving contract tags - silently ignored
   }
 }
 
@@ -177,8 +177,8 @@ export function deleteTag(tagId: string): void {
         })
         localStorage.setItem(CONTRACT_TAGS_STORAGE_KEY, JSON.stringify(assignments))
       }
-    } catch (error) {
-      console.error('Error removing tag from contracts:', error)
+    } catch {
+      // Error removing tag from contracts - silently ignored
     }
   }
 }

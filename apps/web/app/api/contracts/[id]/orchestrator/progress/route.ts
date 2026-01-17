@@ -126,8 +126,7 @@ export async function GET(
       progress,
       suggestions: suggestions.slice(0, 5), // Top 5 suggestions
     });
-  } catch (error) {
-    console.error('Error fetching orchestrator progress:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch progress' },
       { status: 500 }

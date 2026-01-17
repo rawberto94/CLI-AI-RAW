@@ -124,8 +124,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
       if (data.accountEmail) {
         setAccountEmail(data.accountEmail);
       }
-    } catch (error) {
-      console.error('Failed to check connection:', error);
+    } catch {
       setConnected(false);
     }
   }, []);
@@ -147,8 +146,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
       } else {
         throw new Error(data.error);
       }
-    } catch (error) {
-      console.error('Failed to load files:', error);
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load files from Google Drive',
@@ -210,8 +208,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
           clearInterval(interval);
         }, 5 * 60 * 1000);
       }
-    } catch (error) {
-      console.error('Failed to connect:', error);
+    } catch {
       toast({
         title: 'Connection Failed',
         description: 'Failed to connect to Google Drive',
@@ -292,8 +289,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
       } else {
         throw new Error(data.error);
       }
-    } catch (error) {
-      console.error('Import failed:', error);
+    } catch {
       toast({
         title: 'Import Failed',
         description: 'Failed to import selected files',

@@ -29,9 +29,14 @@ import {
   TrendingUp,
   ArrowRight,
   Sparkles,
+  AlertTriangle,
+  Edit,
+  Activity,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useWorkflowTemplates, getTemplateUIConfig } from '@/hooks/use-workflow-templates';
 
 interface WorkflowTemplate {
   id: string;
@@ -53,136 +58,90 @@ interface WorkflowTemplate {
   usageCount?: number;
 }
 
-const templates: WorkflowTemplate[] = [
+// Icon mapping for backend template keys
+const iconMap: Record<string, React.ElementType> = {
+  CheckCircle,
+  Zap,
+  GitBranch,
+  RefreshCw,
+  Shield,
+  DollarSign,
+  FileText,
+  Users,
+  AlertTriangle,
+  Edit,
+  Activity,
+};
+
+// Map backend templates to UI format
+function mapBackendTemplate(template: any): WorkflowTemplate {
+  const uiConfig = getTemplateUIConfig(template.key);
+  const IconComponent = iconMap[uiConfig.iconName] || FileText;
+  
+  // Determine category based on template key
+  let category: WorkflowTemplate['category'] = 'general';
+  if (['procurement', 'vendor_onboarding'].includes(template.key)) category = 'procurement';
+  else if (['legal_review', 'amendment', 'nda_fast_track', 'multi_party'].includes(template.key)) category = 'legal';
+  else if (['executive', 'termination'].includes(template.key)) category = 'finance';
+  else if (['risk_escalation'].includes(template.key)) category = 'compliance';
+
+  // Determine complexity
+  let complexity: WorkflowTemplate['complexity'] = 'moderate';
+  if (template.stepCount <= 2) complexity = 'simple';
+  else if (template.stepCount >= 4) complexity = 'complex';
+
+  return {
+    id: template.key,
+    name: template.name,
+    description: template.description,
+    category,
+    icon: IconComponent,
+    color: uiConfig.color.replace('bg-', ''),
+    steps: template.steps.map((step: any) => ({
+      name: step.name,
+      type: 'APPROVAL',
+      assigneeType: 'ROLE',
+      slaHours: step.timeoutHours,
+    })),
+    estimatedDuration: `${Math.ceil(template.totalDurationHours / 24)} days`,
+    complexity,
+    popular: uiConfig.popular,
+    recommended: template.key === 'express' || template.key === 'nda_fast_track',
+  };
+}
+
+// Fallback templates if API fails
+const fallbackTemplates: WorkflowTemplate[] = [
   {
-    id: 'standard-approval',
+    id: 'standard',
     name: 'Standard Contract Approval',
     description: 'Multi-stage approval with Legal, Finance, and Management review',
     category: 'procurement',
     icon: CheckCircle,
     color: 'from-blue-500 to-indigo-600',
     steps: [
-      { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 48 },
-      { name: 'Finance Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Management Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
+      { name: 'Initial Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 48 },
+      { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 72 },
+      { name: 'Final Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 48 },
     ],
     estimatedDuration: '3-5 days',
     complexity: 'moderate',
     popular: true,
-    usageCount: 156,
   },
   {
-    id: 'quick-approval',
-    name: 'Quick Approval',
-    description: 'Single manager approval for low-value, low-risk contracts',
+    id: 'express',
+    name: 'Express Approval',
+    description: 'Quick review for low-value contracts',
     category: 'procurement',
     icon: Zap,
     color: 'from-green-500 to-emerald-600',
-    steps: [{ name: 'Manager Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 }],
-    estimatedDuration: '1 day',
+    steps: [
+      { name: 'Quick Review', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
+      { name: 'Final Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
+    ],
+    estimatedDuration: '1-2 days',
     complexity: 'simple',
     recommended: true,
-    usageCount: 243,
-  },
-  {
-    id: 'comprehensive-review',
-    name: 'Comprehensive Review',
-    description: 'Full review with Legal, Security, Finance, Compliance, and Executive sign-off',
-    category: 'legal',
-    icon: Shield,
-    color: 'from-purple-500 to-fuchsia-600',
-    steps: [
-      { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 48 },
-      { name: 'Security Assessment', type: 'REVIEW', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Finance Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Compliance Check', type: 'REVIEW', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Executive Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 48 },
-    ],
-    estimatedDuration: '7-10 days',
-    complexity: 'complex',
-    usageCount: 67,
-  },
-  {
-    id: 'renewal-workflow',
-    name: 'Contract Renewal',
-    description: 'Automated renewal review with performance evaluation and budget check',
-    category: 'finance',
-    icon: RefreshCw,
-    color: 'from-amber-500 to-orange-600',
-    steps: [
-      { name: 'Performance Review', type: 'REVIEW', assigneeType: 'USER', slaHours: 24 },
-      { name: 'Budget Verification', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 24 },
-    ],
-    estimatedDuration: '2-3 days',
-    complexity: 'simple',
-    popular: true,
-    usageCount: 189,
-  },
-  {
-    id: 'high-value-approval',
-    name: 'High-Value Contract',
-    description: 'Multi-tier approval for contracts above threshold with CFO sign-off',
-    category: 'finance',
-    icon: DollarSign,
-    color: 'from-rose-500 to-pink-600',
-    steps: [
-      { name: 'Procurement Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 48 },
-      { name: 'Finance Director', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
-      { name: 'CFO Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 48 },
-    ],
-    estimatedDuration: '5-7 days',
-    complexity: 'complex',
-    usageCount: 92,
-  },
-  {
-    id: 'vendor-onboarding',
-    name: 'Vendor Onboarding',
-    description: 'Complete vendor verification and onboarding workflow',
-    category: 'procurement',
-    icon: Users,
-    color: 'from-cyan-500 to-blue-600',
-    steps: [
-      { name: 'Documentation Check', type: 'REVIEW', assigneeType: 'USER', slaHours: 24 },
-      { name: 'Compliance Screening', type: 'REVIEW', assigneeType: 'ROLE', slaHours: 48 },
-      { name: 'Finance Approval', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 24 },
-    ],
-    estimatedDuration: '4-5 days',
-    complexity: 'moderate',
-    usageCount: 78,
-  },
-  {
-    id: 'amendment-approval',
-    name: 'Contract Amendment',
-    description: 'Fast-track approval for contract amendments and addendums',
-    category: 'legal',
-    icon: FileText,
-    color: 'from-indigo-500 to-violet-600',
-    steps: [
-      { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Stakeholder Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
-    ],
-    estimatedDuration: '2 days',
-    complexity: 'simple',
-    recommended: true,
-    usageCount: 134,
-  },
-  {
-    id: 'compliance-audit',
-    name: 'Compliance Audit',
-    description: 'Thorough compliance review for regulated industries',
-    category: 'compliance',
-    icon: Shield,
-    color: 'from-teal-500 to-green-600',
-    steps: [
-      { name: 'Initial Screening', type: 'REVIEW', assigneeType: 'ROLE', slaHours: 24 },
-      { name: 'Compliance Officer', type: 'APPROVAL', assigneeType: 'USER', slaHours: 48 },
-      { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 48 },
-      { name: 'Final Certification', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
-    ],
-    estimatedDuration: '6-8 days',
-    complexity: 'complex',
-    usageCount: 45,
   },
 ];
 
@@ -208,6 +167,17 @@ export function WorkflowTemplatesGallery({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<WorkflowTemplate | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // Fetch templates from backend API
+  const { data: backendTemplates, isLoading, error } = useWorkflowTemplates();
+  
+  // Map backend templates to UI format or use fallback
+  const templates: WorkflowTemplate[] = React.useMemo(() => {
+    if (backendTemplates && backendTemplates.length > 0) {
+      return backendTemplates.map(mapBackendTemplate);
+    }
+    return fallbackTemplates;
+  }, [backendTemplates]);
 
   const filteredTemplates = templates.filter((template) => {
     const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
@@ -241,8 +211,28 @@ export function WorkflowTemplatesGallery({
     }
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={cn('space-y-6', className)}>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <span className="ml-3 text-slate-600">Loading workflow templates...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cn('space-y-6', className)}>
+      {/* Error banner if API failed but fallback loaded */}
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <span className="text-sm text-amber-700">Using local templates - API unavailable</span>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

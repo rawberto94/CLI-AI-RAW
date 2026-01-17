@@ -48,8 +48,8 @@ export function EnhancedMetadataEditor({
         `${query}-services`,
         `${query}-contract`,
       ]);
-    } catch (err) {
-      console.error('Failed to load tag suggestions:', err);
+    } catch {
+      // Failed to load tag suggestions - silently handle
     }
   };
 

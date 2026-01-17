@@ -106,8 +106,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔍 Analyzing contract: ${contract.fileName}`);
-
     // Truncate for token limits
     const maxTextLength = 15000;
     const contractText = contract.rawText.slice(0, maxTextLength);
@@ -156,8 +154,6 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    console.log(`✅ Analysis complete in ${processingTime}ms`);
-
     return NextResponse.json({
       success: true,
       contractId,
@@ -167,7 +163,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: unknown) {
-    console.error('Contract analysis error:', error);
     return NextResponse.json(
       {
         success: false,

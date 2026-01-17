@@ -188,14 +188,11 @@ export async function autoAssignWorkflowSteps(
 
         assignedCount++;
         lastAssignedByRole[step.assignedRole] = selectedUser.id;
-
-        console.log(`✅ Auto-assigned step "${step.name}" to ${selectedUser.email}`);
       }
     }
 
     return { assigned: assignedCount, errors };
-  } catch (error) {
-    console.error('Auto-assign error:', error);
+  } catch (error: unknown) {
     errors.push(`System error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     return { assigned: assignedCount, errors };
   }

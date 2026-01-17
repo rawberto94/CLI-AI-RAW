@@ -12,6 +12,3 @@ const __dirname = path.dirname(__filename);
 // Load from workers package .env first, then fall back to root
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
-
-// Log what DATABASE_URL we're using for debugging
-console.log('🔧 DATABASE_URL:', process.env.DATABASE_URL?.replace(/:[^:@]+@/, ':***@'));

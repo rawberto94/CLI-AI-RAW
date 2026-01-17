@@ -45,8 +45,7 @@ export async function GET(request: NextRequest) {
       countries: geographicCoverage.map(g => g.country).filter(Boolean),
       serviceLines: serviceLineCoverage.map(s => s.lineOfService).filter(Boolean),
     });
-  } catch (error) {
-    console.error('Error fetching dashboard metrics:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch dashboard metrics' },
       { status: 500 }

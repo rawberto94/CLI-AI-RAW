@@ -52,8 +52,7 @@ export async function POST(request: NextRequest) {
     } else {
       return handleSingleFeedback(body as FeedbackRequest, tenantId)
     }
-  } catch (error) {
-    console.error('Feedback recording error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to record feedback', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -212,8 +211,7 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         )
     }
-  } catch (error) {
-    console.error('Learning stats retrieval error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to retrieve learning stats', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

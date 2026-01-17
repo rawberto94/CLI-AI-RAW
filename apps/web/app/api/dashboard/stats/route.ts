@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       expirationStats,
       pendingAlerts,
     ] = await Promise.all([
-      prisma.contract.count({ where: { tenantId, status: { not: 'DELETED' } } }),
+      prisma.contract.count({ where: { tenantId, isDeleted: false } }),
       prisma.contract.count({ 
         where: { 
           tenantId,
@@ -71,16 +71,16 @@ export async function GET(request: NextRequest) {
       }),
       prisma.contract.groupBy({
         by: ['status'],
-        where: { tenantId, status: { not: 'DELETED' } },
+        where: { tenantId, isDeleted: false },
         _count: true
       }),
       prisma.contract.groupBy({
         by: ['contractType'],
-        where: { tenantId, status: { not: 'DELETED' } },
+        where: { tenantId, isDeleted: false },
         _count: true
       }),
       prisma.contract.aggregate({
-        where: { tenantId, status: { not: 'DELETED' } },
+        where: { tenantId, isDeleted: false },
         _sum: { totalValue: true }
       }),
       // Health score stats from dedicated table
@@ -253,8 +253,7 @@ export async function GET(request: NextRequest) {
         responseTime: `${Date.now() - startTime}ms`,
       }
     });
-  } catch (error) {
-    console.error("Error in dashboard stats API:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: "Failed to fetch dashboard stats", details: String(error) },
       { status: 500 }

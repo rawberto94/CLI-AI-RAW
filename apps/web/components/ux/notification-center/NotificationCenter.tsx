@@ -132,8 +132,8 @@ export function NotificationProvider({ children, initialNotifications = [] }: No
       if (stored) {
         setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
       }
-    } catch (e) {
-      console.warn('Failed to load notification settings:', e);
+    } catch {
+      // Failed to load notification settings - use defaults
     }
   }, []);
 

@@ -32,7 +32,6 @@ export class SharedContractStore {
         this.redis = new Redis(redisConnection.url);
       }
     } catch (error) {
-      console.error('Failed to initialize Redis connection:', error);
       throw error;
     }
   }
@@ -156,7 +155,6 @@ export class SharedContractStore {
   async cleanup(): Promise<void> {
     // This method can be enhanced with more sophisticated cleanup logic
     await Promise.resolve();
-    console.log('[SharedContractStore] Cleanup completed');
   }
 
   /**

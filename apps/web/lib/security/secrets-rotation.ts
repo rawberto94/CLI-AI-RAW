@@ -169,8 +169,8 @@ export class SecretsRotationService {
       name: 'JWT_SECRET',
       intervalDays: 365,
       type: 'jwt',
-      onRotate: async (oldValue, newValue) => {
-        console.log('[Secrets] JWT_SECRET rotated - users will need to re-authenticate');
+      onRotate: async () => {
+        // JWT_SECRET rotated - users will need to re-authenticate
         // In production: Update environment variable, restart services
       },
     });
@@ -181,7 +181,7 @@ export class SecretsRotationService {
       type: 'api-key',
       validator: (value) => value.startsWith('sk-'),
       onRotate: async () => {
-        console.log('[Secrets] OPENAI_API_KEY rotated - update in OpenAI dashboard');
+        // OPENAI_API_KEY rotated - update in OpenAI dashboard
       },
     });
 
@@ -189,8 +189,8 @@ export class SecretsRotationService {
       name: 'DATABASE_PASSWORD',
       intervalDays: 90,
       type: 'database',
-      onRotate: async (oldValue, newValue) => {
-        console.log('[Secrets] DATABASE_PASSWORD rotated');
+      onRotate: async () => {
+        // DATABASE_PASSWORD rotated
         // In production:
         // 1. Update password in PostgreSQL
         // 2. Update connection string in all services
@@ -202,8 +202,8 @@ export class SecretsRotationService {
       name: 'ENCRYPTION_KEY',
       intervalDays: 365,
       type: 'encryption',
-      onRotate: async (oldValue, newValue) => {
-        console.log('[Secrets] ENCRYPTION_KEY rotated - re-encrypt sensitive data');
+      onRotate: async () => {
+        // ENCRYPTION_KEY rotated - re-encrypt sensitive data
         // In production: Re-encrypt all data with new key
       },
     });
@@ -240,7 +240,6 @@ export class SecretsRotationService {
     };
 
     await this.store.set(name, config);
-    console.log(`[Secrets] Registered secret: ${name} (rotates every ${interval} days)`);
   }
 
   /**
@@ -311,15 +310,13 @@ export class SecretsRotationService {
         version: config.version,
       });
 
-      console.log(`[Secrets] Successfully rotated: ${name} (v${config.version})`);
-
       return {
         success: true,
         secretName: name,
         newValue: generatedValue,
         timestamp: new Date(),
       };
-    } catch (error) {
+    } catch (error: unknown) {
       // Rollback
       config.rotating = false;
       await this.store.set(name, config);
@@ -330,8 +327,6 @@ export class SecretsRotationService {
         success: false,
         version: config.version,
       });
-
-      console.error(`[Secrets] Rotation failed for ${name}:`, error);
 
       return {
         success: false,
@@ -375,8 +370,6 @@ export class SecretsRotationService {
       config.version++;
 
       await this.store.set(name, config);
-
-      console.log(`[Secrets] Rolled back: ${name} to v${config.version}`);
 
       return {
         success: true,
@@ -446,14 +439,8 @@ export class SecretsRotationService {
   startScheduler(checkIntervalMs: number = 60 * 60 * 1000): void {
     // Check every hour by default
     this.rotationTimer = setInterval(async () => {
-      console.log('[Secrets] Running scheduled rotation check...');
-      const results = await this.autoRotate();
-      if (results.length > 0) {
-        console.log(`[Secrets] Rotated ${results.length} secrets`);
-      }
+      await this.autoRotate();
     }, checkIntervalMs);
-
-    console.log('[Secrets] Rotation scheduler started');
   }
 
   /**
@@ -463,7 +450,6 @@ export class SecretsRotationService {
     if (this.rotationTimer) {
       clearInterval(this.rotationTimer);
       this.rotationTimer = undefined;
-      console.log('[Secrets] Rotation scheduler stopped');
     }
   }
 
@@ -536,8 +522,6 @@ export class DualKeyRotation {
     this.secondaryKey = this.primaryKey;
     this.primaryKey = newKey;
     this.rotationStartTime = new Date();
-
-    console.log('[DualKey] Rotation started - both keys valid');
   }
 
   /**
@@ -547,9 +531,6 @@ export class DualKeyRotation {
     if (!this.isInGracePeriod()) {
       this.secondaryKey = undefined;
       this.rotationStartTime = undefined;
-      console.log('[DualKey] Rotation completed - old key revoked');
-    } else {
-      console.warn('[DualKey] Still in grace period - cannot complete yet');
     }
   }
 
@@ -624,40 +605,34 @@ export interface EnvUpdateStrategy {
  */
 export async function updateSecretInEnvironment(
   secretName: string,
-  newValue: string,
+  _newValue: string,
   strategy: EnvUpdateStrategy
 ): Promise<boolean> {
   try {
     switch (strategy.type) {
       case 'kubernetes':
         // kubectl create secret generic ... --dry-run=client -o yaml | kubectl apply -f -
-        console.log(`[EnvUpdate] Would update Kubernetes secret: ${secretName}`);
         break;
 
       case 'aws-secrets-manager':
         // Use AWS SDK to update secret
-        console.log(`[EnvUpdate] Would update AWS Secret: ${secretName}`);
         break;
 
       case 'azure-keyvault':
         // Use Azure SDK to update secret
-        console.log(`[EnvUpdate] Would update Azure KeyVault: ${secretName}`);
         break;
 
       case 'github-secrets':
         // Use GitHub API to update secret
-        console.log(`[EnvUpdate] Would update GitHub Secret: ${secretName}`);
         break;
 
       case 'local':
         // Update .env file
-        console.log(`[EnvUpdate] Would update local .env: ${secretName}`);
         break;
     }
 
     return true;
-  } catch (error) {
-    console.error(`[EnvUpdate] Failed to update ${secretName}:`, error);
+  } catch {
     return false;
   }
 }

@@ -57,21 +57,21 @@ export default function RateCardDashboardPage() {
       <RateCardBreadcrumbs />
       
       <motion.div 
-        className="flex items-center justify-between"
+        className="flex items-center justify-between motion-reduce:transition-none"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center gap-4">
           <motion.div 
-            className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 text-white shadow-xl shadow-emerald-500/30"
+            className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 text-white shadow-xl shadow-emerald-500/30 motion-reduce:transform-none"
             whileHover={{ scale: 1.05, rotate: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <DollarSign className="h-8 w-8" />
+            <DollarSign className="h-8 w-8" aria-hidden="true" />
           </motion.div>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 dark:from-emerald-400 dark:via-green-400 dark:to-teal-400 bg-clip-text text-transparent">
               Rate Card Dashboard
             </h1>
             <p className="text-muted-foreground">
@@ -80,22 +80,22 @@ export default function RateCardDashboardPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
             <Button 
               onClick={() => router.push('/rate-cards/import')} 
               variant="outline"
-              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 shadow-sm"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-4 w-4 mr-2" aria-hidden="true" />
               Import Rate Cards
             </Button>
           </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="motion-reduce:transform-none">
             <Button 
               onClick={() => router.push('/rate-cards/create')}
               className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg shadow-emerald-500/25"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
               Add Rate Card
             </Button>
           </motion.div>
@@ -107,9 +107,10 @@ export default function RateCardDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
+        className="motion-reduce:transition-none"
       >
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-emerald-500 to-green-500" />
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-emerald-500 to-green-500" aria-hidden="true" />
           Client & Negotiation Overview
         </h2>
         <div className="grid gap-6 lg:grid-cols-3">
@@ -134,9 +135,10 @@ export default function RateCardDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
+        className="motion-reduce:transition-none"
       >
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-blue-500 to-cyan-500" />
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-blue-500 to-cyan-500" aria-hidden="true" />
           Portfolio Overview
         </h2>
         <DashboardKPICards />
@@ -147,9 +149,10 @@ export default function RateCardDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
+        className="motion-reduce:transition-none"
       >
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" />
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-amber-500 to-orange-500" aria-hidden="true" />
           Financial Performance
         </h2>
         <FinancialMetricsCards />
@@ -160,9 +163,10 @@ export default function RateCardDashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
+        className="motion-reduce:transition-none"
       >
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-purple-500 to-pink-500" />
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-purple-500 to-pink-500" aria-hidden="true" />
           Performance Indicators
         </h2>
         <PerformanceIndicators />
@@ -170,7 +174,7 @@ export default function RateCardDashboardPage() {
 
       {/* Top Opportunities and Trends */}
       <motion.div 
-        className="grid gap-6 lg:grid-cols-2"
+        className="grid gap-6 lg:grid-cols-2 motion-reduce:transition-none"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}

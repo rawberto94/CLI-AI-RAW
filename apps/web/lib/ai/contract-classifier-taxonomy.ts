@@ -278,9 +278,7 @@ export async function classifyContract(
       extracted_fields
     };
 
-  } catch (error) {
-    console.error("Contract classification error:", error);
-    
+  } catch {
     // Fallback classification
     return {
       classification: createClassification("services_delivery", {
@@ -323,9 +321,7 @@ export async function quickClassifyContract(
     const result = await classifyContract({ text, filename });
     return result.classification;
 
-  } catch (error) {
-    console.error("Quick classification error:", error);
-    
+  } catch {
     return createClassification("services_delivery", {
       confidence: 0.3,
       reasoning: "Fallback classification",
@@ -375,8 +371,7 @@ Respond in JSON format with the extracted values. Use null if a field cannot be 
     });
 
     return JSON.parse(response.choices[0]?.message?.content || "{}");
-  } catch (error) {
-    console.error("Key field extraction error:", error);
+  } catch {
     return {};
   }
 }

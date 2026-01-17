@@ -91,8 +91,8 @@ export class ProgressClient {
         this.reconnectAttempt = 0;
         this.handlers.onConnected?.();
         return;
-      } catch (error) {
-        console.warn(`Failed to connect with ${transport}:`, error);
+      } catch {
+        // Transport failed, try next one
       }
     }
     
@@ -177,8 +177,7 @@ export class ProgressClient {
       const data = await response.json();
       return this.parseProgressUpdate(data);
       
-    } catch (error) {
-      console.error('Failed to get progress:', error);
+    } catch (error: unknown) {
       throw error;
     }
   }
@@ -201,8 +200,7 @@ export class ProgressClient {
       const data = await response.json();
       return data.contracts.map((contract: any) => this.parseProgressUpdate(contract));
       
-    } catch (error) {
-      console.error('Failed to get all progress:', error);
+    } catch (error: unknown) {
       throw error;
     }
   }
@@ -282,8 +280,8 @@ export class ProgressClient {
         try {
           const message = JSON.parse(event.data);
           this.handleMessage(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+        } catch {
+          // Failed to parse message, ignore
         }
       };
       
@@ -322,8 +320,8 @@ export class ProgressClient {
         try {
           const data = JSON.parse(event.data);
           this.handleMessage(data);
-        } catch (error) {
-          console.error('Failed to parse SSE message:', error);
+        } catch {
+          // Failed to parse message, ignore
         }
       };
       
@@ -332,8 +330,8 @@ export class ProgressClient {
           const messageEvent = event as MessageEvent;
           const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'progress', ...data });
-        } catch (error) {
-          console.error('Failed to parse SSE progress event:', error);
+        } catch {
+          // Failed to parse event, ignore
         }
       });
       
@@ -342,8 +340,8 @@ export class ProgressClient {
           const messageEvent = event as MessageEvent;
           const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'error', ...data });
-        } catch (error) {
-          console.error('Failed to parse SSE error event:', error);
+        } catch {
+          // Failed to parse event, ignore
         }
       });
       
@@ -352,8 +350,8 @@ export class ProgressClient {
           const messageEvent = event as MessageEvent;
           const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'completed', ...data });
-        } catch (error) {
-          console.error('Failed to parse SSE completed event:', error);
+        } catch {
+          // Failed to parse event, ignore
         }
       });
       
@@ -362,8 +360,8 @@ export class ProgressClient {
           const messageEvent = event as MessageEvent;
           const data = JSON.parse(messageEvent.data);
           this.handleMessage({ type: 'failed', ...data });
-        } catch (error) {
-          console.error('Failed to parse SSE failed event:', error);
+        } catch {
+          // Failed to parse event, ignore
         }
       });
       
@@ -409,8 +407,8 @@ export class ProgressClient {
             this.handlers.onProgress?.(progress);
           });
         }
-      } catch (error) {
-        console.error('Polling error:', error);
+      } catch {
+        // Polling failed, will retry on next interval
       }
       
       if (this.isConnected) {

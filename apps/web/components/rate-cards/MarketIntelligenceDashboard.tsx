@@ -49,8 +49,8 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
       const response = await fetch(`/api/rate-cards/market-intelligence?${params}`);
       const data = await response.json();
       setIntelligence(data);
-    } catch (error) {
-      console.error('Error loading market intelligence:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -61,8 +61,8 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
       const response = await fetch(`/api/rate-cards/market-intelligence/trending?periodMonths=${periodMonths}`);
       const data = await response.json();
       setTrendingRoles(data);
-    } catch (error) {
-      console.error('Error loading trending roles:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -71,8 +71,8 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
       const response = await fetch(`/api/rate-cards/market-intelligence/suppliers?periodMonths=${periodMonths}`);
       const data = await response.json();
       setSupplierRankings(data);
-    } catch (error) {
-      console.error('Error loading supplier rankings:', error);
+    } catch {
+      // Error handled silently
     }
   };
 
@@ -81,8 +81,8 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
       const response = await fetch(`/api/rate-cards/market-intelligence/trends`);
       const data = await response.json();
       setEmergingTrends(data);
-    } catch (error) {
-      console.error('Error loading emerging trends:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

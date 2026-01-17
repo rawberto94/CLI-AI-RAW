@@ -28,7 +28,6 @@ export async function analyzeDocumentWithMistral(
 ): Promise<MistralAnalysisResult> {
   // Check for Mistral API key, fall back to stub if not available
   if (!process.env.MISTRAL_API_KEY) {
-    console.warn('MISTRAL_API_KEY not configured, returning stub analysis');
     return {
       summary: 'Document analysis not available - Mistral API key not configured',
       keyTerms: [],
@@ -52,8 +51,7 @@ export async function analyzeDocumentWithMistral(
     };
 
     return analysis;
-  } catch (error) {
-    console.error('Mistral analysis error:', error);
+  } catch {
     throw new Error('Document analysis failed');
   }
 }

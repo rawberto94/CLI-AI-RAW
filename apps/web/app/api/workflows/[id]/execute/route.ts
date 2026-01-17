@@ -139,9 +139,8 @@ export async function POST(
         data: { tenantId, contractId, status: 'PENDING' },
         source: 'api:workflows/execute',
       });
-    } catch (e) {
+    } catch {
       // Contract update is optional, don't fail the execution
-      console.warn('Could not update contract status:', e);
     }
 
     return NextResponse.json({
@@ -159,8 +158,7 @@ export async function POST(
       source: 'database',
     });
 
-  } catch (error) {
-    console.error('Error executing workflow:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -220,8 +218,7 @@ export async function GET(
       total: executions.length,
       source: 'database',
     });
-  } catch (error) {
-    console.error('Error fetching executions:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch executions' },
       { status: 500 }

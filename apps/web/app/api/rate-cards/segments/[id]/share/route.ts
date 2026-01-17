@@ -30,8 +30,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     const segment = await segmentService.shareSegment(params.id, tenantId, userId);
 
     return NextResponse.json(segment);
-  } catch (error) {
-    console.error('Error sharing segment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to share segment', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }
@@ -62,8 +61,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     const segment = await segmentService.unshareSegment(params.id, tenantId, userId);
 
     return NextResponse.json(segment);
-  } catch (error) {
-    console.error('Error unsharing segment:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to unshare segment', details: error instanceof Error ? error.message : String(error) },
       { status: 400 }

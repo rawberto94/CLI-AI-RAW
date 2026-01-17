@@ -72,15 +72,11 @@ const sseConnectionManager = {
       lastActivity: Date.now(),
     };
     connections.set(id, connection);
-    console.log('[SSE] Registered connection:', id, { tenantId, userId, total: connections.size });
     return connection;
   },
 
   unregisterConnection: (id: string) => {
-    const existed = connections.delete(id);
-    if (existed) {
-      console.log('[SSE] Unregistered connection:', id, { remaining: connections.size });
-    }
+    connections.delete(id);
   },
 
   updateActivity: (id: string) => {
@@ -97,8 +93,8 @@ const sseConnectionManager = {
 };
 
 const healthCheckService = {
-  updateSSEConnectionCount: (count: number) => {
-    console.log('[SSE] Active connections:', count);
+  updateSSEConnectionCount: (_count: number) => {
+    // Health check tracking - no-op in simplified mode
   },
 };
 
@@ -167,8 +163,6 @@ export async function GET(request: NextRequest) {
 
         // Cleanup on close
         request.signal.addEventListener('abort', () => {
-          console.log(`[SSE] Connection ${connection!.id} closed`);
-          
           // Clear keep-alive interval
           clearInterval(keepAliveInterval);
           
@@ -188,15 +182,13 @@ export async function GET(request: NextRequest) {
             // Already closed
           }
         });
-      } catch (error) {
-        console.error('[SSE] Error setting up connection:', error);
-        
+      } catch {
         // Send error message
         const encoder = new TextEncoder();
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ 
             type: 'error', 
-            message: error instanceof Error ? error.message : 'Connection failed',
+            message: 'Connection failed',
             timestamp: new Date().toISOString()
           })}\n\n`)
         );
@@ -271,8 +263,7 @@ function setupEventHandlers(
       
       // Update activity timestamp
       sseConnectionManager.updateActivity(connectionId);
-    } catch (e) {
-      console.error('[SSE] Error sending event:', e);
+    } catch {
       // Connection errored, but we don't track state in simplified manager
     }
   };

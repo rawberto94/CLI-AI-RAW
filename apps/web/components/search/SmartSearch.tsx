@@ -66,8 +66,8 @@ export function SmartSearch() {
         if (saved) {
           setRecentSearches(JSON.parse(saved))
         }
-      } catch (error) {
-        console.error('Error loading recent searches:', error)
+      } catch {
+        // Error loading recent searches
       }
     }
   }, [])
@@ -85,8 +85,8 @@ export function SmartSearch() {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem('recentSearches', JSON.stringify(updated))
-      } catch (error) {
-        console.error('Error saving recent searches:', error)
+      } catch {
+        // Error saving recent searches
       }
     }
 
@@ -148,8 +148,8 @@ export function SmartSearch() {
 
         setResults(mockResults)
       }
-    } catch (error) {
-      console.error('Search error:', error)
+    } catch {
+      // Search error
     } finally {
       setIsSearching(false)
     }

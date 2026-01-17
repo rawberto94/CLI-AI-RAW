@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
       })),
       total: workflows.length,
     });
-  } catch (error) {
-    console.error('Error fetching workflows:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -136,8 +135,7 @@ export async function POST(request: NextRequest) {
       workflow,
       message: 'Workflow created successfully',
     });
-  } catch (error) {
-    console.error('Error creating workflow:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -229,8 +227,7 @@ export async function PATCH(request: NextRequest) {
       workflow,
       message: 'Workflow updated successfully',
     });
-  } catch (error) {
-    console.error('Error updating workflow:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update workflow' },
       { status: 500 }
@@ -283,8 +280,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Workflow deleted successfully',
     });
-  } catch (error) {
-    console.error('Error deleting workflow:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to delete workflow' },
       { status: 500 }

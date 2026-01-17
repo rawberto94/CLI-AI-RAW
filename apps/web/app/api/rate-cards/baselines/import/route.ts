@@ -30,8 +30,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json(result);
-  } catch (error) {
-    console.error('Error importing baselines:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to import baselines' },
       { status: 500 }

@@ -14,13 +14,8 @@ interface GlobalErrorBoundaryProps {
 }
 
 export function GlobalErrorBoundary({ children }: GlobalErrorBoundaryProps) {
-  const handleError = (error: Error, errorInfo: React.ErrorInfo) => {
-    // Additional global error handling logic
-    console.error('[Global Error]', {
-      error,
-      errorInfo,
-      timestamp: new Date().toISOString(),
-    });
+  const handleError = (_error: Error, _errorInfo: React.ErrorInfo) => {
+    // Additional global error handling logic can be added here
   };
 
   return (

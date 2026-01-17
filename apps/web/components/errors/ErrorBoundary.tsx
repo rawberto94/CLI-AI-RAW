@@ -35,16 +35,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     // Update state with error info
     this.setState({ errorInfo });
 
-    // Log error with monitoring service (client-side logging)
+    // Send error to monitoring endpoint (client-side)
     if (typeof window !== 'undefined') {
-      console.error('[ErrorBoundary]', {
-        error,
-        errorInfo,
-        level: this.props.level || 'component',
-        timestamp: new Date().toISOString(),
-      });
-
-      // Send error to monitoring endpoint
       fetch('/api/monitoring/errors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,9 +54,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
           url: window.location.href,
           userAgent: navigator.userAgent,
         }),
-      }).catch(err => {
+      }).catch(() => {
         // Silently fail if monitoring endpoint is unavailable
-        console.error('Failed to send error to monitoring:', err);
       });
     }
 

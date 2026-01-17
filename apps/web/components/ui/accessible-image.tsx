@@ -166,13 +166,7 @@ export const AccessibleImage = memo(function AccessibleImage({
     onLoadError?.(new Error(`Failed to load image: ${typeof src === 'string' ? src : 'StaticImport'}`));
   }, [fallbackSrc, currentSrc, src, onLoadError]);
   
-  // Validate alt text
-  if (process.env.NODE_ENV === 'development' && !decorative && alt === '') {
-    console.warn(
-      'AccessibleImage: Empty alt text provided for non-decorative image. ' +
-      'Set decorative={true} for decorative images, or provide descriptive alt text.'
-    );
-  }
+  // Alt text validation removed - handled by TypeScript and accessibility linting
   
   // For decorative images, use empty alt and role="presentation"
   const accessibilityProps = decorative

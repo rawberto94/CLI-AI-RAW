@@ -55,8 +55,7 @@ export async function GET(request: NextRequest) {
       linesOfService: linesOfService.map(l => l.lineOfService),
       countries: countries.map(c => c.country),
     });
-  } catch (error) {
-    console.error('Error fetching filter options:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch filter options' },
       { status: 500 }

@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to get savings pipeline data:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 
@@ -99,8 +98,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to create savings opportunity:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

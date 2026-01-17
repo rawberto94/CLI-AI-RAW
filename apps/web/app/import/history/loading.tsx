@@ -11,7 +11,7 @@ const orbitingIcons = [
 
 export default function ImportHistoryLoading() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center p-8">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -54,7 +54,7 @@ export default function ImportHistoryLoading() {
                     transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                   }}
                 >
-                  <Icon className="w-4 h-4 text-slate-600" />
+                  <Icon className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 </motion.div>
               );
             })}

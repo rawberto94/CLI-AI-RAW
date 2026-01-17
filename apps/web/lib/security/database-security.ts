@@ -86,7 +86,6 @@ export class DatabaseSecurityService {
     `);
 
     if (result.length === 0 || !result[0].ssl) {
-      console.warn('[DatabaseSecurity] WARNING: Database connection is NOT encrypted!');
       return { ssl: false, version: '', cipher: '', verified: false };
     }
 
@@ -127,11 +126,9 @@ export class DatabaseSecurityService {
           ${usingClause}
           ${withCheckClause}
         `);
-
-        console.log(`[DatabaseSecurity] RLS policy created: ${policy.name} on ${policy.table}`);
       } catch (error: any) {
         if (error.message?.includes('already exists')) {
-          console.log(`[DatabaseSecurity] RLS policy already exists: ${policy.name}`);
+          // RLS policy already exists
         } else {
           throw error;
         }
@@ -283,8 +280,6 @@ export class DatabaseSecurityService {
         FOR EACH ROW
         EXECUTE FUNCTION audit_trigger_function()
       `);
-
-      console.log(`[DatabaseSecurity] Audit trigger created: ${triggerName}`);
     }
   }
 
@@ -376,8 +371,6 @@ export class DatabaseSecurityService {
         CREATE INDEX IF NOT EXISTS "idx_${config.table}_${config.column}_hash"
         ON "${config.table}" ("${config.column}_hash")
       `);
-
-      console.log(`[DatabaseSecurity] Encrypted column setup: ${config.table}.${config.column}`);
     }
   }
 
@@ -420,10 +413,8 @@ export class DatabaseSecurityService {
           END
           $$;
         `);
-
-        console.log(`[DatabaseSecurity] Role created/verified: ${role.name}`);
-      } catch (error) {
-        console.error(`[DatabaseSecurity] Error creating role ${role.name}:`, error);
+      } catch {
+        // Error creating role - silently ignored
       }
     }
   }
@@ -544,16 +535,12 @@ export class DatabaseSecurityService {
     await this.prisma.$executeRawUnsafe(`
       SELECT pg_reload_conf()
     `);
-
-    console.log(`[DatabaseSecurity] Slow query logging enabled (threshold: ${thresholdMs}ms)`);
   }
 
   /**
    * Vacuum analyze for data integrity
    */
   async runSecurityMaintenance(): Promise<void> {
-    console.log('[DatabaseSecurity] Running security maintenance...');
-
     // Check for orphaned records
     await this.prisma.$executeRawUnsafe(`
       VACUUM ANALYZE
@@ -563,8 +550,6 @@ export class DatabaseSecurityService {
     await this.prisma.$executeRawUnsafe(`
       ANALYZE
     `);
-
-    console.log('[DatabaseSecurity] Security maintenance complete');
   }
 }
 

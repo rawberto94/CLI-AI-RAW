@@ -36,7 +36,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       data: insights,
     });
   } catch (error: unknown) {
-    console.error('Error generating insights:', error);
     return NextResponse.json(
       { 
         error: 'Failed to generate insights',

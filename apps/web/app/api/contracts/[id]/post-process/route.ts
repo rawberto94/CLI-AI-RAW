@@ -52,8 +52,6 @@ export async function POST(
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);
 
-    console.log(`🔧 Post-processing request for contract: ${contractId}`);
-
     // Get options from body
     const body: PostProcessRequest = await request.json().catch(() => ({}));
     const { 
@@ -68,8 +66,6 @@ export async function POST(
     // 1. Metadata Extraction (should run first)
     if (hooks.includes("metadata-extraction")) {
       try {
-        console.log(`📊 Running metadata extraction for ${contractId}...`);
-        
         const config: Partial<AutoPopulateConfig> = {
           autoApproveThreshold: metadataOptions.autoApplyThreshold ?? 0.85,
           requireReviewThreshold: metadataOptions.skipBelowThreshold ?? 0.6,
@@ -93,10 +89,7 @@ export async function POST(
           success: true,
           ...extractionResult,
         };
-        
-        console.log(`✅ Metadata extraction complete: ${extractionResult.appliedFields.length} auto-applied, ${extractionResult.reviewRequiredFields.length} need review`);
-      } catch (error) {
-        console.error("Metadata extraction error:", error);
+      } catch (error: unknown) {
         errors.metadataExtraction = error instanceof Error ? error.message : "Unknown error";
         results.metadataExtraction = { success: false };
       }
@@ -105,7 +98,6 @@ export async function POST(
     // 2. Categorization
     if (hooks.includes("categorization")) {
       try {
-        console.log(`📁 Running categorization for ${contractId}...`);
         const { runPostProcessingHooks } = await import("@/lib/post-processing-hooks");
         const hookResults = await runPostProcessingHooks(contractId, tenantId);
         const { success: _, ...categorizationData } = hookResults.categorization || {};
@@ -113,41 +105,154 @@ export async function POST(
           success: true,
           ...categorizationData,
         };
-      } catch (error) {
-        console.error("Categorization error:", error);
+      } catch (error: unknown) {
         errors.categorization = error instanceof Error ? error.message : "Unknown error";
         results.categorization = { success: false };
       }
     }
 
-    // 3. Health Score (placeholder for future implementation)
+    // 3. Health Score Calculation
     if (hooks.includes("health-score")) {
       try {
-        console.log(`💚 Calculating health score for ${contractId}...`);
-        // TODO: Implement health score calculation
-        results.healthScore = {
-          success: true,
-          score: null,
-          message: "Health score calculation not yet implemented",
-        };
-      } catch (error) {
-        console.error("Health score error:", error);
+        
+        // Fetch contract data for health score calculation
+        const contract = await prisma.contract.findFirst({
+          where: { id: contractId, tenantId },
+          select: {
+            expirationDate: true,
+            totalValue: true,
+            status: true,
+            autoRenewalEnabled: true,
+            noticePeriodDays: true,
+            metadata: true,
+            artifacts: { select: { id: true } },
+          },
+        });
+
+        if (contract) {
+          // Calculate health score based on multiple factors
+          let score = 100;
+          const issues: string[] = [];
+
+          // Check expiration (deduct points if expiring soon)
+          if (contract.expirationDate) {
+            const daysToExpiry = Math.floor((new Date(contract.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            if (daysToExpiry < 0) {
+              score -= 30;
+              issues.push('Contract has expired');
+            } else if (daysToExpiry < 30) {
+              score -= 20;
+              issues.push('Contract expiring within 30 days');
+            } else if (daysToExpiry < 90) {
+              score -= 10;
+              issues.push('Contract expiring within 90 days');
+            }
+          }
+
+          // Check if auto-renewal is set for long-term contracts
+          if (!contract.autoRenewalEnabled && contract.expirationDate) {
+            score -= 5;
+            issues.push('No auto-renewal configured');
+          }
+
+          // Check termination notice days
+          if (!contract.noticePeriodDays) {
+            score -= 5;
+            issues.push('Termination notice period not set');
+          }
+
+          // Check if artifacts exist
+          if (!contract.artifacts || contract.artifacts.length === 0) {
+            score -= 10;
+            issues.push('No document artifacts found');
+          }
+
+          // Check contract value
+          if (!contract.totalValue || Number(contract.totalValue) === 0) {
+            score -= 5;
+            issues.push('Contract value not specified');
+          }
+
+          // Clamp score between 0-100
+          score = Math.max(0, Math.min(100, score));
+
+          // Update contract metadata with health score
+          const existingMeta = (contract.metadata as Record<string, unknown>) || {};
+          await prisma.contract.update({
+            where: { id: contractId },
+            data: {
+              metadata: {
+                ...existingMeta,
+                _healthScore: {
+                  score,
+                  issues,
+                  calculatedAt: new Date().toISOString(),
+                },
+              },
+            },
+          });
+
+          results.healthScore = {
+            success: true,
+            score,
+            issues,
+          };
+        } else {
+          results.healthScore = {
+            success: false,
+            score: null,
+            message: "Contract not found",
+          };
+        }
+      } catch (error: unknown) {
         errors.healthScore = error instanceof Error ? error.message : "Unknown error";
       }
     }
 
-    // 4. Notifications (placeholder for future implementation)
+    // 4. Notifications - Create notifications for relevant events
     if (hooks.includes("notifications")) {
       try {
-        console.log(`🔔 Processing notifications for ${contractId}...`);
-        // TODO: Implement notification triggers
+        const contract = await prisma.contract.findFirst({
+          where: { id: contractId, tenantId },
+          select: {
+            id: true,
+            contractTitle: true,
+            expirationDate: true,
+            status: true,
+            uploadedBy: true,
+          },
+        });
+
+        const sentNotifications: Array<{ type: string; userId: string }> = [];
+
+        if (contract && contract.uploadedBy) {
+          // Check if contract is expiring soon and create notification
+          if (contract.expirationDate) {
+            const daysToExpiry = Math.floor((new Date(contract.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            
+            if (daysToExpiry > 0 && daysToExpiry <= 30) {
+              // Create expiration warning notification
+              await prisma.notification.create({
+                data: {
+                  userId: contract.uploadedBy,
+                  tenantId,
+                  type: 'CONTRACT_EXPIRING',
+                  title: 'Contract Expiring Soon',
+                  message: `"${contract.contractTitle || 'Untitled Contract'}" expires in ${daysToExpiry} days`,
+                  link: `/contracts/${contractId}`,
+                  metadata: { contractId, daysToExpiry },
+                },
+              });
+              sentNotifications.push({ type: 'CONTRACT_EXPIRING', userId: contract.uploadedBy });
+            }
+          }
+        }
+
         results.notifications = {
           success: true,
-          sent: [],
-          message: "Notification system not yet implemented",
+          sent: sentNotifications,
         };
-      } catch (error) {
-        console.error("Notifications error:", error);
+      } catch (error: unknown) {
         errors.notifications = error instanceof Error ? error.message : "Unknown error";
       }
     }
@@ -155,7 +260,6 @@ export async function POST(
     // 5. RAG Indexing - Index contract text for semantic search
     if (hooks.includes("rag-indexing")) {
       try {
-        console.log(`🔍 Indexing contract for RAG search: ${contractId}...`);
         const reindexResult = await triggerContractReindex(contractId, {
           tenantId,
           deleteExisting: true,
@@ -165,13 +269,7 @@ export async function POST(
           chunksCreated: reindexResult.chunksCreated,
           error: reindexResult.error,
         };
-        if (reindexResult.success) {
-          console.log(`✅ RAG indexing complete: ${reindexResult.chunksCreated} chunks created`);
-        } else {
-          console.warn(`⚠️ RAG indexing failed: ${reindexResult.error}`);
-        }
-      } catch (error) {
-        console.error("RAG indexing error:", error);
+      } catch (error: unknown) {
         errors.ragIndexing = error instanceof Error ? error.message : "Unknown error";
         results.ragIndexing = { success: false };
       }
@@ -192,8 +290,7 @@ export async function POST(
           ? "Post-processing completed with some errors"
           : "Post-processing completed successfully",
     }, { status: allFailed ? 500 : 200 });
-  } catch (error) {
-    console.error("Post-processing error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

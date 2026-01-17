@@ -136,7 +136,6 @@ export function useBackgroundSync() {
       } else if (response.status >= 400 && response.status < 500) {
         // Client error - don't retry
         removePendingMutation(mutation.id);
-        console.warn(`Mutation ${mutation.id} failed with client error, removing from queue`);
         return false;
       } else {
         // Server error - retry later

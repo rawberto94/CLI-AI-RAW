@@ -75,8 +75,7 @@ export async function POST(
       tokensUsed: completion.usage?.total_tokens,
     });
 
-  } catch (error) {
-    console.error('Error enhancing artifact field:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Failed to enhance field',

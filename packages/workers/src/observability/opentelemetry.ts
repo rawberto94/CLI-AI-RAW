@@ -185,16 +185,6 @@ export function endSpan(span: Span, status: 'ok' | 'error' = 'ok'): void {
   while (completedSpans.length > MAX_COMPLETED_SPANS) {
     completedSpans.shift();
   }
-  
-  // Log span for debugging (in production, export to OTEL collector)
-  if (process.env.TRACE_DEBUG === 'true') {
-    console.log(`[TRACE] ${span.name} (${span.endTime - span.startTime}ms) [${span.status}]`, {
-      traceId: span.traceId,
-      spanId: span.spanId,
-      parentSpanId: span.parentSpanId,
-      attributes: span.attributes,
-    });
-  }
 }
 
 /**

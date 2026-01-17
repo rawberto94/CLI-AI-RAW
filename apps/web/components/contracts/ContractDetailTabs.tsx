@@ -109,18 +109,10 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
           const response = await fetch(`/api/rate-cards?contractId=${contract.id}&tenantId=demo`)
           if (response.ok) {
             const data = await response.json()
-            console.log('Rate cards response:', { 
-              entries: data.entries?.length, 
-              data: data.data?.length,
-              total: data.total,
-              originalTotal: data.originalTotal 
-            })
             setRateCards(data.entries || data.data || [])
-          } else {
-            console.error('Failed to fetch rate cards:', response.status, response.statusText)
           }
-        } catch (error) {
-          console.error('Failed to fetch rate cards:', error)
+        } catch {
+          // Failed to fetch rate cards - silently handle
         } finally {
           setLoadingRateCards(false)
         }

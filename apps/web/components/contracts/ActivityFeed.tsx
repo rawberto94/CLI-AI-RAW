@@ -50,8 +50,8 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
       if (!response.ok) throw new Error('Failed to load activity')
       const data = await response.json()
       setActivities(data.activities || [])
-    } catch (error) {
-      console.error('Failed to load activity:', error)
+    } catch {
+      // Error loading activity - fail silently
     } finally {
       setLoading(false)
     }

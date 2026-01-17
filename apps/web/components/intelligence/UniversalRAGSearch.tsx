@@ -391,7 +391,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
               <SearchResultCard
                 key={result.id}
                 result={result}
-                onViewSource={() => console.log('View source:', result.source)}
+                onViewSource={() => {}}
               />
             ))}
           </div>
@@ -522,13 +522,11 @@ export const UniversalRAGSearch: React.FC = () => {
             },
           }));
         } else if (json.error) {
-          console.warn('Search error:', json.error);
           results = generateMockResults(searchQuery);
         } else {
           results = generateMockResults(searchQuery);
         }
-      } catch (error) {
-        console.log('Using mock search results due to error:', error);
+      } catch {
         results = generateMockResults(searchQuery);
       }
     }

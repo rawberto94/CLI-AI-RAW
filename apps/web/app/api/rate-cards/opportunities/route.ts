@@ -89,7 +89,6 @@ export async function GET(request: NextRequest) {
       summary,
     });
   } catch (error: unknown) {
-    console.error('Error fetching opportunities:', error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -120,7 +119,6 @@ export async function POST(request: NextRequest) {
       opportunities: detectedOpportunities,
     });
   } catch (error: unknown) {
-    console.error('Error detecting opportunities:', error);
     return NextResponse.json(
       { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

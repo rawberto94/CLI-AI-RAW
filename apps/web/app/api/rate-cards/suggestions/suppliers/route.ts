@@ -27,8 +27,7 @@ export async function GET(request: NextRequest) {
     const suggestions = await rateCardService.getSupplierSuggestions(query, tenantId, limit);
 
     return NextResponse.json(suggestions);
-  } catch (error) {
-    console.error('Error getting supplier suggestions:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to get supplier suggestions', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

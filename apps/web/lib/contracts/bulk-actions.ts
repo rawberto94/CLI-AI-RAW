@@ -104,9 +104,6 @@ async function bulkExport(
   }
 
   try {
-    // In a real app, this would generate and download the export file
-    console.log(`Exporting ${contractIds.length} contracts as ${format}`)
-    
     // Simulate export
     const data = contractIds.map(id => ({
       id,

@@ -51,8 +51,7 @@ const actions: QuickAction[] = [
     href: "/ai/chat",
     color: "purple",
     gradient: "from-purple-500 to-pink-500",
-    shadowColor: "shadow-purple-500/20",
-    isNew: true
+    shadowColor: "shadow-purple-500/20"
   },
   {
     icon: Search,

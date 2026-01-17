@@ -84,8 +84,7 @@ export async function GET(request: NextRequest) {
         total
       }
     })
-  } catch (error) {
-    console.error('Error fetching notifications:', error)
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch notifications'
@@ -146,8 +145,7 @@ export async function POST(request: NextRequest) {
         actionUrl: notification.link,
       }
     })
-  } catch (error) {
-    console.error('Error creating notification:', error)
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to create notification'
@@ -205,8 +203,7 @@ export async function PATCH(request: NextRequest) {
       success: true,
       message: `${ids.length} notification(s) marked as read`
     })
-  } catch (error) {
-    console.error('Error marking notifications as read:', error)
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to update notifications'
@@ -268,8 +265,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Notification deleted'
     })
-  } catch (error) {
-    console.error('Error deleting notification:', error)
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to delete notification'

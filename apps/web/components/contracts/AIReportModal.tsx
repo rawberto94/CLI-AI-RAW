@@ -143,9 +143,9 @@ export function AIReportModal({ isOpen, onClose, contractIds, contractNames }: A
       } else {
         throw new Error(data.error || 'Report generation failed');
       }
-    } catch (err: any) {
-      console.error('Report generation error:', err);
-      setError(err.message || 'Failed to generate report');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to generate report';
+      setError(errorMessage);
       toast.error('Failed to generate AI report');
     } finally {
       setIsLoading(false);

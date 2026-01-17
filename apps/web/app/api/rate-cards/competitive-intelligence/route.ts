@@ -19,8 +19,7 @@ export async function GET(request: NextRequest) {
     const metrics = await competitiveIntelligenceService.calculateCompetitivenessScore(tenantId);
 
     return NextResponse.json(metrics);
-  } catch (error) {
-    console.error('Error fetching competitive intelligence:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to fetch competitive intelligence', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

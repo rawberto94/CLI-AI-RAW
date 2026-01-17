@@ -137,8 +137,6 @@ class PerformanceMonitor {
     monitoringService.recordTiming('page.firstContentfulPaint', metrics.firstContentfulPaint, {
       url: metrics.url,
     });
-
-    console.log('[Performance] Page load metrics:', metrics);
   }
 
   /**
@@ -179,14 +177,12 @@ class PerformanceMonitor {
             url: window.location.pathname,
             rating: this.getLCPRating(lcp),
           });
-
-          console.log('[Performance] LCP:', lcp, 'ms');
         }
       });
 
       observer.observe({ type: 'largest-contentful-paint', buffered: true });
-    } catch (error) {
-      console.warn('[Performance] LCP observation failed:', error);
+    } catch {
+      // LCP observation failed
     }
   }
 
@@ -209,14 +205,12 @@ class PerformanceMonitor {
             url: window.location.pathname,
             rating: this.getFIDRating(fid),
           });
-
-          console.log('[Performance] FID:', fid, 'ms');
         });
       });
 
       observer.observe({ type: 'first-input', buffered: true });
-    } catch (error) {
-      console.warn('[Performance] FID observation failed:', error);
+    } catch {
+      // FID observation failed
     }
   }
 
@@ -248,7 +242,6 @@ class PerformanceMonitor {
           rating: this.getCLSRating(clsValue),
         });
 
-        console.log('[Performance] CLS:', clsValue);
       });
 
       observer.observe({ type: 'layout-shift', buffered: true });
@@ -266,8 +259,8 @@ class PerformanceMonitor {
           reportCLS();
         }
       });
-    } catch (error) {
-      console.warn('[Performance] CLS observation failed:', error);
+    } catch {
+      // CLS observation failed
     }
   }
 
@@ -287,17 +280,12 @@ class PerformanceMonitor {
           monitoringService.recordTiming('performance.longTask', entry.duration, {
             url: window.location.pathname,
           });
-
-          if (entry.duration > 100) {
-            console.warn('[Performance] Long task detected:', entry.duration, 'ms');
-          }
         });
       });
 
       observer.observe({ type: 'longtask', buffered: true });
-    } catch (error) {
+    } catch {
       // Long task API not supported in all browsers
-      console.debug('[Performance] Long task observation not supported');
     }
   }
 
@@ -319,8 +307,6 @@ class PerformanceMonitor {
             url: resource.name,
             type: resource.initiatorType,
           });
-
-          console.warn('[Performance] Slow resource:', resource.name, resource.duration, 'ms');
         }
       });
 
@@ -363,9 +349,8 @@ class PerformanceMonitor {
       cached: cached.toString(),
     });
 
-    // Warn on slow API calls
+    // Track slow API calls
     if (duration > 2000) {
-      console.warn('[Performance] Slow API call:', endpoint, duration, 'ms');
       monitoringService.incrementCounter('api.slow', { endpoint });
     }
   }
@@ -396,9 +381,8 @@ class PerformanceMonitor {
       component: componentName,
     });
 
-    // Warn on slow renders
+    // Track slow renders
     if (renderTime > 16) {
-      console.warn('[Performance] Slow render:', componentName, renderTime, 'ms');
       monitoringService.incrementCounter('component.slowRender', { component: componentName });
     }
   }

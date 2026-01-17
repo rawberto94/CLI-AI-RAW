@@ -89,7 +89,6 @@ export class ArtifactPopulationService {
     options: ArtifactPopulationOptions = {}
   ): Promise<void> {
     try {
-      console.log(`🔄 Starting artifact population for contract ${contractId}`);
 
       // Get contract details
       const contract = await this.prisma.contract.findUnique({
@@ -129,10 +128,7 @@ export class ArtifactPopulationService {
 
       // Index contract metadata for enhanced search
       await this.indexContractMetadata(contractId, analysisResult);
-
-      console.log(`✅ Artifact population completed for contract ${contractId}`);
     } catch (error) {
-      console.error(`❌ Error populating artifacts for contract ${contractId}:`, error);
       throw error;
     }
   }
@@ -439,20 +435,15 @@ export class ArtifactPopulationService {
     tenantId: string,
     options: ArtifactPopulationOptions = {}
   ): Promise<void> {
-    console.log(`🔄 Starting batch artifact population for ${contractIds.length} contracts`);
-
     for (const contractId of contractIds) {
       try {
         await this.populateContractArtifacts(contractId, tenantId, options);
         // Add small delay to avoid overwhelming the system
         await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error(`❌ Failed to populate artifacts for contract ${contractId}:`, error);
-        // Continue with other contracts
+      } catch {
+        // Failed to populate artifacts for contract - continue with others
       }
     }
-
-    console.log(`✅ Batch artifact population completed`);
   }
 
   // Helper methods for generating mock data

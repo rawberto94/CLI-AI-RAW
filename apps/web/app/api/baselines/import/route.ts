@@ -56,8 +56,7 @@ export async function POST(req: NextRequest) {
       result,
       message: `Imported ${result.imported}, updated ${result.updated}, failed ${result.failed}`,
     });
-  } catch (error) {
-    console.error('Baseline import error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to import baselines',
@@ -84,8 +83,7 @@ export async function GET(req: NextRequest) {
       success: true,
       statistics,
     });
-  } catch (error) {
-    console.error('Get baseline statistics error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to get baseline statistics',

@@ -137,7 +137,6 @@ export function RecentContracts() {
         setIsLoading(false)
       }
     } catch (e) {
-      console.log("API not available, using demo data")
       // API not available, use demo data
       setContracts(demoContracts)
       setIsLoading(false)

@@ -30,8 +30,7 @@ export async function POST(
       },
       source: 'mock'
     });
-  } catch (error) {
-    console.error('Error duplicating template:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to duplicate template' },
       { status: 500 }

@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWebSocket } from '@/contexts/websocket-context';
 import { useCallback, useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 
 // ============================================================================
 // Types
@@ -431,6 +432,7 @@ export function useSharing(documentId: string, documentType: 'contract' | 'rate_
 export function useComments(contractId: string) {
   const queryClient = useQueryClient();
   const wsContext = useWebSocket();
+  const { data: session } = useSession();
 
   // Fetch comments
   const { data, isLoading, error, refetch } = useQuery({
@@ -472,8 +474,8 @@ export function useComments(contractId: string) {
           content, 
           parentId, 
           mentions,
-          author: 'Current User', // TODO: Get from auth context
-          authorEmail: 'user@company.com',
+          author: session?.user?.name || 'Anonymous',
+          authorEmail: session?.user?.email || 'anonymous@example.com',
         }),
       });
       if (!response.ok) throw new Error('Failed to add comment');

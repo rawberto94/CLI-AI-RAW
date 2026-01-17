@@ -148,8 +148,7 @@ export async function POST(request: NextRequest) {
         `;
 
         results.synced++;
-      } catch (error) {
-        console.error(`Error calculating health score for ${contract.id}:`, error);
+      } catch {
         results.errors++;
       }
     }
@@ -161,8 +160,7 @@ export async function POST(request: NextRequest) {
       meta: { timestamp: now.toISOString(), source: 'database' }
     });
 
-  } catch (error) {
-    console.error('Health score sync error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: { code: 'SYNC_ERROR', message: error instanceof Error ? error.message : 'Failed to sync health scores' } },
       { status: 500 }
@@ -217,8 +215,7 @@ export async function GET(request: NextRequest) {
       meta: { timestamp: new Date().toISOString(), source: 'database' }
     });
 
-  } catch (error) {
-    console.error('Get health score stats error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: { code: 'FETCH_ERROR', message: error instanceof Error ? error.message : 'Failed to get health score stats' } },
       { status: 500 }

@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
     }
 
     const tenantId = await getServerTenantId()
-    console.log(`🔍 Semantic search: "${query}" in contract: ${contractId || 'all'} (mode: ${mode})`)
 
     // Use advanced RAG with hybrid search
     const results = contractId
@@ -46,8 +45,6 @@ export async function POST(request: NextRequest) {
           rerank,
           expandQuery,
         })
-
-    console.log(`✅ Found ${results.length} relevant chunks`)
 
     return NextResponse.json({
       success: true,
@@ -74,8 +71,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-  } catch (error) {
-    console.error('Semantic search error:', error)
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Unknown error',

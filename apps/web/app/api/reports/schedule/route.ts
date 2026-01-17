@@ -17,8 +17,7 @@ const schedules: any[] = [];
 export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({ schedules });
-  } catch (error) {
-    console.error("Error fetching schedules:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch schedules" },
       { status: 500 }
@@ -49,8 +48,7 @@ export async function POST(request: NextRequest) {
     // 3. Set up email delivery system
 
     return NextResponse.json({ success: true, schedule });
-  } catch (error) {
-    console.error("Error creating schedule:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to create schedule" },
       { status: 500 }

@@ -62,8 +62,8 @@ export function OpportunitiesList() {
         setOpportunities(data.opportunities);
         setSummary(data.summary);
       }
-    } catch (error) {
-      console.error('Error fetching opportunities:', error);
+    } catch {
+      // Error fetching opportunities
     } finally {
       setLoading(false);
     }
@@ -88,8 +88,8 @@ export function OpportunitiesList() {
       if (data.success) {
         await fetchOpportunities();
       }
-    } catch (error) {
-      console.error('Error detecting opportunities:', error);
+    } catch {
+      // Error detecting opportunities
     } finally {
       setLoading(false);
     }
@@ -106,8 +106,8 @@ export function OpportunitiesList() {
       if (response.ok) {
         await fetchOpportunities();
       }
-    } catch (error) {
-      console.error('Error updating status:', error);
+    } catch {
+      // Error updating status
     }
   };
 

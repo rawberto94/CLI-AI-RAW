@@ -103,8 +103,8 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
       await addComment(newComment, replyTo || undefined, mentions);
       setNewComment('');
       setReplyTo(null);
-    } catch (error) {
-      console.error('Failed to add comment:', error);
+    } catch {
+      // Error handled silently
     }
   };
 

@@ -216,8 +216,7 @@ export class DocumentPreprocessor {
         qualityScore,
         recommendations,
       };
-    } catch (error) {
-      console.error('Error analyzing image quality:', error);
+    } catch {
       return {
         estimatedDpi: 72,
         sharpness: 0.5,
@@ -392,7 +391,6 @@ export class DocumentPreprocessor {
       const pdfToImg = await optionalImport<any>('pdf-to-img');
       
       if (!pdfToImg) {
-        console.warn('pdf-to-img not available, returning original PDF');
         const quality = await this.analyzeQuality(pdfBuffer);
         return [{
           pageNumber: 1,
@@ -422,7 +420,6 @@ export class DocumentPreprocessor {
 
       return results;
     } catch (error) {
-      console.error('Error preprocessing PDF:', error);
       throw error;
     }
   }

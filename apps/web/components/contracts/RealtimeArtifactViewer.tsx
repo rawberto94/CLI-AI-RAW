@@ -120,7 +120,6 @@ export function RealtimeArtifactViewer({
     if (isEffectivelyComplete || isConnected) return;
     
     setIsPollingFallback(true);
-    console.log('[Viewer] Starting polling fallback');
     
     const poll = async () => {
       try {
@@ -137,7 +136,6 @@ export function RealtimeArtifactViewer({
               a.data && Object.keys(a.data || {}).length > 0
             ).length;
             if (completed >= 10) {
-              console.log('[Viewer] Polling fallback detected all artifacts complete:', completed);
               setIsPollingFallback(false);
               if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
@@ -147,8 +145,8 @@ export function RealtimeArtifactViewer({
             }
           }
         }
-      } catch (e) {
-        console.error('[Viewer] Polling fallback error:', e);
+      } catch {
+        // Polling fallback error - silently continue
       }
     };
     
@@ -161,7 +159,6 @@ export function RealtimeArtifactViewer({
     if (!isConnected && !isEffectivelyComplete && !error) {
       connectionTimeoutRef.current = setTimeout(() => {
         if (!isConnected && !isEffectivelyComplete) {
-          console.warn('[Viewer] SSE connection taking too long, starting polling fallback');
           startPollingFallback();
         }
       }, 10000);
@@ -207,8 +204,8 @@ export function RealtimeArtifactViewer({
       }
 
       // Artifact will update via SSE stream
-    } catch (error) {
-      console.error('Failed to retry artifact:', error);
+    } catch {
+      // Failed to retry artifact - silently handle
     } finally {
       setTimeout(() => {
         setRetryingArtifacts(prev => {

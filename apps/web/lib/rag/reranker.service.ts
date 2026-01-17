@@ -58,8 +58,7 @@ export async function crossEncoderRerank(
     try {
       const scores = await scoreBatch(query, batch);
       allScores.push(...scores);
-    } catch (error) {
-      console.error('Reranking batch error:', error);
+    } catch {
       // Fallback: use original positions
       batch.forEach((doc, idx) => {
         allScores.push({
@@ -131,7 +130,6 @@ Only return the JSON array, nothing else.`;
       originalScore: 1 - (doc.index * 0.05), // Approximate original ranking
     }));
   } catch {
-    console.error('Failed to parse reranking scores:', content);
     // Fallback to original ordering
     return documents.map((doc, i) => ({
       index: doc.index,

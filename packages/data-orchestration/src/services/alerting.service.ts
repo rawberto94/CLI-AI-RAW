@@ -301,11 +301,8 @@ class AlertingService {
    * Send console notification
    */
   private sendConsoleNotification(alert: Alert): void {
-    const prefix = alert.severity === 'critical' ? '🚨' : 
-                   alert.severity === 'high' ? '⚠️' : 
-                   alert.severity === 'medium' ? '⚡' : 'ℹ️';
-    
-    console.warn(`${prefix} [ALERT] ${alert.message}`, {
+    // Log alert via monitoring service instead of console
+    monitoringService.logInfo(`[ALERT] ${alert.message}`, {
       severity: alert.severity,
       metric: alert.threshold.metric,
       currentValue: alert.currentValue,

@@ -54,6 +54,7 @@ interface ContractPreferences {
 }
 
 interface UserPreferences {
+  [key: string]: unknown; // Index signature for Record<string, unknown> compatibility
   theme: 'light' | 'dark' | 'system';
   language: string;
   timezone: string;
@@ -163,8 +164,7 @@ export async function GET() {
       preferences: mergedPreferences,
       isDefault: !user.preferences,
     });
-  } catch (error) {
-    console.error('Error fetching user preferences:', error);
+  } catch {
     return NextResponse.json({
       preferences: defaultPreferences,
       isDefault: true,
@@ -206,8 +206,7 @@ export async function POST(request: Request) {
       success: true,
       preferences: newPreferences
     });
-  } catch (error) {
-    console.error('Error saving user preferences:', error);
+  } catch {
     return NextResponse.json({
       success: true,
       preferences: await request.json()
@@ -267,8 +266,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       preferences: updatedUser.preferences,
     });
-  } catch (error) {
-    console.error('Error updating user preferences:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update preferences' },
       { status: 500 }
@@ -326,8 +324,7 @@ export async function PATCH(request: NextRequest) {
       success: true,
       preferences: updatedUser.preferences,
     });
-  } catch (error) {
-    console.error('Error patching user preferences:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to patch preferences' },
       { status: 500 }
@@ -366,9 +363,16 @@ export async function DELETE(request: NextRequest) {
           (defaultPreferences as Record<string, unknown>)[section];
       }
 
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { preferences: currentPreferences },
+      // Reset specific section to default using upsert on UserPreferences
+      await prisma.userPreferences.upsert({
+        where: { userId: session.user.id },
+        create: {
+          userId: session.user.id,
+          customSettings: JSON.parse(JSON.stringify(currentPreferences)),
+        },
+        update: {
+          customSettings: JSON.parse(JSON.stringify(currentPreferences)),
+        },
       });
 
       return NextResponse.json({
@@ -379,9 +383,21 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Reset all preferences
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { preferences: defaultPreferences },
+    // Note: preferences is a relation to UserPreferences model
+    // For now, upsert the preferences relation with default values
+    await prisma.userPreferences.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
+        notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
+        customSettings: JSON.parse(JSON.stringify(defaultPreferences)),
+      },
+      update: {
+        theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
+        notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
+        customSettings: JSON.parse(JSON.stringify(defaultPreferences)),
+      },
     });
 
     return NextResponse.json({
@@ -389,8 +405,7 @@ export async function DELETE(request: NextRequest) {
       message: 'All preferences reset to defaults',
       preferences: defaultPreferences,
     });
-  } catch (error) {
-    console.error('Error resetting user preferences:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to reset preferences' },
       { status: 500 }

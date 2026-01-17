@@ -55,6 +55,9 @@ const DEFAULT_QUICK_SUGGESTIONS: Suggestion[] = [
   { id: 'top-suppliers', text: 'Top suppliers by value', category: 'quick', icon: DollarSign, priority: 3 },
   { id: 'high-risk', text: 'High risk contracts', category: 'quick', icon: Shield, priority: 4 },
   { id: 'savings', text: 'Cost savings opportunities', category: 'quick', icon: TrendingUp, priority: 5 },
+  // Premium feature suggestions
+  { id: 'generate', text: 'Generate a new contract', category: 'quick', icon: Zap, priority: 6 },
+  { id: 'obligations', text: 'Show my obligations', category: 'quick', icon: Clock, priority: 7 },
 ];
 
 // Context-based suggestions
@@ -63,22 +66,51 @@ const CONTEXT_SUGGESTIONS: Record<string, Suggestion[]> = {
     { id: 'filter-active', text: 'Show only active contracts', category: 'contextual', priority: 1 },
     { id: 'sort-value', text: 'Sort by contract value', category: 'contextual', priority: 2 },
     { id: 'group-supplier', text: 'Group by supplier', category: 'contextual', priority: 3 },
+    { id: 'upload', text: 'Upload a new contract', category: 'contextual', priority: 4 },
+    { id: 'generate-new', text: 'Generate a new contract with AI', category: 'contextual', priority: 5 },
   ],
   'contract-detail': [
     { id: 'summarize', text: 'Summarize this contract', category: 'contextual', priority: 1 },
     { id: 'key-terms', text: 'Extract key terms', category: 'contextual', priority: 2 },
     { id: 'compare', text: 'Compare with similar contracts', category: 'contextual', priority: 3 },
     { id: 'risks', text: 'Identify risks in this contract', category: 'contextual', priority: 4 },
+    // Premium features for contract detail
+    { id: 'legal-review', text: 'Start AI legal review', category: 'contextual', priority: 5 },
+    { id: 'redline', text: 'Open redline editor', category: 'contextual', priority: 6 },
+    { id: 'obligations', text: 'Track obligations', category: 'contextual', priority: 7 },
+    { id: 'renewal', text: 'Create renewal', category: 'contextual', priority: 8 },
+    { id: 'amendment', text: 'Create amendment', category: 'contextual', priority: 9 },
   ],
   'analytics': [
     { id: 'spending', text: 'Spending breakdown by category', category: 'contextual', priority: 1 },
     { id: 'trends', text: 'Contract value trends', category: 'contextual', priority: 2 },
     { id: 'renewal-forecast', text: 'Renewal forecast', category: 'contextual', priority: 3 },
+    { id: 'risk-report', text: 'Generate risk assessment report', category: 'contextual', priority: 4 },
   ],
   'dashboard': [
     { id: 'overview', text: 'Quick portfolio overview', category: 'contextual', priority: 1 },
     { id: 'action-items', text: 'What needs my attention?', category: 'contextual', priority: 2 },
     { id: 'recent', text: 'Show recent activity', category: 'contextual', priority: 3 },
+    { id: 'generate', text: 'Generate a new contract', category: 'contextual', priority: 4 },
+    { id: 'upload', text: 'Upload a contract', category: 'contextual', priority: 5 },
+  ],
+  'generate': [
+    { id: 'gen-nda', text: 'Generate an NDA', category: 'contextual', priority: 1 },
+    { id: 'gen-msa', text: 'Generate an MSA', category: 'contextual', priority: 2 },
+    { id: 'gen-sow', text: 'Generate a Statement of Work', category: 'contextual', priority: 3 },
+    { id: 'gen-template', text: 'Use a contract template', category: 'contextual', priority: 4 },
+  ],
+  'obligations': [
+    { id: 'overdue', text: 'Show overdue obligations', category: 'contextual', priority: 1 },
+    { id: 'upcoming', text: 'Upcoming obligations this week', category: 'contextual', priority: 2 },
+    { id: 'add-obligation', text: 'Add a new obligation', category: 'contextual', priority: 3 },
+    { id: 'by-contract', text: 'Obligations by contract', category: 'contextual', priority: 4 },
+  ],
+  'drafting': [
+    { id: 'draft-nda', text: 'Draft an NDA', category: 'contextual', priority: 1 },
+    { id: 'draft-terms', text: 'Draft terms and conditions', category: 'contextual', priority: 2 },
+    { id: 'review-draft', text: 'Review my current draft', category: 'contextual', priority: 3 },
+    { id: 'improve-language', text: 'Improve contract language', category: 'contextual', priority: 4 },
   ],
 };
 
@@ -167,8 +199,8 @@ export const SmartSuggestions = memo(({
           },
         })));
       }
-    } catch (e) {
-      console.warn('Failed to load suggestion history:', e);
+    } catch {
+      // Silently handle load failure
     }
   }, []);
 
@@ -194,8 +226,8 @@ export const SmartSuggestions = memo(({
       });
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 20)));
-    } catch (e) {
-      console.warn('Failed to save suggestion history:', e);
+    } catch {
+      // Silently handle save failure
     }
   }, []);
 

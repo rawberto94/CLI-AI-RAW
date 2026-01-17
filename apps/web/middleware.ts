@@ -227,13 +227,6 @@ export default auth((req) => {
           request: { headers: requestHeaders },
         });
         return addTracingHeaders(response);
-      } else {
-        // Warn if admin endpoints are unprotected in production
-        if (process.env.NODE_ENV === "production") {
-          console.warn(
-            "⚠️ WARNING: Admin endpoints are not protected. Set ADMIN_API_TOKEN environment variable."
-          );
-        }
       }
     }
 

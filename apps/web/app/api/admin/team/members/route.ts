@@ -37,8 +37,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ members });
-  } catch (error) {
-    console.error("Get members error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to get team members" },
       { status: 500 }

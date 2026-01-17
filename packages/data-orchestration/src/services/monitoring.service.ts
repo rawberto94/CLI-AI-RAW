@@ -108,11 +108,6 @@ class MonitoringService {
     if (values.length > 1000) {
       values.shift();
     }
-    
-    // Log metric in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Metric] ${name}:`, value, tags);
-    }
   }
 
   /**
@@ -125,10 +120,6 @@ class MonitoringService {
       value,
       timestamp: new Date(),
     });
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Gauge] ${name}:`, value, tags);
-    }
   }
 
   /**
@@ -147,10 +138,6 @@ class MonitoringService {
     const key = this.getMetricKey(name, tags);
     const current = this.counters.get(key) || 0;
     this.counters.set(key, current + 1);
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Counter] ${name}:`, current + 1, tags);
-    }
   }
 
   /**
@@ -399,10 +386,6 @@ class MonitoringService {
     
     this.traces.set(trace.id, trace);
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Trace Start] ${trace.name} (${trace.id})`);
-    }
-    
     return trace;
   }
 
@@ -423,13 +406,6 @@ class MonitoringService {
         });
       }
     });
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Trace End] ${trace.name}:`, `${trace.duration}ms`, {
-        spans: trace.spans.length,
-        metadata: trace.metadata,
-      });
-    }
     
     // Clean up after some time
     setTimeout(() => {
@@ -679,30 +655,6 @@ class MonitoringService {
     }
     
     // Console output with structured format
-    const logMessage = `[${entry.level.toUpperCase()}] ${entry.message}`;
-    const logData = {
-      timestamp: entry.timestamp.toISOString(),
-      requestId: entry.requestId,
-      userId: entry.userId,
-      traceId: entry.traceId,
-      service: entry.service,
-      environment: entry.environment,
-      ...entry.context,
-    };
-    
-    switch (entry.level) {
-      case 'error':
-        console.error(logMessage, logData);
-        break;
-      case 'warning':
-        console.warn(logMessage, logData);
-        break;
-      case 'debug':
-        console.debug(logMessage, logData);
-        break;
-      default:
-        console.log(logMessage, logData);
-    }
   }
 
   private getMetricKey(name: string, tags?: MetricTags): string {

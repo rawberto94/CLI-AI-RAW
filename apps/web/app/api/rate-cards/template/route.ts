@@ -119,8 +119,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': 'attachment; filename="rate-cards-template.csv"',
       },
     });
-  } catch (error) {
-    console.error('Error generating CSV template:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to generate template' },
       { status: 500 }

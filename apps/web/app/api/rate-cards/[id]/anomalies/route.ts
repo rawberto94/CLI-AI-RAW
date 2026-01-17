@@ -46,7 +46,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       },
     });
   } catch (error: unknown) {
-    console.error('Error detecting anomalies:', error);
     return NextResponse.json(
       { 
         error: 'Failed to detect anomalies',

@@ -6,6 +6,7 @@
 import { DetectedIntent } from './types';
 import { CONTRACT_TYPE_ALIASES, STATUS_ALIASES, RISK_LEVEL_ALIASES } from './constants';
 import { detectHelpIntent } from './action-handlers/help-actions';
+import { detectAgentIntent } from './action-handlers/agent-actions';
 
 function normalizeContractType(input: string | undefined): string {
   if (!input) return 'CONTRACT';
@@ -21,6 +22,12 @@ export function detectIntent(query: string): DetectedIntent {
   // ============================================
   const helpIntent = detectHelpIntent(query);
   if (helpIntent) return helpIntent;
+
+  // ============================================
+  // AGENT PATTERNS - Check early for agentic requests
+  // ============================================
+  const agentIntent = detectAgentIntent(query);
+  if (agentIntent) return agentIntent;
   
   let contractName: string | undefined;
   let supplierName: string | undefined;

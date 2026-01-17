@@ -85,8 +85,8 @@ export function DeadlineDashboard({
       
       const data = await response.json()
       setDeadlines(data.deadlines || [])
-    } catch (error) {
-      console.error('Failed to load deadlines:', error)
+    } catch {
+      // Failed to load deadlines - silently handle
     } finally {
       setLoading(false)
     }

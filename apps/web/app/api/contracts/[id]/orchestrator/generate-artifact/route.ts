@@ -73,8 +73,7 @@ export async function POST(
       jobId,
       artifactType,
     });
-  } catch (error) {
-    console.error('Error triggering artifact generation:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to trigger artifact generation' },
       { status: 500 }

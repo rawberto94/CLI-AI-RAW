@@ -44,12 +44,12 @@ export function getRedisClient(): RedisClient {
       retryStrategy: (times: number) => Math.min(times * 100, 3000),
     });
 
-    redisClient.on('error', (err: Error) => {
-      console.error('[Cache] Redis connection error:', err);
+    redisClient.on('error', () => {
+      // Redis connection error - silently handled
     });
 
     redisClient.on('connect', () => {
-      console.log('[Cache] Redis connected');
+      // Redis connected
     });
   }
   
@@ -84,8 +84,7 @@ export async function cacheGet<T>(
     
     const entry: CacheEntry<T> = JSON.parse(cached);
     return entry.data;
-  } catch (error) {
-    console.error('[Cache] Get error:', error);
+  } catch {
     return null;
   }
 }
@@ -111,8 +110,7 @@ export async function cacheSet<T>(
     
     await redis.setex(cacheKey, ttl, JSON.stringify(entry));
     return true;
-  } catch (error) {
-    console.error('[Cache] Set error:', error);
+  } catch {
     return false;
   }
 }
@@ -129,8 +127,7 @@ export async function cacheDelete(
     const cacheKey = buildCacheKey(key, options?.tenantId, options?.prefix);
     await redis.del(cacheKey);
     return true;
-  } catch (error) {
-    console.error('[Cache] Delete error:', error);
+  } catch {
     return false;
   }
 }
@@ -160,8 +157,7 @@ export async function cacheDeletePattern(
     } while (cursor !== '0');
     
     return deletedCount;
-  } catch (error) {
-    console.error('[Cache] Delete pattern error:', error);
+  } catch {
     return 0;
   }
 }
@@ -230,8 +226,7 @@ export async function checkTenantRateLimit(
     const resetAt = now + (windowSeconds * 1000);
     
     return { allowed, remaining, resetAt };
-  } catch (error) {
-    console.error('[RateLimit] Error:', error);
+  } catch {
     // Fail open - allow request if Redis is down
     return { allowed: true, remaining: maxRequests, resetAt: now + (windowSeconds * 1000) };
   }

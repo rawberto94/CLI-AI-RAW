@@ -66,7 +66,6 @@ export async function getFileStream(keyOrPath?: string) {
 		if (buffer) {
 			return Readable.from(buffer);
 		}
-		console.warn(`[storage] Memory file not found: ${keyOrPath}`);
 		return Readable.from('');
 	}
 	
@@ -87,7 +86,6 @@ export async function getObjectBuffer(keyOrPath: string): Promise<Buffer> {
 		if (buffer) {
 			return buffer;
 		}
-		console.warn(`[storage] Memory file not found: ${keyOrPath}`);
 		return Buffer.alloc(0);
 	}
 	

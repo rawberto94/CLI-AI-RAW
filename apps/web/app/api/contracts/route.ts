@@ -212,8 +212,11 @@ async function handler(request: NextRequest) {
     ContractStatus.ARCHIVED,
   ];
 
-  // Build where clause
-  const where: Prisma.ContractWhereInput = { tenantId };
+  // Build where clause - always filter out deleted contracts
+  const where: Prisma.ContractWhereInput = { 
+    tenantId,
+    isDeleted: false, // Exclude soft-deleted contracts
+  };
 
   if (search) {
     where.OR = [
@@ -506,8 +509,7 @@ async function handler(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     return await handler(request);
-  } catch (error) {
-    console.error("Error in contracts API:", error);
+  } catch {
     // Fallback to mock data on any error
     const { searchParams } = new URL(request.url);
     return returnMockContracts(searchParams);

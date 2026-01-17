@@ -179,8 +179,7 @@ export async function GET(request: NextRequest) {
       timeframe,
       period: { start: start.toISOString(), end: end.toISOString() },
     });
-  } catch (error) {
-    console.error('Dashboard API error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch dashboard metrics' },
       { status: 500 }

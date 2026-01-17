@@ -273,8 +273,7 @@ export async function GET(request: NextRequest) {
         responseTime: `${Date.now() - startTime}ms`,
       },
     });
-  } catch (error) {
-    console.error('Health scores API error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch health scores', details: String(error) },
       { status: 500 }
@@ -322,8 +321,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
-    console.error('Health scores POST error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: 'Failed to process action', details: String(error) },
       { status: 500 }

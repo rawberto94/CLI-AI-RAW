@@ -35,8 +35,7 @@ export async function POST(req: NextRequest) {
       success: true,
       ...result,
     });
-  } catch (error) {
-    console.error('Bulk baseline comparison error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Failed to perform bulk baseline comparison',

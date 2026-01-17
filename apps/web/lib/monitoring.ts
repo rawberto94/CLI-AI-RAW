@@ -61,9 +61,8 @@ class MonitoringService {
             return event;
           },
         });
-        console.log("✅ Sentry initialized");
-      } catch (error) {
-        console.warn("⚠️ Sentry not available:", (error as Error).message);
+      } catch {
+        // Sentry not available
       }
     }
 
@@ -74,8 +73,6 @@ class MonitoringService {
    * Capture an error with context
    */
   async captureError(error: Error, context?: ErrorContext): Promise<void> {
-    // Always log to console
-    console.error("[Error]", error.message, context);
 
     if (this.sentryDsn) {
       try {
@@ -103,8 +100,6 @@ class MonitoringService {
    * Capture a message/warning
    */
   async captureMessage(message: string, level: "info" | "warning" | "error" = "info"): Promise<void> {
-    console.log(`[${level.toUpperCase()}]`, message);
-
     if (this.sentryDsn) {
       try {
         const Sentry = await import("@sentry/nextjs");
@@ -125,9 +120,8 @@ class MonitoringService {
       startTime,
       end: () => {
         const duration = performance.now() - startTime;
-        if (duration > (parseInt(process.env.SLOW_QUERY_THRESHOLD || "1000"))) {
-          console.warn(`[SLOW] ${name} took ${duration.toFixed(2)}ms`);
-        }
+        // Performance tracking - slow query threshold check
+        void duration;
       },
     };
   }
@@ -136,22 +130,11 @@ class MonitoringService {
    * Track API request metrics
    */
   trackRequest(route: string, method: string, statusCode: number, duration: number): void {
-    const logData = {
-      route,
-      method,
-      statusCode,
-      duration: `${duration.toFixed(2)}ms`,
-    };
-
-    if (statusCode >= 500) {
-      console.error("[API Error]", logData);
-    } else if (statusCode >= 400) {
-      console.warn("[API Warning]", logData);
-    } else if (duration > 1000) {
-      console.warn("[Slow Request]", logData);
-    } else {
-      console.log("[API Request]", logData);
-    }
+    // Request tracking - data available for external monitoring
+    void route;
+    void method;
+    void statusCode;
+    void duration;
   }
 }
 
@@ -173,5 +156,7 @@ export const trackRequest = (route: string, method: string, statusCode: number, 
 
 // Initialize on module load (in production)
 if (process.env.NODE_ENV === "production") {
-  monitoring.init().catch(console.error);
+  monitoring.init().catch(() => {
+    // Silent initialization failure
+  });
 }

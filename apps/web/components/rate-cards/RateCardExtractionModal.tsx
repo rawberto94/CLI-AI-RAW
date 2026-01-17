@@ -104,8 +104,8 @@ export function RateCardExtractionModal({
     try {
       await onSave(editedRates);
       onClose();
-    } catch (error) {
-      console.error('Error saving rate cards:', error);
+    } catch {
+      // Error handled silently
     } finally {
       setIsSaving(false);
     }

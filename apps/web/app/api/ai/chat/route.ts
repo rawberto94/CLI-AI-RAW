@@ -137,7 +137,6 @@ function detectIntent(query: string): DetectedIntent {
     supplierName = match[2]?.trim().replace(/\s*,.*$/, '').replace(/\s+linking.*$/i, '').replace(/\s+linked.*$/i, '');
     const parentYear = match[3];
     
-    console.log('[AI Chat] Detected create linked contract intent:', { contractType, supplierName, parentYear });
     return {
       type: 'workflow',
       action: 'create_linked',
@@ -159,7 +158,6 @@ function detectIntent(query: string): DetectedIntent {
     const contractType = normalizeContractType(match[1]);
     contractName = match[2]?.trim().replace(/\s+contract$/i, '');
     
-    console.log('[AI Chat] Detected create child contract intent:', { contractType, contractName });
     return {
       type: 'workflow',
       action: 'create_linked',
@@ -177,7 +175,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(linkPattern);
   if (match) {
     const parentYear = match[1];
-    console.log('[AI Chat] Detected link contract intent:', { parentYear });
     return {
       type: 'action',
       action: 'link_contracts',
@@ -191,7 +188,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(hierarchyPattern);
   if (match) {
     contractName = match[1]?.trim();
-    console.log('[AI Chat] Detected show hierarchy intent:', { contractName });
     return {
       type: 'action',
       action: 'show_hierarchy',
@@ -205,7 +201,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(findMasterPattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected find master agreement intent:', { supplierName });
     return {
       type: 'list',
       action: 'find_master',
@@ -223,7 +218,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(supplierListPattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected supplier list intent:', { supplierName });
     return {
       type: 'list',
       action: 'list_by_supplier',
@@ -237,7 +231,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(expiringPattern);
   if (match) {
     const days = match[1] ? parseInt(match[1]) : 30;
-    console.log('[AI Chat] Detected expiring contracts intent:', { days });
     return {
       type: 'list',
       action: 'list_expiring',
@@ -251,7 +244,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(renewalListPattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected renewal list intent:', { supplierName });
     return {
       type: 'list',
       action: 'list_expiring',
@@ -265,7 +257,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(countPattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected count intent:', { supplierName });
     return {
       type: 'analytics',
       action: 'count',
@@ -279,7 +270,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(statusPattern);
   if (match) {
     const status = match[1]?.toUpperCase();
-    console.log('[AI Chat] Detected status list intent:', { status });
     return {
       type: 'list',
       action: 'list_by_status',
@@ -293,7 +283,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(valuePattern);
   if (match) {
     const threshold = match[1] ? parseInt(match[1].replace(/,/g, '')) : 100000;
-    console.log('[AI Chat] Detected value list intent:', { threshold });
     return {
       type: 'list',
       action: 'list_by_value',
@@ -307,7 +296,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(summarizePattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected summarize intent:', { supplierName });
     return {
       type: 'analytics',
       action: 'summarize',
@@ -325,7 +313,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(spendPattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected spend analysis intent:', { supplierName });
     return {
       type: 'procurement',
       action: 'spend_analysis',
@@ -338,7 +325,6 @@ function detectIntent(query: string): DetectedIntent {
   const savingsPattern = /(?:what|show|find|identify|where)\s+(?:are\s+)?(?:the\s+)?(?:potential\s+)?(?:cost\s+)?savings?(?:\s+opportunities)?|where\s+can\s+(?:we|i)\s+save|reduce\s+costs?/i;
   match = query.match(savingsPattern);
   if (match) {
-    console.log('[AI Chat] Detected cost savings intent');
     return {
       type: 'procurement',
       action: 'cost_savings',
@@ -352,7 +338,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(topSuppliersPattern);
   if (match) {
     const topN = match[1] ? parseInt(match[1]) : 10;
-    console.log('[AI Chat] Detected top suppliers intent:', { topN });
     return {
       type: 'procurement',
       action: 'top_suppliers',
@@ -365,7 +350,6 @@ function detectIntent(query: string): DetectedIntent {
   const riskPattern = /(?:show|what|which|find)\s+(?:are\s+)?(?:the\s+)?(?:high[\s-]?risk|risky|at[\s-]?risk)\s+(?:contracts?|suppliers?)|risk\s+assessment|contract\s+risks?/i;
   match = query.match(riskPattern);
   if (match) {
-    console.log('[AI Chat] Detected risk assessment intent');
     return {
       type: 'procurement',
       action: 'risk_assessment',
@@ -378,7 +362,6 @@ function detectIntent(query: string): DetectedIntent {
   const autoRenewalPattern = /(?:show|what|which|find|list)\s+(?:are\s+)?(?:the\s+)?(?:contracts?\s+)?(?:with\s+)?auto[\s-]?renewals?|auto[\s-]?renewing\s+contracts?/i;
   match = query.match(autoRenewalPattern);
   if (match) {
-    console.log('[AI Chat] Detected auto-renewal intent');
     return {
       type: 'procurement',
       action: 'auto_renewals',
@@ -391,7 +374,6 @@ function detectIntent(query: string): DetectedIntent {
   const categorySpendPattern = /(?:spend|spending|breakdown)\s+(?:by|per)\s+category|category\s+(?:spend|breakdown|analysis)/i;
   match = query.match(categorySpendPattern);
   if (match) {
-    console.log('[AI Chat] Detected category spend intent');
     return {
       type: 'procurement',
       action: 'category_spend',
@@ -408,7 +390,6 @@ function detectIntent(query: string): DetectedIntent {
   const listCategoriesPattern = /(?:show|list|what|get|display)\s+(?:are\s+)?(?:the\s+)?(?:all\s+)?(?:taxonomy\s+)?(?:procurement\s+)?categories|category\s+(?:list|tree|structure)|what\s+categories\s+(?:do\s+we\s+have|exist)|browse\s+(?:the\s+)?taxonomy/i;
   match = query.match(listCategoriesPattern);
   if (match) {
-    console.log('[AI Chat] Detected list categories intent');
     return {
       type: 'taxonomy',
       action: 'list_categories',
@@ -427,7 +408,6 @@ function detectIntent(query: string): DetectedIntent {
   if (match) {
     const contractA = match[1]?.trim();
     const contractB = match[2]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected compare contracts intent:', { contractA, contractB });
     return {
       type: 'comparison',
       action: 'compare_contracts',
@@ -442,7 +422,6 @@ function detectIntent(query: string): DetectedIntent {
   if (match) {
     const contractA = match[1]?.trim();
     const contractB = match[2]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected differences intent:', { contractA, contractB });
     return {
       type: 'comparison',
       action: 'compare_contracts',
@@ -457,7 +436,6 @@ function detectIntent(query: string): DetectedIntent {
   if (match) {
     const supplierA = match[1]?.trim();
     const supplierB = match[2]?.trim();
-    console.log('[AI Chat] Detected compare suppliers intent:', { supplierA, supplierB });
     return {
       type: 'comparison',
       action: 'compare_suppliers',
@@ -470,7 +448,6 @@ function detectIntent(query: string): DetectedIntent {
   const sideBySidePattern = /(?:side[- ]?by[- ]?side|parallel)\s+comparison|compare\s+(?:all\s+)?(?:renewal|payment|liability|termination)\s+terms?/i;
   match = query.match(sideBySidePattern);
   if (match) {
-    console.log('[AI Chat] Detected side-by-side comparison intent');
     return {
       type: 'comparison',
       action: 'side_by_side',
@@ -484,7 +461,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(categorizeContractPattern);
   if (match) {
     const contractName = (match[1] || match[2] || match[3])?.trim();
-    console.log('[AI Chat] Detected categorize contract intent:', { contractName });
     return {
       type: 'taxonomy',
       action: 'suggest_category',
@@ -498,7 +474,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(categoryDetailsPattern);
   if (match) {
     const category = (match[1] || match[2])?.trim();
-    console.log('[AI Chat] Detected category details intent:', { category });
     return {
       type: 'taxonomy',
       action: 'category_details',
@@ -512,7 +487,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(contractsInCategoryPattern);
   if (match) {
     const category = (match[1] || match[2])?.trim();
-    console.log('[AI Chat] Detected contracts in category intent:', { category });
     return {
       type: 'taxonomy',
       action: 'browse_taxonomy',
@@ -525,7 +499,6 @@ function detectIntent(query: string): DetectedIntent {
   const paymentTermsPattern = /(?:show|what|which|list)\s+(?:are\s+)?(?:the\s+)?(?:contracts?\s+)?(?:with\s+)?(?:payment\s+terms?|net\s*\d+)/i;
   match = query.match(paymentTermsPattern);
   if (match) {
-    console.log('[AI Chat] Detected payment terms intent');
     return {
       type: 'procurement',
       action: 'payment_terms',
@@ -538,7 +511,6 @@ function detectIntent(query: string): DetectedIntent {
   const rateComparePattern = /(?:compare|benchmark|check)\s+(?:the\s+)?rates?|rate\s+comparison|(?:are\s+)?(?:our|the)\s+rates?\s+(?:competitive|good|high|low)/i;
   match = query.match(rateComparePattern);
   if (match) {
-    console.log('[AI Chat] Detected rate comparison intent');
     return {
       type: 'procurement',
       action: 'rate_comparison',
@@ -552,7 +524,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(performancePattern);
   if (match) {
     supplierName = match[1] || match[2];
-    console.log('[AI Chat] Detected supplier performance intent:', { supplierName });
     return {
       type: 'procurement',
       action: 'supplier_performance',
@@ -566,7 +537,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(negotiatePattern);
   if (match) {
     supplierName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected negotiation intent:', { supplierName });
     return {
       type: 'procurement',
       action: 'negotiate_terms',
@@ -614,7 +584,6 @@ function detectIntent(query: string): DetectedIntent {
     /(?:please\s+)?renew/i.test(lowerQuery);
 
   if (isRenewalRequest && (contractName || supplierName)) {
-    console.log('[AI Chat] Detected renewal intent:', { contractName, supplierName });
     return {
       type: 'workflow',
       action: 'renew',
@@ -715,7 +684,6 @@ function detectIntent(query: string): DetectedIntent {
     const group2 = match[3]?.trim().replace(/\s+contracts?$/i, '').replace(/^\s*the\s+/i, '');
     const year2 = match[4] || year;
     
-    console.log('[AI Chat] Detected group comparison intent:', { group1, year1, group2, year2 });
     return {
       type: 'analytics',
       action: 'compare_groups',
@@ -745,7 +713,6 @@ function detectIntent(query: string): DetectedIntent {
     const entity1 = (match[1]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '').replace(/\s+contracts?$/i, '')) || '';
     const entity2 = (match[2]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '').replace(/\s+contracts?$/i, '')) || '';
     
-    console.log('[AI Chat] Detected comparison intent:', { entity1, entity2 });
     return {
       type: 'analytics',
       action: 'compare_contracts',
@@ -771,7 +738,6 @@ function detectIntent(query: string): DetectedIntent {
     const entity1 = (match[1]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '')) || '';
     const entity2 = (match[2]?.trim().replace(/(?:the\s+)?contracts?\s+(?:from|with|by)\s+/i, '')) || '';
     
-    console.log('[AI Chat] Detected difference intent:', { entity1, entity2 });
     return {
       type: 'analytics',
       action: 'compare_contracts',
@@ -797,7 +763,6 @@ function detectIntent(query: string): DetectedIntent {
     const entity1 = match[1]?.trim() || '';
     const entity2 = match[2]?.trim() || '';
     
-    console.log('[AI Chat] Detected how compare intent:', { entity1, entity2 });
     return {
       type: 'analytics',
       action: 'compare_contracts',
@@ -824,7 +789,6 @@ function detectIntent(query: string): DetectedIntent {
     const entity1 = match[2]?.trim() || '';
     const entity2 = match[3]?.trim() || '';
     
-    console.log('[AI Chat] Detected clause comparison intent:', { clauseType, entity1, entity2 });
     return {
       type: 'analytics',
       action: 'compare_clauses',
@@ -840,7 +804,6 @@ function detectIntent(query: string): DetectedIntent {
   }
 
   if (deepAnalysisPattern.test(lowerQuery) && (supplierName || category || year)) {
-    console.log('[AI Chat] Detected deep analysis intent:', { supplierName, category, year, wantsValue, wantsDuration, wantsCategories });
     return {
       type: 'analytics',
       action: 'deep_analysis',
@@ -870,7 +833,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(semanticSearchPattern);
   if (match) {
     const searchTopic = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected semantic search intent:', { searchTopic });
     return {
       type: 'search',
       action: 'semantic_search',
@@ -884,7 +846,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(clauseSearchPattern);
   if (match) {
     const clauseTerm = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected clause search intent:', { clauseTerm });
     return {
       type: 'search',
       action: 'clause_search',
@@ -898,7 +859,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(briefingPattern);
   if (match) {
     const briefingTopic = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected briefing intent:', { briefingTopic });
     return {
       type: 'analytics',
       action: 'executive_briefing',
@@ -912,7 +872,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(statusUpdatePattern);
   if (match) {
     const topic = (match[1] || match[2])?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected status update intent:', { topic });
     return {
       type: 'analytics',
       action: 'status_update',
@@ -927,7 +886,6 @@ function detectIntent(query: string): DetectedIntent {
   if (match) {
     const timeframe = match[1]?.toLowerCase();
     const action = query.toLowerCase().includes('ending') || query.toLowerCase().includes('expiring') ? 'ending' : 'starting';
-    console.log('[AI Chat] Detected timeframe intent:', { timeframe, action });
     return {
       type: 'list',
       action: action === 'ending' ? 'list_expiring' : 'list_by_status',
@@ -940,7 +898,6 @@ function detectIntent(query: string): DetectedIntent {
   const rankingPattern = /(?:most|top|highest|biggest|largest)\s+(?:expensive|valuable|costly|important)\s+contracts?/i;
   match = query.match(rankingPattern);
   if (match) {
-    console.log('[AI Chat] Detected ranking intent: most valuable');
     return {
       type: 'list',
       action: 'list_by_value',
@@ -953,7 +910,6 @@ function detectIntent(query: string): DetectedIntent {
   const attentionPattern = /(?:contracts?|what)\s+(?:needing|that\s+need|requiring)\s+(?:my\s+)?attention|what\s+needs\s+(?:my\s+)?attention|urgent\s+contracts?/i;
   match = query.match(attentionPattern);
   if (match) {
-    console.log('[AI Chat] Detected attention needed intent');
     return {
       type: 'analytics',
       action: 'attention_needed',
@@ -967,7 +923,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(signatoryPattern);
   if (match) {
     contractName = match[1]?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected signatory intent:', { contractName });
     return {
       type: 'search',
       action: 'find_signatories',
@@ -981,7 +936,6 @@ function detectIntent(query: string): DetectedIntent {
   match = query.match(expirationPattern);
   if (match) {
     contractName = (match[1] || match[2])?.trim().replace(/\?$/, '');
-    console.log('[AI Chat] Detected expiration query intent:', { contractName });
     return {
       type: 'search',
       action: 'find_expiration',
@@ -998,7 +952,6 @@ function detectIntent(query: string): DetectedIntent {
   const updateExpirationPattern = /(?:set|change|update|modify)\s+(?:the\s+)?(expiration|expiry|end)\s*(?:date)?\s+(?:to|as|=)\s+(.+?)(?:\?|$)/i;
   match = query.match(updateExpirationPattern);
   if (match) {
-    console.log('[AI Chat] Detected update expiration intent:', { newValue: match[2] });
     return {
       type: 'action',
       action: 'update_expiration',
@@ -1014,7 +967,6 @@ function detectIntent(query: string): DetectedIntent {
   const extendContractPattern = /extend\s+(?:the\s+)?(?:contract\s+)?(?:expiration\s+)?(?:to|until|by)\s+(.+?)(?:\?|$)/i;
   match = query.match(extendContractPattern);
   if (match) {
-    console.log('[AI Chat] Detected extend contract intent:', { newValue: match[1] });
     return {
       type: 'action',
       action: 'update_expiration',
@@ -1030,7 +982,6 @@ function detectIntent(query: string): DetectedIntent {
   const updateEffectivePattern = /(?:set|change|update)\s+(?:the\s+)?(effective|start)\s*(?:date)?\s+(?:to|as|=)\s+(.+?)(?:\?|$)/i;
   match = query.match(updateEffectivePattern);
   if (match) {
-    console.log('[AI Chat] Detected update effective date intent:', { newValue: match[2] });
     return {
       type: 'action',
       action: 'update_effective_date',
@@ -1046,7 +997,6 @@ function detectIntent(query: string): DetectedIntent {
   const updateValuePattern = /(?:set|change|update)\s+(?:the\s+)?(?:contract\s+)?(?:value|amount|total)\s+(?:to|as|=)\s+(.+?)(?:\?|$)/i;
   match = query.match(updateValuePattern);
   if (match) {
-    console.log('[AI Chat] Detected update value intent:', { newValue: match[1] });
     return {
       type: 'action',
       action: 'update_value',
@@ -1062,7 +1012,6 @@ function detectIntent(query: string): DetectedIntent {
   const updateStatusPattern = /(?:set|change|update|mark)\s+(?:the\s+)?status\s+(?:to|as)\s+(\w+)/i;
   match = query.match(updateStatusPattern);
   if (match) {
-    console.log('[AI Chat] Detected update status intent:', { newValue: match[1] });
     return {
       type: 'action',
       action: 'update_status',
@@ -1078,7 +1027,6 @@ function detectIntent(query: string): DetectedIntent {
   const updateTitlePattern = /(?:rename|change\s+the\s+title|update\s+the\s+name)\s+(?:to|as)\s+(.+?)(?:\?|$)/i;
   match = query.match(updateTitlePattern);
   if (match) {
-    console.log('[AI Chat] Detected update title intent:', { newValue: match[1] });
     return {
       type: 'action',
       action: 'update_title',
@@ -1098,7 +1046,6 @@ function detectIntent(query: string): DetectedIntent {
   const systemHealthPattern = /(?:system|worker|queue|background)\s+(?:health|status)|(?:how\s+is\s+the\s+)?(?:system|workers?|queues?)\s+(?:doing|running|performing)|(?:are\s+)?(?:workers?|queues?)\s+(?:healthy|running|ok)/i;
   match = query.match(systemHealthPattern);
   if (match) {
-    console.log('[AI Chat] Detected system health intent');
     return {
       type: 'system',
       action: 'system_health',
@@ -1111,7 +1058,6 @@ function detectIntent(query: string): DetectedIntent {
   const accuracyPattern = /(?:categorization|classification)\s+(?:accuracy|performance|metrics)|(?:how\s+)?(?:accurate|good)\s+(?:is\s+)?(?:the\s+)?(?:ai\s+)?(?:categorization|classification)|ai\s+(?:accuracy|performance)/i;
   match = query.match(accuracyPattern);
   if (match) {
-    console.log('[AI Chat] Detected categorization accuracy intent');
     return {
       type: 'system',
       action: 'categorization_accuracy',
@@ -1124,7 +1070,6 @@ function detectIntent(query: string): DetectedIntent {
   const queueStatusPattern = /(?:queue|job)\s+(?:status|depth|count)|(?:how\s+many)\s+(?:jobs?|tasks?)\s+(?:are\s+)?(?:pending|waiting|queued)|(?:background\s+)?(?:processing|job)\s+status/i;
   match = query.match(queueStatusPattern);
   if (match) {
-    console.log('[AI Chat] Detected queue status intent');
     return {
       type: 'system',
       action: 'queue_status',
@@ -1137,7 +1082,6 @@ function detectIntent(query: string): DetectedIntent {
   const aiPerformancePattern = /(?:ai|openai|gpt)\s+(?:performance|status|health)|(?:how\s+is\s+)?(?:the\s+)?ai\s+(?:doing|performing)/i;
   match = query.match(aiPerformancePattern);
   if (match) {
-    console.log('[AI Chat] Detected AI performance intent');
     return {
       type: 'system',
       action: 'ai_performance',
@@ -1175,11 +1119,9 @@ async function findMatchingContracts(entities: DetectedIntent['entities'], tenan
 
     // If no search terms, return empty
     if (searchTerms.length === 0) {
-      console.log('[AI Chat] No search terms provided');
       return [];
     }
 
-    console.log('[AI Chat] Searching with terms:', searchTerms, 'in tenant:', tenantId);
 
     const contracts = await prisma.contract.findMany({
       where: {
@@ -1192,10 +1134,8 @@ async function findMatchingContracts(entities: DetectedIntent['entities'], tenan
       take: 5,
     });
     
-    console.log(`[AI Chat] Found ${contracts.length} contracts matching:`, entities);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error finding contracts:', e);
+  } catch {
     return [];
   }
 }
@@ -1215,10 +1155,8 @@ async function listContractsBySupplier(supplierName: string, tenantId: string) {
       orderBy: { expirationDate: 'asc' },
       take: 20,
     });
-    console.log(`[AI Chat] Found ${contracts.length} contracts for supplier: ${supplierName}`);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error listing contracts by supplier:', e);
+  } catch {
     return [];
   }
 }
@@ -1247,10 +1185,8 @@ async function listExpiringContracts(daysUntilExpiry: number, tenantId: string, 
       orderBy: { expirationDate: 'asc' },
       take: 20,
     });
-    console.log(`[AI Chat] Found ${contracts.length} contracts expiring in ${daysUntilExpiry} days`);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error listing expiring contracts:', e);
+  } catch {
     return [];
   }
 }
@@ -1267,10 +1203,8 @@ async function listContractsByStatus(status: string, tenantId: string) {
       orderBy: { updatedAt: 'desc' },
       take: 20,
     });
-    console.log(`[AI Chat] Found ${contracts.length} ${status} contracts`);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error listing contracts by status:', e);
+  } catch {
     return [];
   }
 }
@@ -1286,10 +1220,8 @@ async function listHighValueContracts(threshold: number, tenantId: string) {
       orderBy: { totalValue: 'desc' },
       take: 20,
     });
-    console.log(`[AI Chat] Found ${contracts.length} contracts over $${threshold}`);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error listing high-value contracts:', e);
+  } catch {
     return [];
   }
 }
@@ -1391,8 +1323,7 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
         children: (contract as any).childContracts || [],
       },
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting contract intelligence:', e);
+  } catch {
     return null;
   }
 }
@@ -1441,8 +1372,7 @@ async function getRecentActivity(tenantId: string) {
       totalActive,
       totalValue: Number(valueAgg._sum.totalValue || 0),
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting recent activity:', e);
+  } catch {
     return null;
   }
 }
@@ -1490,8 +1420,7 @@ async function searchContractsFlexible(searchTerm: string, tenantId: string, lim
         ? Math.ceil((new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : null,
     }));
-  } catch (e) {
-    console.error('[AI Chat] Error in flexible search:', e);
+  } catch {
     return [];
   }
 }
@@ -1599,8 +1528,7 @@ async function getProactiveInsights(tenantId: string): Promise<{
         totalValue: c.totalValue ? Number(c.totalValue) : null,
       })),
     };
-  } catch (e) {
-    console.error('[AI Chat] Error fetching proactive insights:', e);
+  } catch {
     return { criticalAlerts: [], insights: [], urgentContracts: [] };
   }
 }
@@ -1802,8 +1730,7 @@ async function compareContracts(
     }
 
     return { contractA, contractB, comparison, summary };
-  } catch (e) {
-    console.error('[AI Chat] Error comparing contracts:', e);
+  } catch {
     return {
       contractA: null,
       contractB: null,
@@ -1841,10 +1768,8 @@ async function countContracts(tenantId: string, supplierName?: string) {
       },
     });
     
-    console.log(`[AI Chat] Contract counts: total=${total}, active=${active}, expiringSoon=${expiringSoon}, draft=${draft}, expired=${expired}`);
     return { total, active, expiringSoon, draft, expired, supplierName };
-  } catch (e) {
-    console.error('[AI Chat] Error counting contracts:', e);
+  } catch {
     return { total: 0, active: 0, expiringSoon: 0, draft: 0, expired: 0, supplierName };
   }
 }
@@ -1884,8 +1809,7 @@ async function getSupplierSummary(supplierName: string, tenantId: string) {
       expiringIn90Days: expiringContracts.length,
       contracts,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting supplier summary:', e);
+  } catch {
     return null;
   }
 }
@@ -1950,8 +1874,7 @@ async function getSpendAnalysis(tenantId: string, supplierName?: string) {
         .sort((a, b) => b[1].value - a[1].value),
       supplierFilter: supplierName,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting spend analysis:', e);
+  } catch {
     return null;
   }
 }
@@ -1987,8 +1910,7 @@ async function getCostSavingsOpportunities(tenantId: string) {
       byCategory,
       count: savings.length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting cost savings:', e);
+  } catch {
     return { opportunities: [], totalPotentialSavings: 0, byCategory: {}, count: 0 };
   }
 }
@@ -2033,8 +1955,7 @@ async function getTopSuppliers(tenantId: string, topN: number = 10) {
       suppliers: sorted.map(([name, stats]) => ({ name, ...stats })),
       totalSuppliers: Object.keys(supplierStats).length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting top suppliers:', e);
+  } catch {
     return { suppliers: [], totalSuppliers: 0 };
   }
 }
@@ -2071,8 +1992,7 @@ async function getRiskAssessment(tenantId: string) {
       highRiskCount: byRiskLevel.high.length,
       autoRenewalCount: byRiskLevel.autoRenewal.length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting risk assessment:', e);
+  } catch {
     return { contracts: [], byRiskLevel: {}, criticalCount: 0, highRiskCount: 0, autoRenewalCount: 0 };
   }
 }
@@ -2101,8 +2021,7 @@ async function getAutoRenewalContracts(tenantId: string) {
       upcomingRenewals,
       upcomingCount: upcomingRenewals.length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting auto-renewal contracts:', e);
+  } catch {
     return { contracts: [], totalAutoRenewal: 0, upcomingRenewals: [], upcomingCount: 0 };
   }
 }
@@ -2156,8 +2075,7 @@ async function getCategorySpend(tenantId: string) {
         .slice(0, 15),
       totalCategories: Object.keys(byL1).length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting category spend:', e);
+  } catch {
     return { byL1Category: [], byL2Category: [], totalCategories: 0 };
   }
 }
@@ -2197,8 +2115,7 @@ async function getPaymentTermsAnalysis(tenantId: string) {
         .sort((a, b) => b.count - a.count),
       totalContracts: contracts.length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting payment terms:', e);
+  } catch {
     return { byTerms: [], totalContracts: 0 };
   }
 }
@@ -2245,8 +2162,7 @@ async function getComplianceStatus(tenantId: string, supplierName?: string) {
         issueCount: (!c.expirationDate ? 1 : 0) + (!c.noticePeriodDays ? 1 : 0),
       })),
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting compliance status:', e);
+  } catch {
     return { totalContracts: 0, compliantCount: 0, issueCount: 0, contracts: [] };
   }
 }
@@ -2284,8 +2200,7 @@ async function getSupplierPerformance(tenantId: string, supplierName: string) {
       relationshipMonths,
       totalContracts: contracts.length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting supplier performance:', e);
+  } catch {
     return {
       supplierName,
       overallScore: 0,
@@ -2399,7 +2314,6 @@ async function performDeepAnalysis(
       ];
     }
     
-    console.log('[AI Deep Analysis] Query filters:', { supplierName, category, year });
     
     const contracts = await prisma.contract.findMany({
       where,
@@ -2407,7 +2321,6 @@ async function performDeepAnalysis(
       take: 100, // Limit for performance
     });
     
-    console.log(`[AI Deep Analysis] Found ${contracts.length} contracts`);
     
     if (contracts.length === 0) {
       return {
@@ -2535,8 +2448,7 @@ async function performDeepAnalysis(
       },
       filters: { supplierName, category, year },
     };
-  } catch (e) {
-    console.error('[AI Deep Analysis] Error:', e);
+  } catch {
     return {
       summary: {
         totalContracts: 0,
@@ -2600,8 +2512,7 @@ async function getRateComparison(tenantId: string, supplierName?: string) {
       rateCards: comparison,
       totalRates: rateCards.length,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting rate comparison:', e);
+  } catch {
     return { rateCards: [], totalRates: 0 };
   }
 }
@@ -2675,7 +2586,6 @@ async function findContractsForComparison(
   tenantId: string
 ): Promise<ContractComparisonData[]> {
   try {
-    console.log(`[AI Comparison] Searching for contracts matching: "${searchTerm}"`);
     
     // Search by supplier name OR contract title
     const contracts = await prisma.contract.findMany({
@@ -2693,7 +2603,6 @@ async function findContractsForComparison(
       take: 5, // Get top 5 by value
     });
     
-    console.log(`[AI Comparison] Found ${contracts.length} contracts for "${searchTerm}"`);
     
     // For each contract, get artifacts and rate cards
     const contractsWithData: ContractComparisonData[] = [];
@@ -2849,8 +2758,7 @@ async function findContractsForComparison(
     }
     
     return contractsWithData;
-  } catch (e) {
-    console.error('[AI Comparison] Error finding contracts:', e);
+  } catch {
     return [];
   }
 }
@@ -2871,7 +2779,6 @@ async function performContractComparison(
     clauses?: boolean;
   }
 ): Promise<ComparisonResult> {
-  console.log(`[AI Comparison] Comparing "${entity1Name}" vs "${entity2Name}"`);
   
   // Find contracts for both entities
   const [contracts1, contracts2] = await Promise.all([
@@ -3226,7 +3133,6 @@ async function compareContractClauses(
   differences: string[];
   recommendation: string;
 }> {
-  console.log(`[AI Comparison] Comparing ${clauseType} clauses between "${entity1Name}" and "${entity2Name}"`);
   
   // Find contracts
   const [contracts1, contracts2] = await Promise.all([
@@ -3350,7 +3256,6 @@ async function performGroupComparison(
   groups: Array<{ supplier?: string; year?: string; category?: string; name?: string }>,
   tenantId: string
 ): Promise<GroupComparisonResult> {
-  console.log('[AI Group Comparison] Comparing groups:', groups);
   
   const formatCurrency = (val: number, curr: string = 'USD') =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
@@ -3685,8 +3590,7 @@ async function getTaxonomyCategories(tenantId: string) {
         totalL3,
       },
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting taxonomy categories:', e);
+  } catch {
     return { hierarchy: [], categories: [], stats: { totalCategories: 0, totalL1: 0, totalL2: 0, totalL3: 0, totalContracts: 0 } };
   }
 }
@@ -3722,8 +3626,7 @@ async function getCategoryDetails(categoryName: string, tenantId: string) {
       parentId: category.parentId,
       children: category.children,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting category details:', e);
+  } catch {
     return null;
   }
 }
@@ -3779,8 +3682,7 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
       suggestions: suggestions.length > 0 ? suggestions : categories.slice(0, 5),
       allCategories: categories,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error suggesting category:', e);
+  } catch {
     return { contract: null, currentCategory: null, suggestions: [], allCategories: [] };
   }
 }
@@ -3830,8 +3732,7 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
       totalContracts: contracts.length,
       totalValue,
     };
-  } catch (e) {
-    console.error('[AI Chat] Error getting contracts in category:', e);
+  } catch {
     return null;
   }
 }
@@ -3877,10 +3778,8 @@ async function findMasterAgreements(supplierName: string, tenantId: string, year
       take: 10,
     });
     
-    console.log(`[AI Chat] Found ${contracts.length} master agreements for ${supplierName}`);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error finding master agreements:', e);
+  } catch {
     return [];
   }
 }
@@ -3918,8 +3817,7 @@ async function getContractHierarchy(contractId: string, tenantId: string) {
     });
     
     return contract;
-  } catch (e) {
-    console.error('[AI Chat] Error getting contract hierarchy:', e);
+  } catch {
     return null;
   }
 }
@@ -3935,10 +3833,8 @@ async function getChildContracts(parentContractId: string, tenantId: string) {
       orderBy: { createdAt: 'desc' },
     });
     
-    console.log(`[AI Chat] Found ${contracts.length} child contracts for parent ${parentContractId}`);
     return contracts;
-  } catch (e) {
-    console.error('[AI Chat] Error getting child contracts:', e);
+  } catch {
     return [];
   }
 }
@@ -3979,10 +3875,8 @@ async function createLinkedContractDraft(
       },
     });
     
-    console.log(`[AI Chat] Created draft ${contractType} linked to parent ${parentContractId}`);
     return contract;
-  } catch (e) {
-    console.error('[AI Chat] Error creating linked contract draft:', e);
+  } catch {
     return null;
   }
 }
@@ -4028,8 +3922,7 @@ async function findRenewalWorkflows(tenantId: string) {
       take: 3,
     });
     return workflows;
-  } catch (e) {
-    console.error('Error finding workflows:', e);
+  } catch {
     return [];
   }
 }
@@ -4076,8 +3969,7 @@ async function startWorkflowExecution(
     });
 
     return execution;
-  } catch (e) {
-    console.error('Error starting workflow:', e);
+  } catch {
     return null;
   }
 }
@@ -4392,9 +4284,8 @@ async function getContractContext(contractId: string): Promise<string> {
               context += `Data available: ${Object.keys(data).slice(0, 10).join(', ')}\n`;
           }
           
-        } catch (e) {
+        } catch {
           // Skip if can't parse artifact
-          console.warn(`Could not parse artifact ${artifact.type}:`, e);
         }
       }
     }
@@ -4407,14 +4298,13 @@ async function getContractContext(contractId: string): Promise<string> {
     }
 
     return context;
-  } catch (error) {
-    console.error('Error fetching contract context:', error);
+  } catch {
     return '';
   }
 }
 
 // Mock AI responses based on context
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mockAIResponses: Record<string, (query: string, context: any) => Record<string, unknown>> = {
   // ============================================
   // PROCUREMENT AGENT RESPONSES
@@ -5802,7 +5692,7 @@ Could you provide more details about what you'd like to know?`,
   }),
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function selectResponse(query: string, context: Record<string, any>) {
   const lowerQuery = query.toLowerCase();
 
@@ -6092,7 +5982,7 @@ function selectResponse(query: string, context: Record<string, any>) {
   return mockAIResponses['default']?.(query, context);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function getOpenAIResponse(message: string, conversationHistory: Array<{ role?: string; content?: string }>, context: Record<string, any>) {
   try {
     // Check if the query needs RAG search
@@ -6144,8 +6034,7 @@ async function getOpenAIResponse(message: string, conversationHistory: Array<{ r
           
           ragSources = [...ragSources, ...searchResults.map(r => `Contract: ${r.contractName} (ID: ${r.contractId})`)];
         }
-      } catch (ragError) {
-        console.error('RAG search error:', ragError);
+      } catch {
         // Continue without RAG results
       }
     }
@@ -6265,13 +6154,12 @@ ${contractContext || 'No specific contract selected.'}
       suggestions: smartSuggestions,
     };
   } catch (error: unknown) {
-    console.error('OpenAI API error:', error);
     throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
 // Generate smart, context-aware suggested actions
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function generateSmartSuggestedActions(intent: { type?: string; action?: string; entities?: Record<string, any> }, ragResults: Array<{ contractId?: string; contractName?: string }>, context: Record<string, any>): Array<{ label: string; action: string }> {
   const actions: Array<{ label: string; action: string }> = [];
   
@@ -6418,7 +6306,6 @@ export async function POST(request: NextRequest) {
 
     // Log reference resolutions for debugging
     if (referenceResolutions.length > 0) {
-      console.log('[Chat] Reference resolutions:', referenceResolutions);
     }
 
     // Always use real OpenAI with real database data
@@ -6437,7 +6324,7 @@ export async function POST(request: NextRequest) {
     let contractPreviews: Array<{ id?: string; name?: string; supplier?: string; status?: string; value?: number; expirationDate?: string | null; daysUntilExpiry?: number | null; riskLevel?: string; type?: string }> = []; // Store contracts for visual preview cards
     let proactiveAlerts: string[] = []; // Store proactive alerts to show
     let proactiveInsightsData: string[] = []; // Store insights
-    let suggestedActions: { label: string; action: string }[] = []; // Store action buttons
+    const suggestedActions: { label: string; action: string }[] = []; // Store action buttons
     
     // Helper to format contracts for preview cards - declare before use
     const formatContractForPreview = (c: { id?: string; contractTitle?: string; name?: string; supplierName?: string; status?: string; totalValue?: number | string; value?: number | string; expirationDate?: string | Date; contractType?: string; type?: string }) => {
@@ -6591,7 +6478,7 @@ export async function POST(request: NextRequest) {
     
     // For list intents - query database and add to context
     if (intent.type === 'list') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       let contracts: any[] = [];
       if (intent.action === 'list_by_supplier' && intent.entities.supplierName) {
         contracts = await listContractsBySupplier(intent.entities.supplierName, tenantId);
@@ -6667,8 +6554,8 @@ export async function POST(request: NextRequest) {
         } else {
           additionalContext += `\n\n⚠️ No contracts found matching "${searchQuery}". Try different keywords or check the spelling.`;
         }
-      } catch (searchError) {
-        console.error('[AI Chat] Semantic search error:', searchError);
+      } catch {
+        // Continue without semantic search results
       }
     }
     
@@ -6776,7 +6663,6 @@ export async function POST(request: NextRequest) {
           const entity1 = comparisonEntities[0] || '';
           const entity2 = comparisonEntities[1] || '';
           
-          console.log(`[AI Chat] Performing contract comparison: "${entity1}" vs "${entity2}"`);
           
           const comparison = await performContractComparison(
             entity1,
@@ -6900,7 +6786,6 @@ export async function POST(request: NextRequest) {
           const entity1 = comparisonEntities[0] || '';
           const entity2 = comparisonEntities[1] || '';
           
-          console.log(`[AI Chat] Comparing ${clauseType} clauses: "${entity1}" vs "${entity2}"`);
           
           const clauseComparison = await compareContractClauses(
             entity1,
@@ -6944,7 +6829,6 @@ export async function POST(request: NextRequest) {
         const comparisonGroups = intent.entities.comparisonGroups as Array<{supplier?: string; year?: string; category?: string}>;
         
         if (comparisonGroups && comparisonGroups.length >= 2) {
-          console.log('[AI Chat] Performing group comparison:', comparisonGroups);
           
           const groupComparison = await performGroupComparison(comparisonGroups, tenantId);
           
@@ -7158,8 +7042,7 @@ export async function POST(request: NextRequest) {
           } else {
             additionalContext += `\n\n❌ ${updateResult.message}`;
           }
-        } catch (updateError) {
-          console.error('[AI Chat] Update action error:', updateError);
+        } catch {
           additionalContext += `\n\n❌ Failed to process update request. Please try again.`;
         }
       }
@@ -7311,7 +7194,7 @@ export async function POST(request: NextRequest) {
           }),
         ]);
         
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const calcStats = (contracts: any[]) => ({
           count: contracts.length,
           totalValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
@@ -7442,7 +7325,7 @@ export async function POST(request: NextRequest) {
           }
 
           context = { ...context, systemHealth: { healthData, resilienceData } };
-        } catch (e) {
+        } catch {
           additionalContext += `\n\n**System Health:** Unable to retrieve worker health status. Workers may be running on a separate server.`;
         }
       } else if (intent.action === 'categorization_accuracy') {
@@ -7472,7 +7355,7 @@ export async function POST(request: NextRequest) {
             
             context = { ...context, categorizationAccuracy: accuracy };
           }
-        } catch (e) {
+        } catch {
           additionalContext += `\n\n**Categorization Accuracy:** Unable to retrieve accuracy metrics.`;
         }
       } else if (intent.action === 'queue_status') {
@@ -7498,7 +7381,7 @@ export async function POST(request: NextRequest) {
             
             context = { ...context, queueMetrics: metrics };
           }
-        } catch (e) {
+        } catch {
           additionalContext += `\n\n**Queue Status:** Unable to retrieve queue metrics. Workers may be running on a separate server.`;
         }
       } else if (intent.action === 'ai_performance') {
@@ -7522,7 +7405,7 @@ export async function POST(request: NextRequest) {
             
             context = { ...context, aiPerformance: { openaiCircuit } };
           }
-        } catch (e) {
+        } catch {
           additionalContext += `\n\n**AI Performance:** ✅ Operational - no circuit breaker data available (this chat is working!)`;
         }
       }
@@ -7598,8 +7481,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error: unknown) {
-    console.error('Chat API error:', error);
-    
     // Generate helpful error response with recovery suggestions
     const err = error as { code?: string; message?: string };
     const errorCode = err.code || 'UNKNOWN_ERROR';

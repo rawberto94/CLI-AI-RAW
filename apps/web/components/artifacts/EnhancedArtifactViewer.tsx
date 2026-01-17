@@ -729,7 +729,6 @@ export function EnhancedArtifactViewer({
 
   // Handlers for editable mode
   const handleSaveArtifact = async (data: Record<string, any>) => {
-    console.log('Saving artifact data:', data);
     // API call to save
     try {
       await fetch(`/api/contracts/${contractId}/artifacts`, {
@@ -737,13 +736,12 @@ export function EnhancedArtifactViewer({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data })
       });
-    } catch (e) {
-      console.error('Save failed:', e);
+    } catch {
+      // Save failed
     }
   };
 
   const handleAIEnhance = async (fieldId: string, currentValue: any): Promise<string> => {
-    console.log('Enhancing field:', fieldId);
     try {
       const response = await fetch(`/api/contracts/${contractId}/artifacts/enhance`, {
         method: 'POST',
@@ -757,22 +755,20 @@ export function EnhancedArtifactViewer({
       
       const data = await response.json();
       return data.enhancedValue || currentValue;
-    } catch (error) {
-      console.error('AI enhancement failed:', error);
+    } catch {
       return currentValue;
     }
   };
 
   const handleRegenerate = async () => {
-    console.log('Regenerating artifact');
     // API call to regenerate
     try {
       await fetch(`/api/contracts/${contractId}/artifacts/regenerate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
-    } catch (e) {
-      console.error('Regeneration failed:', e);
+    } catch {
+      // Regeneration failed
     }
   };
 

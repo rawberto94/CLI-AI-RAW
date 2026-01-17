@@ -43,25 +43,12 @@ const wsServer = createWebSocketServer(httpServer, {
 });
 
 // Start listening
-httpServer.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════════════════════════╗
-║                 WebSocket Server Started                     ║
-╠════════════════════════════════════════════════════════════╣
-║  Port:    ${PORT.toString().padEnd(48)}║
-║  Redis:   ${(REDIS_URL ? 'Connected' : 'In-Memory Mode').padEnd(48)}║
-║  Health:  http://localhost:${PORT}/health${' '.repeat(25)}║
-║  Stats:   http://localhost:${PORT}/stats${' '.repeat(26)}║
-╚════════════════════════════════════════════════════════════╝
-  `);
-});
+httpServer.listen(PORT);
 
 // Graceful shutdown
 const shutdown = async () => {
-  console.log('\nShutting down WebSocket server...');
   await wsServer.close();
   httpServer.close(() => {
-    console.log('Server closed');
     process.exit(0);
   });
 };

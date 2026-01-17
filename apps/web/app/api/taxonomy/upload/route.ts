@@ -462,12 +462,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    console.log(`📁 Importing ${rows.length} categories from ${format} format for tenant ${tenantId}`);
-
     // Import categories
     const result = await importCategories(tenantId, rows, { clearExisting, updateExisting });
-
-    console.log(`✅ Import complete: ${result.categoriesCreated} created, ${result.categoriesUpdated} updated, ${result.categoriesSkipped} skipped`);
 
     return NextResponse.json({
       message: `Imported taxonomy with ${result.categoriesCreated} new categories`,
@@ -475,8 +471,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ...result,
     });
 
-  } catch (error) {
-    console.error('Error importing taxonomy:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

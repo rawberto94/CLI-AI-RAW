@@ -201,8 +201,8 @@ export function UndoToastProvider({ children }: { children: React.ReactNode }) {
       clearInterval(intervalsRef.current[id]);
       try {
         await action.onConfirm();
-      } catch (error) {
-        console.error('Failed to confirm action:', error);
+      } catch {
+        // Confirm failed silently
       }
       setActions((prev) => prev.filter((a) => a.id !== id));
       setTimeRemaining((prev) => {
@@ -227,8 +227,8 @@ export function UndoToastProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await action.onUndo(action.undoData);
-    } catch (error) {
-      console.error('Failed to undo action:', error);
+    } catch {
+      // Undo failed silently
     }
 
     setActions((prev) => prev.filter((a) => a.id !== id));
@@ -251,8 +251,8 @@ export function UndoToastProvider({ children }: { children: React.ReactNode }) {
 
     try {
       await action.onConfirm();
-    } catch (error) {
-      console.error('Failed to confirm action:', error);
+    } catch {
+      // Confirm failed silently
     }
 
     setActions((prev) => prev.filter((a) => a.id !== id));

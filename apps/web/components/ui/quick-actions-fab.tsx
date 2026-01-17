@@ -21,6 +21,7 @@ import {
   Link2,
   Shield,
   Activity,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -145,6 +146,24 @@ const workflowActions: QuickAction[] = [
     href: '/drafting',
     shortcut: 'D',
     color: 'bg-teal-500 hover:bg-teal-600',
+    category: 'workflow',
+  },
+  {
+    id: 'copilot-drafting',
+    label: 'AI Copilot Drafting',
+    icon: <Sparkles className="h-5 w-5" />,
+    href: '/drafting/copilot',
+    shortcut: 'C',
+    color: 'bg-purple-500 hover:bg-purple-600',
+    category: 'workflow',
+  },
+  {
+    id: 'obligations',
+    label: 'Obligation Tracker',
+    icon: <Target className="h-5 w-5" />,
+    href: '/obligations',
+    shortcut: 'O',
+    color: 'bg-indigo-500 hover:bg-indigo-600',
     category: 'workflow',
   },
   {

@@ -23,6 +23,21 @@ import { handleVersionAction, versionActionPatterns } from './version-actions';
 import { handleCreationAction, creationActionPatterns } from './creation-actions';
 import { handleRepositoryAction, repositoryActionPatterns } from './repository-actions';
 import { handleHelpAction, helpActionPatterns, detectHelpIntent } from './help-actions';
+import { 
+  handleAgentAction, 
+  detectAgentIntent, 
+  agentActionPatterns,
+  buildMemoryContext,
+  storeInteraction,
+  critiqueResponse,
+  formatAgentStep,
+  formatDebateTurn,
+} from './agent-actions';
+import {
+  handlePremiumAction,
+  detectPremiumIntent,
+  premiumActionPatterns,
+} from './premium-actions';
 
 const actionHandlers: Record<string, ActionHandler> = {
   // List actions
@@ -115,6 +130,45 @@ const actionHandlers: Record<string, ActionHandler> = {
   show_help: handleHelpAction as ActionHandler,
   show_category_help: handleHelpAction as ActionHandler,
   list_commands: handleHelpAction as ActionHandler,
+
+  // Agent actions (agentic AI capabilities)
+  deep_analysis: handleAgentAction as ActionHandler,
+  show_reasoning: handleAgentAction as ActionHandler,
+  debate_decision: handleAgentAction as ActionHandler,
+  agent_risk_assessment: handleAgentAction as ActionHandler,
+  negotiation_strategy: handleAgentAction as ActionHandler,
+  smart_comparison: handleAgentAction as ActionHandler,
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PREMIUM FEATURE ACTIONS
+  // ═══════════════════════════════════════════════════════════════════
+  
+  // Generate actions
+  open_generate: handlePremiumAction as ActionHandler,
+  generate_blank: handlePremiumAction as ActionHandler,
+  generate_template: handlePremiumAction as ActionHandler,
+  generate_renewal: handlePremiumAction as ActionHandler,
+  generate_amendment: handlePremiumAction as ActionHandler,
+  
+  // AI Copilot actions
+  open_copilot: handlePremiumAction as ActionHandler,
+  copilot_draft: handlePremiumAction as ActionHandler,
+  copilot_review: handlePremiumAction as ActionHandler,
+  copilot_improve: handlePremiumAction as ActionHandler,
+  
+  // Legal Review actions
+  start_legal_review: handlePremiumAction as ActionHandler,
+  request_legal_approval: handlePremiumAction as ActionHandler,
+  
+  // Redline actions
+  open_redline: handlePremiumAction as ActionHandler,
+  compare_redline: handlePremiumAction as ActionHandler,
+  
+  // Obligation actions
+  view_obligations: handlePremiumAction as ActionHandler,
+  add_obligation: handlePremiumAction as ActionHandler,
+  show_overdue_obligations: handlePremiumAction as ActionHandler,
+  show_upcoming_obligations: handlePremiumAction as ActionHandler,
 };
 
 export async function executeAction(
@@ -133,8 +187,7 @@ export async function executeAction(
 
   try {
     return await handler(intent, context);
-  } catch (error) {
-    console.error('[Action Handler] Error:', error);
+  } catch (error: unknown) {
     return {
       success: false,
       message: 'An error occurred while processing your request',
@@ -148,3 +201,20 @@ export { detectUpdateIntent, type UpdateIntent };
 
 // Export pattern matchers for intent detection
 export { versionActionPatterns, creationActionPatterns, repositoryActionPatterns, helpActionPatterns, detectHelpIntent };
+
+// Export agent action utilities
+export { 
+  detectAgentIntent, 
+  agentActionPatterns,
+  buildMemoryContext,
+  storeInteraction,
+  critiqueResponse,
+  formatAgentStep,
+  formatDebateTurn,
+};
+
+// Export premium action utilities
+export {
+  detectPremiumIntent,
+  premiumActionPatterns,
+};

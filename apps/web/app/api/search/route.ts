@@ -95,8 +95,7 @@ export async function POST(request: NextRequest) {
     }))
 
     return NextResponse.json({ results })
-  } catch (error) {
-    console.error('Search error:', error)
+  } catch {
     return NextResponse.json(
       { error: 'Search failed' },
       { status: 500 }

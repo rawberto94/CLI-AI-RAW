@@ -75,8 +75,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Revoke invitation error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to revoke invitation" },
       { status: 500 }
@@ -173,8 +172,7 @@ export async function POST(
       { error: "Invalid action" },
       { status: 400 }
     );
-  } catch (error) {
-    console.error("Invitation action error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to process invitation action" },
       { status: 500 }

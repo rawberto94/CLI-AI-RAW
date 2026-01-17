@@ -31,8 +31,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({ suggestions });
-  } catch (error) {
-    console.error('Error fetching role suggestions:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch suggestions' },
       { status: 500 }

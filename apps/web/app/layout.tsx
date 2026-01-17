@@ -23,6 +23,8 @@ import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { CommandPaletteProvider } from "@/components/command/CommandPalette";
 import { ConfirmProvider } from "@/components/dialogs/ConfirmDialog";
 import { AnnouncerProvider } from "@/components/accessibility";
+import { WelcomeTourProvider, WelcomeModal, WelcomeTourOverlay } from "@/components/welcome";
+import { CSRFProvider } from "@/components/providers/csrf-provider";
 
 // Load Inter font with optimal settings
 const inter = Inter({
@@ -76,6 +78,7 @@ export default function RootLayout({
         <GlobalErrorBoundary>
           <ThemeProvider defaultTheme="system" storageKey="contigo-theme">
             <AuthProvider>
+              <CSRFProvider>
               <QueryProvider>
                 <WebSocketProvider>
                   <RealTimeSyncProvider>
@@ -88,6 +91,7 @@ export default function RootLayout({
                                 <CommandPaletteProvider>
                                   <ConfirmProvider>
                                     <AnnouncerProvider>
+                                    <WelcomeTourProvider autoShowForNewUsers={true}>
                                     <GlobalKeyboardShortcuts>
                                     <GlobalKeyboardShortcutsProvider>
                                     <Suspense fallback={null}>
@@ -97,8 +101,11 @@ export default function RootLayout({
                                     <ConditionalLayout>
                                       {children}
                                     </ConditionalLayout>
+                                    <WelcomeModal />
+                                    <WelcomeTourOverlay />
                                     </GlobalKeyboardShortcutsProvider>
                                     </GlobalKeyboardShortcuts>
+                                    </WelcomeTourProvider>
                                     </AnnouncerProvider>
                                   </ConfirmProvider>
                                 </CommandPaletteProvider>
@@ -111,6 +118,7 @@ export default function RootLayout({
                   </RealTimeSyncProvider>
                 </WebSocketProvider>
               </QueryProvider>
+              </CSRFProvider>
             </AuthProvider>
           </ThemeProvider>
         </GlobalErrorBoundary>

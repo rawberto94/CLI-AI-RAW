@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(scheduledReport);
   } catch (error: unknown) {
-    console.error('Error scheduling report:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to schedule report' },
       { status: 500 }
@@ -48,7 +47,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(reports);
   } catch (error: unknown) {
-    console.error('Error fetching scheduled reports:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch scheduled reports' },
       { status: 500 }
@@ -75,7 +73,6 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(updatedReport);
   } catch (error: unknown) {
-    console.error('Error updating scheduled report:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update scheduled report' },
       { status: 500 }
@@ -99,7 +96,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error deleting scheduled report:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete scheduled report' },
       { status: 500 }

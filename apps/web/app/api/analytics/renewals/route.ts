@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error('Failed to get renewal radar data:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         success: false, 

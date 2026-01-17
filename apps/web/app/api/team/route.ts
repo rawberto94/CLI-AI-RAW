@@ -73,8 +73,7 @@ export async function GET(request: NextRequest) {
       active: members.filter(m => m.status === 'active').length,
       pending: members.filter(m => m.status === 'invited').length,
     });
-  } catch (error) {
-    console.error('Error fetching team members:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch team members' },
       { status: 500 }
@@ -134,8 +133,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ member }, { status: 201 });
-  } catch (error) {
-    console.error('Error inviting team member:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to invite team member' },
       { status: 500 }
@@ -182,8 +180,7 @@ export async function PUT(request: NextRequest) {
     teamMembers.set(memberId, updatedMember);
 
     return NextResponse.json({ member: updatedMember });
-  } catch (error) {
-    console.error('Error updating team member:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update team member' },
       { status: 500 }
@@ -222,8 +219,7 @@ export async function DELETE(request: NextRequest) {
     teamMembers.delete(memberId);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error removing team member:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to remove team member' },
       { status: 500 }

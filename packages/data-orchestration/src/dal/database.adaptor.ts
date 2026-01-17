@@ -160,7 +160,7 @@ export class DatabaseAdaptor {
     try {
       const where: Prisma.ContractWhereInput = {
         tenantId: query.tenantId,
-        status: { not: "DELETED" },
+        isDeleted: false,
         // Text search
         ...(query.search && {
           OR: [

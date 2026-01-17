@@ -94,8 +94,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error) {
-    console.error('External database import error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: 'Import failed',

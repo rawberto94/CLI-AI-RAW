@@ -39,8 +39,7 @@ export async function POST(request: NextRequest) {
     } else {
       return exportToPDF(data, fields);
     }
-  } catch (error) {
-    console.error("Export error:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to export report" },
       { status: 500 }

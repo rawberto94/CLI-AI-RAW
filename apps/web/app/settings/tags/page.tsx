@@ -126,8 +126,7 @@ export default function TagManagementPage() {
       const data = await response.json();
       setTags(data.data?.tags || []);
       setSummary(data.data?.summary || { totalTags: 0, totalUsage: 0 });
-    } catch (error) {
-      console.error("Error fetching tags:", error);
+    } catch {
       toast.error("Failed to load tags");
     } finally {
       setLoading(false);
@@ -183,8 +182,7 @@ export default function TagManagementPage() {
       setFormData(DEFAULT_FORM_DATA);
       setEditingTag(null);
       fetchTags();
-    } catch (error) {
-      console.error("Error saving tag:", error);
+    } catch {
       toast.error("Failed to save tag");
     } finally {
       setSaving(false);
@@ -211,8 +209,7 @@ export default function TagManagementPage() {
 
       toast.success("Tag deleted successfully");
       fetchTags();
-    } catch (error) {
-      console.error("Error deleting tag:", error);
+    } catch {
       toast.error("Failed to delete tag");
     }
   };

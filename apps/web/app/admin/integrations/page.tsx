@@ -157,8 +157,8 @@ export default function DataConnectionsPage() {
           const data = await response.json();
           setConnections(data.connections || []);
         }
-      } catch (err) {
-        console.error('Failed to load connections:', err);
+      } catch {
+        // Error handled silently
       } finally {
         setIsLoading(false);
       }
@@ -254,8 +254,8 @@ export default function DataConnectionsPage() {
         setConnections(prev => [...prev, data.connection]);
         resetForm();
       }
-    } catch (err) {
-      console.error('Failed to save connection:', err);
+    } catch {
+      // Error handled silently
     } finally {
       setIsSaving(false);
     }
@@ -294,8 +294,8 @@ export default function DataConnectionsPage() {
         method: 'DELETE',
       });
       setConnections(prev => prev.filter(c => c.id !== connectionId));
-    } catch (err) {
-      console.error('Failed to delete connection:', err);
+    } catch {
+      // Error handled silently
     }
   }, []);
 

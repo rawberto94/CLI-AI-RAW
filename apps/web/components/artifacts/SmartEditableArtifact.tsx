@@ -226,8 +226,8 @@ function EditableFieldComponent({
     try {
       const enhanced = await onAIEnhance(field.id, localValue)
       setLocalValue(enhanced)
-    } catch (e) {
-      console.error('AI enhancement failed:', e)
+    } catch {
+      // AI enhancement failed silently
     } finally {
       setIsEnhancing(false)
     }
@@ -857,8 +857,8 @@ export function SmartEditableArtifact({
       await onSave(data)
       setHasChanges(false)
       setShowSaveDialog(false)
-    } catch (error) {
-      console.error('Save failed:', error)
+    } catch {
+      // Save failed silently
     } finally {
       setIsSaving(false)
     }
@@ -870,8 +870,8 @@ export function SmartEditableArtifact({
     setIsRegenerating(true)
     try {
       await onRegenerate()
-    } catch (error) {
-      console.error('Regeneration failed:', error)
+    } catch {
+      // Regeneration failed silently
     } finally {
       setIsRegenerating(false)
     }

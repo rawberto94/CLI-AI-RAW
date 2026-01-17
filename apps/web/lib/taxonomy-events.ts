@@ -69,9 +69,8 @@ class TaxonomyEventEmitter {
           this.notifyListeners(event.data as TaxonomyEvent);
         }
       };
-    } catch (error) {
+    } catch {
       // BroadcastChannel not supported - fall back to localStorage events
-      console.warn('BroadcastChannel not supported, using localStorage fallback');
       this.setupLocalStorageFallback();
     }
   }
@@ -113,8 +112,8 @@ class TaxonomyEventEmitter {
     this.listeners.forEach((listener) => {
       try {
         listener(event);
-      } catch (error) {
-        console.error('Error in taxonomy event listener:', error);
+      } catch {
+        // Error in taxonomy event listener - ignore
       }
     });
   }
@@ -168,8 +167,6 @@ export function useTaxonomySync() {
 
   useEffect(() => {
     const unsubscribe = taxonomyEvents.subscribe((event) => {
-      console.log('[Taxonomy Sync] Received event:', event.type);
-      
       // Invalidate taxonomy caches
       queryClient.invalidateQueries({ queryKey: queryKeys.taxonomy.all });
       queryClient.invalidateQueries({ queryKey: ['categories'] });

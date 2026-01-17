@@ -27,8 +27,7 @@ export async function GET(request: NextRequest) {
     const suggestions = await rateCardService.getRoleSuggestions(query, tenantId, limit);
 
     return NextResponse.json(suggestions);
-  } catch (error) {
-    console.error('Error getting role suggestions:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to get role suggestions', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

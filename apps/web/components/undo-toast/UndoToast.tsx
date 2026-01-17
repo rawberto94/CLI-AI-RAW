@@ -172,8 +172,7 @@ function UndoToastItem({ toast, onDismiss }: UndoToastItemProps) {
     try {
       await toast.onUndo();
       onDismiss();
-    } catch (error) {
-      console.error('Undo failed:', error);
+    } catch {
       setIsUndoing(false);
     }
   };

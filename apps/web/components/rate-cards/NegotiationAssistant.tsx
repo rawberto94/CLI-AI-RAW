@@ -125,8 +125,8 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err) {
-      console.error('Error downloading brief:', err);
+    } catch {
+      // Error downloading brief
     } finally {
       setDownloading(false);
     }

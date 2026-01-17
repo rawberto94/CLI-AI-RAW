@@ -590,8 +590,7 @@ export class MetadataSchemaService {
 
       // Return default schema if no custom one exists
       return this.getDefaultSchema(tenantId);
-    } catch (error) {
-      console.error('Failed to get metadata schema:', error);
+    } catch {
       return this.getDefaultSchema(tenantId);
     }
   }

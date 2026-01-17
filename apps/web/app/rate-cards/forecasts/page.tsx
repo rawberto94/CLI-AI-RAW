@@ -100,7 +100,6 @@ export default function RateCardForecastsPage() {
       setPagination(result.pagination);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
-      console.error('Error fetching forecasts:', err);
     } finally {
       setLoading(false);
     }
@@ -140,8 +139,7 @@ export default function RateCardForecastsPage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err) {
-      console.error('Error exporting forecasts:', err);
+    } catch {
       alert('Failed to export forecasts');
     }
   };

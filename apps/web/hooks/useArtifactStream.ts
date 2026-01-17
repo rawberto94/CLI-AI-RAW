@@ -106,7 +106,6 @@ export function useArtifactStream({
     if (!isComplete && artifacts.length >= EXPECTED_ARTIFACT_COUNT) {
       const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
       if (completedCount >= EXPECTED_ARTIFACT_COUNT) {
-        console.log('[SSE] All artifacts complete, marking stream as complete');
         setIsComplete(true);
         // Clean up connection
         if (eventSourceRef.current) {
@@ -121,11 +120,9 @@ export function useArtifactStream({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && !isComplete && !isConnected) {
-        console.log('[SSE] Tab became visible, checking connection status');
         // Check if we should reconnect
         const timeSinceLastUpdate = Date.now() - lastUpdateTimeRef.current;
         if (timeSinceLastUpdate > HEARTBEAT_EXPECTED_INTERVAL) {
-          console.log('[SSE] Connection appears stale after visibility change, reconnecting');
           reconnectAttemptsRef.current = 0; // Reset attempts on visibility change
           connect();
         }
@@ -143,7 +140,6 @@ export function useArtifactStream({
       
       forceCompleteTimeoutRef.current = setTimeout(() => {
         if (!isComplete) {
-          console.warn('[SSE] Force completing stream after timeout');
           const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
           if (completedCount > 0) {
             // We have some artifacts, consider it a success
@@ -187,7 +183,6 @@ export function useArtifactStream({
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.log('[SSE] Connected to artifact stream');
       setIsConnected(true);
       setError(null);
       reconnectAttemptsRef.current = 0; // Reset on successful connection
@@ -200,7 +195,6 @@ export function useArtifactStream({
       staleCheckIntervalRef.current = setInterval(() => {
         const timeSinceLastUpdate = Date.now() - lastUpdateTimeRef.current;
         if (timeSinceLastUpdate > STALE_CONNECTION_TIMEOUT && !isComplete) {
-          console.warn('[SSE] Connection appears stale, reconnecting');
           eventSource.close();
           reconnectAttemptsRef.current++;
           if (reconnectAttemptsRef.current < maxReconnectAttempts) {
@@ -216,14 +210,12 @@ export function useArtifactStream({
         
         switch (data.type) {
           case 'connected':
-            console.log('[SSE] Stream connected:', data.contractId);
             break;
             
           case 'heartbeat':
             // Heartbeat received - connection is alive
             lastUpdateTimeRef.current = Date.now();
             reconnectAttemptsRef.current = 0;
-            console.debug('[SSE] Heartbeat received');
             break;
 
           case 'update':
@@ -234,7 +226,6 @@ export function useArtifactStream({
               // Auto-complete if all artifacts are done (immediate detection)
               const completed = data.artifacts.filter((a: ArtifactUpdate) => a.status === 'COMPLETED').length;
               if (completed >= EXPECTED_ARTIFACT_COUNT) {
-                console.log('[SSE] All artifacts complete from update, auto-completing');
                 setIsComplete(true);
                 eventSource.close();
                 if (onComplete) onComplete(data.artifacts);
@@ -253,7 +244,6 @@ export function useArtifactStream({
             break;
 
           case 'complete':
-            console.log('[SSE] Stream complete:', data);
             setIsComplete(true);
             setIsConnected(false);
             // Use artifacts from message or current state
@@ -265,7 +255,6 @@ export function useArtifactStream({
             break;
 
           case 'error':
-            console.error('[SSE] Stream error:', data.error);
             // Only set error if it's not recoverable
             if (!data.recoverable) {
               setError(data.error || 'Unknown error');
@@ -273,24 +262,19 @@ export function useArtifactStream({
                 onError(data.error || 'Unknown error');
               }
               eventSource.close();
-            } else {
-              console.log('[SSE] Recoverable error, continuing...');
             }
             break;
         }
-      } catch (err) {
-        console.error('[SSE] Failed to parse message:', err);
+      } catch {
+        // Failed to parse SSE message
       }
     };
 
-    eventSource.onerror = (err) => {
-      // EventSource errors typically don't have useful info, only log state
-      console.log('[SSE] Connection state:', eventSource.readyState);
+    eventSource.onerror = () => {
       setIsConnected(false);
       
       // Don't reconnect if already complete or if connection was explicitly closed
       if (eventSource.readyState === EventSource.CLOSED) {
-        console.log('[SSE] Connection closed by server');
         return;
       }
       
@@ -302,12 +286,10 @@ export function useArtifactStream({
       // Auto-retry connection with exponential backoff if not complete
       if (!isComplete && reconnectAttemptsRef.current < maxReconnectAttempts) {
         const retryDelay = Math.min(2000 * Math.pow(1.5, reconnectAttemptsRef.current), 10000);
-        console.log(`[SSE] Auto-reconnecting (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`);
         reconnectTimeoutRef.current = setTimeout(() => {
           connect();
         }, retryDelay);
       } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-        console.log('[SSE] Max reconnection attempts reached, giving up');
         const message = 'Unable to connect to live updates. Please refresh the page to retry.';
         setError(message);
         setIsComplete(true);
@@ -365,13 +347,10 @@ export function useArtifactStream({
         
         // Handle abort errors gracefully
         if (err instanceof Error && err.name === 'AbortError') {
-          console.warn('[SSE] Contract verification timed out, attempting direct connect');
           // Try to connect directly without verification
           cleanup = connect();
           return;
         }
-
-        console.error('[SSE] Verification failed before connecting:', err);
         const message = err instanceof Error ? err.message : 'Unable to connect to live updates.';
         setError(message);
         // Don't mark as complete on verification failure - allow retry

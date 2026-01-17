@@ -76,7 +76,7 @@ export async function GET(
     const contractsCount = await prisma.contract.count({
       where: {
         tenantId,
-        status: { not: 'DELETED' },
+        isDeleted: false,
       },
     });
 
@@ -95,8 +95,7 @@ export async function GET(
         users: tenant.users,
       },
     });
-  } catch (error) {
-    console.error('Error fetching tenant:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch tenant' },
       { status: 500 }
@@ -149,8 +148,7 @@ export async function PATCH(
       success: true,
       tenant,
     });
-  } catch (error) {
-    console.error('Error updating tenant:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to update tenant' },
       { status: 500 }
@@ -199,8 +197,7 @@ export async function DELETE(
       message: 'Tenant suspended successfully',
       tenant,
     });
-  } catch (error) {
-    console.error('Error deleting tenant:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to delete tenant' },
       { status: 500 }

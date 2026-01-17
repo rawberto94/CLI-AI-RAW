@@ -198,7 +198,7 @@ export const LazyIntelligenceDashboard = dynamic(
 );
 
 export const LazyCostSavingsDashboardWidget = dynamic(
-  () => import('@/components/dashboard/CostSavingsDashboardWidget'),
+  () => import('@/components/dashboard/SavingsTrackerWidget').then(mod => ({ default: mod.SavingsTrackerWidget })),
   {
     loading: () => <LoadingSkeleton height="h-64" />,
     ssr: false,

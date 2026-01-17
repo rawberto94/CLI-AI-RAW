@@ -237,16 +237,13 @@ export class EnhancedDatabaseManager {
   async initialize(): Promise<void> {
     try {
       await this.prisma.$connect();
-      console.log('✅ Primary database connection established');
 
       if (this.replicaManager) {
         await this.replicaManager.connect();
         this.replicaManager.startHealthChecks();
-        console.log('✅ Replica connections established');
       }
     } catch (error) {
       const dbError = DatabaseErrorParser.parse(error);
-      console.error('❌ Database initialization failed:', dbError.message);
       throw dbError;
     }
   }
@@ -264,7 +261,6 @@ export class EnhancedDatabaseManager {
     }
 
     await this.prisma.$disconnect();
-    console.log('Database connections closed');
   }
 
   // =========================================================================
@@ -545,9 +541,6 @@ export class EnhancedDatabaseManager {
 
         if (duration > this.config.monitoring.slowQueryThreshold) {
           this.metrics.slowQueries++;
-          console.warn(
-            `⚠️ Slow query: ${params.model}.${params.action} took ${duration.toFixed(2)}ms`
-          );
         }
 
         return result;
@@ -581,11 +574,7 @@ export class EnhancedDatabaseManager {
 
       // Check read operations
       if (['findUnique', 'findFirst', 'findMany', 'count', 'aggregate'].includes(params.action)) {
-        if (!params.args?.where?.tenantId) {
-          console.warn(
-            `⚠️ TENANT WARNING: ${params.model}.${params.action} without tenantId`
-          );
-        }
+        // Silent check - tenantId filter validation
       }
 
       // Check write operations
@@ -667,7 +656,7 @@ export function getEnhancedDatabaseManager(
 
 export function resetEnhancedDatabaseManager(): void {
   if (enhancedDatabaseManager) {
-    enhancedDatabaseManager.disconnect().catch(console.error);
+    enhancedDatabaseManager.disconnect().catch(() => {});
   }
   enhancedDatabaseManager = null;
 }

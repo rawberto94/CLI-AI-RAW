@@ -122,8 +122,7 @@ export class DataRetentionService {
 
     if (oldLogs.length === 0) return 0;
 
-    // Archive records by logging (archivedAuditLog model doesn't exist in schema)
-    console.log(`Would archive ${oldLogs.length} audit logs`);
+    // Archive records (archivedAuditLog model doesn't exist in schema)
     // Note: archivedAuditLog model not in current Prisma schema
 
     return oldLogs.length;
@@ -161,8 +160,7 @@ export class DataRetentionService {
 
     if (oldRateCards.length === 0) return 0;
 
-    // Archive records by logging them (archivedRateCard model doesn't exist)
-    console.log(`Would archive ${oldRateCards.length} rate cards`);
+    // Archive records (archivedRateCard model doesn't exist)
     // Original code referenced prisma.archivedRateCard.createMany which doesn't exist
 
     return oldRateCards.length;
@@ -298,9 +296,8 @@ export class DataRetentionService {
     for (const tenant of tenants) {
       try {
         results[tenant.id] = await this.applyRetentionPolicies(tenant.id);
-        console.log(`✅ Retention policies applied for tenant ${tenant.id}`);
-      } catch (error) {
-        console.error(`❌ Failed to apply retention policies for tenant ${tenant.id}:`, error);
+      } catch {
+        // Retention policy application failed for tenant
       }
     }
 

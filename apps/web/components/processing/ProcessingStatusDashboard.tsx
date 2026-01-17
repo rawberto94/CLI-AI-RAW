@@ -220,7 +220,6 @@ export default function ProcessingStatusDashboard() {
 
     const interval = setInterval(() => {
       // In a real implementation, this would fetch fresh data from the API
-      console.log('Refreshing processing status...')
     }, 5000)
 
     return () => clearInterval(interval)

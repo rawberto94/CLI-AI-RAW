@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
       });
 
       if (!result.success || !result.data) {
-        console.error(`Failed to create contract for ${file.name}:`, result.error);
         continue;
       }
 
@@ -109,8 +108,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Batch upload error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -147,8 +145,7 @@ export async function DELETE(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Batch delete error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -185,8 +182,7 @@ export async function PUT(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Batch update error:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

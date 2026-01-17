@@ -34,8 +34,7 @@ export async function GET(request: NextRequest) {
       database: poolStats,
       system: systemMetrics,
     });
-  } catch (error) {
-    console.error('Error fetching performance metrics:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch performance metrics' },
       { status: 500 }

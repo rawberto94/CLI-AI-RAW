@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -39,6 +40,9 @@ import {
   Volume2,
   VolumeX,
   MessageSquare,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -55,115 +59,252 @@ interface NotificationCategory {
   inApp: boolean;
 }
 
-// Default notification settings
-const DEFAULT_CATEGORIES: NotificationCategory[] = [
-  {
-    id: "renewals",
+// Category metadata (icons, colors, descriptions)
+const CATEGORY_METADATA: Record<string, { name: string; description: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
+  renewals: {
     name: "Contract Renewals",
     description: "Notifications about upcoming contract expirations and renewals",
     icon: Calendar,
     color: "text-orange-500",
-    email: true,
-    push: true,
-    inApp: true,
   },
-  {
-    id: "risks",
+  risks: {
     name: "Risk Alerts",
     description: "Alerts about high-risk clauses and compliance issues",
     icon: AlertTriangle,
     color: "text-red-500",
-    email: true,
-    push: true,
-    inApp: true,
   },
-  {
-    id: "savings",
+  savings: {
     name: "Savings Opportunities",
     description: "Notifications about potential cost savings and optimizations",
     icon: DollarSign,
     color: "text-green-500",
-    email: true,
-    push: false,
-    inApp: true,
   },
-  {
-    id: "deadlines",
+  deadlines: {
     name: "Payment Deadlines",
     description: "Reminders about upcoming payment due dates",
     icon: Clock,
     color: "text-blue-500",
-    email: true,
-    push: true,
-    inApp: true,
   },
-  {
-    id: "contracts",
+  contracts: {
     name: "Contract Updates",
     description: "Updates about new contracts, amendments, and status changes",
     icon: FileText,
     color: "text-purple-500",
-    email: false,
-    push: false,
-    inApp: true,
   },
-  {
-    id: "security",
+  security: {
     name: "Security Alerts",
     description: "Important security notifications and login alerts",
     icon: Shield,
     color: "text-slate-500",
-    email: true,
-    push: true,
-    inApp: true,
   },
-  {
-    id: "ai",
+  ai: {
     name: "AI Insights",
     description: "AI-generated insights and recommendations",
     icon: MessageSquare,
     color: "text-pink-500",
-    email: false,
-    push: false,
-    inApp: true,
   },
-];
+  expirations: {
+    name: "Expirations",
+    description: "Notifications about expiring contracts and documents",
+    icon: Calendar,
+    color: "text-amber-500",
+  },
+  approvals: {
+    name: "Approval Requests",
+    description: "Notifications about pending approvals and reviews",
+    icon: CheckCircle2,
+    color: "text-emerald-500",
+  },
+  mentions: {
+    name: "Mentions",
+    description: "Notifications when you are mentioned in comments",
+    icon: MessageSquare,
+    color: "text-cyan-500",
+  },
+  updates: {
+    name: "General Updates",
+    description: "General system updates and announcements",
+    icon: Bell,
+    color: "text-indigo-500",
+  },
+};
 
-export default function NotificationSettingsPage() {
-  const [categories, setCategories] = useState<NotificationCategory[]>(DEFAULT_CATEGORIES);
-  const [globalEmail, setGlobalEmail] = useState(true);
-  const [globalPush, setGlobalPush] = useState(true);
-  const [globalInApp, setGlobalInApp] = useState(true);
-  const [quietHoursEnabled, setQuietHoursEnabled] = useState(false);
-  const [quietHoursStart, setQuietHoursStart] = useState("22:00");
-  const [quietHoursEnd, setQuietHoursEnd] = useState("08:00");
-  const [digestFrequency, setDigestFrequency] = useState("daily");
-  const [advanceNotice, setAdvanceNotice] = useState([30]);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+// Preferences API response type
+interface NotificationPreferences {
+  email: boolean;
+  push: boolean;
+  inApp: boolean;
+  digest: 'none' | 'daily' | 'weekly';
+  categories: Record<string, boolean>;
+  quietHours?: {
+    enabled: boolean;
+    start: string;
+    end: string;
+  };
+  advanceNotice?: number;
+  soundEnabled?: boolean;
+}
+
+// Custom hook to fetch and update notification preferences
+function useNotificationPreferences() {
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const fetchPreferences = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/user/preferences');
+      if (!response.ok) throw new Error('Failed to fetch preferences');
+      const data = await response.json();
+      setPreferences(data.preferences?.notifications || {
+        email: true,
+        push: true,
+        inApp: true,
+        digest: 'daily',
+        categories: {},
+        quietHours: { enabled: false, start: '22:00', end: '08:00' },
+        advanceNotice: 30,
+        soundEnabled: true,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load preferences');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const savePreferences = useCallback(async (updates: Partial<NotificationPreferences>) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const newPreferences = { ...preferences, ...updates };
+      const response = await fetch('/api/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notifications: newPreferences }),
+      });
+      if (!response.ok) throw new Error('Failed to save preferences');
+      setPreferences(newPreferences);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save preferences');
+    } finally {
+      setSaving(false);
+    }
+  }, [preferences]);
+
+  useEffect(() => {
+    fetchPreferences();
+  }, [fetchPreferences]);
+
+  return { preferences, loading, error, saving, saveSuccess, savePreferences, refresh: fetchPreferences };
+}
+
+// Build categories from preferences
+function buildCategories(preferences: NotificationPreferences | null): NotificationCategory[] {
+  const categoryIds = Object.keys(CATEGORY_METADATA);
+  return categoryIds.map(id => {
+    const meta = CATEGORY_METADATA[id];
+    const catEnabled = preferences?.categories?.[id] ?? true;
+    return {
+      id,
+      name: meta.name,
+      description: meta.description,
+      icon: meta.icon,
+      color: meta.color,
+      email: catEnabled && (preferences?.email ?? true),
+      push: catEnabled && (preferences?.push ?? true),
+      inApp: catEnabled && (preferences?.inApp ?? true),
+    };
+  });
+}
+
+export default function NotificationSettingsPage() {
+  const { preferences, loading, error, saving, saveSuccess, savePreferences, refresh } = useNotificationPreferences();
+  
+  // Local state for form editing
+  const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(null);
+  
+  // Sync local state when preferences load
+  useEffect(() => {
+    if (preferences) {
+      setLocalPrefs(preferences);
+    }
+  }, [preferences]);
+
   const handleSave = async () => {
-    setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    if (localPrefs) {
+      await savePreferences(localPrefs);
+    }
   };
 
-  const toggleCategory = (categoryId: string, channel: "email" | "push" | "inApp") => {
-    setCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === categoryId ? { ...cat, [channel]: !cat[channel] } : cat
-      )
-    );
+  const updateLocalPref = <K extends keyof NotificationPreferences>(key: K, value: NotificationPreferences[K]) => {
+    setLocalPrefs(prev => prev ? { ...prev, [key]: value } : null);
   };
 
-  const toggleAllForChannel = (channel: "email" | "push" | "inApp", enabled: boolean) => {
-    setCategories((prev) =>
-      prev.map((cat) => ({ ...cat, [channel]: enabled }))
-    );
+  const toggleCategory = (categoryId: string, enabled: boolean) => {
+    setLocalPrefs(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        categories: {
+          ...prev.categories,
+          [categoryId]: enabled,
+        },
+      };
+    });
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <PageBreadcrumb />
+        </div>
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !preferences) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="max-w-4xl mx-auto px-4 pt-4">
+          <PageBreadcrumb />
+        </div>
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <Card className="border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center gap-4">
+                <AlertCircle className="h-12 w-12 text-red-500" />
+                <div>
+                  <h3 className="font-semibold text-lg">Failed to load preferences</h3>
+                  <p className="text-muted-foreground">{error}</p>
+                </div>
+                <Button onClick={refresh} variant="outline" className="gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const categories = buildCategories(localPrefs);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -196,22 +337,21 @@ export default function NotificationSettingsPage() {
               </div>
             </div>
 
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
                 <>
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="mr-2"
-                  >
-                    <Save className="h-4 w-4" />
-                  </motion.div>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...
                 </>
               ) : saveSuccess ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
                   Saved!
+                </>
+              ) : error ? (
+                <>
+                  <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                  Save Changes
                 </>
               ) : (
                 <>
@@ -244,11 +384,8 @@ export default function NotificationSettingsPage() {
                   </div>
                 </div>
                 <Switch
-                  checked={globalEmail}
-                  onCheckedChange={(checked) => {
-                    setGlobalEmail(checked);
-                    toggleAllForChannel("email", checked);
-                  }}
+                  checked={localPrefs?.email ?? true}
+                  onCheckedChange={(checked) => updateLocalPref('email', checked)}
                 />
               </div>
 
@@ -261,11 +398,8 @@ export default function NotificationSettingsPage() {
                   </div>
                 </div>
                 <Switch
-                  checked={globalPush}
-                  onCheckedChange={(checked) => {
-                    setGlobalPush(checked);
-                    toggleAllForChannel("push", checked);
-                  }}
+                  checked={localPrefs?.push ?? true}
+                  onCheckedChange={(checked) => updateLocalPref('push', checked)}
                 />
               </div>
 
@@ -278,11 +412,8 @@ export default function NotificationSettingsPage() {
                   </div>
                 </div>
                 <Switch
-                  checked={globalInApp}
-                  onCheckedChange={(checked) => {
-                    setGlobalInApp(checked);
-                    toggleAllForChannel("inApp", checked);
-                  }}
+                  checked={localPrefs?.inApp ?? true}
+                  onCheckedChange={(checked) => updateLocalPref('inApp', checked)}
                 />
               </div>
             </div>
@@ -300,20 +431,19 @@ export default function NotificationSettingsPage() {
           <CardContent>
             <div className="space-y-1">
               {/* Header */}
-              <div className="grid grid-cols-[1fr,80px,80px,80px] gap-2 py-2 px-3 text-xs font-medium text-muted-foreground border-b">
+              <div className="grid grid-cols-[1fr,100px] gap-2 py-2 px-3 text-xs font-medium text-muted-foreground border-b">
                 <span>Category</span>
-                <span className="text-center">Email</span>
-                <span className="text-center">Push</span>
-                <span className="text-center">In-App</span>
+                <span className="text-center">Enabled</span>
               </div>
 
               {/* Categories */}
               {categories.map((category) => {
                 const Icon = category.icon;
+                const isEnabled = localPrefs?.categories?.[category.id] ?? true;
                 return (
                   <div
                     key={category.id}
-                    className="grid grid-cols-[1fr,80px,80px,80px] gap-2 items-center py-3 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    className="grid grid-cols-[1fr,100px] gap-2 items-center py-3 px-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50"
                   >
                     <div className="flex items-center gap-3">
                       <Icon className={cn("h-5 w-5", category.color)} />
@@ -326,23 +456,8 @@ export default function NotificationSettingsPage() {
                     </div>
                     <div className="flex justify-center">
                       <Switch
-                        checked={category.email}
-                        onCheckedChange={() => toggleCategory(category.id, "email")}
-                        disabled={!globalEmail}
-                      />
-                    </div>
-                    <div className="flex justify-center">
-                      <Switch
-                        checked={category.push}
-                        onCheckedChange={() => toggleCategory(category.id, "push")}
-                        disabled={!globalPush}
-                      />
-                    </div>
-                    <div className="flex justify-center">
-                      <Switch
-                        checked={category.inApp}
-                        onCheckedChange={() => toggleCategory(category.id, "inApp")}
-                        disabled={!globalInApp}
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => toggleCategory(category.id, checked)}
                       />
                     </div>
                   </div>
@@ -371,12 +486,17 @@ export default function NotificationSettingsPage() {
                   </p>
                 </div>
                 <Switch
-                  checked={quietHoursEnabled}
-                  onCheckedChange={setQuietHoursEnabled}
+                  checked={localPrefs?.quietHours?.enabled ?? false}
+                  onCheckedChange={(checked) => updateLocalPref('quietHours', {
+                    ...localPrefs?.quietHours,
+                    enabled: checked,
+                    start: localPrefs?.quietHours?.start || '22:00',
+                    end: localPrefs?.quietHours?.end || '08:00',
+                  })}
                 />
               </div>
 
-              {quietHoursEnabled && (
+              {localPrefs?.quietHours?.enabled && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
@@ -388,8 +508,13 @@ export default function NotificationSettingsPage() {
                     <Input
                       id="quiet-start"
                       type="time"
-                      value={quietHoursStart}
-                      onChange={(e) => setQuietHoursStart(e.target.value)}
+                      value={localPrefs?.quietHours?.start || '22:00'}
+                      onChange={(e) => updateLocalPref('quietHours', {
+                        ...localPrefs?.quietHours,
+                        enabled: true,
+                        start: e.target.value,
+                        end: localPrefs?.quietHours?.end || '08:00',
+                      })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -397,8 +522,13 @@ export default function NotificationSettingsPage() {
                     <Input
                       id="quiet-end"
                       type="time"
-                      value={quietHoursEnd}
-                      onChange={(e) => setQuietHoursEnd(e.target.value)}
+                      value={localPrefs?.quietHours?.end || '08:00'}
+                      onChange={(e) => updateLocalPref('quietHours', {
+                        ...localPrefs?.quietHours,
+                        enabled: true,
+                        start: localPrefs?.quietHours?.start || '22:00',
+                        end: e.target.value,
+                      })}
                     />
                   </div>
                 </motion.div>
@@ -413,13 +543,15 @@ export default function NotificationSettingsPage() {
                   Receive a summary of notifications instead of individual emails
                 </p>
               </div>
-              <Select value={digestFrequency} onValueChange={setDigestFrequency}>
+              <Select 
+                value={localPrefs?.digest || 'daily'} 
+                onValueChange={(value: 'none' | 'daily' | 'weekly') => updateLocalPref('digest', value)}
+              >
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="realtime">Real-time (no digest)</SelectItem>
-                  <SelectItem value="hourly">Hourly digest</SelectItem>
+                  <SelectItem value="none">Real-time (no digest)</SelectItem>
                   <SelectItem value="daily">Daily digest</SelectItem>
                   <SelectItem value="weekly">Weekly digest</SelectItem>
                 </SelectContent>
@@ -436,15 +568,15 @@ export default function NotificationSettingsPage() {
               </div>
               <div className="flex items-center gap-4">
                 <Slider
-                  value={advanceNotice}
-                  onValueChange={setAdvanceNotice}
+                  value={[localPrefs?.advanceNotice ?? 30]}
+                  onValueChange={(value) => updateLocalPref('advanceNotice', value[0])}
                   min={7}
                   max={90}
                   step={1}
                   className="flex-1"
                 />
                 <Badge variant="secondary" className="w-20 justify-center">
-                  {advanceNotice[0]} days
+                  {localPrefs?.advanceNotice ?? 30} days
                 </Badge>
               </div>
             </div>
@@ -462,7 +594,7 @@ export default function NotificationSettingsPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {soundEnabled ? (
+                {(localPrefs?.soundEnabled ?? true) ? (
                   <Volume2 className="h-5 w-5 text-blue-500" />
                 ) : (
                   <VolumeX className="h-5 w-5 text-muted-foreground" />
@@ -475,8 +607,8 @@ export default function NotificationSettingsPage() {
                 </div>
               </div>
               <Switch
-                checked={soundEnabled}
-                onCheckedChange={setSoundEnabled}
+                checked={localPrefs?.soundEnabled ?? true}
+                onCheckedChange={(checked) => updateLocalPref('soundEnabled', checked)}
               />
             </div>
           </CardContent>

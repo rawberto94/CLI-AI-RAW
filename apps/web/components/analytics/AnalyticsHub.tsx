@@ -90,8 +90,8 @@ export function AnalyticsHub() {
           artifactsProcessed: 1847
         })
       }
-    } catch (error) {
-      console.error('Failed to load metrics:', error)
+    } catch {
+      // Failed to load metrics
     } finally {
       setLoading(false)
     }

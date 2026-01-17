@@ -289,7 +289,6 @@ class ResourceMonitorService extends EventEmitter {
     // Emit alerts
     alerts.forEach(alert => {
       this.emit('alert', alert);
-      console.warn(`[ResourceMonitor] ${alert.severity.toUpperCase()}: ${alert.message}`);
     });
   }
 
@@ -365,8 +364,6 @@ class ResourceMonitorService extends EventEmitter {
     this.monitoringTimer = setInterval(() => {
       this.collectMetrics();
     }, this.config.monitoringInterval);
-
-    console.log(`[ResourceMonitor] Started monitoring (interval: ${this.config.monitoringInterval}ms)`);
   }
 
   /**
@@ -377,17 +374,14 @@ class ResourceMonitorService extends EventEmitter {
       clearInterval(this.monitoringTimer);
       this.monitoringTimer = undefined;
     }
-    console.log('[ResourceMonitor] Stopped monitoring');
   }
 
   /**
    * Shutdown the resource monitor
    */
   shutdown(): void {
-    console.log('[ResourceMonitor] Shutting down...');
     this.stopMonitoring();
     this.metricsHistory = [];
-    console.log('[ResourceMonitor] Shutdown complete');
   }
 }
 

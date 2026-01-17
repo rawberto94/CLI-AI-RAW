@@ -200,7 +200,7 @@ export const CONTRACT = {
     PARTIAL: 'partial',
   } as const,
 
-  // Artifact types
+  // Artifact types - Core types always generated
   ARTIFACT_TYPES: [
     'OVERVIEW',
     'FINANCIAL',
@@ -209,6 +209,36 @@ export const CONTRACT = {
     'COMPLIANCE',
     'RISK',
   ] as const,
+  
+  // Extended artifact types - All available types
+  ARTIFACT_TYPES_EXTENDED: [
+    'OVERVIEW',
+    'FINANCIAL',
+    'CLAUSES',
+    'RATES',
+    'COMPLIANCE',
+    'RISK',
+    'OBLIGATIONS',
+    'RENEWAL',
+    'NEGOTIATION_POINTS',
+    'AMENDMENTS',
+    'CONTACTS',
+  ] as const,
+  
+  // Artifact type metadata for UI
+  ARTIFACT_TYPE_META: {
+    OVERVIEW: { label: 'Overview', icon: 'FileText', category: 'core', description: 'Executive summary, parties, dates' },
+    FINANCIAL: { label: 'Financial', icon: 'DollarSign', category: 'core', description: 'Pricing and payment terms' },
+    CLAUSES: { label: 'Clauses', icon: 'List', category: 'core', description: 'Key contractual clauses' },
+    RATES: { label: 'Rate Cards', icon: 'Table', category: 'advanced', description: 'Detailed pricing schedules' },
+    COMPLIANCE: { label: 'Compliance', icon: 'CheckCircle', category: 'analysis', description: 'Regulatory requirements' },
+    RISK: { label: 'Risk', icon: 'AlertTriangle', category: 'analysis', description: 'Risk assessment and mitigation' },
+    OBLIGATIONS: { label: 'Obligations', icon: 'Target', category: 'analysis', description: 'Deliverables and SLAs' },
+    RENEWAL: { label: 'Renewal', icon: 'RefreshCw', category: 'analysis', description: 'Auto-renewal and termination' },
+    NEGOTIATION_POINTS: { label: 'Negotiation', icon: 'MessageSquare', category: 'advanced', description: 'Leverage points and weak clauses' },
+    AMENDMENTS: { label: 'Amendments', icon: 'FileEdit', category: 'advanced', description: 'Change history' },
+    CONTACTS: { label: 'Contacts', icon: 'Users', category: 'advanced', description: 'Key contacts and escalation' },
+  } as const,
 
   // Alert thresholds (days)
   ALERTS: {

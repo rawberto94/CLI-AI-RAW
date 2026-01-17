@@ -108,8 +108,7 @@ export async function POST(
       data: ruleBasedValidation
     });
 
-  } catch (error) {
-    console.error('Metadata validation error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Failed to validate metadata', 
@@ -178,15 +177,12 @@ export async function PUT(
           });
         }
 
-        console.log(`✅ Validated metadata saved for contract ${contractId}`);
-        
         return NextResponse.json({
           success: true,
           message: 'All validated metadata saved successfully',
           data: { contractId, fieldCount: Object.keys(allFields).length }
         });
-      } catch (dbError) {
-        console.error('Database error saving validation:', dbError);
+      } catch {
         // Continue with non-persistent response for demo mode
       }
     }
@@ -236,11 +232,8 @@ export async function PUT(
             updatedBy: 'human-validator',
           },
         });
-        
-        console.log(`✅ Field "${fieldKey}" ${action}d for contract ${contractId}`);
       }
-    } catch (dbError) {
-      console.error('Database error:', dbError);
+    } catch {
       // Continue with success response for demo
     }
 
@@ -250,8 +243,7 @@ export async function PUT(
       message: `Field "${fieldKey}" ${action}d successfully`
     });
 
-  } catch (error) {
-    console.error('Validation confirmation error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { 
         error: 'Failed to confirm validation', 
@@ -359,8 +351,7 @@ Respond in JSON format:
       suggestions: result.suggestions || []
     };
 
-  } catch (error) {
-    console.error('AI validation error:', error);
+  } catch {
     // Fall back to rule-based validation
     return validateWithRules(fields);
   }

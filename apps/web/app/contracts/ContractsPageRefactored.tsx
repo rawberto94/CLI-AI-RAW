@@ -340,8 +340,8 @@ export default function ContractsPageRefactored() {
           const data = await res.json();
           setCategories(data.data || []);
         }
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
+      } catch {
+        // Category fetch failed silently
       }
     };
     fetchCategories();
@@ -940,8 +940,7 @@ export default function ContractsPageRefactored() {
                 
                 // Refresh data
                 refetch();
-              } catch (error) {
-                console.error('Failed to update contract status:', error);
+              } catch {
                 toast.error('Failed to update contract status');
               }
             }}

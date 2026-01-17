@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Extract opportunities from metadata
-    let opportunities = events
+    const opportunities = events
       .flatMap((event: any) => {
         const metadata = event.metadata as any;
         return (metadata?.opportunities || []).map((opp: any) => ({
@@ -115,8 +115,7 @@ export async function GET(request: NextRequest) {
       totalValue,
       count: opportunities.length,
     });
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

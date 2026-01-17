@@ -220,8 +220,8 @@ export class AlertManagementService {
             await this.sendWebhook(action.config, alert);
             break;
         }
-      } catch (error) {
-        console.error(`Failed to execute action ${action.type}:`, error);
+      } catch {
+        // Action execution failed
       }
     }
   }
@@ -229,17 +229,15 @@ export class AlertManagementService {
   /**
    * Send email notification
    */
-  private async sendEmailNotification(config: any, alert: Alert) {
+  private async sendEmailNotification(_config: any, _alert: Alert) {
     // Implement email sending logic
-    console.log('Sending email notification:', alert.title);
   }
 
   /**
    * Send webhook
    */
-  private async sendWebhook(config: any, alert: Alert) {
+  private async sendWebhook(_config: any, _alert: Alert) {
     // Implement webhook logic
-    console.log('Sending webhook:', alert.title);
   }
 
   /**

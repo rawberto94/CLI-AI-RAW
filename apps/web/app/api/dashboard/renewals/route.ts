@@ -130,8 +130,7 @@ export async function GET(request: NextRequest) {
         timestamp: now.toISOString(),
       }
     });
-  } catch (error) {
-    console.error("Error in dashboard renewals API:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { success: false, error: "Failed to fetch renewals", details: String(error) },
       { status: 500 }

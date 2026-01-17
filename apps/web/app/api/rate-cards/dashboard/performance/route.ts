@@ -77,8 +77,7 @@ export async function GET(request: NextRequest) {
       avgSavingsPerRate,
       totalRatesAnalyzed: totalRates,
     });
-  } catch (error) {
-    console.error('Error fetching performance indicators:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch performance indicators' },
       { status: 500 }

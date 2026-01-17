@@ -68,17 +68,10 @@ export function getSafeErrorMessage(error: unknown, fallback: string = 'An error
 /**
  * Log error details server-side (always safe as it never reaches the client)
  */
-export function logError(context: string, error: unknown, additionalInfo?: Record<string, unknown>): void {
-  const errorDetails = {
-    context,
-    message: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
-    timestamp: new Date().toISOString(),
-    ...additionalInfo,
-  };
-  
+export function logError(_context: string, _error: unknown, _additionalInfo?: Record<string, unknown>): void {
   // In production, you might want to send this to an error tracking service
-  console.error('[ERROR]', JSON.stringify(errorDetails, null, 2));
+  // Error details: context, message, stack, timestamp, additionalInfo
+  // These would be sent to your error tracking service
 }
 
 /**

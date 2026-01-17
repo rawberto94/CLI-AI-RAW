@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
       tenantName: invitation.tenant.name,
       role: invitation.role,
     });
-  } catch (error) {
-    console.error("Verify invite error:", error);
+  } catch {
     return NextResponse.json(
       { valid: false, error: "Failed to verify invitation" },
       { status: 500 }

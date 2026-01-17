@@ -33,8 +33,8 @@ export function TopOpportunitiesWidget() {
         const data = await response.json();
         setOpportunities(data.opportunities || []);
       }
-    } catch (error) {
-      console.error('Error fetching top opportunities:', error);
+    } catch {
+      // Error fetching top opportunities
     } finally {
       setLoading(false);
     }

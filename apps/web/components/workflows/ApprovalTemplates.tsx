@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -979,30 +979,111 @@ export function TemplateEditor({
 // Hook for managing templates
 export function useApprovalTemplates() {
   const [templates, setTemplates] = useState<ApprovalTemplate[]>(DEFAULT_TEMPLATES);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Fetch templates from API on mount
+  const fetchTemplates = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/workflows/templates?action=list');
+      if (!response.ok) throw new Error('Failed to fetch templates');
+      
+      const data = await response.json();
+      if (data.templates && Array.isArray(data.templates)) {
+        // Map backend templates to ApprovalTemplate format
+        const mappedTemplates: ApprovalTemplate[] = data.templates.map((t: any, index: number) => ({
+          id: t.key || `template-${index}`,
+          name: t.name,
+          description: t.description,
+          category: mapTemplateKeyToCategory(t.key) as TemplateCategory,
+          isDefault: t.key === 'standard',
+          isActive: true,
+          steps: t.steps.map((step: any, stepIndex: number) => ({
+            id: `step-${stepIndex}`,
+            name: step.name,
+            role: step.assigneeRole || step.name.toLowerCase().replace(/\s+/g, '_'),
+            order: stepIndex + 1,
+            isRequired: step.required !== false,
+            escalateAfterDays: step.timeoutHours ? Math.ceil(step.timeoutHours / 24) : undefined,
+            notifyOnAssign: true,
+            notifyOnDeadline: true,
+            allowDelegation: true,
+            allowSkip: false,
+          })),
+          defaultDeadlineDays: Math.ceil((t.totalDurationHours || 72) / 24),
+          requireComments: false,
+          requireAttachments: false,
+          autoStart: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          usageCount: 0,
+        }));
+        setTemplates(mappedTemplates);
+      }
+    } catch (err) {
+      console.error('Failed to fetch workflow templates:', err);
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+      // Keep DEFAULT_TEMPLATES as fallback
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   const createTemplate = useCallback(async (template: ApprovalTemplate) => {
     setIsLoading(true);
-    // In production, this would call an API
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setTemplates(prev => [...prev, template]);
-    setIsLoading(false);
-    return template;
+    try {
+      const response = await fetch('/api/workflows/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          name: template.name,
+          description: template.description,
+          templateKey: template.id,
+          steps: template.steps.map(step => ({
+            name: step.name,
+            order: step.order,
+            required: step.isRequired,
+            assigneeRole: step.role,
+            timeoutHours: (step.escalateAfterDays || 3) * 24,
+          })),
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create template');
+      setTemplates(prev => [...prev, template]);
+      return template;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const updateTemplate = useCallback(async (template: ApprovalTemplate) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setTemplates(prev => prev.map(t => t.id === template.id ? template : t));
-    setIsLoading(false);
-    return template;
+    try {
+      // In production, this would call an update API
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setTemplates(prev => prev.map(t => t.id === template.id ? template : t));
+      return template;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const deleteTemplate = useCallback(async (templateId: string) => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setTemplates(prev => prev.filter(t => t.id !== templateId));
-    setIsLoading(false);
+    try {
+      // In production, this would call a delete API
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setTemplates(prev => prev.filter(t => t.id !== templateId));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const duplicateTemplate = useCallback((template: ApprovalTemplate) => {
@@ -1019,14 +1100,39 @@ export function useApprovalTemplates() {
     return duplicate;
   }, []);
 
+  const refetch = useCallback(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
   return {
     templates,
     isLoading,
+    error,
     createTemplate,
     updateTemplate,
     deleteTemplate,
-    duplicateTemplate
+    duplicateTemplate,
+    refetch,
   };
+}
+
+// Helper function to map template key to category
+function mapTemplateKeyToCategory(key: string): string {
+  const categoryMap: Record<string, TemplateCategory> = {
+    standard: 'vendor',
+    express: 'vendor',
+    legal_review: 'compliance',
+    executive: 'internal',
+    amendment: 'client',
+    nda_fast_track: 'vendor',
+    vendor_onboarding: 'vendor',
+    termination: 'internal',
+    renewal_opt_out: 'client',
+    risk_escalation: 'compliance',
+    multi_party: 'client',
+    procurement: 'vendor',
+  };
+  return categoryMap[key] || 'vendor';
 }
 
 export default TemplateSelector;

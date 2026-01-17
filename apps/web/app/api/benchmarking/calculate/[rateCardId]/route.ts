@@ -40,8 +40,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
       success: true,
       data: result,
     });
-  } catch (error) {
-    console.error('Error calculating benchmark:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -103,8 +102,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
         benchmark,
       },
     });
-  } catch (error) {
-    console.error('Error getting benchmark:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

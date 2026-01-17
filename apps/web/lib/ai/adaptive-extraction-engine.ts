@@ -124,8 +124,7 @@ class AdaptiveExtractionEngine {
       this.lastRefresh = now
 
       return patterns
-    } catch (error) {
-      console.error('Failed to load learned patterns:', error)
+    } catch {
       return []
     }
   }
@@ -163,8 +162,7 @@ class AdaptiveExtractionEngine {
         sourceContext: (e.metadata as Record<string, string> | null)?.sourceText,
         contractType: e.contractType || 'unknown',
       }))
-    } catch (error) {
-      console.error('Failed to get successful examples:', error)
+    } catch {
       return []
     }
   }
@@ -311,8 +309,7 @@ class AdaptiveExtractionEngine {
 
       this.accuracyCache.set(cacheKey, stats)
       return stats
-    } catch (error) {
-      console.error('Failed to get field accuracy:', error)
+    } catch {
       return null
     }
   }

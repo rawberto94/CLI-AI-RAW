@@ -59,8 +59,8 @@ export function BulkBaselineComparison() {
 
       const data = await response.json();
       setResults(data);
-    } catch (error) {
-      console.error('Error performing comparison:', error);
+    } catch {
+      // Error performing comparison
     } finally {
       setLoading(false);
     }

@@ -67,8 +67,7 @@ export async function GET() {
       connections: dataConnections,
     });
 
-  } catch (error) {
-    console.error('Data connections GET error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch connections' },
       { status: 500 }
@@ -180,8 +179,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error) {
-    console.error('Data connection create error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to create connection' },
       { status: 500 }

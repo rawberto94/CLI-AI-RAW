@@ -105,9 +105,8 @@ export function AnomalyAlert({ rateCardId, className = '' }: AnomalyAlertProps) 
         }
 
         setAnomalyData(result.data);
-      } catch (err: any) {
-        setError(err.message);
-        console.error('Error fetching anomalies:', err);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setLoading(false);
       }

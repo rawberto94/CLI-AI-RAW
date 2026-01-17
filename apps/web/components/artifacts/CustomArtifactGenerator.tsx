@@ -257,7 +257,6 @@ export function CustomArtifactGenerator({
         });
 
         if (!response.ok) {
-          console.warn(`Failed to analyze topic: ${topic.name}`);
           // Generate mock insight for demo
           insights.push(generateMockInsight(topic));
         } else {
@@ -272,8 +271,7 @@ export function CustomArtifactGenerator({
             insights.push(generateMockInsight(topic));
           }
         }
-      } catch (err) {
-        console.warn(`Error analyzing topic: ${topic.name}`, err);
+      } catch {
         insights.push(generateMockInsight(topic));
       }
 

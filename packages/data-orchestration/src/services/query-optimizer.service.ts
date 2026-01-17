@@ -293,8 +293,7 @@ export class QueryOptimizerService {
         indexes: this.extractIndexes(planData),
         recommendations: this.generateRecommendations(planData),
       };
-    } catch (error) {
-      console.error('Query analysis error:', error);
+    } catch {
       return {
         query,
         estimatedCost: 0,

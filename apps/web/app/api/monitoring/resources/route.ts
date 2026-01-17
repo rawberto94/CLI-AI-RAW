@@ -34,8 +34,7 @@ export async function GET(request: NextRequest) {
       default:
         return getCurrentMetrics();
     }
-  } catch (error) {
-    console.error('[Resources API] Error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: {

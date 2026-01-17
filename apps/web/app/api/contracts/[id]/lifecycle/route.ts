@@ -118,8 +118,7 @@ export async function POST(
         ? 'Contract marked as new - approval workflow can now be initiated'
         : 'Contract marked as existing - no approval workflow required',
     });
-  } catch (error) {
-    console.error('Error updating contract lifecycle:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to update contract lifecycle' },
       { status: 500 }
@@ -169,8 +168,7 @@ export async function GET(
         metadata: contract.metadata,
       },
     });
-  } catch (error) {
-    console.error('Error fetching contract lifecycle:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch contract lifecycle' },
       { status: 500 }

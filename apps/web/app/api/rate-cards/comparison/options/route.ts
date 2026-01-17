@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
       roles,
     });
   } catch (error) {
-    console.error('Error fetching comparison options:', error);
     return NextResponse.json(
       {
         success: false,

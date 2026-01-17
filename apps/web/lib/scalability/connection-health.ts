@@ -108,7 +108,6 @@ export class ConnectionHealthMonitor {
 
     const config = this.configs.get(endpoint);
     if (!config) {
-      console.warn(`Endpoint ${endpoint} not registered`);
       return;
     }
 
@@ -328,10 +327,8 @@ let globalHealthMonitor: ConnectionHealthMonitor | null = null;
 export function getHealthMonitor(): ConnectionHealthMonitor {
   if (!globalHealthMonitor) {
     globalHealthMonitor = new ConnectionHealthMonitor({
-      onStatusChange: (endpoint, from, to) => {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[HealthMonitor] ${endpoint}: ${from} → ${to}`);
-        }
+      onStatusChange: () => {
+        // Status change callback - can be customized by consumers
       },
     });
   }

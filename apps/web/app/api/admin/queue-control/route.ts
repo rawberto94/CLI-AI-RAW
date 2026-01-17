@@ -40,8 +40,6 @@ export async function POST(request: NextRequest) {
     // - cancel-batch: Cancel all jobs in a batch
     // - set-rate-limit: Adjust the rate limit for a queue
 
-    console.log(`Queue control action: ${action}`, { queueName, jobId, batchId });
-
     // In production, these would interact with actual BullMQ queues
     // For now, simulate the actions
     let message = '';
@@ -146,9 +144,6 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    // Log the action for audit trail
-    console.log(`[QUEUE CONTROL] User ${session.user.email}: ${message}`);
-
     return NextResponse.json({
       success,
       message,
@@ -159,8 +154,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-  } catch (error) {
-    console.error('Queue control error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to execute queue control action' },
       { status: 500 }

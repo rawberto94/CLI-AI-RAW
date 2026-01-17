@@ -235,8 +235,6 @@ Be concise but comprehensive.`,
         },
       });
     } catch (openaiError: unknown) {
-      console.error('OpenAI API error:', openaiError);
-      
       // Return fallback analysis on OpenAI error
       return NextResponse.json({
         success: true,
@@ -248,8 +246,7 @@ Be concise but comprehensive.`,
         },
       });
     }
-  } catch (error) {
-    console.error('Compare contracts error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: 'Failed to compare contracts', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

@@ -23,8 +23,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(report);
-  } catch (error) {
-    console.error('Error generating compliance report:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to generate compliance report' },
       { status: 500 }
@@ -69,8 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(report);
-  } catch (error) {
-    console.error('Error generating compliance report:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to generate compliance report' },
       { status: 500 }

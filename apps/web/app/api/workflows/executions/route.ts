@@ -64,8 +64,7 @@ export async function GET(request: NextRequest) {
       })),
       total: executions.length,
     });
-  } catch (error) {
-    console.error('Error fetching workflow executions:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,
@@ -241,8 +240,7 @@ export async function POST(request: NextRequest) {
       },
       message: 'Approval workflow started successfully',
     });
-  } catch (error) {
-    console.error('Error creating workflow execution:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

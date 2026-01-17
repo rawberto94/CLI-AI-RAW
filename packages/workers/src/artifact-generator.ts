@@ -19,6 +19,94 @@ import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime'
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
 
+// Default artifact types configuration (flexible per-tenant config loaded dynamically)
+interface ArtifactTypeConfig {
+  type: ArtifactType;
+  enabled: boolean;
+  priority: number;
+  weight: number;
+  qualityThreshold: number;
+  maxRetries: number;
+  label: string;
+  category: 'core' | 'analysis' | 'advanced';
+}
+
+const DEFAULT_ARTIFACT_TYPES: ArtifactTypeConfig[] = [
+  { type: 'OVERVIEW' as ArtifactType, enabled: true, priority: 1, weight: 10, qualityThreshold: 0.7, maxRetries: 3, label: 'Overview', category: 'core' },
+  { type: 'CLAUSES' as ArtifactType, enabled: true, priority: 2, weight: 12, qualityThreshold: 0.7, maxRetries: 3, label: 'Clauses', category: 'core' },
+  { type: 'FINANCIAL' as ArtifactType, enabled: true, priority: 3, weight: 12, qualityThreshold: 0.75, maxRetries: 3, label: 'Financial', category: 'core' },
+  { type: 'RISK' as ArtifactType, enabled: true, priority: 4, weight: 12, qualityThreshold: 0.7, maxRetries: 3, label: 'Risk', category: 'analysis' },
+  { type: 'COMPLIANCE' as ArtifactType, enabled: true, priority: 5, weight: 12, qualityThreshold: 0.7, maxRetries: 3, label: 'Compliance', category: 'analysis' },
+  { type: 'OBLIGATIONS' as ArtifactType, enabled: true, priority: 6, weight: 10, qualityThreshold: 0.7, maxRetries: 3, label: 'Obligations', category: 'analysis' },
+  { type: 'RENEWAL' as ArtifactType, enabled: true, priority: 7, weight: 10, qualityThreshold: 0.7, maxRetries: 3, label: 'Renewal', category: 'analysis' },
+  { type: 'NEGOTIATION_POINTS' as ArtifactType, enabled: true, priority: 8, weight: 8, qualityThreshold: 0.65, maxRetries: 2, label: 'Negotiation', category: 'advanced' },
+  { type: 'AMENDMENTS' as ArtifactType, enabled: true, priority: 9, weight: 7, qualityThreshold: 0.65, maxRetries: 2, label: 'Amendments', category: 'advanced' },
+  { type: 'CONTACTS' as ArtifactType, enabled: true, priority: 10, weight: 7, qualityThreshold: 0.65, maxRetries: 2, label: 'Contacts', category: 'advanced' },
+];
+
+// Dynamic artifact config loader (fetches tenant-specific settings from DB)
+async function loadTenantArtifactConfig(tenantId: string): Promise<{
+  artifactTypes: ArtifactTypeConfig[];
+  generationConfig: {
+    maxRegenerationAttempts: number;
+    enableQualityValidation: boolean;
+    enableSelfCritique: boolean;
+    continueOnPartialFailure: boolean;
+    enableFallbackOnError: boolean;
+  };
+}> {
+  try {
+    // Try to load tenant-specific config from TenantConfig.workflowSettings
+    const tenantConfig = await prisma.tenantConfig.findUnique({
+      where: { tenantId },
+      select: { workflowSettings: true },
+    });
+
+    if (tenantConfig?.workflowSettings && typeof tenantConfig.workflowSettings === 'object') {
+      const settings = tenantConfig.workflowSettings as Record<string, any>;
+      const artifactSettings = settings.artifactTypes || {};
+      const generationSettings = settings.artifactGeneration || {};
+
+      // Merge tenant overrides with defaults
+      const artifactTypes = DEFAULT_ARTIFACT_TYPES.map(defaultType => {
+        const override = artifactSettings[defaultType.type] || {};
+        return {
+          ...defaultType,
+          enabled: override.enabled ?? defaultType.enabled,
+          priority: override.priority ?? defaultType.priority,
+          qualityThreshold: override.qualityThreshold ?? defaultType.qualityThreshold,
+          maxRetries: override.maxRetries ?? defaultType.maxRetries,
+        };
+      }).filter(t => t.enabled).sort((a, b) => a.priority - b.priority);
+
+      return {
+        artifactTypes,
+        generationConfig: {
+          maxRegenerationAttempts: generationSettings.maxRegenerationAttempts ?? 2,
+          enableQualityValidation: generationSettings.enableQualityValidation ?? true,
+          enableSelfCritique: generationSettings.enableSelfCritique ?? true,
+          continueOnPartialFailure: generationSettings.continueOnPartialFailure ?? true,
+          enableFallbackOnError: generationSettings.enableFallbackOnError ?? true,
+        },
+      };
+    }
+  } catch (error) {
+    logger.warn({ tenantId, error }, 'Failed to load tenant artifact config, using defaults');
+  }
+
+  // Return defaults if no tenant config
+  return {
+    artifactTypes: DEFAULT_ARTIFACT_TYPES.filter(t => t.enabled),
+    generationConfig: {
+      maxRegenerationAttempts: 2,
+      enableQualityValidation: true,
+      enableSelfCritique: true,
+      continueOnPartialFailure: true,
+      enableFallbackOnError: true,
+    },
+  };
+}
+
 const logger = pino({ name: 'artifact-generator-worker' });
 const prisma = getClient();
 
@@ -184,25 +272,27 @@ export async function generateArtifactsJob(
       throw new Error(`Contract ${contractId} not found`);
     }
 
-    // Define artifacts to generate
-    const artifactTypes: Array<{ type: ArtifactType; weight: number }> = [
-      { type: 'OVERVIEW' as ArtifactType, weight: 10 },
-      { type: 'CLAUSES' as ArtifactType, weight: 12 },
-      { type: 'FINANCIAL' as ArtifactType, weight: 12 },
-      { type: 'RISK' as ArtifactType, weight: 12 },
-      { type: 'COMPLIANCE' as ArtifactType, weight: 12 },
-      { type: 'OBLIGATIONS' as ArtifactType, weight: 10 },
-      { type: 'RENEWAL' as ArtifactType, weight: 10 },
-      { type: 'NEGOTIATION_POINTS' as ArtifactType, weight: 8 },
-      { type: 'AMENDMENTS' as ArtifactType, weight: 7 },
-      { type: 'CONTACTS' as ArtifactType, weight: 7 },
-    ];
+    // Load tenant-configurable artifact types (sorted by priority)
+    const tenantConfig = await loadTenantArtifactConfig(tenantId);
+    const artifactTypes = tenantConfig.artifactTypes.map(config => ({
+      type: config.type,
+      weight: config.weight,
+      config,
+    }));
+    const generationConfig = tenantConfig.generationConfig;
+    
+    logger.info({ 
+      tenantId, 
+      contractId, 
+      enabledArtifacts: artifactTypes.map(a => a.type),
+      totalArtifacts: artifactTypes.length,
+    }, 'Using tenant-configured artifact types');
 
     let progressBase = 10;
     const failedArtifacts: string[] = [];
 
-    // Generate each artifact with retry logic
-    for (const { type, weight } of artifactTypes) {
+    // Generate each artifact with retry logic (using tenant config)
+    for (const { type, weight, config } of artifactTypes) {
       try {
         await updateStep({
           tenantId,
@@ -213,14 +303,20 @@ export async function generateArtifactsJob(
           currentStep: `artifact.${type}`,
         });
 
-        logger.info({ contractId, type, traceId: trace.traceId }, `Generating ${type} artifact with quality validation`);
+        logger.info({ 
+          contractId, 
+          type, 
+          traceId: trace.traceId,
+          qualityThreshold: config?.qualityThreshold || 0.7,
+          maxRetries: config?.maxRetries || 3,
+        }, `Generating ${type} artifact with quality validation`);
 
         // Generate artifact with adaptive retry and quality validation
         let artifactData: Record<string, any> | null = null;
         let qualityScore: any = null;
         let modelUsed = 'unknown';
         let regenerationAttempts = 0;
-        const maxRegenerations = 2;
+        const maxRegenerations = config?.maxRetries || generationConfig.maxRegenerationAttempts || 2;
 
         while (regenerationAttempts <= maxRegenerations) {
           try {
@@ -248,16 +344,25 @@ export async function generateArtifactsJob(
               type,
               qualityScore: qualityScore.overall.toFixed(2),
               passesThreshold: qualityScore.passesThreshold,
+              configuredThreshold: config?.qualityThreshold || 0.7,
               model: modelUsed,
               regenerationAttempt: regenerationAttempts,
             }, '✓ Quality validation complete');
 
-            // If quality is good, proceed
-            if (qualityScore.passesThreshold) {
+            // If quality meets configured threshold, proceed
+            const qualityThreshold = config?.qualityThreshold || 0.7;
+            const meetsThreshold = qualityScore.overall >= qualityThreshold;
+            
+            if (meetsThreshold || qualityScore.passesThreshold) {
               break;
             }
 
-            // Self-critique for low quality
+            // Self-critique for low quality (if enabled in config)
+            if (!generationConfig.enableSelfCritique) {
+              // Skip self-critique, accept current result
+              break;
+            }
+            
             const critique = await selfCritiqueArtifact(type, artifactData, contractText);
             
             logger.warn({
@@ -355,8 +460,8 @@ export async function generateArtifactsJob(
           error: errorMsg,
         });
         
-        // If fallback is enabled, try to create a minimal artifact
-        if (ARTIFACT_CONFIG.enableFallbackOnError) {
+        // If fallback is enabled (from tenant config), try to create a minimal artifact
+        if (generationConfig.enableFallbackOnError) {
           try {
             const fallbackData = getFallbackArtifactData(type, contractId);
 
@@ -390,8 +495,8 @@ export async function generateArtifactsJob(
           }
         }
         
-        // Continue with other artifacts if configured
-        if (!ARTIFACT_CONFIG.continueOnPartialFailure) {
+        // Continue with other artifacts if configured (from tenant config)
+        if (!generationConfig.continueOnPartialFailure) {
           throw error;
         }
       }

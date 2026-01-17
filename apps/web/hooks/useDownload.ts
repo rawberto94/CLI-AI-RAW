@@ -96,8 +96,7 @@ export function useDownload(): UseDownloadReturn {
         title: "Download Complete",
         description: successMessage,
       });
-    } catch (error) {
-      console.error("Download error:", error);
+    } catch {
       toast({
         variant: "destructive",
         title: "Download Failed",
@@ -140,8 +139,7 @@ export function useDownload(): UseDownloadReturn {
         title: "Download Complete",
         description: "File downloaded successfully",
       });
-    } catch (error) {
-      console.error("Download error:", error);
+    } catch {
       toast({
         variant: "destructive",
         title: "Download Failed",
@@ -171,8 +169,7 @@ export function useDownload(): UseDownloadReturn {
         title: "Download Complete",
         description: "File downloaded successfully",
       });
-    } catch (error) {
-      console.error("Download error:", error);
+    } catch {
       toast({
         variant: "destructive",
         title: "Download Failed",
@@ -361,8 +358,8 @@ export function usePrint(options: UsePrintOptions = {}) {
       printWindow.focus();
       printWindow.print();
       printWindow.close();
-    } catch (error) {
-      console.error("Print error:", error);
+    } catch {
+      // Print error
     } finally {
       setPrinting(false);
     }

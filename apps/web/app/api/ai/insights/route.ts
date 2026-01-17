@@ -237,8 +237,8 @@ export async function GET(request: NextRequest) {
         if (aiInsight) {
           insights.push(aiInsight);
         }
-      } catch (error) {
-        console.error('AI insight generation failed:', error);
+      } catch {
+        // AI insight generation failed, continue without it
       }
     }
 
@@ -270,8 +270,7 @@ export async function GET(request: NextRequest) {
       processingTime: Date.now() - startTime,
     });
 
-  } catch (error) {
-    console.error('Insights generation error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate insights' },
       { status: 500 }

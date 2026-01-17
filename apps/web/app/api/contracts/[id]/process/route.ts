@@ -52,8 +52,7 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch (error) {
-    console.error("Error starting processing:", error);
+  } catch {
     return NextResponse.json(
       { error: "Failed to start processing" },
       { status: 500 }

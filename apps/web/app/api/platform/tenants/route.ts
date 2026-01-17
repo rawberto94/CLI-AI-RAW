@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     const contractCounts = await prisma.contract.groupBy({
       by: ['tenantId'],
       where: {
-        status: { not: 'DELETED' },
+        isDeleted: false,
       },
       _count: true,
     });
@@ -118,8 +118,7 @@ export async function GET(request: NextRequest) {
       })),
       total: tenants.length,
     });
-  } catch (error) {
-    console.error('Error fetching tenants:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch tenants' },
       { status: 500 }
@@ -216,8 +215,7 @@ export async function POST(request: NextRequest) {
         adminUser: tenant.users?.[0],
       },
     });
-  } catch (error) {
-    console.error('Error creating tenant:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to create tenant' },
       { status: 500 }

@@ -234,8 +234,7 @@ export function getErrorMessage(err: unknown): string {
 export function withErrorHandler<T>(
   handler: () => Promise<NextResponse<T>>
 ): Promise<NextResponse<T | ApiErrorResponse>> {
-  return handler().catch((err) => {
-    console.error('[API Error]', err);
+  return handler().catch((err: unknown) => {
     return errors.internal(getErrorMessage(err));
   });
 }

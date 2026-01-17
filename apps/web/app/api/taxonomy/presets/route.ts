@@ -890,15 +890,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    console.log(`✅ Applied preset "${preset.name}" with ${createdCount} categories`);
-
     return NextResponse.json({
       success: true,
       message: `Applied "${preset.name}" preset with ${createdCount} categories`,
       categoriesCreated: createdCount,
     });
-  } catch (error) {
-    console.error("Error applying preset:", error);
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         success: false,

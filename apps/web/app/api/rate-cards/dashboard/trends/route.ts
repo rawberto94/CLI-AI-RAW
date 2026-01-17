@@ -118,8 +118,7 @@ export async function GET(request: NextRequest) {
         count: item._count,
       })),
     });
-  } catch (error) {
-    console.error('Error fetching trend data:', error);
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch trend data' },
       { status: 500 }

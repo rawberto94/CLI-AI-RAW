@@ -476,17 +476,12 @@ export class IntrusionDetector {
       errorMessage: `Security alert: ${rule.name}`,
     });
 
-    console.log(`[IDS] 🚨 ALERT: ${alert.title} (${alert.severity})`);
-    console.log(`[IDS]    IP: ${alert.ip}`);
-    console.log(`[IDS]    User: ${alert.userId || 'N/A'}`);
-    console.log(`[IDS]    Evidence: ${evidence.length} events`);
-
     // Call handlers
     for (const handler of this.alertHandlers) {
       try {
         await handler(alert);
-      } catch (error) {
-        console.error('[IDS] Alert handler error:', error);
+      } catch {
+        // Handler error - continue with other handlers
       }
     }
   }
@@ -560,8 +555,6 @@ export class IntrusionDetector {
    * Block an IP (call your firewall/WAF)
    */
   async blockIP(ip: string, reason: string, durationMs: number): Promise<void> {
-    console.log(`[IDS] Blocking IP ${ip} for ${durationMs}ms: ${reason}`);
-
     // In production: Call your firewall API, update nginx, etc.
     // await firewall.blockIP(ip, durationMs);
 

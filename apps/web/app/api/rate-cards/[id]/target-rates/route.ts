@@ -16,8 +16,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       data: targetRates,
     });
   } catch (error: unknown) {
-    console.error('Error suggesting target rates:', error);
-    
     return NextResponse.json(
       {
         success: false,
