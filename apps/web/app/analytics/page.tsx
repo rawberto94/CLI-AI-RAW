@@ -18,6 +18,7 @@ import {
   Briefcase,
   ArrowRight,
   BarChart3,
+  FileText,
 } from 'lucide-react'
 import { useRealTimeEvents } from '@/contexts/RealTimeContext'
 
@@ -70,11 +71,19 @@ export default function ImprovedAnalyticsPage() {
       'Suppliers': Users,
       'Negotiation': TrendingUp,
       'Procurement': Briefcase,
+      'Documents': FileText,
     };
     return icons[title] || FileBarChart;
   };
 
   const analyticsPages = [
+    {
+      title: 'Documents',
+      description: 'Document classification & signature trends',
+      href: '/analytics/documents',
+      gradient: 'from-teal-500 to-emerald-500',
+      shadowColor: 'shadow-teal-500/20'
+    },
     {
       title: 'Artifacts',
       description: 'Artifact extraction analytics',
