@@ -1316,7 +1316,7 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
       }
     }).slice(0, 20);
 
-    // Map with signature status
+    // Map with signature status and document classification
     return filtered.map(c => {
       const metadata = c.artifacts[0]?.content;
       let parsed: Record<string, unknown> = {};
@@ -1327,8 +1327,134 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
       }
       return {
         ...c,
-        signatureStatus: parsed?.signature_status || 'unknown',
-        signatureRequiredFlag: parsed?.signature_required_flag || false,
+        signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
+        signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ============================================
+// DOCUMENT CLASSIFICATION QUERY FUNCTIONS
+// ============================================
+
+type DocumentClassificationType = 'contract' | 'purchase_order' | 'invoice' | 'quote' | 'proposal' | 'work_order' | 'letter_of_intent' | 'memorandum' | 'amendment' | 'addendum' | 'unknown';
+
+async function listContractsByDocumentType(documentType: DocumentClassificationType, tenantId: string) {
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: { tenantId },
+      include: {
+        artifacts: {
+          where: { type: 'METADATA' },
+          select: { id: true, content: true },
+          take: 1,
+        },
+      },
+      orderBy: { uploadedAt: 'desc' },
+      take: 50,
+    });
+
+    // Filter by document classification from metadata or direct field
+    const filtered = contracts.filter(contract => {
+      // First check the direct database field
+      if ((contract as Record<string, unknown>).documentClassification) {
+        return (contract as Record<string, unknown>).documentClassification === documentType;
+      }
+      
+      // Then check metadata
+      const metadataArtifact = contract.artifacts[0];
+      if (!metadataArtifact?.content) {
+        return documentType === 'contract'; // Default to contract
+      }
+      
+      try {
+        const metadata = typeof metadataArtifact.content === 'string' 
+          ? JSON.parse(metadataArtifact.content) 
+          : metadataArtifact.content;
+        return metadata.document_classification === documentType;
+      } catch {
+        return documentType === 'contract';
+      }
+    }).slice(0, 20);
+
+    // Map with full document info
+    return filtered.map(c => {
+      const metadata = c.artifacts[0]?.content;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
+      } catch {
+        // ignore parse error
+      }
+      return {
+        ...c,
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
+        signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
+        signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function listNonContractDocuments(tenantId: string) {
+  try {
+    const contracts = await prisma.contract.findMany({
+      where: { tenantId },
+      include: {
+        artifacts: {
+          where: { type: 'METADATA' },
+          select: { id: true, content: true },
+          take: 1,
+        },
+      },
+      orderBy: { uploadedAt: 'desc' },
+      take: 100,
+    });
+
+    // Filter to non-contract documents
+    const nonContractTypes = ['purchase_order', 'invoice', 'quote', 'proposal', 'work_order', 'letter_of_intent', 'memorandum'];
+    const filtered = contracts.filter(contract => {
+      // First check the direct database field
+      const directClass = (contract as Record<string, unknown>).documentClassification;
+      if (directClass) {
+        return nonContractTypes.includes(directClass as string);
+      }
+      
+      // Then check metadata
+      const metadataArtifact = contract.artifacts[0];
+      if (!metadataArtifact?.content) return false;
+      
+      try {
+        const metadata = typeof metadataArtifact.content === 'string' 
+          ? JSON.parse(metadataArtifact.content) 
+          : metadataArtifact.content;
+        return nonContractTypes.includes(metadata.document_classification);
+      } catch {
+        return false;
+      }
+    }).slice(0, 30);
+
+    // Map with full document info
+    return filtered.map(c => {
+      const metadata = c.artifacts[0]?.content;
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
+      } catch {
+        // ignore parse error
+      }
+      return {
+        ...c,
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'unknown',
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
       };
     });
   } catch {
@@ -1369,7 +1495,7 @@ async function listContractsNeedingSignature(tenantId: string) {
       }
     }).slice(0, 20);
 
-    // Map with signature status
+    // Map with signature status and document classification
     return filtered.map(c => {
       const metadata = c.artifacts[0]?.content;
       let parsed: Record<string, unknown> = {};
@@ -1380,8 +1506,10 @@ async function listContractsNeedingSignature(tenantId: string) {
       }
       return {
         ...c,
-        signatureStatus: parsed?.signature_status || 'unknown',
-        signatureRequiredFlag: parsed?.signature_required_flag || false,
+        signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
+        signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
+        documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
       };
     });
   } catch {
@@ -1455,6 +1583,12 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
         daysUntilExpiry,
         autoRenewal: contract.autoRenewalEnabled,
         category: contract.categoryL1,
+        // Signature & Document Classification
+        signatureStatus: (contract as any).signatureStatus || 'unknown',
+        signatureDate: (contract as any).signatureDate || null,
+        signatureRequiredFlag: (contract as any).signatureRequiredFlag || false,
+        documentClassification: (contract as any).documentClassification || 'contract',
+        documentClassificationWarning: (contract as any).documentClassificationWarning || null,
       },
       insights: {
         summary: (overview as any)?.summary || (overview as any)?.keyTerms?.join(', ') || 'No summary available',
@@ -6684,6 +6818,34 @@ export async function POST(request: NextRequest) {
         additionalContext = `\n\n**⚠️ Contracts Needing Signature Attention:**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Signature: ${c.signatureStatus || 'unknown'}${c.signatureRequiredFlag ? ' ⚠️ FLAGGED' : ''}`
         ).join('\n') || 'No contracts need signature attention.'}`;
+      } else if (intent.action === 'list_by_document_type' && intent.entities.documentType) {
+        // Query contracts by document classification
+        contracts = await listContractsByDocumentType(intent.entities.documentType, tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
+        const typeLabels: Record<string, string> = {
+          contract: 'Contracts',
+          purchase_order: 'Purchase Orders',
+          invoice: 'Invoices',
+          quote: 'Quotes',
+          proposal: 'Proposals',
+          work_order: 'Work Orders',
+          letter_of_intent: 'Letters of Intent',
+          memorandum: 'Memoranda',
+          amendment: 'Amendments',
+          addendum: 'Addenda',
+          unknown: 'Unknown Document Types',
+        };
+        const label = typeLabels[intent.entities.documentType] || intent.entities.documentType;
+        additionalContext = `\n\n**📄 ${label}:**\n${contracts.map(c => 
+          `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Status: ${c.status}, Type: ${c.documentClassification || 'contract'}`
+        ).join('\n') || `No ${label.toLowerCase()} found.`}`;
+      } else if (intent.action === 'list_non_contracts') {
+        // Query documents that are flagged as non-contracts
+        contracts = await listNonContractDocuments(tenantId);
+        contractPreviews = contracts.map(formatContractForPreview);
+        additionalContext = `\n\n**⚠️ Non-Contract Documents:**\n${contracts.map(c => 
+          `- [${c.contractTitle}](/contracts/${c.id}) - Type: **${c.documentClassification?.replace(/_/g, ' ') || 'unknown'}**, Supplier: ${c.supplierName}`
+        ).join('\n') || 'No non-contract documents found.'}`;
       }
     }
 

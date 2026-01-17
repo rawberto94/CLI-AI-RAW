@@ -543,6 +543,91 @@ export function detectIntent(query: string): DetectedIntent {
     };
   }
 
+  // ============================================
+  // DOCUMENT CLASSIFICATION PATTERNS
+  // ============================================
+
+  // Show purchase orders
+  if (/(?:show|list|find|get)\s+(?:all\s+)?(?:my\s+)?(?:purchase\s+orders?|POs?)/i.test(lowerQuery) ||
+      /purchase\s+orders?\s+(?:in\s+the\s+)?(?:system|repository)/i.test(lowerQuery) ||
+      /documents?\s+(?:classified|flagged)\s+as\s+(?:purchase\s+orders?|POs?)/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_document_type',
+      entities: { documentType: 'purchase_order' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show invoices
+  if (/(?:show|list|find|get)\s+(?:all\s+)?(?:my\s+)?invoices?/i.test(lowerQuery) ||
+      /invoices?\s+(?:in\s+the\s+)?(?:system|repository)/i.test(lowerQuery) ||
+      /documents?\s+(?:classified|flagged)\s+as\s+invoices?/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_document_type',
+      entities: { documentType: 'invoice' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show quotes/proposals
+  if (/(?:show|list|find|get)\s+(?:all\s+)?(?:my\s+)?(?:quotes?|proposals?)/i.test(lowerQuery) ||
+      /(?:quotes?|proposals?)\s+(?:in\s+the\s+)?(?:system|repository)/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_document_type',
+      entities: { documentType: 'quote' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show work orders
+  if (/(?:show|list|find|get)\s+(?:all\s+)?(?:my\s+)?(?:work\s+orders?)/i.test(lowerQuery) ||
+      /work\s+orders?\s+(?:in\s+the\s+)?(?:system|repository)/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_by_document_type',
+      entities: { documentType: 'work_order' },
+      confidence: 0.95,
+    };
+  }
+
+  // Show non-contract documents (catch-all for flagged documents)
+  if (/(?:show|list|find|get)\s+(?:all\s+)?(?:non-?contract|non\s+contract)\s+documents?/i.test(lowerQuery) ||
+      /documents?\s+(?:that\s+)?(?:are\s+)?(?:not\s+contracts?|flagged|non-?contracts?)/i.test(lowerQuery) ||
+      /(?:flagged|misclassified|wrong\s+type)\s+documents?/i.test(lowerQuery) ||
+      /documents?\s+(?:that\s+)?shouldn'?t\s+be\s+(?:here|in\s+contracts?)/i.test(lowerQuery)) {
+    return {
+      type: 'list',
+      action: 'list_non_contracts',
+      entities: {},
+      confidence: 0.95,
+    };
+  }
+
+  // Generic document type query
+  const documentTypeMatch = lowerQuery.match(/(?:show|list|find|get)\s+(?:all\s+)?(?:my\s+)?(letters?\s+of\s+intent|LOIs?|memorand(?:um|a)|amendments?|addend(?:um|a))/i);
+  if (documentTypeMatch) {
+    let docType = documentTypeMatch[1]?.toLowerCase();
+    // Normalize document type names
+    if (docType?.includes('letter') || docType?.toLowerCase() === 'loi' || docType?.toLowerCase() === 'lois') {
+      docType = 'letter_of_intent';
+    } else if (docType?.includes('memorand')) {
+      docType = 'memorandum';
+    } else if (docType?.includes('amendment')) {
+      docType = 'amendment';
+    } else if (docType?.includes('addend')) {
+      docType = 'addendum';
+    }
+    return {
+      type: 'list',
+      action: 'list_by_document_type',
+      entities: { documentType: docType },
+      confidence: 0.95,
+    };
+  }
+
   // Show uncategorized
   if (/(?:uncategorized|untagged|no\s+category|missing\s+category)\s*contracts?/i.test(lowerQuery) ||
       /contracts?\s+(?:without|with\s+no)\s+(?:a\s+)?category/i.test(lowerQuery)) {
