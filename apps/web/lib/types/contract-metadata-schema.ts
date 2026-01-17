@@ -261,6 +261,29 @@ export const CONTRACT_METADATA_FIELDS: MetadataFieldDefinition[] = [
     displayOrder: 2
   },
   {
+    key: 'document_classification',
+    label: 'Document Classification',
+    type: 'enum',
+    required: true,
+    editable: true,
+    enum: ['contract', 'purchase_order', 'invoice', 'quote', 'proposal', 'work_order', 'letter_of_intent', 'memorandum', 'amendment', 'addendum', 'unknown'],
+    extraction_hint: 'Determine if this is a binding contract or another document type. Look for PO#/Invoice#/Quote# reference numbers, signature blocks, mutual obligations, and binding language.',
+    ui_attention: 'warning',
+    section: 'identification',
+    displayOrder: 3
+  },
+  {
+    key: 'document_classification_warning',
+    label: 'Classification Warning',
+    type: 'string',
+    required: false,
+    editable: false,
+    system_generated: true,
+    ui_attention: 'error',
+    section: 'identification',
+    displayOrder: 4
+  },
+  {
     key: 'contract_short_description',
     label: 'Short Description',
     type: 'string',
@@ -268,7 +291,7 @@ export const CONTRACT_METADATA_FIELDS: MetadataFieldDefinition[] = [
     editable: true,
     ui_attention: 'none',
     section: 'identification',
-    displayOrder: 3
+    displayOrder: 5
   },
   {
     key: 'jurisdiction',
@@ -279,7 +302,7 @@ export const CONTRACT_METADATA_FIELDS: MetadataFieldDefinition[] = [
     format: 'ISO3166-1-alpha2_or_name',
     ui_attention: 'none',
     section: 'identification',
-    displayOrder: 4
+    displayOrder: 6
   },
   {
     key: 'contract_language',
@@ -512,6 +535,9 @@ export function getDefaultContractMetadata(): Partial<ContractMetadataSchema> {
   return {
     document_number: '',
     document_title: '',
+    document_classification: 'contract',
+    document_classification_confidence: 1.0,
+    document_classification_warning: undefined,
     contract_short_description: '',
     jurisdiction: '',
     contract_language: 'en',
