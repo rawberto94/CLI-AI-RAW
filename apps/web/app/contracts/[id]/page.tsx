@@ -279,7 +279,7 @@ export default function ContractDetailPage() {
   } = useSplitPaneResize({ initialRatio: 45, minRatio: 20, maxRatio: 75 })
 
   // Use the custom hook for metadata derivation
-  const { metadata, riskInfo, complianceInfo, isProcessing, overviewData, financialData } = useContractMetadata(contract)
+  const { metadata, riskInfo, complianceInfo, isProcessing, extractionConfidence, overviewData, financialData } = useContractMetadata(contract)
 
   // ============ KEYBOARD SHORTCUTS ============
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
@@ -1141,7 +1141,7 @@ export default function ContractDetailPage() {
                       completeness: healthData?.completeness ?? 0,
                       issues: healthData?.issues || [],
                     }}
-                    extractionConfidence={contract?.extractionConfidence}
+                    extractionConfidence={extractionConfidence}
                     isProcessing={isProcessing}
                     onRefresh={loadContract}
                   />

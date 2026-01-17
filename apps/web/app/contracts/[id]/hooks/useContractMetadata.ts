@@ -234,11 +234,47 @@ export function useContractMetadata(contract: ContractData | null) {
     return status === 'processing' || status === 'uploaded'
   }, [contract?.status])
   
+  // Calculate extraction confidence based on available data
+  const extractionConfidence = useMemo(() => {
+    if (!contract?.extractedData) return undefined
+    
+    const artifacts = contract.extractedData
+    let score = 0
+    let maxScore = 0
+    
+    // Check for key artifacts (each worth different points)
+    const artifactWeights = [
+      { key: 'overview', weight: 20 },
+      { key: 'metadata', weight: 20 },
+      { key: 'financial', weight: 15 },
+      { key: 'risk', weight: 15 },
+      { key: 'compliance', weight: 10 },
+      { key: 'clauses', weight: 10 },
+      { key: 'obligations', weight: 10 },
+    ]
+    
+    for (const { key, weight } of artifactWeights) {
+      maxScore += weight
+      if (artifacts[key] && Object.keys(artifacts[key]).length > 0) {
+        score += weight
+      }
+    }
+    
+    // Bonus points for rich data
+    if (artifacts.overview?.parties?.length > 0) score += 5
+    if (artifacts.financial?.totalValue) score += 5
+    if (artifacts.risk?.risks?.length > 0) score += 5
+    maxScore += 15
+    
+    return maxScore > 0 ? Math.min(100, Math.round((score / maxScore) * 100)) : undefined
+  }, [contract?.extractedData])
+  
   return {
     metadata,
     riskInfo,
     complianceInfo,
     isProcessing,
+    extractionConfidence,
     overviewData,
     financialData,
   }
