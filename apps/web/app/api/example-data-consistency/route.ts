@@ -18,6 +18,7 @@ import {
   OptimisticLockError
 } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 // Define validation schema
 const updateContractSchema = z.object({
@@ -30,12 +31,17 @@ const updateContractSchema = z.object({
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const contractId = params.id;
     const body = await request.json();
 
-    // Get user context from headers/session
-    const userId = request.headers.get('x-user-id') || 'anonymous';
-    const userName = request.headers.get('x-user-name') || 'Anonymous User';
+    // Get user context from session
+    const userId = session.user.id;
+    const userName = session.user.name || 'User';
     const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
@@ -58,9 +64,9 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
 
     const { version, ...updateData } = body;
 
-    // 2. Get current contract data for audit trail
-    const beforeData = await prisma.contract.findUnique({
-      where: { id: contractId }
+    // 2. Get current contract data for audit trail (with tenant check)
+    const beforeData = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId }
     });
 
     if (!beforeData) {
@@ -152,19 +158,15 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
 }
 
 // GET endpoint to retrieve audit trail
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+export async function GET(_request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const contractId = params.id;
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
+    const contractId = params.id;
 
     // Get audit trail for the contract
     const auditTrail = await dataConsistencyAuditService.getResourceAuditTrail(
