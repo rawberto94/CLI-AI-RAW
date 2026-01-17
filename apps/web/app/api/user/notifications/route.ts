@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
     
     const userId = session.user.id
-    const tenantId = (session.user as { tenantId?: string }).tenantId || 'default'
+    const tenantId = session.user.tenantId || 'default'
     
     // Create notification
     const notification = await prisma.notification.create({

@@ -17,8 +17,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId;
-    const userRole = (session.user as { role?: string }).role;
+    const tenantId = session.user.tenantId;
+    const userRole = session.user.role;
     
     if (!tenantId || !['admin', 'owner'].includes(userRole || '')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

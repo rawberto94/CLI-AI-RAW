@@ -61,7 +61,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = (session.user as { role?: string }).role;
+    const userRole = session.user.role;
     
     if (!['admin', 'owner'].includes(userRole || '')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

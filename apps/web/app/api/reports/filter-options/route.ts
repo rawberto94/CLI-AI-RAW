@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId;
+    const tenantId = session.user.tenantId;
     
     if (!tenantId) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });

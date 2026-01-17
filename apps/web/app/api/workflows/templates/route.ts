@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         const isRenewalOptOut = searchParams.get('isRenewalOptOut') === 'true';
         const partyCount = searchParams.get('partyCount');
 
-        const tenantId = (session.user as { tenantId?: string }).tenantId || 'default';
+        const tenantId = session.user.tenantId || 'default';
         const workflowService = getWorkflowManagementService();
 
         const routing = await workflowService.routeToWorkflow(tenantId, {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
     const body = await request.json();
     const { action } = body;
 
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
             workflowId,
             contractId,
             tenantId,
-            initiatedBy: (session.user as { id?: string }).id || 'unknown',
+            initiatedBy: session.user.id || 'unknown',
           });
         }
 

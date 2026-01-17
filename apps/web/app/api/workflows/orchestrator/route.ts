@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'status';
 
@@ -213,8 +213,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId || 'default';
-    const userId = (session.user as { id?: string }).id || 'unknown';
+    const tenantId = session.user.tenantId || 'default';
+    const userId = session.user.id || 'unknown';
     const body = await request.json();
     const { action } = body;
 
