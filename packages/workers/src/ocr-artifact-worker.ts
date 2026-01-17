@@ -62,7 +62,9 @@ const WORKER_CONFIG = {
     enablePartyNameValidation: true,       // Validate extracted party names
     enableFinancialValidation: true,       // Validate financial values
     enableDateValidation: true,            // Validate dates
-    model: process.env.OPENAI_MODEL || 'gpt-4o', // Use stronger model by default
+    model: process.env.OPENAI_MODEL || 'gpt-4o', // Use GPT-4o by default for best OCR quality
+    visionModel: process.env.OPENAI_VISION_MODEL || 'gpt-4o', // Use GPT-4o for Vision (NOT gpt-4o-mini)
+    enableMultiPassVision: true,           // Multi-pass extraction for complex documents
   },
   // Worker Settings
   worker: {
@@ -725,38 +727,52 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       
       return enhancedText;
     } else if (isImage) {
-      // For images, use GPT-4 Vision
+      // For images, use GPT-4o Vision (full model for best accuracy)
       const base64 = fileBuffer.toString('base64');
       const mimeType = ext === 'png' ? 'image/png' : 
                        ext === 'gif' ? 'image/gif' : 
                        ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
-      logger.info({ filePath, size: fileBuffer.length, mimeType }, 'Processing image with GPT-4 Vision OCR');
+      // Use GPT-4o for Vision OCR (NOT gpt-4o-mini) for best quality
+      const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
+      logger.info({ filePath, size: fileBuffer.length, mimeType, visionModel }, 'Processing image with GPT-4o Vision OCR');
       
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: visionModel,
         messages: [
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Extract all text from this image and return it in markdown format. Preserve the structure and formatting.',
+                text: `Extract ALL text from this document image with high accuracy.
+Preserve the exact structure, formatting, and layout.
+Include:
+- All headings and subheadings
+- All paragraphs with proper spacing
+- All lists (numbered and bulleted)
+- Table data in markdown table format
+- Headers and footers
+- Any handwritten annotations
+
+Return the extracted text in clean markdown format.`,
               },
               {
                 type: 'image_url',
                 image_url: {
                   url: `data:${mimeType};base64,${base64}`,
+                  detail: 'high', // Use high detail for better OCR accuracy
                 },
               },
             ],
           },
         ],
-        max_tokens: 4096,
+        max_tokens: 8192, // Increased for longer documents
+        temperature: 0.1, // Lower temperature for more accurate extraction
       });
       
       const extractedText = response.choices[0]?.message?.content || '';
-      logger.info({ textLength: extractedText.length }, 'GPT-4 Vision OCR completed');
+      logger.info({ textLength: extractedText.length, model: visionModel }, 'GPT-4o Vision OCR completed');
       
       return extractedText;
     } else {

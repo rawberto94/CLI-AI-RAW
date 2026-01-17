@@ -206,6 +206,63 @@ export {
   type OCROptions,
 } from './eu-compliant-ocr';
 
+// AWS Textract Client (State-of-the-art table extraction)
+export {
+  AWSTextractClient,
+  analyzeWithTextract,
+  extractTablesWithTextract,
+  extractFormsWithTextract,
+  queryTextract,
+  getTextractClient,
+  type TextractConfig,
+  type TextractResult,
+  type TextractTable,
+  type TextractTableRow,
+  type TextractTableCell,
+  type TextractFormField,
+  type TextractSignature,
+  type TextractHandwriting,
+  type TextractOptions,
+  type TextractQuery,
+} from './aws-textract-client';
+
+// Vision Document Analyzer (Multi-pass GPT-4o Vision)
+export {
+  VisionDocumentAnalyzer,
+  analyzeDocumentWithVision,
+  extractTextWithVision,
+  extractTablesWithVision,
+  detectSignaturesWithVision,
+  getVisionAnalyzer,
+  type VisionAnalysisResult,
+  type VisionPage,
+  type VisionTable,
+  type VisionSignature,
+  type VisionHandwriting,
+  type DocumentStructure,
+  type VisionAnalysisOptions,
+} from './vision-document-analyzer';
+
+// Hybrid OCR Orchestrator (Combines all engines)
+export {
+  HybridOCROrchestrator,
+  getHybridOCR,
+  processDocumentHybrid,
+  processDocumentFast,
+  processDocumentHighAccuracy,
+  processDocumentMax,
+  type OCRMode,
+  type HybridOCRResult,
+  type UnifiedTable,
+  type FormField,
+  type SignatureInfo,
+  type HandwritingInfo,
+  type DocumentStructureInfo,
+  type ProcessingMetadata,
+  type DocumentComplexity,
+  type HybridOCROptions,
+} from './hybrid-ocr-orchestrator';
+
 // Document Preprocessing
 export {
   DocumentPreprocessor,
