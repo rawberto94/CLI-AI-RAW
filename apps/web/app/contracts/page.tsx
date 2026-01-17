@@ -3689,7 +3689,7 @@ export default function ContractsPage() {
         }}
         onDeselectAll={() => setSelectedContracts(new Set())}
         onClearSelection={() => setSelectedContracts(new Set())}
-        onAction={async (action) => {
+        onAction={async (action, params) => {
           const actionId = typeof action === 'string' ? action : action.id;
           switch (actionId) {
             case 'export':
@@ -3731,6 +3731,95 @@ export default function ContractsPage() {
                 router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
               } else {
                 toast.warning('Please select exactly 2 contracts to compare');
+              }
+              break;
+            case 'reclassify':
+              // Handled by EnhancedBulkActionsBar via its own dialog
+              if (params?.classification) {
+                const { classification, signatureUpdate } = params as { classification: string; signatureUpdate?: string };
+                try {
+                  const response = await fetch('/api/contracts/bulk', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-data-mode': dataMode,
+                      'x-tenant-id': tenantId || '',
+                      'x-user-id': userId || 'system',
+                    },
+                    body: JSON.stringify({
+                      operation: 'reclassify',
+                      contractIds: Array.from(selectedContracts),
+                      classification,
+                      signatureUpdate,
+                    }),
+                  });
+                  const result = await response.json();
+                  if (result.success) {
+                    toast.success(result.message);
+                    router.refresh();
+                  } else {
+                    toast.error(result.error || 'Failed to reclassify documents');
+                  }
+                } catch (error) {
+                  toast.error('Failed to reclassify documents');
+                  console.error('Reclassify error:', error);
+                }
+              }
+              break;
+            case 'mark-signed':
+            case 'mark_signed':
+              try {
+                const signedResponse = await fetch('/api/contracts/bulk', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-data-mode': dataMode,
+                    'x-tenant-id': tenantId || '',
+                    'x-user-id': userId || 'system',
+                  },
+                  body: JSON.stringify({
+                    operation: 'mark-signed',
+                    contractIds: Array.from(selectedContracts),
+                  }),
+                });
+                const signedResult = await signedResponse.json();
+                if (signedResult.success) {
+                  toast.success(signedResult.message);
+                  router.refresh();
+                } else {
+                  toast.error(signedResult.error || 'Failed to mark as signed');
+                }
+              } catch (error) {
+                toast.error('Failed to mark as signed');
+                console.error('Mark signed error:', error);
+              }
+              break;
+            case 'mark-unsigned':
+            case 'mark_unsigned':
+              try {
+                const unsignedResponse = await fetch('/api/contracts/bulk', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'x-data-mode': dataMode,
+                    'x-tenant-id': tenantId || '',
+                    'x-user-id': userId || 'system',
+                  },
+                  body: JSON.stringify({
+                    operation: 'mark-unsigned',
+                    contractIds: Array.from(selectedContracts),
+                  }),
+                });
+                const unsignedResult = await unsignedResponse.json();
+                if (unsignedResult.success) {
+                  toast.success(unsignedResult.message);
+                  router.refresh();
+                } else {
+                  toast.error(unsignedResult.error || 'Failed to mark as unsigned');
+                }
+              } catch (error) {
+                toast.error('Failed to mark as unsigned');
+                console.error('Mark unsigned error:', error);
               }
               break;
             default:

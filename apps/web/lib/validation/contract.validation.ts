@@ -169,6 +169,27 @@ export const hierarchyLinkSchema = z.object({
 // BULK OPERATIONS VALIDATION
 // ============================================================================
 
+export const documentClassificationEnum = z.enum([
+  'contract',
+  'purchase_order',
+  'invoice',
+  'quote',
+  'proposal',
+  'work_order',
+  'letter_of_intent',
+  'memorandum',
+  'amendment',
+  'addendum',
+  'unknown',
+]);
+
+export const signatureStatusEnum = z.enum([
+  'signed',
+  'unsigned',
+  'partially_signed',
+  'unknown',
+]);
+
 export const bulkOperationSchema = z.object({
   operation: z.enum([
     'update_status',
@@ -179,6 +200,26 @@ export const bulkOperationSchema = z.object({
     'delete',
     'export',
     'share',
+    'reclassify',
+    'mark-signed',
+    'mark_signed',
+    'mark-unsigned',
+    'mark_unsigned',
+    'categorize',
+    'tag',
+    'analyze',
+    'ai-analyze',
+    'ai-summarize',
+    'ai-report',
+    'ai_report',
+    'email',
+    'duplicate',
+    'assign',
+    'status',
+    'compare',
+    'export-csv',
+    'export-json',
+    'export-pdf',
   ]),
   contractIds: z.array(z.string().uuid()).min(1).max(100),
   
@@ -186,6 +227,28 @@ export const bulkOperationSchema = z.object({
   status: contractStatusEnum.optional(),
   tags: z.array(z.string().max(50)).max(50).optional(),
   metadata: z.record(z.unknown()).optional(),
+  
+  // Reclassify operation fields
+  classification: documentClassificationEnum.optional(),
+  signatureUpdate: z.enum(['signed', 'unsigned', 'partially_signed', 'unknown', 'no_change']).optional(),
+  
+  // Tag operation fields
+  mode: z.enum(['add', 'remove', 'replace']).optional(),
+  
+  // Categorize operation fields
+  categoryId: z.string().uuid().optional(),
+  categoryName: z.string().max(100).optional(),
+  
+  // Email operation fields
+  recipients: z.array(z.string().email()).optional(),
+  subject: z.string().max(200).optional(),
+  message: z.string().max(2000).optional(),
+  
+  // Assign operation fields
+  assigneeId: z.string().uuid().optional(),
+  
+  // Status operation fields
+  newStatus: contractStatusEnum.optional(),
 });
 
 // ============================================================================

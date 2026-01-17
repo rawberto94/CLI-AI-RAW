@@ -520,6 +520,178 @@ export async function POST(request: NextRequest) {
           message: `Updated status to ${newStatus} for ${contractIds.length} contracts`
         })
 
+      case 'reclassify':
+        // Reclassify document types and optionally update signature status
+        const { classification, signatureUpdate } = body
+        
+        if (!classification) {
+          return NextResponse.json(
+            { success: false, error: 'Document classification is required' },
+            { status: 400 }
+          )
+        }
+
+        // Valid classification values
+        const validClassifications = [
+          'contract', 'purchase_order', 'invoice', 'quote', 'proposal',
+          'work_order', 'letter_of_intent', 'memorandum', 'amendment', 'addendum', 'unknown'
+        ]
+
+        if (!validClassifications.includes(classification)) {
+          return NextResponse.json(
+            { success: false, error: `Invalid classification: ${classification}. Valid values: ${validClassifications.join(', ')}` },
+            { status: 400 }
+          )
+        }
+
+        // Build the update data
+        interface ReclassifyUpdateData {
+          documentClassification: string;
+          signatureStatus?: string;
+          updatedAt: Date;
+        }
+
+        const reclassifyData: ReclassifyUpdateData = {
+          documentClassification: classification,
+          updatedAt: new Date()
+        }
+
+        // Optionally update signature status
+        if (signatureUpdate && signatureUpdate !== 'no_change') {
+          const validSignatureStatuses = ['signed', 'unsigned', 'partially_signed', 'unknown']
+          if (!validSignatureStatuses.includes(signatureUpdate)) {
+            return NextResponse.json(
+              { success: false, error: `Invalid signature status: ${signatureUpdate}` },
+              { status: 400 }
+            )
+          }
+          reclassifyData.signatureStatus = signatureUpdate
+        }
+
+        // Update contracts
+        await prisma.contract.updateMany({
+          where: { id: { in: contractIds }, tenantId },
+          data: reclassifyData
+        })
+
+        // Log activity for each contract
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            addActivityLogEntry({
+              action: 'DOCUMENT_RECLASSIFIED',
+              entityType: 'contract',
+              entityId: contractId,
+              userId,
+              metadata: {
+                classification,
+                signatureUpdate: signatureUpdate || 'unchanged',
+                bulk: true,
+                totalInBatch: contractIds.length
+              }
+            })
+          )
+        )
+
+        // Publish realtime events
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            publishRealtimeEvent({
+              event: 'contract:updated',
+              data: {
+                tenantId,
+                contractId,
+                documentClassification: classification,
+                signatureStatus: signatureUpdate || undefined
+              },
+              source: 'api:contracts/bulk',
+            })
+          )
+        )
+
+        return NextResponse.json({
+          success: true,
+          message: `Reclassified ${contractIds.length} document${contractIds.length > 1 ? 's' : ''} as "${classification}"${signatureUpdate && signatureUpdate !== 'no_change' ? ` and marked as ${signatureUpdate}` : ''}`,
+          updatedCount: contractIds.length,
+          classification,
+          signatureUpdate: signatureUpdate || null
+        })
+
+      case 'mark-signed':
+      case 'mark_signed':
+        // Mark documents as signed
+        await prisma.contract.updateMany({
+          where: { id: { in: contractIds }, tenantId },
+          data: {
+            signatureStatus: 'signed',
+            updatedAt: new Date()
+          }
+        })
+
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            addActivityLogEntry({
+              action: 'SIGNATURE_STATUS_UPDATED',
+              entityType: 'contract',
+              entityId: contractId,
+              userId,
+              metadata: { signatureStatus: 'signed', bulk: true }
+            })
+          )
+        )
+
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            publishRealtimeEvent({
+              event: 'contract:updated',
+              data: { tenantId, contractId, signatureStatus: 'signed' },
+              source: 'api:contracts/bulk',
+            })
+          )
+        )
+
+        return NextResponse.json({
+          success: true,
+          message: `Marked ${contractIds.length} document${contractIds.length > 1 ? 's' : ''} as signed`
+        })
+
+      case 'mark-unsigned':
+      case 'mark_unsigned':
+        // Mark documents as unsigned
+        await prisma.contract.updateMany({
+          where: { id: { in: contractIds }, tenantId },
+          data: {
+            signatureStatus: 'unsigned',
+            updatedAt: new Date()
+          }
+        })
+
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            addActivityLogEntry({
+              action: 'SIGNATURE_STATUS_UPDATED',
+              entityType: 'contract',
+              entityId: contractId,
+              userId,
+              metadata: { signatureStatus: 'unsigned', bulk: true }
+            })
+          )
+        )
+
+        await Promise.all(
+          contractIds.map((contractId: string) =>
+            publishRealtimeEvent({
+              event: 'contract:updated',
+              data: { tenantId, contractId, signatureStatus: 'unsigned' },
+              source: 'api:contracts/bulk',
+            })
+          )
+        )
+
+        return NextResponse.json({
+          success: true,
+          message: `Marked ${contractIds.length} document${contractIds.length > 1 ? 's' : ''} as unsigned`
+        })
+
       default:
         return NextResponse.json(
           { success: false, error: `Invalid operation: ${operation}` },

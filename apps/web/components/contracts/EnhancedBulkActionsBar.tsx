@@ -30,6 +30,14 @@ import {
   Users,
   Brain,
   FileBarChart,
+  FileCheck,
+  FileQuestion,
+  ShoppingCart,
+  Receipt,
+  PenLine,
+  ClipboardList,
+  FileEdit,
+  FilePlus2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,7 +112,10 @@ export type BulkActionType =
   | "ai-summarize"
   | "ai-report"
   | "categorize"
-  | "compare";
+  | "compare"
+  | "reclassify"
+  | "mark-signed"
+  | "mark-unsigned";
 
 export interface BulkActionResult {
   success: number;
@@ -340,22 +351,50 @@ const ExportDialog = memo(function ExportDialog({
     includeMetadata: true,
     includeHistory: false,
     includeAnalysis: true,
+    includeDocumentClassification: true,
+    includeSignatureStatus: true,
+  });
+  const [docTypeFilters, setDocTypeFilters] = useState<Record<string, boolean>>({
+    contract: true,
+    purchase_order: true,
+    invoice: true,
+    quote: true,
+    work_order: true,
+    amendment: true,
+    addendum: true,
+    letter_of_intent: true,
+    memorandum: true,
   });
 
   const handleExport = () => {
-    onExport(format, options);
+    // Combine options with document type filters
+    const exportOptions = {
+      ...options,
+      documentTypeFilters: Object.entries(docTypeFilters)
+        .filter(([, included]) => included)
+        .map(([type]) => type),
+    };
+    onExport(format, exportOptions as Record<string, boolean>);
     onOpenChange(false);
   };
 
+  const toggleAllDocTypes = (value: boolean) => {
+    setDocTypeFilters(
+      Object.fromEntries(Object.keys(docTypeFilters).map((k) => [k, value]))
+    );
+  };
+
+  const selectedDocTypeCount = Object.values(docTypeFilters).filter(Boolean).length;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Export {count} Contracts</DialogTitle>
-          <DialogDescription>Choose export format and options.</DialogDescription>
+          <DialogDescription>Choose export format, document types, and options.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
           {/* Format Selection */}
           <div className="space-y-2">
             <Label>Format</Label>
@@ -374,14 +413,73 @@ const ExportDialog = memo(function ExportDialog({
             </Select>
           </div>
 
+          {/* Document Type Filters */}
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">
+                Document Types ({selectedDocTypeCount} selected)
+              </Label>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => toggleAllDocTypes(true)}
+                >
+                  All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => toggleAllDocTypes(false)}
+                >
+                  None
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'contract', label: 'Contracts', icon: FileText },
+                { value: 'purchase_order', label: 'Purchase Orders', icon: ShoppingCart },
+                { value: 'invoice', label: 'Invoices', icon: Receipt },
+                { value: 'quote', label: 'Quotes', icon: FileQuestion },
+                { value: 'work_order', label: 'Work Orders', icon: ClipboardList },
+                { value: 'amendment', label: 'Amendments', icon: FileEdit },
+                { value: 'addendum', label: 'Addenda', icon: FilePlus2 },
+                { value: 'letter_of_intent', label: 'Letters of Intent', icon: Mail },
+                { value: 'memorandum', label: 'Memoranda', icon: FileText },
+              ].map(({ value, label, icon: Icon }) => (
+                <div key={value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`doctype-${value}`}
+                    checked={docTypeFilters[value]}
+                    onCheckedChange={(checked) =>
+                      setDocTypeFilters((prev) => ({ ...prev, [value]: !!checked }))
+                    }
+                  />
+                  <Label
+                    htmlFor={`doctype-${value}`}
+                    className="text-xs font-normal cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                    {label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Options */}
           <div className="space-y-3">
-            <Label>Include</Label>
+            <Label>Include in Export</Label>
             {Object.entries({
               includeAttachments: "Attachments",
               includeMetadata: "Metadata & Details",
               includeHistory: "Activity History",
               includeAnalysis: "AI Analysis Results",
+              includeDocumentClassification: "Document Classification",
+              includeSignatureStatus: "Signature Status",
             }).map(([key, label]) => (
               <div key={key} className="flex items-center gap-2">
                 <Checkbox
@@ -403,7 +501,7 @@ const ExportDialog = memo(function ExportDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleExport} disabled={isLoading}>
+          <Button onClick={handleExport} disabled={isLoading || selectedDocTypeCount === 0}>
             {isLoading ? (
               <>
                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -413,6 +511,167 @@ const ExportDialog = memo(function ExportDialog({
               <>
                 <Download className="w-4 h-4 mr-2" />
                 Export
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+});
+
+// Reclassify Dialog - for changing document classification
+interface ReclassifyDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  count: number;
+  onReclassify: (classification: string, updateSignature?: string) => void;
+  isLoading?: boolean;
+}
+
+const DOCUMENT_CLASSIFICATIONS = [
+  { value: 'contract', label: 'Contract', icon: FileCheck, color: 'text-emerald-600' },
+  { value: 'purchase_order', label: 'Purchase Order', icon: ShoppingCart, color: 'text-amber-600' },
+  { value: 'invoice', label: 'Invoice', icon: Receipt, color: 'text-blue-600' },
+  { value: 'quote', label: 'Quote / Proposal', icon: FileQuestion, color: 'text-purple-600' },
+  { value: 'work_order', label: 'Work Order', icon: FileText, color: 'text-orange-600' },
+  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-cyan-600' },
+  { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-rose-600' },
+  { value: 'letter_of_intent', label: 'Letter of Intent', icon: FileText, color: 'text-teal-600' },
+  { value: 'memorandum', label: 'Memorandum', icon: FileText, color: 'text-slate-600' },
+];
+
+const SIGNATURE_OPTIONS = [
+  { value: 'signed', label: 'Mark as Signed' },
+  { value: 'unsigned', label: 'Mark as Unsigned' },
+  { value: 'partially_signed', label: 'Mark as Partially Signed' },
+  { value: 'no_change', label: 'Keep Current Status' },
+];
+
+const ReclassifyDialog = memo(function ReclassifyDialog({
+  open,
+  onOpenChange,
+  count,
+  onReclassify,
+  isLoading,
+}: ReclassifyDialogProps) {
+  const [classification, setClassification] = useState('contract');
+  const [signatureUpdate, setSignatureUpdate] = useState('no_change');
+
+  const handleReclassify = () => {
+    onReclassify(classification, signatureUpdate === 'no_change' ? undefined : signatureUpdate);
+    onOpenChange(false);
+  };
+
+  const selectedClassification = DOCUMENT_CLASSIFICATIONS.find(c => c.value === classification);
+  const isNonContract = classification !== 'contract' && classification !== 'amendment' && classification !== 'addendum';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[450px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileCheck className="w-5 h-5 text-primary" />
+            Reclassify {count} Document{count > 1 ? 's' : ''}
+          </DialogTitle>
+          <DialogDescription>
+            Change the document classification and optionally update signature status.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Document Classification */}
+          <div className="space-y-2">
+            <Label>Document Classification</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {DOCUMENT_CLASSIFICATIONS.map((option) => {
+                const Icon = option.icon;
+                const isSelected = classification === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setClassification(option.value)}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border text-left transition-all",
+                      isSelected
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:border-primary/50 hover:bg-muted/50"
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4", option.color)} />
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Non-contract warning */}
+          {isNonContract && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800 dark:text-amber-200">
+                <p className="font-medium">Non-contract classification</p>
+                <p className="text-xs mt-0.5 text-amber-700 dark:text-amber-300">
+                  These documents will be flagged as non-binding documents in the repository.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Signature Status Update */}
+          <div className="space-y-2">
+            <Label>Signature Status (Optional)</Label>
+            <Select value={signatureUpdate} onValueChange={setSignatureUpdate}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SIGNATURE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Summary */}
+          <div className="p-3 rounded-lg bg-muted/50 border">
+            <div className="text-sm">
+              <span className="text-muted-foreground">Will update </span>
+              <span className="font-semibold">{count} document{count > 1 ? 's' : ''}</span>
+              <span className="text-muted-foreground"> to </span>
+              <span className={cn("font-semibold", selectedClassification?.color)}>
+                {selectedClassification?.label}
+              </span>
+              {signatureUpdate !== 'no_change' && (
+                <>
+                  <span className="text-muted-foreground"> and mark as </span>
+                  <span className="font-semibold">
+                    {SIGNATURE_OPTIONS.find(o => o.value === signatureUpdate)?.label.replace('Mark as ', '')}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleReclassify} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <FileCheck className="w-4 h-4 mr-2" />
+                Update Classification
               </>
             )}
           </Button>
@@ -445,6 +704,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [reclassifyDialogOpen, setReclassifyDialogOpen] = useState(false);
 
   // Processing state
   const [processing, setProcessing] = useState<BulkActionType | null>(null);
@@ -481,6 +741,13 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
   const handleExport = useCallback(
     async (format: string, options: Record<string, boolean>) => {
       await handleAction("export", { format, options });
+    },
+    [handleAction]
+  );
+
+  const handleReclassify = useCallback(
+    async (classification: string, signatureUpdate?: string) => {
+      await handleAction("reclassify", { classification, signatureUpdate });
     },
     [handleAction]
   );
@@ -670,7 +937,20 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" className="w-48">
+                <DropdownMenuContent align="center" className="w-56">
+                  <DropdownMenuItem onClick={() => setReclassifyDialogOpen(true)}>
+                    <FileCheck className="w-4 h-4 mr-2 text-teal-500" />
+                    Reclassify Documents
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAction("mark-signed")}>
+                    <PenLine className="w-4 h-4 mr-2 text-emerald-500" />
+                    Mark as Signed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAction("mark-unsigned")}>
+                    <AlertTriangle className="w-4 h-4 mr-2 text-amber-500" />
+                    Mark as Unsigned
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleAction("categorize")}>
                     <Sparkles className="w-4 h-4 mr-2" />
                     Auto-Categorize
@@ -773,6 +1053,14 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
         count={selectedCount}
         onExport={handleExport}
         isLoading={processing === "export"}
+      />
+
+      <ReclassifyDialog
+        open={reclassifyDialogOpen}
+        onOpenChange={setReclassifyDialogOpen}
+        count={selectedCount}
+        onReclassify={handleReclassify}
+        isLoading={processing === "reclassify"}
       />
     </>
   );
