@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as any).tenantId || 'demo';
+    const tenantId = session.user.tenantId || 'demo';
 
     // Get all contracts with their classification and signature status
     const contracts = await prisma.contract.findMany({

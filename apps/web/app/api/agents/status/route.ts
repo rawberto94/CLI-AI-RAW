@@ -5,9 +5,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Authentication check
+    const session = await getServerSession();
+    if (!session?.user?.tenantId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    const tenantId = session.user.tenantId;
+
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -20,8 +31,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Verify contract belongs to tenant before proceeding
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true },
+    });
+
+    if (!contract) {
+      return NextResponse.json(
+        { error: 'Contract not found or access denied' },
+        { status: 404 }
+      );
+    }
+
     // Build filter
-    const where: any = { contractId };
+    const where: { contractId: string; agentName?: string } = { contractId };
     if (agentName) {
       where.agentName = agentName;
     }

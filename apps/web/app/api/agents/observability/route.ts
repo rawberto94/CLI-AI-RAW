@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
 
 // =============================================================================
 // TYPES
@@ -266,8 +267,14 @@ function generateMockMetrics(_tenantId: string): AgentMetrics {
 
 export async function GET(request: NextRequest) {
   try {
+    // Authentication check
+    const session = await getServerSession();
+    if (!session?.user?.tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+    
     const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId') || 'default';
     const type = searchParams.get('type') || 'all'; // 'traces', 'metrics', 'all'
     const status = searchParams.get('status'); // Filter by status
     const agentType = searchParams.get('agentType'); // Filter by agent type
@@ -316,6 +323,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Authentication check
+    const session = await getServerSession();
+    if (!session?.user?.tenantId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+    
     const body = await request.json();
     const { action, trace, step, traceId } = body;
 
@@ -325,6 +339,7 @@ export async function POST(request: NextRequest) {
         const newTrace: AgentTrace = {
           id: `trace-${Date.now()}`,
           ...trace,
+          tenantId,
           startTime: new Date().toISOString(),
           status: 'running',
           steps: [],

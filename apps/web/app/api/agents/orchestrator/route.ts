@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId || 'default';
+    const tenantId = session.user.tenantId || 'default';
     const { searchParams } = new URL(request.url);
     const resource = searchParams.get('resource') || 'status';
     
@@ -33,13 +33,13 @@ export async function GET(request: NextRequest) {
         });
 
       case 'goals':
-        const status = searchParams.get('status') as any;
+        const goalStatus = searchParams.get('status') || undefined;
         const limit = parseInt(searchParams.get('limit') || '20');
         const offset = parseInt(searchParams.get('offset') || '0');
         
         return NextResponse.json({
           success: true,
-          data: orchestrator.getGoals(tenantId, { status, limit, offset })
+          data: orchestrator.getGoals(tenantId, { status: goalStatus, limit, offset })
         });
 
       case 'goal':
