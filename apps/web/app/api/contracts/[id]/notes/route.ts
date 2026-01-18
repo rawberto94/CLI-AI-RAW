@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 
 /**
  * GET /api/contracts/[id]/notes
  * Get all notes for a contract
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
     const { id: contractId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
     
     // Get notes (using ContractComment model with special type)
     const notes = await prisma.contractComment.findMany({
@@ -67,9 +72,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
+    const userId = session.user.id
     const { id: contractId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
-    const userId = request.headers.get('x-user-id') || 'demo-user'
     
     const body = await request.json()
     const { content, mentions = [] } = body

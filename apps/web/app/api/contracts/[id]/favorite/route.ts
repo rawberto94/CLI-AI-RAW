@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 
 /**
  * POST /api/contracts/[id]/favorite
@@ -10,11 +11,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
+    const userId = session.user.id
     const { id: contractId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
-    
-    // Get user ID from session or header
-    const userId = request.headers.get('x-user-id') || 'demo-user'
     
     const body = await request.json()
     const { favorite } = body
@@ -110,12 +113,16 @@ export async function POST(
  * Check if a contract is favorited by the current user
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const userId = session.user.id
     const { id: contractId } = await params
-    const userId = request.headers.get('x-user-id') || 'demo-user'
     
     // Get user preferences
     const userPrefs = await prisma.userPreferences.findUnique({

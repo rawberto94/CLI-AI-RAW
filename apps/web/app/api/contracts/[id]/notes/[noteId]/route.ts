@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
 
 /**
  * GET /api/contracts/[id]/notes/[noteId]
  * Get a single note
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
     const { id: contractId, noteId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
     
     const note = await prisma.contractComment.findFirst({
       where: {
@@ -61,9 +66,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
+    const userId = session.user.id
     const { id: contractId, noteId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
-    const userId = request.headers.get('x-user-id') || 'demo-user'
     
     const body = await request.json()
     const { content, isPinned } = body
@@ -165,13 +174,17 @@ export async function PATCH(
  * Delete a note
  */
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
+    const userId = session.user.id
     const { id: contractId, noteId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
-    const userId = request.headers.get('x-user-id') || 'demo-user'
     
     // Find the note
     const existingNote = await prisma.contractComment.findFirst({
