@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { requiresApprovalWorkflow, getContractLifecycle, suggestWorkflow } from '@/lib/contract-helpers';
 import { autoAssignWorkflowSteps } from '@/lib/workflow-auto-assign';
@@ -137,16 +137,12 @@ const workflowTemplates = {
 
 export async function POST(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const userId = request.headers.get('x-user-id') || 'current-user';
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body = await request.json();
     
     const {
