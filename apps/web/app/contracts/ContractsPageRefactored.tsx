@@ -404,7 +404,7 @@ export default function ContractsPageRefactored() {
     });
 
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [contracts, searchQuery, statusFilter, categoryFilter, sortField, sortDirection]);
 
   // Pagination
@@ -417,7 +417,7 @@ export default function ContractsPageRefactored() {
   // Uncategorized count
   const uncategorizedCount = useMemo(() => {
     return contracts.filter((c: Contract) => !c.category).length;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [contracts]);
 
   // Selection handlers

@@ -264,7 +264,7 @@ export function ApprovalNotificationBell() {
     if (connected) {
       subscribeToApprovals();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [connected, subscribeToApprovals]);
 
   // Merge websocket notifications with local state
@@ -274,7 +274,7 @@ export function ApprovalNotificationBell() {
       const newNotifs = approvalNotifications.filter((n: ApprovalNotification) => !ids.has(n.id));
       return [...newNotifs, ...prev].slice(0, 50);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [approvalNotifications]);
 
   // Simulate some notifications for demo purposes when not connected
@@ -311,7 +311,7 @@ export function ApprovalNotificationBell() {
       ];
       setLocalNotifications(demoNotifications);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [connected, localNotifications.length]);
 
   const handleDismiss = (id: string) => {

@@ -21,7 +21,7 @@ type InternalProcessingJob = ProcessingJob & {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __CONTRACT_PROCESSING_JOBS__: Map<string, InternalProcessingJob> | undefined;
 }
 

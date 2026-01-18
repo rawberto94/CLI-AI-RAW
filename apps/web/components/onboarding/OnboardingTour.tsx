@@ -262,7 +262,7 @@ export function OnboardingTour({
     } else if (e.key === 'Escape') {
       onSkip();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isOpen, handleNext, handlePrev, onSkip]);
 
   useEffect(() => {

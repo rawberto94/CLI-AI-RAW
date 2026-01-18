@@ -46,7 +46,7 @@ export interface Job {
 // Next.js App Router can bundle route handlers separately, so module-level singletons may duplicate.
 // Stash the Map on globalThis to ensure a single shared instance.
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __WEB_JOBS_STORE__: Map<string, Job> | undefined
 }
 

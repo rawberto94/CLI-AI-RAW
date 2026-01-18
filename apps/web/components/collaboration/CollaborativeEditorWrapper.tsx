@@ -248,7 +248,7 @@ export function CollaborativeEditorWrapper({
         lastUpdate: new Date(),
       });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [updateCursor, onCursorMove]
   );
 

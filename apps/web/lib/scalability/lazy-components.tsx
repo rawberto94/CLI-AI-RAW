@@ -74,7 +74,7 @@ function DefaultErrorFallback({ error, reset }: { error: Error; reset: () => voi
  * Create a lazily-loaded component with error boundary and loading state
  */
 export function lazyComponent<P extends Record<string, unknown> = Record<string, unknown>>(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   importFn: () => Promise<{ default: ComponentType<any> }>,
   config: LazyLoadConfig<P> = {}
 ) {

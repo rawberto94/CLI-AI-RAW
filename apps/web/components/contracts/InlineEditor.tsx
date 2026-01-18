@@ -165,7 +165,7 @@ export function InlineEditor({
     })
 
     return unsubscribe
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [enableCollaboration, fieldId, onEvent])
 
   // Validate value

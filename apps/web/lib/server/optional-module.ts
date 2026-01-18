@@ -7,7 +7,7 @@ import 'server-only';
  */
 export async function optionalImport<T = unknown>(moduleId: string): Promise<T | null> {
   try {
-    // eslint-disable-next-line no-new-func
+     
     const importer = new Function('m', 'return import(m)') as (m: string) => Promise<T>;
     return await importer(moduleId);
   } catch {

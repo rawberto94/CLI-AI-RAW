@@ -133,7 +133,7 @@ function observeCLS(callback: (metric: PerformanceMetric) => void): () => void {
   if (typeof PerformanceObserver === 'undefined') return () => {};
 
   let clsValue = 0;
-  let clsEntries: PerformanceEntry[] = [];
+  const clsEntries: PerformanceEntry[] = [];
 
   const observer = new PerformanceObserver((list) => {
     const entries = list.getEntries() as any[];
