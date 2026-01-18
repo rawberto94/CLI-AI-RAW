@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
 // Types
 interface Signer {
@@ -25,15 +25,11 @@ interface CreateSignatureRequest {
 // GET /api/signatures - List signature requests
 export async function GET(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { error: 'Tenant ID is required', success: false },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
 
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
@@ -96,17 +92,12 @@ export async function GET(request: NextRequest) {
 // POST /api/signatures - Create signature request
 export async function POST(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { error: 'Tenant ID is required', success: false },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const userId = request.headers.get('x-user-id') || 'system';
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body: CreateSignatureRequest = await request.json();
     const { contractId, signers, message, expiresAt, provider = 'manual' } = body;
 

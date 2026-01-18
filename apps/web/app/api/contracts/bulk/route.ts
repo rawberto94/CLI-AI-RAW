@@ -10,21 +10,18 @@ import {
   triggerSignatureStatusChanged,
   triggerNonContractDetected,
 } from '@/lib/webhook-triggers'
+import { getServerSession } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const tenantId = session.user.tenantId
+    const userId = session.user.id
     const body = await request.json()
     const dataMode = request.headers.get('x-data-mode') || 'real'
-    const tenantId = request.headers.get('x-tenant-id')
-    const userId = request.headers.get('x-user-id') || 'system'
-
-    // Require tenant ID for data isolation
-    if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      )
-    }
 
     // Validate request body with Zod schema
     try {
