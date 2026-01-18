@@ -26,11 +26,11 @@ import {
 // Types
 interface AgentGoalStep {
   id: string;
-  stepOrder: number;
-  action: string;
-  description?: string;
+  order: number;
+  name: string;
+  type: string;
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
-  result?: Record<string, unknown>;
+  output?: Record<string, unknown>;
   startedAt?: string;
   completedAt?: string;
 }
@@ -40,11 +40,11 @@ interface AgentGoal {
   title: string;
   description?: string;
   status: 'PENDING' | 'PLANNING' | 'AWAITING_APPROVAL' | 'EXECUTING' | 'PAUSED' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
-  agentType: string;
-  input?: Record<string, unknown>;
+  type: string;
+  context?: Record<string, unknown>;
   plan?: Record<string, unknown>;
   progress: number;
-  feedback?: string;
+  error?: string;
   createdAt: string;
   approvedAt?: string;
   approvedBy?: string;
@@ -111,10 +111,10 @@ function StepList({ steps, expanded }: { steps: AgentGoalStep[]; expanded: boole
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900">
-                  {index + 1}. {step.action}
+                  {index + 1}. {step.name}
                 </p>
-                {step.description && (
-                  <p className="text-xs text-gray-500 mt-0.5">{step.description}</p>
+                {step.type && (
+                  <p className="text-xs text-gray-500 mt-0.5">Type: {step.type}</p>
                 )}
               </div>
             </div>
@@ -176,7 +176,7 @@ function GoalCard({
             <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
               <span className="flex items-center gap-1">
                 <User className="h-3 w-3" />
-                {goal.agentType}
+                {goal.type}
               </span>
               <span>
                 Created {new Date(goal.createdAt).toLocaleString()}
@@ -269,11 +269,11 @@ function GoalCard({
           </div>
         )}
 
-        {/* Existing feedback */}
-        {goal.feedback && (
+        {/* Existing feedback/error */}
+        {goal.error && (
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>Feedback:</strong> {goal.feedback}
+              <strong>Notes:</strong> {goal.error}
             </p>
           </div>
         )}
@@ -282,12 +282,12 @@ function GoalCard({
       {/* Expanded content */}
       {expanded && (
         <div className="px-4 pb-4">
-          {/* Input data */}
-          {goal.input && Object.keys(goal.input).length > 0 && (
+          {/* Input data (context) */}
+          {goal.context && Object.keys(goal.context).length > 0 && (
             <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Input Data</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Input Context</h4>
               <pre className="text-xs text-gray-600 overflow-x-auto">
-                {JSON.stringify(goal.input, null, 2)}
+                {JSON.stringify(goal.context, null, 2)}
               </pre>
             </div>
           )}

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { AgentGoalStatus } from '@prisma/client';
 
 // GET - List goals awaiting approval
 export async function GET(request: NextRequest) {
@@ -26,9 +27,9 @@ export async function GET(request: NextRequest) {
     };
 
     if (status === 'awaiting') {
-      where.status = 'AWAITING_APPROVAL';
+      where.status = AgentGoalStatus.AWAITING_APPROVAL;
     } else if (status) {
-      where.status = status.toUpperCase();
+      where.status = status.toUpperCase() as AgentGoalStatus;
     }
 
     // Fetch goals with steps
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
         where,
         include: {
           steps: {
-            orderBy: { stepOrder: 'asc' },
+            orderBy: { order: 'asc' },
           },
           triggers: true,
         },
@@ -114,16 +115,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update goal based on action
-    let newStatus: string;
     let updatedGoal;
 
     switch (action) {
       case 'approve':
-        newStatus = 'EXECUTING';
         updatedGoal = await prisma.agentGoal.update({
           where: { id: goalId },
           data: {
-            status: newStatus,
+            status: AgentGoalStatus.EXECUTING,
             approvedBy: session.user.id,
             approvedAt: new Date(),
           },
@@ -134,12 +133,11 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'reject':
-        newStatus = 'CANCELLED';
         updatedGoal = await prisma.agentGoal.update({
           where: { id: goalId },
           data: {
-            status: newStatus,
-            feedback,
+            status: AgentGoalStatus.CANCELLED,
+            error: feedback, // Store rejection reason in error field
             completedAt: new Date(),
           },
         });
@@ -158,7 +156,7 @@ export async function POST(request: NextRequest) {
           where: { id: goalId },
           data: {
             plan: body.modifiedPlan,
-            feedback,
+            error: feedback, // Store modification notes
           },
         });
         break;
@@ -177,7 +175,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         action: `AGENT_GOAL_${action.toUpperCase()}`,
         resourceType: 'AgentGoal',
-        resourceId: goalId,
+        entityId: goalId,
         details: {
           goalTitle: goal.title,
           previousStatus: goal.status,
