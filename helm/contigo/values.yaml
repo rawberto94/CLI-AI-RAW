@@ -1,0 +1,86 @@
+# Default values for ConTigo
+# This is for local/dev deployment
+
+replicaCount: 1
+
+image:
+  repository: contigo-web
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Web Application
+web:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+# Background Workers
+workers:
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# WebSocket Server
+websocket:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 3000
+  websocketPort: 3001
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  host: contigo.local
+  tls:
+    enabled: false
+
+# Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Environment variables (non-sensitive)
+env:
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+
+# External secrets (from Key Vault or k8s secrets)
+externalSecrets:
+  enabled: false
+
+# Azure specific
+azure:
+  enabled: false
+  keyVaultName: ""
+  tenantId: ""
+  storageAccount: ""
+  storageContainer: contracts
