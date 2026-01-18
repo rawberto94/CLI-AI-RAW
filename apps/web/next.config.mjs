@@ -38,6 +38,19 @@ const nextConfig = {
   },
   output: "standalone",
   
+  // External packages that should not be bundled (native modules)
+  serverExternalPackages: [
+    'ssh2',
+    'ssh2-sftp-client',
+    'cpu-features',
+    'sharp',
+    '@prisma/client',
+    'pino',
+    'pino-pretty',
+    'bullmq',
+    'ioredis',
+  ],
+  
   // Optimized static generation
   staticPageGenerationTimeout: 300,
   generateBuildId: async () => {
@@ -45,7 +58,7 @@ const nextConfig = {
   },
 
   // Transpile workspace packages
-  transpilePackages: ["@repo/data-orchestration", "@repo/utils", "@repo/workers"],
+  transpilePackages: ["@repo/data-orchestration", "@repo/utils", "@repo/workers", "@repo/agents"],
 
   // Performance optimizations
   compiler: {

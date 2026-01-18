@@ -50,7 +50,9 @@
     "multer": "^2.0.2",
     "node-cron": "^3.0.2",
     "pdf-parse": "^1.1.1",
-    "pptxgenjs": "^4.0.1"
+    "pgvector": "^0.1.8",
+    "pptxgenjs": "^4.0.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "dotenv-cli": "^10.0.0",
