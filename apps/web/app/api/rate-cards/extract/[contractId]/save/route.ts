@@ -185,7 +185,7 @@ export async function POST(_request: NextRequest, props: { params: Promise<{ con
     if (savedRateCards.length > 0) {
       Promise.all(
         savedRateCards.map((rc) =>
-          fetch(`${request.nextUrl.origin}/api/rate-cards/${rc.id}/benchmark`, {
+          fetch(`${_request.nextUrl.origin}/api/rate-cards/${rc.id}/benchmark`, {
             method: 'POST',
             headers: {
               'x-tenant-id': tenantId,

@@ -31,28 +31,7 @@ export async function GET(
     const { id } = await params;
 
     const notification = await prisma.obligationNotification.findFirst({
-      where: { id, tenantId, userId: session.user.id },
-      include: {
-        obligation: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            type: true,
-            dueDate: true,
-            status: true,
-            priority: true,
-          },
-        },
-        contract: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            parties: true,
-          },
-        },
-      },
+      where: { id, tenantId },
     });
 
     if (!notification) {
@@ -95,7 +74,7 @@ export async function PATCH(
 
     // Verify ownership
     const existing = await prisma.obligationNotification.findFirst({
-      where: { id, tenantId, userId: session.user.id },
+      where: { id, tenantId },
     });
 
     if (!existing) {
@@ -106,19 +85,16 @@ export async function PATCH(
     }
 
     const {
-      status, // 'pending', 'sent', 'read', 'dismissed'
+      status, // 'PENDING', 'SENT', 'FAILED', 'CANCELLED'
       scheduledFor,
       message,
-      channels,
       sentAt,
-      readAt,
-      metadata,
     } = body;
 
     const updateData: Record<string, unknown> = {};
 
     if (status !== undefined) {
-      if (!['pending', 'sent', 'read', 'dismissed'].includes(status)) {
+      if (!['PENDING', 'SENT', 'FAILED', 'CANCELLED'].includes(status)) {
         return NextResponse.json(
           { success: false, error: 'Invalid status' },
           { status: 400 }
@@ -127,40 +103,18 @@ export async function PATCH(
       updateData.status = status;
       
       // Auto-set timestamps based on status
-      if (status === 'sent' && !sentAt) {
+      if (status === 'SENT' && !sentAt) {
         updateData.sentAt = new Date();
-      }
-      if (status === 'read' && !readAt) {
-        updateData.readAt = new Date();
       }
     }
 
     if (scheduledFor !== undefined) updateData.scheduledFor = new Date(scheduledFor);
     if (message !== undefined) updateData.message = message;
-    if (channels !== undefined) updateData.channels = channels;
     if (sentAt !== undefined) updateData.sentAt = sentAt ? new Date(sentAt) : null;
-    if (readAt !== undefined) updateData.readAt = readAt ? new Date(readAt) : null;
-    if (metadata !== undefined) updateData.metadata = metadata;
 
     const notification = await prisma.obligationNotification.update({
       where: { id },
       data: updateData,
-      include: {
-        obligation: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            dueDate: true,
-          },
-        },
-        contract: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
     });
 
     return NextResponse.json({
@@ -195,7 +149,7 @@ export async function DELETE(
 
     // Verify ownership
     const existing = await prisma.obligationNotification.findFirst({
-      where: { id, tenantId, userId: session.user.id },
+      where: { id, tenantId },
     });
 
     if (!existing) {

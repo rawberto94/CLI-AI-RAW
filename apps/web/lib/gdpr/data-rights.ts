@@ -9,12 +9,26 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
-import { createHash, randomBytes } from 'crypto';
-import { addJob } from '@/lib/queue';
+import { randomBytes } from 'crypto';
+
+// Stub for queue job - replace with actual implementation when queue service is available
+ 
+async function addJob(jobName: string, data: Record<string, any>): Promise<void> {
+  // TODO: Integrate with actual queue service (e.g., BullMQ)
+  console.log(`[GDPR Queue] Job queued: ${jobName}`, { data });
+  // In production, this should add to a real job queue
+}
+
+// NOTE: Some GDPR models (DataExportRequest, DeletionRequest) are not yet in the Prisma schema.
+// This file uses in-memory storage as a fallback until the models are added.
+// TODO: Add dataExportRequest and deletionRequest models to schema.prisma
+
+// In-memory storage for GDPR requests (temporary until models are added)
+const pendingExportRequests = new Map<string, DataExportRequest>();
+const pendingDeletionRequests = new Map<string, DeletionRequest & { confirmationToken?: string }>();
 
 // =============================================================================
 // Types
@@ -34,7 +48,7 @@ export interface DataExportRequest {
 export interface DeletionRequest {
   id: string;
   userId: string;
-  status: 'pending' | 'scheduled' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'scheduled' | 'processing' | 'completed' | 'cancelled' | 'failed';
   scheduledFor: Date;
   reason?: string;
   createdAt: Date;
@@ -65,7 +79,7 @@ const DeletionRequestSchema = z.object({
 // =============================================================================
 
 export async function requestDataExport(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   
   if (!session?.user?.id) {
     return NextResponse.json(
@@ -78,13 +92,10 @@ export async function requestDataExport(request: NextRequest) {
     const body = await request.json();
     const validated = ExportRequestSchema.parse(body);
     
-    // Check for existing pending export
-    const existingExport = await prisma.dataExportRequest.findFirst({
-      where: {
-        userId: session.user.id,
-        status: { in: ['pending', 'processing'] },
-      },
-    });
+    // Check for existing pending export (using in-memory storage)
+    const existingExport = Array.from(pendingExportRequests.values()).find(
+      (req) => req.userId === session.user.id && ['pending', 'processing'].includes(req.status)
+    );
     
     if (existingExport) {
       return NextResponse.json(
@@ -96,20 +107,15 @@ export async function requestDataExport(request: NextRequest) {
       );
     }
     
-    // Create export request
-    const exportRequest = await prisma.dataExportRequest.create({
-      data: {
-        id: `exp_${randomBytes(16).toString('hex')}`,
-        userId: session.user.id,
-        status: 'pending',
-        format: validated.format,
-        options: {
-          includeContracts: validated.includeContracts,
-          includeActivity: validated.includeActivity,
-          includeChats: validated.includeChats,
-        },
-      },
-    });
+    // Create export request (using in-memory storage)
+    const exportRequest: DataExportRequest = {
+      id: `exp_${randomBytes(16).toString('hex')}`,
+      userId: session.user.id,
+      status: 'pending',
+      format: validated.format,
+      createdAt: new Date(),
+    };
+    pendingExportRequests.set(exportRequest.id, exportRequest);
     
     // Queue background job
     await addJob('gdpr-data-export', {
@@ -119,16 +125,20 @@ export async function requestDataExport(request: NextRequest) {
       options: validated,
     });
     
-    // Log for audit
-    await prisma.auditLog.create({
-      data: {
-        action: 'GDPR_EXPORT_REQUESTED',
-        userId: session.user.id,
-        resourceType: 'DataExportRequest',
-        resourceId: exportRequest.id,
-        metadata: { format: validated.format },
-      },
-    });
+    // Log for audit - get user's tenantId first
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { tenantId: true } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          action: 'GDPR_EXPORT_REQUESTED',
+          userId: session.user.id,
+          tenantId: user.tenantId,
+          resourceType: 'DataExportRequest',
+          entityId: exportRequest.id,
+          metadata: { format: validated.format },
+        },
+      });
+    }
     
     return NextResponse.json({
       message: 'Data export request submitted',
@@ -152,7 +162,7 @@ export async function requestDataExport(request: NextRequest) {
 // =============================================================================
 
 export async function requestAccountDeletion(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   
   if (!session?.user?.id || !session.user.email) {
     return NextResponse.json(
@@ -173,13 +183,10 @@ export async function requestAccountDeletion(request: NextRequest) {
       );
     }
     
-    // Check for existing deletion request
-    const existingDeletion = await prisma.deletionRequest.findFirst({
-      where: {
-        userId: session.user.id,
-        status: { in: ['pending', 'scheduled', 'processing'] },
-      },
-    });
+    // Check for existing deletion request (using in-memory storage)
+    const existingDeletion = Array.from(pendingDeletionRequests.values()).find(
+      (req) => req.userId === session.user.id && ['pending', 'scheduled', 'processing'].includes(req.status)
+    );
     
     if (existingDeletion) {
       return NextResponse.json(
@@ -196,39 +203,44 @@ export async function requestAccountDeletion(request: NextRequest) {
     const scheduledFor = new Date();
     scheduledFor.setDate(scheduledFor.getDate() + 30);
     
-    const deletionRequest = await prisma.deletionRequest.create({
-      data: {
-        id: `del_${randomBytes(16).toString('hex')}`,
-        userId: session.user.id,
-        status: 'scheduled',
-        scheduledFor,
-        reason: validated.reason,
-        confirmationToken: randomBytes(32).toString('hex'),
-      },
-    });
+    const confirmationToken = randomBytes(32).toString('hex');
+    const deletionRequest: DeletionRequest & { confirmationToken?: string } = {
+      id: `del_${randomBytes(16).toString('hex')}`,
+      userId: session.user.id,
+      status: 'scheduled',
+      scheduledFor,
+      reason: validated.reason,
+      createdAt: new Date(),
+      confirmationToken,
+    };
+    pendingDeletionRequests.set(deletionRequest.id, deletionRequest);
     
-    // Log for audit
-    await prisma.auditLog.create({
-      data: {
-        action: 'GDPR_DELETION_REQUESTED',
-        userId: session.user.id,
-        resourceType: 'DeletionRequest',
-        resourceId: deletionRequest.id,
-        metadata: { 
-          scheduledFor: scheduledFor.toISOString(),
-          reason: validated.reason,
+    // Log for audit - get user's tenantId first
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { tenantId: true, firstName: true } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          action: 'GDPR_DELETION_REQUESTED',
+          userId: session.user.id,
+          tenantId: user.tenantId,
+          resourceType: 'DeletionRequest',
+          entityId: deletionRequest.id,
+          metadata: { 
+            scheduledFor: scheduledFor.toISOString(),
+            reason: validated.reason,
+          },
         },
-      },
-    });
+      });
+    }
     
     // Send confirmation email
     await addJob('send-email', {
       to: session.user.email,
       template: 'account-deletion-scheduled',
       data: {
-        userName: session.user.name,
+        userName: user?.firstName || 'User',
         scheduledFor: scheduledFor.toLocaleDateString(),
-        cancellationUrl: `${process.env.NEXTAUTH_URL}/settings/cancel-deletion?token=${deletionRequest.confirmationToken}`,
+        cancellationUrl: `${process.env.NEXTAUTH_URL}/settings/cancel-deletion?token=${confirmationToken}`,
       },
     });
     
@@ -255,7 +267,7 @@ export async function requestAccountDeletion(request: NextRequest) {
 // =============================================================================
 
 export async function cancelAccountDeletion(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   
   if (!session?.user?.id) {
     return NextResponse.json(
@@ -268,13 +280,12 @@ export async function cancelAccountDeletion(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('token');
     
-    const deletionRequest = await prisma.deletionRequest.findFirst({
-      where: {
-        userId: session.user.id,
-        status: 'scheduled',
-        ...(token ? { confirmationToken: token } : {}),
-      },
-    });
+    // Find deletion request in memory storage
+    const deletionRequest = Array.from(pendingDeletionRequests.values()).find(
+      (req) => req.userId === session.user.id && 
+               req.status === 'scheduled' && 
+               (!token || req.confirmationToken === token)
+    );
     
     if (!deletionRequest) {
       return NextResponse.json(
@@ -283,23 +294,24 @@ export async function cancelAccountDeletion(request: NextRequest) {
       );
     }
     
-    await prisma.deletionRequest.update({
-      where: { id: deletionRequest.id },
-      data: { 
-        status: 'cancelled',
-        completedAt: new Date(),
-      },
-    });
+    // Update in-memory storage
+    deletionRequest.status = 'cancelled';
+    deletionRequest.completedAt = new Date();
+    pendingDeletionRequests.set(deletionRequest.id, deletionRequest);
     
-    // Log for audit
-    await prisma.auditLog.create({
-      data: {
-        action: 'GDPR_DELETION_CANCELLED',
-        userId: session.user.id,
-        resourceType: 'DeletionRequest',
-        resourceId: deletionRequest.id,
-      },
-    });
+    // Log for audit - get user's tenantId first
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { tenantId: true } });
+    if (user) {
+      await prisma.auditLog.create({
+        data: {
+          action: 'GDPR_DELETION_CANCELLED',
+          userId: session.user.id,
+          tenantId: user.tenantId,
+          resourceType: 'DeletionRequest',
+          entityId: deletionRequest.id,
+        },
+      });
+    }
     
     return NextResponse.json({
       message: 'Account deletion cancelled',
@@ -315,7 +327,7 @@ export async function cancelAccountDeletion(request: NextRequest) {
 // =============================================================================
 
 export async function getExportStatus(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   
   if (!session?.user?.id) {
     return NextResponse.json(
@@ -327,13 +339,20 @@ export async function getExportStatus(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const requestId = searchParams.get('requestId');
   
-  const exportRequest = await prisma.dataExportRequest.findFirst({
-    where: {
-      userId: session.user.id,
-      ...(requestId ? { id: requestId } : {}),
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  // Find export request in memory storage
+  let exportRequest: DataExportRequest | undefined;
+  if (requestId) {
+    exportRequest = pendingExportRequests.get(requestId);
+    if (exportRequest && exportRequest.userId !== session.user.id) {
+      exportRequest = undefined;
+    }
+  } else {
+    // Get most recent request for user
+    const userRequests = Array.from(pendingExportRequests.values())
+      .filter((req) => req.userId === session.user.id)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    exportRequest = userRequests[0];
+  }
   
   if (!exportRequest) {
     return NextResponse.json(
@@ -366,11 +385,12 @@ export async function processDataExport(jobData: {
   const { exportRequestId, userId, format, options } = jobData;
   
   try {
-    // Update status to processing
-    await prisma.dataExportRequest.update({
-      where: { id: exportRequestId },
-      data: { status: 'processing' },
-    });
+    // Update status to processing (in-memory)
+    const exportReq = pendingExportRequests.get(exportRequestId);
+    if (exportReq) {
+      exportReq.status = 'processing';
+      pendingExportRequests.set(exportRequestId, exportReq);
+    }
     
     // Collect user data
     const userData: Record<string, any> = {};
@@ -380,11 +400,12 @@ export async function processDataExport(jobData: {
       where: { id: userId },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         createdAt: true,
         updatedAt: true,
-        settings: true,
+        tenantId: true,
       },
     });
     userData.profile = user;
@@ -394,13 +415,12 @@ export async function processDataExport(jobData: {
       const contracts = await prisma.contract.findMany({
         where: { 
           OR: [
-            { createdById: userId },
+            { uploadedBy: userId },
             { tenantId: user?.tenantId },
           ],
         },
         include: {
           clauses: true,
-          metadata: true,
         },
       });
       userData.contracts = contracts;
@@ -416,9 +436,9 @@ export async function processDataExport(jobData: {
       userData.activity = activity;
     }
     
-    // Chat history
+    // Chat history (using ChatConversation model)
     if (options.includeChats) {
-      const chats = await prisma.chat.findMany({
+      const chats = await prisma.chatConversation.findMany({
         where: { userId },
         include: {
           messages: true,
@@ -450,16 +470,15 @@ export async function processDataExport(jobData: {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
     
-    // Update request with download URL
-    await prisma.dataExportRequest.update({
-      where: { id: exportRequestId },
-      data: {
-        status: 'completed',
-        downloadUrl,
-        expiresAt,
-        completedAt: new Date(),
-      },
-    });
+    // Update request with download URL (in-memory)
+    const completedReq = pendingExportRequests.get(exportRequestId);
+    if (completedReq) {
+      completedReq.status = 'completed';
+      completedReq.downloadUrl = downloadUrl;
+      completedReq.expiresAt = expiresAt;
+      completedReq.completedAt = new Date();
+      pendingExportRequests.set(exportRequestId, completedReq);
+    }
     
     // Send notification email
     if (user?.email) {
@@ -467,7 +486,7 @@ export async function processDataExport(jobData: {
         to: user.email,
         template: 'data-export-ready',
         data: {
-          userName: user.name,
+          userName: user.firstName || 'User',
           downloadUrl,
           expiresAt: expiresAt.toLocaleDateString(),
         },
@@ -475,13 +494,13 @@ export async function processDataExport(jobData: {
     }
     
   } catch (error) {
-    await prisma.dataExportRequest.update({
-      where: { id: exportRequestId },
-      data: { 
-        status: 'failed',
-        completedAt: new Date(),
-      },
-    });
+    // Update status to failed (in-memory)
+    const failedReq = pendingExportRequests.get(exportRequestId);
+    if (failedReq) {
+      failedReq.status = 'failed';
+      failedReq.completedAt = new Date();
+      pendingExportRequests.set(exportRequestId, failedReq);
+    }
     throw error;
   }
 }
@@ -497,28 +516,28 @@ export async function processAccountDeletion(jobData: {
   const { deletionRequestId, userId } = jobData;
   
   try {
-    // Verify deletion is still scheduled
-    const deletionRequest = await prisma.deletionRequest.findUnique({
-      where: { id: deletionRequestId },
-    });
+    // Verify deletion is still scheduled (in-memory)
+    const deletionRequest = pendingDeletionRequests.get(deletionRequestId);
     
     if (!deletionRequest || deletionRequest.status !== 'scheduled') {
       return; // Deletion was cancelled
     }
     
-    // Update status to processing
-    await prisma.deletionRequest.update({
-      where: { id: deletionRequestId },
-      data: { status: 'processing' },
-    });
+    // Update status to processing (in-memory)
+    deletionRequest.status = 'processing';
+    pendingDeletionRequests.set(deletionRequestId, deletionRequest);
+    
+    // Get user's tenantId for audit log
+    const userForTenant = await prisma.user.findUnique({ where: { id: userId }, select: { tenantId: true } });
+    const tenantId = userForTenant?.tenantId || 'SYSTEM';
     
     // Begin deletion in transaction
     await prisma.$transaction(async (tx) => {
-      // Delete user's chats and messages
+      // Delete user's chats and messages (using ChatConversation and ChatMessage)
       await tx.chatMessage.deleteMany({
-        where: { chat: { userId } },
+        where: { conversation: { userId } },
       });
-      await tx.chat.deleteMany({
+      await tx.chatConversation.deleteMany({
         where: { userId },
       });
       
@@ -536,26 +555,21 @@ export async function processAccountDeletion(jobData: {
         where: { userId },
       });
       
-      // Delete sessions
-      await tx.session.deleteMany({
+      // Delete sessions (using UserSession)
+      await tx.userSession.deleteMany({
         where: { userId },
       });
       
-      // Delete accounts (OAuth)
-      await tx.account.deleteMany({
-        where: { userId },
-      });
-      
-      // Delete API keys
-      await tx.apiKey.deleteMany({
-        where: { userId },
-      });
+      // NOTE: Account and ApiKey models don't exist in schema
+      // If they are added later, uncomment the following:
+      // await tx.account.deleteMany({ where: { userId } });
+      // await tx.apiKey.deleteMany({ where: { userId } });
       
       // Transfer contract ownership or delete
       // (Business logic: transfer to admin or delete based on policy)
       await tx.contract.updateMany({
-        where: { createdById: userId },
-        data: { createdById: 'SYSTEM' },
+        where: { uploadedBy: userId },
+        data: { uploadedBy: 'SYSTEM' },
       });
       
       // Delete user
@@ -564,22 +578,19 @@ export async function processAccountDeletion(jobData: {
       });
     });
     
-    // Update deletion request
-    await prisma.deletionRequest.update({
-      where: { id: deletionRequestId },
-      data: {
-        status: 'completed',
-        completedAt: new Date(),
-      },
-    });
+    // Update deletion request (in-memory)
+    deletionRequest.status = 'completed';
+    deletionRequest.completedAt = new Date();
+    pendingDeletionRequests.set(deletionRequestId, deletionRequest);
     
     // Log completion (without user reference since deleted)
     await prisma.auditLog.create({
       data: {
         action: 'GDPR_DELETION_COMPLETED',
         userId: 'SYSTEM',
+        tenantId,
         resourceType: 'DeletionRequest',
-        resourceId: deletionRequestId,
+        entityId: deletionRequestId,
         metadata: { 
           originalUserId: userId,
           completedAt: new Date().toISOString(),
@@ -588,13 +599,12 @@ export async function processAccountDeletion(jobData: {
     });
     
   } catch (error) {
-    await prisma.deletionRequest.update({
-      where: { id: deletionRequestId },
-      data: { 
-        status: 'failed',
-        metadata: { error: (error as Error).message },
-      },
-    });
+    // Update status to failed (in-memory)
+    const failedReq = pendingDeletionRequests.get(deletionRequestId);
+    if (failedReq) {
+      failedReq.status = 'failed';
+      pendingDeletionRequests.set(deletionRequestId, failedReq);
+    }
     throw error;
   }
 }

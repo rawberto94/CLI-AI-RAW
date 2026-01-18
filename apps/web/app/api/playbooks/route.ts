@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
       clauses = [],
       fallbackPositions = {},
       riskThresholds = {},
-      preferredLanguage = {},
       redFlags = [],
       isDefault = false,
     } = body;
@@ -77,9 +76,9 @@ export async function POST(request: NextRequest) {
       clauses,
       fallbackPositions,
       riskThresholds,
-      preferredLanguage,
       redFlags,
       isDefault,
+      createdBy: session.user.id,
     });
 
     return NextResponse.json({

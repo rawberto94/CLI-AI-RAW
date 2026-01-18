@@ -91,12 +91,12 @@ export async function POST(request: NextRequest) {
         title,
         category: category || 'general',
         potentialSavingsAmount: potentialSavings || 0,
-        probability: probability || 'medium',
-        timeToRealize: timeToRealize || 'medium',
+        confidence: probability || 'medium',
         status: 'IDENTIFIED',
-        priority: 'medium',
+        priority: 1,
         description: body.description || '',
-      }
+        contractId: body.contractId || null,
+      } as any
     });
     
     return NextResponse.json({
@@ -106,8 +106,7 @@ export async function POST(request: NextRequest) {
         title: opportunity.title,
         category: opportunity.category,
         potentialSavings: opportunity.potentialSavingsAmount,
-        probability: opportunity.probability,
-        timeToRealize: opportunity.timeToRealize,
+        probability: opportunity.confidence,
         status: opportunity.status.toLowerCase(),
         createdAt: opportunity.createdAt.toISOString()
       },

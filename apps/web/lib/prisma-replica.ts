@@ -76,7 +76,7 @@ export function createReplicaPrismaClient(config?: ReplicaConfig): PrismaClient 
             if (typeof operation === 'function') {
               // Route to appropriate client
               if (writeOperations.includes(modelProp)) {
-                return operation.bind(modelTarget);
+                return (operation as Function).bind(modelTarget);
               } else {
                 // Read operations go to replica
                 const replicaClient = getReplicaClient();

@@ -374,7 +374,7 @@ const ExportDialog = memo(function ExportDialog({
         .filter(([, included]) => included)
         .map(([type]) => type),
     };
-    onExport(format, exportOptions as Record<string, boolean>);
+    onExport(format, exportOptions as unknown as Record<string, boolean>);
     onOpenChange(false);
   };
 

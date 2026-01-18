@@ -493,7 +493,7 @@ export default function ProfileSettingsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account created</span>
-                    <span>{user.createdAt.toLocaleDateString()}</span>
+                    <span>{new Date(user.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               </CardContent>

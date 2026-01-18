@@ -4,12 +4,22 @@
  */
 
 import { prisma } from '@/lib/prisma';
-import { storageService } from '@/lib/storage/storage-service';
+import { getStorageProvider, type IStorageProvider } from '@/lib/storage/storage-factory';
 import pino from 'pino';
 import fs from 'fs/promises';
 import path from 'path';
 
 const logger = pino({ name: 'storage-cleanup-service' });
+
+// Lazy-initialized storage provider
+let storageProvider: IStorageProvider | null = null;
+
+function getStorage(): IStorageProvider {
+  if (!storageProvider) {
+    storageProvider = getStorageProvider();
+  }
+  return storageProvider;
+}
 
 export interface CleanupResult {
   orphanFilesDeleted: number;
@@ -185,7 +195,7 @@ export class StorageCleanupService {
       for (const file of orphanFiles) {
         try {
           if (!this.config.dryRun) {
-            await storageService.delete(file.path);
+            await getStorage().delete(file.path);
             logger.debug({ path: file.path }, 'Deleted orphan file');
           }
           
@@ -213,7 +223,8 @@ export class StorageCleanupService {
   }
 
   /**
-   * Clean up old artifact versions beyond retention period
+   * Clean up old contract versions beyond retention period
+   * Note: ArtifactVersion model does not exist - using ContractVersion instead
    */
   private async cleanupOldVersions(): Promise<{ count: number; errors: string[] }> {
     const result = { count: 0, errors: [] as string[] };
@@ -223,18 +234,18 @@ export class StorageCleanupService {
         Date.now() - this.config.oldVersionRetentionDays * 24 * 60 * 60 * 1000
       );
 
-      // Find old versions to delete (keep at least the latest version per artifact)
+      // Find old contract versions to delete (keep at least the latest version per contract)
       const oldVersions = await prisma.$queryRaw<Array<{ id: string }>>`
         WITH ranked_versions AS (
           SELECT 
             id,
-            "artifactId",
+            "contractId",
             "createdAt",
             ROW_NUMBER() OVER (
-              PARTITION BY "artifactId" 
+              PARTITION BY "contractId" 
               ORDER BY "createdAt" DESC
             ) as rn
-          FROM "ArtifactVersion"
+          FROM "ContractVersion"
         )
         SELECT id 
         FROM ranked_versions 
@@ -243,12 +254,12 @@ export class StorageCleanupService {
       `;
 
       if (oldVersions.length === 0) {
-        logger.debug('No old artifact versions to cleanup');
+        logger.debug('No old contract versions to cleanup');
         return result;
       }
 
       if (!this.config.dryRun) {
-        const deleteResult = await prisma.artifactVersion.deleteMany({
+        const deleteResult = await prisma.contractVersion.deleteMany({
           where: {
             id: { in: oldVersions.map(v => v.id) },
           },
@@ -280,14 +291,15 @@ export class StorageCleanupService {
     const files: Array<{ path: string; size: number }> = [];
     
     try {
-      // List files from storage service
-      const storageList = await storageService.list('contracts/');
+      // List files from storage provider - returns string[] of file names
+      const storage = getStorage();
+      const storageList = await storage.list('contracts/');
       
-      for (const item of storageList) {
-        if (item.name && !item.name.endsWith('/')) {
-          const metadata = await storageService.getMetadata(item.name).catch(() => null);
+      for (const filePath of storageList) {
+        if (filePath && !filePath.endsWith('/')) {
+          const metadata = await storage.getMetadata(filePath).catch(() => null);
           files.push({
-            path: item.name,
+            path: filePath,
             size: metadata?.size ?? 0,
           });
         }
@@ -306,19 +318,19 @@ export class StorageCleanupService {
     const paths: string[] = [];
 
     try {
-      // Get contract file paths
+      // Get contract storage paths
       const contracts = await prisma.contract.findMany({
-        select: { filePath: true },
-        where: { filePath: { not: null } },
+        select: { storagePath: true },
+        where: { storagePath: { not: null } },
       });
-      paths.push(...contracts.map(c => c.filePath!).filter(Boolean));
+      paths.push(...contracts.map(c => c.storagePath!).filter(Boolean));
 
-      // Get contract version file paths
+      // Get contract version file URLs
       const versions = await prisma.contractVersion.findMany({
-        select: { filePath: true },
-        where: { filePath: { not: null } },
+        select: { fileUrl: true },
+        where: { fileUrl: { not: null } },
       });
-      paths.push(...versions.map(v => v.filePath!).filter(Boolean));
+      paths.push(...versions.map(v => v.fileUrl!).filter(Boolean));
 
     } catch (error) {
       logger.warn({ error }, 'Failed to get DB file paths');

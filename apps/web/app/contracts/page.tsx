@@ -160,6 +160,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { ContractCompareWidget, generateDemoContracts as generateCompareContracts } from "@/components/contracts/ContractCompareWidget";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
+import { getTenantId } from "@/lib/tenant";
 
 // ============ SIGNATURE STATUS BADGE COMPONENT ============
 interface SignatureStatusBadgeProps {
@@ -1139,6 +1140,10 @@ const QUICK_PRESETS: Array<{
 export default function ContractsPage() {
   const router = useRouter();
   const { dataMode } = useDataMode();
+  
+  // Get tenant/user context for API calls
+  const tenantId = getTenantId();
+  const userId = 'system'; // Default user for bulk operations
 
   // Preserve list scroll position when navigating to contract details and back
   useEffect(() => {

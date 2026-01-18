@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
 
     const whereClause: Record<string, unknown> = {
       tenantId,
-      userId: session.user.id,
     };
 
     if (status) {
@@ -60,24 +59,6 @@ export async function GET(request: NextRequest) {
     const [notifications, total] = await Promise.all([
       prisma.obligationNotification.findMany({
         where: whereClause,
-        include: {
-          contract: {
-            select: {
-              id: true,
-              title: true,
-              status: true,
-            },
-          },
-          obligation: {
-            select: {
-              id: true,
-              title: true,
-              type: true,
-              dueDate: true,
-              status: true,
-            },
-          },
-        },
         orderBy: { scheduledFor: 'asc' },
         take: limit,
         skip: offset,
@@ -88,21 +69,19 @@ export async function GET(request: NextRequest) {
     // Get summary stats
     const [pendingCount, overdueCount, todayCount] = await Promise.all([
       prisma.obligationNotification.count({
-        where: { tenantId, userId: session.user.id, status: 'pending' },
+        where: { tenantId, status: 'PENDING' },
       }),
       prisma.obligationNotification.count({
         where: {
           tenantId,
-          userId: session.user.id,
-          status: 'pending',
+          status: 'PENDING',
           scheduledFor: { lt: now },
         },
       }),
       prisma.obligationNotification.count({
         where: {
           tenantId,
-          userId: session.user.id,
-          status: 'pending',
+          status: 'PENDING',
           scheduledFor: {
             gte: new Date(now.setHours(0, 0, 0, 0)),
             lt: new Date(now.setHours(23, 59, 59, 999)),
@@ -175,15 +154,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify obligation exists and belongs to tenant
-    const obligation = await prisma.obligation.findFirst({
-      where: { id: obligationId, contractId },
-      include: { contract: { select: { tenantId: true } } },
+    // Verify contract exists and belongs to tenant
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
     });
 
-    if (!obligation || obligation.contract.tenantId !== tenantId) {
+    if (!contract) {
       return NextResponse.json(
-        { success: false, error: 'Obligation not found' },
+        { success: false, error: 'Contract not found' },
         { status: 404 }
       );
     }
@@ -191,31 +169,13 @@ export async function POST(request: NextRequest) {
     const notification = await prisma.obligationNotification.create({
       data: {
         tenantId,
-        userId: session.user.id,
         obligationId,
         contractId,
         type,
         scheduledFor: new Date(scheduledFor),
         message: message || null,
-        channels: channels || ['in-app'],
-        status: 'pending',
-        metadata: metadata || undefined,
-      },
-      include: {
-        obligation: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            dueDate: true,
-          },
-        },
-        contract: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
+        status: 'PENDING',
+        recipients: metadata?.recipients || [],
       },
     });
 

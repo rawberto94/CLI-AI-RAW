@@ -422,16 +422,15 @@ export async function POST(request: NextRequest) {
 }
 
 // Get available workflow templates
-export async function GET(request: NextRequest) {
-  let tenantId: string;
-  try {
-    tenantId = await getTenantIdFromRequest(request);
-  } catch {
+export async function GET() {
+  const session = await getServerSession();
+  if (!session?.user?.tenantId) {
     return NextResponse.json(
-      { success: false, error: 'Tenant ID is required' },
-      { status: 400 }
+      { success: false, error: 'Unauthorized' },
+      { status: 401 }
     );
   }
+  const tenantId = session.user.tenantId;
 
   try {
     // Try to get custom workflows from database

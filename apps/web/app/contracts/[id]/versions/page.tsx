@@ -3,7 +3,7 @@
 import React, { use, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { VersionCompare, DocumentVersion } from '@/components/contracts/VersionCompare';
-import { VersionTimeline } from '@/components/contracts/VersionTimeline';
+import { VersionTimeline, ContractVersion } from '@/components/contracts/VersionTimeline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -230,7 +230,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
           <div className="space-y-6">
             {/* Visual Timeline */}
             <VersionTimeline
-              versions={timelineVersions}
+              versions={timelineVersions as ContractVersion[]}
               contractId={id}
               onCompare={handleTimelineCompare}
               onRevert={(versionId) => {

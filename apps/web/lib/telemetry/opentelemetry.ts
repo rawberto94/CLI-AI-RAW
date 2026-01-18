@@ -70,16 +70,11 @@ export function initTelemetry(): NodeSDK | null {
   const sdk = new NodeSDK({
     resource,
     traceExporter,
-    metricReader,
+    metricReader: metricReader as any,
     instrumentations: [
       getNodeAutoInstrumentations({
         // Instrument HTTP requests
         '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          ignoreIncomingPaths: ['/api/health', '/api/ready', '/_next'],
-        },
-        // Instrument fetch
-        '@opentelemetry/instrumentation-fetch': {
           enabled: true,
         },
         // Instrument Prisma

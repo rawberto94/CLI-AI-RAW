@@ -39,12 +39,10 @@ export async function POST(request: NextRequest) {
     const tenantId = session.user.tenantId || 'default';
 
     const legalReviewService = getLegalReviewService();
-    const result = await legalReviewService.reviewContract(contractText, playbookId, {
+    const result = await legalReviewService.reviewContract(contractText, {
       tenantId,
+      playbookId,
       contractType,
-      counterpartyName,
-      includePatternAnalysis,
-      includePrecedents,
     });
 
     return NextResponse.json({

@@ -275,7 +275,7 @@ export class HybridOCROrchestrator {
           const textDensity = text.length / factors.pageCount;
           if (textDensity < 100) {
             factors.hasScannedPages = true;
-            factors.estimatedQuality = 'low';
+            (factors as { estimatedQuality: string }).estimatedQuality = 'low';
           }
 
           // Detect tables (simple heuristic)
@@ -296,7 +296,7 @@ export class HybridOCROrchestrator {
       } else if (mimeType.startsWith('image/')) {
         // Images are always treated as scanned
         factors.hasScannedPages = true;
-        factors.estimatedQuality = 'medium';
+        (factors as { estimatedQuality: string }).estimatedQuality = 'medium';
       }
     } catch (error) {
       console.warn('Complexity assessment failed:', error);

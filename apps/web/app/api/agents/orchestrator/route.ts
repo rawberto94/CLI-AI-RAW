@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import { getAutonomousOrchestrator } from '@repo/agents';
+import { getAutonomousOrchestrator, AgentGoalStatus } from '@repo/agents';
 
 // ============================================================================
 // GET - Get orchestrator status, goals, triggers, or notifications
@@ -33,7 +33,11 @@ export async function GET(request: NextRequest) {
         });
 
       case 'goals':
-        const goalStatus = searchParams.get('status') || undefined;
+        const validStatuses: AgentGoalStatus[] = ['pending', 'planning', 'awaiting_approval', 'executing', 'completed', 'failed', 'cancelled'];
+        const statusParam = searchParams.get('status')?.toLowerCase();
+        const goalStatus = statusParam && validStatuses.includes(statusParam as AgentGoalStatus) 
+          ? statusParam as AgentGoalStatus
+          : undefined;
         const limit = parseInt(searchParams.get('limit') || '20');
         const offset = parseInt(searchParams.get('offset') || '0');
         

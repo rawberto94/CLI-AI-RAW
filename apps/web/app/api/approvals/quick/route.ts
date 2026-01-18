@@ -236,17 +236,13 @@ export async function POST(request: NextRequest) {
 }
 
 // GET - List pending approvals with simplified response
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    let tenantId: string
-    try {
-      tenantId = await getTenantIdFromRequest(request)
-    } catch {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      )
+    const session = await getServerSession()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const tenantId = session.user.tenantId
     
     const pendingExecutions = await prisma.workflowExecution.findMany({
       where: {

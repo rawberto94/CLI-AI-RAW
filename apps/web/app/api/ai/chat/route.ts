@@ -25,6 +25,8 @@ interface DetectedIntent {
     'compare_contracts' | 'compare_clauses' | 'compare_groups' | 'compare_suppliers' | 'side_by_side' |
     // Contract update actions
     'update_expiration' | 'update_effective_date' | 'update_value' | 'update_status' | 'update_title' | 'update_supplier' | 'update_client' | 'update_category' |
+    // Document classification actions
+    'list_by_document_type' | 'list_non_contracts' |
     // System status actions
     'system_health' | 'categorization_accuracy' | 'ai_performance' | 'queue_status';
   entities: {
@@ -46,6 +48,8 @@ interface DetectedIntent {
     contractId?: string;
     // Signature status entity
     signatureStatus?: 'signed' | 'partially_signed' | 'unsigned' | 'unknown';
+    // Document classification entity
+    documentType?: 'contract' | 'purchase_order' | 'invoice' | 'quote' | 'proposal' | 'work_order' | 'letter_of_intent' | 'memorandum' | 'amendment' | 'addendum' | 'unknown';
     // Procurement entities
     category?: string;
     timePeriod?: string;  // 'this_year', 'last_year', 'q1', 'q2', '2024', etc.
@@ -1291,8 +1295,8 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
       where: { tenantId },
       include: {
         artifacts: {
-          where: { type: 'METADATA' },
-          select: { id: true, content: true },
+          where: { type: 'OVERVIEW' },
+          select: { id: true, data: true },
           take: 1,
         },
       },
@@ -1301,17 +1305,18 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
     });
 
     // Filter by signature status from metadata
-    const filtered = contracts.filter(contract => {
+    type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
+    const filtered = (contracts as ContractWithArtifacts[]).filter(contract => {
       const metadataArtifact = contract.artifacts[0];
-      if (!metadataArtifact?.content) {
+      if (!metadataArtifact?.data) {
         return signatureStatus === 'unknown';
       }
       
       try {
-        const metadata = typeof metadataArtifact.content === 'string' 
-          ? JSON.parse(metadataArtifact.content) 
-          : metadataArtifact.content;
-        return metadata.signature_status === signatureStatus;
+        const metadata = typeof metadataArtifact.data === 'string' 
+          ? JSON.parse(metadataArtifact.data) 
+          : metadataArtifact.data;
+        return (metadata as Record<string, unknown>).signature_status === signatureStatus;
       } catch {
         return signatureStatus === 'unknown';
       }
@@ -1319,7 +1324,7 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
 
     // Map with signature status and document classification
     return filtered.map(c => {
-      const metadata = c.artifacts[0]?.content;
+      const metadata = c.artifacts[0]?.data;
       let parsed: Record<string, unknown> = {};
       try {
         parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
@@ -1351,8 +1356,8 @@ async function listContractsByDocumentType(documentType: DocumentClassificationT
       where: { tenantId },
       include: {
         artifacts: {
-          where: { type: 'METADATA' },
-          select: { id: true, content: true },
+          where: { type: 'OVERVIEW' },
+          select: { id: true, data: true },
           take: 1,
         },
       },
@@ -1361,7 +1366,8 @@ async function listContractsByDocumentType(documentType: DocumentClassificationT
     });
 
     // Filter by document classification from metadata or direct field
-    const filtered = contracts.filter(contract => {
+    type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
+    const filtered = (contracts as ContractWithArtifacts[]).filter(contract => {
       // First check the direct database field
       if ((contract as Record<string, unknown>).documentClassification) {
         return (contract as Record<string, unknown>).documentClassification === documentType;
@@ -1369,15 +1375,15 @@ async function listContractsByDocumentType(documentType: DocumentClassificationT
       
       // Then check metadata
       const metadataArtifact = contract.artifacts[0];
-      if (!metadataArtifact?.content) {
+      if (!metadataArtifact?.data) {
         return documentType === 'contract'; // Default to contract
       }
       
       try {
-        const metadata = typeof metadataArtifact.content === 'string' 
-          ? JSON.parse(metadataArtifact.content) 
-          : metadataArtifact.content;
-        return metadata.document_classification === documentType;
+        const metadata = typeof metadataArtifact.data === 'string' 
+          ? JSON.parse(metadataArtifact.data) 
+          : metadataArtifact.data;
+        return (metadata as Record<string, unknown>).document_classification === documentType;
       } catch {
         return documentType === 'contract';
       }
@@ -1385,7 +1391,7 @@ async function listContractsByDocumentType(documentType: DocumentClassificationT
 
     // Map with full document info
     return filtered.map(c => {
-      const metadata = c.artifacts[0]?.content;
+      const metadata = c.artifacts[0]?.data;
       let parsed: Record<string, unknown> = {};
       try {
         parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
@@ -1411,8 +1417,8 @@ async function listNonContractDocuments(tenantId: string) {
       where: { tenantId },
       include: {
         artifacts: {
-          where: { type: 'METADATA' },
-          select: { id: true, content: true },
+          where: { type: 'OVERVIEW' },
+          select: { id: true, data: true },
           take: 1,
         },
       },
@@ -1422,7 +1428,8 @@ async function listNonContractDocuments(tenantId: string) {
 
     // Filter to non-contract documents
     const nonContractTypes = ['purchase_order', 'invoice', 'quote', 'proposal', 'work_order', 'letter_of_intent', 'memorandum'];
-    const filtered = contracts.filter(contract => {
+    type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
+    const filtered = (contracts as ContractWithArtifacts[]).filter(contract => {
       // First check the direct database field
       const directClass = (contract as Record<string, unknown>).documentClassification;
       if (directClass) {
@@ -1431,13 +1438,13 @@ async function listNonContractDocuments(tenantId: string) {
       
       // Then check metadata
       const metadataArtifact = contract.artifacts[0];
-      if (!metadataArtifact?.content) return false;
+      if (!metadataArtifact?.data) return false;
       
       try {
-        const metadata = typeof metadataArtifact.content === 'string' 
-          ? JSON.parse(metadataArtifact.content) 
-          : metadataArtifact.content;
-        return nonContractTypes.includes(metadata.document_classification);
+        const metadata = typeof metadataArtifact.data === 'string' 
+          ? JSON.parse(metadataArtifact.data) 
+          : metadataArtifact.data;
+        return nonContractTypes.includes((metadata as Record<string, unknown>).document_classification as string);
       } catch {
         return false;
       }
@@ -1445,7 +1452,7 @@ async function listNonContractDocuments(tenantId: string) {
 
     // Map with full document info
     return filtered.map(c => {
-      const metadata = c.artifacts[0]?.content;
+      const metadata = c.artifacts[0]?.data;
       let parsed: Record<string, unknown> = {};
       try {
         parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};
@@ -1469,8 +1476,8 @@ async function listContractsNeedingSignature(tenantId: string) {
       where: { tenantId },
       include: {
         artifacts: {
-          where: { type: 'METADATA' },
-          select: { id: true, content: true },
+          where: { type: 'OVERVIEW' },
+          select: { id: true, data: true },
           take: 1,
         },
       },
@@ -1479,18 +1486,19 @@ async function listContractsNeedingSignature(tenantId: string) {
     });
 
     // Filter by signature_required_flag or signature status needing attention
-    const filtered = contracts.filter(contract => {
+    type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
+    const filtered = (contracts as ContractWithArtifacts[]).filter(contract => {
       const metadataArtifact = contract.artifacts[0];
-      if (!metadataArtifact?.content) return false;
+      if (!metadataArtifact?.data) return false;
       
       try {
-        const metadata = typeof metadataArtifact.content === 'string' 
-          ? JSON.parse(metadataArtifact.content) 
-          : metadataArtifact.content;
-        
-        return metadata.signature_required_flag === true ||
-               metadata.signature_status === 'unsigned' ||
-               metadata.signature_status === 'partially_signed';
+        const metadata = typeof metadataArtifact.data === 'string' 
+          ? JSON.parse(metadataArtifact.data) 
+          : metadataArtifact.data;
+        const meta = metadata as Record<string, unknown>;
+        return meta.signature_required_flag === true ||
+               meta.signature_status === 'unsigned' ||
+               meta.signature_status === 'partially_signed';
       } catch {
         return false;
       }
@@ -1498,7 +1506,7 @@ async function listContractsNeedingSignature(tenantId: string) {
 
     // Map with signature status and document classification
     return filtered.map(c => {
-      const metadata = c.artifacts[0]?.content;
+      const metadata = c.artifacts[0]?.data;
       let parsed: Record<string, unknown> = {};
       try {
         parsed = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata as Record<string, unknown>) || {};

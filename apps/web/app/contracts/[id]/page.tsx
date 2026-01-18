@@ -852,7 +852,7 @@ export default function ContractDetailPage() {
               documentClassificationWarning={metadata.document_classification_warning}
               onAction={() => setActiveTab('overview')}
               onInitiateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
-              onSetReminder={() => setReminderDialogOpen(true)}
+              onSetReminder={() => setShowReminderDialog(true)}
             />
 
             {/* Quick Overview Card */}

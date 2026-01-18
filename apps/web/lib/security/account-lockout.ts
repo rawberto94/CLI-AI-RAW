@@ -25,7 +25,7 @@
  * await lockout.recordSuccessfulLogin(email);
  */
 
-import { Redis } from 'ioredis';
+import Redis from 'ioredis';
 import { auditLog, AuditAction } from './audit';
 
 // =============================================================================
@@ -89,10 +89,10 @@ export interface AttemptRecord {
 // =============================================================================
 
 export class AccountLockout {
-  private redis: Redis;
+  private redis: InstanceType<typeof Redis>;
   private config: LockoutConfig;
   
-  constructor(redis?: Redis, config?: Partial<LockoutConfig>) {
+  constructor(redis?: InstanceType<typeof Redis>, config?: Partial<LockoutConfig>) {
     this.redis = redis || new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
     this.config = { ...DEFAULT_CONFIG, ...config };
   }

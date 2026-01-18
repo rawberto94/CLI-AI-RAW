@@ -35,14 +35,7 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         avatar: true,
-        phone: true,
-        department: true,
-        timezone: true,
-        language: true,
-        bio: true,
-        preferences: true,
-        twoFactorEnabled: true,
-        lastLogin: true,
+        lastLoginAt: true,
         createdAt: true,
         updatedAt: true,
         tenant: {
@@ -84,16 +77,9 @@ export async function GET(request: NextRequest) {
           avatar: user.avatar,
           initials,
           role: user.role || 'member',
-          phone: user.phone,
-          department: user.department,
-          timezone: user.timezone || 'UTC',
-          language: user.language || 'en',
-          bio: user.bio,
           company: user.tenant?.name,
-          twoFactorEnabled: user.twoFactorEnabled || false,
-          lastLogin: user.lastLogin,
+          lastLoginAt: user.lastLoginAt,
           createdAt: user.createdAt,
-          preferences: user.preferences,
         },
       },
     });
@@ -137,11 +123,6 @@ export async function PATCH(request: NextRequest) {
     const {
       firstName,
       lastName,
-      phone,
-      department,
-      timezone,
-      language,
-      bio,
       avatar,
     } = body;
 
@@ -149,11 +130,6 @@ export async function PATCH(request: NextRequest) {
 
     if (firstName !== undefined) updateData.firstName = firstName;
     if (lastName !== undefined) updateData.lastName = lastName;
-    if (phone !== undefined) updateData.phone = phone;
-    if (department !== undefined) updateData.department = department;
-    if (timezone !== undefined) updateData.timezone = timezone;
-    if (language !== undefined) updateData.language = language;
-    if (bio !== undefined) updateData.bio = bio;
     if (avatar !== undefined) updateData.avatar = avatar;
 
     const user = await prisma.user.update({
@@ -166,11 +142,6 @@ export async function PATCH(request: NextRequest) {
         email: true,
         role: true,
         avatar: true,
-        phone: true,
-        department: true,
-        timezone: true,
-        language: true,
-        bio: true,
         updatedAt: true,
       },
     });

@@ -59,7 +59,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import type { ContractDraft, DraftStatus, TemplateCategory, Template } from '@/types/contract-generation';
+import type { ContractDraft, DraftStatus, DraftSourceType, TemplateCategory, Template } from '@/types/contract-generation';
 
 // ====================
 // STATUS CONFIGURATION
@@ -136,31 +136,31 @@ function useDrafts() {
       
       if (json.success && json.data) {
         // Map API response to ContractDraft format
-        const mappedDrafts: ContractDraft[] = json.data.drafts.map((d: Record<string, unknown>) => ({
-          id: d.id as string,
-          tenantId: d.tenantId as string,
-          title: d.title as string,
+        const mappedDrafts = json.data.drafts.map((d) => ({
+          id: d.id,
+          tenantId: d.tenantId,
+          title: d.title,
           type: (d.type as TemplateCategory) || 'MSA',
           description: d.content ? String(d.content).substring(0, 100) : undefined,
-          sourceType: (d.sourceType as string) || 'NEW',
-          templateId: d.templateId as string | undefined,
-          sourceContractId: d.sourceContractId as string | undefined,
+          sourceType: (d.sourceType as DraftSourceType) || 'NEW',
+          templateId: d.templateId,
+          sourceContractId: d.sourceContractId,
           status: (d.status as DraftStatus) || 'DRAFT',
           version: (d.version as number) || 1,
-          content: d.clauses || { sections: [] },
+          content: (d as any).clauses || { sections: [] },
           variables: (d.variables as Record<string, unknown>) || {},
           isLocked: (d.isLocked as boolean) || false,
-          lockedBy: d.lockedBy as string | undefined,
+          lockedBy: d.lockedBy,
           currency: (d.currency as string) || 'USD',
           estimatedValue: d.estimatedValue ? Number(d.estimatedValue) : undefined,
-          proposedStartDate: d.proposedStartDate ? new Date(d.proposedStartDate as string) : undefined,
-          proposedEndDate: d.proposedEndDate ? new Date(d.proposedEndDate as string) : undefined,
-          createdBy: d.createdBy as string,
-          createdAt: new Date(d.createdAt as string),
-          updatedAt: new Date(d.updatedAt as string),
+          proposedStartDate: d.proposedStartDate ? new Date(d.proposedStartDate) : undefined,
+          proposedEndDate: d.proposedEndDate ? new Date(d.proposedEndDate) : undefined,
+          createdBy: d.createdBy,
+          createdAt: new Date(d.createdAt),
+          updatedAt: new Date(d.updatedAt),
           externalParties: (d.externalParties as Array<{ name: string; type: string; signatories: unknown[] }>) || [],
         }));
-        setDrafts(mappedDrafts);
+        setDrafts(mappedDrafts as ContractDraft[]);
         setMetrics(json.data.metrics);
         setError(null);
       } else {
@@ -196,27 +196,27 @@ function useTemplates() {
       
       if (json.success && json.templates) {
         // Map API response to Template format
-        const mappedTemplates: Template[] = json.templates.map((t: Record<string, unknown>) => ({
-          id: t.id as string,
-          tenantId: t.tenantId as string,
-          name: t.name as string,
-          description: t.description as string | undefined,
+        const mappedTemplates = json.templates.map((t) => ({
+          id: t.id,
+          tenantId: t.tenantId,
+          name: t.name,
+          description: t.description,
           category: (t.category as TemplateCategory) || 'OTHER',
-          content: t.structure || { sections: [] },
+          content: (t as any).structure || { sections: [] },
           variables: [],
-          defaultClauses: (t.clauses as unknown[]) || [],
+          defaultClauses: ((t as any).clauses as unknown[]) || [],
           version: (t.version as number) || 1,
           isActive: (t.isActive as boolean) ?? true,
           isPublic: false,
           usageCount: (t.usageCount as number) || 0,
           estimatedTime: 15, // Default estimate
-          createdBy: t.createdBy as string,
-          createdAt: new Date(t.createdAt as string),
-          updatedAt: new Date(t.updatedAt as string),
+          createdBy: t.createdBy,
+          createdAt: new Date(t.createdAt),
+          updatedAt: new Date(t.updatedAt),
           complexity: 'moderate' as const,
           tags: [],
         }));
-        setTemplates(mappedTemplates);
+        setTemplates(mappedTemplates as Template[]);
         setError(null);
       } else {
         setTemplates([]);

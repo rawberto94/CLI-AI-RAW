@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils'
 
 // ============ TYPES ============
 
-interface ContractVersion {
+export interface ContractVersion {
   id: string
   versionNumber: number
   uploadedBy: string | null

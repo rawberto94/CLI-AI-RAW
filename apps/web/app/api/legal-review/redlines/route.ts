@@ -35,9 +35,8 @@ export async function POST(request: NextRequest) {
     const legalReviewService = getLegalReviewService();
     const changes = await legalReviewService.generateRedlines(originalText, proposedText, {
       tenantId,
-      playbookId,
       includeRiskAssessment,
-    });
+    } as any);
 
     // Calculate summary statistics
     const summary = {
@@ -45,8 +44,8 @@ export async function POST(request: NextRequest) {
       additions: changes.filter(c => c.type === 'addition').length,
       deletions: changes.filter(c => c.type === 'deletion').length,
       modifications: changes.filter(c => c.type === 'modification').length,
-      criticalRisks: changes.filter(c => c.riskAssessment?.severity === 'critical').length,
-      highRisks: changes.filter(c => c.riskAssessment?.severity === 'high').length,
+      criticalRisks: changes.filter(c => (c as unknown as { riskAssessment?: { severity: string } }).riskAssessment?.severity === 'critical').length,
+      highRisks: changes.filter(c => (c as unknown as { riskAssessment?: { severity: string } }).riskAssessment?.severity === 'high').length,
     };
 
     return NextResponse.json({

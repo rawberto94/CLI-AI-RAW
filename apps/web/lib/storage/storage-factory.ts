@@ -482,6 +482,3 @@ export function resetStorageProvider(): void {
   cachedProvider = null;
   cachedProviderType = null;
 }
-
-// Export types
-export type { IStorageProvider };

@@ -148,12 +148,11 @@ export async function POST(
         conversationId,
         role,
         content,
-        toolCalls: toolCalls || undefined,
-        toolResults: toolResults || undefined,
         model: model || null,
         tokensUsed: tokensUsed || null,
-        responseTimeMs: responseTimeMs || null,
-        metadata: metadata || undefined,
+        processingTime: responseTimeMs || null,
+        // Store tool calls and results in sources JSON field
+        sources: toolCalls || toolResults ? JSON.stringify({ toolCalls, toolResults }) : undefined,
       },
     });
 
