@@ -1,0 +1,95 @@
+# ==============================================
+# Ingress for ConTigo Platform
+# ==============================================
+# Using NGINX Ingress Controller
+# For Azure Application Gateway, use different annotations
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: contigo-ingress
+  namespace: contigo
+  labels:
+    app.kubernetes.io/name: contigo
+  annotations:
+    # NGINX Ingress Controller
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    
+    # WebSocket support
+    nginx.ingress.kubernetes.io/websocket-services: "contigo-websocket"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+    
+    # TLS with cert-manager (optional)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # CORS headers
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+spec:
+  # TLS configuration (uncomment when certificate is ready)
+  # tls:
+  #   - hosts:
+  #       - contigo.your-domain.com
+  #     secretName: contigo-tls-secret
+  rules:
+    - host: contigo.your-domain.com  # Replace with your domain
+      http:
+        paths:
+          # Main application
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: contigo-web
+                port:
+                  number: 3000
+          
+          # WebSocket endpoint
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: contigo-websocket
+                port:
+                  number: 3001
+          
+          # API routes (same backend, just for documentation)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: contigo-web
+                port:
+                  number: 3000
+---
+# Health check ingress (no auth required)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: contigo-health-ingress
+  namespace: contigo
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: contigo.your-domain.com
+      http:
+        paths:
+          - path: /api/health
+            pathType: Exact
+            backend:
+              service:
+                name: contigo-web
+                port:
+                  number: 3000
