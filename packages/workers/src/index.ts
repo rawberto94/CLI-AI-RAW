@@ -166,6 +166,16 @@ async function startWorkers() {
       const queueService = getQueueService();
       await queueService.close();
 
+      // Close Prisma connection
+      try {
+        const { prisma } = await import('./lib/prisma');
+        await prisma.$disconnect();
+        logger.info('Database connection closed');
+      } catch {
+        // Prisma may not be initialized in all configurations
+        logger.debug('No Prisma connection to close');
+      }
+
       logger.info('✅ Workers shutdown complete');
       process.exit(0);
     };

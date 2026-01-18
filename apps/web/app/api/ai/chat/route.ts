@@ -3,6 +3,7 @@ import OpenAI from 'openai'
 import { hybridSearch } from '@/lib/rag/advanced-rag.service'
 import { prisma } from '@/lib/prisma'
 import { conversationMemoryService } from '@repo/data-orchestration'
+import { getServerSession } from '@/lib/auth'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -6565,10 +6566,11 @@ function shouldUseRAG(query: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id');
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
 
     const { message, contractId, context: initialContext, conversationHistory, conversationId: providedConversationId } = await request.json()
     let context = initialContext || {};
