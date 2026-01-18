@@ -171,9 +171,22 @@ pnpm run -w start
 
 ## 📚 Documentation
 
-- **[SETUP.md](SETUP.md)** - Complete setup guide
+### Getting Started
+- **[SETUP.md](SETUP.md)** - Complete local setup guide
+- **[START_HERE.md](START_HERE.md)** - Quick start for beginners
 - **[SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)** - Architecture details
-- **API Documentation** - See route files in `apps/web/app/api/`
+
+### Cloud Deployment Guides 🚀
+- **[STEP_BY_STEP_CLOUD_DEPLOYMENT.md](STEP_BY_STEP_CLOUD_DEPLOYMENT.md)** - **Beginner-friendly step-by-step guide**
+- **[CLOUD_DEPLOYMENT_GUIDE.md](CLOUD_DEPLOYMENT_GUIDE.md)** - Detailed deployment with IaC
+- **[AZURE_DEPLOYMENT_CHECKLIST.md](AZURE_DEPLOYMENT_CHECKLIST.md)** - Azure-specific deployment
+- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Production best practices
+- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification
+
+### API & Integrations
+- **[API_REFERENCE.md](API_REFERENCE.md)** - API documentation
+- **[EXTERNAL_INTEGRATIONS.md](EXTERNAL_INTEGRATIONS.md)** - Third-party integrations
+- **[CONTRACT_SOURCE_INTEGRATION.md](CONTRACT_SOURCE_INTEGRATION.md)** - Contract source setup
 
 ---
 

@@ -369,7 +369,7 @@ model Contract {
   extractionCorrections ExtractionCorrection[]
 
   // Synced files relation (for pull model integrations)
-  syncedFiles           SyncedFile[]
+  syncedFiles SyncedFile[]
 
   @@index([tenantId])
   @@index([status])
@@ -3353,19 +3353,19 @@ model SyncLog {
 
 // Represents a configured contract source for automatic sync
 model ContractSource {
-  id           String  @id @default(cuid())
-  tenantId     String  @map("tenant_id")
-  name         String
-  description  String?
-  provider     ContractSourceProvider
-  status       ContractSourceStatus   @default(DISCONNECTED)
-  isActive     Boolean                @default(true) @map("is_active")
+  id          String                 @id @default(cuid())
+  tenantId    String                 @map("tenant_id")
+  name        String
+  description String?
+  provider    ContractSourceProvider
+  status      ContractSourceStatus   @default(DISCONNECTED)
+  isActive    Boolean                @default(true) @map("is_active")
 
   // Connection configuration (encrypted)
-  credentials     Json?  // Encrypted: API keys, tokens, etc.
-  connectionUrl   String? @map("connection_url") // Base URL or endpoint
-  syncFolder      String? @map("sync_folder") // Remote folder/container to sync
-  filePatterns    String[] @default(["*.pdf", "*.docx", "*.doc"]) @map("file_patterns")
+  credentials   Json? // Encrypted: API keys, tokens, etc.
+  connectionUrl String?  @map("connection_url") // Base URL or endpoint
+  syncFolder    String?  @map("sync_folder") // Remote folder/container to sync
+  filePatterns  String[] @default(["*.pdf", "*.docx", "*.doc"]) @map("file_patterns")
 
   // OAuth tokens (for cloud providers)
   accessToken    String?   @map("access_token")
@@ -3378,11 +3378,11 @@ model ContractSource {
   accountName  String? @map("account_name")
 
   // Sync configuration
-  syncEnabled    Boolean @default(true) @map("sync_enabled")
-  syncInterval   Int     @default(60) @map("sync_interval") // Minutes between syncs
-  syncMode       SyncMode @default(INCREMENTAL) @map("sync_mode")
-  autoProcess    Boolean  @default(true) @map("auto_process") // Auto-start AI processing
-  maxFileSizeMb  Int      @default(50) @map("max_file_size_mb")
+  syncEnabled   Boolean  @default(true) @map("sync_enabled")
+  syncInterval  Int      @default(60) @map("sync_interval") // Minutes between syncs
+  syncMode      SyncMode @default(INCREMENTAL) @map("sync_mode")
+  autoProcess   Boolean  @default(true) @map("auto_process") // Auto-start AI processing
+  maxFileSizeMb Int      @default(50) @map("max_file_size_mb")
 
   // Sync state
   lastSyncAt       DateTime? @map("last_sync_at")
@@ -3415,33 +3415,33 @@ model ContractSource {
 
 // Tracks individual files that have been synced from a source
 model SyncedFile {
-  id           String @id @default(cuid())
-  tenantId     String @map("tenant_id")
-  sourceId     String @map("source_id")
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  sourceId String @map("source_id")
 
   // Remote file info
-  remoteId     String  @map("remote_id") // ID in the remote system
-  remotePath   String  @map("remote_path") // Full path in remote system
-  remoteHash   String? @map("remote_hash") // Hash/ETag for change detection
-  fileName     String  @map("file_name")
-  mimeType     String? @map("mime_type")
-  fileSize     BigInt  @map("file_size")
+  remoteId   String  @map("remote_id") // ID in the remote system
+  remotePath String  @map("remote_path") // Full path in remote system
+  remoteHash String? @map("remote_hash") // Hash/ETag for change detection
+  fileName   String  @map("file_name")
+  mimeType   String? @map("mime_type")
+  fileSize   BigInt  @map("file_size")
 
   // Remote timestamps
   remoteCreatedAt  DateTime? @map("remote_created_at")
   remoteModifiedAt DateTime? @map("remote_modified_at")
 
   // Local processing
-  contractId      String?         @map("contract_id")
+  contractId       String?        @map("contract_id")
   processingStatus SyncFileStatus @default(PENDING) @map("processing_status")
-  errorMessage    String?         @map("error_message")
-  processedAt     DateTime?       @map("processed_at")
+  errorMessage     String?        @map("error_message")
+  processedAt      DateTime?      @map("processed_at")
 
   // Sync tracking
-  firstSyncedAt DateTime  @default(now()) @map("first_synced_at")
-  lastSyncedAt  DateTime  @default(now()) @map("last_synced_at")
-  syncCount     Int       @default(1) @map("sync_count")
-  isDeleted     Boolean   @default(false) @map("is_deleted") // Deleted in remote
+  firstSyncedAt DateTime @default(now()) @map("first_synced_at")
+  lastSyncedAt  DateTime @default(now()) @map("last_synced_at")
+  syncCount     Int      @default(1) @map("sync_count")
+  isDeleted     Boolean  @default(false) @map("is_deleted") // Deleted in remote
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -3464,15 +3464,15 @@ model SourceSync {
   tenantId String @map("tenant_id")
   sourceId String @map("source_id")
 
-  status        SourceSyncStatus @default(PENDING)
-  syncMode      SyncMode
-  triggeredBy   String? @map("triggered_by") // SCHEDULER, MANUAL, WEBHOOK
+  status      SourceSyncStatus @default(PENDING)
+  syncMode    SyncMode
+  triggeredBy String?          @map("triggered_by") // SCHEDULER, MANUAL, WEBHOOK
 
   // Progress tracking
-  filesFound      Int @default(0) @map("files_found")
-  filesProcessed  Int @default(0) @map("files_processed")
-  filesSkipped    Int @default(0) @map("files_skipped")
-  filesFailed     Int @default(0) @map("files_failed")
+  filesFound       Int    @default(0) @map("files_found")
+  filesProcessed   Int    @default(0) @map("files_processed")
+  filesSkipped     Int    @default(0) @map("files_skipped")
+  filesFailed      Int    @default(0) @map("files_failed")
   bytesTransferred BigInt @default(0) @map("bytes_transferred")
 
   // Timing
@@ -3485,7 +3485,7 @@ model SourceSync {
   errorDetails Json?   @map("error_details")
 
   // Sync state
-  syncCursor    String? @map("sync_cursor")
+  syncCursor     String? @map("sync_cursor")
   nextSyncCursor String? @map("next_sync_cursor")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -3521,9 +3521,9 @@ enum ContractSourceStatus {
 }
 
 enum SyncMode {
-  FULL         // Re-sync everything
-  INCREMENTAL  // Only new/changed files
-  DELTA        // Use provider's delta API if available
+  FULL // Re-sync everything
+  INCREMENTAL // Only new/changed files
+  DELTA // Use provider's delta API if available
 }
 
 enum SyncFileStatus {
