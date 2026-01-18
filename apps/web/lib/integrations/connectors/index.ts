@@ -24,6 +24,8 @@ export { AzureBlobConnector, createAzureBlobConnector } from './azure-blob.conne
 export { S3Connector, createS3Connector } from './s3.connector';
 export { SFTPConnector, createSFTPConnector } from './sftp.connector';
 export { GoogleDriveConnector } from './google-drive.connector';
+export { DropboxConnector, createDropboxConnector } from './dropbox.connector';
+export { BoxConnector, createBoxConnector } from './box.connector';
 
 // Credential encryption
 export {

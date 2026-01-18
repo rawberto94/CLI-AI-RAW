@@ -6,3 +6,4 @@
 
 export { FileBrowser } from './FileBrowser';
 export { SyncStatus, SyncIndicator, SyncActivityFeed } from './SyncStatus';
+export { SyncMetricsWidget } from './SyncMetricsWidget';

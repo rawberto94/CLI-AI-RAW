@@ -19,6 +19,8 @@ import { AzureBlobConnector } from './azure-blob.connector';
 import { S3Connector } from './s3.connector';
 import { SFTPConnector } from './sftp.connector';
 import { GoogleDriveConnector } from './google-drive.connector';
+import { DropboxConnector, DropboxCredentials } from './dropbox.connector';
+import { BoxConnector, BoxCredentials } from './box.connector';
 
 /**
  * Create a connector instance for the given provider
@@ -48,7 +50,11 @@ export function createConnector(
       return new GoogleDriveConnector(credentials as GoogleDriveCredentials);
     
     case ContractSourceProvider.DROPBOX:
+      return new DropboxConnector(credentials as DropboxCredentials);
+    
     case ContractSourceProvider.BOX:
+      return new BoxConnector(credentials as BoxCredentials);
+    
     case ContractSourceProvider.CUSTOM_API:
       throw new Error(`Provider ${provider} is not yet implemented`);
     
