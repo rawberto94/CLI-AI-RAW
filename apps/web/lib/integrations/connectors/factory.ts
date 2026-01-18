@@ -18,6 +18,7 @@ import { SharePointConnector, OneDriveConnector } from './sharepoint.connector';
 import { AzureBlobConnector } from './azure-blob.connector';
 import { S3Connector } from './s3.connector';
 import { SFTPConnector } from './sftp.connector';
+import { GoogleDriveConnector } from './google-drive.connector';
 
 /**
  * Create a connector instance for the given provider
@@ -44,8 +45,7 @@ export function createConnector(
       return new SFTPConnector(credentials as SFTPCredentials);
     
     case ContractSourceProvider.GOOGLE_DRIVE:
-      // Google Drive uses the existing implementation
-      throw new Error('Use the existing Google Drive integration at lib/integrations/google-drive.ts');
+      return new GoogleDriveConnector(credentials as GoogleDriveCredentials);
     
     case ContractSourceProvider.DROPBOX:
     case ContractSourceProvider.BOX:

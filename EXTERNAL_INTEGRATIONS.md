@@ -11,7 +11,9 @@ This document provides comprehensive guidance for configuring and using the Cont
 5. [API Reference](#api-reference)
 6. [Configuration Options](#configuration-options)
 7. [Security Best Practices](#security-best-practices)
-8. [Troubleshooting](#troubleshooting)
+8. [Webhooks](#webhooks)
+9. [UI Components](#ui-components)
+10. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -572,6 +574,140 @@ MAX_CONCURRENT_SYNCS=5
 
 ---
 
+## Webhooks
+
+The sync system can send webhook notifications for various events, enabling real-time integrations with external systems.
+
+### Webhook Events
+
+| Event | Description |
+|-------|-------------|
+| `sync.started` | Sync operation has started |
+| `sync.completed` | Sync completed successfully |
+| `sync.failed` | Sync failed with error |
+| `sync.progress` | Progress update during sync |
+| `source.connected` | Source connection established |
+| `source.disconnected` | Source connection lost |
+| `source.error` | Error occurred with source |
+| `file.synced` | Individual file synced |
+| `file.processed` | File processed and contract created |
+| `file.failed` | File processing failed |
+
+### Webhook Payload
+
+```json
+{
+  "event": "sync.completed",
+  "timestamp": "2025-01-18T10:30:00Z",
+  "data": {
+    "sourceId": "source_123",
+    "sourceName": "SharePoint Contracts",
+    "provider": "SHAREPOINT",
+    "tenantId": "tenant_456",
+    "syncId": "sync_789",
+    "progress": {
+      "filesFound": 100,
+      "filesProcessed": 95,
+      "filesFailed": 5,
+      "percentComplete": 100
+    }
+  }
+}
+```
+
+### Webhook Configuration
+
+```env
+# Webhook endpoint URL
+SYNC_WEBHOOK_URL=https://your-system.com/webhooks/contigo
+
+# HMAC secret for signature verification
+SYNC_WEBHOOK_SECRET=your-secret-key
+```
+
+### Signature Verification
+
+Webhooks include an HMAC-SHA256 signature for verification:
+
+```typescript
+const crypto = require('crypto');
+
+function verifyWebhook(payload: string, signature: string, secret: string): boolean {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return `sha256=${expected}` === signature;
+}
+
+// In your webhook handler
+app.post('/webhooks/contigo', (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const payload = JSON.stringify(req.body);
+  
+  if (!verifyWebhook(payload, signature, process.env.WEBHOOK_SECRET)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  // Process webhook
+  const { event, data } = req.body;
+  console.log(`Received ${event}:`, data);
+  
+  res.status(200).json({ received: true });
+});
+```
+
+---
+
+## UI Components
+
+The integration includes React components for managing contract sources.
+
+### FileBrowser Component
+
+Browse and select folders from connected sources:
+
+```tsx
+import { FileBrowser } from '@/components/contract-sources';
+
+<FileBrowser
+  sourceId="source_123"
+  open={isOpen}
+  onOpenChange={setIsOpen}
+  onSelect={(path) => console.log('Selected:', path)}
+  selectMode="folder"
+  title="Select Sync Folder"
+/>
+```
+
+### SyncStatus Component
+
+Display real-time sync progress:
+
+```tsx
+import { SyncStatus } from '@/components/contract-sources';
+
+<SyncStatus
+  sourceId="source_123"
+  sourceName="SharePoint Contracts"
+  autoRefresh={true}
+  refreshInterval={2000}
+  onSyncComplete={() => refetchSources()}
+/>
+```
+
+### SyncActivityFeed Component
+
+Show recent sync activity:
+
+```tsx
+import { SyncActivityFeed } from '@/components/contract-sources';
+
+<SyncActivityFeed sourceId="source_123" />
+```
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -732,6 +868,18 @@ model SyncedFile {
 ---
 
 ## Changelog
+
+### v1.1.0 (2025-01)
+
+- Added Google Drive connector with OAuth support
+- Added credential encryption (AES-256-GCM)
+- Added webhook notifications for sync events
+- Added FileBrowser component for remote folder selection
+- Added SyncStatus component with real-time progress
+- Added SyncActivityFeed component
+- Added Contract Sources link to settings navigation
+- Added contract-sync worker to PM2 ecosystem config
+- Improved documentation with webhook and UI component guides
 
 ### v1.0.0 (2025-01)
 

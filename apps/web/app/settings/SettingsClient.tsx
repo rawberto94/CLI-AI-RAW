@@ -34,6 +34,7 @@ import {
   FolderTree,
   HelpCircle,
   Play,
+  FolderSync,
 } from "lucide-react";
 
 // Mock settings data (kept local to the client component)
@@ -143,6 +144,12 @@ export default function SettingsClient() {
       id: "integrations",
       name: "Integrations",
       icon: <Globe className="w-4 h-4" />,
+    },
+    {
+      id: "contract-sources",
+      name: "Contract Sources",
+      icon: <FolderSync className="w-4 h-4" />,
+      href: "/settings/contract-sources",
     },
     {
       id: "metadata",

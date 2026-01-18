@@ -107,6 +107,33 @@ module.exports = {
       merge_logs: true,
       
       kill_timeout: 15000
+    },
+    
+    // === CONTRACT SOURCE SYNC WORKER ===
+    {
+      name: 'contigo-contract-sync',
+      cwd: './packages/workers',
+      script: 'dist/contract-source-sync-worker.js',
+      instances: 1, // Single instance for sync operations
+      env_production: {
+        NODE_ENV: 'production',
+        REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379'
+      },
+      autorestart: true,
+      max_restarts: 50,
+      min_uptime: '30s',
+      restart_delay: 5000,
+      max_memory_restart: '1G',
+      
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      error_file: './logs/contract-sync-error.log',
+      out_file: './logs/contract-sync-out.log',
+      merge_logs: true,
+      
+      kill_timeout: 60000, // Allow time to finish current sync
+      
+      // Watch for source changes
+      watch: false
     }
   ],
   

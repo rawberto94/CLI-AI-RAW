@@ -23,3 +23,15 @@ export { SharePointConnector, OneDriveConnector, createMicrosoftConnector } from
 export { AzureBlobConnector, createAzureBlobConnector } from './azure-blob.connector';
 export { S3Connector, createS3Connector } from './s3.connector';
 export { SFTPConnector, createSFTPConnector } from './sftp.connector';
+export { GoogleDriveConnector } from './google-drive.connector';
+
+// Credential encryption
+export {
+  encryptCredentials,
+  decryptCredentials,
+  isEncrypted,
+  ensureEncrypted,
+  ensureDecrypted,
+  generateEncryptionKey,
+  maskSensitiveFields,
+} from './encryption';
