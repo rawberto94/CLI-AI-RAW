@@ -302,7 +302,7 @@ export function CommandItem({
   );
 }
 
-interface CommandSeparatorProps extends React.HTMLAttributes<HTMLHRElement> {}
+type CommandSeparatorProps = React.HTMLAttributes<HTMLHRElement>;
 
 export function CommandSeparator({ className, ...props }: CommandSeparatorProps) {
   return (

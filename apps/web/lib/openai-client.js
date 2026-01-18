@@ -1,4 +1,5 @@
 "use strict";
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * OpenAI Client for web app
  * Re-exports the OpenAI client from packages

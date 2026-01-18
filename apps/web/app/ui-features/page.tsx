@@ -268,7 +268,7 @@ export default function UIFeaturesShowcase() {
               />
               {filters.length === 0 && (
                 <div className="text-center py-8 text-slate-400 text-sm">
-                  No active filters. Click "Add Filter" below.
+                  No active filters. Click &quot;Add Filter&quot; below.
                 </div>
               )}
               <div className="flex gap-2">
@@ -343,7 +343,7 @@ export default function UIFeaturesShowcase() {
             <CardContent className="space-y-4">
               {recentItems.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 text-sm">
-                  No recent items. Click "Add Item" below.
+                  No recent items. Click &quot;Add Item&quot; below.
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -380,7 +380,7 @@ export default function UIFeaturesShowcase() {
         {/* Info Panel */}
         <Card className="border-blue-200 bg-blue-50/50">
           <CardHeader>
-            <CardTitle className="text-blue-900">✨ What's New</CardTitle>
+            <CardTitle className="text-blue-900">✨ What&apos;s New</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2 text-sm text-blue-800">

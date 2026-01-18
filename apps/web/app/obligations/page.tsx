@@ -957,7 +957,7 @@ export default function ObligationsDashboardPage() {
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs flex items-center justify-center font-medium">2</span>
-                            Click "Legal Review" from the Actions menu
+                            Click &quot;Legal Review&quot; from the Actions menu
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs flex items-center justify-center font-medium">3</span>

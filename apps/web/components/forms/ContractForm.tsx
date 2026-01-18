@@ -334,7 +334,7 @@ export function ContractForm({
               className="max-w-xs"
             />
             <p className="text-xs text-slate-500">
-              You'll be notified this many days before the contract renews
+              You&apos;ll be notified this many days before the contract renews
             </p>
           </div>
         )}

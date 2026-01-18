@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { RateCardUploadZone } from '@/components/import/RateCardUploadZone';
 import { ColumnMappingInterface } from '@/components/import/ColumnMappingInterface';
 import { ValidationReview } from '@/components/import/ValidationReview';
@@ -243,12 +244,12 @@ export default function ImportWizardPage() {
                 >
                   Import Another File
                 </button>
-                <a
+                <Link
                   href="/contracts"
                   className="px-6 py-3 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 font-medium"
                 >
                   View Contracts
-                </a>
+                </Link>
               </div>
             </div>
           )}

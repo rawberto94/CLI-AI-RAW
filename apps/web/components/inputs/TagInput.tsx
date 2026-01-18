@@ -303,7 +303,7 @@ export function TagInput({
                 >
                   <Plus className="w-4 h-4 text-indigo-600" />
                   <span className="text-slate-700">
-                    Create "<span className="font-medium">{inputValue.trim()}</span>"
+                    Create &quot;<span className="font-medium">{inputValue.trim()}</span>&quot;
                   </span>
                 </button>
               )}

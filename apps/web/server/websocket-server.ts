@@ -15,6 +15,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 // Optional Redis import - only used if REDIS_URL is provided
 let Redis: typeof import('ioredis').default | null = null;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   Redis = require('ioredis').default;
 } catch {
   // Redis not available

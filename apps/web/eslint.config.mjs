@@ -10,6 +10,10 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  // Global ignores
+  {
+    ignores: ["public/pdf/**", "**/*.min.js", "**/*.min.mjs"],
+  },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     rules: {

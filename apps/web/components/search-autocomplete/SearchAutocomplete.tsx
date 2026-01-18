@@ -251,7 +251,7 @@ export function SearchAutocomplete({
             {query.length >= minChars && results.length === 0 && !isLoading && (
               <div className="px-4 py-8 text-center">
                 <Search className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-500">No results found for "{query}"</p>
+                <p className="text-gray-500">No results found for &quot;{query}&quot;</p>
               </div>
             )}
 

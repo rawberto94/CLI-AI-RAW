@@ -323,7 +323,7 @@ export function DeleteDialog({
           </h3>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             {itemName ? (
-              <>Are you sure you want to delete <span className="font-medium text-slate-700 dark:text-slate-300">"{itemName}"</span>?</>
+              <>Are you sure you want to delete <span className="font-medium text-slate-700 dark:text-slate-300">&quot;{itemName}&quot;</span>?</>
             ) : (
               <>Are you sure you want to delete this {itemType}?</>
             )}

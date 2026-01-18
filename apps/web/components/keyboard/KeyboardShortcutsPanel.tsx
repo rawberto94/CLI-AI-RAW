@@ -414,7 +414,7 @@ export function KeyboardShortcutsPanel({
                 <div className="text-center py-12">
                   <Keyboard className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
                   <p className="text-slate-500 dark:text-slate-400">
-                    No shortcuts found for "{searchQuery}"
+                    No shortcuts found for &quot;{searchQuery}&quot;
                   </p>
                 </div>
               )}

@@ -229,7 +229,7 @@ export function OnboardingChecklist() {
                 🎉 Onboarding Complete!
               </h2>
               <p className="text-slate-600 dark:text-slate-400 mb-6">
-                You've mastered the basics of ConTigo. You're now ready to unlock the full power of AI-driven contract management.
+                You&apos;ve mastered the basics of ConTigo. You&apos;re now ready to unlock the full power of AI-driven contract management.
               </p>
 
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-4 mb-6">

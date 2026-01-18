@@ -553,7 +553,9 @@ export function useCollaboration(documentId: string, documentType: 'contract' | 
   // Get combined hooks
   const notifications = useNotifications({ pollInterval: 60000 });
   const sharing = useSharing(documentId, documentType);
-  const comments = documentType === 'contract' ? useComments(documentId) : null;
+  // Always call useComments to avoid conditional hook - pass empty string for non-contract types
+  const commentsResult = useComments(documentType === 'contract' ? documentId : '');
+  const comments = documentType === 'contract' ? commentsResult : null;
 
   return {
     // Connection status

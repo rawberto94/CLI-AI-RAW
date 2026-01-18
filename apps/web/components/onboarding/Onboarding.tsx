@@ -640,7 +640,7 @@ export function WelcomeModal({
                 onClick={onClose}
                 className="w-full py-3 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
               >
-                I'll explore on my own
+                I&apos;ll explore on my own
               </button>
             </div>
           </div>

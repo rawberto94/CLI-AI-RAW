@@ -135,8 +135,9 @@ function generateCloudFrontSignedUrl(
     .replace(/=/g, '_');
   
   // Sign with private key (simplified - use @aws-sdk/cloudfront-signer in production)
-  const crypto = require('crypto');
-  const sign = crypto.createSign('RSA-SHA1');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const cryptoModule = require('crypto');
+  const sign = cryptoModule.createSign('RSA-SHA1');
   sign.update(policy);
   const signature = sign.sign(privateKey, 'base64')
     .replace(/\+/g, '-')

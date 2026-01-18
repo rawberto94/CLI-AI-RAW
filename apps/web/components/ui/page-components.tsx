@@ -7,6 +7,7 @@
 'use client';
 
 import React, { memo, forwardRef } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
@@ -101,12 +102,12 @@ export const PageHeader = memo<PageHeaderProps>(({
         {/* Breadcrumbs */}
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav className="flex items-center gap-1.5 text-sm mb-3">
-            <a
+            <Link
               href="/"
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <Home className="h-4 w-4" />
-            </a>
+            </Link>
             {breadcrumbs.map((item, index) => (
               <React.Fragment key={index}>
                 <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-700" />

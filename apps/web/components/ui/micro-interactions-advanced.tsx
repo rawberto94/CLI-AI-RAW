@@ -93,6 +93,15 @@ export const TiltCard = memo<TiltCardProps>(({
 
   const rotateX = useTransform(y, [-0.5, 0.5], [tiltAmount, -tiltAmount]);
   const rotateY = useTransform(x, [-0.5, 0.5], [-tiltAmount, tiltAmount]);
+  
+  // Move useTransform to top level to avoid conditional hook call
+  const glareOpacity = useTransform(
+    [x, y],
+    ([latestX, latestY]) => {
+      const distance = Math.sqrt((latestX as number) ** 2 + (latestY as number) ** 2);
+      return distance * 0.5;
+    }
+  );
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -127,13 +136,7 @@ export const TiltCard = memo<TiltCardProps>(({
         <motion.div
           className="pointer-events-none absolute inset-0 rounded-inherit bg-gradient-to-br from-white/20 to-transparent"
           style={{
-            opacity: useTransform(
-              [x, y],
-              ([latestX, latestY]) => {
-                const distance = Math.sqrt((latestX as number) ** 2 + (latestY as number) ** 2);
-                return distance * 0.5;
-              }
-            ),
+            opacity: glareOpacity,
           }}
         />
       )}

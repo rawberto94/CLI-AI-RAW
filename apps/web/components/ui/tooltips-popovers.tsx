@@ -644,7 +644,7 @@ export function CommandMenu({
 
               {filteredItems.length === 0 && (
                 <div className="py-12 text-center text-slate-500 dark:text-slate-400">
-                  No results found for "{search}"
+                  No results found for &quot;{search}&quot;
                 </div>
               )}
             </div>

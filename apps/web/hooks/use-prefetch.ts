@@ -251,6 +251,7 @@ export function createPrefetchLinkProps(
     onMouseEnter: () => {
       timeoutId = setTimeout(async () => {
         // This is a static version - for dynamic use, use the usePrefetch hook
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { getGlobalQueryClient } = require('@/lib/query-client');
         const queryClient = getGlobalQueryClient();
         if (!queryClient) return;

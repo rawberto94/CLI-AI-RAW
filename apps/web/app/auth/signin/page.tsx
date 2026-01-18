@@ -351,7 +351,7 @@ function SignInForm() {
         // Show welcome transition before redirecting
         setShowWelcome(true);
       }
-    } catch (error) {
+    } catch {
       setError("An error occurred. Please try again.");
       setLoading(false);
     }
@@ -365,7 +365,7 @@ function SignInForm() {
     setSsoLoading(provider);
     try {
       await signIn(provider, { callbackUrl });
-    } catch (error) {
+    } catch {
       setError(`Failed to sign in with ${provider}`);
       setSsoLoading(null);
     }

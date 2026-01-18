@@ -252,7 +252,7 @@ export function UnifiedSearch({
       {!isSearching && query && totalResults === 0 && (
         <Card className="absolute top-full mt-2 w-full z-50 p-4">
           <p className="text-sm text-muted-foreground text-center">
-            No results found for "{query}"
+            No results found for &quot;{query}&quot;
           </p>
         </Card>
       )}

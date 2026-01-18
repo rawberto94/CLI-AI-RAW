@@ -365,7 +365,7 @@ export function FirstTimeState({
         Welcome to {feature}!
       </h2>
       <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md mx-auto">
-        Let's get you set up. It only takes a minute.
+        Let&apos;s get you set up. It only takes a minute.
       </p>
 
       {steps.length > 0 && (
@@ -427,7 +427,7 @@ export function MaintenanceState({ estimatedTime, className = '' }: MaintenanceS
         Under Maintenance
       </h2>
       <p className="text-gray-600 dark:text-gray-300 max-w-md mb-4">
-        We're making some improvements. This won't take long.
+        We&apos;re making some improvements. This won&apos;t take long.
       </p>
       {estimatedTime && (
         <p className="text-sm text-gray-500">

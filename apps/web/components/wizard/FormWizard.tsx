@@ -156,7 +156,7 @@ interface WizardProgressProps {
 }
 
 export function WizardProgress({ variant = 'steps', className }: WizardProgressProps) {
-  const { currentStep, steps } = useWizard();
+  const { currentStep, steps, goToStep } = useWizard();
 
   if (variant === 'dots') {
     return (
@@ -218,7 +218,7 @@ export function WizardProgress({ variant = 'steps', className }: WizardProgressP
               transition={{ delay: index * 0.1 }}
             >
               <motion.button
-                onClick={() => index < currentStep && useWizard().goToStep(index)}
+                onClick={() => index < currentStep && goToStep(index)}
                 disabled={index > currentStep}
                 className={cn(
                   'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all',

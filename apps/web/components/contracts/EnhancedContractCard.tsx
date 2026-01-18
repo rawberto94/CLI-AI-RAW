@@ -1120,7 +1120,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
 // Compact Row Variant for List View
 // ============================================================================
 
-export interface EnhancedContractRowProps extends Omit<EnhancedContractCardProps, "variant"> {}
+export type EnhancedContractRowProps = Omit<EnhancedContractCardProps, "variant">;
 
 export const EnhancedContractRow = memo(function EnhancedContractRow({
   contract,

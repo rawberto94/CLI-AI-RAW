@@ -212,7 +212,7 @@ function NetworkBanner({ isOnline, showReconnected }: NetworkBannerProps) {
         >
           <div className="container mx-auto flex items-center justify-center gap-3">
             <WifiOff className="w-5 h-5" />
-            <span className="font-medium">You're offline. Some features may not work.</span>
+            <span className="font-medium">You&apos;re offline. Some features may not work.</span>
             <button
               onClick={() => window.location.reload()}
               className="ml-4 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm flex items-center gap-1"
@@ -233,7 +233,7 @@ function NetworkBanner({ isOnline, showReconnected }: NetworkBannerProps) {
         >
           <div className="container mx-auto flex items-center justify-center gap-3">
             <Wifi className="w-5 h-5" />
-            <span className="font-medium">You're back online!</span>
+            <span className="font-medium">You&apos;re back online!</span>
           </div>
         </motion.div>
       )}
@@ -304,7 +304,7 @@ export function OfflineFallback({ children, fallback }: OfflineFallbackProps) {
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <CloudOff className="w-16 h-16 text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              You're offline
+              You&apos;re offline
             </h3>
             <p className="text-gray-500 max-w-sm">
               This content is not available offline. Please check your connection and try again.

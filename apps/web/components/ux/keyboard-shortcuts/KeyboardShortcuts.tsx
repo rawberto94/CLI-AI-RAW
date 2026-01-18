@@ -456,7 +456,7 @@ const KeyboardShortcutsOverlay = memo(function KeyboardShortcutsOverlay() {
               {displayedShortcuts.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-zinc-500 dark:text-zinc-400">
-                    No shortcuts found matching "{searchQuery}"
+                    No shortcuts found matching &quot;{searchQuery}&quot;
                   </p>
                 </div>
               ) : (

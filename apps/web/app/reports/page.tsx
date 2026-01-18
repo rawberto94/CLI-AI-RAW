@@ -320,7 +320,7 @@ export default function ReportDashboard() {
       {/* Quick Metrics Preview */}
       <Card>
         <CardHeader>
-          <CardTitle>What's Included</CardTitle>
+          <CardTitle>What&apos;s Included</CardTitle>
           <CardDescription>Each report includes comprehensive analytics and actionable insights</CardDescription>
         </CardHeader>
         <CardContent>

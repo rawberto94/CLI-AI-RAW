@@ -197,7 +197,7 @@ export function OrchestratorAwareChatbot({
                               }
                               className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 transition-colors"
                             >
-                              What's the current status?
+                              What&apos;s the current status?
                             </button>
                             <button
                               onClick={() =>

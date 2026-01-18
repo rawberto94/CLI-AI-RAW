@@ -76,7 +76,7 @@ export function useNetworkStatus() {
 
   // Detect slow connection using Network Information API
   useEffect(() => {
-    // @ts-ignore - Navigator.connection is not in standard typings
+    // @ts-expect-error - Navigator.connection is not in standard typings
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     
     if (connection) {

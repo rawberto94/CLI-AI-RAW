@@ -61,7 +61,7 @@ export function RetryButton({
       // Reset retry count on success
       setRetryCount(0);
       showSuccess('Operation completed successfully');
-    } catch (error) {
+    } catch {
       const newRetryCount = retryCount + 1;
       setRetryCount(newRetryCount);
 

@@ -239,7 +239,7 @@ ${count > 0 ? `**Recommended Actions:**
 • Prepare for contract transitions` : 'No contracts expiring soon!'}`,
       data: count > 0 ? { url: '/contracts?filter=expiring-soon' } : undefined
     }
-  } catch (error) {
+  } catch {
     return {
       success: true,
       message: `📋 To view contracts expiring soon, click below:`,
@@ -248,7 +248,8 @@ ${count > 0 ? `**Recommended Actions:**
   }
 }
 
-async function showHighRiskContracts(tenantId: string): Promise<ChatActionResult> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function showHighRiskContracts(_tenantId: string): Promise<ChatActionResult> {
   return {
     success: true,
     message: `🚨 **High Risk Contracts**
@@ -288,7 +289,7 @@ ${count > 0 ? `**Why categorize?**
 **Quick tip:** Use AI auto-categorization to categorize all at once!` : 'All your contracts are properly categorized!'}`,
       data: count > 0 ? { url: '/contracts?filter=uncategorized' } : undefined
     }
-  } catch (error) {
+  } catch {
     return {
       success: true,
       message: `📂 To view uncategorized contracts, click below:`,
@@ -299,7 +300,8 @@ ${count > 0 ? `**Why categorize?**
 
 async function showContractsByStatus(
   entities: DetectedIntent['entities'],
-  tenantId: string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _tenantId: string
 ): Promise<ChatActionResult> {
   const status = entities.status || 'active'
   

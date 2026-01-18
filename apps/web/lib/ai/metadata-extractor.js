@@ -1,4 +1,5 @@
 "use strict";
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-this-alias */
 /**
  * Enhanced AI Metadata Extractor
  *

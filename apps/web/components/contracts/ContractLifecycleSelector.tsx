@@ -99,7 +99,7 @@ export function ContractLifecycleSelector({
       <div className="flex items-center gap-2">
         <Info className="h-4 w-4 text-slate-500" />
         <p className="text-sm text-slate-600">
-          Help us understand this contract's purpose
+          Help us understand this contract&apos;s purpose
         </p>
       </div>
 

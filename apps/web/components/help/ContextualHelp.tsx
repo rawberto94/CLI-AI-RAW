@@ -376,6 +376,14 @@ export function useHelpPanel() {
   return context;
 }
 
+/**
+ * Safe version of useHelpPanel that returns null instead of throwing
+ * when used outside of HelpPanelProvider context.
+ */
+export function useHelpPanelSafe(): HelpPanelContextValue | null {
+  return useContext(HelpPanelContext);
+}
+
 interface HelpPanelProviderProps {
   children: ReactNode;
   topics?: HelpTopic[];
@@ -538,12 +546,8 @@ interface FloatingHelpButtonProps {
 }
 
 export function FloatingHelpButton({ onClick, className }: FloatingHelpButtonProps) {
-  let helpPanel: HelpPanelContextValue | null = null;
-  try {
-    helpPanel = useHelpPanel();
-  } catch {
-    // Not in provider context
-  }
+  // Call hook unconditionally at top level - will return null if not in provider context
+  const helpPanel = useHelpPanelSafe();
 
   const handleClick = () => {
     if (onClick) {

@@ -997,7 +997,7 @@ function AlertsSection() {
           title="Storage Almost Full"
           action={{ label: 'Upgrade Plan', onClick: () => {} }}
         >
-          You've used 90% of your storage. Consider upgrading to continue uploading files.
+          You&apos;ve used 90% of your storage. Consider upgrading to continue uploading files.
         </InlineAlert>
 
         <InlineAlert type="error" title="Connection Lost" dismissible>

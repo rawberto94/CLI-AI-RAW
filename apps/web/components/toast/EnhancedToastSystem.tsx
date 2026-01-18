@@ -46,7 +46,7 @@ export interface Toast {
   href?: string;
 }
 
-export interface ToastOptions extends Omit<Toast, 'id'> {}
+export type ToastOptions = Omit<Toast, 'id'>;
 
 interface ToastContextValue {
   toasts: Toast[];
