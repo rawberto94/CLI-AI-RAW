@@ -4,7 +4,6 @@
  */
 
 import { DetectedIntent, ActionResponse, ChatContext } from '../types';
-import { prisma } from '@/lib/prisma';
 
 export type ActionHandler = (
   intent: DetectedIntent,

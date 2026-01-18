@@ -18,14 +18,10 @@ import {
   Brain, 
   ChevronDown, 
   ChevronUp, 
-  Lightbulb, 
-  Search, 
   Wrench,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Sparkles,
-  MessageSquare,
   RefreshCw,
   Eye,
   EyeOff,
@@ -332,7 +328,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
               className="overflow-hidden"
             >
               <div className="mt-2 space-y-1 max-h-40 overflow-y-auto text-xs">
-                {visibleSteps.map((step, index) => (
+                {visibleSteps.map((step) => (
                   <div 
                     key={step.id}
                     className="flex items-start gap-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"

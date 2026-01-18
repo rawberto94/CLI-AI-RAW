@@ -4,7 +4,7 @@
  */
 
 import { DetectedIntent } from './types';
-import { CONTRACT_TYPE_ALIASES, STATUS_ALIASES, RISK_LEVEL_ALIASES } from './constants';
+import { CONTRACT_TYPE_ALIASES } from './constants';
 import { detectHelpIntent } from './action-handlers/help-actions';
 import { detectAgentIntent } from './action-handlers/agent-actions';
 

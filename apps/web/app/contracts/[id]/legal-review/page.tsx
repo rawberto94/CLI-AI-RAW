@@ -4,7 +4,7 @@ import React, { useState, useEffect, use } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -31,13 +31,10 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Edit3,
   FileText,
-  Gavel,
   Loader2,
   MessageSquare,
-  RefreshCw,
   Scale,
   Shield,
   Sparkles,
@@ -48,7 +45,6 @@ import {
   FileCheck,
   Eye,
   Split,
-  Minimize2,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -347,7 +343,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 dark:from-slate-900 dark:via-indigo-950/30 dark:to-purple-950/20 flex flex-col">
-      {/* Header */}}
+      {/* Header */}
       <div className="flex-none bg-gradient-to-r from-indigo-600 via-purple-600 to-violet-600 shadow-xl">
         <div className="max-w-[1800px] mx-auto px-6 py-4">
           <motion.div
@@ -423,7 +419,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
               </div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">AI-Powered Legal Review</h2>
               <p className="text-slate-600 dark:text-slate-400 max-w-lg mx-auto mb-8">
-                Get instant insights into contract risks, clause assessments, and AI-suggested redlines based on your organization's playbook.
+                Get instant insights into contract risks, clause assessments, and AI-suggested redlines based on your organization&apos;s playbook.
               </p>
               
               <Button
@@ -475,7 +471,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                     <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                   </div>
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Playbook Comparison</h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Compare against your organization's standard positions and fallback language.</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Compare against your organization&apos;s standard positions and fallback language.</p>
                 </div>
               </div>
             </CardContent>

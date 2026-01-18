@@ -4,9 +4,9 @@ import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, CheckCircle2, XCircle, MessageSquare, AlertTriangle, Shield,
-  ChevronDown, ChevronRight, Clock, User, Check, X, Edit3, RefreshCw,
-  Download, Share2, Filter, Search, ArrowLeft, ArrowRight, Zap, Brain,
-  Loader2, BookOpen, Target, Scale, AlertCircle, Info, ThumbsUp, ThumbsDown,
+  ChevronDown, ChevronRight, Clock, Check, X, Edit3, RefreshCw,
+  Download, Share2, Search, Zap, Brain,
+  Loader2, BookOpen, Target, Scale, AlertCircle, ThumbsUp, ThumbsDown,
 } from 'lucide-react';
 
 // ============================================================================
@@ -88,6 +88,7 @@ interface RedlineViewerProps {
 // ============================================================================
 
 export function RedlineViewer({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   contractId,
   review,
   onAcceptChange,
@@ -681,7 +682,6 @@ export function RedlineViewer({
                                       className="px-4 py-2 text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200"
                                     >
                                       Cancel
-                                    </button>
                                     </button>
                                   </div>
                                 </div>

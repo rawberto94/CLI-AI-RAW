@@ -22,29 +22,19 @@ import {
   Search,
   Filter,
   Download,
-  RefreshCw,
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Clock,
   TrendingUp,
   TrendingDown,
-  Zap,
   BarChart3,
   GitBranch,
   Play,
   Pause,
-  Archive,
-  RotateCcw,
   Plus,
   Eye,
-  ChevronRight,
   Loader2,
   Star,
-  DollarSign,
-  Timer,
-  Target,
-  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -88,14 +78,6 @@ interface RegisteredModel {
   isDefault: boolean;
   registeredAt: Date;
   lastUpdatedAt: Date;
-}
-
-interface ModelComparison {
-  models: RegisteredModel[];
-  metrics: {
-    metric: string;
-    values: Record<string, number>;
-  }[];
 }
 
 interface ABTest {

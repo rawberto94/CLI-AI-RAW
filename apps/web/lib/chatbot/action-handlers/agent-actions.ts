@@ -94,8 +94,6 @@ export const agentActionPatterns = {
 // =============================================================================
 
 export function detectAgentIntent(query: string): DetectedIntent | null {
-  const lowerQuery = query.toLowerCase();
-
   // Deep Analysis
   if (agentActionPatterns.deepAnalysis.some(p => p.test(query))) {
     return {
@@ -686,6 +684,7 @@ export async function validateAndRefineResponse(
     requireApproval?: boolean;
   }
 ): Promise<{ response: string; wasRevised: boolean; score: number }> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { minScore = 0.7, maxRevisions = 2, requireApproval = false } = options || {};
   
   let currentResponse = response;
