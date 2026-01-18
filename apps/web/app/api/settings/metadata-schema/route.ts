@@ -16,15 +16,19 @@ import {
   type CreateFieldInput,
   type MetadataCategory,
 } from '@/lib/services/metadata-schema.service';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
 // ============================================================================
 // GET - Get Schema
 // ============================================================================
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
 
     const schema = await metadataSchemaService.getSchema(tenantId);
 
@@ -46,7 +50,11 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const body = await request.json();
 
     const { action } = body;
@@ -107,8 +115,12 @@ export async function PUT(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
-    const userId = request.headers.get('x-user-id') || 'system';
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body = await request.json();
 
     const { type } = body;
@@ -175,7 +187,11 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const body = await request.json();
 
     const { type, id, ...updates } = body;
@@ -215,7 +231,11 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const searchParams = request.nextUrl.searchParams;
     
     const type = searchParams.get('type') || 'field';

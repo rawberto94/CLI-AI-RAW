@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getTenantIdFromRequest } from '@/lib/tenant-server'
+import { getServerSession } from '@/lib/auth'
 import { publishRealtimeEvent } from '@/lib/realtime/publish'
 
 /**
@@ -34,16 +34,12 @@ const DEFAULT_WORKFLOW = {
 
 export async function POST(request: NextRequest) {
   try {
-    let tenantId: string
-    try {
-      tenantId = await getTenantIdFromRequest(request)
-    } catch {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      )
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const userId = request.headers.get('x-user-id') || 'system'
+    const tenantId = session.user.tenantId
+    const userId = session.user.id
     
     const body: QuickActionBody = await request.json()
 
