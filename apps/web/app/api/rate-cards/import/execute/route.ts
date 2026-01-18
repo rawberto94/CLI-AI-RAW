@@ -7,18 +7,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEvents, roleStandardizationService } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id');
-    const userId = request.headers.get('x-user-id') || 'system';
-    
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     
     const body = await request.json();
 

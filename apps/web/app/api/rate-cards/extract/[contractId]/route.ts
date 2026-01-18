@@ -8,22 +8,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardExtractionService } from 'data-orchestration/services';
 import { roleStandardizationService } from 'data-orchestration/services';
+import { getServerSession } from '@/lib/auth';
 
-export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
+export async function POST(_request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
   try {
-    const { contractId } = params;
-
-    // Get tenant ID from header
-    const tenantId = request.headers.get('x-tenant-id');
-    const userId = request.headers.get('x-user-id') || 'system';
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
+    const { contractId } = params;
 
     // Validate contract exists and has text - scoped to tenant
     const contract = await prisma.contract.findFirst({
@@ -48,14 +44,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
       return NextResponse.json(
         { error: 'Contract has no text content. Please ensure the contract has been processed.' },
         { status: 400 }
-      );
-    }
-
-    // Check tenant access
-    if (contract.tenantId !== tenantId) {
-      return NextResponse.json(
-        { error: 'Unauthorized access to contract' },
-        { status: 403 }
       );
     }
 

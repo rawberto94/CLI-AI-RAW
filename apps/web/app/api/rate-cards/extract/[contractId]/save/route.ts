@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 interface SaveRateCardRequest {
   rates: Array<{
@@ -39,25 +40,22 @@ interface SaveRateCardRequest {
   };
 }
 
-export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
+export async function POST(_request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
   try {
-    const { contractId } = params;
-    const tenantId = request.headers.get('x-tenant-id');
-    const userId = request.headers.get('x-user-id') || 'system';
-
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
+    const { contractId } = params;
 
-    const body: SaveRateCardRequest = await request.json();
+    const body: SaveRateCardRequest = await _request.json();
 
     // Validate contract exists
-    const contract = await prisma.contract.findUnique({
-      where: { id: contractId },
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
       select: { id: true, tenantId: true },
     });
 
@@ -65,13 +63,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ cont
       return NextResponse.json(
         { error: 'Contract not found' },
         { status: 404 }
-      );
-    }
-
-    if (contract.tenantId !== tenantId) {
-      return NextResponse.json(
-        { error: 'Unauthorized access to contract' },
-        { status: 403 }
       );
     }
 

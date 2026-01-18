@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 import { executeAction, detectUpdateIntent } from '@/lib/chatbot/action-handlers';
 import { getPendingAction } from '@/lib/chatbot/action-handlers/update-actions';
 import type { ChatContext, DetectedIntent } from '@/lib/chatbot/types';
@@ -33,13 +33,12 @@ interface ActionRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = await getServerTenantId();
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 401 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
 
     const body: ActionRequest = await request.json();
     const { message, contractId, action, entities, pendingActionId, confirm } = body;
@@ -47,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Build context
     const context: ChatContext = {
       tenantId,
-      userId: request.headers.get('x-user-id') || undefined,
+      userId,
       currentContractId: contractId,
     };
 
