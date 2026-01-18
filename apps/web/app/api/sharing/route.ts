@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import crypto from 'crypto';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +56,11 @@ const getMockShares = (documentId: string): ShareSettings[] => [
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const { searchParams } = new URL(request.url);
     const documentId = searchParams.get('documentId');
     const documentType = searchParams.get('documentType') || 'contract';
@@ -112,8 +116,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
-    const userId = request.headers.get('x-user-id') || 'current-user';
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body = await request.json();
     
     const { 
@@ -222,7 +230,11 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const body = await request.json();
     const { shareId, permission, expiresAt, isActive } = body;
 
@@ -284,7 +296,11 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
     const { searchParams } = new URL(request.url);
     const shareId = searchParams.get('id');
 

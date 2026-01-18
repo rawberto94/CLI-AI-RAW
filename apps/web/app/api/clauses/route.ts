@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
 // GET /api/clauses - List all clauses from clause library
 export async function GET(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
@@ -80,17 +76,12 @@ export async function GET(request: NextRequest) {
 // POST /api/clauses - Create new clause
 export async function POST(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const userId = request.headers.get('x-user-id') || 'system';
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body = await request.json();
     const { title, content, category, tags, riskLevel, alternativeText, isStandard, isMandatory, isNegotiable } = body;
 
