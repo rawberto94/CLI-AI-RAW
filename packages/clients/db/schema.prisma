@@ -335,12 +335,12 @@ model Contract {
   linkedAt         DateTime? // When the link was established
 
   // Signature & Document Classification
-  signatureStatus              String?   @default("unknown") // signed, partially_signed, unsigned, unknown
-  signatureDate                DateTime? // Date of final execution
-  signatureRequiredFlag        Boolean   @default(false) // Flag for contracts needing signature attention
-  documentClassification       String?   @default("contract") // contract, purchase_order, invoice, quote, proposal, etc.
-  documentClassificationConf   Float?    // Classification confidence 0-1
-  documentClassificationWarning String?  // Warning message if not a proper contract
+  signatureStatus               String?   @default("unknown") // signed, partially_signed, unsigned, unknown
+  signatureDate                 DateTime? // Date of final execution
+  signatureRequiredFlag         Boolean   @default(false) // Flag for contracts needing signature attention
+  documentClassification        String?   @default("contract") // contract, purchase_order, invoice, quote, proposal, etc.
+  documentClassificationConf    Float? // Classification confidence 0-1
+  documentClassificationWarning String? // Warning message if not a proper contract
 
   artifacts           Artifact[]
   clauses             Clause[]
@@ -3981,4 +3981,161 @@ model LegalReview {
   @@index([status])
   @@index([tenantId, status])
   @@map("legal_reviews")
+}
+
+// =============================================================================
+// AGENT GOAL PERSISTENCE
+// =============================================================================
+
+/// Agent goals for persistent execution tracking
+model AgentGoal {
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  userId   String? @map("user_id")
+
+  // Goal details
+  type        String // Goal type (analyze_contract, cost_optimization, etc.)
+  title       String // Human-readable title
+  description String? @db.Text
+  priority    Int     @default(5) // 1 = highest, 10 = lowest
+
+  // Execution state
+  status   AgentGoalStatus @default(PENDING)
+  progress Int             @default(0) // 0-100
+
+  // Related entities
+  contractId  String?  @map("contract_id")
+  artifactIds String[] @default([]) @map("artifact_ids")
+
+  // Planning and execution
+  plan        Json? // Execution plan steps
+  currentStep Int   @default(0) @map("current_step")
+  totalSteps  Int   @default(0) @map("total_steps")
+
+  // Results and context
+  context Json    @default("{}") // Input context
+  result  Json? // Final result
+  error   String? @db.Text // Error message if failed
+
+  // Approval workflow
+  requiresApproval Boolean   @default(false) @map("requires_approval")
+  approvedBy       String?   @map("approved_by")
+  approvedAt       DateTime? @map("approved_at")
+
+  // Timing
+  scheduledFor DateTime? @map("scheduled_for")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  steps    AgentGoalStep[]
+  triggers AgentTrigger[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([contractId])
+  @@index([tenantId, status])
+  @@index([scheduledFor])
+  @@map("agent_goals")
+}
+
+/// Individual steps within an agent goal
+model AgentGoalStep {
+  id     String @id @default(cuid())
+  goalId String @map("goal_id")
+
+  // Step details
+  name  String
+  type  String // Action type
+  order Int // Execution order
+
+  // Execution state
+  status   AgentGoalStepStatus @default(PENDING)
+  progress Int                 @default(0)
+
+  // Input/output
+  input  Json?
+  output Json?
+  error  String? @db.Text
+
+  // Timing
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  duration    Int? // Duration in milliseconds
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  goal AgentGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId])
+  @@index([status])
+  @@map("agent_goal_steps")
+}
+
+/// Triggers that can start agent goals
+model AgentTrigger {
+  id       String  @id @default(cuid())
+  tenantId String  @map("tenant_id")
+  goalId   String? @map("goal_id") // Template goal to execute
+
+  // Trigger configuration
+  name     String
+  type     AgentTriggerType
+  isActive Boolean          @default(true) @map("is_active")
+
+  // Schedule (for SCHEDULE type)
+  cronExpression String? @map("cron_expression")
+
+  // Event (for EVENT type)
+  eventType   String? @map("event_type")
+  eventFilter Json?   @map("event_filter")
+
+  // Threshold (for THRESHOLD type)
+  metric    String?
+  operator  String? // gt, lt, eq, gte, lte
+  threshold Float?
+
+  // Execution tracking
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  triggerCount    Int       @default(0) @map("trigger_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  goal AgentGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([isActive])
+  @@map("agent_triggers")
+}
+
+enum AgentGoalStatus {
+  PENDING
+  PLANNING
+  AWAITING_APPROVAL
+  EXECUTING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AgentGoalStepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+enum AgentTriggerType {
+  SCHEDULE // Cron-based
+  EVENT // Event-driven
+  THRESHOLD // Metric-based
+  MANUAL // User-initiated
 }

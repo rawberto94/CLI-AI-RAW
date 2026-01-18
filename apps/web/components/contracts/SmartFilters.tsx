@@ -734,10 +734,10 @@ export const SmartFilters = memo(function SmartFilters({
   const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [activeFilterSection, setActiveFilterSection] = useState<string | null>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const activeFilterCount = useMemo(() => getActiveFilterCount(effectiveFilters), [effectiveFilters]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const updateFilter = useCallback(
     <K extends keyof ContractFilters>(key: K, value: ContractFilters[K]) => {
       onFiltersChange({ ...effectiveFilters, [key]: value });
@@ -745,7 +745,7 @@ export const SmartFilters = memo(function SmartFilters({
     [effectiveFilters, onFiltersChange]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const removeFilter = useCallback(
     (key: keyof ContractFilters) => {
       const newFilters = { ...effectiveFilters };
@@ -766,7 +766,7 @@ export const SmartFilters = memo(function SmartFilters({
     [onFiltersChange]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const handleSavePreset = useCallback(
     (name: string) => {
       onSavePreset?.(name, effectiveFilters);
@@ -775,7 +775,7 @@ export const SmartFilters = memo(function SmartFilters({
   );
 
   // Generate active filter chips
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   const filterChips = useMemo(() => {
     const chips: Array<{ key: keyof ContractFilters; label: string }> = [];
 
