@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
@@ -18,99 +18,17 @@ export const dynamic = 'force-dynamic';
  * - SYSTEM: System notifications
  */
 
-interface Notification {
-  id: string;
-  tenantId: string;
-  userId: string;
-  type: string;
-  title: string;
-  message: string;
-  link?: string;
-  metadata?: Record<string, unknown>;
-  isRead: boolean;
-  createdAt: string;
-  expiresAt?: string;
-}
-
-// Mock notifications for fallback
-const getMockNotifications = (userId: string): Notification[] => [
-  {
-    id: 'n1',
-    tenantId: 'demo',
-    userId,
-    type: 'APPROVAL_REQUEST',
-    title: 'New Approval Required',
-    message: 'Master Agreement with Acme Corp requires your approval',
-    link: '/approvals',
-    metadata: { contractId: 'c1', approvalId: 'a1', priority: 'high' },
-    isRead: false,
-    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'n2',
-    tenantId: 'demo',
-    userId,
-    type: 'COMMENT_MENTION',
-    title: 'You were mentioned',
-    message: '@you was mentioned by Sarah in Contract ABC-001',
-    link: '/contracts/c2',
-    metadata: { contractId: 'c2', commentId: 'cm1', mentionedBy: 'Sarah Johnson' },
-    isRead: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'n3',
-    tenantId: 'demo',
-    userId,
-    type: 'CONTRACT_DEADLINE',
-    title: 'Deadline Approaching',
-    message: 'Contract "TechVendor SLA" expires in 7 days',
-    link: '/contracts/c3',
-    metadata: { contractId: 'c3', daysRemaining: 7, urgency: 'medium' },
-    isRead: true,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'n4',
-    tenantId: 'demo',
-    userId,
-    type: 'WORKFLOW_STEP',
-    title: 'Workflow Action Required',
-    message: 'Legal Review step awaits your input for CloudServices NDA',
-    link: '/workflows/w1/executions/e1',
-    metadata: { workflowId: 'w1', executionId: 'e1', stepName: 'Legal Review' },
-    isRead: false,
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'n5',
-    tenantId: 'demo',
-    userId,
-    type: 'APPROVAL_COMPLETED',
-    title: 'Approval Completed',
-    message: 'Mike Johnson approved the Vendor Agreement',
-    link: '/contracts/c4',
-    metadata: { contractId: 'c4', approvedBy: 'Mike Johnson' },
-    isRead: true,
-    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 /**
  * GET /api/notifications - Get user notifications
  */
 export async function GET(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const userId = request.headers.get('x-user-id') || 'current-user';
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const { searchParams } = new URL(request.url);
     
     const unreadOnly = searchParams.get('unread') === 'true';
@@ -159,15 +77,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const tenantId = session.user.tenantId;
     const body = await request.json();
     
     const { userId, type, title, message, link, metadata, recipients } = body;
@@ -234,16 +148,12 @@ export async function POST(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const userId = request.headers.get('x-user-id') || 'current-user';
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body = await request.json();
     
     const { notificationIds, markAllRead } = body;
@@ -312,16 +222,12 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    let tenantId: string;
-    try {
-      tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const userId = request.headers.get('x-user-id') || 'current-user';
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const { searchParams } = new URL(request.url);
     
     const notificationId = searchParams.get('id');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -162,8 +162,12 @@ function calculateRiskScore(value: number, daysOverdue: number, deviations: numb
 }
 
 export async function GET(request: NextRequest) {
-  const tenantId = await getApiTenantId(request);
-  const userId = request.headers.get('x-user-id') || 'current-user';
+  const session = await getServerSession();
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const tenantId = session.user.tenantId;
+  const userId = session.user.id;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const priority = searchParams.get('priority');
@@ -366,8 +370,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = await getApiTenantId(request);
-    const userId = request.headers.get('x-user-id') || 'current-user';
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const tenantId = session.user.tenantId;
+    const userId = session.user.id;
     const body = await request.json();
     const { action, approvalId, approvalIds, comment, delegateTo, reason } = body;
 
