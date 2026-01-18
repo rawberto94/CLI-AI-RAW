@@ -2,6 +2,9 @@
 // because other modules read DATABASE_URL at module load time
 import './env';
 
+// Check if we're in build mode - skip worker initialization
+const isBuildTime = process.env.NEXT_BUILD === 'true';
+
 import { getQueueService } from '@repo/utils/queue/queue-service';
 import { registerOCRArtifactWorker } from './ocr-artifact-worker';
 import { registerArtifactGeneratorWorker } from './artifact-generator';
@@ -39,20 +42,27 @@ export type { BaseAgent } from './agents';
 
 const logger = pino({
   name: 'workers',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'HH:MM:ss',
-      ignore: 'pid,hostname',
+  level: isBuildTime ? 'silent' : 'info',
+  ...(isBuildTime ? {} : {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        colorize: true,
+        translateTime: 'HH:MM:ss',
+        ignore: 'pid,hostname',
+      },
     },
-  },
+  }),
 });
 
 /**
  * Initialize queue service and start workers
  */
 async function startWorkers() {
+  // Skip worker startup during build
+  if (isBuildTime) {
+    return;
+  }
   logger.info('🚀 Starting background workers...');
 
   try {

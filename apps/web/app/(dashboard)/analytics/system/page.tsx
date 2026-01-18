@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * System Analytics Page
  * 
@@ -5,18 +7,12 @@
  * real-time metrics, performance data, and system health.
  */
 
-import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RealTimeDashboard } from '@/components/analytics/RealTimeDashboard';
 import { DashboardBuilder } from '@/components/analytics/DashboardBuilder';
 import { PerformanceMonitoringDashboard } from '@/components/monitoring/PerformanceMonitoringDashboard';
-
-export const metadata: Metadata = {
-  title: 'System Analytics | Contigo',
-  description: 'Real-time system analytics and performance monitoring',
-};
 
 function LoadingSkeleton() {
   return (

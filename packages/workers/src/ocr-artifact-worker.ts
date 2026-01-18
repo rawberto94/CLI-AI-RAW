@@ -40,7 +40,13 @@ import { getTraceContextFromJobData } from './observability/trace';
 import { buildProcessingPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
 
-const logger = pino({ name: 'ocr-artifact-worker' });
+// Check if we're in build mode - skip worker initialization
+const isBuildTime = process.env.NEXT_BUILD === 'true';
+
+const logger = pino({ 
+  name: 'ocr-artifact-worker',
+  level: isBuildTime ? 'silent' : (process.env.LOG_LEVEL || 'info')
+});
 
 // ============ ENHANCED CONFIGURATION ============
 // Worker configuration for improved accuracy and coverage
@@ -91,7 +97,9 @@ const WORKER_CONFIG = {
   }
 };
 
-logger.info({ config: WORKER_CONFIG }, 'Worker configuration loaded');
+if (!isBuildTime) {
+  logger.info({ config: WORKER_CONFIG }, 'Worker configuration loaded');
+}
 
 // ============ TEXT PREPROCESSING UTILITIES ============
 

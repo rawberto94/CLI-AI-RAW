@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import Redis from "ioredis";
 
 // Rate limit configurations by endpoint type
@@ -151,7 +150,7 @@ export function createRateLimiter(configType: keyof typeof DEFAULT_CONFIGS = "de
     handler: () => Promise<NextResponse>
   ): Promise<NextResponse> {
     try {
-      const session = await getServerSession(authOptions);
+      const session = await getServerSession();
       const tenantId = session?.user?.tenantId || "anonymous";
       const userId = session?.user?.id || "anonymous";
 
