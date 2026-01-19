@@ -51,14 +51,13 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy built application (standalone mode)
+# Copy built application (standalone mode includes necessary node_modules)
 COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
-# Copy prisma client for runtime
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/packages/clients/db/prisma ./packages/clients/db/prisma
+# Copy prisma schema for migrations (optional, for runtime checks)
+COPY --from=builder /app/packages/clients/db/schema.prisma ./packages/clients/db/schema.prisma
 
 USER nextjs
 

@@ -56,14 +56,15 @@ Think of it like renting an apartment vs building a house:
 1. Client opens browser
 2. Types: app.contigo.ch (or Azure URL)
 3. Internet magic happens:
-   
+
    Browser → Internet → Azure Building → Your Apartment → Your App
-   
+
 4. Your app responds with the website
 5. Client sees login page
 ```
 
 **It's like calling a pizza place:**
+
 - You dial the number (URL)
 - Phone company connects you (Internet/DNS)
 - Pizza place answers (Your app)
@@ -74,13 +75,13 @@ Think of it like renting an apartment vs building a house:
 
 ### What Are All These Services?
 
-| Service | Like... | What It Does |
-|---------|---------|--------------|
-| **Container Apps** | Apartment | Runs your app |
-| **PostgreSQL** | Filing Cabinet | Stores all data |
-| **Redis** | Sticky Notes | Remembers things quickly |
-| **Blob Storage** | Storage Unit | Keeps uploaded files |
-| **OpenAI** | Smart Friend | Reads and understands contracts |
+| Service            | Like...        | What It Does                    |
+| ------------------ | -------------- | ------------------------------- |
+| **Container Apps** | Apartment      | Runs your app                   |
+| **PostgreSQL**     | Filing Cabinet | Stores all data                 |
+| **Redis**          | Sticky Notes   | Remembers things quickly        |
+| **Blob Storage**   | Storage Unit   | Keeps uploaded files            |
+| **OpenAI**         | Smart Friend   | Reads and understands contracts |
 
 ```
 ┌─────────────────────────────────────────┐
@@ -100,14 +101,14 @@ Think of it like renting an apartment vs building a house:
 
 ### ✅ Already Done
 
-| Component | Status | Description |
-|-----------|--------|-------------|
-| **Application Code** | ✅ Complete | Next.js app with all features |
-| **Docker Image** | ✅ Ready | App packaged and ready to deploy |
-| **Database Schema** | ✅ Complete | All tables and relations defined |
-| **AI Integration** | ✅ Working | OpenAI extracts contract data |
-| **Deployment Scripts** | ✅ Ready | One-click Azure deployment |
-| **Documentation** | ✅ Complete | Guides for everything |
+| Component              | Status      | Description                      |
+| ---------------------- | ----------- | -------------------------------- |
+| **Application Code**   | ✅ Complete | Next.js app with all features    |
+| **Docker Image**       | ✅ Ready    | App packaged and ready to deploy |
+| **Database Schema**    | ✅ Complete | All tables and relations defined |
+| **AI Integration**     | ✅ Working  | OpenAI extracts contract data    |
+| **Deployment Scripts** | ✅ Ready    | One-click Azure deployment       |
+| **Documentation**      | ✅ Complete | Guides for everything            |
 
 ### 📁 Your Key Files
 
@@ -129,13 +130,14 @@ CLI-AI-RAW/
 
 ### Step 1: Get Your Accounts Ready (30 minutes)
 
-| Account | Action | Link |
-|---------|--------|------|
-| **Azure** | Sign up (free to start) | [portal.azure.com](https://portal.azure.com) |
-| **OpenAI** | Get API key | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| **GitHub** | You already have this | [github.com](https://github.com) |
+| Account    | Action                  | Link                                                                 |
+| ---------- | ----------------------- | -------------------------------------------------------------------- |
+| **Azure**  | Sign up (free to start) | [portal.azure.com](https://portal.azure.com)                         |
+| **OpenAI** | Get API key             | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| **GitHub** | You already have this   | [github.com](https://github.com)                                     |
 
 **After this step you'll have:**
+
 - Azure account with payment method
 - OpenAI API key (starts with `sk-`)
 - GitHub account (already have: rawberto94)
@@ -160,6 +162,7 @@ docker --version
 ```
 
 **After this step you'll have:**
+
 - `az` command working
 - Docker Desktop running
 
@@ -184,6 +187,7 @@ chmod +x deploy-pilot.sh
 ```
 
 **What happens:**
+
 ```
 Script runs...
 ├── Creates resource group in Azure
@@ -211,6 +215,7 @@ cd ../..
 ```
 
 **What happens:**
+
 ```
 Script runs...
 ├── Packages your code into a container
@@ -233,10 +238,11 @@ pnpm prisma migrate deploy
 ```
 
 **What happens:**
+
 ```
 Creates all the tables...
 ├── Users
-├── Contracts  
+├── Contracts
 ├── Tenants
 ├── Workflows
 └── etc.
@@ -363,27 +369,27 @@ az containerapp update \
 
 ### Daily Commands
 
-| Task | Command |
-|------|---------|
-| Check health | `curl https://YOUR-URL/api/health` |
-| View logs | `./scripts/view-logs.sh -f` |
+| Task         | Command                                |
+| ------------ | -------------------------------------- |
+| Check health | `curl https://YOUR-URL/api/health`     |
+| View logs    | `./scripts/view-logs.sh -f`            |
 | Check status | `./scripts/manage-resources.sh status` |
 
 ### Maintenance Commands
 
-| Task | Command |
-|------|---------|
-| Update app | `./scripts/build-and-push.sh && ./scripts/update-app.sh` |
-| Backup database | `./scripts/backup-database.sh` |
-| Stop (save money) | `./scripts/manage-resources.sh stop` |
-| Start | `./scripts/manage-resources.sh start` |
+| Task              | Command                                                  |
+| ----------------- | -------------------------------------------------------- |
+| Update app        | `./scripts/build-and-push.sh && ./scripts/update-app.sh` |
+| Backup database   | `./scripts/backup-database.sh`                           |
+| Stop (save money) | `./scripts/manage-resources.sh stop`                     |
+| Start             | `./scripts/manage-resources.sh start`                    |
 
 ### Emergency Commands
 
-| Task | Command |
-|------|---------|
-| Restart app | `az containerapp revision restart --name ca-contigo-web --resource-group rg-contigo-pilot` |
-| Check errors | `./scripts/view-logs.sh --system` |
+| Task         | Command                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------ |
+| Restart app  | `az containerapp revision restart --name ca-contigo-web --resource-group rg-contigo-pilot` |
+| Check errors | `./scripts/view-logs.sh --system`                                                          |
 
 ---
 
@@ -417,9 +423,11 @@ TODAY
 
 ---
 
-**You've got this! The hard part (building the app) is done. Now it's just following the steps above.**
+**You've got this! The hard part (building the app) is done. Now it's just following the steps
+above.**
 
 Questions? Check:
+
 - [DEPLOYMENT_GUIDE_COMPLETE.md](DEPLOYMENT_GUIDE_COMPLETE.md) - Detailed deployment
 - [SCALING_UP.md](SCALING_UP.md) - Growing your infrastructure
 - [QUICK_START.md](QUICK_START.md) - Local development
