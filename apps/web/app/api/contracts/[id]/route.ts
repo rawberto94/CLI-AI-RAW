@@ -12,7 +12,6 @@ import { NextResponse } from "next/server";
 import { unlink } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
-import { readFile, writeFile } from "fs/promises";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { join } from "path";
 import { getErrorMessage, type JsonRecord } from "@/lib/types/common";
@@ -524,61 +523,78 @@ export async function PUT(
       );
     }
 
-    // Load existing contract data
-    const contractDataPath = join(
-      process.cwd(),
-      "data",
-      "contracts",
-      `${contractId}.json`
-    );
+    // Get tenant ID for isolation
+    const tenantId = await getServerTenantId();
+    if (!tenantId) {
+      return NextResponse.json(
+        { error: "Tenant ID is required" },
+        { status: 401 }
+      );
+    }
 
-    if (!existsSync(contractDataPath)) {
+    // Verify contract exists and belongs to tenant
+    const existingContract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+    });
+
+    if (!existingContract) {
       return NextResponse.json(
         { error: "Contract not found" },
         { status: 404 }
       );
     }
 
-    const contractData = JSON.parse(await readFile(contractDataPath, "utf-8"));
+    // Map allowed fields to Prisma schema fields
+    const prismaUpdates: Record<string, any> = {};
+    
+    if (updates.clientId !== undefined) prismaUpdates.clientId = updates.clientId;
+    if (updates.supplierId !== undefined) prismaUpdates.supplierId = updates.supplierId;
+    if (updates.tags !== undefined) prismaUpdates.tags = updates.tags;
+    if (updates.status !== undefined) prismaUpdates.status = updates.status;
+    if (updates.effectiveDate !== undefined) prismaUpdates.effectiveDate = updates.effectiveDate ? new Date(updates.effectiveDate) : null;
+    if (updates.expirationDate !== undefined) prismaUpdates.expirationDate = updates.expirationDate ? new Date(updates.expirationDate) : null;
+    if (updates.totalValue !== undefined) prismaUpdates.totalValue = updates.totalValue;
+    if (updates.currency !== undefined) prismaUpdates.currency = updates.currency;
+    if (updates.description !== undefined) prismaUpdates.description = updates.description;
+    if (updates.contractTitle !== undefined) prismaUpdates.contractTitle = updates.contractTitle;
+    if (updates.clientName !== undefined) prismaUpdates.clientName = updates.clientName;
+    if (updates.supplierName !== undefined) prismaUpdates.supplierName = updates.supplierName;
+    
+    // Handle notes as part of metadata JSON field
+    if (updates.notes !== undefined) {
+      const existingMetadata = (existingContract.metadata as JsonRecord) || {};
+      prismaUpdates.metadata = { ...existingMetadata, notes: updates.notes };
+    }
+    
+    // Handle category/priority in metadata
+    if (updates.category !== undefined || updates.priority !== undefined) {
+      const existingMetadata = (existingContract.metadata as JsonRecord) || {};
+      prismaUpdates.metadata = {
+        ...existingMetadata,
+        ...(prismaUpdates.metadata || {}),
+        ...(updates.category !== undefined && { category: updates.category }),
+        ...(updates.priority !== undefined && { priority: updates.priority }),
+      };
+    }
 
-    // Update allowed fields
-    const allowedUpdates = [
-      "clientId",
-      "supplierId",
-      "notes",
-      "tags",
-      "priority",
-      "status",
-      "effectiveDate",
-      "expirationDate",
-      "totalValue",
-      "currency",
-      "category",
-      "description",
-      "contractTitle",
-    ];
-    const filteredUpdates = Object.keys(updates)
-      .filter((key) => allowedUpdates.includes(key))
-      .reduce((obj, key) => {
-        obj[key] = updates[key];
-        return obj;
-      }, {} as any);
+    // Update contract in database
+    const updatedContract = await prisma.contract.update({
+      where: { id: contractId },
+      data: {
+        ...prismaUpdates,
+        updatedAt: new Date(),
+      },
+    });
 
-    // Apply updates
-    const updatedData = {
-      ...contractData,
-      ...filteredUpdates,
-      lastModified: new Date().toISOString(),
-    };
-
-    // Save updated data
-    await writeFile(contractDataPath, JSON.stringify(updatedData, null, 2));
-
-    return NextResponse.json(updatedData);
-  } catch {
+    return NextResponse.json({
+      success: true,
+      data: updatedContract,
+    });
+  } catch (error: unknown) {
     return NextResponse.json(
       {
         error: "Failed to update contract",
+        details: getErrorMessage(error),
       },
       { status: 500 }
     );

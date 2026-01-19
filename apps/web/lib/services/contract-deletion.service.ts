@@ -172,12 +172,79 @@ export async function safeDeleteContract(
           where: { contractId },
         });
 
-        // 17. Finally, delete the contract
+        // 17. Delete contract comments (no Prisma relation defined)
+        await tx.contractComment.deleteMany({
+          where: { contractId },
+        });
+
+        // 18. Delete contract activities (no Prisma relation defined)
+        await tx.contractActivity.deleteMany({
+          where: { contractId },
+        });
+
+        // 19. Delete contract health scores (no Prisma relation defined)
+        await tx.contractHealthScore.deleteMany({
+          where: { contractId },
+        });
+
+        // 20. Delete expiration alerts (no Prisma relation defined)
+        await tx.expirationAlert.deleteMany({
+          where: { contractId },
+        });
+
+        // 21. Delete signature requests (no Prisma relation defined)
+        await tx.signatureRequest.deleteMany({
+          where: { contractId },
+        });
+
+        // 22. Delete legal reviews (no Prisma relation defined)
+        await tx.legalReview.deleteMany({
+          where: { contractId },
+        });
+
+        // 23. Delete extraction corrections (no Prisma relation defined)
+        await tx.extractionCorrection.deleteMany({
+          where: { contractId },
+        });
+
+        // 24. Delete renewal history (no Prisma relation defined)
+        await tx.renewalHistory.deleteMany({
+          where: { contractId },
+        });
+
+        // 25. Delete contract expirations (no Prisma relation defined)
+        await tx.contractExpiration.deleteMany({
+          where: { contractId },
+        });
+
+        // 26. Delete opportunity discoveries (no Prisma relation defined)
+        await tx.opportunityDiscovery.deleteMany({
+          where: { contractId },
+        });
+
+        // 27. Delete synced files referencing this contract
+        await tx.syncedFile.updateMany({
+          where: { contractId },
+          data: { contractId: null },
+        });
+
+        // 28. Delete agent-related data
+        await tx.agentEvent.deleteMany({
+          where: { contractId },
+        });
+        await tx.agentGoal.deleteMany({
+          where: { contractId },
+        });
+        await tx.agentRecommendation.deleteMany({
+          where: { contractId },
+        });
+
+        // 29. Finally, delete the contract
         await tx.contract.delete({
           where: { id: contractId, tenantId },
         });
 
-        // 18. Log activity
+        // 30. Log activity
         try {
           await tx.auditLog.create({
             data: {
