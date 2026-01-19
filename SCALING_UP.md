@@ -8,11 +8,11 @@
 
 You get the benefits of containers without managing infrastructure.
 
-| Approach | You Manage | Cost (Pilot) | Complexity |
-|----------|------------|--------------|------------|
-| **VMs** | OS, patches, scaling, load balancer | ~$100-200/mo | High |
-| **Kubernetes (AKS)** | Cluster, nodes, networking, ingress | ~$150-300/mo | Very High |
-| **Container Apps** ✅ | Just your app | ~$75-85/mo | Low |
+| Approach              | You Manage                          | Cost (Pilot) | Complexity |
+| --------------------- | ----------------------------------- | ------------ | ---------- |
+| **VMs**               | OS, patches, scaling, load balancer | ~$100-200/mo | High       |
+| **Kubernetes (AKS)**  | Cluster, nodes, networking, ingress | ~$150-300/mo | Very High  |
+| **Container Apps** ✅ | Just your app                       | ~$75-85/mo   | Low        |
 
 ### What Container Apps Handles For You
 
@@ -30,11 +30,11 @@ Traditional (VMs/K8s)          Container Apps
 
 ### When to Upgrade
 
-| Stage | Users | Recommended | Monthly Cost |
-|-------|-------|-------------|--------------|
-| **Pilot** | 1-5 | Container Apps | ~$75-85 |
-| **Growing** | 5-20 | Container Apps (scaled) | ~$150-200 |
-| **Enterprise** | 50+ | Consider AKS | ~$500-1000 |
+| Stage          | Users | Recommended             | Monthly Cost |
+| -------------- | ----- | ----------------------- | ------------ |
+| **Pilot**      | 1-5   | Container Apps          | ~$75-85      |
+| **Growing**    | 5-20  | Container Apps (scaled) | ~$150-200    |
+| **Enterprise** | 50+   | Consider AKS            | ~$500-1000   |
 
 ---
 
@@ -55,10 +55,12 @@ Same storage          Same storage
 ```
 
 **What changes:**
+
 - Deployment config (Bicep → Helm/K8s manifests)
 - ~1-2 days of work
 
 **What stays the same:**
+
 - Your application code
 - Docker image
 - Database
@@ -79,6 +81,7 @@ When you're ready to move to Kubernetes:
 ## Why Start with Container Apps?
 
 ### 1. Cost Efficiency
+
 ```
 Pilot with AKS:     ~$200-300/month (min 2 nodes)
 Pilot with CA:      ~$75-85/month   (pay per use)
@@ -87,12 +90,14 @@ Savings:            ~$125-215/month
 ```
 
 ### 2. Operational Simplicity
+
 - No cluster management
 - No node patching
 - No ingress controller setup
 - No certificate management
 
 ### 3. Same Capabilities for Pilot
+
 - ✅ Custom domains
 - ✅ HTTPS/SSL
 - ✅ Auto-scaling (0-10 replicas)
@@ -101,7 +106,9 @@ Savings:            ~$125-215/month
 - ✅ Logging & monitoring
 
 ### 4. Zero Lock-in
+
 Your app is a standard Docker container. It runs anywhere:
+
 - Azure Container Apps ✅ (current)
 - Azure Kubernetes Service
 - AWS ECS/EKS
@@ -113,6 +120,7 @@ Your app is a standard Docker container. It runs anywhere:
 ## Scaling Roadmap
 
 ### Phase 1: Pilot (Now)
+
 ```
 ┌─────────────────────────────────┐
 │     Azure Container Apps        │
@@ -127,9 +135,11 @@ Your app is a standard Docker container. It runs anywhere:
 PostgreSQL   Redis
   B1ms       Basic
 ```
+
 **Cost: ~$75-85/month**
 
 ### Phase 2: Growing (5-20 clients)
+
 ```
 ┌─────────────────────────────────┐
 │     Azure Container Apps        │
@@ -144,9 +154,11 @@ PostgreSQL   Redis
 PostgreSQL   Redis
   D2s_v3     Standard
 ```
+
 **Cost: ~$150-200/month**
 
 ### Phase 3: Enterprise (50+ clients)
+
 ```
 ┌─────────────────────────────────────────┐
 │        Azure Kubernetes Service         │
@@ -162,6 +174,7 @@ PostgreSQL   Redis
 PostgreSQL   Redis
   HA Mode    Premium
 ```
+
 **Cost: ~$500-1000/month**
 
 ---
@@ -200,12 +213,12 @@ az postgres flexible-server update \
 
 ## Summary
 
-| Question | Answer |
-|----------|--------|
-| Do I need VMs? | **No** - Container Apps manages compute |
-| Do I need Kubernetes? | **Not yet** - Overkill for pilot |
-| Can I migrate later? | **Yes** - Same Docker image works everywhere |
-| When to migrate? | **50+ clients** or complex microservices needs |
-| Is there lock-in? | **No** - Standard containers, standard Postgres |
+| Question              | Answer                                          |
+| --------------------- | ----------------------------------------------- |
+| Do I need VMs?        | **No** - Container Apps manages compute         |
+| Do I need Kubernetes? | **Not yet** - Overkill for pilot                |
+| Can I migrate later?  | **Yes** - Same Docker image works everywhere    |
+| When to migrate?      | **50+ clients** or complex microservices needs  |
+| Is there lock-in?     | **No** - Standard containers, standard Postgres |
 
 **Start simple. Scale when needed. Don't over-engineer.**
