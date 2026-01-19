@@ -3,6 +3,10 @@
  * 
  * GET: Serve the original contract file (PDF, DOCX, etc.)
  * Used by the PDF viewer to display the original document
+ * 
+ * Supports multiple fetch strategies:
+ * 1. Local storage (MinIO/S3/filesystem)
+ * 2. Client source (SharePoint, Google Drive, etc.) - on-demand fetch
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,6 +17,8 @@ import path from 'path';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import cors from '@/lib/security/cors';
+import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-config';
+import { createConnector } from '@/lib/integrations/connectors/factory';
 
 // Initialize S3 client for MinIO
 const s3Client = new S3Client({
@@ -54,7 +60,11 @@ export async function GET(
       );
     }
 
-    // Get contract from database with tenant isolation
+    // Check query params for fetch strategy
+    const { searchParams } = new URL(request.url);
+    const fetchFromSource = searchParams.get('source') === 'true';
+
+    // Get contract from database with tenant isolation and source info
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
       select: {
@@ -64,6 +74,25 @@ export async function GET(
         mimeType: true,
         fileSize: true,
         originalName: true,
+        uploadedAt: true,
+        externalId: true,
+        // Include source file info if exists
+        sourceFiles: {
+          select: {
+            id: true,
+            remoteId: true,
+            remotePath: true,
+            source: {
+              select: {
+                id: true,
+                provider: true,
+                credentials: true,
+                settings: true,
+              },
+            },
+          },
+          take: 1,
+        },
       },
     });
 
@@ -77,11 +106,80 @@ export async function GET(
     // Determine content type
     const contentType = contract.mimeType || getMimeType(contract.fileName || '');
 
-    // Try to get file from storage
+    // Try to get file
     let fileBuffer: Buffer | undefined;
+    const storageConfig = getStorageConfig();
+    
+    // Strategy 1: Fetch from client source (if requested or no local copy)
+    const sourceFile = contract.sourceFiles?.[0];
+    const shouldFetchFromSource = fetchFromSource || 
+      (!contract.storagePath && sourceFile) ||
+      (storageConfig.mode === 'minimal' && sourceFile);
+    
+    if (shouldFetchFromSource && sourceFile?.source) {
+      try {
+        console.log(`[File API] Fetching from client source: ${sourceFile.source.provider}`);
+        
+        const connector = createConnector(
+          sourceFile.source.provider as any,
+          sourceFile.source.credentials as any,
+          sourceFile.source.settings as any
+        );
+        
+        await connector.connect();
+        const downloaded = await connector.downloadFile(sourceFile.remoteId);
+        
+        // Convert stream/buffer to Buffer
+        if (downloaded.content instanceof Buffer) {
+          fileBuffer = downloaded.content;
+        } else if (downloaded.content && typeof downloaded.content.pipe === 'function') {
+          // It's a stream, collect it
+          const chunks: Buffer[] = [];
+          for await (const chunk of downloaded.content) {
+            chunks.push(Buffer.from(chunk));
+          }
+          fileBuffer = Buffer.concat(chunks);
+        }
+        
+        await connector.disconnect();
+        
+        if (fileBuffer) {
+          console.log(`[File API] Successfully fetched ${fileBuffer.length} bytes from source`);
+        }
+      } catch (sourceError) {
+        console.error('[File API] Failed to fetch from source:', sourceError);
+        // Fall through to try local storage
+      }
+    }
+    
+    // Strategy 2: Check retention policy for local storage
+    if (!fileBuffer && contract.storagePath) {
+      if (!isDocumentAccessible(contract.uploadedAt, storageConfig)) {
+        // Document expired but might have source
+        if (sourceFile?.source && !shouldFetchFromSource) {
+          return NextResponse.json(
+            { 
+              success: false, 
+              error: 'Document expired from local storage',
+              canFetchFromSource: true,
+              message: 'Try adding ?source=true to fetch from original location'
+            },
+            { status: 410 } // Gone
+          );
+        }
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Document has expired and is no longer available',
+            retentionDays: storageConfig.retentionDays
+          },
+          { status: 410 } // Gone
+        );
+      }
+    }
 
-    // First, try MinIO/S3 storage if storagePath exists
-    if (contract.storagePath) {
+    // Strategy 3: Try local storage (MinIO/S3)
+    if (!fileBuffer && contract.storagePath) {
       try {
         // Handle both s3:// prefix and direct key paths
         let s3Key = contract.storagePath;
