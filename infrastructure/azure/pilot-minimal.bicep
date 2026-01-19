@@ -175,8 +175,8 @@ resource webApp 'Microsoft.App/containerApps@2023-05-01' = {
           name: 'web'
           image: 'ghcr.io/rawberto94/cli-ai-raw:latest'  // Or use ACR
           resources: {
-            cpu: json('0.5')   // 0.5 vCPU
-            memory: '1Gi'      // 1GB RAM
+            cpu: json('1')     // 1 vCPU (recommended for Next.js + AI features)
+            memory: '2Gi'      // 2GB RAM (needed for Sharp image processing)
           }
           env: [
             { name: 'NODE_ENV', value: 'production' }
@@ -212,9 +212,9 @@ output storageAccount string = storage.name
 // ============================================
 // PostgreSQL B1ms:     ~$13/month
 // Redis Basic C0:      ~$16/month
-// Container Apps:      ~$20-30/month (0.5 vCPU, 1GB, always on)
+// Container Apps:      ~$40-50/month (1 vCPU, 2GB, always on)
 // Storage (10GB):      ~$2/month
 // Log Analytics:       ~$2/month
 // -----------------------------------------
-// TOTAL:               ~$53-63/month
+// TOTAL:               ~$73-83/month
 // ============================================
