@@ -1,873 +1,451 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { DashboardLayout } from "@/components/layout/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatPercentage } from "@/components/ui/design-system";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-
-import {
-  FileText,
-  TrendingUp,
-  CheckCircle,
-  Upload,
-  Search,
-  MessageSquare,
-  BarChart3,
-  FolderOpen,
+import Link from 'next/link';
+import { 
+  FileText, 
+  Shield, 
+  Zap, 
+  BarChart3, 
+  Clock, 
+  Globe, 
   ArrowRight,
+  CheckCircle2,
   Sparkles,
-  RefreshCw,
-  Clock,
-  Plus,
-  Zap,
-  Eye,
-  FileUp,
-  Bot,
-  Scale,
-  Target,
-} from "lucide-react";
-import Link from "next/link";
-import { DashboardSkeleton } from "@/components/ui/skeletons";
-import { useRealTimeEvents } from "@/contexts/RealTimeContext";
-import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
+  Play,
+  Users,
+  Building2,
+  TrendingUp,
+  Search,
+  Bell,
+  Brain,
+  Lock,
+  Star
+} from 'lucide-react';
 
-interface DashboardData {
-  overview: {
-    totalContracts: number;
-    activeContracts: number;
-    portfolioValue: number;
-    recentlyAdded: number;
-  };
-  renewals: {
-    expiringIn30Days: number;
-    expiringIn90Days: number;
-    urgentCount: number;
-  };
-  breakdown: {
-    byStatus: Array<{ status: string; count: number }>;
-    byType: Array<{ type: string; count: number }>;
-  };
-  riskScore: number;
-  complianceScore: number;
-}
-
-const fetchDashboardData = async (): Promise<{ stats: DashboardData | null }> => {
-  const dataMode = typeof window !== 'undefined' ? localStorage.getItem('dataMode') || 'real' : 'real';
-  const headers = { 'x-data-mode': dataMode };
-  
-  try {
-    const statsRes = await fetch('/api/dashboard/stats', { headers });
-    const statsData = statsRes.ok ? await statsRes.json() : { success: false };
-    
-    return {
-      stats: statsData.success ? statsData.data : null,
-    };
-  } catch {
-    return { stats: null };
-  }
-};
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }
-  }
-};
-
-// Quick action buttons - only ACTIVE features
-const quickActions = [
-  {
-    icon: Upload,
-    label: "Upload Contract",
-    description: "Add new contracts to your portfolio",
-    href: "/upload",
-    gradient: "from-blue-500 to-cyan-500",
-    shadow: "shadow-blue-500/25",
-    hoverBg: "group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30"
-  },
-  {
-    icon: Zap,
-    label: "Generate Contract",
-    description: "Create new contracts with AI",
-    href: "/generate",
-    gradient: "from-violet-500 to-purple-600",
-    shadow: "shadow-violet-500/25",
-    hoverBg: "group-hover:bg-violet-50 dark:group-hover:bg-violet-950/30",
-    isNew: true,
-    isPremium: true
-  },
-  {
-    icon: Target,
-    label: "Obligations",
-    description: "Track deadlines & compliance",
-    href: "/obligations",
-    gradient: "from-rose-500 to-pink-600",
-    shadow: "shadow-rose-500/25",
-    hoverBg: "group-hover:bg-rose-50 dark:group-hover:bg-rose-950/30",
-    isNew: true,
-    isPremium: true
-  },
-  {
-    icon: RefreshCw,
-    label: "Renewals",
-    description: "Track contracts due for renewal",
-    href: "/renewals",
-    gradient: "from-green-500 to-emerald-500",
-    shadow: "shadow-green-500/25",
-    hoverBg: "group-hover:bg-green-50 dark:group-hover:bg-green-950/30"
-  },
-  {
-    icon: MessageSquare,
-    label: "AI Assistant",
-    description: "Ask anything about your contracts",
-    href: "/ai/chat",
-    gradient: "from-purple-500 to-pink-500",
-    shadow: "shadow-purple-500/25",
-    hoverBg: "group-hover:bg-purple-50 dark:group-hover:bg-purple-950/30",
-    isNew: true
-  },
-  {
-    icon: Search,
-    label: "Smart Search",
-    description: "Find contracts instantly",
-    href: "/search",
-    gradient: "from-emerald-500 to-teal-500",
-    shadow: "shadow-emerald-500/25",
-    hoverBg: "group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/30"
-  },
-];
-
-export default function DashboardPage() {
-  const queryClient = useQueryClient();
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: fetchDashboardData,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime)
-    refetchOnWindowFocus: false,
-  });
-
-  const dashboardData = data?.stats || null;
-
-  // Real-time updates
-  const eventHandlers = useMemo(() => ({
-    'contract:created': () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    'contract:completed': () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    'job:progress': () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-    'notification': () => {},
-  }), [queryClient]);
-
-  useRealTimeEvents(eventHandlers);
-
-  if (isLoading || !dashboardData) {
-    return (
-      <DashboardLayout
-        title="Dashboard"
-        description="Your contract management overview"
-      >
-        <DashboardSkeleton />
-      </DashboardLayout>
-    );
-  }
-
+export default function MarketingHomePage() {
   return (
-    <DashboardLayout
-      title="Dashboard"
-      description="Your contract management command center"
-      actions={
-        <motion.div 
-          className="flex gap-3"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-        >
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['dashboard'] })}
-            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
-            aria-label="Refresh dashboard data"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" aria-hidden="true" />
-            Refresh
-          </Button>
-          <Button 
-            size="sm" 
-            asChild
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25"
-          >
-            <Link href="/upload">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Contract
-            </Link>
-          </Button>
-        </motion.div>
-      }
-    >
-      <motion.div 
-        className="space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {/* Welcome Banner */}
-        <motion.div variants={itemVariants}>
-          <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 border-0 shadow-xl shadow-purple-500/20">
-            {/* Animated background elements */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-              <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-white/10 rounded-full blur-xl" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-            </div>
-            
-            <CardContent className="relative p-8">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                      <Sparkles className="h-6 w-6 text-white" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">
-                      Welcome to ConTigo
-                    </h2>
-                  </div>
-                  <p className="text-white/80 text-lg max-w-xl">
-                    AI-powered contract intelligence platform. Upload contracts, get instant insights, and make smarter decisions.
-                  </p>
-                </div>
-                
-                <div className="flex flex-wrap gap-3">
-                  <Button 
-                    asChild
-                    className="bg-white text-indigo-700 hover:bg-white/90 shadow-lg font-semibold"
-                  >
-                    <Link href="/upload">
-                      <FileUp className="h-4 w-4 mr-2" />
-                      Upload Contract
-                    </Link>
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    asChild
-                    className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
-                  >
-                    <Link href="/ai/chat">
-                      <Bot className="h-4 w-4 mr-2" />
-                      Ask AI
-                    </Link>
-                  </Button>
-                </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="group flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25 transition-all group-hover:shadow-indigo-500/40">
+                <FileText className="h-5 w-5 text-white" />
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* First-run: Get started */}
-        {dashboardData.overview.totalContracts === 0 && (
-          <motion.div variants={itemVariants}>
-            <Card className="border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 shadow-lg">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-amber-500" />
-                  Get started in 2 minutes
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
-                        <FileUp className="h-4 w-4 text-slate-700 dark:text-slate-200" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Upload your first contract</div>
-                        <div className="text-xs text-muted-foreground">PDF or text — we’ll extract metadata automatically.</div>
-                        <div className="mt-3">
-                          <Button asChild size="sm">
-                            <Link href="/upload">Upload</Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
-                        <FolderOpen className="h-4 w-4 text-slate-700 dark:text-slate-200" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Browse templates</div>
-                        <div className="text-xs text-muted-foreground">Start from a managed template and generate drafts faster.</div>
-                        <div className="mt-3">
-                          <Button asChild size="sm" variant="outline">
-                            <Link href="/templates">Templates</Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-slate-200/60 dark:border-slate-700/60 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 p-2">
-                        <Bot className="h-4 w-4 text-slate-700 dark:text-slate-200" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ask the AI assistant</div>
-                        <div className="text-xs text-muted-foreground">Try contract Q&A, comparisons, and reports.</div>
-                        <div className="mt-3">
-                          <Button asChild size="sm" variant="outline">
-                            <Link href="/ai/chat">Open chat</Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
-          {/* Total Contracts */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <Link href="/contracts" className="text-xs text-muted-foreground hover:text-blue-600 flex items-center gap-1">
-                    View All <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Total Contracts</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
-                    {dashboardData.overview.totalContracts.toLocaleString()}
-                  </p>
-                  <div className="flex items-center gap-2 pt-2">
-                    <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-                      {dashboardData.overview.activeContracts} active
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Renewals Due - NEW CARD */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Link href="/renewals" className="block h-full">
-              <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full cursor-pointer">
-                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                {dashboardData.renewals.urgentCount > 0 && (
-                  <div className="absolute top-3 right-3">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                    </span>
-                  </div>
-                )}
-                <CardContent className="p-6 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 text-white shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform duration-300">
-                      <RefreshCw className="h-5 w-5" />
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">Renewals Due</p>
-                    <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-red-500 dark:from-orange-400 dark:to-red-300 bg-clip-text text-transparent">
-                      {dashboardData.renewals.expiringIn30Days}
-                    </p>
-                    <div className="flex items-center gap-2 pt-2">
-                      {dashboardData.renewals.urgentCount > 0 ? (
-                        <Badge variant="outline" className="px-3 py-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-400 dark:border-red-800">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {dashboardData.renewals.urgentCount} urgent
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="px-3 py-1 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800">
-                          Next 30 days
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                ConTigo
+              </span>
             </Link>
-          </motion.div>
-
-          {/* Portfolio Value */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <TrendingUp className="h-5 w-5" />
-                  </div>
-                  <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-                    <TrendingUp className="h-3.5 w-3.5 mr-1" /> +12%
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Portfolio Value</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-700 to-emerald-500 dark:from-emerald-400 dark:to-emerald-300 bg-clip-text text-transparent">
-                    {formatCurrency(dashboardData.overview.portfolioValue)}
-                  </p>
-                  <p className="text-xs text-muted-foreground pt-2">
-                    From {dashboardData.overview.totalContracts} contracts
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Recently Added */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <Plus className="h-5 w-5" />
-                  </div>
-                  <Link href="/upload" className="text-xs text-muted-foreground hover:text-purple-600 flex items-center gap-1">
-                    Upload <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Recently Added</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-700 to-indigo-500 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
-                    +{dashboardData.overview.recentlyAdded}
-                  </p>
-                  <p className="text-xs text-muted-foreground pt-2">
-                    Contracts this month
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Compliance Score */}
-          <motion.div variants={itemVariants} className="h-full">
-            <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <CardContent className="p-6 h-full flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
-                    <CheckCircle className="h-5 w-5" />
-                  </div>
-                  <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-                    Low Risk
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Compliance Score</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-amber-600 to-orange-500 dark:from-amber-400 dark:to-orange-300 bg-clip-text text-transparent">
-                    {formatPercentage(dashboardData.complianceScore)}
-                  </p>
-                  <div className="pt-2">
-                    <Progress 
-                      value={dashboardData.complianceScore} 
-                      className="h-1.5 bg-slate-200 dark:bg-slate-700"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+            
+            <nav className="hidden md:flex items-center gap-8">
+              {['Features', 'Pricing', 'About', 'Contact'].map((item) => (
+                <Link 
+                  key={item}
+                  href={`/${item.toLowerCase()}`} 
+                  className="text-sm font-medium text-slate-400 transition-colors hover:text-white"
+                >
+                  {item}
+                </Link>
+              ))}
+            </nav>
+            
+            <div className="flex items-center gap-3">
+              <Link
+                href="/auth/signin"
+                className="text-sm font-medium text-slate-300 hover:text-white transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/signin"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-105"
+              >
+                Get Started
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+          </div>
         </div>
+      </header>
 
-        {/* Quick Actions */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
-                    <Zap className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Quick Actions</CardTitle>
-                    <p className="text-sm text-muted-foreground">Common tasks at your fingertips</p>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-5">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                {quickActions.map((action, index) => {
-                  const Icon = action.icon;
-                  const isPremium = 'isPremium' in action && action.isPremium;
-                  return (
-                    <motion.div
-                      key={action.label}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * index }}
-                    >
-                      <Link href={action.href}>
-                        <motion.div
-                          whileHover={{ scale: 1.02, y: -4 }}
-                          whileTap={{ scale: 0.98 }}
-                          className={`group relative flex flex-col items-center p-5 rounded-xl border ${isPremium ? 'border-purple-200 dark:border-purple-700/50' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-800 hover:shadow-lg ${action.shadow} transition-all duration-300 ${action.hoverBg}`}
-                        >
-                          {action.isNew && (
-                            <Badge className={`absolute -top-2 -right-2 ${isPremium ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'} text-white text-[10px] border-0 shadow-md`}>
-                              {isPremium ? 'AI' : 'NEW'}
-                            </Badge>
-                          )}
-                          <div className={`p-3 rounded-xl bg-gradient-to-br ${action.gradient} text-white shadow-lg ${action.shadow} group-hover:scale-110 transition-transform duration-300 mb-3`}>
-                            <Icon className="h-5 w-5" />
-                          </div>
-                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white mb-0.5 text-center">
-                            {action.label}
-                          </h3>
-                          <p className="text-[11px] text-muted-foreground text-center line-clamp-2">
-                            {action.description}
-                          </p>
-                        </motion.div>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Premium AI Features - NEW */}
-        <motion.div variants={itemVariants}>
-          <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 border-0 shadow-2xl shadow-purple-500/20">
-            {/* Animated background */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-              <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-              <div className="absolute top-1/2 left-1/3 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl" />
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-t from-indigo-500/20 to-transparent rounded-full blur-3xl" />
+        </div>
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-30" />
+        
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 mb-8 animate-fade-in">
+              <Sparkles className="h-4 w-4 text-indigo-400 animate-pulse" />
+              <span className="text-sm font-medium text-indigo-300">AI-Powered Contract Intelligence</span>
             </div>
             
-            <CardHeader className="relative pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50">
-                    <Sparkles className="h-5 w-5" />
+            {/* Main Headline */}
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight animate-fade-in-up">
+              <span className="text-white">Transform Your</span>
+              <br />
+              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent animate-gradient">
+                Contract Management
+              </span>
+            </h1>
+            
+            <p className="mx-auto mt-6 max-w-2xl text-lg sm:text-xl text-slate-400 leading-relaxed animate-fade-in opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
+              ConTigo uses advanced AI to extract insights, track obligations, and 
+              automate your entire contract lifecycle. Save hours of manual work every week.
+            </p>
+            
+            {/* CTA Buttons */}
+            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in opacity-0" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
+              <Link
+                href="/auth/signin"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-indigo-500/30 transition-all hover:shadow-indigo-500/50 hover:scale-105 animate-pulse-glow"
+              >
+                Start Free Trial
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+              <button className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/20">
+                <Play className="h-5 w-5 text-indigo-400" />
+                Watch Demo
+              </button>
+            </div>
+            
+            {/* Trust Badges */}
+            <div className="mt-12 flex flex-col items-center gap-4 animate-fade-in opacity-0" style={{ animationDelay: '0.7s', animationFillMode: 'forwards' }}>
+              <p className="text-sm text-slate-500">Trusted by leading companies</p>
+              <div className="flex items-center gap-8 opacity-50 grayscale hover:opacity-70 hover:grayscale-0 transition-all duration-500">
+                {['Enterprise Co', 'Tech Corp', 'Global Inc', 'Innovate LLC'].map((company, i) => (
+                  <div key={company} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors" style={{ animationDelay: `${0.8 + i * 0.1}s` }}>
+                    <Building2 className="h-5 w-5" />
+                    <span className="text-sm font-medium">{company}</span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-lg text-white">AI-Powered Features</CardTitle>
-                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">
-                        PREMIUM
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-white/60">Next-generation contract intelligence tools</p>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* Browser Mockup */}
+          <div className="mt-20 relative animate-fade-in-up opacity-0" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10 pointer-events-none" />
+            <div className="relative mx-auto max-w-5xl rounded-2xl border border-white/10 bg-slate-900/50 p-2 shadow-2xl shadow-black/50 backdrop-blur-sm hover-lift">
+              {/* Browser Chrome */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 transition-colors" />
+                  <div className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors" />
+                </div>
+                <div className="flex-1 flex justify-center">
+                  <div className="flex items-center gap-2 rounded-lg bg-slate-800/50 px-4 py-1.5">
+                    <Lock className="h-3 w-3 text-green-400" />
+                    <span className="text-xs text-slate-400">app.contigo.io/dashboard</span>
                   </div>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="relative p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* AI Copilot Drafting */}
-                <Link href="/drafting/copilot">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-purple-400/30 transition-all duration-300"
-                  >
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Bot className="h-5 w-5" />
+              
+              {/* Dashboard Preview */}
+              <div className="p-6 bg-slate-950 rounded-b-xl">
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  {[
+                    { label: 'Active Contracts', value: '2,847', trend: '+12%', color: 'indigo' },
+                    { label: 'Pending Review', value: '156', trend: '-8%', color: 'purple' },
+                    { label: 'Value Tracked', value: '$45.2M', trend: '+23%', color: 'pink' },
+                    { label: 'Renewals Due', value: '34', trend: '7 days', color: 'amber' }
+                  ].map((stat, i) => (
+                    <div key={stat.label} className="rounded-xl border border-white/5 bg-white/5 p-4 hover:bg-white/10 transition-colors group">
+                      <p className="text-xs text-slate-400">{stat.label}</p>
+                      <p className="mt-1 text-2xl font-bold text-white group-hover:scale-105 transition-transform origin-left">{stat.value}</p>
+                      <p className={`mt-1 text-xs ${stat.color === 'amber' ? 'text-amber-400' : 'text-green-400'}`}>{stat.trend}</p>
                     </div>
-                    <h3 className="font-semibold text-white mb-1">AI Copilot Drafting</h3>
-                    <p className="text-xs text-white/60 mb-3">Real-time AI assistance while you draft contracts</p>
-                    <div className="flex items-center gap-1 text-purple-400 text-xs font-medium mt-auto">
-                      Try Now <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-                
-                {/* Legal Review & Redlining */}
-                <Link href="/contracts">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-indigo-400/30 transition-all duration-300"
-                  >
-                    <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] border-0 shadow-md">
-                      NEW
-                    </Badge>
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Scale className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">Legal Review & Redlining</h3>
-                    <p className="text-xs text-white/60 mb-3">AI-powered clause analysis with playbook comparison</p>
-                    <div className="flex items-center gap-1 text-indigo-400 text-xs font-medium mt-auto">
-                      Open Contract <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-                
-                {/* Obligation Tracker */}
-                <Link href="/obligations">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-emerald-400/30 transition-all duration-300"
-                  >
-                    <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] border-0 shadow-md">
-                      NEW
-                    </Badge>
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">Obligation Tracker</h3>
-                    <p className="text-xs text-white/60 mb-3">AI extracts & monitors contract obligations</p>
-                    <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium mt-auto">
-                      View Dashboard <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-                
-                {/* Contract Generation */}
-                <Link href="/generate">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-amber-400/30 transition-all duration-300"
-                  >
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">AI Contract Generation</h3>
-                    <p className="text-xs text-white/60 mb-3">Generate contracts from natural language</p>
-                    <div className="flex items-center gap-1 text-amber-400 text-xs font-medium mt-auto">
-                      Generate <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Two Column Layout - Contracts & AI Assistant */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Contracts */}
-          <motion.div variants={itemVariants} className="flex">
-            <Card className="flex-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
-                      <FolderOpen className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Recent Contracts</CardTitle>
-                      <p className="text-sm text-muted-foreground">Your latest additions</p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
-                    <Link href="/contracts">View All</Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-5">
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map((_, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 * idx }}
-                      className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200 cursor-pointer"
-                    >
-                      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-                        <FileText className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate text-slate-900 dark:text-white">
-                          Sample Contract {idx + 1}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          Added recently
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="px-3 py-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                        Active
-                      </Badge>
-                    </motion.div>
                   ))}
                 </div>
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-4 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/30"
-                  asChild
-                >
-                  <Link href="/contracts">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Browse All Contracts
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* AI Assistant Preview */}
-          <motion.div variants={itemVariants} className="flex">
-            <Card className="flex-1 bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/30 dark:via-indigo-950/30 dark:to-blue-950/30 border-purple-200/60 dark:border-purple-700/40 shadow-lg">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30">
-                      <Bot className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        AI Assistant
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">
-                          NEW
-                        </Badge>
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">Ask anything about your contracts</p>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" asChild className="text-purple-600 hover:text-purple-700 hover:bg-purple-50">
-                    <Link href="/ai/chat">Open Chat</Link>
-                  </Button>
+                <div className="h-32 rounded-xl border border-white/5 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 animate-shimmer" />
+                  <BarChart3 className="h-16 w-16 text-slate-600" />
                 </div>
-              </CardHeader>
-              <CardContent className="p-5">
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-purple-200/50 dark:border-purple-800/30">
-                    <p className="text-sm text-muted-foreground mb-3">Try asking:</p>
-                    <div className="space-y-2">
-                      {[
-                        "What contracts are expiring soon?",
-                        "Summarize the key terms of my latest contract",
-                        "Find all contracts with auto-renewal clauses",
-                        "What is my total contract value this year?"
-                      ].map((suggestion, idx) => (
-                        <motion.button
-                          key={idx}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 * idx }}
-                          className="w-full text-left p-3 rounded-lg bg-gradient-to-r from-purple-100/50 to-transparent dark:from-purple-900/20 dark:to-transparent border border-purple-200/50 dark:border-purple-800/30 text-sm text-slate-700 dark:text-slate-300 hover:from-purple-200/50 hover:border-purple-300 dark:hover:from-purple-900/40 dark:hover:border-purple-700 transition-all duration-200 flex items-center gap-2"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />
-                          <span className="truncate">{suggestion}</span>
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25"
-                    asChild
-                  >
-                    <Link href="/ai/chat">
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Start AI Conversation
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </div>
+          </div>
         </div>
+      </section>
 
-        {/* Contract Stats Overview */}
-        <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 shadow-lg">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30">
-                    <BarChart3 className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">Contract Overview</CardTitle>
-                    <p className="text-sm text-muted-foreground">Status breakdown</p>
-                  </div>
+      {/* Features Section */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">
+              Everything You Need for
+              <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"> Contract Success</span>
+            </h2>
+            <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+              Powerful features designed to streamline your contract workflow from start to finish.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                icon: Brain,
+                title: 'AI-Powered Extraction',
+                description: 'Automatically extract key terms, dates, obligations, and parties from any contract format.',
+                gradient: 'from-indigo-500 to-indigo-600',
+                shadow: 'shadow-indigo-500/25'
+              },
+              {
+                icon: Search,
+                title: 'Semantic Search',
+                description: 'Find any clause or term instantly with natural language search across your entire contract library.',
+                gradient: 'from-purple-500 to-purple-600',
+                shadow: 'shadow-purple-500/25'
+              },
+              {
+                icon: Bell,
+                title: 'Smart Alerts',
+                description: 'Never miss a deadline with intelligent notifications for renewals, expirations, and milestones.',
+                gradient: 'from-pink-500 to-pink-600',
+                shadow: 'shadow-pink-500/25'
+              },
+              {
+                icon: BarChart3,
+                title: 'Advanced Analytics',
+                description: 'Gain insights into contract performance, risk exposure, and portfolio health at a glance.',
+                gradient: 'from-cyan-500 to-cyan-600',
+                shadow: 'shadow-cyan-500/25'
+              },
+              {
+                icon: Shield,
+                title: 'Enterprise Security',
+                description: 'Bank-grade encryption, SOC 2 compliance, and GDPR-ready data protection for peace of mind.',
+                gradient: 'from-emerald-500 to-emerald-600',
+                shadow: 'shadow-emerald-500/25'
+              },
+              {
+                icon: Globe,
+                title: 'Seamless Integrations',
+                description: 'Connect with Salesforce, DocuSign, SharePoint, and 50+ other tools your team already uses.',
+                gradient: 'from-amber-500 to-amber-600',
+                shadow: 'shadow-amber-500/25'
+              }
+            ].map((feature, index) => (
+              <div 
+                key={index}
+                className="group relative rounded-2xl border border-white/5 bg-white/5 p-6 backdrop-blur-sm transition-all hover:border-white/10 hover:bg-white/10"
+              >
+                <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.gradient} shadow-lg ${feature.shadow} transition-transform group-hover:scale-110`}>
+                  <feature.icon className="h-6 w-6 text-white" />
                 </div>
-                <Button variant="ghost" size="sm" asChild className="text-amber-600 hover:text-amber-700 hover:bg-amber-50">
-                  <Link href="/analytics">Full Analytics</Link>
-                </Button>
+                <h3 className="mt-4 text-lg font-semibold text-white">{feature.title}</h3>
+                <p className="mt-2 text-slate-400 leading-relaxed">{feature.description}</p>
               </div>
-            </CardHeader>
-            <CardContent className="p-5">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {dashboardData.breakdown.byStatus.slice(0, 4).map((item, idx) => {
-                  const colors = [
-                    { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', bar: 'bg-blue-500' },
-                    { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', bar: 'bg-emerald-500' },
-                    { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500' },
-                    { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', bar: 'bg-purple-500' },
-                  ];
-                  const defaultColor = { bg: 'bg-gray-100', text: 'text-gray-700', bar: 'bg-gray-500' };
-                  const color = colors[idx % colors.length] ?? defaultColor;
-                  const percentage = dashboardData.overview.totalContracts > 0 
-                    ? Math.round((item.count / dashboardData.overview.totalContracts) * 100) 
-                    : 0;
-                  
-                  return (
-                    <motion.div
-                      key={item.status}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.1 * idx }}
-                      className={`p-4 rounded-xl ${color.bg}`}
-                    >
-                      <p className={`text-sm font-medium ${color.text} capitalize mb-1`}>
-                        {item.status}
-                      </p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-                        {item.count}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                          <motion.div 
-                            className={`h-full ${color.bar} rounded-full`}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${percentage}%` }}
-                            transition={{ duration: 0.6, delay: 0.2 * idx }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground">{percentage}%</span>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* Floating AI Assistant */}
-      <FloatingAIBubble />
-    </DashboardLayout>
+      {/* Stats Section */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8">
+            {[
+              { icon: FileText, value: '10M+', label: 'Contracts Processed' },
+              { icon: Clock, value: '85%', label: 'Time Saved' },
+              { icon: Users, value: '500+', label: 'Enterprise Customers' },
+              { icon: TrendingUp, value: '99.9%', label: 'Uptime SLA' }
+            ].map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 mb-4">
+                  <stat.icon className="h-7 w-7 text-indigo-400" />
+                </div>
+                <div className="text-4xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                  {stat.value}
+                </div>
+                <div className="mt-1 text-slate-400">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">
+              Get Started in
+              <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent"> Minutes</span>
+            </h2>
+            <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
+              Three simple steps to transform your contract management workflow.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                step: '01',
+                title: 'Upload Contracts',
+                description: 'Drag and drop your contracts or connect your existing storage. We support PDF, Word, and 20+ formats.'
+              },
+              {
+                step: '02',
+                title: 'AI Analysis',
+                description: 'Our AI automatically extracts key terms, identifies risks, and categorizes your contracts in seconds.'
+              },
+              {
+                step: '03',
+                title: 'Manage & Monitor',
+                description: 'Track obligations, set alerts, and get insights through your personalized dashboard.'
+              }
+            ].map((item, index) => (
+              <div key={index} className="relative">
+                {index < 2 && (
+                  <div className="hidden md:block absolute top-12 left-full w-full h-px bg-gradient-to-r from-indigo-500/50 to-transparent" />
+                )}
+                <div className="text-6xl font-bold text-indigo-500/20">{item.step}</div>
+                <h3 className="mt-4 text-xl font-semibold text-white">{item.title}</h3>
+                <p className="mt-2 text-slate-400 leading-relaxed">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-8 md:p-12 backdrop-blur-sm">
+            <div className="absolute top-6 left-8 text-6xl text-indigo-500/20">&ldquo;</div>
+            <div className="relative">
+              <div className="flex gap-1 mb-6">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="h-5 w-5 text-amber-400 fill-amber-400" />
+                ))}
+              </div>
+              <blockquote className="text-xl md:text-2xl text-white leading-relaxed">
+                ConTigo has transformed how we manage our contract portfolio. What used to take 
+                our legal team hours now happens automatically. The AI extraction is incredibly 
+                accurate, and the insights have helped us identify cost savings we never knew existed.
+              </blockquote>
+              <div className="mt-8 flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                  SJ
+                </div>
+                <div>
+                  <div className="font-semibold text-white">Sarah Johnson</div>
+                  <div className="text-slate-400">General Counsel, TechCorp Industries</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600" />
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20" />
+        <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">
+            Ready to Transform Your Contract Management?
+          </h2>
+          <p className="mt-4 text-lg text-indigo-100 max-w-2xl mx-auto">
+            Join hundreds of companies already saving time and reducing risk with ConTigo.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/auth/signin"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-indigo-600 shadow-2xl transition-all hover:bg-slate-100 hover:scale-105"
+            >
+              Start Your Free Trial
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 rounded-full border-2 border-white/30 px-8 py-4 text-lg font-semibold text-white backdrop-blur-sm transition-all hover:bg-white/10 hover:border-white/50"
+            >
+              Schedule a Demo
+            </Link>
+          </div>
+          <p className="mt-6 text-sm text-indigo-200">
+            No credit card required • 14-day free trial • Cancel anytime
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5 bg-slate-950">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="col-span-2 md:col-span-1">
+              <Link href="/" className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-xl font-bold text-white">ConTigo</span>
+              </Link>
+              <p className="mt-4 text-sm text-slate-400 max-w-xs">
+                AI-powered contract intelligence platform for modern businesses.
+              </p>
+            </div>
+            
+            {[
+              {
+                title: 'Product',
+                links: ['Features', 'Pricing', 'Security', 'Integrations']
+              },
+              {
+                title: 'Company',
+                links: ['About', 'Contact', 'Careers', 'Blog']
+              },
+              {
+                title: 'Legal',
+                links: ['Privacy', 'Terms', 'Security', 'Compliance']
+              }
+            ].map((section) => (
+              <div key={section.title}>
+                <h4 className="font-semibold text-white">{section.title}</h4>
+                <ul className="mt-4 space-y-2">
+                  {section.links.map((link) => (
+                    <li key={link}>
+                      <Link 
+                        href={`/${link.toLowerCase()}`}
+                        className="text-sm text-slate-400 hover:text-white transition-colors"
+                      >
+                        {link}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-slate-500">
+              © {new Date().getFullYear()} ConTigo. All rights reserved.
+            </p>
+            <div className="flex items-center gap-6">
+              <span className="flex items-center gap-2 text-sm text-slate-500">
+                <Shield className="h-4 w-4 text-green-500" />
+                SOC 2 Certified
+              </span>
+              <span className="flex items-center gap-2 text-sm text-slate-500">
+                <Globe className="h-4 w-4 text-blue-500" />
+                GDPR Compliant
+              </span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }

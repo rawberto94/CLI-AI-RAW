@@ -136,12 +136,15 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault()
     setIsDeleting(true)
     try {
       await onDelete()
       toast.success('Contract deleted')
-    } catch {
+      setShowDeleteDialog(false)
+    } catch (error) {
+      console.error('Delete failed:', error)
       toast.error('Failed to delete contract')
       setIsDeleting(false)
     }

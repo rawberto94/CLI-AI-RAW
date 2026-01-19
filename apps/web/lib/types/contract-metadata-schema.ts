@@ -573,13 +573,28 @@ export function getFieldsBySection(section: MetadataFieldDefinition['section']):
 
 export function getFieldsNeedingAttention(metadata: Partial<ContractMetadataSchema>): MetadataFieldDefinition[] {
   return CONTRACT_METADATA_FIELDS.filter(field => {
-    if (field.ui_attention === 'none') return false;
-    
     // Check if field needs verification based on confidence
     const confidence = metadata._field_confidence?.[field.key];
+    
+    // Low confidence always needs attention
+    if (confidence && confidence.value < 0.8) return true;
     if (confidence?.needsVerification) return true;
     
-    // Check if required field is missing
+    // Check if this field has a ui_attention flag in schema
+    if (field.ui_attention !== 'none') {
+      // Check if required field is missing
+      if (field.required) {
+        const value = metadata[field.key];
+        if (value === undefined || value === null || value === '' || 
+            (Array.isArray(value) && value.length === 0)) {
+          return true;
+        }
+      }
+      // Field has attention flag - needs review
+      return true;
+    }
+    
+    // Check required fields even without ui_attention flag
     if (field.required) {
       const value = metadata[field.key];
       if (value === undefined || value === null || value === '' || 

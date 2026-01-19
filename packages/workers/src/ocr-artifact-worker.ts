@@ -1264,11 +1264,13 @@ export async function processOCRArtifactJob(
     const clausesArtifact = artifactDataArray.find((a: any) => a.type === 'CLAUSES');
     const riskArtifact = artifactDataArray.find((a: any) => a.type === 'RISK');
     const complianceArtifact = artifactDataArray.find((a: any) => a.type === 'COMPLIANCE');
+    const contactsArtifact = artifactDataArray.find((a: any) => a.type === 'CONTACTS');
     const overviewArtifactData: any = (artifactDataArray.find((a: any) => a.type === 'OVERVIEW')?.data) || {};
     const financialData: any = financialArtifact?.data || {};
     const clausesData: any = clausesArtifact?.data || {};
     const riskData: any = riskArtifact?.data || {};
     const complianceData: any = complianceArtifact?.data || {};
+    const contactsData: any = contactsArtifact?.data || {};
 
     // Build external parties array from overview
     const externalParties: Array<{legalName: string; role: string; registeredAddress?: string}> = [];
@@ -1354,6 +1356,17 @@ export async function processOCRArtifactJob(
       execution_date: overviewArtifactData.executionDate || overviewArtifactData.effectiveDate || null,
       contract_effective_date: overviewArtifactData.effectiveDate || null,
       contract_end_date: overviewArtifactData.expirationDate || null,
+      
+      // Signature status (from CONTACTS artifact)
+      signature_status: contactsData.signatureStatus || 'unknown',
+      signature_date: contactsData.signatureDate || 
+        (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
+        overviewArtifactData.executionDate || null,
+      signature_required_flag: contactsData.signatureStatus === 'unsigned' || 
+        contactsData.signatureStatus === 'partially_signed' ||
+        (!contactsData.signatureDate && contactsData.signatureStatus !== 'signed'),
+      signatories: contactsData.signatories || [],
+      signature_analysis: contactsData.signatureAnalysis || null,
       
       // Reminders
       first_reminder_days: 90,
@@ -2316,7 +2329,7 @@ ${truncatedText}`,
 Contract text:
 ${truncatedText}`,
 
-      CONTACTS: `Extract all contact information and key personnel from this contract. Return a JSON object with:
+      CONTACTS: `Extract all contact information, key personnel, and SIGNATURE STATUS from this contract. Return a JSON object with:
 {
   "contacts": [
     {
@@ -2336,9 +2349,20 @@ ${truncatedText}`,
       "name": "Name of signatory",
       "title": "Job title",
       "organization": "Company",
-      "dateSigned": "Signature date if shown"
+      "dateSigned": "Signature date if shown (YYYY-MM-DD format)",
+      "isSigned": true/false - TRUE if actual signature/handwriting present, FALSE if signature line is blank/empty
     }
   ],
+  "signatureStatus": "signed/partially_signed/unsigned/unknown",
+  "signatureDate": "YYYY-MM-DD - the date the contract was signed (look for dates near signatures)",
+  "signatureAnalysis": {
+    "totalSignatureBlocks": "Number of signature blocks/lines found",
+    "signedBlocks": "Number of blocks with actual signatures",
+    "unsignedBlocks": "Number of empty/blank signature lines",
+    "hasWitnessSignatures": true/false,
+    "hasNotaryOrSeal": true/false,
+    "executionLanguage": "Any 'IN WITNESS WHEREOF' or similar execution language found"
+  },
   "noticeAddresses": [
     {
       "party": "Party name",
@@ -2356,6 +2380,16 @@ ${truncatedText}`,
   ],
   "openEndedNotes": "Any other contact observations - escalation procedures, preferred communication methods, or key relationship notes."
 }
+
+CRITICAL SIGNATURE STATUS DETECTION RULES:
+- Look at the END of the document for signature blocks
+- "signed" = ALL signature lines have actual signatures (handwritten marks, typed /s/ names with dates, or electronic signature indicators like DocuSign stamps)
+- "partially_signed" = SOME but NOT ALL signature lines have signatures
+- "unsigned" = NO signatures present, all signature lines are blank/empty (just lines like ______)
+- "unknown" = Cannot find signature blocks or unclear if document requires signatures
+- Look for: actual handwriting/cursive marks, "/s/ Name" typed signatures, dates written near signatures, "Signed:", "By:", electronic signature timestamps
+- Empty lines like "________________________" or "Signature: _______" without marks = unsigned
+- Names TYPED above/below signature lines are NOT signatures unless accompanied by "/s/" or actual handwriting
 
 Contract text:
 ${truncatedText}`

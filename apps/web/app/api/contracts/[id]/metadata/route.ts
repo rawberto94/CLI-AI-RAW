@@ -29,13 +29,20 @@ interface EnterpriseMetadata {
   // Identification
   document_number?: string;
   document_title?: string;
+  document_classification?: 'contract' | 'purchase_order' | 'invoice' | 'quote' | 'proposal' | 'work_order' | 'letter_of_intent' | 'memorandum' | 'amendment' | 'addendum' | 'unknown';
+  document_classification_confidence?: number;
+  document_classification_warning?: string;
   contract_short_description?: string;
   
   // Parties
   external_parties?: Array<{
     legalName: string;
-    role: string;
+    role?: string;
+    legalForm?: string;
     registeredAddress?: string;
+    registeredSeat?: string;
+    contactName?: string;
+    contactEmail?: string;
   }>;
   
   // Commercials
@@ -57,7 +64,8 @@ interface EnterpriseMetadata {
   // Reminders
   reminder_enabled?: boolean;
   reminder_days_before_end?: number;
-  notice_period?: number;
+  notice_period?: string; // Original wording like "30 days notice"
+  notice_period_days?: number; // Normalized to days
   
   // Ownership
   jurisdiction?: string;
@@ -145,16 +153,35 @@ export async function GET(
       }, { status: 404 });
     }
 
+    // Fetch field validations from ContractMetadata
+    let fieldValidations: Record<string, { status: string; validatedAt?: string }> = {};
+    try {
+      const contractMetadata = await prisma.contractMetadata.findUnique({
+        where: { contractId },
+        select: { customFields: true }
+      });
+      if (contractMetadata?.customFields) {
+        const customFields = contractMetadata.customFields as Record<string, any>;
+        fieldValidations = customFields._fieldValidations || {};
+      }
+    } catch {
+      // Silent fail - field validations are optional
+    }
+
     // Parse aiMetadata as enterprise schema
     const aiMetadata = (contract.aiMetadata as EnterpriseMetadata) || {};
     
     // Normalize external_parties to handle both legacy (company_name) and new (legalName) formats
-    let normalizedParties: Array<{ legalName: string; role: string; registeredAddress?: string }> = [];
+    let normalizedParties: Array<{ legalName: string; role?: string; legalForm?: string; registeredAddress?: string; registeredSeat?: string }> = [];
     if (aiMetadata.external_parties && Array.isArray(aiMetadata.external_parties)) {
       normalizedParties = aiMetadata.external_parties.map((party: any) => ({
         legalName: party.legalName || party.company_name || '',
         role: party.role || 'Party',
+        legalForm: party.legalForm || '',
         registeredAddress: party.registeredAddress || party.contact_info || '',
+        registeredSeat: party.registeredSeat || '',
+        contactName: party.contactName || '',
+        contactEmail: party.contactEmail || '',
       })).filter((p: any) => p.legalName);
     }
     
@@ -173,6 +200,9 @@ export async function GET(
       // Identification
       document_number: aiMetadata.document_number || contract.id,
       document_title: aiMetadata.document_title || contract.contractTitle || contract.fileName || '',
+      document_classification: aiMetadata.document_classification || 'contract',
+      document_classification_confidence: aiMetadata.document_classification_confidence,
+      document_classification_warning: aiMetadata.document_classification_warning,
       contract_short_description: aiMetadata.contract_short_description || contract.description || '',
       
       // Parties - use normalized parties
@@ -202,7 +232,8 @@ export async function GET(
       // Reminders
       reminder_enabled: aiMetadata.reminder_enabled ?? false,
       reminder_days_before_end: aiMetadata.reminder_days_before_end || 30,
-      notice_period: aiMetadata.notice_period || contract.noticePeriodDays || 30,
+      notice_period: aiMetadata.notice_period || (contract.noticePeriodDays ? `${contract.noticePeriodDays} days` : ''),
+      notice_period_days: aiMetadata.notice_period_days || contract.noticePeriodDays || undefined,
       
       // Ownership
       jurisdiction: aiMetadata.jurisdiction || contract.jurisdiction || '',
@@ -304,7 +335,8 @@ export async function GET(
       success: true,
       metadata: {
         ...enterpriseMetadata,
-        _field_confidence: confidenceMap
+        _field_confidence: confidenceMap,
+        _fieldValidations: fieldValidations
       },
       classification: {
         contractType: contract.contractType,
@@ -400,12 +432,15 @@ export async function PUT(
       ...(metadata.periodicity !== undefined && { periodicity: metadata.periodicity }),
       ...(metadata.currency !== undefined && { currency: metadata.currency }),
       ...(metadata.signature_date !== undefined && { signature_date: metadata.signature_date }),
+      ...(metadata.signature_status !== undefined && { signature_status: metadata.signature_status }),
+      ...(metadata.signature_required_flag !== undefined && { signature_required_flag: metadata.signature_required_flag }),
       ...(metadata.start_date !== undefined && { start_date: metadata.start_date }),
       ...(metadata.end_date !== undefined && { end_date: metadata.end_date }),
       ...(metadata.termination_date !== undefined && { termination_date: metadata.termination_date }),
       ...(metadata.reminder_enabled !== undefined && { reminder_enabled: metadata.reminder_enabled }),
       ...(metadata.reminder_days_before_end !== undefined && { reminder_days_before_end: metadata.reminder_days_before_end }),
       ...(metadata.notice_period !== undefined && { notice_period: metadata.notice_period }),
+      ...(metadata.notice_period_days !== undefined && { notice_period_days: metadata.notice_period_days }),
       ...(metadata.jurisdiction !== undefined && { jurisdiction: metadata.jurisdiction }),
       ...(metadata.contract_language !== undefined && { contract_language: metadata.contract_language }),
       ...(metadata.created_by_user_id !== undefined && { created_by_user_id: metadata.created_by_user_id }),
@@ -413,6 +448,9 @@ export async function PUT(
       ...(metadata.access_group_ids !== undefined && { access_group_ids: metadata.access_group_ids }),
       ...(metadata.tags !== undefined && { tags: metadata.tags }),
       ...(metadata.field_confidence !== undefined && { field_confidence: metadata.field_confidence }),
+      ...(metadata.document_classification !== undefined && { document_classification: metadata.document_classification }),
+      ...(metadata.document_classification_confidence !== undefined && { document_classification_confidence: metadata.document_classification_confidence }),
+      ...(metadata.document_classification_warning !== undefined && { document_classification_warning: metadata.document_classification_warning }),
       last_ai_extraction: existingAiMetadata.last_ai_extraction,
     };
 
@@ -426,7 +464,7 @@ export async function PUT(
     if (metadata.start_date) legacyUpdates.effectiveDate = new Date(metadata.start_date);
     if (metadata.end_date) legacyUpdates.expirationDate = new Date(metadata.end_date);
     if (metadata.jurisdiction) legacyUpdates.jurisdiction = metadata.jurisdiction;
-    if (metadata.notice_period) legacyUpdates.noticePeriodDays = metadata.notice_period;
+    if (metadata.notice_period_days) legacyUpdates.noticePeriodDays = metadata.notice_period_days;
     if (metadata.billing_frequency_type) legacyUpdates.paymentFrequency = metadata.billing_frequency_type;
     if (metadata.periodicity) legacyUpdates.billingCycle = metadata.periodicity;
     if (metadata.tags) legacyUpdates.tags = metadata.tags;

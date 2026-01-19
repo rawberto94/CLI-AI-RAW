@@ -51,9 +51,9 @@ const DEFAULT_CONFIGS: Record<string, RateLimitConfig> = {
 };
 
 // Redis client singleton
-let redis: Redis | null = null;
+let redis: InstanceType<typeof Redis> | null = null;
 
-function getRedis(): Redis | null {
+function getRedis(): InstanceType<typeof Redis> | null {
   if (!redis && process.env.REDIS_URL) {
     try {
       redis = new Redis(process.env.REDIS_URL);
@@ -222,7 +222,7 @@ export function withIpRateLimit(
     ...DEFAULT_CONFIGS[configType],
     keyGenerator: (req: NextRequest) => {
       const forwarded = req.headers.get("x-forwarded-for");
-      const ip = forwarded?.split(",")[0] || req.ip || "unknown";
+      const ip = forwarded?.split(",")[0] || "unknown";
       return `ratelimit:ip:${configType}:${ip}`;
     },
   };

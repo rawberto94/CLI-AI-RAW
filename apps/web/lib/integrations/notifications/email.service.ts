@@ -5,9 +5,26 @@
  * Supports multiple email providers (SMTP, SendGrid, AWS SES).
  */
 
-import nodemailer from "nodemailer";
-import { ContractSource, ContractSyncLog } from "@prisma/client";
+// Note: nodemailer is optional - install with `npm install nodemailer @types/nodemailer` if needed
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let nodemailer: any;
+try {
+  // Dynamic import to avoid build errors if not installed
+  nodemailer = require("nodemailer");
+} catch {
+  console.warn("[EmailService] nodemailer not installed, email notifications disabled");
+}
+
+import { ContractSource } from "@prisma/client";
 import { format } from "date-fns";
+
+// Define our own SyncLog type since ContractSyncLog may not exist in schema
+interface SyncLog {
+  id: string;
+  startedAt: Date;
+  errorMessage?: string | null;
+  filesProcessed?: number;
+}
 
 export interface EmailConfig {
   provider: "smtp" | "sendgrid" | "ses";
@@ -32,7 +49,7 @@ export interface NotificationRecipient {
 
 export interface SyncFailureNotification {
   source: Pick<ContractSource, "id" | "name" | "provider">;
-  syncLog: Pick<ContractSyncLog, "id" | "startedAt" | "errorMessage" | "filesProcessed">;
+  syncLog: Pick<SyncLog, "id" | "startedAt" | "errorMessage" | "filesProcessed">;
   retryCount: number;
   maxRetries: number;
 }
@@ -53,7 +70,8 @@ export interface SyncSummaryNotification {
 }
 
 export class EmailNotificationService {
-  private transporter: nodemailer.Transporter | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private transporter: any = null;
   private config: EmailConfig;
 
   constructor(config: EmailConfig) {
@@ -62,6 +80,11 @@ export class EmailNotificationService {
   }
 
   private initializeTransporter(): void {
+    if (!nodemailer) {
+      console.warn("[EmailService] nodemailer not available, skipping transporter initialization");
+      return;
+    }
+    
     if (this.config.provider === "smtp" && this.config.smtp) {
       this.transporter = nodemailer.createTransport({
         host: this.config.smtp.host,

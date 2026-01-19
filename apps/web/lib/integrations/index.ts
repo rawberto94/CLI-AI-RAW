@@ -8,15 +8,15 @@
 export * from './connectors';
 
 // Services
-export * from './services/sync.service';
+export * from './sync-service';
 export * from './services/batch-operations.service';
 
 // Notifications
 export * from './notifications/email.service';
-export * from './notifications/webhooks';
+export * from './webhooks';
 
 // Middleware
 export * from './middleware/rate-limit';
 
-// Utils
-export * from './utils/encryption';
+// Google Drive
+export * from './google-drive';

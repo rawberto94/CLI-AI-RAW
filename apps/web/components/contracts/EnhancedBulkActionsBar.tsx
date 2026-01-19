@@ -986,8 +986,8 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                     variant="ghost"
                     size="sm"
                     className="text-red-400 hover:text-red-300 hover:bg-red-900/30 h-8 w-8 p-0 sm:w-auto sm:px-3"
-                    onClick={() => setDeleteDialogOpen(true)}
-                    disabled={processing !== null}
+                    onClick={() => selectedCount > 0 && setDeleteDialogOpen(true)}
+                    disabled={processing !== null || selectedCount === 0}
                   >
                     <Trash2 className="w-4 h-4" />
                     <span className="hidden sm:inline ml-2">Delete</span>
@@ -1019,7 +1019,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
 
       {/* Dialogs */}
       <ConfirmDialog
-        open={deleteDialogOpen}
+        open={deleteDialogOpen && selectedCount > 0}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Contracts"
         description={`Are you sure you want to delete ${selectedCount} contract${selectedCount > 1 ? "s" : ""}? This action cannot be undone.`}

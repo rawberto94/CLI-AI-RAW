@@ -13,16 +13,20 @@ interface ConditionalLayoutProps {
   children: React.ReactNode;
 }
 
+// Marketing pages that should not show the app navigation
+const MARKETING_PAGES = ['/', '/home', '/features', '/pricing', '/about', '/contact', '/privacy', '/terms', '/security'];
+
 export function ConditionalLayout({ children }: ConditionalLayoutProps) {
   const pathname = usePathname();
   
-  // Auth pages should not show the navigation
+  // Auth pages and marketing pages should not show the navigation
   const isAuthPage = pathname?.startsWith('/auth');
+  const isMarketingPage = MARKETING_PAGES.includes(pathname || '');
   
   // useEffect must be called unconditionally (before any early returns)
   useEffect(() => {
-    // Skip for auth pages
-    if (isAuthPage) return;
+    // Skip for auth and marketing pages
+    if (isAuthPage || isMarketingPage) return;
     
     const active = document.activeElement as HTMLElement | null;
     const nav = document.getElementById('main-nav');
@@ -34,7 +38,16 @@ export function ConditionalLayout({ children }: ConditionalLayoutProps) {
         main?.focus();
       });
     }
-  }, [pathname, isAuthPage]);
+  }, [pathname, isAuthPage, isMarketingPage]);
+
+  // Marketing pages: Use marketing layout (handled by route group)
+  if (isMarketingPage) {
+    return (
+      <main className="min-h-screen">
+        {children}
+      </main>
+    );
+  }
 
   if (isAuthPage) {
     // Auth pages: No navigation, no sidebar, full page

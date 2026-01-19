@@ -92,13 +92,14 @@ export function getOAuthCallbackUrl(provider: ContractSourceProvider): string {
  * Check if a provider requires OAuth
  */
 export function requiresOAuth(provider: ContractSourceProvider): boolean {
-  return [
+  const oauthProviders: ContractSourceProvider[] = [
     ContractSourceProvider.SHAREPOINT,
     ContractSourceProvider.ONEDRIVE,
     ContractSourceProvider.GOOGLE_DRIVE,
     ContractSourceProvider.DROPBOX,
     ContractSourceProvider.BOX,
-  ].includes(provider);
+  ];
+  return oauthProviders.includes(provider);
 }
 
 /**

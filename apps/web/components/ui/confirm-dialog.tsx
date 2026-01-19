@@ -60,12 +60,18 @@ export function ConfirmDialog({
   const Icon = config.icon;
 
   const handleConfirm = async () => {
+    console.log('[ConfirmDialog] handleConfirm called');
     setIsPending(true);
     try {
+      console.log('[ConfirmDialog] Calling onConfirm...');
       await onConfirm();
+      console.log('[ConfirmDialog] onConfirm completed successfully');
+      // Close dialog on success
       onOpenChange(false);
-    } catch {
-      // Action failed silently
+    } catch (error) {
+      console.error('[ConfirmDialog] action failed:', error);
+      // Still close on error - let parent handle retry
+      onOpenChange(false);
     } finally {
       setIsPending(false);
     }

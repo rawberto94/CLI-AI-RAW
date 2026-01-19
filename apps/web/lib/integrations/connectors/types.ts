@@ -35,7 +35,7 @@ export interface RemoteFile {
  */
 export interface ListFilesResult {
   files: RemoteFile[];
-  folders: RemoteFile[];
+  folders?: RemoteFile[];
   nextPageToken?: string;
   hasMore: boolean;
   totalCount?: number;
@@ -47,8 +47,9 @@ export interface ListFilesResult {
 export interface DownloadedFile {
   content: Buffer;
   mimeType: string;
-  name: string;
-  size: number;
+  name?: string;
+  filename?: string;
+  size?: number;
   hash?: string;
 }
 
@@ -56,15 +57,23 @@ export interface DownloadedFile {
  * Connection test result
  */
 export interface ConnectionTestResult {
-  success: boolean;
-  message: string;
+  success?: boolean;
+  connected?: boolean;
+  message?: string;
   accountInfo?: {
     email?: string;
     name?: string;
+    id?: string;
     quota?: {
       used: number;
       total: number;
     };
+  };
+  capabilities?: {
+    deltaSync?: boolean;
+    folderListing?: boolean;
+    fileDownload?: boolean;
+    fileMetadata?: boolean;
   };
   error?: string;
   errorCode?: string;
@@ -74,11 +83,14 @@ export interface ConnectionTestResult {
  * Delta/incremental sync result
  */
 export interface DeltaSyncResult {
-  changes: Array<{
+  changes?: Array<{
     type: 'created' | 'modified' | 'deleted';
     file: RemoteFile;
   }>;
+  newOrModifiedFiles?: RemoteFile[];
+  deletedFileIds?: string[];
   deltaToken?: string;
+  newDeltaToken?: string;
   hasMore: boolean;
 }
 
@@ -91,6 +103,17 @@ export interface OAuthTokens {
   expiresAt: Date;
   scope?: string;
   tokenType?: string;
+}
+
+/**
+ * OAuth token response (alternative structure used by some connectors)
+ */
+export interface OAuthTokensAlt {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  scope?: string;
+  token_type?: string;
 }
 
 /**
@@ -149,6 +172,7 @@ export interface GoogleDriveCredentials {
   clientSecret: string;
   accessToken?: string;
   refreshToken?: string;
+  tokenExpiresAt?: string | Date;
 }
 
 export interface DropboxCredentials {
@@ -195,7 +219,7 @@ export interface ConnectorConfig {
  */
 export interface IContractSourceConnector {
   /** Provider type */
-  readonly provider: ContractSourceProvider;
+  readonly provider?: ContractSourceProvider;
   
   /** Test connection and return account info */
   testConnection(): Promise<ConnectionTestResult>;
@@ -207,6 +231,7 @@ export interface IContractSourceConnector {
       pageToken?: string;
       pageSize?: number;
       filePatterns?: string[];
+      recursive?: boolean;
     }
   ): Promise<ListFilesResult>;
   
@@ -214,16 +239,16 @@ export interface IContractSourceConnector {
   downloadFile(fileId: string): Promise<DownloadedFile>;
   
   /** Get file metadata without downloading */
-  getFileMetadata(fileId: string): Promise<RemoteFile>;
+  getFileMetadata?(fileId: string): Promise<RemoteFile>;
   
   /** Check if connector supports delta sync */
-  supportsDeltaSync(): boolean;
+  supportsDeltaSync?(): boolean;
   
   /** Get changes since last sync (for incremental sync) */
   getDeltaChanges?(deltaToken?: string): Promise<DeltaSyncResult>;
   
   /** Disconnect and cleanup */
-  disconnect(): Promise<void>;
+  disconnect?(): Promise<void>;
 }
 
 /**
@@ -231,7 +256,10 @@ export interface IContractSourceConnector {
  */
 export interface IOAuthConnector extends IContractSourceConnector {
   /** Generate OAuth authorization URL */
-  getAuthUrl(state?: string): string;
+  getAuthUrl?(state?: string): string;
+  
+  /** Generate OAuth authorization URL (alternative method name) */
+  getAuthorizationUrl?(state?: string): string;
   
   /** Exchange authorization code for tokens */
   exchangeCodeForTokens(code: string): Promise<OAuthTokens>;
@@ -240,7 +268,7 @@ export interface IOAuthConnector extends IContractSourceConnector {
   refreshAccessToken(refreshToken: string): Promise<OAuthTokens>;
   
   /** Check if token needs refresh */
-  isTokenExpired(): boolean;
+  isTokenExpired?(): boolean;
 }
 
 // ============================================

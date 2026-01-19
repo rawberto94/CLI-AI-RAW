@@ -139,7 +139,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
   return (
     <div
       ref={containerRef}
-      className="relative inline-block"
+      className="relative flex-1 min-w-[200px]"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >

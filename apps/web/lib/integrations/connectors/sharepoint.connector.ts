@@ -73,7 +73,7 @@ interface GraphDeltaResponse {
 }
 
 export class SharePointConnector implements IOAuthConnector {
-  readonly provider = ContractSourceProvider.SHAREPOINT;
+  readonly provider: ContractSourceProvider = ContractSourceProvider.SHAREPOINT;
   
   private credentials: SharePointCredentials;
   private accessToken?: string;
@@ -205,7 +205,11 @@ export class SharePointConnector implements IOAuthConnector {
       await this.ensureValidToken();
 
       // Get user info
-      const userResponse = await this.graphRequest('/me');
+      const userResponse = await this.graphRequest('/me') as {
+        mail?: string;
+        userPrincipalName?: string;
+        displayName?: string;
+      };
       
       // Get drive info
       const driveResponse = await this.graphRequest(this.getDriveEndpoint());
@@ -214,8 +218,8 @@ export class SharePointConnector implements IOAuthConnector {
         success: true,
         message: 'Successfully connected to SharePoint/OneDrive',
         accountInfo: {
-          email: userResponse.mail || userResponse.userPrincipalName,
-          name: userResponse.displayName,
+          email: String(userResponse.mail || userResponse.userPrincipalName || ''),
+          name: String(userResponse.displayName || ''),
           quota: driveResponse.quota ? {
             used: driveResponse.quota.used,
             total: driveResponse.quota.total,
@@ -294,7 +298,7 @@ export class SharePointConnector implements IOAuthConnector {
     return {
       files,
       folders,
-      nextPageToken: response['@odata.nextLink'],
+      nextPageToken: response['@odata.nextLink'] as string | undefined,
       hasMore: !!response['@odata.nextLink'],
     };
   }
@@ -310,7 +314,7 @@ export class SharePointConnector implements IOAuthConnector {
     }
 
     // Download content
-    const downloadUrl = metadata['@microsoft.graph.downloadUrl'];
+    const downloadUrl = metadata['@microsoft.graph.downloadUrl'] as string | undefined;
     if (!downloadUrl) {
       throw new Error('Download URL not available');
     }
@@ -362,9 +366,9 @@ export class SharePointConnector implements IOAuthConnector {
 
     // Handle pagination
     while (nextLink) {
-      const response: GraphDeltaResponse = await this.graphRequest(nextLink, true);
+      const response = await this.graphRequest(nextLink, true) as GraphDeltaResponse;
 
-      for (const item of response.value) {
+      for (const item of response.value || []) {
         // Deleted items have a 'deleted' facet
         const isDeleted = 'deleted' in item;
         const remoteFile = this.mapDriveItemToRemoteFile(item);

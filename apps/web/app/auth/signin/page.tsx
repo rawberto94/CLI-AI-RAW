@@ -305,11 +305,11 @@ function GitHubIcon({ className }: { className?: string }) {
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const registered = searchParams.get("registered") === "true";
   
   const [email, setEmail] = useState("admin@demo.com");
-  const [password, setPassword] = useState("Admin123!");
+  const [password, setPassword] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);

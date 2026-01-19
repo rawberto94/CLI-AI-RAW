@@ -178,12 +178,47 @@ export async function GET(
 
     healthScore = Math.max(0, healthScore)
 
-    // Calculate completeness
-    let completeness = 50 // Base completeness
-    if (contract.parentContractId || contract.contractCategoryId === 'master_framework') completeness += 20
-    if (members.length > 0) completeness += 15
-    if (contract.totalValue) completeness += 10
-    if (contract.effectiveDate && contract.expirationDate) completeness += 5
+    // Calculate completeness - now includes metadata verification progress
+    let completeness = 0
+    
+    // Fetch metadata to check field validations (60% weight for verification)
+    // _fieldValidations is stored inside the customFields JSON column
+    const metadata = await prisma.contractMetadata.findUnique({
+      where: { contractId },
+      select: { customFields: true }
+    })
+    
+    // Calculate verification progress
+    let verificationProgress = 0
+    if (metadata?.customFields && typeof metadata.customFields === 'object') {
+      const customFields = metadata.customFields as Record<string, unknown>
+      const fieldValidations = customFields._fieldValidations as Record<string, { status?: string; verified?: boolean }> | undefined
+      
+      if (fieldValidations && typeof fieldValidations === 'object') {
+        const entries = Object.entries(fieldValidations)
+        if (entries.length > 0) {
+          // Check for both formats: status='validate'/'validated' (UI) or verified=true (legacy)
+          const verifiedCount = entries.filter(([, v]) => 
+            v?.status === 'validate' || v?.status === 'validated' || v?.verified === true
+          ).length
+          // Total fields should be based on all defined fields in schema (not just touched ones)
+          // Based on CONTRACT_METADATA_FIELDS in contract-metadata-schema.ts
+          const TOTAL_METADATA_FIELDS = 26
+          verificationProgress = Math.round((verifiedCount / TOTAL_METADATA_FIELDS) * 100)
+        }
+      }
+    }
+    
+    // Weighted completeness calculation:
+    // Completeness primarily reflects metadata verification progress
+    // with small bonuses for contract hierarchy
+    completeness = verificationProgress
+    
+    // Small bonuses for contract setup (max 10%)
+    if (contract.parentContractId || contract.contractCategoryId === 'master_framework') completeness += 4
+    if (members.length > 0) completeness += 3
+    if (contract.totalValue) completeness += 2
+    if (contract.effectiveDate && contract.expirationDate) completeness += 1
     completeness = Math.min(100, completeness)
 
     // Find suggested parents if this is an orphan

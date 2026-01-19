@@ -1178,6 +1178,7 @@ export default function ContractDetailPage() {
                     overviewData={overviewData}
                     financialData={financialData}
                     onRefresh={loadContract}
+                    onVerificationChange={() => loadHealthData()}
                   />
                   
                   {/* Contract Relationships - Improved UI with AI suggestions */}

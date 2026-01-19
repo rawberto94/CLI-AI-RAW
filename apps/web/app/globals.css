@@ -1,8 +1,154 @@
-@import "../styles/accessibility.css";
+@import '../styles/accessibility.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================
+   MARKETING SITE ANIMATIONS
+   ============================================ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out forwards;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Staggered animation delays */
+.animate-delay-100 {
+  animation-delay: 100ms;
+}
+.animate-delay-200 {
+  animation-delay: 200ms;
+}
+.animate-delay-300 {
+  animation-delay: 300ms;
+}
+.animate-delay-400 {
+  animation-delay: 400ms;
+}
+.animate-delay-500 {
+  animation-delay: 500ms;
+}
+.animate-delay-600 {
+  animation-delay: 600ms;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
 
 /* ============================================
    PROFESSIONAL DESIGN SYSTEM
@@ -101,14 +247,18 @@
   }
 
   /* Smooth theme transitions */
-  html, body, .theme-transition * {
-    transition: background-color 0.3s ease, 
-                border-color 0.3s ease,
-                color 0.2s ease;
+  html,
+  body,
+  .theme-transition * {
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      color 0.2s ease;
   }
 
   /* Disable transition on initial load */
-  html.no-transition, html.no-transition * {
+  html.no-transition,
+  html.no-transition * {
     transition: none !important;
   }
 
@@ -119,7 +269,12 @@
   }
 
   /* Better text balance for headings */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     text-wrap: balance;
   }
 
@@ -141,7 +296,9 @@
 
   /* Reduced motion for accessibility */
   @media (prefers-reduced-motion: reduce) {
-    *, ::before, ::after {
+    *,
+    ::before,
+    ::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -151,7 +308,9 @@
 
   /* Better touch targets for mobile */
   @media (pointer: coarse) {
-    button, a, [role="button"] {
+    button,
+    a,
+    [role='button'] {
       min-height: 44px;
       min-width: 44px;
     }
@@ -161,9 +320,16 @@
   body {
     max-width: 100vw;
     overflow-x: hidden;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      "Helvetica Neue", Arial, sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family:
+      'Inter',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      'Helvetica Neue',
+      Arial,
+      sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     line-height: 1.6;
   }
 
@@ -496,16 +662,20 @@
      ======================== */
 
   .shadow-soft {
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+    box-shadow:
+      0 1px 3px 0 rgb(0 0 0 / 0.05),
+      0 1px 2px -1px rgb(0 0 0 / 0.05);
   }
 
   .shadow-medium {
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05),
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.05),
       0 2px 4px -2px rgb(0 0 0 / 0.05);
   }
 
   .shadow-elevated {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05),
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.05),
       0 4px 6px -4px rgb(0 0 0 / 0.05);
   }
 }
@@ -679,7 +849,8 @@
       box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
     }
     50% {
-      box-shadow: 0 0 40px rgba(139, 92, 246, 0.5),
+      box-shadow:
+        0 0 40px rgba(139, 92, 246, 0.5),
         0 0 60px rgba(59, 130, 246, 0.3);
     }
   }
@@ -774,12 +945,24 @@
     animation: slide-up 0.4s ease-out both;
   }
 
-  .stagger-children > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger-children > *:nth-child(2) { animation-delay: 50ms; }
-  .stagger-children > *:nth-child(3) { animation-delay: 100ms; }
-  .stagger-children > *:nth-child(4) { animation-delay: 150ms; }
-  .stagger-children > *:nth-child(5) { animation-delay: 200ms; }
-  .stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+  .stagger-children > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .stagger-children > *:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .stagger-children > *:nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .stagger-children > *:nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .stagger-children > *:nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .stagger-children > *:nth-child(6) {
+    animation-delay: 250ms;
+  }
 
   /* ========================
      TOUCH & MOBILE IMPROVEMENTS
@@ -791,7 +974,7 @@
       min-height: 44px;
       min-width: 44px;
     }
-    
+
     /* Increase spacing for touch interfaces */
     .touch-spacing > * + * {
       margin-top: 0.75rem;
@@ -803,7 +986,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -812,21 +995,21 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-track {
     background: transparent;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 3px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
@@ -834,7 +1017,7 @@
   .dark .scrollbar-thin::-webkit-scrollbar-thumb {
     background: #475569;
   }
-  
+
   .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: #64748b;
   }
@@ -853,7 +1036,7 @@
   }
 
   /* Skip link styling is in layout */
-  
+
   /* Screen reader utilities */
   .sr-focus:not(:focus) {
     @apply sr-only;
@@ -862,16 +1045,24 @@
   /* ========================
      LOADING STATES
      ======================== */
-     
+
   .loading-dots::after {
     content: '';
     animation: loading-dots 1.4s infinite;
   }
 
   @keyframes loading-dots {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
+    0%,
+    20% {
+      content: '.';
+    }
+    40% {
+      content: '..';
+    }
+    60%,
+    100% {
+      content: '...';
+    }
   }
 
   /* Pulse loading effect */
@@ -882,7 +1073,7 @@
   /* ========================
      RESPONSIVE CONTAINERS
      ======================== */
-     
+
   .container-tight {
     @apply max-w-4xl mx-auto px-4 sm:px-6;
   }

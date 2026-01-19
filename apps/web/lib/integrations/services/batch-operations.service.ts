@@ -10,10 +10,13 @@ import { createWriteStream, promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import archiver from "archiver";
-import { ContractFile, ContractSource } from "@prisma/client";
-import prisma from "@/lib/prisma";
+import { SyncedFile, ContractSource } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { createConnector } from "../connectors/factory";
-import { BaseConnector } from "../connectors/base.connector";
+import type { IContractSourceConnector, ConnectorCredentials } from "../connectors/types";
+
+// Type alias for backwards compatibility
+type ContractFile = SyncedFile;
 
 export interface BatchOperationOptions {
   concurrency?: number;
@@ -83,10 +86,10 @@ export async function batchDownload(
   }
 
   // Get files to download
-  const files = await prisma.contractFile.findMany({
+  const files = await prisma.syncedFile.findMany({
     where: {
       id: { in: request.fileIds },
-      contractSourceId: source.id,
+      sourceId: source.id,
     },
   });
 
@@ -102,7 +105,7 @@ export async function batchDownload(
   }
 
   // Create connector
-  const connector = await createConnector(source);
+  const connector = createConnector(source.provider, source.credentials as unknown as ConnectorCredentials);
   
   // Create temp directory for downloads
   const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -114,7 +117,7 @@ export async function batchDownload(
     completed: 0,
     failed: 0,
     bytesDownloaded: 0,
-    bytesTotal: files.reduce((sum, f) => sum + (f.size || 0), 0),
+    bytesTotal: files.reduce((sum, f) => sum + Number(f.fileSize || 0), 0),
   };
 
   try {
@@ -166,7 +169,7 @@ export async function batchDownload(
  */
 async function processChunk(
   files: ContractFile[],
-  connector: BaseConnector,
+  connector: IContractSourceConnector,
   outputDir: string,
   progress: BatchProgress,
   errors: BatchError[],
@@ -175,26 +178,26 @@ async function processChunk(
   const { concurrency = 5, onProgress, onError } = options;
   
   const downloadPromises = files.map(async (file) => {
-    progress.currentFile = file.name;
+    progress.currentFile = file.fileName;
     onProgress?.(progress);
 
     try {
-      const content = await connector.downloadFile(file.remotePath);
+      const downloadedFile = await connector.downloadFile(file.remotePath);
       
       // Sanitize filename
-      const safeName = sanitizeFilename(file.name);
+      const safeName = sanitizeFilename(file.fileName);
       const filePath = path.join(outputDir, safeName);
       
       // Write to file
-      await writeStreamToFile(content, filePath);
+      await writeStreamToFile(downloadedFile.content, filePath);
       
       progress.completed++;
-      progress.bytesDownloaded += file.size || 0;
+      progress.bytesDownloaded += Number(file.fileSize || 0);
       onProgress?.(progress);
     } catch (error) {
       const batchError: BatchError = {
         fileId: file.id,
-        fileName: file.name,
+        fileName: file.fileName,
         error: error instanceof Error ? error.message : "Unknown error",
       };
       
@@ -238,11 +241,11 @@ async function createZipArchive(
     if (includeMetadata) {
       const metadata = files.map((f) => ({
         id: f.id,
-        name: f.name,
+        name: f.fileName,
         remotePath: f.remotePath,
-        size: f.size,
+        size: Number(f.fileSize),
         mimeType: f.mimeType,
-        syncedAt: f.syncedAt,
+        syncedAt: f.lastSyncedAt,
         remoteModifiedAt: f.remoteModifiedAt,
       }));
       
@@ -277,10 +280,10 @@ export async function batchImport(
     throw new Error("Contract source not found");
   }
 
-  const files = await prisma.contractFile.findMany({
+  const files = await prisma.syncedFile.findMany({
     where: {
       id: { in: fileIds },
-      contractSourceId: sourceId,
+      sourceId: sourceId,
       contractId: null, // Only unlinked files
     },
   });
@@ -295,40 +298,34 @@ export async function batchImport(
 
   // Create contracts for each file
   for (const file of files) {
-    progress.currentFile = file.name;
+    progress.currentFile = file.fileName;
     options.onProgress?.(progress);
 
     try {
       // Create a contract from the file
       await prisma.contract.create({
         data: {
-          title: path.basename(file.name, path.extname(file.name)),
+          contractTitle: path.basename(file.fileName, path.extname(file.fileName)),
           status: "DRAFT",
           tenantId,
-          createdById: userId,
-          documents: {
-            create: {
-              name: file.name,
-              fileUrl: file.localPath || file.remotePath,
-              mimeType: file.mimeType || "application/octet-stream",
-              size: file.size || 0,
-              uploadedById: userId,
-            },
-          },
+          uploadedBy: userId,
+          fileName: file.fileName,
+          mimeType: file.mimeType || "application/octet-stream",
+          fileSize: file.fileSize,
         },
       });
 
       // Link the file to the contract
-      await prisma.contractFile.update({
+      await prisma.syncedFile.update({
         where: { id: file.id },
-        data: { status: "IMPORTED" },
+        data: { processingStatus: "COMPLETED" },
       });
 
       progress.completed++;
     } catch (error) {
       const batchError: BatchError = {
         fileId: file.id,
-        fileName: file.name,
+        fileName: file.fileName,
         error: error instanceof Error ? error.message : "Unknown error",
       };
       
@@ -370,10 +367,10 @@ export async function batchDelete(
   }
 
   // Delete files
-  const result = await prisma.contractFile.deleteMany({
+  const result = await prisma.syncedFile.deleteMany({
     where: {
       id: { in: fileIds },
-      contractSourceId: sourceId,
+      sourceId: sourceId,
     },
   });
 
@@ -428,13 +425,21 @@ function sanitizeFilename(filename: string): string {
     .slice(0, 255);
 }
 
-async function writeStreamToFile(stream: Readable, filePath: string): Promise<void> {
+async function writeStreamToFile(content: Buffer | Readable, filePath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const writeStream = createWriteStream(filePath);
-    stream.pipe(writeStream);
-    writeStream.on("finish", resolve);
-    writeStream.on("error", reject);
-    stream.on("error", reject);
+    
+    if (Buffer.isBuffer(content)) {
+      writeStream.write(content);
+      writeStream.end();
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+    } else {
+      content.pipe(writeStream);
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+      content.on("error", reject);
+    }
   });
 }
 

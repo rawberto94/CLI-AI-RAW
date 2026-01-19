@@ -177,15 +177,15 @@ export function maskSensitiveFields<T extends Record<string, unknown>>(
   data: T,
   fieldsToMask: string[] = ['password', 'secret', 'key', 'token', 'accessToken', 'refreshToken', 'privateKey']
 ): T {
-  const masked = { ...data };
+  const masked: Record<string, unknown> = { ...data };
   
   for (const field of fieldsToMask) {
     if (field in masked && typeof masked[field] === 'string') {
       const value = masked[field] as string;
       if (value.length > 8) {
-        masked[field] = `${value.substring(0, 4)}****${value.substring(value.length - 4)}` as T[keyof T];
+        masked[field] = `${value.substring(0, 4)}****${value.substring(value.length - 4)}`;
       } else {
-        masked[field] = '********' as T[keyof T];
+        masked[field] = '********';
       }
     }
   }
@@ -196,9 +196,9 @@ export function maskSensitiveFields<T extends Record<string, unknown>>(
       masked[key] = maskSensitiveFields(
         masked[key] as Record<string, unknown>,
         fieldsToMask
-      ) as T[keyof T];
+      );
     }
   }
   
-  return masked;
+  return masked as T;
 }

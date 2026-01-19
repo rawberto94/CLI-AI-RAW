@@ -89,7 +89,7 @@ const navigationGroups: NavGroup[] = [
     defaultOpen: true,
     gradient: 'from-blue-500 to-indigo-500',
     items: [
-      { href: "/", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics", tourId: "dashboard" },
+      { href: "/dashboard", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics", tourId: "dashboard" },
       { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts", tourId: "contracts" },
       { href: "/upload", label: "Upload", icon: Upload, description: "Add new contracts", tourId: "upload" },
     ],

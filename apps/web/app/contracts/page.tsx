@@ -606,7 +606,7 @@ const CompactContractRow = memo(function CompactContractRow({
       transition={{ duration: 0.2, delay: index * 0.015 }}
       whileHover={{ scale: 1.002, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
       className={cn(
-        "grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_80px_100px_44px] gap-3 px-4 py-3 items-center cursor-pointer transition-all duration-200 group border-b border-slate-100 rounded-lg mx-1",
+        "flex items-center gap-2 px-4 py-3 cursor-pointer transition-all duration-200 group border-b border-slate-100",
         isSelected 
           ? "bg-gradient-to-r from-blue-50/80 to-indigo-50/60 hover:from-blue-50 hover:to-indigo-50 shadow-sm" 
           : "hover:bg-gradient-to-r hover:from-slate-50/90 hover:to-slate-50/50"
@@ -619,7 +619,7 @@ const CompactContractRow = memo(function CompactContractRow({
     >
       {/* Checkbox */}
       <div
-        className="flex items-center justify-center"
+        className="w-10 flex-shrink-0 flex items-center justify-center"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -641,7 +641,7 @@ const CompactContractRow = memo(function CompactContractRow({
         side="right"
         delay={500}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5">
           <motion.div 
             className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-blue-50 group-hover:to-indigo-50 transition-all duration-200 shadow-sm group-hover:shadow"
             whileHover={{ rotate: 5, scale: 1.1 }}
@@ -670,7 +670,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </ContractHoverPreview>
 
       {/* Category */}
-      <div className="hidden lg:block min-w-0">
+      <div className="hidden lg:block w-[100px] truncate">
         {contract.category ? (
           <CategoryBadge 
             category={contract.category.name} 
@@ -685,21 +685,21 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Contract Type */}
-      <div className="hidden lg:block min-w-0">
+      <div className="hidden lg:block w-[80px]">
         <span className="text-[13px] text-slate-600 truncate block" title={contract.type}>
           {contract.type || '—'}
         </span>
       </div>
 
       {/* Party */}
-      <div className="hidden md:block min-w-0">
+      <div className="hidden md:block w-[120px]">
         <span className="text-[13px] text-slate-600 truncate block" title={contract.parties?.supplier || contract.parties?.client}>
           {contract.parties?.supplier || contract.parties?.client || '—'}
         </span>
       </div>
 
       {/* Value */}
-      <div className="hidden lg:block text-right">
+      <div className="hidden lg:block w-[90px] text-right">
         <span className={cn(
           "text-[13px] font-semibold tabular-nums",
           contract.value ? "text-slate-800" : "text-slate-400"
@@ -709,7 +709,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Expiration Date */}
-      <div className="hidden md:block">
+      <div className="hidden md:block w-[90px]">
         {contract.expirationDate ? (
           <div className="flex flex-col">
             <span className={cn(
@@ -731,12 +731,12 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Signature Status */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block w-[70px]">
         <SignatureStatusBadge status={contract.signatureStatus} />
       </div>
 
       {/* Status */}
-      <div>
+      <div className="w-[90px]">
         <ContractStatusBadge 
           status={contract.status} 
           documentRole={contract.documentRole}
@@ -745,7 +745,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+      <div className="w-10 flex-shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -757,38 +757,46 @@ const CompactContractRow = memo(function CompactContractRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem onClick={onView} className="text-sm">
+            <DropdownMenuItem onSelect={onView} className="text-sm">
               <Eye className="h-3.5 w-3.5 mr-2 text-slate-500" /> View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm">
+            <DropdownMenuItem onSelect={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm">
               <Brain className="h-3.5 w-3.5 mr-2 text-violet-500" /> AI Analysis
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <div className="px-2 py-1 text-[10px] font-semibold text-purple-600 uppercase tracking-wide">Premium AI</div>
-            <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
+            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
               <Scale className="h-3.5 w-3.5 mr-2 text-purple-500" /> Legal Review
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
+            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
               <Edit3 className="h-3.5 w-3.5 mr-2 text-purple-500" /> Redline Editor
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm text-amber-700 focus:text-amber-800 focus:bg-amber-50">
+            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm text-amber-700 focus:text-amber-800 focus:bg-amber-50">
               <RefreshCw className="h-3.5 w-3.5 mr-2 text-amber-500" /> Start Renewal
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm">
+            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm">
               <GitBranch className="h-3.5 w-3.5 mr-2 text-slate-500" /> Create Amendment
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDownload} className="text-sm">
+            <DropdownMenuItem onSelect={onDownload} className="text-sm">
               <Download className="h-3.5 w-3.5 mr-2 text-slate-500" /> Download
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onShare} className="text-sm">
+            <DropdownMenuItem onSelect={onShare} className="text-sm">
               <Share2 className="h-3.5 w-3.5 mr-2 text-slate-500" /> Share
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-sm text-red-600 focus:text-red-600 focus:bg-red-50">
+            <div 
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => {
+                console.log('[DELETE] Delete button clicked');
+                onDelete();
+              }}
+              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-red-50 focus:bg-red-50 text-red-600"
+            >
               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-            </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -1243,6 +1251,11 @@ export default function ContractsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  
+  // Debug effect for delete dialog
+  useEffect(() => {
+    console.log('[DELETE DEBUG] deleteDialogOpen changed:', deleteDialogOpen, 'contractToDelete:', contractToDelete);
+  }, [deleteDialogOpen, contractToDelete]);
   
   // Bulk action confirmation dialogs
   const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
@@ -1736,30 +1749,44 @@ export default function ContractsPage() {
 
   // Open delete confirmation dialog
   const handleDeleteClick = useCallback((contractId: string, contractTitle: string) => {
+    console.log('[DELETE] handleDeleteClick called:', { contractId, contractTitle });
     setContractToDelete({ id: contractId, title: contractTitle });
     setDeleteDialogOpen(true);
+    console.log('[DELETE] Dialog should now be open');
   }, []);
 
   // Confirm single delete
   const handleConfirmDelete = useCallback(async () => {
-    if (!contractToDelete) return;
+    console.log('[DELETE] handleConfirmDelete called, contractToDelete:', contractToDelete);
+    if (!contractToDelete) {
+      console.log('[DELETE] No contract to delete, returning');
+      return;
+    }
     
     try {
+      console.log('[DELETE] Making DELETE request to:', `/api/contracts/${contractToDelete.id}`);
       toast.info('Deleting contract...');
       const response = await fetch(`/api/contracts/${contractToDelete.id}`, {
         method: 'DELETE',
         headers: { 'x-tenant-id': 'demo' },
       });
 
-      if (!response.ok) throw new Error('Delete failed');
+      const data = await response.json().catch(() => ({}));
+      console.log('[DELETE] Response:', { ok: response.ok, status: response.status, data });
+      
+      if (!response.ok) {
+        throw new Error(data?.error || data?.details || 'Delete failed');
+      }
       
       // Invalidate related caches
       crossModule.onContractChange(contractToDelete.id);
       
       toast.success('Contract deleted successfully');
       refetch();
-    } catch {
-      toast.error('Failed to delete contract');
+    } catch (error) {
+      console.error('[DELETE] Error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to delete contract';
+      toast.error(message);
     } finally {
       setContractToDelete(null);
     }
@@ -3247,8 +3274,8 @@ export default function ContractsPage() {
             >
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-lg">
                 {/* Table Header */}
-                <div className="grid grid-cols-[40px_1fr_130px_130px_140px_100px_120px_80px_100px_44px] gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
-                  <div className="flex items-center justify-center">
+                <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
+                  <div className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Checkbox
                       checked={allVisibleSelected && paginatedContracts.length > 0}
                       onCheckedChange={() => {
@@ -3262,15 +3289,15 @@ export default function ContractsPage() {
                       className="border-slate-300 h-4 w-4"
                     />
                   </div>
-                  <div>Contract</div>
-                  <div className="hidden lg:block">Category</div>
-                  <div className="hidden lg:block">Type</div>
-                  <div className="hidden md:block">Party</div>
-                  <div className="hidden lg:block text-right">Value</div>
-                  <div className="hidden md:block">Expires</div>
-                  <div className="hidden lg:block">Signed</div>
-                  <div>Status</div>
-                  <div></div>
+                  <div className="flex-1 min-w-[200px]">Contract</div>
+                  <div className="hidden lg:block w-[100px]">Category</div>
+                  <div className="hidden lg:block w-[80px]">Type</div>
+                  <div className="hidden md:block w-[120px]">Party</div>
+                  <div className="hidden lg:block w-[90px] text-right">Value</div>
+                  <div className="hidden md:block w-[90px]">Expires</div>
+                  <div className="hidden lg:block w-[70px]">Signed</div>
+                  <div className="w-[90px]">Status</div>
+                  <div className="w-10 flex-shrink-0"></div>
                 </div>
                 
                 {/* Table Body */}
@@ -3719,7 +3746,8 @@ export default function ContractsPage() {
               handleBulkActionWithConfirmation('share');
               break;
             case 'delete':
-              handleBulkDeleteClick();
+              // Delete is confirmed in EnhancedBulkActionsBar, so execute directly
+              await handleConfirmBulkDelete();
               break;
             case 'archive':
               handleBulkActionWithConfirmation('export'); // Treat as export confirmation first
