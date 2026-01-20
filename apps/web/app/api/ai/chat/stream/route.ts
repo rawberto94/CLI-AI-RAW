@@ -1,13 +1,22 @@
 /**
- * Streaming AI Chat API
+ * Enhanced Streaming AI Chat API
  * 
- * POST /api/ai/chat/stream - Real-time streaming responses from OpenAI
+ * POST /api/ai/chat/stream - Real-time streaming responses with:
+ * - Semantic cache integration
+ * - Episodic memory retrieval
+ * - Parallel RAG search
+ * - Dynamic confidence calculation
+ * - Agentic tool execution
  */
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
-import { hybridSearch } from '@/lib/rag/advanced-rag.service';
+import { parallelMultiQueryRAG } from '@/lib/rag/parallel-rag.service';
+import { semanticCache } from '@/lib/ai/semantic-cache.service';
+import { calculateDynamicConfidence } from '@/lib/ai/confidence-calibration';
+import { retrieveRelevantMemories, storeMemory } from '@/lib/ai/episodic-memory-integration';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -32,54 +41,99 @@ export async function POST(request: NextRequest) {
     }
 
     const tenantId = await getServerTenantId();
+    const session = await getServerSession();
+    const userId = session?.user?.id || 'anonymous';
 
-    // Check if the query needs RAG search
-    let ragContext = '';
-    let ragSources: string[] = [];
-    let ragResults: Array<{ contractId?: string; contractName: string; text: string; score: number }> = [];
-
-    if (shouldUseRAG(message)) {
-      try {
-        const searchResults = await hybridSearch(message, {
-          mode: 'hybrid',
-          k: 5,
-          rerank: true,
-          expandQuery: true,
-          filters: { tenantId },
-        });
-
-        if (searchResults.length > 0) {
-          ragResults = searchResults.map(r => ({
-            contractId: r.contractId,
-            contractName: r.contractName || 'Unknown Contract',
-            text: r.text,
-            score: r.score,
-          }));
+    // ============================================
+    // STEP 1: CHECK SEMANTIC CACHE
+    // ============================================
+    const cached = await semanticCache.get(message, tenantId);
+    if (cached) {
+      // Return cached response as a non-streaming response with cache flag
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          // Send metadata with cache flag
+          const metadata = JSON.stringify({
+            sources: cached.sources,
+            cached: true,
+            confidence: cached.metadata.confidence,
+            suggestedActions: [
+              { label: '🔄 Refresh', action: 'refresh-query' },
+              { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
+            ],
+          });
+          controller.enqueue(encoder.encode(`data: ${metadata}\n\n`));
           
-          ragContext = `\n\n**Relevant Contract Information:**\n${ragResults.map((r, i) => 
-            `[${i + 1}] From "${r.contractName}" (${Math.round(r.score * 100)}% match):\n${r.text.slice(0, 400)}...`
-          ).join('\n\n')}`;
-          
-          ragSources = ragResults.map(r => r.contractName);
-        }
-      } catch {
-        // RAG search failed, continue without context
-      }
+          // Send full content immediately
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: cached.content })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, cached: true })}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
     }
 
-    const systemPrompt = `You are an AI assistant for a Contract Lifecycle Management (CLM) system. You help users with:
-- Searching and analyzing contracts
-- Managing deadlines and renewals
-- Identifying risks and compliance issues
-- Generating reports and insights
+    // ============================================
+    // STEP 2: PARALLEL CONTEXT GATHERING
+    // Run RAG, episodic memory, and proactive checks in parallel
+    // ============================================
+    const [ragResults, memories] = await Promise.all([
+      shouldUseRAG(message)
+        ? parallelMultiQueryRAG(message, { tenantId, k: 7 })
+        : Promise.resolve({ results: [], queryVariations: [], timingsMs: { total: 0, hyde: 0, expansion: 0, search: 0, fusion: 0 } }),
+      retrieveRelevantMemories(userId, tenantId || 'default', message, conversationHistory, {
+        maxMemories: 3,
+        types: ['preference', 'fact', 'decision'],
+      }),
+    ]);
+
+    // Build RAG context
+    let ragContext = '';
+    let ragSources: string[] = [];
+    const searchResults = ragResults.results || [];
+
+    if (searchResults.length > 0) {
+      ragContext = `\n\n**🔍 Relevant Contract Information (${searchResults.length} matches):**\n${searchResults.map((r, i) => 
+        `[${i + 1}] **[${r.contractName}](/contracts/${r.contractId})** (${Math.round(r.score * 100)}% match):\n> ${r.text.slice(0, 400)}...`
+      ).join('\n\n')}`;
+      
+      ragSources = searchResults.map(r => r.contractName);
+    }
+
+    // Build memory context
+    let memoryContext = '';
+    if (memories.length > 0) {
+      memoryContext = `\n\n**💭 Relevant Past Interactions:**\n${memories.map(m => 
+        `- [${m.type}] ${m.content.slice(0, 200)}${m.content.length > 200 ? '...' : ''}`
+      ).join('\n')}`;
+    }
+
+    // ============================================
+    // STEP 3: BUILD ENHANCED SYSTEM PROMPT
+    // ============================================
+    const systemPrompt = `You are ConTigo AI, an intelligent contract management assistant with access to:
+- Contract database with semantic search
+- Historical interaction memory
+- Real-time contract analytics
 
 ${ragContext}
+${memoryContext}
 
-When answering:
+**Response Guidelines:**
 1. Be concise and actionable
-2. Use markdown formatting
-3. Reference specific contracts when relevant
-4. If contract information was found above, cite it`;
+2. Use markdown formatting with headers and bullets
+3. Link to contracts: [Contract Name](/contracts/ID)
+4. Cite sources from the contract information above
+5. Provide specific recommendations based on data
+6. Suggest relevant follow-up actions`;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
@@ -90,27 +144,41 @@ When answering:
       { role: 'user', content: message },
     ];
 
-    // Create streaming response
+    // ============================================
+    // STEP 4: STREAMING RESPONSE
+    // ============================================
     const stream = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.7,
-      max_tokens: 1500,
+      max_tokens: 2000,
       stream: true,
     });
 
-    // Create a ReadableStream that sends chunks
     const encoder = new TextEncoder();
+    let fullContent = '';
+    
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          // Send metadata first including sources and suggestions
-          const firstResult = ragResults[0];
+          // Send metadata first
+          const firstResult = searchResults[0];
+          const initialConfidence = calculateDynamicConfidence(
+            searchResults.map(r => ({ score: r.score, matchType: r.matchType, sources: r.sources })),
+            '', // Empty response at this stage
+            message
+          );
+
           const metadata = JSON.stringify({ 
             sources: ragSources,
+            confidence: initialConfidence.confidence,
+            confidenceTier: initialConfidence.tier,
+            queryVariations: ragResults.queryVariations?.slice(0, 3),
+            memoriesUsed: memories.length,
             suggestedActions: firstResult ? [
               { label: '📄 View Contract', action: `navigate:/contracts/${firstResult.contractId}` },
               { label: '🔍 Search More', action: 'search-contracts' },
+              { label: '📊 Analytics', action: 'navigate:/analytics' },
             ] : [
               { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
               { label: '📊 View Dashboard', action: 'navigate:/dashboard' },
@@ -119,7 +187,6 @@ When answering:
           controller.enqueue(encoder.encode(`data: ${metadata}\n\n`));
 
           // Stream the response content
-          let fullContent = '';
           for await (const chunk of stream) {
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
@@ -129,16 +196,59 @@ When answering:
             }
           }
 
-          // Send completion signal with final metadata
+          // ============================================
+          // STEP 5: POST-PROCESSING
+          // Cache response and store memory
+          // ============================================
+          const finalConfidence = calculateDynamicConfidence(
+            searchResults.map(r => ({ score: r.score, matchType: r.matchType, sources: r.sources })),
+            fullContent,
+            message
+          );
+
+          // Cache the response asynchronously (don't block)
+          semanticCache.set(message, {
+            content: fullContent,
+            sources: ragSources,
+            ragResults: searchResults.map(r => ({
+              contractId: r.contractId,
+              contractName: r.contractName,
+              score: r.score,
+              text: r.text.slice(0, 300),
+            })),
+            metadata: {
+              intent: context.intent?.type,
+              confidence: finalConfidence.confidence,
+              tokensUsed: Math.round(fullContent.length / 4),
+            },
+          }, tenantId).catch(() => { /* Ignore cache errors */ });
+
+          // Store interaction as memory for future reference
+          if (fullContent.length > 100) {
+            storeMemory({
+              tenantId: tenantId || 'default',
+              userId,
+              type: 'interaction',
+              content: `Q: ${message.slice(0, 200)}\nA: ${fullContent.slice(0, 300)}`,
+              context: firstResult?.contractName || detectTopic(message),
+              importance: searchResults.length > 0 ? 0.7 : 0.4,
+            }).catch(() => { /* Ignore memory errors */ });
+          }
+
+          // Send completion signal
           const doneData = JSON.stringify({ 
             done: true,
-            totalTokens: fullContent.length / 4, // Rough estimate
+            totalTokens: Math.round(fullContent.length / 4),
+            confidence: finalConfidence.confidence,
+            confidenceTier: finalConfidence.tier,
+            explanation: finalConfidence.explanation,
+            cached: false,
           });
           controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
           controller.close();
-        } catch {
+        } catch (error) {
           const errorData = JSON.stringify({ 
-            error: 'Stream interrupted',
+            error: error instanceof Error ? error.message : 'Stream interrupted',
             done: true,
           });
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
@@ -152,7 +262,7 @@ When answering:
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no', // Disable nginx buffering
+        'X-Accel-Buffering': 'no',
       },
     });
 
@@ -167,10 +277,21 @@ When answering:
 function shouldUseRAG(query: string): boolean {
   const lowerQuery = query.toLowerCase();
   const ragKeywords = [
-    'find', 'search', 'show me', 'where', 'what', 'which',
+    'find', 'search', 'show me', 'where', 'what', 'which', 'list',
     'contract', 'clause', 'term', 'liability', 'termination',
     'payment', 'renewal', 'expire', 'obligation', 'risk',
     'indemnif', 'sla', 'warranty', 'confidential', 'vendor', 'supplier',
+    'compare', 'analyze', 'summary', 'expiring', 'value', 'spend',
   ];
   return ragKeywords.some(keyword => lowerQuery.includes(keyword));
+}
+
+function detectTopic(query: string): string {
+  const q = query.toLowerCase();
+  if (q.includes('expir') || q.includes('renew')) return 'renewal';
+  if (q.includes('risk') || q.includes('compliance')) return 'risk';
+  if (q.includes('spend') || q.includes('value') || q.includes('cost')) return 'financial';
+  if (q.includes('supplier') || q.includes('vendor')) return 'supplier';
+  if (q.includes('clause') || q.includes('term')) return 'legal';
+  return 'general';
 }

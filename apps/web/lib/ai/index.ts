@@ -288,3 +288,54 @@ export {
   type RegulatoryDomain,
   type CategorizationDimension,
 } from './contract-categorizer';
+
+// Semantic Cache Service
+export {
+  SemanticCacheService,
+  semanticCache,
+  DEFAULT_CACHE_CONFIG,
+  type CacheEntry,
+  type CachedResponse,
+  type CacheConfig,
+  type CacheStats,
+} from './semantic-cache.service';
+
+// Agentic Chat Service (OpenAI Function Calling)
+export {
+  agenticChat,
+  CHAT_TOOLS,
+  TOOL_EXECUTORS,
+  type AgenticToolResult,
+  type AgenticResponse,
+} from './agentic-chat.service';
+
+// Episodic Memory Integration
+export {
+  retrieveRelevantMemories,
+  storeMemory,
+  formatMemoriesForPrompt,
+  extractMemoriesFromConversation,
+  applyMemoryDecay,
+  consolidateMemories,
+  type Memory,
+  type MemoryRetrievalOptions,
+  type MemoryStorageInput,
+} from './episodic-memory-integration';
+
+// Multi-Modal Document Analysis (GPT-4o Vision)
+export {
+  analyzeDocumentImage,
+  analyzeMultiPageDocument,
+  ocrDocument,
+  extractDocumentTables,
+  detectDocumentSignatures,
+  compareDocumentVersions,
+  storeDocumentAnalysis,
+  type DocumentImage,
+  type AnalysisOptions as MultiModalAnalysisOptions,
+  type DocumentAnalysisResult,
+  type ExtractedTable as MultiModalTable,
+  type SignatureInfo as MultiModalSignature,
+  type DocumentLayout,
+  type ExtractedEntity,
+} from './multimodal-analysis.service';

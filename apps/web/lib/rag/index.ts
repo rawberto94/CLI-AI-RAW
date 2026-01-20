@@ -85,6 +85,18 @@ export {
   type ReindexResult,
 } from './reindex-trigger';
 
+// Parallel Multi-Query RAG
+export {
+  parallelMultiQueryRAG,
+  generateHyDE,
+  expandQueryVariations,
+  expandWithSynonyms,
+  multiQueryRRF,
+  type ParallelRAGOptions,
+  type ParallelRAGResult,
+  type SearchResult as ParallelSearchResult,
+} from './parallel-rag.service';
+
 /**
  * Quick Start Guide:
  * 

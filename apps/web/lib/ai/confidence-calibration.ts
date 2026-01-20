@@ -624,3 +624,76 @@ export function calibrateConfidence(
   const service = getCalibrationService();
   return service.calibrateConfidence(tenantId, fieldName, originalConfidence);
 }
+
+// ============================================================================
+// RAG Confidence Calculation (for chat responses)
+// ============================================================================
+
+/**
+ * Calculate dynamic confidence for RAG-powered chat responses
+ * Based on retrieval quality, source diversity, and response alignment
+ */
+export function calculateDynamicConfidence(
+  ragResults: Array<{ score?: number; matchType?: string; sources?: string[] }>,
+  response: string,
+  query: string
+): { confidence: number; explanation: string; tier: 'high' | 'medium' | 'low' | 'uncertain' } {
+  if (ragResults.length === 0) {
+    return {
+      confidence: 0.3,
+      explanation: 'No relevant documents found',
+      tier: 'uncertain',
+    };
+  }
+
+  // 1. Retrieval Quality Score (40%)
+  const topScores = ragResults.slice(0, 5).map(r => r.score || 0);
+  const avgScore = topScores.reduce((a, b) => a + b, 0) / topScores.length;
+  const retrievalScore = avgScore;
+
+  // 2. Coverage Score (20%)
+  const highQualityCount = ragResults.filter(r => (r.score || 0) > 0.5).length;
+  const coverageScore = highQualityCount >= 3 ? 1.0 : highQualityCount / 3;
+
+  // 3. Source Diversity Score (20%)
+  const matchTypes = new Set(ragResults.map(r => r.matchType).filter(Boolean));
+  const hasHybrid = matchTypes.has('hybrid');
+  const diversityScore = hasHybrid ? 1.0 : matchTypes.size >= 2 ? 0.7 : 0.4;
+
+  // 4. Response Alignment Score (20%)
+  const queryTerms = query.toLowerCase().split(/\s+/).filter(t => t.length > 3);
+  const responseTerms = new Set(response.toLowerCase().split(/\s+/));
+  const matchCount = queryTerms.filter(t => responseTerms.has(t)).length;
+  const alignmentScore = matchCount / Math.max(queryTerms.length, 1);
+
+  // Weighted combination
+  const confidence = (
+    retrievalScore * 0.4 +
+    coverageScore * 0.2 +
+    diversityScore * 0.2 +
+    alignmentScore * 0.2
+  );
+
+  // Determine tier
+  let tier: 'high' | 'medium' | 'low' | 'uncertain';
+  if (confidence >= 0.75) tier = 'high';
+  else if (confidence >= 0.55) tier = 'medium';
+  else if (confidence >= 0.35) tier = 'low';
+  else tier = 'uncertain';
+
+  // Generate explanation
+  const issues: string[] = [];
+  if (retrievalScore < 0.5) issues.push('low retrieval quality');
+  if (coverageScore < 0.5) issues.push('limited coverage');
+  if (diversityScore < 0.5) issues.push('low source diversity');
+
+  const explanation = issues.length > 0
+    ? `${tier.charAt(0).toUpperCase() + tier.slice(1)} confidence: ${issues.join(', ')}.`
+    : 'High confidence response based on strong retrieval quality.';
+
+  return {
+    confidence: Math.round(confidence * 100) / 100,
+    explanation,
+    tier,
+  };
+}
